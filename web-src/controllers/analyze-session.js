@@ -892,6 +892,7 @@ async function runAnalysis(options = {}) {
   let inMemoryCheckpoint = null;
   let completedCheckpoint = null;
   let engineRun = null;
+  let endPass = null;
   const jobId = `browser-analysis-${Date.now()}`;
   try {
     let prep;
@@ -1001,6 +1002,10 @@ async function runAnalysis(options = {}) {
     // Dedicated full-speed workers; positions the store already answers at this depth
     // are reused, and each result is published for the Engine panel and the Coach.
     const store = await timed("load", analysisStore);
+    // Keep the card on the game's saved reads through Maia and save/render too.
+    // Each search batch has its own pass, but ending one must not reboot the live
+    // engine beside Maia or leave that heap resident while checkpointing.
+    endPass = store.passStart();
     const live = (await ensureAnalyzeView()).liveEvalChart(positions);
     // Every job update also drives the live graph's animation for that phase.
     const job = (update) => {
@@ -1159,15 +1164,18 @@ async function runAnalysis(options = {}) {
       pgn: gamePgn,
     };
     completedCheckpoint = checkpoint;
+    engineLifecycleMark("analyze-checkpoint-start", tAnalyze);
     const checkpointStored = await saveCheckpoint({
       ...checkpoint,
       ownerId: analysisOwnerId,
       engine: runEngineId,
       depth: prep.depth,
     });
+    engineLifecycleMark("analyze-checkpoint-done", tAnalyze);
     if (!checkpointStored) inMemoryCheckpoint = { ...checkpoint, inMemoryOnly: true };
     if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
 
+    engineLifecycleMark("analyze-classify-save-start", tAnalyze);
     const payload = await timed("classify", () =>
       postJson("/api/analyze/classify-save", {
         game_id: prep.game_id,
@@ -1192,6 +1200,7 @@ async function runAnalysis(options = {}) {
         }),
         maia_assessments: maiaAssessments,
       }).then((response) => {
+        engineLifecycleMark("analyze-classify-save-response", tAnalyze);
         const server = response.server_timings_ms || {};
         for (const [key, value] of Object.entries(server)) {
           timings[`server_${key}`] = value;
@@ -1225,6 +1234,7 @@ async function runAnalysis(options = {}) {
     const nodePath = selectedNodePath() || ANALYSIS_ROOT_PATH;
     appState.analysis = payload;
     appState.analysisTree = null;
+    engineLifecycleMark("analyze-render-start", tAnalyze);
     await timed("render", () => renderAnalysis(payload, { sourceSeq: seq }));
     if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) {
       complete();
@@ -1292,6 +1302,7 @@ async function runAnalysis(options = {}) {
       showAnalysisRetrySave(checkpoint, error.message);
     }
   } finally {
+    endPass?.();
     engineRun?.done();
     runButton.disabled = false;
   }

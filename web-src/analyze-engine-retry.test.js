@@ -12,7 +12,7 @@ const positions = [
   "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
 ];
 
-function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === positions[1], cancel = false, save } = {}) {
+function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === positions[1], cancel = false, save, assess } = {}) {
   const data = new Map();
   const manager = createEngineProfileManager({ assetState: () => ({ phase: "ready" }), beginSession: () => () => {},
     // A real desktop reports both signals; the no-memory-signal (phone-safe) case
@@ -43,10 +43,15 @@ function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === posit
     notices: { isBusy: () => false, startJob: vi.fn(job => { if (cancel) job.onCancel(); }),
       updateJob: vi.fn(), lockJob: vi.fn(), completeJob: vi.fn(), cancelJob: vi.fn(), failJob: vi.fn() },
     invalidateAnalysisSource: () => 1, analysisRecallSeq: 1, currentOwnerId: () => "owner", appState: {},
-    hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true, engineLifecycleMark: vi.fn(),
+    hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true, engineLifecycleMark: vi.fn(() => 0),
     postJson: vi.fn(async path => path === "/api/analyze/prepare"
-      ? { game_id: "game", pgn: "1. e4", positions, depth: 12 } : (save ? save() : { moves: [] })),
-    renderImportPicker: vi.fn(), maiaAnalysisEnabled: () => false,
+      ? { game_id: "game", pgn: "1. e4", positions, depth: 12, brilliant: { enabled: !!assess }, moves: [{}] } : (save ? save() : { moves: [] })),
+    renderImportPicker: vi.fn(), maiaAnalysisEnabled: () => !!assess, isHandheld: () => true,
+    getSharedMaia3Provider: () => ({ warmup: async () => {}, subscribeInitProgress: () => () => {} }),
+    effectiveMaiaRating: () => 1500,
+    _coachReady: Promise.resolve({ createBrilliantAssessor: options => ({
+      push: vi.fn(), finish: evals => assess(options, store, evals),
+    }) }),
     analysisStore: async () => store, ensureAnalyzeView: async () => ({ liveEvalChart: () => vi.fn() }),
     createEngineAnalysisRun: manager.createEngineAnalysisRun, readyIfCached: manager.readyIfCached,
     engineIdentity,
@@ -59,7 +64,7 @@ function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === posit
     setCoachProse: vi.fn(),
   };
   const run = new Function(...Object.keys(deps), `${code}\nreturn runAnalysis;`)(...Object.values(deps));
-  return { run, deps, manager, data, searches, button };
+  return { run, deps, manager, data, searches, button, store };
 }
 
 it("retries a whole-game engine failure using finished positions on the same net", async () => {
@@ -82,8 +87,36 @@ it("keeps the whole-analysis guard after the engine pass until save/render ends"
   // A deferred save gives an observable boundary after all engine work completed.
   await vi.waitFor(() => expect(f.deps.saveCheckpoint).toHaveBeenCalledTimes(1));
   expect(JSON.parse(f.data.get(CRASH_KEY))).toMatchObject({ net: "big", workers: 2 });
+  expect(f.store.passing).toBe(true);
+  expect(f.deps.engineLifecycleMark).toHaveBeenCalledWith("analyze-classify-save-start", expect.any(Number));
   resolveSave({ moves: [] });
   await running;
+  expect(f.store.passing).toBe(false);
+  expect(f.data.has(CRASH_KEY)).toBe(false);
+  expect(f.deps.engineLifecycleMark.mock.calls.map(([phase]) => phase)).toEqual(expect.arrayContaining([
+    "analyze-checkpoint-start", "analyze-checkpoint-done", "analyze-classify-save-response", "analyze-render-start",
+  ]));
+});
+
+it("releases the pass feed and guard when cloud persistence fails", async () => {
+  const f = fixture({ fail: () => false, save: () => { throw new Error("offline"); } });
+  await f.run();
+  expect(f.store.passing).toBe(false);
+  expect(f.data.has(CRASH_KEY)).toBe(false);
+  expect(f.deps.showAnalysisRetrySave).toHaveBeenCalledWith(expect.objectContaining({ gameId: "game" }), "offline");
+});
+
+it("keeps the pass feed through a phone's Maia work and every follow-up", async () => {
+  const f = fixture({ fail: () => false, assess: async (options, store) => {
+    expect(store.passing).toBe(true);
+    await options.analyzeFn({ positions, depth: 12, multipv: 3 });
+    expect(store.passing).toBe(true);
+    return [];
+  } });
+  await f.run();
+  expect(f.deps.notices.completeJob).toHaveBeenCalled();
+  expect(f.deps.notices.failJob).not.toHaveBeenCalled();
+  expect(f.store.passing).toBe(false);
   expect(f.data.has(CRASH_KEY)).toBe(false);
 });
 

@@ -49,6 +49,35 @@ describe("app-wide Stockfish allocation", () => {
     (await probing)();
   });
 
+  it("keeps live workers out through Maia gaps and persistence, not only each search batch", async () => {
+    const budget = createComputeBudget({ limit: 2, backgroundLimit: 2 });
+    const releaseWarm = await budget.acquire({ interactive: true });
+    const reclaim = vi.fn(releaseWarm);
+    budget.registerIdle(reclaim);
+    const endSession = budget.beginSession();
+    expect(reclaim).toHaveBeenCalledOnce();
+    let liveStarted = false;
+    const live = budget.acquire({ interactive: true }).then(release => { liveStarted = true; return release; });
+    const endMain = budget.beginBatch();
+    (await budget.acquire({ batch: true }))();
+    endMain();
+    await Promise.resolve();
+    expect(liveStarted).toBe(false);
+    expect(budget.snapshot().used).toBe(0);
+    // The phone's one-worker follow-up must not hold a second, live heap beside it.
+    const endFollowup = budget.beginBatch();
+    const releaseFollowup = await budget.acquire({ batch: true });
+    expect(budget.snapshot().used).toBe(1);
+    releaseFollowup(); endFollowup();
+    await Promise.resolve();
+    expect(liveStarted).toBe(false);
+    // Local checkpoint + cloud save/render still belong to the same session.
+    expect(budget.snapshot().used).toBe(0);
+    endSession(); endSession();
+    (await live)();
+    expect(budget.snapshot()).toMatchObject({ used: 0, queued: 0 });
+  });
+
   it("never reclaims a busy worker for detection, and reclaims only its idle registration", async () => {
     let idle;
     const budget = createComputeBudget({ scheduleIdle: fn => { idle = fn; return 1; } });

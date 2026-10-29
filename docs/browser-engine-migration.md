@@ -35,8 +35,18 @@ reports only the analysis work.
 The first engine startup of a page prepares full in the background, then detection
 requests an idle window from `compute-budget.js`. Foreground work cancels the
 probe; it retries after that work finishes. A whole-game session pins its net
-through all Maia follow-ups. Worker-count recovery stays on that net; a failure
+through all Maia follow-ups and holds the batch budget through checkpointing,
+cloud persistence and rendering. The Engine card reads the pass's saved results
+throughout that session; live workers resume when it ends. This prevents a live
+heap from reopening between passes beside Maia or during persistence.
+Worker-count recovery stays on that net; a failure
 requiring another net ends the session and records the next run's choice.
 Remembered lite fallback skips automatic full preparation on later visits.
 `navigator.connection.saveData` also skips automatic full preparation; Settings'
 Full and Detect actions remain explicit ways to prepare it.
+
+Analyze records checkpoint start/completion, classify-save request/response and
+render start in its engine lifecycle phase marker. If a tab dies after compute,
+the next load can distinguish those boundaries instead of attributing the kill
+to the last Stockfish or Maia search. The marker identifies the last boundary;
+it does not establish whether the OS killed the tab for memory pressure.

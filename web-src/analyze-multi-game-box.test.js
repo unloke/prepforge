@@ -195,6 +195,7 @@ function harness() {
     showConfirmModal: vi.fn(async () => false),
     maiaAnalysisEnabled: () => false,
     analysisStore: async () => ({
+      passStart: () => () => {},
       analyzeGame: async ({ positions }) => new Map(positions.map((fen) => [fen, { score_cp: 20 }])),
     }),
     ensureAnalyzeView: async () => view,

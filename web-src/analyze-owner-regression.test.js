@@ -106,7 +106,7 @@ it("switching accounts during classify-save releases the analysis job without re
     invalidateAnalysisSource: () => 1, analysisRecallSeq: 1,
     hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true,
     engineLifecycleMark: vi.fn(), renderImportPicker: vi.fn(), maiaAnalysisEnabled: () => false,
-    analysisStore: async () => ({ analyzeGame: async () => new Map([["fen", { score_cp: 0 }]]) }),
+    analysisStore: async () => ({ passStart: () => () => {}, analyzeGame: async () => new Map([["fen", { score_cp: 0 }]]) }),
     effectiveStockfishDepth: () => 12,
     createEngineAnalysisRun: () => ({ profile: () => ({ net: "big" }), done: vi.fn() }),
     readyIfCached: async () => {},

@@ -79,14 +79,25 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3,
     drainProbe();
     return () => idle.delete(reclaim);
   }
+  function beginBatch() {
+    batches++;
+    demand();
+    for (const entry of [...allocations]) if (!entry.batch) entry.reclaim?.();
+    for (const reclaim of [...idle]) reclaim();
+    let ended = false;
+    return () => { if (!ended) { ended = true; batches--; drain(); } };
+  }
   return {
     acquire, registerIdle,
     configure(workers) { limit = backgroundLimit = workers; drain(); },
     beginSession() {
       sessions++;
-      demand();
+      // Maia follow-ups and save/render still belong to the whole-game run.
+      // Reopening live engines between its batches defeats the phone's one-worker
+      // follow-up limit and leaves a full heap resident during persistence.
+      const endBatch = beginBatch();
       let ended = false;
-      return () => { if (!ended) { ended = true; sessions--; drainProbe(); } };
+      return () => { if (!ended) { ended = true; sessions--; endBatch(); } };
     },
     acquireProbe({ signal, onDemand } = {}) {
       if (signal?.aborted) return Promise.reject(new DOMException("Detection stopped", "AbortError"));
@@ -104,14 +115,7 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3,
         drainProbe();
       });
     },
-    beginBatch() {
-      batches++;
-      demand();
-      for (const entry of [...allocations]) if (!entry.batch) entry.reclaim?.();
-      for (const reclaim of [...idle]) reclaim();
-      let ended = false;
-      return () => { if (!ended) { ended = true; batches--; drain(); } };
-    },
+    beginBatch,
     snapshot: () => ({ used, background, queued: queue.length, limit, backgroundLimit }),
   };
 }
