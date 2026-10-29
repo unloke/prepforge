@@ -49,6 +49,7 @@ import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoir
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
+import { loadTeamsWithShell } from "./views/teams-loading.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { BROWSER_ENGINE_UNAVAILABLE, OUTBOX_TAB_ID, activeBoardController, activeViewName,
@@ -95,7 +96,7 @@ function loadTeamsController() {
 const viaTeams = (name) => (...args) => (teamsController
   ? teamsController[name](...args)
   : loadTeamsController().then((loaded) => loaded[name](...args)));
-const loadTeams = viaTeams("loadTeams");
+const loadTeams = () => loadTeamsWithShell(viaTeams("loadTeams"));
 const hideTeamDetail = viaTeams("hideTeamDetail");
 const createTeam = viaTeams("createTeam");
 
@@ -567,7 +568,7 @@ function switchView(name, { fromUrl = false } = {}) {
   });
   paintPhoneTabs(name, appState.replaySection);
   syncPageTitle();
-  const transition = swapView(document.querySelectorAll(".view"), `view-${name}`, { animate: !bootHeld, onSwap: resetViewScroll });
+  swapView(document.querySelectorAll(".view"), `view-${name}`, { animate: !bootHeld, onSwap: resetViewScroll });
   if (!fromUrl) syncWorkspaceUrl({ push: true });
   if (name === "replay") setReplaySection(appState.replaySection, { syncUrl: false });
   if (name === "analyze") {
@@ -625,7 +626,6 @@ function switchView(name, { fromUrl = false } = {}) {
   // Explorer or Analyze's Evaluation card. Each view remembers its own on/off;
   // views without an analysis board close it.
   syncEngineForView(name, { from: previousView });
-  return transition?.updateCallbackDone;
 }
 
 
@@ -1365,7 +1365,6 @@ function bindEvents() {
       dismissTransientOverlays();
       activateWorkspaceTab(button.dataset, { setReplaySection, switchView });
       if (button.dataset.view === "settings") loadSettings();
-      if (button.dataset.view === "teams") loadTeams().catch(() => {});
     });
   });
   bindPhoneChrome({ onAccountChipClick, toggleTheme, isAccountMenuOpen });
@@ -1572,7 +1571,20 @@ function bindEvents() {
     void handleWorkspacePopstate();
   });
   // Analyze takes a PGN file as well as a paste (Library imports from a file too).
-  bindPgnInput({ invalidateAnalysisSource, currentOwnerId, sourceIsCurrent: (seq) => seq === analysisRecallSeq, loadPgnIntoAnalyze, orientAnalysisFromPgn, fillPgnInputFromFile, setStatusError, switchView, preloadAnalyzeView, isAnalyzeActive: () => appState.currentView === "analyze" });
+  bindPgnInput({ invalidateAnalysisSource, currentOwnerId, sourceIsCurrent: (seq) => seq === analysisRecallSeq, loadPgnIntoAnalyze, orientAnalysisFromPgn, setStatusError });
+  const pgnFileBtn = document.getElementById("pgn-file-btn");
+  const pgnFileInput = document.getElementById("pgn-file-input");
+  if (pgnFileBtn && pgnFileInput) {
+    pgnFileBtn.addEventListener("click", () => {
+      pgnFileInput.value = "";
+      pgnFileInput.click();
+    });
+    pgnFileInput.addEventListener("change", async () => {
+      const file = pgnFileInput.files && pgnFileInput.files[0];
+      if (!file) return;
+      await fillPgnInputFromFile(file);
+    });
+  }
 
   // Board flip + skip
   document.getElementById("analysis-flip").addEventListener("click", () => boards.analysis.flip());

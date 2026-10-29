@@ -37,7 +37,6 @@ or turn on timed Blitz training.
 Games compares Lichess play with your repertoire and separates forgotten
 preparation, opponent novelties and positions you have not covered. Jump to the
 deviation, review the expected move or open the game in Analyze.
-Use Import PGN in Games to open your own game in Analyze.
 
 ### Analyze a position in context
 

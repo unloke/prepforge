@@ -82,6 +82,11 @@ export function createTeamsView({
     const list = document.getElementById("teams-list");
     const shared = document.getElementById("teams-shared");
     if (!list) return;
+    list.setAttribute("aria-busy", "true");
+    const newButton = document.getElementById("teams-new");
+    if (newButton) newButton.disabled = false;
+    const newMirror = document.querySelector('[data-mirror="#teams-new"]');
+    if (newMirror) newMirror.disabled = false;
     const emptyCard = document.querySelector?.("#view-teams .team-empty");
     if (emptyCard) emptyCard.hidden = true;
     // Before /api/auth/me lands, the session is UNKNOWN, not signed out. Painting
@@ -103,6 +108,7 @@ export function createTeamsView({
     const sharedCard = shared && shared.closest ? shared.closest(".card") : null;
     if (sharedCard) sharedCard.hidden = !appState.signedIn;
     if (!appState.signedIn) {
+      list.setAttribute("aria-busy", "false");
       list.innerHTML = "";
       if (shared) shared.innerHTML = "";
       renderTeamEmptyCard("signed-out");
@@ -139,6 +145,7 @@ export function createTeamsView({
       list.querySelector("button")?.addEventListener("click", loadTeams);
     }
     if (isCurrent()) {
+      list.setAttribute("aria-busy", "false");
       if (search) search.disabled = false;
       loadSharedRepertoires();
     }

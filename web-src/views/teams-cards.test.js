@@ -5,8 +5,8 @@ import { readFileSync } from "node:fs";
 // the view whether a team is open or not, and the two lists (directory,
 // incoming shares) stack beside it at their own height. A placeholder that
 // stopped 250px down left most of the window as bare ground.
-const shared = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
-const view = readFileSync(new URL("./teams.css", import.meta.url), "utf8");
+const shared = readFileSync(new URL("../styles.css", import.meta.url), "utf8") + readFileSync(new URL("./teams.css", import.meta.url), "utf8");
+const view = shared;
 
 // The desktop block that composes Teams.
 const desktop = shared.slice(shared.indexOf("@media (min-width: 1021px) {\n  .teams {"));

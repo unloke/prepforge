@@ -1688,8 +1688,8 @@ textarea:focus-visible {
   font-size: 16px;
 }
 
-/* Teams — Opus prototype composition. Directory | team detail | incoming shares;
-   card chrome, rows and the responsive collapse live in views/teams.css. */
+/* Teams first paint: layout and skeletons are available before either lazy
+   module arrives. Settled detail and empty states live in views/teams.css. */
 .workspace:has(> .view.is-active#view-teams) {
   max-width: none;
   padding: 16px;
@@ -1716,33 +1716,52 @@ textarea:focus-visible {
   .teams { grid-template-columns: var(--teams-dir, 300px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 100%; }
   .teams > .card.dir,
   .teams > .card.incoming { grid-column: 1; align-self: start; }
-  .teams > .team-detail,
-  .teams > .team-empty { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
-  .teams:has(> .team-detail:not([hidden])) { grid-template-rows: auto minmax(0, 1fr); }
-  /* An open team is as tall as its members or repertoires, not the window: a
-     card stretched to the view's height left 600px of blank under two rows. The
-     placeholder keeps the view's height, as it did. */
-  .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; align-self: start; }
-  .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
-  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) { grid-template-columns: minmax(0, 1fr) 330px; }
-  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }
-  /* The first-run panel is the pane too: it takes the height and holds the one
-     step where the team would appear, instead of a short card with the rest of
-     the window under it. */
-  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .team-empty { grid-column: 1; grid-row: 1 / -1; align-self: stretch; }
-  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.incoming { grid-column: 2; grid-row: 1; align-self: start; }
-  .teams[data-empty="signed-out"] > .team-empty { grid-column: 1 / -1; } /* a guest has no shares card */
-}
-#team-empty-new { display: none; }
-@media (min-width: 1021px) {
-  .teams[data-empty="no-teams"] #team-empty-new { display: inline-flex; }
 }
 
-@media (max-width: 1020px) {
-  .teams { grid-template-columns: minmax(0, 1fr); }
-}
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-teams) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
+}
+.teams .card {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.teams .card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.teams .spacer { flex: 1; }
+.dir .search-field {
+  width: auto;
+  margin: 10px 12px;
+}
+.team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+}
+#teams-list[data-ui] .team-row { border-top: 1px solid var(--line); }
+.team-row.is-skeleton { min-height: 53px; cursor: default; }
+.team-row.is-skeleton .tr-text { flex: 1; }
+.team-row.is-skeleton .skeleton-name { height: 12px; margin-block: 2.5px; }
+.team-row.is-skeleton .skeleton-subline { height: 10px; margin-block: 3.5px; }
+.team-badge-skeleton { flex: none; width: 46px; height: 15px; border-radius: 10px; }
+.tr-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  #view-teams .card.dir > .card-head { display: none; }
+  #view-teams .dir .search-field { margin: 12px 16px; }
+  #view-teams .team-row { min-height: 48px; padding: 6px 12px 6px 16px; }
 }
 .lib .card { padding: 0; }
 /* The Library head is two rows at every width: the card's name with the two
@@ -3811,7 +3830,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     grid-template-rows: auto minmax(0, 1fr);
     gap: var(--gap-group) 24px;
   }
-  .review > section > .page-head { display: flex; align-self: center; }
+  .review > section > .page-head { display: block; align-self: center; }
   .review > section > .toolbar { min-height: 40px; padding: 0; border: 0; background: none; }
   .review > section > :is(.replay-results, .scout-grid) { grid-column: 1 / -1; }
   /* Games and Scout are worked in, not read: their empty states are one
@@ -3918,7 +3937,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   /* Between the phone shell and the two-column desktop grid the page title
      was hidden while the toolbar showed, so Games and Scout were two unnamed
      rows. The title comes back over its own controls. */
-  .review > section > .page-head { display: flex; }
+  .review > section > .page-head { display: block; }
   .review > section > .page-head h1 { margin: 0 0 2px; }
 }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
@@ -5992,7 +6011,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 #build-rep-header .rep-name { font-size: 14px; font-weight: 650; flex: 0 1 auto; }
 #build-rep-header .rep-color-sub { font-size: 12px; font-weight: 400; }
-
 
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .lib-actions { width: 100%; }
