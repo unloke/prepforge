@@ -132,6 +132,12 @@ async function runViewport(vp) {
     await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `teams-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
   };
 
+  let releaseChunks;
+  const chunksReady = new Promise((resolve) => { releaseChunks = resolve; });
+  await page.route(/\/assets\/teams[^/]*\.(?:js|css)$/, async (route) => {
+    await chunksReady;
+    await route.continue();
+  });
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000); // boot + signed-in hydration
 
@@ -152,8 +158,17 @@ async function runViewport(vp) {
     await page.waitForTimeout(300);
     await page.evaluate(() => document.querySelector('[data-nav-mirror="teams"]').click());
   }
+  await page.locator("#view-teams.is-active").waitFor();
+  check(await page.locator("#teams-list .is-skeleton").count() === 3, "first paint must show directory skeletons before lazy chunks arrive");
+  check(await page.locator("#teams-list").getAttribute("aria-busy") === "true", "directory announces loading");
+  check(!await page.locator(".team-empty").isVisible(), "loading must not claim no team is selected");
+  check(!await page.locator("#view-teams .incoming").isVisible(), "incoming shares must not flash empty while loading");
+  const firstBar = await page.locator("#teams-list .skeleton-name").first().boundingBox();
+  check(firstBar?.width > 30 && firstBar?.height >= 10, "cold skeleton bars need their eager geometry");
+  await shot("cold");
+  releaseChunks();
   await page.waitForFunction(
-    () => document.querySelectorAll("#teams-list .team-row").length > 0,
+    () => document.querySelectorAll("#teams-list .team-row:not(.is-skeleton)").length > 0,
     null,
     { timeout: 8000 },
   );

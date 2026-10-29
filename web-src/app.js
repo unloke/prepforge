@@ -49,6 +49,7 @@ import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoir
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
+import { loadTeamsWithShell } from "./views/teams-loading.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { BROWSER_ENGINE_UNAVAILABLE, OUTBOX_TAB_ID, activeBoardController, activeViewName,
@@ -95,7 +96,7 @@ function loadTeamsController() {
 const viaTeams = (name) => (...args) => (teamsController
   ? teamsController[name](...args)
   : loadTeamsController().then((loaded) => loaded[name](...args)));
-const loadTeams = viaTeams("loadTeams");
+const loadTeams = () => loadTeamsWithShell(viaTeams("loadTeams"));
 const hideTeamDetail = viaTeams("hideTeamDetail");
 const createTeam = viaTeams("createTeam");
 
@@ -1364,7 +1365,6 @@ function bindEvents() {
       dismissTransientOverlays();
       activateWorkspaceTab(button.dataset, { setReplaySection, switchView });
       if (button.dataset.view === "settings") loadSettings();
-      if (button.dataset.view === "teams") loadTeams().catch(() => {});
     });
   });
   bindPhoneChrome({ onAccountChipClick, toggleTheme, isAccountMenuOpen });

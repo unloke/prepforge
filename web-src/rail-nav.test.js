@@ -57,19 +57,14 @@ describe("rail collapse after navigation", () => {
     expect(css).toContain(".rail:not(.is-nav-collapsed):hover");
   });
 
-  it("names every collapsed rail destination for assistive tech and tooltips", () => {
+  it("names every rail destination without duplicating the expanding label in native tooltips", () => {
     const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
     const rail = html.slice(html.indexOf('<nav class="rail"'), html.indexOf("</nav>"));
     const tabs = [...rail.matchAll(/<button class="tab nav-item[^>]*>[\s\S]*?<span class="nav-label">([^<]+)<\/span>/g)];
     expect(tabs.length).toBe(8);
     for (const [markup, label] of tabs) {
       expect(markup).toContain(`aria-label="${label}"`);
-      // The tooltip leads with the name, then the destination's job in a few
-      // words, so Games ("review my games") and Scout ("prep against an
-      // opponent") no longer read as the same page (Settings is its own job).
-      expect(markup).toMatch(new RegExp(`title="${label}( — [^"]+)?"`));
+      expect(markup).not.toContain(' title=');
     }
-    expect(rail).toContain('title="Games — review my games"');
-    expect(rail).toContain('title="Scout — prep against an opponent"');
   });
 });

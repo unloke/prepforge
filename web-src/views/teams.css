@@ -1,43 +1,13 @@
 /* Teams — Opus prototype composition. Lazy-loaded with the Teams view
-   (teams.js). The eager styles.css owns the page grid (directory | detail |
-   incoming shares); this sheet owns the cards, rows, tabs and the responsive
-   collapse. Members / Shared repertoires are two tabs over ONE panel with real
+   (teams.js). The eager styles.css owns the first-paint grid and directory
+   skeleton geometry; this sheet owns settled states, detail rows and tabs. Members / Shared repertoires are two tabs over ONE panel with real
    counts on the tabs and the invite status as a footer line. */
 
-.teams .card {
-  min-width: 0;
-  padding: 0;
-  overflow: hidden;
-}
-/* Every card head is one height whether it holds a button or not, so the
-   directory and the open team line up side by side and the shares card does
-   not read as a squashed version of them. Its controls share the small size. */
-.teams .card-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 46px;
-  margin: 0;
-  padding: 10px 12px;
-}
-/* The head carries no rule of its own: the first row under it brings one
-   (border-top), and two lines in the same place read as a thick rule. */
-.teams .card-head h2 {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13.5px;
-}
-.teams .spacer { flex: 1; }
 .teams .hint { margin: 0; padding: 6px 12px; }
 /* A dashed box floating on margins read as a stray widget; inside a card a
    "nothing here yet" line is a row like any other, the way the Library does it. */
 .teams .empty-state:not(.big) { margin: 0; border: 0; border-radius: 0; background: none; text-align: left; }
-.dir .search-field {
-  width: auto;
-  margin: 10px 12px;
-}
+
 .teams .sub {
   color: var(--muted);
   font-size: var(--fs-xs);
@@ -45,29 +15,13 @@
 
 /* ---- Directory ---------------------------------------------------------- */
 
-.team-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 9px 12px;
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-out);
-}
-/* The directory is one interface fragment, so the line between its rows is a
-   table rule (the way the replay ledger and the scout lines keep theirs). */
-#teams-list[data-ui] .team-row { border-top: 1px solid var(--line); }
 .team-row:hover { background: var(--panel-soft); }
 /* The same press as the Library rows: a row cannot scale, so it steps deeper
    into the surface. */
 .team-row:active { background: var(--surface-3); }
 /* Loading: the row's own geometry, bars where the values go. */
 .team-row.is-skeleton:hover { background: none; }
-.team-row.is-skeleton { min-height: 53px; cursor: default; }
-.team-row.is-skeleton .tr-text { flex: 1; }
-.team-row.is-skeleton .skeleton-name { height: 12px; margin-block: 2.5px; }
-.team-row.is-skeleton .skeleton-subline { height: 10px; margin-block: 3.5px; }
-.team-badge-skeleton { flex: none; width: 46px; height: 15px; border-radius: 10px; }
+
 .team-btn-skeleton { width: 52px; height: 24px; border-radius: var(--radius); }
 .mem-row.is-skeleton { cursor: default; }
 .mem-row.is-skeleton:hover { background: none; }
@@ -98,11 +52,7 @@
   width: 3px;
   background: var(--accent);
 }
-.tr-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
+
 .team-row .name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -348,8 +298,6 @@ select.team-role-select {
   #view-teams .card-head h2 { font-size: 15px; }
   /* The page title carries New team (+), the way Library carries New
      repertoire, so the directory needs no head of its own. */
-  #view-teams .card.dir > .card-head { display: none; }
-  #view-teams .dir .search-field { margin: 12px 16px; }
   #view-teams:has(#teams-new[hidden]) .page-head-btn { display: none; }
   /* With teams in the directory, a team opens by tapping it: the desktop's
      "No team selected" pane has nothing to show here. (Signed out or with no
@@ -539,3 +487,41 @@ select.team-role-select {
   .invite-modal .modal-footer .btn.danger-quiet { padding: 0 4px; }
 
 }
+
+@media (min-width: 1021px) {
+  .teams:has(> .team-detail:not([hidden])) { grid-template-rows: auto minmax(0, 1fr); }
+  /* An open team is as tall as its members or repertoires, not the window: a
+     card stretched to the view's height left 600px of blank under two rows. The
+     placeholder keeps the view's height, as it did. */
+  .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; align-self: start; }
+  .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) { grid-template-columns: minmax(0, 1fr) 330px; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }
+  /* The first-run panel is the pane too: it takes the height and holds the one
+     step where the team would appear, instead of a short card with the rest of
+     the window under it. */
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .team-empty { grid-column: 1; grid-row: 1 / -1; align-self: stretch; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.incoming { grid-column: 2; grid-row: 1; align-self: start; }
+  .teams[data-empty="signed-out"] > .team-empty { grid-column: 1 / -1; } /* a guest has no shares card */
+}
+#team-empty-new { display: none; }
+@media (min-width: 1021px) {
+  .teams[data-empty="no-teams"] #team-empty-new { display: inline-flex; }
+}
+
+.teams .card-head h2 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+}
+@media (min-width: 1021px) {
+  .teams > .team-detail,
+  .teams > .team-empty { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
+}
+
+@media (max-width: 1020px) {
+  .teams { grid-template-columns: minmax(0, 1fr); }
+}
+.team-row { cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
