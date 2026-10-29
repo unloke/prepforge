@@ -4,7 +4,6 @@ import { html } from "../html.js";
 // Detail workspace follows the ui-prototype-v2 sheet: Members / Shared
 // repertoires as two tabs over ONE panel (counts live on the tabs), with the
 // invite-link status as a footer line under the tabs.
-import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
 import { enterRows } from "../list-enter.js";
 import { teamRowsSkeleton } from "./team-skeleton.js";
@@ -94,13 +93,9 @@ export function createTeamsView({
     // signed-in user on reload, so hold a neutral loading state until auth is
     // known instead — including the owner-scoped affordances.
     if (!appState.authKnown) {
-      const sharedCard = shared && shared.closest ? shared.closest(".card") : null;
-      if (sharedCard) sharedCard.hidden = true;
-      const searchField = document.getElementById("teams-search")?.closest?.(".search-field");
-      if (searchField) searchField.hidden = true;
       const newTeam = document.getElementById("teams-new");
-      if (newTeam) newTeam.hidden = true;
-      list.innerHTML = teamRowsSkeleton(3);
+      if (newTeam) newTeam.disabled = true;
+      if (!list.innerHTML) list.innerHTML = teamRowsSkeleton(1);
       return;
     }
     // A guest gets one Sign in, in the main card; the list and the shares card
@@ -121,9 +116,11 @@ export function createTeamsView({
     if (search) search.disabled = true;
     const newTeam = document.getElementById("teams-new");
     if (newTeam) newTeam.hidden = false;
-    if (!list.querySelector?.(".team-row:not(.is-skeleton)")) list.innerHTML = teamRowsSkeleton(3);
+    if (!list.innerHTML) list.innerHTML = teamRowsSkeleton(1);
     try {
-      const teams = await loadTeamDirectory(appState, api, { refresh: true });
+      const directory = loadTeamDirectory(appState, api, { refresh: true });
+      loadSharedRepertoires();
+      const teams = await directory;
       if (!isCurrent() || teams === null) return;
       renderTeamsList();
       // The team the user picked reopens (a reload, or a member add/remove).
@@ -140,6 +137,7 @@ export function createTeamsView({
       renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
     } catch (error) {
       if (!isCurrent()) return;
+      hideTeamDetail();
       // A failure says what went wrong and how to retry, like the Library's.
       list.innerHTML = html`<div role="alert" class="empty-state">${error.message} <button class="btn sm" type="button">Retry</button></div>`;
       list.querySelector("button")?.addEventListener("click", loadTeams);
@@ -147,7 +145,6 @@ export function createTeamsView({
     if (isCurrent()) {
       list.setAttribute("aria-busy", "false");
       if (search) search.disabled = false;
-      loadSharedRepertoires();
     }
   }
 

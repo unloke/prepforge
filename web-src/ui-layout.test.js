@@ -514,7 +514,7 @@ describe("workspace chrome layout", () => {
     expect(view).toContain('class="tabs" role="tablist"');
     expect(view).toContain('id="team-invite-foot"');
     // Page grid in the eager sheet: the lists beside the team, then one column.
-    expect(css).toMatch(/\.teams \{ grid-template-columns: var\(--teams-dir, 300px\) minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); min-height: 100%; \}/);
+    expect(css + teamsCss).toMatch(/\.teams \{ grid-template-columns: var\(--teams-dir, 300px\) minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); min-height: 100%; \}/);
     expect(css + teamsCss).toMatch(/max-width:\s*1020px\)\s*\{\s*\.teams\s*\{[^}]*minmax\(0,\s*1fr\)\s*;/);
     expect(teamsCss).toContain(".team-row.is-selected");
     // The old page intro, stacked-card chrome and generic list rows are gone.

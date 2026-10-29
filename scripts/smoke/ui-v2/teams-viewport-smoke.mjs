@@ -134,9 +134,21 @@ async function runViewport(vp) {
 
   let releaseChunks;
   const chunksReady = new Promise((resolve) => { releaseChunks = resolve; });
-  await page.route(/\/assets\/teams[^/]*\.(?:js|css)$/, async (route) => {
+  await page.route(/\/assets\/teams[^/]*\.js$/, async (route) => {
     await chunksReady;
     await route.continue();
+  });
+  const gates = {};
+  for (const name of ["directory", "detail", "incoming"]) {
+    gates[name] = {};
+    gates[name].ready = new Promise((resolve) => { gates[name].release = resolve; });
+    gates[name].started = new Promise((resolve) => { gates[name].start = resolve; });
+  }
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const name = path === "/api/teams" ? "directory" : path === "/api/teams/t1" ? "detail" : path === "/api/repertoires" ? "incoming" : null;
+    if (name) { gates[name].start(); await gates[name].ready; }
+    await route.fallback();
   });
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000); // boot + signed-in hydration
@@ -159,14 +171,31 @@ async function runViewport(vp) {
     await page.evaluate(() => document.querySelector('[data-nav-mirror="teams"]').click());
   }
   await page.locator("#view-teams.is-active").waitFor();
-  check(await page.locator("#teams-list .is-skeleton").count() === 3, "first paint must show directory skeletons before lazy chunks arrive");
+  check(await page.locator("#teams-list .is-skeleton").count() === 1, "first paint must show the directory skeleton before lazy chunks arrive");
   check(await page.locator("#teams-list").getAttribute("aria-busy") === "true", "directory announces loading");
   check(!await page.locator(".team-empty").isVisible(), "loading must not claim no team is selected");
-  check(!await page.locator("#view-teams .incoming").isVisible(), "incoming shares must not flash empty while loading");
+  check(await page.locator("#teams-shared .is-skeleton").count() === 2, "incoming shares must have skeletons on the first paint");
+  check(await page.locator("#view-teams .incoming").isVisible(), "incoming shares must be present on the first paint");
+  const desktopDetail = vp.width > 760;
+  check(await page.locator("#team-detail-card").isVisible() === desktopDetail, "the desktop detail skeleton is present before modules load; a phone keeps its directory");
+  const initialIncoming = await page.locator("#view-teams .incoming").boundingBox();
+  const initialMembers = desktopDetail ? await page.locator("#team-members .mem-row").first().boundingBox() : null;
   const firstBar = await page.locator("#teams-list .skeleton-name").first().boundingBox();
   check(firstBar?.width > 30 && firstBar?.height >= 10, "cold skeleton bars need their eager geometry");
   await shot("cold");
   releaseChunks();
+  // Modules and each API are independently delayed: an initial skeleton must
+  // not disappear when the controller initializes or data starts arriving.
+  await gates.directory.started;
+  check(await page.locator("#team-detail-card").isVisible() === desktopDetail, "controller arrival must not hide the detail skeleton");
+  const afterModules = await page.locator("#view-teams .incoming").boundingBox();
+  check(Math.abs(afterModules.y - initialIncoming.y) <= 1, "incoming skeleton must not move when modules arrive");
+  gates.incoming.release();
+  await page.waitForTimeout(100);
+  check(await page.locator("#teams-shared .is-skeleton").count() === 2,
+    "fast incoming data must wait for team names instead of showing a temporary label");
+  await shot("before-directory");
+  gates.directory.release();
   await page.waitForFunction(
     () => document.querySelectorAll("#teams-list .team-row:not(.is-skeleton)").length > 0,
     null,
@@ -177,6 +206,15 @@ async function runViewport(vp) {
   await page.mouse.move(vp.width - 4, vp.height - 4);
   await page.waitForTimeout(250);
   await shot("directory");
+  if (desktopDetail) {
+    await gates.detail.started;
+    const member = await page.locator("#team-members .mem-row").first().boundingBox();
+    check(Math.abs(member.y - initialMembers.y) <= 1 && Math.abs(member.height - initialMembers.height) <= 1,
+      "member skeleton geometry must survive directory arrival");
+    check(await page.locator("#team-detail-card").getAttribute("aria-busy") === "true", "detail stays loading until its own response arrives");
+    await shot("before-detail");
+  }
+  gates.detail.release();
 
   // Directory: the real team from /api/teams.
   const dirName = await page.locator('#teams-list .team-row .name').first().textContent().catch(() => "");

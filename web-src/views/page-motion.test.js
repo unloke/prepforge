@@ -3,8 +3,8 @@
 // scale on press the way a button does, so the press reads as a step deeper
 // into the surface.
 //
-// Opening a team brings its members in one after another, and the global
-// reduced-motion block drops the travel for anyone who asked for no motion.
+// Members replace their skeletons together; the global reduced-motion block
+// drops travel elsewhere for anyone who asked for no motion.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -38,13 +38,6 @@ it("a Teams row answers the pointer", () => {
 
 it("an inactive tab brightens under the pointer", () => {
   expect(rule(teams, ".teams .tabs button:hover {")).toMatch(/color:\s*var\(--text\)/);
-});
-
-it("the members arrive one after another", () => {
-  // Only rows the list helper marked as new: the skeleton and a re-opened
-  // team's rows already on screen do not rise again.
-  expect(rule(teams, "#team-members > .mem-row.is-enter {")).toMatch(/animation:\s*row-enter/);
-  expect(rule(teams, "#team-members > .mem-row.is-enter {")).toMatch(/animation-delay:\s*calc\(min\(var\(--i, 0\), 3\) \* 60ms\)/);
 });
 
 it("reduced motion drops the travel everywhere", () => {
