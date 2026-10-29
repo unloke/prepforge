@@ -402,11 +402,11 @@ async function deleteTeam(teamId, name) {
 }
 
 async function addTeamMember(teamId) {
-  const result = await showInputModal({
+  await showInputModal({
     title: "Add member",
     okLabel: "Add",
     fields: [
-      { name: "lichess_username", label: "Their Lichess username", default: "" },
+      { name: "lichess_username", label: "Their Lichess username", default: "", hint: "A PrepForge account with Lichess linked is required. Otherwise, use the team's Invite link." },
       {
         name: "role",
         label: "Role",
@@ -417,30 +417,19 @@ async function addTeamMember(teamId) {
           { value: "admin", label: "Admin (can manage members)" },
         ],
       },
-      {
-        type: "note",
-        label:
-          "They need a PrepForge account with Lichess linked. No account yet? Send them the invite link instead.",
-      },
     ],
+    onSubmit: async (result, close) => {
+      const handle = (result.lichess_username || "").trim();
+      if (!handle) throw new Error("Enter a Lichess username.");
+      await postJson(`/api/teams/${encodeURIComponent(teamId)}/members`, {
+        lichess_username: handle,
+        role: result.role || "member",
+      });
+      close(result);
+      setStatus(`Added ${handle}`);
+      await loadTeams();
+    },
   });
-  if (!result) return;
-  const handle = (result.lichess_username || "").trim();
-  if (!handle) {
-    setStatus("Lichess username is empty");
-    return;
-  }
-  try {
-    await postJson(`/api/teams/${encodeURIComponent(teamId)}/members`, {
-      lichess_username: handle,
-      role: result.role || "member",
-    });
-    setStatus(`Added ${handle}`);
-    await loadTeams();
-  } catch (error) {
-    // The server returns an actionable message (e.g. "...send them an invite link").
-    setStatusError(error.message);
-  }
 }
 
 async function updateMemberRole(teamId, userId, role) {

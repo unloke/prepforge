@@ -66,7 +66,7 @@ export function showInputModal({ title, fields, okLabel = "OK", onInput = null, 
     }
     overlay.innerHTML = html`
       <h2 class="modal-title">${title}</h2>
-      <div class="modal-body">${inputsHtml}</div>
+      <div class="modal-body">${inputsHtml}<p class="auth-error" data-form-error role="alert" hidden></p></div>
       <div class="modal-footer">
         ${cancel ? html`<button class="btn ghost" data-action="cancel" type="button">Cancel</button>` : ""}
         <button class="btn primary" data-action="ok" type="button">${okLabel}</button>
@@ -111,6 +111,9 @@ export function showInputModal({ title, fields, okLabel = "OK", onInput = null, 
         return;
       }
       submitting = true;
+      const errorEl = overlay.querySelector('[data-form-error]');
+      errorEl.hidden = true;
+      errorEl.textContent = "";
       const okBtn = overlay.querySelector('[data-action="ok"]');
       const controls = [...overlay.querySelectorAll(".modal-footer .btn, [data-field]")];
       okBtn.classList.add("is-loading");
@@ -126,6 +129,7 @@ export function showInputModal({ title, fields, okLabel = "OK", onInput = null, 
         okBtn.classList.remove("is-loading");
         for (const el of controls) el.disabled = false;
         overlay.setAttribute("aria-busy", "false");
+        if (!errorEl.hidden) firstInput?.focus();
       };
       const finish = (fn) => (result) => {
         settled = true;
@@ -134,7 +138,13 @@ export function showInputModal({ title, fields, okLabel = "OK", onInput = null, 
       if (dismissOnSubmit) dismiss();
       Promise.resolve()
         .then(() => onSubmit(values, finish(close)))
-        .catch(() => { if (dismissOnSubmit && !closed) close(null); })
+        .catch((error) => {
+          if (dismissOnSubmit && !closed) close(null);
+          else if (!closed) {
+            errorEl.textContent = error?.message || "Could not save. Try again.";
+            errorEl.hidden = false;
+          }
+        })
         .then(idle);
     };
     overlay.addEventListener("keydown", (event) => {
