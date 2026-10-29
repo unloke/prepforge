@@ -16,7 +16,7 @@ export function errorChartHtml(report) {
       <span><i class="rp-disc rp-white"></i>White ↑<i class="rp-disc rp-black"></i>Black ↓</span><span>→ Move<span class="rp-key-loss">↕ Winning chances lost</span></span>
       <span class="rp-error-key-grades"><i class="rp-error-stone g-inaccuracy"></i> Inaccuracy<i class="rp-error-stone g-mistake"></i> Mistake<i class="rp-error-stone g-blunder"></i> Blunder${report.errors.some((r) => r.grade === "missed") ? html`<i class="rp-error-stone g-missed"></i> Missed win` : ""}</span>
     </div><div class="rp-error-chart" role="group" aria-label="${`Errors by move and winning chances lost, shared scale 0 to ${maxLoss}%`}"><div class="rp-error-plot">
-    <svg class="rp-error-grid" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="rp-error-axis-line" d="M0 50H100"/></svg>
+    <svg class="rp-error-grid" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 8H100M0 92H100"/><path class="rp-error-axis-line" d="M0 50H100"/></svg>
     <i class="rp-disc rp-white rp-error-side-white" title="White" aria-label="White"></i><i class="rp-disc rp-black rp-error-side-black" title="Black" aria-label="Black"></i>
     ${report.errors.map((row) => html`<i class="rp-error-stem rp-error-${row.side} g-${row.grade}" style="left:${fractionOf(report, row.ply) * 100}%;height:${heightOf(row, maxLoss)}%" aria-hidden="true"></i>`)}
     <i class="rp-error-cursor" hidden></i>
@@ -44,6 +44,13 @@ export function bindErrorChart(host, report, onJump, onPeek = () => {}) {
     readout.innerHTML = html`<i class="rp-disc rp-${row.side}" aria-hidden="true"></i><b>${row.label}</b><span class="g-${row.grade}">${WORD[row.grade]}</span><span>${row.loss == null ? "–" : `−${Math.round(row.loss)}%`}</span>`;
     readout.setAttribute("aria-label", labelOf(row));
     readout.hidden = false;
+    const bounds = chart.getBoundingClientRect();
+    const point = markers.find((el) => Number(el.dataset.ply) === row.ply).getBoundingClientRect();
+    const tip = readout.getBoundingClientRect();
+    const x = (point.left + point.width / 2 - bounds.left) / bounds.width * 100;
+    const y = point.top + point.height / 2 - bounds.top;
+    readout.style.left = `clamp(8px, calc(${x}% + 12px), calc(100% - ${tip.width + 8}px))`;
+    readout.style.top = `${Math.max(4, Math.min(y - tip.height - 12, bounds.height - tip.height - 4))}px`;
     cursor.style.left = `${fractionOf(report, row.ply) * 100}%`;
     cursor.hidden = false;
     markers.forEach((el) => el.classList.toggle("is-hovered", Number(el.dataset.ply) === row.ply));
