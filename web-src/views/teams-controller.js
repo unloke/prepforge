@@ -6,6 +6,8 @@ import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./team-skeleton.js";
 import { enterRows } from "../list-enter.js";
 import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
 import { GRANT_ROLES, canCopy, roleAllows, roleLabel } from "../share-roles.js";
+import { loadTeamDirectory } from "../team-directory.js";
+import { clearTeamDetail } from "./teams-loading.js";
 
 // Teams: the caller's teams, one team's members and roles, team share links,
 // and the repertoires shared to the caller. Lazy-loaded with the Teams view;
@@ -92,10 +94,7 @@ function renderTeamInviteFooter(status) {
 }
 
 function hideTeamDetail() {
-  appState.selectedTeamId = null;
-  const card = document.getElementById("team-detail-card");
-  if (card) card.hidden = true;
-  renderTeamsList();
+  clearTeamDetail(renderTeamsList);
 }
 
 let teamDetailSeq = 0;
@@ -133,6 +132,7 @@ async function openTeamDetail(teamId) {
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
   if (!card || !membersEl) return;
+  card.inert = false;
   card.hidden = false;
   card.setAttribute?.("aria-busy", "true");
   membersEl.innerHTML = memberRowsSkeleton(known?.member_count ?? 3);
@@ -235,7 +235,6 @@ async function openTeamDetail(teamId) {
           <span class="team-member-tail">${tail}</span>
         </div>`;
     })}`;
-  enterRows(membersEl, { key: (row) => `${teamId}|${row.querySelector(".name")?.textContent || ""}` });
   membersEl.querySelectorAll(".team-role-select").forEach((sel) => {
     sel.addEventListener("change", () =>
       updateMemberRole(teamId, sel.dataset.userId, sel.value)
@@ -580,7 +579,7 @@ async function loadSharedRepertoires() {
   // land, instead of flashing a skeleton over them.
   if (!container.querySelector?.(".shared-rep-row")) container.innerHTML = sharedRepRowsSkeleton(2);
   try {
-    const payload = await api("/api/repertoires");
+    const [payload] = await Promise.all([api("/api/repertoires"), loadTeamDirectory(appState, api)]);
     if (!isCurrent()) return;
     const shared = payload.shared || [];
     if (!shared.length) {
@@ -631,7 +630,8 @@ async function loadSharedRepertoires() {
     });
   } catch (error) {
     if (!isCurrent()) return;
-    container.innerHTML = html`<div class="empty-state">${error.message}</div>`;
+    container.innerHTML = html`<div class="empty-state" role="alert">${error.message} <button type="button" class="btn sm">Retry</button></div>`;
+    container.querySelector?.("button")?.addEventListener("click", loadSharedRepertoires);
   }
 }
 
