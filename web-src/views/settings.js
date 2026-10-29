@@ -276,8 +276,10 @@ export function createSettingsView({
   // empty "Link a Lichess account" state here flashed for seconds before the
   // linked accounts appeared. Show a loading line and fetch once instead.
   let connectionsFetchTried = false;
+  let connectionsError = false;
+  let connectionsLoading = false;
   function connectionsUnknown() {
-    return !!appState.signedIn && !Array.isArray(appState.lichessAccounts) && !appState.lichessUsername;
+    return !!appState.signedIn && !Array.isArray(appState.lichessAccounts);
   }
 
   async function renderConnections() {
@@ -296,22 +298,23 @@ export function createSettingsView({
       return;
     }
     if (connectionsUnknown() && !connectionsFetchTried) {
-      connectionsFetchTried = true;
-      list.innerHTML =
-        html`<p class="muted small conn-loading" data-testid="settings-connections-loading" aria-busy="true">Checking linked accounts…</p>`;
-      if (linkBtn) linkBtn.hidden = true;
       return refreshConnections();
     }
-    if (linkBtn) linkBtn.hidden = false;
     const accounts = connectionAccounts();
+    if (linkBtn) linkBtn.hidden = connectionsError || connectionsLoading;
     if (linkBtn) linkBtn.textContent = accounts.length ? "Link another Lichess account" : "Link a Lichess account";
-    if (!accounts.length) {
+    const feedback = connectionsLoading
+      ? html`<div class="conn-feedback muted" data-testid="settings-connections-loading" role="status" aria-busy="true">Checking linked accounts…</div>`
+      : connectionsError
+        ? html`<div class="conn-feedback" role="status"><span>Couldn't load linked accounts.</span><button type="button" class="btn sm" data-conn-action="retry">Retry</button></div>`
+        : "";
+    if (!accounts.length && !feedback) {
       list.innerHTML =
         html`<p class="muted hint">No Lichess account linked yet. Link one to import your games and see yourself in Games and Scout.</p>`;
       return;
     }
 
-    list.innerHTML = html`${accounts
+    list.innerHTML = html`${feedback}${accounts
       .map(
         (account) =>
           html`<div class="conn-row" data-account-id="${account.id}"><span class="conn-name"><span class="status-pill">Lichess</span><a class="conn-user" href="https://lichess.org/@/${encodeURIComponent(account.username)}" target="_blank" rel="noopener">${account.username}</a>${account.is_primary ? html` <span class="conn-primary">Primary</span>` : ""}</span><span class="conn-actions"><button type="button" class="btn ghost icon sm conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${account.username}" aria-haspopup="menu" aria-expanded="false">⋯</button><span class="conn-menu" role="menu" popover>${account.is_primary
@@ -321,7 +324,11 @@ export function createSettingsView({
   }
 
   async function refreshConnections() {
-    if (typeof api !== "function") return;
+    if (typeof api !== "function" || connectionsLoading) return;
+    connectionsFetchTried = true;
+    connectionsLoading = true;
+    connectionsError = false;
+    void renderConnections();
     try {
       const status = await api("/api/lichess");
       appState.lichessAccounts = Array.isArray(status.accounts) ? status.accounts : [];
@@ -329,8 +336,9 @@ export function createSettingsView({
         || appState.lichessAccounts[0];
       appState.lichessUsername = primary ? primary.username : null;
     } catch {
-      /* keep last-known connection state */
+      connectionsError = true;
     }
+    connectionsLoading = false;
     await renderConnections();
   }
 
@@ -487,6 +495,10 @@ export function createSettingsView({
     if (accountsList) {
       accountsList.addEventListener("click", (event) => {
         const button = event.target.closest("[data-conn-action]");
+        if (button?.dataset.connAction === "retry") {
+          void refreshConnections();
+          return;
+        }
         const row = event.target.closest("[data-account-id]");
         if (!button || !row) return;
         const accountId = row.dataset.accountId;
