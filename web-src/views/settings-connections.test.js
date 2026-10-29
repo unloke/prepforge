@@ -79,6 +79,46 @@ describe("settings connections", () => {
     expect(String(html)).toContain('data-conn-action="unlink"');
   });
 
+  it("distinguishes failed reads from empty accounts and retries in place", async () => {
+    let resolve;
+    const api = vi.fn().mockRejectedValueOnce(new Error("Service unavailable"))
+      .mockImplementationOnce(() => new Promise((r) => { resolve = r; }));
+    const { elements, listeners, view } = makeSettingsView({
+      appState: { signedIn: true, lichessUsername: "cached_name", lichessAccounts: undefined }, view: { api },
+    });
+    await view.renderConnections();
+    const list = elements["settings-lichess-accounts"];
+    expect(list.innerHTML).toContain("Couldn't load linked accounts.");
+    expect(list.innerHTML).not.toContain("No Lichess account linked yet");
+    expect(elements["settings-link-lichess"].hidden).toBe(true);
+
+    listeners.click({ target: { closest: () => ({ dataset: { connAction: "retry" } }) } });
+    expect(list.innerHTML).toContain("Checking linked accounts");
+    await view.refreshConnections(); // a repeated press must not start another read
+    expect(api).toHaveBeenCalledTimes(2);
+    resolve({ accounts: [] });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(list.innerHTML).toContain("No Lichess account linked yet");
+    expect(elements["settings-link-lichess"].hidden).toBe(false);
+  });
+
+  it("keeps linked identities visible while a refresh fails and recovers", async () => {
+    const api = vi.fn().mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({ accounts: [{ id: "b", username: "new_account" }] });
+    const { elements, appState, view } = makeSettingsView({
+      appState: { signedIn: true, lichessAccounts: [{ id: "a", username: "known_account" }] },
+      view: { api },
+    });
+    await view.refreshConnections();
+    expect(elements["settings-lichess-accounts"].innerHTML).toContain("known_account");
+    expect(elements["settings-lichess-accounts"].innerHTML).toContain("Couldn't load linked accounts.");
+    expect(appState.lichessAccounts[0].id).toBe("a");
+    await view.refreshConnections();
+    expect(elements["settings-lichess-accounts"].innerHTML).toContain("new_account");
+    expect(elements["settings-lichess-accounts"].innerHTML).not.toContain("Couldn't load");
+    expect(appState.lichessUsername).toBe("new_account");
+  });
+
   it("sets a new primary through the API and refreshes", async () => {
     const postJson = vi.fn().mockResolvedValue({});
     const api = vi

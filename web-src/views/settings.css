@@ -223,6 +223,13 @@
 /* Connections: one row per identity — name + Primary tag, ⋯ overflow on the right. */
 .set .sub-head { padding: 8px 0 4px; }
 .set > .btn { margin-top: 8px; }
+.conn-feedback {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 .conn-row {
   display: flex;
   align-items: center;

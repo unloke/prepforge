@@ -319,6 +319,32 @@ async function runViewport(vp) {
   const connRow = await page.locator("#settings-lichess-accounts .conn-row").first().textContent().catch(() => "");
   check(/me_user/.test(connRow || ""), `connections should list the real linked account, got "${connRow}"`);
 
+  // A failed connection read is not an empty account. Retry stays in this
+  // block, shows the pending read and restores the account without navigation.
+  await page.route("**/api/lichess", (route) => route.fulfill({
+    status: 503, contentType: "application/json", body: '{"detail":"Service unavailable"}',
+  }));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const retry = page.locator('[data-conn-action="retry"]');
+  await retry.waitFor();
+  check(!(await page.locator("#settings-link-lichess").isVisible()), "failed reads must not offer linking as if the account were empty");
+  check(!(await page.locator("#settings-lichess-accounts").innerText()).includes("No Lichess account"), "failed reads must not claim no account is linked");
+  await shot("connection-error");
+  await page.unroute("**/api/lichess");
+  let releaseRead;
+  const retryRead = new Promise((resolve) => { releaseRead = resolve; });
+  await page.route("**/api/lichess", async (route) => {
+    await retryRead;
+    await route.continue();
+  });
+  await retry.click();
+  await page.locator('[data-testid="settings-connections-loading"]').waitFor();
+  await shot("connection-loading");
+  releaseRead();
+  await page.locator("#settings-lichess-accounts .conn-row").waitFor();
+  check(!(await retry.isVisible()), "successful retry should clear the error");
+  check(await page.locator("#settings-link-lichess").isVisible(), "successful retry should restore account actions");
+
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
