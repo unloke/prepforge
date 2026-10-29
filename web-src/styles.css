@@ -3811,7 +3811,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     grid-template-rows: auto minmax(0, 1fr);
     gap: var(--gap-group) 24px;
   }
-  .review > section > .page-head { display: flex; align-self: center; }
+  .review > section > .page-head { display: block; align-self: center; }
   .review > section > .toolbar { min-height: 40px; padding: 0; border: 0; background: none; }
   .review > section > :is(.replay-results, .scout-grid) { grid-column: 1 / -1; }
   /* Games and Scout are worked in, not read: their empty states are one
@@ -3918,7 +3918,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   /* Between the phone shell and the two-column desktop grid the page title
      was hidden while the toolbar showed, so Games and Scout were two unnamed
      rows. The title comes back over its own controls. */
-  .review > section > .page-head { display: flex; }
+  .review > section > .page-head { display: block; }
   .review > section > .page-head h1 { margin: 0 0 2px; }
 }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
