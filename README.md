@@ -43,7 +43,8 @@ deviation, review the expected move or open the game in Analyze.
 Paste a PGN and use Open PGN inside the field, or load a recent Lichess or practice
 game. Run Review to review move classifications,
 the evaluation graph and turning points. Expand Game Report for player accuracy
-and phase statistics. Hover over its error chart to preview a position; click
+and phase statistics. Errors appear in move order on White and Black tracks,
+using chess annotations (?!, ?, ??). Hover to preview a position and its loss; click
 to select it, or tap on a phone. Move between Coach references or Engine moves
 to preview consecutive positions without returning to the game between them.
 

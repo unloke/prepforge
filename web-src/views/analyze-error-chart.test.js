@@ -7,17 +7,14 @@ const report = { from: 1, to: 9, errors: [
   { ply: 8, side: "black", grade: "mistake", label: "4…a6", loss: 12 },
 ] };
 
-it("encodes move position, player, grade and proportional loss without standing labels", () => {
+it("shows errors in chronological player lanes without numeric axes", () => {
   const markup = String(errorChartHtml(report));
-  expect(markup).not.toMatch(/<text|rp-error-ticks/);
+  expect(markup).not.toMatch(/<text|rp-error-ticks|rp-error-scale|rp-error-moves/);
   expect(markup).toContain('rp-error-white g-blunder');
   expect(markup).toContain('rp-error-black g-mistake');
   const tops = [...markup.matchAll(/top:([\d.]+)%/g)].map((m) => Number(m[1]));
-  expect((50 - tops[1]) / (50 - tops[0])).toBeCloseTo(40 / 7);
-  expect(tops[1]).toBe(8);
-  expect(tops[2]).toBeGreaterThan(50);
-  expect(markup).toContain('shared scale 0 to 40%');
-  expect(markup).toContain('left:25%');
+  expect(tops).toEqual([25, 25, 75]);
+  expect(markup).toContain('left:50%');
   expect(markup).toContain('aria-label="White 3.Bb5 · Blunder · 40% winning chances lost"');
   expect(markup.match(/<button type="button" class="rp-error /g)).toHaveLength(3);
 });
@@ -27,7 +24,6 @@ it("keeps missing loss distinct from a measured zero", () => {
     { ...report.errors[0], loss: null },
     { ...report.errors[1], loss: 0 },
   ] }));
-  expect(markup).toContain('g-inaccuracy is-unknown');
   expect(markup).toContain('Inaccuracy · loss unavailable');
   expect(markup).toContain('Blunder · 0% winning chances lost');
   expect(markup).not.toContain('Inaccuracy · 0%');

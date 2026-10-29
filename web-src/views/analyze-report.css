@@ -55,45 +55,29 @@
 .rp-error-key-content:popover-open { display: grid; gap: 12px; }
 .rp-error-key-content > span { display: flex; align-items: center; gap: 8px; }
 .rp-error-key-content .rp-disc:nth-of-type(2) { margin-left: 12px; }
-.rp-key-loss { margin-left: 12px; }
-.rp-error-key-grades { display: grid !important; grid-template-columns: 20px auto; }
-.rp-error-key-grades .g-inaccuracy { color: var(--inaccuracy); }
-.rp-error-key-grades .g-mistake { color: var(--warn); }
-.rp-error-key-grades .g-blunder { color: var(--danger); }
-.rp-error-key-grades .g-missed { color: var(--missed); }
-.rp-error-readout .g-inaccuracy { color: var(--inaccuracy-text); }
-.rp-error-readout .g-mistake { color: var(--warn-text); }
-.rp-error-readout .g-blunder { color: var(--danger); }
-.rp-error-readout .g-missed { color: var(--missed); }
-.rp-error-chart { position: relative; height: 132px; touch-action: pan-y; }
-.rp-error-plot { position: absolute; inset: 8px 16px 24px 40px; }
-.rp-error-plot::before { content: ""; position: absolute; inset: 50% 0 0; background: color-mix(in srgb, var(--line) 18%, transparent); }
-.rp-error-grid { position: absolute; display: block; width: 100%; height: 100%; overflow: visible; fill: none; stroke: var(--line); stroke-width: 1; }
-.rp-error-grid path { vector-effect: non-scaling-stroke; }
-.rp-error-grid > path:first-child { stroke-dasharray: 2 4; opacity: 0.5; }
-.rp-error-axis-line { stroke: var(--muted); stroke-opacity: 0.4; }
-.rp-error-plot > .rp-disc { position: absolute; left: -32px; width: 8px; height: 8px; border: 1px solid var(--muted); }
-.rp-error-side-white { top: calc(25% - 4px); }
-.rp-error-side-black { top: calc(75% - 4px); }
-.rp-error-scale { position: absolute; left: -36px; color: var(--muted); font-size: 11px; line-height: 12px; font-variant-numeric: tabular-nums; }
-.rp-error-scale-white { top: 0; }
-.rp-error-scale-black { bottom: 0; }
-.rp-error-moves { position: absolute; top: calc(100% + 8px); left: 0; right: 0; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-.rp-error-moves > span { position: absolute; transform: translateX(-50%); }
-.rp-error-cursor { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--muted); opacity: 0.5; pointer-events: none; }
-.rp-error { position: absolute; display: grid; place-items: center; width: 44px; height: 44px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; transform: translate(-50%, -50%); color: var(--inaccuracy); cursor: pointer; outline: none; }
-.rp-error.g-mistake { color: var(--warn); }
-.rp-error.g-blunder { color: var(--danger); }
-.rp-error.g-missed { color: var(--missed); }
-.rp-error-stone { display: block; width: 8px; height: 8px; box-sizing: border-box; border: 1px solid currentColor; border-radius: 50%; background: currentColor; }
-.rp-error.g-mistake .rp-error-stone, .rp-error-key-grades .rp-error-stone.g-mistake { border-radius: 1px; transform: rotate(45deg); }
-.rp-error.g-blunder .rp-error-stone, .rp-error-key-grades .rp-error-stone.g-blunder { width: 10px; height: 10px; border-radius: 2px; }
-.rp-error.g-missed .rp-error-stone, .rp-error-key-grades .rp-error-stone.g-missed { border-radius: 0; transform: rotate(45deg); background: var(--panel); }
-.rp-error.is-unknown .rp-error-stone { border-style: dashed; background: var(--panel); }
-.rp-error.is-hovered .rp-error-stone { outline: 4px solid color-mix(in srgb, currentColor 16%, transparent); outline-offset: 2px; }
-.rp-error.is-current .rp-error-stone { outline: 2px solid var(--text); outline-offset: 3px; }
-.rp-error:focus-visible .rp-error-stone { outline: 2px dashed var(--text); outline-offset: 5px; }
+.rp-error-key-grades { display: grid !important; grid-template-columns: 28px auto; }
+.rp-error-chart { position: relative; height: 104px; }
+.rp-error-scroll { position: absolute; inset: 0 0 0 24px; overflow-x: auto; overflow-y: hidden; padding-inline: 24px; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.rp-error-plot { position: relative; height: 96px; }
+.rp-error-plot::before, .rp-error-plot::after { content: ""; position: absolute; left: -16px; right: -16px; height: 2px; border-radius: 2px; background: var(--line); }
+.rp-error-plot::before { top: calc(25% - 1px); }
+.rp-error-plot::after { top: calc(75% - 1px); }
+.rp-error-chart > .rp-disc { position: absolute; left: 2px; width: 12px; height: 12px; border: 1px solid var(--muted); }
+.rp-error-side-white { top: 18px; }
+.rp-error-side-black { top: 66px; }
+.rp-error-cursor { position: absolute; top: 4px; bottom: 4px; width: 40px; transform: translateX(-50%); border-radius: 6px; background: color-mix(in srgb, var(--line) 28%, transparent); pointer-events: none; }
+.rp-error { position: absolute; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; transform: translate(-50%, -50%); cursor: pointer; outline: none; }
+.rp-error-stone { display: inline-grid; place-items: center; width: 28px; height: 28px; box-sizing: border-box; border: 2px solid var(--panel); border-radius: 50%; background: color-mix(in srgb, var(--inaccuracy) 18%, var(--panel)); color: var(--inaccuracy-text); font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1; font-style: normal; letter-spacing: -0.04em; }
+.g-mistake .rp-error-stone, .rp-error-stone.g-mistake { background: color-mix(in srgb, var(--warn) 22%, var(--panel)); color: var(--warn-text); }
+.g-blunder .rp-error-stone, .rp-error-stone.g-blunder { background: color-mix(in srgb, var(--danger) 15%, var(--panel)); color: var(--danger); }
+.g-missed .rp-error-stone, .rp-error-stone.g-missed { background: color-mix(in srgb, var(--missed) 15%, var(--panel)); color: var(--missed); }
+.rp-error.is-hovered .rp-error-stone { transform: scale(1.15); }
+.rp-error.is-current .rp-error-stone { outline: 2px solid currentColor; outline-offset: 1px; }
+.rp-error:focus-visible .rp-error-stone { outline: 2px solid var(--text); outline-offset: 3px; }
 .rp-error:hover { background: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .rp-error-stone { transition: transform 120ms ease-out; }
+}
 .rp-error-readout { position: absolute; top: -36px; right: 36px; z-index: 1; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 92px); box-sizing: border-box; padding: 4px 0; color: var(--text); font-size: 12px; white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums; }
 .rp-error-readout b { font-weight: 600; }
 .rp-error-readout[hidden], .rp-error-cursor[hidden] { display: none; }

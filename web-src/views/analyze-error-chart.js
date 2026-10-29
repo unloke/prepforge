@@ -1,29 +1,24 @@
 import { html } from "../html.js";
 
 const WORD = { white: "White", black: "Black", inaccuracy: "Inaccuracy", mistake: "Mistake", blunder: "Blunder", missed: "Missed win" };
-const fractionOf = (report, ply) => (ply - report.from) / Math.max(1, report.to - report.from);
-const heightOf = (row, maxLoss) => (row.loss ?? 0) / maxLoss * 42;
+const MARK = { inaccuracy: "?!", mistake: "?", blunder: "??", missed: "×" };
+const fractionOf = (report, ply) => report.errors.length === 1 ? 0.5 : report.errors.findIndex((row) => row.ply === ply) / (report.errors.length - 1);
 const labelOf = (row) => `${WORD[row.side]} ${row.label} · ${WORD[row.grade]}${row.loss == null ? " · loss unavailable" : ` · ${Math.round(row.loss)}% winning chances lost`}`;
 
-// A shared move axis: White's losses rise, Black's fall. Position is loss;
-// colour and shape are grade. Details appear on demand in one stable readout.
+// An ordered trail of mistakes, not an unlabelled numeric plot. Familiar chess
+// annotations carry grade; the two lanes carry player. Exact loss is on demand.
 export function errorChartHtml(report) {
   if (!report.errors.length) return html`<section class="rp-sec"><h3 class="rp-h">Errors</h3><span class="rp-no-errors">No errors</span></section>`;
-  const maxLoss = Math.max(10, Math.ceil(Math.max(...report.errors.map((r) => r.loss ?? 0)) / 10) * 10);
-  const firstMove = Math.ceil(report.from / 2), lastMove = Math.ceil(report.to / 2);
-  const middleMove = Math.floor((firstMove + lastMove) / 2);
   return html`<section class="rp-sec rp-errors"><div class="rp-sec-head"><h3 class="rp-h">Errors</h3><button type="button" class="rp-error-key" popovertarget="rp-errors-key" aria-label="Chart key"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v5m0-8v1"/></svg></button></div>
     <div class="rp-error-key-content" id="rp-errors-key" popover>
-      <span><i class="rp-disc rp-white"></i>White ↑<i class="rp-disc rp-black"></i>Black ↓</span><span>→ Move<span class="rp-key-loss">↕ Winning chances lost</span></span>
-      <span class="rp-error-key-grades"><i class="rp-error-stone g-inaccuracy"></i> Inaccuracy<i class="rp-error-stone g-mistake"></i> Mistake<i class="rp-error-stone g-blunder"></i> Blunder${report.errors.some((r) => r.grade === "missed") ? html`<i class="rp-error-stone g-missed"></i> Missed win` : ""}</span>
-    </div><div class="rp-error-chart" role="group" aria-label="${`Errors by move and winning chances lost, shared scale 0 to ${maxLoss}%`}"><div class="rp-error-plot">
-    <svg class="rp-error-grid" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 8H100M0 92H100"/><path class="rp-error-axis-line" d="M0 50H100"/></svg>
+      <span><i class="rp-disc rp-white"></i>White<i class="rp-disc rp-black"></i>Black</span><span>Errors in move order →</span>
+      <span class="rp-error-key-grades">${Object.entries(MARK).filter(([grade]) => grade !== "missed" || report.errors.some((r) => r.grade === grade)).map(([grade, mark]) => html`<i class="rp-error-stone g-${grade}" aria-hidden="true">${mark}</i>${WORD[grade]}`)}</span>
+    </div><div class="rp-error-chart" role="group" aria-label="Errors in move order, White above and Black below">
     <i class="rp-disc rp-white rp-error-side-white" title="White" aria-label="White"></i><i class="rp-disc rp-black rp-error-side-black" title="Black" aria-label="Black"></i>
-    <span class="rp-error-scale rp-error-scale-white" aria-hidden="true">${maxLoss}%</span><span class="rp-error-scale rp-error-scale-black" aria-hidden="true">${maxLoss}%</span>
+    <div class="rp-error-scroll"><div class="rp-error-plot" style="min-width:${Math.max(0, report.errors.length - 1) * 44}px">
     <i class="rp-error-cursor" hidden></i>
-    ${report.errors.map((row) => html`<button type="button" class="rp-error rp-error-${row.side} g-${row.grade}${row.loss == null ? " is-unknown" : ""}" style="left:${fractionOf(report, row.ply) * 100}%;top:${50 + (row.side === "white" ? -1 : 1) * heightOf(row, maxLoss)}%" data-ply="${row.ply}" data-km-ply="${row.ply}" aria-label="${labelOf(row)}"><i class="rp-error-stone" aria-hidden="true"></i></button>`)}
-    <div class="rp-error-moves" aria-hidden="true"><span style="left:0%">${firstMove}</span>${middleMove > firstMove && middleMove < lastMove ? html`<span style="left:${fractionOf(report, middleMove * 2 - 1) * 100}%">${middleMove}</span>` : ""}${lastMove > firstMove ? html`<span style="left:100%">${lastMove}</span>` : ""}</div>
-    </div><output class="rp-error-readout" hidden></output></div></section>`;
+    ${report.errors.map((row) => html`<button type="button" class="rp-error rp-error-${row.side} g-${row.grade}" style="left:${fractionOf(report, row.ply) * 100}%;top:${row.side === "white" ? 25 : 75}%" data-ply="${row.ply}" data-km-ply="${row.ply}" aria-label="${labelOf(row)}"><i class="rp-error-stone" aria-hidden="true">${MARK[row.grade]}</i></button>`)}
+    </div></div><output class="rp-error-readout" hidden></output></div></section>`;
 }
 
 export function bindErrorChart(host, report, onJump, onPeek = () => {}) {
@@ -43,7 +38,7 @@ export function bindErrorChart(host, report, onJump, onPeek = () => {}) {
     }
     if (activePly === row.ply) return;
     activePly = row.ply;
-    readout.innerHTML = html`<i class="rp-disc rp-${row.side}" aria-hidden="true"></i><b>${row.label}</b><span class="g-${row.grade}">${WORD[row.grade]}</span><span>${row.loss == null ? "–" : `−${Math.round(row.loss)}%`}</span>`;
+    readout.innerHTML = html`<i class="rp-disc rp-${row.side}" aria-hidden="true"></i><b>${row.label}</b><span class="g-${row.grade}">${MARK[row.grade]}</span><span>${row.loss == null ? "–" : `−${Math.round(row.loss)}%`}</span>`;
     readout.setAttribute("aria-label", labelOf(row));
     readout.hidden = false;
     cursor.style.left = `${fractionOf(report, row.ply) * 100}%`;
@@ -61,8 +56,8 @@ export function bindErrorChart(host, report, onJump, onPeek = () => {}) {
     previewPly = null;
     onPeek(null);
   };
-  // The whole plot scrubs the timeline, including the space between markers.
-  // Use the shared move axis so vertical movement cannot flip between players.
+  // Scrub the ordered trail, including gaps. Every event owns one column;
+  // vertical motion cannot accidentally switch between adjacent players.
   const nearest = (event) => {
     const bounds = plot.getBoundingClientRect();
     const x = (event.clientX - bounds.left) / bounds.width;
