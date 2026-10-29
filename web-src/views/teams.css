@@ -496,7 +496,6 @@ select.team-role-select {
   .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; align-self: start; }
   .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
   .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) { grid-template-columns: minmax(0, 1fr) 330px; }
-  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }
   /* The first-run panel is the pane too: it takes the height and holds the one
      step where the team would appear, instead of a short card with the rest of
      the window under it. */
@@ -525,3 +524,5 @@ select.team-role-select {
   .teams { grid-template-columns: minmax(0, 1fr); }
 }
 .team-row { cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
+
+.teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }
