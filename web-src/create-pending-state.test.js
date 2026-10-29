@@ -44,10 +44,12 @@ function modalHarness() {
   const overlay = fakeEl();
   const cancelBtn = fakeEl();
   const okBtn = fakeEl();
+  const errorEl = Object.assign(fakeEl(), { hidden: true });
   const nameField = Object.assign(fakeEl(), { name: "name", value: "Najdorf" });
   const colorField = Object.assign(fakeEl(), { name: "color", value: "white" });
   overlay.querySelector = (sel) => (sel === '[data-action="ok"]' ? okBtn
-    : sel === '[data-action="cancel"]' ? cancelBtn : null);
+    : sel === '[data-action="cancel"]' ? cancelBtn
+    : sel === '[data-form-error]' ? errorEl : null);
   overlay.querySelectorAll = (sel) => (sel === "[data-field]" ? [nameField, colorField]
     : sel === ".modal-footer .btn, [data-field]" ? [cancelBtn, okBtn, nameField, colorField] : []);
   const body = fakeEl();
@@ -56,7 +58,7 @@ function modalHarness() {
     html, document: document_, modalDialog: () => overlay,
     openModal: (el) => { body.appendChild(el); return () => el.remove(); },
   });
-  return { overlay, okBtn, cancelBtn, nameField, colorField, showInputModal };
+  return { overlay, okBtn, cancelBtn, nameField, colorField, errorEl, showInputModal };
 }
 
 function compileFunction(marker, deps) {
@@ -153,9 +155,27 @@ describe("create dialogs hold a pending state while the request runs", () => {
     expect(h.okBtn.classList.contains("is-loading")).toBe(false);
     expect(h.nameField.disabled).toBe(false);
     expect(h.overlay.getAttribute("aria-busy")).toBe("false");
+    expect(h.errorEl.textContent).toBe("offline");
+    expect(h.errorEl.hidden).toBe(false);
     // Still open: the user can fix the name and try again.
     expect(h.overlay.parent).toBeTruthy();
     show.catch(() => {});
+  });
+
+  it("keeps entered values after failure and clears the error on retry", async () => {
+    const h = modalHarness();
+    const onSubmit = vi.fn()
+      .mockRejectedValueOnce(new Error("Try again"))
+      .mockImplementationOnce(async (values, close) => close(values));
+    const show = h.showInputModal({ title: "Add member", fields: [{ name: "name" }], onSubmit });
+    h.okBtn.fire("click");
+    await vi.waitFor(() => expect(h.errorEl.hidden).toBe(false));
+    expect(h.nameField.value).toBe("Najdorf");
+    h.nameField.value = "Corrected";
+    h.okBtn.fire("click");
+    expect(h.errorEl.hidden).toBe(true);
+    await expect(show).resolves.toMatchObject({ name: "Corrected" });
+    expect(onSubmit).toHaveBeenCalledTimes(2);
   });
 
   it("submits that carry no request still close with the field values", async () => {

@@ -567,7 +567,7 @@ function switchView(name, { fromUrl = false } = {}) {
   });
   paintPhoneTabs(name, appState.replaySection);
   syncPageTitle();
-  swapView(document.querySelectorAll(".view"), `view-${name}`, { animate: !bootHeld, onSwap: resetViewScroll });
+  const transition = swapView(document.querySelectorAll(".view"), `view-${name}`, { animate: !bootHeld, onSwap: resetViewScroll });
   if (!fromUrl) syncWorkspaceUrl({ push: true });
   if (name === "replay") setReplaySection(appState.replaySection, { syncUrl: false });
   if (name === "analyze") {
@@ -625,6 +625,7 @@ function switchView(name, { fromUrl = false } = {}) {
   // Explorer or Analyze's Evaluation card. Each view remembers its own on/off;
   // views without an analysis board close it.
   syncEngineForView(name, { from: previousView });
+  return transition?.updateCallbackDone;
 }
 
 
@@ -1571,20 +1572,7 @@ function bindEvents() {
     void handleWorkspacePopstate();
   });
   // Analyze takes a PGN file as well as a paste (Library imports from a file too).
-  bindPgnInput({ invalidateAnalysisSource, currentOwnerId, sourceIsCurrent: (seq) => seq === analysisRecallSeq, loadPgnIntoAnalyze, orientAnalysisFromPgn, setStatusError });
-  const pgnFileBtn = document.getElementById("pgn-file-btn");
-  const pgnFileInput = document.getElementById("pgn-file-input");
-  if (pgnFileBtn && pgnFileInput) {
-    pgnFileBtn.addEventListener("click", () => {
-      pgnFileInput.value = "";
-      pgnFileInput.click();
-    });
-    pgnFileInput.addEventListener("change", async () => {
-      const file = pgnFileInput.files && pgnFileInput.files[0];
-      if (!file) return;
-      await fillPgnInputFromFile(file);
-    });
-  }
+  bindPgnInput({ invalidateAnalysisSource, currentOwnerId, sourceIsCurrent: (seq) => seq === analysisRecallSeq, loadPgnIntoAnalyze, orientAnalysisFromPgn, fillPgnInputFromFile, setStatusError, switchView, preloadAnalyzeView, isAnalyzeActive: () => appState.currentView === "analyze" });
 
   // Board flip + skip
   document.getElementById("analysis-flip").addEventListener("click", () => boards.analysis.flip());
