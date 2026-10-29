@@ -48,6 +48,7 @@ it("opening a repertoire retains and reapplies its durable pending deletes", asy
   const run = compile("async function hydrateBuild(", {
     appState, coverageView: { sync: vi.fn() }, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
     selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes,
+    resolveBuildId: id => id,
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
     renderBuildSync: vi.fn(), syncWorkspaceUrl: vi.fn(), hasPendingBuildOpsFor: () => true, setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
   });
@@ -276,14 +277,14 @@ it("moves whose line was deleted elsewhere are settled with one notice", async (
   expect(h.deps.setStatus).toHaveBeenCalledWith("1 move not saved: line deleted elsewhere", { severity: "warning" });
 });
 
-it("a dropped move's selection falls back to the nearest line the server kept", async () => {
+it("passes the selected line to hydration to resolve against surviving and pending nodes", async () => {
   const h = buildFlushHarness();
   h.deps.hydrateBuild.mockResolvedValue(undefined);
   h.appState.buildNodeById = new Map([["tmp-a", { parent_id: "c5" }], ["c5", { parent_id: "e4" }], ["e4", { parent_id: "root" }]]);
   h.deps.postJson.mockResolvedValueOnce({ repertoire_id: "r", revision: 3, id_map: {}, dropped: ["tmp-a"],
     nodes: [{ id: "root" }, { id: "e4" }] });
   expect(await h.run()).toBe(true);
-  expect(h.deps.hydrateBuild).toHaveBeenCalledWith(expect.objectContaining({ revision: 3 }), "e4");
+  expect(h.deps.hydrateBuild).toHaveBeenCalledWith(expect.objectContaining({ revision: 3 }), "tmp-a");
 });
 
 it("queued edits for a repertoire that is not open still save", async () => {
@@ -459,7 +460,7 @@ it("a Scout line queued into the open repertoire is flushed by that repertoire",
   // 2026-10-08 audit: Scout pushed untagged ops, so every flush deferred them as
   // "edits for another repertoire" and Add to prep never saved.
   const appState = { build: { repertoire_id: "rep", revision: 3, nodes: [] }, buildNodeById: new Map(), buildPending: [] };
-  const queueBuildAdd = compile("function queueBuildAdd(", { appState });
+  const queueBuildAdd = compile("function queueBuildAdd(", { appState, resolveBuildId: id => id });
   const matches = compile("function buildOpMatchesRepertoire(", {});
   queueBuildAdd({ id: "tmp-1", parent_id: "root", uci: "e2e4" });
   expect(appState.buildPending[0]).toMatchObject({ tempId: "tmp-1", parentRef: "root", uci: "e2e4" });

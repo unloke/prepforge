@@ -43,3 +43,18 @@ changes, the revision operation and its receipt commit through that same
 connection, so competing editors read the committed predecessor without
 exhausting optimistic retries. `tests/test_coedit_sync.py` covers concurrent
 writers and rollback when receipt persistence fails.
+
+The browser reconciles a saved repertoire by merging its pending moves and
+deletions before selecting or painting a position. Temporary selections and
+branch choices resolve through the acknowledged ID map; a removed selection
+lands on its nearest surviving ancestor. A superseded asynchronous selection
+cannot repaint the board. Queued children resolve an acknowledged parent even
+when that acknowledgement arrives during local move calculation.
+
+Outbox recovery uses a read-only IndexedDB transaction. Successful saves retain
+their settlement records without an extra write or a cleanup read. A local
+100-save probe using the real sync controller and fake-indexeddb counted 300
+writes, down from 600; each save still checkpoints its queue before sending and
+persists the server acknowledgement. This measures storage operations, not
+network latency. `web-src/build-save-reconcile.test.js` covers the write count
+and edits made while a save is in flight.

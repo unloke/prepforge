@@ -17,5 +17,6 @@ describe("training save chip", () => {
 
   it("names automatic saving while repertoire edits wait to be sent", () => {
     expect(syncChipVariant("dirty", "repertoire").text).toBe("Saving…");
+    expect(syncChipVariant("dirty", "repertoire")).toEqual(syncChipVariant("syncing", "repertoire"));
   });
 });

@@ -137,14 +137,14 @@ describe("Train completion refreshes the open repertoire tree", () => {
     expect(h.appState.build.repertoire_id).toBe("rep-2");
   });
 
-  it("selects nothing when the open node is gone from the re-read tree", async () => {
+  it("lets hydration find the surviving ancestor when the open node is gone", async () => {
     const h = harness({ appState: {
       ownerGeneration: 1,
       build: { repertoire_id: "rep-1", name: "Caro-Kann", color: "black", revision: 3, nodes: [{ id: "n1" }] },
       buildCurrentNodeId: "deleted-node",
     } });
     await h.refreshRepertoireHead();
-    expect(h.hydrateBuild.mock.calls[0][1]).toBeNull();
+    expect(h.hydrateBuild.mock.calls[0][1]).toBe("deleted-node");
   });
 
   it("does nothing when the Repertoire view is not loaded (no tree on screen)", async () => {

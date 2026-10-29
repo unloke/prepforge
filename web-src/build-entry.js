@@ -327,6 +327,8 @@ export function queueBuildDelete(nodeId) {
 // Insert a provisional node and queue its add. R-02: the target repertoire
 // travels with the op, so a restored queue never lands in another tree.
 export function queueBuildAdd(node) {
+  // A save can acknowledge the parent while local move calculation awaits.
+  node.parent_id = resolveBuildId(node.parent_id);
   appState.build.nodes.push(node);
   appState.buildNodeById.set(node.id, node);
   appState.buildPending.push({
@@ -379,8 +381,7 @@ export async function reloadOpenBuildTree() {
       build.repertoire_id === repertoireId;
     if (!unchanged) return false;
     const selection = appState.buildCurrentNodeId;
-    const kept = payload.nodes.some((node) => node.id === selection);
-    await hooks.build.session.hydrateBuild(payload, kept ? selection : null);
+    await hooks.build.session.hydrateBuild(payload, selection);
     // A reload after a role change: the banner and Copy follow the new role.
     hooks.build.updateBuildReadOnlyUi?.(payload);
     return true;
@@ -394,7 +395,6 @@ export function startBuildLive() {
   createBuildLive({
     api, appState, reload: reloadOpenBuildTree, activeView: activeViewName, notify: setStatus, tabId: OUTBOX_TAB_ID,
     hydrate: (payload, selection) => hooks.build.session.hydrateBuild(payload, selection),
-    select: (nodeId) => hooks.build.selectBuildNode(nodeId),
   }).start();
 }
 
@@ -441,8 +441,7 @@ export function reapplyPendingBuildNodes(pending, idMap) {
   if (!pending.length) return;
   for (const entry of pending) {
     const node = entry.node;
-    // Idempotent: hydrateBuild and the flush reconcile both call this for the
-    // same queue, and re-inserting a node would duplicate it in the tree.
+    // A restored queue may already have materialised this node.
     if (!node || appState.buildNodeById.has(node.id)) continue;
     const realParent = idMap[entry.parentRef] || entry.parentRef;
     entry.parentRef = realParent;
@@ -461,7 +460,6 @@ export function reapplyPendingBuildNodes(pending, idMap) {
     appState.build.nodes.push(node);
     appState.buildNodeById.set(node.id, node);
   }
-  renderBuilderTree();
 }
 
 // Collect a subtree (the flat list keys children by parent_id) and remove it
@@ -496,19 +494,12 @@ export function reapplyPendingBuildDeletes() {
     ...appState.buildUndoDeletes,
   ];
   if (!appState.build || !ids.length) return;
-  let pruned = false;
   for (const id of ids) {
     const resolved = resolveBuildId(id);
     const node = appState.buildNodeById.get(resolved);
     if (!node) continue;
-    const parentId = node.parent_id;
-    const doomed = pruneLocalBuildSubtree(resolved);
-    pruned = true;
-    if (doomed.has(appState.buildCurrentNodeId) && appState.buildNodeById.has(parentId)) {
-      hooks.build.selectBuildNode(parentId);
-    }
+    pruneLocalBuildSubtree(resolved);
   }
-  if (pruned) renderBuilderTree();
 }
 
 // Ctrl/Cmd+Z in Repertoire: take back the newest move this tab added to the

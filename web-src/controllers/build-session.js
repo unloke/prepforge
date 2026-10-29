@@ -82,6 +82,7 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   // (R-02). A reconcile re-hydrate keeps the same id, so its pending queue +
   // id map survive — that's the load-bearing distinction for the in-flight case.
   const prevRepId = appState.build && appState.build.repertoire_id;
+  const previousNodes = appState.buildNodeById;
   if (payload.repertoire_id !== prevRepId) {
     clearTimeout(appState.buildFlushTimer);
     appState.buildFlushTimer = null;
@@ -100,8 +101,6 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   }
   appState.build = payload;
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
-  // Derived analysis must match this exact local tree, including optimistic edits.
-  coverageView?.sync();
   invalidateBook();
   // Orient only when a repertoire opens — a reconcile re-hydrate after an
   // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
@@ -109,21 +108,31 @@ async function hydrateBuild(payload, selectedNodeId = null) {
     boards.build.setOrientation(payload.color === "black" ? "black" : "white");
   }
   renderBuildRepHeader();
-  // The opening node must exist in this payload. A node that a concurrent edit
-  // removed (an anchor passed in, or a stale selection) made selectBuildNode
-  // return at once, so the tree was never painted and the skeleton stayed up.
-  const known = (id) => !!id && appState.buildNodeById.has(id);
-  const root = payload.nodes.find((node) => node.depth === 0) || payload.nodes[0];
-  const nextNodeId = [selectedNodeId, payload.selected_node_id].find(known) || root?.id;
-  await selectBuildNode(nextNodeId);
-  // R-02: put this repertoire's unsynced local edits back onto the tree the
-  // server just sent, and re-prune what is queued for deletion.
+  // Merge local edits before selecting or painting anything. Selecting a server
+  // ancestor first briefly moved the board backwards on every in-flight add.
   reapplyPendingBuildNodes(
     appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, payload.repertoire_id)),
     appState.buildIdMap,
   );
   reapplyPendingBuildDeletes();
-  if (hasPendingBuildOpsFor(payload.repertoire_id)) {
+  // Derived analysis must include optimistic edits too.
+  coverageView?.sync();
+  // The opening node must exist in this payload. A node that a concurrent edit
+  // removed (an anchor passed in, or a stale selection) made selectBuildNode
+  // return at once, so the tree was never painted and the skeleton stayed up.
+  const known = (id) => !!id && appState.buildNodeById.has(id);
+  while (selectedNodeId && !known(resolveBuildId(selectedNodeId))) {
+    selectedNodeId = previousNodes?.get(selectedNodeId)?.parent_id;
+  }
+  selectedNodeId = resolveBuildId(selectedNodeId);
+  const root = payload.nodes.find((node) => node.depth === 0) || payload.nodes[0];
+  const nextNodeId = [selectedNodeId, payload.selected_node_id].find(known) || root?.id;
+  const branchChoiceId = payload.repertoire_id === prevRepId
+    && nextNodeId === resolveBuildId(appState.buildCurrentNodeId)
+    ? resolveBuildId(appState.buildBranchChoiceId) : null;
+  await selectBuildNode(nextNodeId, { branchChoiceId: known(branchChoiceId) ? branchChoiceId : null });
+  if (appState.build !== payload) return;
+  if (!appState.buildFlushing && hasPendingBuildOpsFor(payload.repertoire_id)) {
     setBuildSync("dirty");
     scheduleBuildFlush();
   }
@@ -234,7 +243,7 @@ async function renameRepertoire() {
   }
 }
 
-async function selectBuildNode(nodeId) {
+async function selectBuildNode(nodeId, { branchChoiceId = null } = {}) {
   if (!appState.buildNodeById.has(nodeId)) return;
   // Which way the board travels: into the current node's own child is a move
   // being shown; a parent, a sibling or a distant node is a step through or a
@@ -242,11 +251,14 @@ async function selectBuildNode(nodeId) {
   // The pieces themselves come from the positions (board/move-motion.js).
   const previous = appState.buildNodeById.get(appState.buildCurrentNodeId);
   const node = appState.buildNodeById.get(nodeId);
+  const build = appState.build;
   const back = !previous || previous.id !== node.parent_id;
   appState.buildCurrentNodeId = nodeId;
   // Landing on a position resets the fork pick to the mainline continuation.
-  appState.buildBranchChoiceId = null;
+  appState.buildBranchChoiceId = branchChoiceId;
   const info = await boardInfo(node.fen);
+  if (appState.build !== build || appState.buildCurrentNodeId !== nodeId
+    || appState.buildNodeById.get(nodeId) !== node) return;
   boards.build.setPosition({
     fen: node.fen,
     legalMoves: info.legal_moves,

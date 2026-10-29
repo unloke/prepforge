@@ -91,11 +91,11 @@ export function remoteChangeNotice(changes, { tabId, selectionLost, name }) {
   return "Updated elsewhere";
 }
 
-// deps: api, appState, hydrate(payload, selection), select(id), reload(),
+// deps: api, appState, hydrate(payload, selection), reload(),
 // activeView() (the shown view's name), notify(text), tabId; tests also pass
 // isOpen, now, timers ({ setTimeout, clearTimeout }) and doc (document).
 export function createBuildLive(deps) {
-  const { api, appState, hydrate, select, reload, notify, tabId } = deps;
+  const { api, appState, hydrate, reload, notify, tabId } = deps;
   // Polled only while Build shows a saved repertoire this account can read.
   const isOpen = deps.isOpen || (() => !!(appState.signedIn && !appState.sharedToken
     && appState.build?.repertoire_id && !appState.build.optimistic && deps.activeView() === "build"));
@@ -144,9 +144,7 @@ export function createBuildLive(deps) {
     lastChange = now();
     const selected = appState.buildCurrentNodeId;
     const { payload, selection } = applyBuildChanges(build, changes, selected);
-    await hydrate(payload, selection);
-    // A still-unsynced move this tab was standing on is back after hydrate.
-    if (selection !== selected && appState.buildNodeById.has(selected)) await select(selected);
+    await hydrate(payload, String(selected).startsWith("tmp-") ? selected : selection);
     const text = remoteChangeNotice(changes, {
       tabId,
       selectionLost: selection !== selected && !appState.buildNodeById.has(selected),

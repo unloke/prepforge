@@ -126,7 +126,7 @@ describe("createBuildLive", () => {
     expect(h.deps.notify).toHaveBeenCalledWith("Line deleted elsewhere");
   });
 
-  it("re-selects an unsynced move that hydrate put back", async () => {
+  it("lets hydration keep an unsynced selection without a second board navigation", async () => {
     const h = harness({ changes: { revision: 6, nodes: [], removed: [], ops: [] } });
     h.appState.build.nodes.push(node("tmp-me-1", "d4"));
     h.appState.buildCurrentNodeId = "tmp-me-1";
@@ -135,8 +135,8 @@ describe("createBuildLive", () => {
       h.appState.buildNodeById = new Map([...payload.nodes, node("tmp-me-1", "d4")].map((n) => [n.id, n]));
     });
     await h.live.tick();
-    expect(h.deps.hydrate.mock.calls[0][1]).toBe("d4");
-    expect(h.deps.select).toHaveBeenCalledWith("tmp-me-1");
+    expect(h.deps.hydrate.mock.calls[0][1]).toBe("tmp-me-1");
+    expect(h.deps.select).not.toHaveBeenCalled();
     expect(h.deps.notify).not.toHaveBeenCalled();
   });
 

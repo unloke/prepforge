@@ -14,14 +14,15 @@ function openDatabase() {
   });
 }
 
-// One read/merge/write transaction per call, so concurrent tabs never lose
+// One read/merge/write transaction per save, so concurrent tabs never lose
 // each other's ops. Tombstones are kept: there is no enforced server replay
 // horizon, and a suspended tab may still hold settled work.
 async function update(owner, incoming, settled) {
+  const writing = incoming !== null || settled !== null;
   const db = await openDatabase();
   try {
     return await new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, "readwrite");
+      const tx = db.transaction(STORE, writing ? "readwrite" : "readonly");
       const store = tx.objectStore(STORE);
       let value;
       let failure;
@@ -30,8 +31,9 @@ async function update(owner, incoming, settled) {
       const read = store.get(ownerKey(owner));
       read.onsuccess = () => {
         try {
-          value = mergeOutboxState(read.result?.state, incoming, settled);
-          store.put({ version: 1, state: value }, ownerKey(owner));
+          value = writing ? mergeOutboxState(read.result?.state, incoming, settled)
+            : read.result?.state || mergeOutboxState(null, null);
+          if (writing) store.put({ version: 1, state: value }, ownerKey(owner));
         } catch (error) {
           failure = error;
           tx.abort();

@@ -281,7 +281,7 @@ const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
 
 const syncController = createSyncController({
   appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync,
-  hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode,
+  hasPendingBuildOpsFor, hydrateBuild,
   setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString,
   OUTBOX_TAB_ID,
 });

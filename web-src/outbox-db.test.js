@@ -85,3 +85,15 @@ it("queued writes snapshot mutable queues before awaiting database initializatio
   await saving;
   expect((await loadDurableOutbox("a")).build.pending).toHaveLength(1);
 });
+
+it("recovery reads work even when storage refuses new writes", async () => {
+  await saveDurableOutbox("a", sample(), { build: ["settled"] });
+  vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(() => {
+    throw new DOMException("quota", "QuotaExceededError");
+  });
+  const restored = await loadDurableOutbox("a");
+  expect(restored.build.pending).toEqual(sample().build.pending);
+  expect(restored.settled.build).toEqual(["settled"]);
+  expect((await loadDurableOutbox("new-owner")).build.pending).toEqual([]);
+  await clearDurableOutbox("a");
+});

@@ -1,14 +1,14 @@
 import {
-  buildAddId, buildDeleteId, clearDurableOutbox, createSyncQueue, flushGroups, groupAttempts,
-  loadDurableOutbox, orderPendingBuildAdds, outboxHasWork, outboxIsQuiescent,
+  buildAddId, buildDeleteId, createSyncQueue, flushGroups, groupAttempts,
+  loadDurableOutbox, orderPendingBuildAdds, outboxHasWork,
   trainAttemptId, ungroupAttempts,
 } from "../sync-queue.js";
 import { classifySyncError, describeSyncError } from "../sync-errors.js";
 
-let appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID, buildQueue, trainQueue;
+let appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID, buildQueue, trainQueue;
 
 export function createSyncController(deps) {
-  ({ appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID } = deps);
+  ({ appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID } = deps);
   const buildState = {
     get timer() { return appState.buildFlushTimer; },
     set timer(value) { appState.buildFlushTimer = value; },
@@ -33,7 +33,7 @@ export function createSyncController(deps) {
     idleMs: 4000, flush: flushTrainSync });
   return { scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt, markTrainPositionDirty, scheduleTrainSync, beaconFlushTrain,
     flushBuildMoves: buildQueue.flush, flushTrainSync: trainQueue.flush,
-    persistOutbox, clearOutboxWhenQuiescent, restoreOutbox, flushAllPendingForSignOut,
+    persistOutbox, restoreOutbox, flushAllPendingForSignOut,
   };
 }
 
@@ -107,11 +107,11 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         // Those tmp-only deletes are resolved either way — tombstone them so a
         // second tab can't put them back in the durable queue.
         await persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
+        if (!ownsQueue()) return false;
         if (hasBuildWork()) {
           setBuildSync("dirty");
           scheduleBuildFlush();
         } else {
-          await clearOutboxWhenQuiescent();
           setBuildSync("saved");
         }
         return true;
@@ -126,13 +126,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         deletes: deleteIds,
       };
       await persistOutbox(settled);
-
-      // Translate the current selection + branch pick through tmp -> real.
-      const prevSelection = appState.buildCurrentNodeId;
-      const translatedSelection = idMap[prevSelection] || prevSelection;
-      const branchPick = appState.buildBranchChoiceId
-        ? idMap[appState.buildBranchChoiceId] || appState.buildBranchChoiceId
-        : null;
+      if (!ownsQueue()) return false;
 
       // Re-point this repertoire's queued children through acknowledged parent IDs.
       const stillPending = appState.buildPending.filter((m) =>
@@ -145,51 +139,22 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         }
       }
 
-      // hydrate needs a selection that exists in the authoritative payload; if the
-      // user is sitting on a still-pending tmp node, pick a safe anchor now and
-      // restore the tmp selection after we re-insert it below.
+      // Hydration merges queued edits before selecting, so an unsaved child
+      // remains visible throughout reconciliation.
       if (isCurrent()) {
-        // Otherwise land on its nearest ancestor the server kept (a line
-        // deleted elsewhere takes the selection back to where it branched).
-        const kept = new Set(payload.nodes.map((n) => n.id));
-        let anchor = translatedSelection;
-        while (anchor && !kept.has(anchor)) {
-          const parent = appState.buildNodeById.get(anchor)?.parent_id;
-          anchor = parent ? idMap[parent] || parent : null;
-        }
-        const payloadHasSelection = anchor === translatedSelection;
-        await hydrateBuild(payload, anchor);
-        if (branchPick) appState.buildBranchChoiceId = branchPick;
-
-        reapplyPendingBuildNodes(stillPending, idMap);
-        // Subtrees deleted DURING the round-trip were resurrected by the hydrate
-        // (the server still had them) — prune them again; their delete ops are
-        // queued and flush next cycle.
-        reapplyPendingBuildDeletes();
-
-        // Restore the user's selection if it was a still-pending tmp node (now back
-        // in the tree after reapply) and hydrate couldn't land on it.
-        if (
-          !payloadHasSelection &&
-          appState.buildNodeById.has(prevSelection) &&
-          prevSelection !== appState.buildCurrentNodeId
-        ) {
-          await selectBuildNode(prevSelection);
-        }
+        await hydrateBuild(payload, appState.buildCurrentNodeId);
       }
+      if (!ownsQueue()) return false;
       // Moves whose line another device deleted first: the delete won.
       const dropped = payload.dropped?.length || 0;
       if (dropped) {
         setStatus(`${dropped} move${dropped === 1 ? "" : "s"} not saved: line deleted elsewhere`, { severity: "warning" });
       }
       buildQueue.resetRetry();
-      persistOutbox();
       if (hasBuildWork()) {
         setBuildSync("dirty");
         scheduleBuildFlush();
       } else {
-        await clearOutboxWhenQuiescent();
-        if (!ownsQueue()) return false;
         setBuildSync("saved");
       }
       return true;
@@ -229,14 +194,13 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
             }
           }
           if (payload && isCurrent()) {
-            await hydrateBuild(payload, null);
-            reapplyPendingBuildNodes(stillPending, idMap);
-            reapplyPendingBuildDeletes();
+            await hydrateBuild(payload, appState.buildCurrentNodeId);
           }
         }
         // Rejected edits are reported here once and dropped: the server will
         // never accept them, and there is nothing to review them with.
         await persistOutbox(settled);
+        if (!ownsQueue()) return false;
         setStatusError(
           rejected.length
             ? `${rejected.length} edit${rejected.length === 1 ? "" : "s"} could not be saved: ${rejected[0].message}`
@@ -246,7 +210,6 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
           setBuildSync("dirty");
           scheduleBuildFlush();
         } else {
-          await clearOutboxWhenQuiescent();
           setBuildSync("saved");
         }
         return false;
@@ -517,8 +480,6 @@ function flushTrainSync(durableCheckpoint, isCurrent) {
       } else if (rejectedCount) {
         setTrainSyncState("rejected");
       } else {
-        await clearOutboxWhenQuiescent();
-        if (!isCurrent()) return false;
         setTrainSyncState("saved");
       }
       return rejectedCount === 0;
@@ -588,16 +549,6 @@ function outboxSnapshot() {
 
 function persistOutbox(settled = null) {
   return buildQueue.persist(settled);
-}
-
-async function clearOutboxWhenQuiescent() {
-  const owner = currentOwnerId();
-  if (!outboxIsQuiescent(await loadDurableOutbox(owner))) {
-    await persistOutbox();
-    return false;
-  }
-  await clearDurableOutbox(owner);
-  return owner === currentOwnerId();
 }
 
 async function restoreOutbox() {

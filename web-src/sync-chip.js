@@ -1,7 +1,7 @@
 // Google-Docs style save chip shown under the Repertoire and Train boards.
 const SYNC_CHIP_VARIANTS = {
   saved: { cls: "is-saved", text: "Saved" },
-  dirty: { cls: "is-dirty", text: "Saving…" },
+  dirty: { cls: "is-syncing", text: "Saving…" },
   syncing: { cls: "is-syncing", text: "Saving…" },
   error: { cls: "is-error", text: "Offline — will retry" },
   rejected: { cls: "is-error", text: "Some attempts couldn't be saved" },
