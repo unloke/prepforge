@@ -33,6 +33,7 @@ Practice 則能與 Maia、Lichess Explorer 或自己的棋譜對弈。
 
 Games 對照 Lichess 對局與你的棋譜，區分忘記準備、對手新招，以及尚未覆蓋的局面。
 直接跳到偏離處，複習原本要下的走法，或把整局帶進 Analyze。
+也可從 Games 的 Import PGN 直接開啟 Analyze 的棋譜輸入框。
 
 ### 分析關鍵局面
 

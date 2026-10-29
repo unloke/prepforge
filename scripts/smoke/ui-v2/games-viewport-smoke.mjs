@@ -304,6 +304,18 @@ async function runViewport(vp) {
 
   await checkGamesAnalyze(page, GAMES, check, shot);
 
+  // Games also accepts a user's PGN through the existing Analyze editor.
+  if (vp.width <= 760) await page.locator('#view-analyze [data-phone-nav]').click();
+  await page.locator(vp.width <= 760 ? '[data-testid="bottom-review"]' : '[data-testid="nav-replay"]').click();
+  await page.locator("#games-import-pgn").click();
+  await page.locator("#pgn-input").waitFor({ state: "visible" });
+  await page.waitForFunction(() => document.activeElement?.id === "pgn-input");
+  await page.locator("#pgn-input").fill("[White \"PGN player\"]\n[Black \"Guest\"]\n\n1. d4 d5 2. c4 *");
+  await page.locator("#open-pgn").click();
+  await page.waitForFunction(() => document.getElementById("analysis-board-caption").textContent.includes("PGN player"));
+  check(await page.locator("#view-analyze").evaluate((el) => el.classList.contains("is-active")), "Import PGN opens the game in Analyze");
+  check(await page.locator("#analyze-open").evaluate((el) => !el.classList.contains("is-open")), "opening the PGN closes the phone sheet");
+
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
