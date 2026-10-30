@@ -411,13 +411,25 @@ class TrainingRepository(SettingsRepository):
         owner_user_id: str,
     ) -> List[TrainingProgress]:
         """All stored progress rows for a repertoire (for heatmap / due queue)."""
+        return self.list_training_progress_for_repertoires(
+            [repertoire_id], owner_user_id=owner_user_id,
+        ).get(repertoire_id, [])
+
+    def list_training_progress_for_repertoires(
+        self, repertoire_ids: List[str], *, owner_user_id: str,
+    ) -> Dict[str, List[TrainingProgress]]:
+        if not repertoire_ids:
+            return {}
         tp = t.training_progress
         owner_cond = tp.c.owner_user_id == owner_user_id
         with self.engine.connect() as conn:
             rows = conn.execute(
-                select(tp).where(tp.c.repertoire_id == repertoire_id, owner_cond)
+                select(tp).where(tp.c.repertoire_id.in_(repertoire_ids), owner_cond)
             ).mappings().all()
-        return [self._training_progress_from_row(row) for row in rows]
+        grouped: Dict[str, List[TrainingProgress]] = {}
+        for row in rows:
+            grouped.setdefault(row["repertoire_id"], []).append(self._training_progress_from_row(row))
+        return grouped
 
     def _training_session_from_row(self, row: Mapping[str, Any]) -> TrainingSession:
         created_at = row["created_at"]

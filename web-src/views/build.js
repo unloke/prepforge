@@ -106,10 +106,11 @@ export function createBuildView({
   // position only: stepping to another line closes it again, because the reason
   // to look at all thirty moves is the position you are standing on.
   let forkExpandedFor = null;
+  let forkDismissedFor = null;
   // Notes opened past their first line, by node id.
   const openNotes = new Set();
 
-  function renderBuildBranchBar() {
+  function renderBuildBranchBar({ reopen = false } = {}) {
     const bar = document.getElementById("build-branchbar");
     if (!bar) return;
     const ctx = buildBranchContext();
@@ -117,10 +118,12 @@ export function createBuildView({
       bar.hidden = true;
       bar.innerHTML = "";
       forkExpandedFor = null;
+      forkDismissedFor = null;
       if (boards.build) boards.build.setBranchArrows([]);
       return;
     }
     const picked = ctx.options.find((n) => n.id === ctx.choiceId) || ctx.options[0];
+    if (reopen || forkDismissedFor !== appState.buildCurrentNodeId) forkDismissedFor = null;
     const pickedIndex = ctx.options.indexOf(picked);
     const size = forkWindowSize();
     const expanded = forkExpandedFor === appState.buildCurrentNodeId && ctx.options.length > size;
@@ -161,10 +164,16 @@ export function createBuildView({
         ? html`<button class="fork-more" type="button" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "Show fewer" : "Show all"}</button>`
         : "";
     reveal(bar);
+    if (forkDismissedFor) bar.hidden = true;
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "Fork — pick the next move");
     bar.innerHTML =
-      html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${countOf(ctx.options.length, "option")}</span>${more}</div><div class="fork-chips${expanded ? " is-all" : ""}">${chips}</div>`;
+      html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${countOf(ctx.options.length, "option")}</span>${more}</div><div class="fork-chips${expanded ? " is-all" : ""}">${chips}</div><button class="fork-close" type="button" aria-label="Hide move choices" title="Hide · ↑/↓ to reopen">×</button>`;
+    bar.querySelector(".fork-close")?.addEventListener("click", () => {
+      forkDismissedFor = appState.buildCurrentNodeId;
+      bar.hidden = true;
+      document.getElementById("build-root")?.focus();
+    });
     // The disclosure: opens the whole list for this position, closes it again.
     const moreBtn = bar.querySelector(".fork-more");
     if (moreBtn) {

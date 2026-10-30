@@ -30,6 +30,7 @@
 .train-scope-chip:empty { display: none; }
 .train-count { margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .train-count:empty { display: none; }
+.train-line-step { color: var(--text); font-size: var(--fs); font-weight: 600; font-variant-numeric: tabular-nums; }
 .train-history-btn { margin-left: auto; }
 #view-train .train-back { gap: 4px; padding-left: 4px; }
 #view-train .train-back .bi { display: block; }

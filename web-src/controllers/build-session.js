@@ -323,7 +323,8 @@ function buildDockMaxHeight() {
   if (!panel) return 600;
   let others = 0;
   for (const child of panel.children) {
-    if (child === dock || child.id === "builder-tree") continue;
+    if (child === dock || child.classList.contains("build-tree-region")) continue;
+    if (child.id === "build-branchbar" || child.id === "build-undo") continue;
     others += child.getBoundingClientRect().height;
   }
   return Math.max(BUILD_DOCK_MIN, panel.clientHeight - others - BUILD_DOCK_TREE_MIN);
@@ -344,7 +345,7 @@ function fitBuildDock() {
   if (dock.classList.contains("is-folded")) {
     dock.style.flexBasis = "";
     dock.style.minHeight = "";
-    const tree = document.getElementById("builder-tree");
+    const tree = document.querySelector(".build-tree-region");
     if (tree) tree.style.flexGrow = "";
     return;
   }
@@ -378,7 +379,7 @@ function applyBuildDockHeight(px, { pinned = false } = {}) {
   dock.dataset.dockPinned = pinned ? "1" : "";
   // A pinned inspector holds its height, so the tree takes the rest of the
   // column (an unpinned one fills the leftover, and the tree keeps its content).
-  const tree = document.getElementById("builder-tree");
+  const tree = document.querySelector(".build-tree-region");
   if (tree) tree.style.flexGrow = pinned ? "1" : "";
   const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
   // Basis and floor together: the dock neither grows past what the tree does
@@ -509,7 +510,7 @@ function initBuildDockLayout() {
     });
     for (const drawer of dock.querySelector(".dock-body")?.children || []) observer.observe(drawer);
     for (const band of dock.parentElement.children) {
-      if (band !== dock && band !== resizer && band.id !== "builder-tree") observer.observe(band);
+      if (band !== dock && band !== resizer && !band.classList.contains("build-tree-region")) observer.observe(band);
     }
   }
   resizer.addEventListener("dblclick", () => setBuildDockFolded(!buildDockFolded()));
@@ -929,14 +930,14 @@ function buildBranchKey(direction) {
   const idx = ctx.options.findIndex((n) => n.id === ctx.choiceId);
   const next = ctx.options[(idx + direction + ctx.options.length) % ctx.options.length];
   appState.buildBranchChoiceId = next.id;
-  renderBuildBranchBar();
+  renderBuildBranchBar({ reopen: true });
 }
 
 // The on-screen fork picker: one chip per prepared continuation, the picked one
 // lit, mirrored by arrows on the board (the picked arrow drawn stronger).
-function renderBuildBranchBar() {
-  if (buildView) return buildView.renderBuildBranchBar();
-  void ensureBuildView().then((view) => view.renderBuildBranchBar()).catch(() => {});
+function renderBuildBranchBar(options) {
+  if (buildView) return buildView.renderBuildBranchBar(options);
+  void ensureBuildView().then((view) => view.renderBuildBranchBar(options)).catch(() => {});
 }
 
 async function saveBuildAnnotations(arrows, circles) {

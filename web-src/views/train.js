@@ -89,6 +89,8 @@ export function createTrainView({
     if (!keepBanner) setTrainBanner("move", "Your move", "");
     updateTrainTurnBadge(side);
     paintCardKind(null);
+    const step = document.getElementById("train-line-step");
+    if (step) step.hidden = true;
     renderLinePath("");
     // Rehearsal has no queue: drop a smart session's "Up next" rows.
     const upnext = document.getElementById("train-upnext");
@@ -102,11 +104,16 @@ export function createTrainView({
   // "Up next" preview: the next few cards in the real queue, so a mixed session
   // hopping between repertoires never surprises. Reads only appState.smart.queue —
   // no second source of truth, nothing rendered when the queue is missing.
+  let paintedQueue = null, paintedIndex = -1, paintedLength = -1;
   function renderUpNext() {
     const host = document.getElementById("train-upnext");
     if (!host) return;
     const smart = appState.smart;
     const queue = smart && smart.queue;
+    if (queue && queue === paintedQueue && smart.cardIndex === paintedIndex && queue.length === paintedLength) return;
+    paintedQueue = queue;
+    paintedIndex = smart?.cardIndex ?? -1;
+    paintedLength = queue?.length ?? -1;
     if (!queue || !queue.length) {
       host.hidden = true;
       host.innerHTML = "";
@@ -170,6 +177,11 @@ export function createTrainView({
 
   function renderSmartProgress(prompt) {
     renderLinePath(prompt.target?.line || "");
+    const step = document.getElementById("train-line-step");
+    if (step) {
+      step.hidden = !(prompt.targets_total > 1);
+      step.textContent = prompt.targets_total > 1 ? `Move ${(prompt.target_index || 0) + 1} / ${prompt.targets_total}` : "";
+    }
     paintProgress(prompt.card_index, prompt.total_cards);
     paintCardKind(prompt.kind);
     renderUpNext();

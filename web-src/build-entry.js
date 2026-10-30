@@ -546,25 +546,24 @@ export async function deleteBuildNodeLocal(nodeId) {
   if (appState.buildBranchChoiceId && doomed.has(appState.buildBranchChoiceId)) {
     appState.buildBranchChoiceId = null;
   }
+  // Publish the tombstone and rebuild before selecting: selection only moves
+  // the existing DOM mark, and its board lookup can yield to a save response.
+  appState.buildUndoDeletes.add(nodeId);
+  renderBuilderTree();
+  hooks.build.syncViewHeads();
   if (doomed.has(appState.buildCurrentNodeId)) {
     await hooks.build.selectBuildNode(parentId);
-  } else {
-    renderBuilderTree();
   }
-  hooks.build.syncViewHeads();
   // The delete doesn't queue for the server until the undo window closes; until
   // then it lives in buildUndoDeletes so a reconcile re-hydrate re-prunes it.
-  appState.buildUndoDeletes.add(nodeId);
   // Keyed by the deleted move's slot so a replay of the SAME move can commit this
   // delete first (see onBuildBoardMove). The slot is freed in both settle paths.
   const undoMoveKey = `${parentId}:${node.uci}`;
-  const extra = doomed.size > 1 ? ` (+${doomed.size - 1} after it)` : "";
-  // One notice only: the inline Undo card beside the tree (no extra status
-  // toast), so nothing lands on top of the Explorer.
+  const extra = doomed.size > 1 ? `${doomed.size} moves` : "";
   const undoCommit = showUndoToast({
     host: document.getElementById("build-undo"),
-    title: "Move deleted",
-    message: `${node.san || "Move"}${extra} removed`,
+    title: `${node.san || "Move"} deleted`,
+    message: extra,
     onCommit: () => {
       appState.buildUndoCommitByMove.delete(undoMoveKey);
       appState.buildUndoDeletes.delete(nodeId);
@@ -598,17 +597,15 @@ export async function deleteBuildNodeLocal(nodeId) {
       ) {
         appState.buildBranchChoiceId = prevBranchChoice;
       }
+      renderBuilderTree();
+      hooks.build.syncViewHeads();
       if (prevSelection && appState.buildNodeById.has(prevSelection)) {
         await hooks.build.selectBuildNode(prevSelection);
-      } else {
-        renderBuilderTree();
       }
-      hooks.build.syncViewHeads();
       if (parkedAdds.length) {
         hooks.build.setBuildSync("dirty");
         hooks.build.scheduleBuildFlush();
       }
-      setStatus(`Restored ${node.san || "move"}`);
     },
   });
   appState.buildUndoCommitByMove.set(undoMoveKey, undoCommit);

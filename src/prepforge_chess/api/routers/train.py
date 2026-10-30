@@ -229,21 +229,20 @@ def _touch_streak(
 
 
 def _smart_summary_payload(
-    repo: WorkspaceRepository, repertoire: Repertoire, owner: str, *, owned: bool = True
+    service: SmartTrainingService, repertoire: Repertoire, owner: str, *,
+    owned: bool = True, persist_health: bool = False,
 ) -> dict[str, Any]:
     """Repertoire health + tomorrow's due forecast — the smart session's
     bookends. Shipped with ``/smart/start`` (the before snapshot) and from
     ``/smart/summary`` (the after, for the end-of-session mastery delta)."""
-    progress_by_id = {
-        p.node_id: p for p in repo.list_training_progress(repertoire.id, owner_user_id=owner)
-    }
+    progress_by_id = service.progress_by_id(repertoire.id)
     health = compute_health(
         repertoire.root_node, repertoire.color, progress_by_id
     ).to_dict()
     # Keep the owner's cached Library badge in step with their mastery gains. The
     # badge is the owner's alone: a shared repertoire's trainee never writes it.
-    if owned:
-        repo.set_repertoire_health(repertoire.id, health)
+    if owned and persist_health:
+        service.repository.set_repertoire_health(repertoire.id, health)
     return {
         "health": health,
         "due_tomorrow": due_forecast(
@@ -253,14 +252,16 @@ def _smart_summary_payload(
 
 
 def _mixed_summary_payload(
-    repo: WorkspaceRepository, reps: list[Repertoire], owner: str, shared_ids: set[str]
+    service: SmartTrainingService, reps: list[Repertoire], owner: str, shared_ids: set[str],
+    *, persist_health: bool = False,
 ) -> dict[str, Any]:
     """The mixed-session bookend: per-repertoire health summed into one view
     (mastery_pct recomputed over the combined trainable count)."""
     health: dict[str, int] = {}
     due_tomorrow = 0
     for rep in reps:
-        part = _smart_summary_payload(repo, rep, owner, owned=rep.id not in shared_ids)
+        part = _smart_summary_payload(service, rep, owner, owned=rep.id not in shared_ids,
+                                      persist_health=persist_health)
         for key, value in part["health"].items():
             health[key] = health.get(key, 0) + value
         due_tomorrow += part["due_tomorrow"]
@@ -324,10 +325,10 @@ def smart_start(
         )
     summary = (
         _mixed_summary_payload(
-            repo, service.active_repertoires(owner), owner, service.shared_ids
+            service, service.active_repertoires(owner), owner, service.shared_ids
         )
         if body.mixed
-        else _smart_summary_payload(repo, repertoire, owner, owned=owned)
+        else _smart_summary_payload(service, repertoire, owner, owned=owned)
     )
     return {
         "repertoire_id": repertoire.id,
@@ -360,7 +361,7 @@ def smart_start(
 
 
 def _outlook(
-    repo: WorkspaceRepository, reps: list[Repertoire], owner: str, utc_offset: int
+    service: SmartTrainingService, reps: list[Repertoire], owner: str, utc_offset: int
 ) -> dict[str, Any]:
     """Due now / by the end of the player's local day / this week, over the
     scope, and ``next``: when the soonest later review falls due (ISO, or None)."""
@@ -371,9 +372,7 @@ def _outlook(
     total: dict[str, Any] = {"now": 0, "today": 0, "week": 0}
     soonest = None
     for rep in reps:
-        progress_by_id = {
-            p.node_id: p for p in repo.list_training_progress(rep.id, owner_user_id=owner)
-        }
+        progress_by_id = service.progress_by_id(rep.id)
         part = due_outlook(rep.root_node, rep.color, progress_by_id, now=now, day_end=day_end)
         for key in total:
             total[key] += part[key]
@@ -407,7 +406,8 @@ def smart_summary(
     service = SmartTrainingService(repo, owner)
     if mixed:
         reps = service.active_repertoires(owner)
-        payload = _mixed_summary_payload(repo, reps, owner, service.shared_ids)
+        payload = _mixed_summary_payload(service, reps, owner, service.shared_ids,
+                                         persist_health=not preview)
         scope_id = None
     elif not repertoire_id:
         raise HTTPException(
@@ -420,11 +420,12 @@ def smart_summary(
         if repertoire is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
         reps = [repertoire]
-        payload = _smart_summary_payload(repo, repertoire, owner, owned=owned)
+        payload = _smart_summary_payload(service, repertoire, owner, owned=owned,
+                                         persist_health=not preview)
         scope_id = repertoire_id
     if preview:
         payload["next_session"] = service.preview(owner, scope_id, upcoming=5)
-        payload["outlook"] = _outlook(repo, reps, owner, utc_offset)
+        payload["outlook"] = _outlook(service, reps, owner, utc_offset)
     day = streak.resolve_day(local_date)
     payload["day_streak"] = streak.as_view(
         repo.get_user_setting(owner, streak.STREAK_KEY), day

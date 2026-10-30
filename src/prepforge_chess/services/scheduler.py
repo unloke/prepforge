@@ -15,7 +15,7 @@ was scheduled, so the UI can show the queue's composition and teach new moves:
                so a fresh repertoire doesn't bury the player.
 - ``polish`` — learning/mastered material used to top a session up.
 
-Lines are served weak first, then reviews, then new lines, each band in tree
+Urgency chooses the targets; the selected lines follow repertoire and tree
 DFS order so sibling branches come back to back. Like ``services/progress.py``
 this module is pure (no DB, no engine): tree + stored ``TrainingProgress`` in,
 a ``SessionPlan`` out. Sessions are small (~12 targets) so training has a
@@ -414,18 +414,16 @@ def order_lines(
     preorder: Dict[str, int],
     repertoire_rank: Optional[Dict[str, int]] = None,
 ) -> List[TrainingCard]:
-    """Order lines by urgency band, then repertoire, then tree DFS position.
-
-    Within a band, lines follow the tree's preorder, so sibling branches come
-    one after the other and consecutive prompts share their opening moves
-    instead of jumping between unrelated positions."""
+    """Serve the selected material in repertoire/tree order. Urgency already
+    chose which targets enter the session; it must not split related lines
+    into separate bands that replay the same opening later in the session."""
     rank = repertoire_rank or {}
     return sorted(
         cards,
         key=lambda card: (
-            _BAND[card.kind],
             rank.get(card.repertoire_id, 0),
             preorder.get(card.first_target_id, 0),
+            _BAND[card.kind],
         ),
     )
 
@@ -437,8 +435,8 @@ def order_lines(
 def mix_plans(
     plans: Sequence[Tuple[str, SessionPlan, Dict[str, int]]],
 ) -> SessionPlan:
-    """Merge per-repertoire plans into one queue: band by band, each
-    repertoire's lines stay together in tree order, and the repertoire with
+    """Merge per-repertoire plans into one queue: each repertoire's lines
+    stay together in tree order, and the repertoire with
     the most urgent head goes first."""
     cards: List[TrainingCard] = []
     preorder: Dict[str, int] = {}

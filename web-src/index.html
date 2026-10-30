@@ -361,10 +361,12 @@
                 <button class="btn" id="build-empty-open" type="button">Browse…</button>
               </div>
             </div>
-            <div class="forkbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
-            <div class="inline-undo" id="build-undo" data-testid="build-undo" role="status" aria-live="polite" hidden></div>
+            <div class="undo-toast" id="build-undo" data-testid="build-undo" role="status" aria-live="polite" hidden></div>
             <div class="job-dock" id="build-job-dock" data-testid="build-job-dock"></div>
+            <div class="build-tree-region">
+            <div class="forkbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
             <div class="tree-wrap" id="builder-tree" data-testid="builder-tree"></div>
+            </div>
             <div class="dock-resizer" id="build-dock-resizer" data-testid="build-dock-resizer" role="separator" aria-orientation="horizontal" aria-controls="build-inspector" aria-label="Resize the inspector (drag, or ↑/↓; double-click to fold)" tabindex="0"></div>
             <section class="dock" id="build-inspector" aria-label="Inspector">
               <div class="dock-head">
@@ -534,6 +536,7 @@
                 <button class="train-line-path" id="train-line-path" type="button" aria-expanded="false" hidden></button>
                 <div class="train-play-trail" id="train-play-trail" data-testid="train-play-trail" hidden></div>
                 <div class="train-session-meta">
+                  <span class="train-line-step" id="train-line-step" hidden></span>
                   <span class="kchip" id="train-card-kind" hidden></span>
                   <span class="train-stats-line" id="train-stats-line"></span>
                 </div>

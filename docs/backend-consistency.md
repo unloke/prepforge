@@ -25,6 +25,13 @@ answer, and write both through one connection and transaction. PostgreSQL uses
 row locks; SQLite takes its writer lock before reading session state. Failure of
 either write rolls back both, so retry does not double-count a failed operation.
 
+Smart batch sync holds the session lock for the entire batch, merges receipt IDs
+in memory and writes the final session once. It reads only the attempted nodes'
+identities, without loading repertoire trees or evaluations. Mixed queue creation
+loads active trees and personal progress in batches; start and preview reuse that
+request's snapshots. Preview performs no writes. See [training flow and I/O](training-flow.md)
+for the measured query counts and presentation choices.
+
 Library listings compute all exclusive mastery buckets and `mastery_pct` in one
 grouped owner-scoped statement. The SQL follows the same untrained, weak, due,
 mastered, learning precedence as `node_mastery`, including enabled ancestry and
@@ -50,6 +57,11 @@ branch choices resolve through the acknowledged ID map; a removed selection
 lands on its nearest surviving ancestor. A superseded asynchronous selection
 cannot repaint the board. Queued children resolve an acknowledged parent even
 when that acknowledgement arrives during local move calculation.
+
+Local branch deletion registers its pending tombstone and rebuilds the tree before
+awaiting position selection. Undo restores and renders the subtree before its
+selection await too. The deletion commits after the undo window, or when pending
+edits are explicitly flushed. The floating Undo control occupies no layout space.
 
 Outbox recovery uses a read-only IndexedDB transaction. Successful saves retain
 their settlement records without an extra write or a cleanup read. A local

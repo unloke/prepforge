@@ -1281,7 +1281,7 @@
   #build-panes {
     position: sticky;
     top: -10px;
-    z-index: 2;
+    z-index: 9;
     display: flex;
     margin: -10px -12px 0;
     padding: 6px 12px 4px;
@@ -1310,7 +1310,7 @@
   #build-panes > button[aria-selected="true"] { background: var(--panel); background-clip: padding-box; color: var(--text); }
   #view-build #build-sidebar.is-empty #build-panes,
   #view-build:not([data-pane="explorer"], [data-pane="coverage"]) #build-inspector,
-  #view-build:is([data-pane="explorer"], [data-pane="coverage"]) :is(#build-branchbar, #builder-tree),
+  #view-build:is([data-pane="explorer"], [data-pane="coverage"]) .build-tree-region,
   #build-inspector .dock-tabs { display: none !important; }
 
   #build-sidebar > .panel-body > * { order: 3; }

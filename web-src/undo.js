@@ -50,10 +50,8 @@ export function showUndoToast({ title, message, onUndo, onCommit, host = null })
   return commit;
 }
 
-// The same undo window rendered inside a view (`host`) instead of the toast
-// stack — Build's move delete uses it so the card sits with the move tree
-// rather than over the Explorer. One window per host: a newer delete commits
-// the older one first. Hover pauses the countdown, like the toast.
+// One floating undo per host; it never participates in the editor's layout.
+// A newer delete commits the previous one. Hover and keyboard focus pause it.
 function showInlineUndo(host, { title, message, onUndo, onCommit }) {
   if (host._undoCommit) host._undoCommit();
   let settled = false;
@@ -80,21 +78,27 @@ function showInlineUndo(host, { title, message, onUndo, onCommit }) {
     }
   };
   const arm = () => {
+    window.clearTimeout(timer);
     startedAt = Date.now();
     timer = window.setTimeout(commit, remaining);
   };
   pendingUndoCommits.add(commit);
   host._undoCommit = commit;
   host.innerHTML =
-    html`<span class="inline-undo-text"><b>${title}</b> ${message || ""}</span><button type="button" class="btn sm" data-inline-undo>Undo</button>`;
+    html`<span class="undo-toast-text"><b>${title}</b>${message ? ` · ${message}` : ""}</span><button type="button" class="btn sm" data-inline-undo>Undo</button>`;
   host.hidden = false;
   host.onpointerenter = () => {
-    if (settled) return;
+    if (settled || timer === null) return;
     window.clearTimeout(timer);
+    timer = null;
     remaining = Math.max(800, remaining - (Date.now() - startedAt));
   };
   host.onpointerleave = () => {
-    if (!settled) arm();
+    if (!settled && !host.contains(document.activeElement)) arm();
+  };
+  host.onfocusin = host.onpointerenter;
+  host.onfocusout = () => {
+    if (!settled && !host.matches(":hover")) arm();
   };
   host.querySelector("[data-inline-undo]").addEventListener("click", () => {
     if (settled) return;

@@ -234,9 +234,7 @@ def test_new_cap_limits_introductions():
     assert plan.counts["cards"] == 2  # nothing else to schedule
 
 
-def test_weak_outranks_due_outranks_new():
-    # weak (nf3) and due (d4) live in different opening families so they can't
-    # merge into one card and the band order stays observable.
+def test_urgent_targets_are_selected_but_served_in_opening_order():
     repertoire, ids = _build_tree()
     progress = {
         ids["nf3"]: _progress(ids["nf3"], **WEAK),
@@ -247,9 +245,8 @@ def test_weak_outranks_due_outranks_new():
         repertoire.root_node, Color.WHITE, progress, new_cap=1, now=NOW
     )
     kinds = _kinds(plan)
-    assert kinds[0] == CARD_WEAK
-    assert plan.cards[0].last_target_id == ids["nf3"]
-    assert kinds.index(CARD_DUE) < kinds.index(CARD_NEW)
+    assert kinds == [CARD_NEW, CARD_WEAK, CARD_DUE]
+    assert [card.first_target_id for card in plan.cards] == [ids["e4"], ids["nf3"], ids["d4"]]
     assert plan.counts[CARD_NEW] == 1
 
 
@@ -559,15 +556,15 @@ def test_sibling_branches_are_served_back_to_back():
     ]
 
 
-def test_weak_lines_lead_then_reviews_in_tree_order():
+def test_review_kinds_do_not_split_related_lines():
     rep, ids = _sibling_tree()
     progress = {node: _progress(node, **MASTERED) for node in ids.values()}
     progress[ids["ba4"]] = _progress(ids["ba4"], **DUE)
     progress[ids["c4"]] = _progress(ids["c4"], **WEAK)
     progress[ids["d4b"]] = _progress(ids["d4b"], **DUE)
     plan = build_session_plan(rep.root_node, Color.WHITE, progress, session_size=3, now=NOW)
-    assert [c.kind for c in plan.cards] == [CARD_WEAK, CARD_DUE, CARD_DUE]
-    assert [c.target_ids for c in plan.cards] == [(ids["c4"],), (ids["ba4"],), (ids["d4b"],)]
+    assert [c.kind for c in plan.cards] == [CARD_DUE, CARD_DUE, CARD_WEAK]
+    assert [c.target_ids for c in plan.cards] == [(ids["ba4"],), (ids["d4b"],), (ids["c4"],)]
 
 
 def test_line_groups_due_moves_down_one_path_and_siblings_replay_the_prefix():

@@ -7,7 +7,7 @@ Build your opening repertoire. Rehearse it. Check what happened over the board.
 [![CI](https://github.com/unloke/prepforge/actions/workflows/ci.yml/badge.svg)](https://github.com/unloke/prepforge/actions/workflows/ci.yml)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE)
 
-![Repertoire workspace with a Caro-Kann position, opening branches and Explorer statistics](docs/assets/repertoire-desktop.png)
+![Repertoire workspace with visible branch arrows and floating move choices](docs/assets/repertoire-desktop.png)
 
 PrepForge is a chess preparation app that connects opening study, spaced repetition
 and game review. Keep your lines in a repertoire, practice the moves you need to
@@ -24,6 +24,8 @@ Create lines on the board or import a PGN. Edit branches, choose a mainline and
 add comments and board annotations. Compare Masters and Players data in Explorer,
 or consult the engine. Generate continuations from a position and use Coverage
 to find missing replies, preview them and add the ones you want to prepare.
+Branch choices float over the move tree. Deleted moves disappear immediately;
+the compact Undo control restores the branch without shifting the workspace.
 
 ### Remember your moves
 
@@ -31,6 +33,8 @@ Train with an FSRS spaced repetition schedule. The Due queue brings together
 moves to review; Rehearse follows your repertoire's lines; Practice lets you play
 against Maia, Lichess Explorer or your own repertoire. Use hints, retry mistakes
 or turn on timed Blitz training.
+Due moves run in repertoire order, keeping shared opening context between lines.
+Answers advance locally while progress saves in the background.
 
 ### Check your games
 
@@ -64,6 +68,8 @@ Personal training progress belongs to the player.
 <summary>Training and mobile screenshots</summary>
 
 ![Training home with the review queue, rehearsal and practice modes](docs/assets/train-desktop.png)
+
+![Continuous training with the current line's move count](docs/assets/train-session.png)
 
 <img src="docs/assets/repertoire-mobile.png" alt="Repertoire workspace on a narrow mobile viewport" width="300">
 

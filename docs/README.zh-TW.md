@@ -7,7 +7,7 @@
 [![CI](https://github.com/unloke/prepforge/actions/workflows/ci.yml/badge.svg)](https://github.com/unloke/prepforge/actions/workflows/ci.yml)
 [![授權：AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](../LICENSE)
 
-![Caro-Kann 棋譜工作區：棋盤、開局分支與 Explorer 對局統計](assets/repertoire-desktop.png)
+![棋譜工作區：清楚的分支箭頭與浮動走法選擇](assets/repertoire-desktop.png)
 
 PrepForge 把開局準備、間隔複習與賽後檢查放在同一個網頁應用。
 把要下的路線存進棋譜，練習自己的回應，再對照 Lichess 實戰，檢查忘記的走法與尚未準備的局面。
@@ -22,12 +22,14 @@ Stockfish 在你的裝置上評估局面；Maia3 依指定棋力預測人類的�
 直接在棋盤走棋，或匯入 PGN。整理主線與分支，加入註解、箭頭和標記。
 在 Explorer 查看 Masters、Players 的對局資料與引擎候選，從目前局面產生延伸路線。
 Coverage 會找出缺少的回應；先預覽，再選擇要加入的準備。
+分支選擇浮在走法樹上方；刪除走法會立即更新畫面，底部的小型 Undo 可立即還原整個分支。
 
 ### 練熟自己的回應
 
 FSRS 依作答紀錄安排複習。Due queue 集中待練走法，Rehearse 逐線演練，
 Practice 則能與 Maia、Lichess Explorer 或自己的棋譜對弈。
 需要時使用提示、重練錯題，或開啟限時 Blitz 訓練。
+Due queue 依棋譜順序連續練習，相鄰路線保留共用的開局；作答後立即推進，進度在背景儲存。
 
 ### 檢查實戰偏離
 
@@ -58,6 +60,8 @@ Deep scan 會用引擎尋找對局中的失誤與反駁。
 <summary>訓練與手機畫面</summary>
 
 ![訓練首頁：待練佇列、路線演練與練習對局](assets/train-desktop.png)
+
+![連續訓練與目前路線的走法進度](assets/train-session.png)
 
 <img src="assets/repertoire-mobile.png" alt="手機寬度下的棋譜工作區" width="300">
 

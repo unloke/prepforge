@@ -26,6 +26,7 @@
 | [Scout ranking](scout-production-ranking.md) | Production selection and experimental runtime boundaries |
 | [Training ownership](compare-identity-boundary.md) | Personal training evidence and repertoire identity |
 | [Backend consistency](backend-consistency.md) | Analysis snapshots, training transactions and sync versions |
+| [Training flow and I/O](training-flow.md) | Continuous practice, deletion feedback and measured SQL work |
 | [Persistence review](async-persistence-review.md) | Async saves, recovery storage and measured costs |
 | [Persistence follow-up](async-persistence-followup-results.md) | Follow-up validation and IndexedDB recovery |
 

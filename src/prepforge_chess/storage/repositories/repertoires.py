@@ -342,7 +342,9 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             )
         return self._repertoire_from_rows(rep_row, node_rows, evals)
 
-    def list_repertoires(self, owner_user_id: Optional[str] = None) -> List[Repertoire]:
+    def list_repertoires(
+        self, owner_user_id: Optional[str] = None, *, repertoire_ids: Optional[List[str]] = None,
+    ) -> List[Repertoire]:
         """Full repertoires (optionally owner-scoped), newest first.
 
         Batched read: one statement for the repertoire rows, one for every opening
@@ -358,6 +360,10 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         stmt = select(t.repertoires).order_by(t.repertoires.c.updated_at.desc())
         if owner_user_id is not None:
             stmt = stmt.where(t.repertoires.c.owner_user_id == owner_user_id)
+        if repertoire_ids is not None:
+            if not repertoire_ids:
+                return []
+            stmt = stmt.where(t.repertoires.c.id.in_(repertoire_ids))
         with self.engine.connect() as conn:
             rep_rows = conn.execute(stmt).mappings().all()
             if not rep_rows:

@@ -140,8 +140,8 @@
   --arrow-user: rgba(47, 91, 211, 0.78);
   --arrow-engine: rgba(21, 120, 27, 0.8); /* Lichess's green brush */
   --arrow-better: rgba(176, 62, 196, 0.8);
-  /* Repertoire line options: neutral slate, drawn as a dashed outline. */
-  --arrow-line: rgba(52, 64, 78, 0.9);
+  /* Repertoire line options: amber with a contrasting dark rim. */
+  --arrow-line: rgba(214, 143, 20, 0.92);
   --arrow-rim: rgba(255, 255, 255, 0.9);
 
   /* Board coordinate labels. */
@@ -316,7 +316,7 @@
   --mark-missed: rgba(160, 135, 230, 0.48);
   --arrow-user: rgba(120, 152, 245, 0.82);
   --arrow-better: rgba(222, 132, 240, 0.85);
-  --arrow-line: rgba(206, 214, 224, 0.9);
+  --arrow-line: rgba(255, 198, 65, 0.94);
   --arrow-rim: rgba(14, 17, 22, 0.85);
 
   /* Elevation */
@@ -2447,27 +2447,25 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   fill: var(--arrow-better);
 }
 
-/* Repertoire line options, under explicit arrows. A different shape from the solid
-   user and engine arrows (a dashed outline with a faint fill), so the three sources
-   stay apart even where they overlap. Idle options share one group (overlaps don't
-   darken); the picked option is drawn stronger on top. */
+/* Prepared continuations: amber with a dark rim reads on either square.
+   The selected continuation is solid and paints above the other options. */
 .annot-branches {
-  opacity: 0.6;
+  opacity: 0.85;
 }
 
 .annot-branch {
   fill: var(--arrow-line);
-  fill-opacity: 0.12;
-  stroke: var(--arrow-line);
-  stroke-width: 0.55;
-  stroke-dasharray: 1.4 1;
+  fill-opacity: 0.55;
+  stroke: rgba(35, 29, 16, 0.85);
+  stroke-width: 0.6;
+  paint-order: stroke fill;
   stroke-linejoin: round;
   filter: none;
 }
 
 .annot-branch.is-pick {
-  fill-opacity: 0.28;
-  stroke-width: 0.75;
+  fill-opacity: 1;
+  stroke-width: 1;
 }
 
 .annot-branch.is-echo {
@@ -2475,8 +2473,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   stroke-width: 0.7;
 }
 
-/* The engine's move is also a line option: the engine's green fill inside the
-   option's dashed outline. */
+/* The engine's move keeps its green fill and the continuation's rim. */
 .annot-branch.is-engine {
   fill: var(--arrow-engine);
   fill-opacity: 0.55;
@@ -3009,7 +3006,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 /* With no repertoire open the panel's bands give way to the empty state. The
    class is set by paintBuildEmpty() (app.js), not a `:has()` rule: on an
    ancestor of the tree it made every tree rebuild re-style the page. */
-#build-sidebar.is-empty .panel-body > :is(.forkbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
+#build-sidebar.is-empty .panel-body > :is(.build-tree-region, .dock-resizer, .dock) { display: none; }
 /* The one line a new user reads here is running text, so it reads at the size
    the Library's empty state uses, not at the panel's dense 13px. */
 #view-build .empty-state.big p { color: var(--text); font-size: 16px; }
@@ -3149,16 +3146,53 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   .mtree-move .mtree-more:hover { background: var(--surface-3); }
 }
 
-.forkbar {
+.build-tree-region {
+  position: relative;
   display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 90px;
+  min-width: 0;
+}
+.build-tree-region > .tree-wrap { flex: 1 1 auto; min-height: 0; }
+
+.forkbar {
+  position: absolute;
+  z-index: 8;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 0 var(--build-pad, 12px) 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-pop, 0 8px 24px rgb(0 0 0 / 0.16));
   background: var(--panel);
   min-width: 0;
 }
 .forkbar .fork-chips { flex-wrap: wrap; }
 .forkbar .fork-more { white-space: nowrap; }
+.fork-close {
+  flex: none;
+  align-self: center;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+.fork-close:hover { background: var(--surface-3); color: var(--text); }
+.fork-close:focus-visible { outline: 2px solid var(--accent); }
+@media (pointer: coarse) { .fork-close { width: 40px; height: 40px; } }
 .fork-head {
   display: flex;
   align-items: center;
@@ -4186,15 +4220,23 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .explorer-row.is-thin .explorer-bar,
 .explorer-row.is-thin .explorer-games { opacity: 0.55; }
 
-.inline-undo {
+.undo-toast {
+  position: fixed;
+  z-index: 90;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 4px 10px;
-  padding: 6px 8px 6px 10px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  margin: 0;
+  padding: 6px 8px 6px 14px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
-  background: var(--panel-soft);
+  background: var(--panel);
+  box-shadow: var(--shadow-pop, 0 8px 24px rgb(0 0 0 / 0.16));
   font-size: var(--fs-s);
   color: var(--text);
 }
@@ -4221,7 +4263,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* The one loading pulse: a flat bar breathing, never a shimmer. */
 @keyframes skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 
-.inline-undo-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.undo-toast-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.undo-toast-text b { font-weight: 600; }
+.undo-toast .btn { flex: none; color: var(--accent-strong); }
+@media (max-width: 640px) {
+  .undo-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
 
 /* A row was just played: these rows describe the previous position until the
    next position's stats arrive, so they stop reading as clickable. */

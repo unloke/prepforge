@@ -150,6 +150,8 @@ class SmartTrainingService:
         # come back within one request.
         self._rep_cache: Dict[str, Optional[Repertoire]] = {}
         self._index_cache: Dict[str, Dict[str, OpeningNode]] = {}
+        self._progress_cache: Dict[str, Dict[str, TrainingProgress]] = {}
+        self._active_reps: Optional[List[Repertoire]] = None
 
     # ------------------------------------------------------------- repertoire cache
 
@@ -190,6 +192,7 @@ class SmartTrainingService:
         build a new queue. Picked targets always build a fresh ``targets``
         session of their own; ``fresh`` forces a rebuild."""
         self.resumed = False
+        self._progress_cache.clear()
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         scope = SCOPE_TARGETS if target_node_ids else SCOPE_REPERTOIRE
         existing = self._latest(repertoire_id, scope)
@@ -208,20 +211,20 @@ class SmartTrainingService:
         loads each tree through the per-request cache, so the second call in a
         request (the mixed summary) reuses the trees the first call loaded.
         ``shared_ids`` names the shared ones (their health badge is not ours)."""
-        reps: List[Repertoire] = []
-        self.shared_ids = set()
-        for meta in self.repository.list_repertoire_metas(owner_user_id=owner_user_id):
-            if not meta.get("is_active", True):
-                continue
-            rep = self.repertoire(meta["id"])
-            if rep is not None:
-                reps.append(rep)
-        for meta in self.repository.list_shared_with(owner_user_id):
-            rep = self.repertoire(meta["id"])
-            if rep is not None:
-                reps.append(rep)
-                self.shared_ids.add(rep.id)
-        return reps
+        if self._active_reps is not None:
+            return self._active_reps
+        ids = [meta["id"] for meta in self.repository.list_repertoire_metas(
+            owner_user_id=owner_user_id) if meta.get("is_active", True)]
+        self.shared_ids = {meta["id"] for meta in self.repository.list_shared_with(owner_user_id)}
+        ids.extend(sorted(self.shared_ids - set(ids)))
+        missing = [rep_id for rep_id in ids if rep_id not in self._rep_cache]
+        for rep in self.repository.list_repertoires(repertoire_ids=missing):
+            self._rep_cache[rep.id] = rep
+            self._index_cache[rep.id] = index_nodes(rep.root_node)
+        self._active_reps = [self._rep_cache[rep_id] for rep_id in ids
+                             if self._rep_cache.get(rep_id) is not None]
+        self._load_progress([rep.id for rep in self._active_reps])
+        return self._active_reps
 
     def _anchor(self, reps: List[Repertoire]) -> Repertoire:
         """The mixed session's FK anchor: the smallest own id, so a new share
@@ -244,6 +247,7 @@ class SmartTrainingService:
         active repertoire with the smallest id; its ``scope`` is ``all``, so it
         never resumes (or is resumed as) that repertoire's own session."""
         self.resumed = False
+        self._progress_cache.clear()
         reps = self.active_repertoires(owner_user_id)
         if not reps:
             raise ValueError("no active repertoires to train")
@@ -299,13 +303,19 @@ class SmartTrainingService:
         self.repository.restart_training_session(session, self.owner_user_id)
         return session
 
-    def _progress_by_id(self, repertoire_id: str) -> Dict[str, TrainingProgress]:
-        return {
-            p.node_id: p
-            for p in self.repository.list_training_progress(
-                repertoire_id, owner_user_id=self._owner_or_raise()
-            )
-        }
+    def progress_by_id(self, repertoire_id: str) -> Dict[str, TrainingProgress]:
+        self._load_progress([repertoire_id])
+        return self._progress_cache[repertoire_id]
+
+    def _load_progress(self, repertoire_ids: List[str]) -> None:
+        missing = [rep_id for rep_id in repertoire_ids if rep_id not in self._progress_cache]
+        if not missing:
+            return
+        grouped = self.repository.list_training_progress_for_repertoires(
+            missing, owner_user_id=self._owner_or_raise(),
+        )
+        for rep_id in missing:
+            self._progress_cache[rep_id] = {p.node_id: p for p in grouped.get(rep_id, [])}
 
     def _plan_single(
         self,
@@ -317,7 +327,7 @@ class SmartTrainingService:
         return build_session_plan(
             repertoire.root_node,
             repertoire.color,
-            self._progress_by_id(repertoire.id),
+            self.progress_by_id(repertoire.id),
             session_size=session_size if session_size is not None else DEFAULT_SESSION_SIZE,
             new_cap=new_cap if new_cap is not None else DEFAULT_NEW_CAP,
             target_node_ids=target_node_ids,
@@ -334,6 +344,7 @@ class SmartTrainingService:
         # A repertoire that cannot fill its share leaves budget behind; a second
         # pass hands it to the ones that filled theirs, so the order of
         # repertoires never decides how long the session is.
+        self._load_progress([rep.id for rep in reps])
         remaining_size = max(0, session_size if session_size is not None else DEFAULT_SESSION_SIZE)
         remaining_new = max(0, new_cap if new_cap is not None else DEFAULT_NEW_CAP)
         plans: List[tuple[Repertoire, SessionPlan, int, int]] = []
@@ -447,8 +458,9 @@ class SmartTrainingService:
         if rep_id == session.repertoire_id:
             rep = self.repertoire(rep_id, conn=conn)
         else:
-            meta = self.repository.repertoire_meta(rep_id, conn=conn)
-            if meta is not None and (
+            accessible = self._active_reps is not None and any(rep.id == rep_id for rep in self._active_reps)
+            meta = None if accessible else self.repository.repertoire_meta(rep_id, conn=conn)
+            if accessible or meta is not None and (
                 meta["owner_user_id"] == session.owner_user_id
                 or self.repository.access_role(rep_id, session.owner_user_id)[1] is not None
             ):
@@ -631,7 +643,8 @@ class SmartTrainingService:
                         # How the position arose: "1.e4 c6 2.d4 d5 …" up to this move.
                         "line": _numbered_line(path[:path_pos]),
                         "run_in": [
-                            {"uci": p.move.uci, "san": p.move.san} for p in run_in
+                            {"uci": p.move.uci, "san": p.move.san,
+                             "fen_after": p.move.fen_after} for p in run_in
                         ],
                         # Other repertoire moves here: played, they are not misses.
                         "alternatives": [
@@ -714,26 +727,14 @@ class SmartTrainingService:
         if queue is not None and len(queue) > MAX_SYNC_QUEUE:
             raise ValueError("queue too long ({0} > {1})".format(len(queue), MAX_SYNC_QUEUE))
         session = self._load_session_or_raise(session_id)
-        repertoire = self._load_repertoire_or_raise(session.repertoire_id)
         session_owner = owner_user_id
-        cache: Dict[str, Optional[Repertoire]] = {repertoire.id: repertoire}
-        rep_of_node: Dict[str, str] = {}
-
-        def _index(rep: Repertoire) -> None:
-            stack = [rep.root_node]
-            while stack:
-                node = stack.pop()
-                rep_of_node.setdefault(node.id, rep.id)
-                stack.extend(node.children)
-
-        _index(repertoire)
+        repertoire_ids = {session.repertoire_id}
         for raw in session.line_order:
             card = decode_card(raw)
-            if card is None or card.repertoire_id in cache:
+            if card is None or card.repertoire_id in repertoire_ids:
                 continue
-            card_rep = self._card_repertoire(session, card, cache)
-            if card_rep is not None:
-                _index(card_rep)
+            if self.repository.access_role(card.repertoire_id, session.owner_user_id)[1] is not None:
+                repertoire_ids.add(card.repertoire_id)
 
         from prepforge_chess.storage import sa_tables as _t
         from sqlalchemy import select as _select
@@ -745,6 +746,18 @@ class SmartTrainingService:
             # Receipts merge independently; an obsolete client must never
             # replace the current queue/position, even with new attempt UUIDs.
             state_applied = state_version is not None and state_version == session.state_version
+            # Sync needs live node identities, not hydrated chess trees/evaluations.
+            rep_of_node = dict(conn.execute(_select(
+                _t.opening_nodes.c.id, _t.opening_nodes.c.repertoire_id,
+            ).where(_t.opening_nodes.c.repertoire_id.in_(repertoire_ids),
+                    _t.opening_nodes.c.id.in_([item.get("node_id") for item in attempts]))).all()) if attempts else {}
+            receipts = {row.attempt_uuid: (row.node_id, row.correct) for row in conn.execute(
+                _select(_t.train_attempt_receipts.c.attempt_uuid,
+                        _t.train_attempt_receipts.c.node_id, _t.train_attempt_receipts.c.correct)
+                .where(_t.train_attempt_receipts.c.session_id == session_id,
+                       _t.train_attempt_receipts.c.attempt_uuid.in_(
+                           [item["attempt_uuid"] for item in attempts]))
+            )} if attempts else {}
             written = 0
             for item in attempts:
                 node_id = item.get("node_id")
@@ -754,15 +767,7 @@ class SmartTrainingService:
                 rep_id = rep_of_node.get(node_id)
                 if rep_id is None:
                     continue
-                stored_row = conn.execute(
-                    _select(
-                        _t.train_attempt_receipts.c.node_id,
-                        _t.train_attempt_receipts.c.correct,
-                    ).where(
-                        _t.train_attempt_receipts.c.session_id == session_id,
-                        _t.train_attempt_receipts.c.attempt_uuid == attempt_uuid,
-                    )
-                ).first()
+                stored_row = receipts.get(attempt_uuid)
                 if stored_row is not None:
                     if stored_row[0] != node_id or bool(stored_row[1]) != correct:
                         raise ValueError(
@@ -791,6 +796,7 @@ class SmartTrainingService:
                             )
                         )
                     continue
+                receipts[attempt_uuid] = (node_id, correct)
                 # Read-modify-write the progress row INSIDE the claimed
                 # transaction: lock it and compute from committed state, so a
                 # concurrent attempt on the same node cannot be lost. (Reading it
@@ -802,15 +808,10 @@ class SmartTrainingService:
                     node_id=node_id,
                     owner_user_id=session_owner,
                 )
-                # The session row gets the same treatment: reread it locked
-                # inside this transaction and merge onto it, so a concurrent
-                # sync's session updates (mistakes, mastered nodes, position)
-                # survive instead of meeting a pre-transaction snapshot.
-                locked_session = self.repository.lock_training_session(
-                    conn, session_id=session_id
-                )
+                # The session lock is held for this entire batch. Fold every
+                # attempt into that locked snapshot, then write it once.
                 next_session, progress = record_attempt(
-                    session=locked_session if locked_session is not None else session,
+                    session=session,
                     progress=stored,
                     node_id=node_id,
                     correct=correct,
@@ -823,7 +824,6 @@ class SmartTrainingService:
                     conn, owner_user_id=session_owner, node_id=node_id,
                     rating=rating_for(correct, hinted=hinted), reviewed_at=progress.last_reviewed_at,
                 )
-                self.repository.write_training_session(conn, next_session)
                 session = next_session
                 written += 1
 
@@ -832,20 +832,13 @@ class SmartTrainingService:
                     # Only well-formed encoded cards land; a malformed entry is dropped
                     # rather than poisoning the stored session.
                     cleaned = [raw for raw in queue if decode_card(raw) is not None]
-                # Queue/position are client-directed fields, but they are applied on
-                # a locked reread of the row so a concurrent sync's attempt updates
-                # are not clobbered. (With no view fields to send, the attempt
-                # transactions above already persisted the session row — rewriting
-                # it here from the in-memory chain would only widen the race.)
-                fresh = self.repository.lock_training_session(conn, session_id=session_id)
-                if fresh is None:
-                    fresh = session
                 if queue is not None:
-                    fresh = replace(fresh, line_order=cleaned)
+                    session = replace(session, line_order=cleaned)
                 if card_index is not None:
-                    clamped = max(0, min(int(card_index), len(fresh.line_order)))
-                    fresh = replace(fresh, current_index=clamped, current_node_id=None)
-                session = replace(fresh, updated_at=_utc_now())
+                    clamped = max(0, min(int(card_index), len(session.line_order)))
+                    session = replace(session, current_index=clamped, current_node_id=None)
+                session = replace(session, updated_at=_utc_now())
+            if written or state_applied and (queue is not None or card_index is not None):
                 self.repository.write_training_session(conn, session)
             self.sync_state_version = session.state_version
             # A lost response may retry an already committed state. Acknowledge

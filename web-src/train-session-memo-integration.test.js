@@ -81,21 +81,21 @@ describe("Smart memo integration at Start", () => {
     expect(h.present).toHaveBeenCalledWith({ cardIndex: 1, targetIndex: 1 }, { attempt: 2 });
     expect(h.appState.smart.timeouts).toBe(1);
   });
-  it("names each setup step before it waits", async () => {
+  it("prepares independent saves together and starts only after both finish", async () => {
     const h = harness();
-    await h.start();
-    const subtitles = h.deps.setTrainBanner.mock.calls.map((call) => call[2]);
-    // No subtitle restates the title: the server step is "Choosing the cards…",
-    // not "Building the queue on the server…" under "Building your queue…".
-    const titles = h.deps.setTrainBanner.mock.calls.map((call) => call[1]);
-    for (let i = 0; i < titles.length; i += 1) expect(subtitles[i]).not.toBe(titles[i]);
-    expect(subtitles).toEqual(expect.arrayContaining([
-      "Saving repertoire edits…",
-      "Syncing your last session…",
-      "Choosing the cards…",
-      "Loading session tools…",
-      "Opening your first card…",
-    ]));
+    const build = deferred(), train = deferred();
+    h.deps.hardFlushBuild = vi.fn(() => build.promise);
+    h.deps.flushTrainSync = vi.fn(() => train.promise);
+    const starting = compile("async function startSmartTraining(", h.deps)();
+    expect(h.deps.flushTrainSync).toHaveBeenCalledOnce();
+    expect(h.deps.postJson).not.toHaveBeenCalled();
+    build.resolve(true);
+    await Promise.resolve();
+    expect(h.deps.postJson).not.toHaveBeenCalled();
+    train.resolve(true);
+    await starting;
+    expect(h.deps.postJson).toHaveBeenCalledOnce();
+    expect(h.deps.setTrainBanner.mock.calls).toEqual([["runin", "Preparing session…", ""]]);
   });
   it("posts the repertoire Start was given, and keeps it as the Train link's repertoire", async () => {
     const h = harness({ mixed: false, repertoire_id: "r2" });

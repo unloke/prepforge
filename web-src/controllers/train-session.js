@@ -14,6 +14,7 @@ import { createTrainRecovery } from "../train-recovery.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { playBookName, playTrailRows, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
 import { isNothingToTrainError } from "../train-start.js";
+import { planTrainRunIn } from "../train-flow.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
@@ -1230,31 +1231,25 @@ async function startSmartTraining(options = {}) {
   };
   setTrainBanner(
     "runin",
-    fresh ? "Building a new queue…" : "Building your queue…",
-    "Saving repertoire edits…",
+    "Preparing session…",
+    "",
   );
   // Train must see the latest tree: drain unsynced Build edits (adds + deletes)
   // before the server builds the queue, else a just-added line wouldn't be in
   // it and a just-deleted one would.
-  try {
-    await hardFlushBuild();
-  } catch (_) {
-    if (!isCurrent()) return;
+  const [buildSaved, trainSaved, resumeLoaded, memoLoaded] = await Promise.allSettled([
+    hardFlushBuild(), flushTrainSync(), loadTrainResume(),
+    trainSessionMemo || import("../train-session-memo.js"),
+  ]);
+  if (!isCurrent()) return;
+  if (buildSaved.status === "rejected" || buildSaved.value === false) {
     failed("Couldn't save your repertoire edits. Try again in a moment.");
     return;
   }
-  if (!isCurrent()) return;
-  setTrainBanner(
-    "runin",
-    fresh ? "Building a new queue…" : "Building your queue…",
-    "Syncing your last session…",
-  );
   // Land any leftover graded attempts (an abandoned previous session) before
   // the new queue is scheduled from SR state. Strict: starting anyway would
   // schedule the queue off stale SR state, so block until the sync lands.
-  const trainSynced = await flushTrainSync().catch(() => false);
-  if (!isCurrent()) return;
-  if (!trainSynced) {
+  if (trainSaved.status === "rejected" || !trainSaved.value) {
     failed("Couldn't sync your last session. Check your connection and try again.");
     return;
   }
@@ -1262,13 +1257,9 @@ async function startSmartTraining(options = {}) {
   let trainResume;
   const targets = options.targetNodeIds || [];
   try {
-    trainResume = await loadTrainResume();
-    if (!isCurrent()) return;
-    setTrainBanner(
-      "runin",
-      fresh ? "Building a new queue…" : "Building your queue…",
-      "Choosing the cards…",
-    );
+    if (resumeLoaded.status === "rejected") throw resumeLoaded.reason;
+    trainResume = resumeLoaded.value;
+    if (memoLoaded.status === "fulfilled") trainSessionMemo = memoLoaded.value;
     // The scope is explicit: the entry's repertoire, else the Due row's scope.
     const repertoireId = options.repertoireId || appState.trainScope?.repertoireId || null;
     payload = await postJson("/api/train/smart/start", {
@@ -1292,15 +1283,6 @@ async function startSmartTraining(options = {}) {
   // them, so it names none. Keeping the anchor here would write ?rep=<anchor>
   // into a Train link that is not about that repertoire.
   appState.trainingRepertoireId = payload.mixed ? null : payload.repertoire_id;
-  setTrainBanner(
-    "runin",
-    fresh ? "Building a new queue…" : "Building your queue…",
-    "Loading session tools…",
-  );
-  try {
-    trainSessionMemo ||= await import("../train-session-memo.js");
-  } catch (_) { /* recovery is optional if the chunk cannot load */ }
-  if (!isCurrent()) return;
   const mapped = trainResume.mapTrainUiSession(payload, { fresh });
   // A resumed session without a memo must not inherit unrelated counters.
   trainStatsReset();
@@ -1317,11 +1299,6 @@ async function startSmartTraining(options = {}) {
     failed("Nothing to train here. Add lines in Repertoire.");
     return;
   }
-  setTrainBanner(
-    "runin",
-    fresh ? "Building a new queue…" : "Building your queue…",
-    "Opening your first card…",
-  );
   appState.smart = {
     sessionId: mapped.sessionId,
     generation: mapped.generation,
@@ -1443,27 +1420,20 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
   if (board.fen !== prompt.fen_before) {
     appState.trainBusy = true;
     syncTrainSessionControls();
-    const runIn = prompt.run_in || [];
+    const plan = planTrainRunIn(prompt, board.fen, smart.contextPath);
+    smart.contextPath = plan.path;
+    const runIn = plan.moves;
     if (runIn.length) {
-      let fen = prompt.start_fen;
-      board.setPosition({ fen, legalMoves: [], lastMove: null });
+      board.setPosition({ fen: plan.startFen, legalMoves: [], lastMove: null });
       const cue = runIn[runIn.length - 1];
       // The board label already names the repertoire and side.
-      setTrainBanner("runin", "Finding the position", cue && cue.san ? `Watch ${cue.san}` : "Watch the last move");
-      await sleep(480);
+      setTrainBanner("runin", prompt.target_index ? "Continue the line" : "Next line", cue?.san || "");
       for (const mv of runIn) {
         if (appState.smart !== smart || smart.prompt !== prompt) return; // superseded
-        try {
-          const after = await boardAfterMove(fen, mv.uci);
-          fen = after.board.fen;
-          board.setPosition({ fen, legalMoves: [], lastMove: mv.uci });
-          cueUci = mv.uci;
-        } catch (_) {
-          break; // jump-cut to fen_before below
-        }
-        await sleep(430);
+        board.setPosition({ fen: mv.fen_after, legalMoves: [], lastMove: mv.uci });
+        cueUci = mv.uci;
+        await sleep(220);
       }
-      await sleep(160);
     }
     if (appState.smart !== smart || smart.prompt !== prompt) return;
     appState.trainBusy = false;
@@ -1473,6 +1443,7 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     legalMoves: prompt.legal_moves || [],
     lastMove: cueUci,
   });
+  if (!smart.contextPath || prompt.target_index === 0) smart.contextPath = prompt.run_in || [];
   const side = sideToMoveFromFen(prompt.fen_before);
   updateTrainTurnBadge(side);
   if (prompt.kind === "new") {
@@ -1481,7 +1452,7 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     setTrainBanner(
       "teach",
       `New move: ${prompt.expected_san}`,
-      teachWhy(prompt, "Watch the arrow, then play the move.")
+      teachWhy(prompt, "")
     );
     board.setEngineArrow(prompt.expected_uci);
     clearBlitzTimer(); // learning is never against the clock
@@ -1529,7 +1500,9 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   const attempt = smart.attempt;
   // Land the dragged move immediately; a blitz timeout has no real move to show.
   // The graded cue below covers the landing, so it stays quiet.
+  appState.trainBusy = true;
   if (!timedOut) await optimisticBoardMove(boards.train, prompt.fen_before, playedUci, false);
+  if (appState.smart !== smart || smart.prompt !== prompt) return;
   const other = !timedOut && (prompt.target?.alternatives || []).find((alt) => alt.uci === playedUci);
   if (other) {
     return answerAlternative({
@@ -1674,28 +1647,24 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     prompt.kind === "new" ? "Learned" : attempt > 1 ? "Got it this time" : hinted ? "Correct, with a hint" : "Correct";
   setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
   if (target.reply && target.reply.uci && target.reply.fen_after) {
-    await sleep(520);
+    await sleep(240);
     if (appState.smart !== smart) return; // mode switched mid-animation
     boards.train.setPosition({
       fen: target.reply.fen_after,
       legalMoves: [],
       lastMove: target.reply.uci,
     });
-    setTrainBanner("move", "Opponent replies", target.reply.san || "");
-    await sleep(440);
+    await sleep(220);
   } else {
-    await sleep(480);
+    await sleep(300);
   }
   if (appState.smart !== smart) return;
   // Advance the local session: next target inside the card, else next card.
   const card = smart.queue[smart.cardIndex];
   const lineDone = !(card && smart.targetIndex + 1 < card.targets.length);
-  // A finished line holds its final position for a beat before the next card swaps the
-  // board, so it can be taken in (Blitz keeps its pace).
-  if (lineDone && !smart.blitz) {
-    await sleep(1000);
-    if (appState.smart !== smart) return;
-  }
+  smart.contextPath = [...(smart.contextPath || []),
+    { uci: playedUci, fen_after: target.fen_after },
+    ...(target.reply ? [target.reply] : [])];
   if (!lineDone) {
     smart.targetIndex += 1;
   } else {
