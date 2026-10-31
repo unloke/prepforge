@@ -45,7 +45,7 @@
     font-weight: 500;
   }
   .tabbar .tabbar-item:hover { background: none; }
-  .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 650; }
+  .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 500; }
   .tabbar .tabbar-item::before {
     content: "";
     position: absolute;

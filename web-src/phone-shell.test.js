@@ -19,7 +19,7 @@ function rule(selector) {
 it("sets the phone page title at the app-title size, not a display size", () => {
   const title = rule(".page-head h1");
   expect(title).toMatch(/font-size:\s*20px/);
-  expect(title).toMatch(/font-weight:\s*650/);
+  expect(title).toMatch(/font-weight:\s*600/);
 });
 
 it("draws the page header's action at 36px with a 44px hit area, in ink", () => {

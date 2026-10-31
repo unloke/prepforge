@@ -130,7 +130,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .team-role-badge {
@@ -142,7 +142,7 @@
 .team-role-badge.r-owner { background: var(--warn-soft); color: var(--warn-text); }
 .team-role-badge.r-admin { background: var(--accent-soft); color: var(--accent); }
 /* A repertoire role ("Can edit") is a sentence-case chip, not a team role. */
-.team-role-badge.share-role-badge { font-weight: 600; text-transform: none; }
+.team-role-badge.share-role-badge { font-weight: 500; text-transform: none; }
 
 /* ---- Team detail -------------------------------------------------------- */
 
@@ -171,7 +171,7 @@
   color: var(--muted);
   font: inherit;
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   min-height: 36px;
   cursor: pointer;
 }
@@ -216,7 +216,7 @@
   gap: 2px 6px;
   min-width: 0;
 }
-.mem-id .name { font-weight: 700; overflow-wrap: anywhere; }
+.mem-id .name { font-weight: 600; overflow-wrap: anywhere; }
 /* A shared repertoire is a name over where it came from, each one line: in
    the 300px shares column the "via <team>" ran to three lines beside the name. */
 .shared-rep-row .mem-id { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 1px; }
@@ -314,7 +314,7 @@ select.team-role-select {
   background: none;
   color: var(--accent-strong);
   font: inherit;
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
 }
 .invite-modal .invite-done:hover { background: var(--surface-3); }
@@ -393,7 +393,7 @@ select.team-role-select {
     border-width: 2px 2px 0 0;
     transform: rotate(45deg);
   }
-  #view-teams .team-row .name { font-size: 15px; font-weight: 650; }
+  #view-teams .team-row .name { font-size: 15px; font-weight: 500; }
   #view-teams :is(.team-row, .mem-row) .sub {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -408,7 +408,7 @@ select.team-role-select {
     white-space: nowrap;
     overflow-wrap: normal;
     font-size: 14px;
-    font-weight: 650;
+    font-weight: 500;
   }
   #view-teams .member-skeleton .skeleton-name { height: 12px; margin-block: 3.5px; }
   #view-teams .member-skeleton .skeleton-subline { height: 10px; margin-block: 3.5px; }
@@ -581,7 +581,7 @@ select.team-role-select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13.5px;
+  font-size: 13px;
 }
 @media (min-width: 1021px) {
   .teams > .team-detail,

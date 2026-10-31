@@ -46,7 +46,7 @@
 
 .share-link { display: grid; gap: 8px; padding-top: 4px; }
 .share-link-head { display: flex; align-items: center; gap: 10px; min-height: 32px; }
-.share-link-label { flex: 1; font-size: var(--fs-s); font-weight: 600; }
+.share-link-label { flex: 1; font-size: var(--fs-s); font-weight: 500; }
 .share-link-url { display: flex; gap: 6px; }
 .share-link-url input { flex: 1; color: var(--muted); }
 
