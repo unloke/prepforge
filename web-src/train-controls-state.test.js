@@ -80,7 +80,7 @@ describe("Home rows", () => {
     const { deps } = setup({ repertoireList: [], sharedRepertoireList: [] });
     await createTrainHome(deps).paintTrainHome();
     expect(doc.getElementById("start-train").dataset.action).toBe("library");
-    expect(doc.getElementById("start-rehearse").dataset.action).toBe("library");
+    expect(doc.getElementById("start-rehearse").hidden).toBe(true);
     expect(doc.getElementById("train-outlook").hidden).toBe(true);
   });
 

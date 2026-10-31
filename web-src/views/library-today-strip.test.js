@@ -26,7 +26,7 @@ function rule(selector) {
 
 it("the queue is the loudest line in the strip", () => {
   const queue = rule(".today-queue {");
-  expect(queue).toMatch(/font-size:\s*17px/);
+  expect(queue).toMatch(/font-size:\s*16px/);
   expect(queue).toMatch(/color:\s*var\(--text\)/);
   // The rest of the queue, the week's history and the lifetime counts are one
   // step quieter, and they are one size: 13px, never a second hierarchy.
@@ -34,9 +34,9 @@ it("the queue is the loudest line in the strip", () => {
 });
 
 it("the streak figure is a figure, not a sentence", () => {
-  // 26px, tabular so two visits do not shift the strip; the word beside it is
+  // 28px, tabular so two visits do not shift the strip; the word beside it is
   // the small size.
-  expect(rule(".today-count {")).toMatch(/font-size:\s*26px/);
+  expect(rule(".today-count {")).toMatch(/font-size:\s*28px/);
   expect(rule(".today-count {")).toMatch(/font-variant-numeric:\s*tabular-nums/);
   expect(rule(".today-unit {")).toMatch(/font-size:\s*var\(--fs-s\)/);
 });

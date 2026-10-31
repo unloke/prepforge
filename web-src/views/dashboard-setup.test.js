@@ -142,7 +142,7 @@ describe("dashboard setup checklist", () => {
     expect(String(steps.innerHTML)).not.toMatch(/<div class="step-text"><b>[^<]+<\/b><p>/);
     // The open repertoire step is where the lock is named.
     expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train"/);
-    expect(String(container.innerHTML)).toContain("No repertoires yet.");
+    expect(String(container.innerHTML)).toContain("No repertoires yet");
   });
 
   it("keeps Link Lichess on the card after the first repertoire exists", async () => {
@@ -280,23 +280,22 @@ describe("dashboard setup checklist", () => {
     expect(String(todayCard.innerHTML)).not.toContain("Learn new moves");
   });
 
-  it("first run: the Today primary action is New repertoire, not a Train that cannot start (round 2, symptom 2)", async () => {
+  it("first run: the Today strip offers no Train that cannot start; the empty Library carries New repertoire (round 2, symptom 2)", async () => {
     mockDashboard({ repertoires: 0, training_sessions: 0 });
     await view.loadDashboard();
     const today = String(todayCard.innerHTML);
     expect(today).toContain("No repertoire to train yet");
     expect(today).not.toContain("Queue is clear");
-    expect(today).toContain('data-lib-action="new"');
+    expect(today).not.toContain('data-lib-action="new"');
     expect(today).not.toContain("dashboard-train-now");
   });
 
   it("the Today primary action follows the repertoire count, not the training history", async () => {
     // The account trained before and has no repertoire now: Train can only
-    // answer "nothing to train", so the strip offers the first repertoire.
+    // answer "nothing to train", so the strip offers no Train.
     mockDashboard({ repertoires: 0, training_sessions: 8 });
     await view.loadDashboard();
     const today = String(todayCard.innerHTML);
-    expect(today).toContain('data-lib-action="new"');
     expect(today).not.toContain("dashboard-train-now");
     expect(today).toContain("No repertoire to train yet");
     expect(today).not.toContain("Queue is clear");
@@ -398,7 +397,8 @@ describe("dashboard setup checklist", () => {
 
     api.mockResolvedValue({ repertoires: [] });
     await view.loadDashboardRepertoires();
-    expect(String(todayCard.innerHTML)).toContain("<b>0</b> repertoires");
+    // Nothing left to count: the line of zeros goes.
+    expect(String(todayCard.innerHTML)).not.toContain("dashboard-counts");
   });
 
   it("uses singular labels when a lifetime count is one", async () => {

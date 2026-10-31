@@ -48,14 +48,14 @@ describe("settings motion", () => {
   });
 
   it("takes the shell's one page-title rule, like every other view", () => {
-    // The header is one rule for all views (26px desktop, 22px phone); Settings
+    // The header is one rule for all views (28px desktop, 20px phone); Settings
     // used to carry a 32/800 copy of its own, which made its header taller than
     // Library's and Games'.
     const desktop = parseFloat(
       /\.workspace \.page-head h1 \{[^}]*font-size:\s*([\d.]+)px/.exec(css)[1],
     );
     const phoneSize = parseFloat(/\.page-head h1 \{[^}]*font-size:\s*([\d.]+)px/.exec(phone)[1]);
-    expect(desktop).toBe(26);
+    expect(desktop).toBe(28);
     expect(settings).not.toMatch(/#view-settings \.page-head h1/);
     expect(phoneSize).toBeLessThanOrEqual(22);
   });

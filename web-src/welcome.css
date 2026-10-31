@@ -7,7 +7,7 @@
   padding: 10px 8px 0 16px;
 }
 .welcome-count { color: var(--label); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
-.welcome .modal-title { padding-top: 2px; font-size: 18px; }
+.welcome .modal-title { padding-top: 2px; font-size: 20px; }
 
 .welcome-goals { gap: 6px; padding-bottom: 16px; }
 .welcome-goal {
@@ -22,7 +22,7 @@
   background: var(--panel);
   color: var(--text);
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
@@ -54,9 +54,9 @@
 .welcome-engine:has(input:checked) { border-color: var(--accent-line); background: var(--accent-soft); }
 .welcome-engine input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 .welcome-engine-text { display: grid; gap: 2px; min-width: 0; }
-.welcome-engine-text b { font-weight: 600; }
+.welcome-engine-text b { font-weight: 500; }
 .welcome-engine-text span { color: var(--muted); font-size: var(--fs-s); line-height: 1.35; }
-.welcome-size { color: var(--muted); font-size: var(--fs-s); font-weight: 600; font-variant-numeric: tabular-nums; }
+.welcome-size { color: var(--muted); font-size: var(--fs-s); font-weight: 500; font-variant-numeric: tabular-nums; }
 .welcome-wifi { margin: 0; color: var(--muted); font-size: var(--fs-s); line-height: 1.4; }
 
 @media (max-width: 760px) {

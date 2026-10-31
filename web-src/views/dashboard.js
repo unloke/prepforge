@@ -404,6 +404,8 @@ export function createDashboardView({
       metric(repCount ?? (payload.repertoires || 0), "repertoire"),
       metric(payload.training_sessions || 0, "session"),
     ].map((m, i) => html`${i ? html` &middot; ` : ""}${m}`);
+    // Three zeros say nothing a new account does not already know.
+    const anyCount = (payload.games || 0) + (repCount ?? (payload.repertoires || 0)) + (payload.training_sessions || 0) > 0;
     const written = paint(card, html`
     <div class="today-streak" data-lit="${streak.trained_today ? "1" : "0"}"
          title="Calendar days with at least one graded move${streak.best > 1 ? `; best ${streak.best}` : ""}">
@@ -418,21 +420,18 @@ export function createDashboardView({
     </div>
     <div class="today-aside">
       ${recapHtml}
-      <p class="today-counts" data-testid="dashboard-counts"
-           title="Saved analyses, repertoires and training sessions">${countsHtml}</p>
+      ${anyCount ? html`<p class="today-counts" data-testid="dashboard-counts"
+           title="Saved analyses, repertoires and training sessions">${countsHtml}</p>` : ""}
     </div>
     ${firstRun
-      ? html`<button class="btn primary" data-lib-action="new" data-testid="today-primary">New repertoire</button>`
+      ? ""
       : html`<button class="btn primary" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>`}
   `);
     reveal(card);
     if (!written) return;
-    if (firstRun) {
-      // The strip is re-rendered on every load, so it binds its own action;
-      // a Train listener looked up by id would not exist.
-      card.querySelector("[data-lib-action]")?.addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire" }));
-      return;
-    }
+    // First run: the empty Library below carries New repertoire, so the strip
+    // has no button of its own.
+    if (firstRun) return;
     document.getElementById("dashboard-train-now").addEventListener("click", () => openTrain({ mode: "smart" }));
   }
 
@@ -508,7 +507,7 @@ export function createDashboardView({
       setListboxRole(container, false);
       paint(container, html`
         <div class="empty-state big">
-          <h3>No repertoires yet.</h3>
+          <h3>No repertoires yet</h3>
           <p>Create a repertoire, import a PGN, or build one from a game.</p>
           <div class="row gap">
             <button type="button" class="btn primary" data-lib-action="new">New repertoire</button>

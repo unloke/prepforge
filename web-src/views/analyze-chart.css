@@ -31,7 +31,7 @@
   cursor: pointer;
 }
 .pgn-action svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.pgn-open { color: var(--accent-strong); font-weight: 600; }
+.pgn-open { color: var(--accent-strong); font-weight: 500; }
 .pgn-action:hover { color: var(--text); }
 .pgn-action:hover span, .pgn-open:hover { text-decoration: underline; text-underline-offset: 3px; }
 
@@ -80,7 +80,7 @@
 #view-analyze .board-caption {
   color: var(--text);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* The last move's tint. The shared sheet paints it as a gradient over the
@@ -205,7 +205,7 @@
   background: var(--surface-3);
   color: var(--muted);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -263,7 +263,7 @@
   flex: none;
   color: var(--muted);
   font-size: var(--fs-xs);
-  font-weight: 650;
+  font-weight: 500;
 }
 .hp {
   flex: 0 1 auto;
@@ -283,7 +283,7 @@
   cursor: pointer;
 }
 .hp:hover { background: var(--line); }
-.hp b { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+.hp b { overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .hp-pct { color: var(--muted); }
 /* The move the player actually made sits a step darker than its neighbours. */
 .hp.is-played { background: var(--line); }
@@ -350,7 +350,7 @@
 }
 .cr-label > :not(.cr-text) { flex: none; }
 .cr-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.cr-label .rp-glyph { font-style: normal; font-weight: 800; }
+.cr-label .rp-glyph { font-style: normal; font-weight: 600; }
 .cr-count { color: var(--muted); font-variant-numeric: tabular-nums; }
 .cr-label.is-right .cr-text { color: var(--good-text); }
 .cr-label.is-wrong .cr-text { color: var(--warn-text); }
@@ -369,7 +369,7 @@
   color: var(--accent-text);
   font: inherit;
   font-size: var(--fs-xs);
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
 }
 .coach-bookaction:hover {
@@ -497,7 +497,7 @@
   color: var(--muted);
   font: inherit;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
@@ -535,7 +535,7 @@
   min-height: 24px;
   font-size: var(--fs-s);
 }
-.an-pane-head > b { font-weight: 700; }
+.an-pane-head > b { font-weight: 600; }
 /* The score sheet keeps its own cap (.moves-grid) and scrolls inside it: the
    panel is as tall as its column, so a long game never stretches it. */
 .an-panes > .moves-pane:not([hidden]) { flex: none; }
@@ -626,9 +626,8 @@
   min-width: 64px;
   color: var(--text);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 20px;
-  letter-spacing: -0.01em;
 }
 .eval-now:empty { display: none; }
 /* The previous position's number, held while the engine warms up on this one. */
@@ -689,7 +688,7 @@
 #analysis-engine-slot .engine-head-depth::after {
   content: attr(data-d);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 500;
 }
 #analysis-engine-slot .engine-head-depth:not([data-d])::after { content: ""; }
 /* Lines: a word before the stepper, so the count has a name. Only in the
@@ -723,7 +722,7 @@
   color: var(--muted);
   font: inherit;
   font-size: var(--fs-s);
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 .ev-engine::before {
@@ -766,8 +765,8 @@
   border: 0;
   background: none;
   color: var(--muted);
-  font-size: 11.5px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 500;
   text-align: right;
 }
 #analysis-engine-slot .engine-pv.is-top .engine-pv-eval { color: var(--text); }
@@ -950,7 +949,7 @@
   margin: 0;
   padding: 3px 8px;
   border-radius: 0;
-  font-weight: 550;
+  font-weight: 500;
   text-align: left;
 }
 .moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
@@ -977,7 +976,7 @@
 .mtree-glyph {
   font-style: normal;
   font-size: var(--fs-s);
-  font-weight: 800;
+  font-weight: 600;
 }
 /* The grade glyph takes its move's text-safe colour. It used to take the fill
    colour (--brilliant), which is a 4.25:1 mark for a dot or a bar but a 4:1
@@ -1065,19 +1064,19 @@
   overflow: hidden;
   color: var(--muted);
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .rp-summary .rp-name { color: var(--text); }
 .rp-acc {
   color: var(--text);
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 500;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
-.rp-summary .rp-acc { font-size: var(--fs-s); font-weight: 650; }
+.rp-summary .rp-acc { font-size: var(--fs-s); font-weight: 500; }
 
 /* Grades and phases: a column each, a row per side named by its disc. Equal
    columns, so the two tables line up as one. */
@@ -1097,7 +1096,7 @@
   text-align: center;
 }
 .rp-col-word, .rp-span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rp-glyph { font-style: normal; font-weight: 800; min-width: 1.4em; text-align: center; }
+.rp-glyph { font-style: normal; font-weight: 600; min-width: 1.4em; text-align: center; }
 .rp-n {
   height: 22px;
   padding: 0 4px;
@@ -1107,7 +1106,7 @@
   color: var(--text);
   font: inherit;
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 22px;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -1129,7 +1128,7 @@ button.rp-n.g-blunder { color: var(--danger); }
 button.rp-n.g-mistake { color: var(--warn-text); }
 
 .rp-sec { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0 8px; }
-.rp-h { margin: 0; color: var(--muted); font-size: var(--fs-s); font-weight: 600; }
+.rp-h { margin: 0; color: var(--muted); font-size: var(--fs-s); font-weight: 500; }
 
 /* Key moments, one line each: the move, its kind, the eval it swung and, at an
    error, the better move as a link. */
@@ -1155,7 +1154,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   cursor: pointer;
 }
 .km-go:hover { background: var(--surface-3); }
-.km-move { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; font-weight: 600; }
+.km-move { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; font-weight: 500; }
 .km-eval { color: var(--muted); font-size: var(--fs-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .km-best { flex: none; color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
 @media (max-width: 760px) {
@@ -1168,7 +1167,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
 .km.g-great .km-kind { color: var(--great-text); }
 .km.g-mistake .km-kind { color: var(--warn-text); }
 .km.g-blunder .km-kind { color: var(--danger); }
-.km-best .move-ref { color: var(--good-text); font-weight: 600; }
+.km-best .move-ref { color: var(--good-text); font-weight: 500; }
 
 /* A phase's head is its jump: the name and the moves it spans. */
 .rp-phase { border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--fs-xs); cursor: pointer; }
@@ -1177,9 +1176,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
 .rp-span { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .rp-opening { display: block; color: var(--muted); font-size: var(--fs-s); overflow-wrap: anywhere; }
-.rp-opening-name { margin-left: 6px; color: var(--text); font-weight: 600; }
+.rp-opening-name { margin-left: 6px; color: var(--text); font-weight: 500; }
 .rp-prep { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
-.rp-prep .move-ref { color: var(--text); font-weight: 600; }
+.rp-prep .move-ref { color: var(--text); font-weight: 500; }
 .rp-rep { color: var(--muted); }
 .rp-rep::before { content: "· "; }
 
@@ -1241,7 +1240,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   min-height: 28px; /* the row a pointer hits, not its 15px line */
   margin-bottom: 2px;
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   list-style: none;
 }
@@ -1323,7 +1322,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 700;
+  font-weight: 600;
 }
 .hi-meta {
   flex: none;
@@ -1511,7 +1510,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     color: var(--accent-text);
     font: inherit;
     font-size: var(--fs-s);
-    font-weight: 650;
+    font-weight: 500;
     cursor: pointer;
   }
   #analyze-open .sheet-done:hover { background: var(--accent-soft); }
@@ -1566,8 +1565,8 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   }
   #analysis-eval-card > :not(.ev-head) { grid-row: 1; grid-column: 2; }
   /* The word stays inside the figure's 72px column instead of running under the graph. */
-  #analysis-eval-card .ev-title { grid-area: 1 / 1; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-  #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  #analysis-eval-card .ev-title { grid-area: 1 / 1; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
   #analysis-eval-card .ev-meter { display: none; }
   #analysis-eval-card .eval-chart { border-radius: 6px; touch-action: pan-y; }
   #analysis-eval-card > .analysis-job-dock:not(:empty) {
@@ -1865,7 +1864,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   color: var(--muted);
   font: inherit;
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 .rp-key-btn:hover, .rp-key-btn[aria-expanded="true"] { background: var(--surface-3); color: var(--text); }
@@ -1882,7 +1881,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   color: var(--accent-ink);
   font-style: normal;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: -0.06em;
 }
@@ -1991,7 +1990,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     border-radius: 0;
     background: none;
     box-shadow: none;
-    font-weight: 600;
+    font-weight: 500;
   }
   #view-analyze #analysis-moves .mtree-move::before {
     content: "";
@@ -2026,9 +2025,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #analysis-explain:has(> .coach-review:not([hidden])) .cc-head { display: contents; }
   #analysis-explain:has(> .coach-review:not([hidden])) .cc-head > :not(#analyze-actions) { display: none; }
   #analysis-explain > .coach-review { order: -1; gap: 0; height: 44px; }
-  #analysis-explain .coach-review > .cr-label { order: 0; flex: 1 1 auto; gap: 8px; padding: 0; font-size: 15px; font-weight: 650; }
+  #analysis-explain .coach-review > .cr-label { order: 0; flex: 1 1 auto; gap: 8px; padding: 0; font-size: 15px; font-weight: 500; }
   /* Retry is the moment's one action: the accent's tint, the steps' shape. */
-  #analysis-explain .coach-review > .btn { order: 1; margin: 0 8px 0 auto; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); padding: 0 14px; font-weight: 650; }
+  #analysis-explain .coach-review > .btn { order: 1; margin: 0 8px 0 auto; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); padding: 0 14px; font-weight: 500; }
   #analysis-explain .coach-review > .cr-step { order: 2; width: 48px; border-radius: 12px 4px 4px 12px; }
   #analysis-explain .coach-review > .cr-step ~ .cr-step { order: 3; margin-left: 2px; border-radius: 4px 12px 12px 4px; }
   #analysis-explain .coach-review > .cr-label + .cr-step { margin-left: auto; }
@@ -2189,7 +2188,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze { --phone-eval-h: 44px; --phone-strip-h: 32px; --phone-tabs-h: 36px; }
   #view-analyze .study { height: 100%; }
   #view-analyze #analysis-eval-card { grid-template-columns: 56px minmax(0, 1fr); gap: 0 8px; padding: 6px var(--phone-gutter); }
-  #analysis-eval-card .eval-now { font-size: 15px; font-weight: 700; }
+  #analysis-eval-card .eval-now { font-size: 15px; font-weight: 600; }
   #analysis-eval-card .eval-chart { border-radius: 4px; }
   /* The scrubber's target is the whole 44px strip: the 32px field plus the
      card's 6px padding above and below it (analyze.js scrubs on the band). */
@@ -2234,7 +2233,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     background: none;
     box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the tab row's rule */
   }
-  #view-analyze .an-tab { height: var(--phone-tabs-h); border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-size: 13px; font-weight: 600; }
+  #view-analyze .an-tab { height: var(--phone-tabs-h); border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
   #view-analyze .an-tab::before { content: none; }
   /* From the 34px padding box (the 2px underline is border): 2px up, 8px
      down into the pane's top padding, the row above both: a 44px target
@@ -2255,9 +2254,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
      human picks as 26px chips. */
   #analysis-explain > .coach-review { height: 36px; }
   #analysis-explain .cr-label { height: 36px; line-height: 36px; }
-  #analysis-explain .coach-review > .cr-label { gap: 8px; font-size: 14px; font-weight: 600; }
+  #analysis-explain .coach-review > .cr-label { gap: 8px; font-size: 14px; font-weight: 500; }
   #analysis-explain .cr-label .rp-glyph { width: 20px; height: 20px; font-size: 11px; }
-  #analysis-explain .coach-review > .btn { height: 28px; min-height: 0; margin-right: 6px; padding: 0 10px; border-radius: var(--radius); font-size: 13px; font-weight: 600; }
+  #analysis-explain .coach-review > .btn { height: 28px; min-height: 0; margin-right: 6px; padding: 0 10px; border-radius: var(--radius); font-size: 13px; font-weight: 500; }
   #analysis-explain .cr-step { position: relative; width: 40px; height: 28px; }
   #analysis-explain .coach-review > .cr-step { width: 40px; border-radius: var(--radius) 2px 2px var(--radius); }
   #analysis-explain .coach-review > .cr-step ~ .cr-step { border-radius: 2px var(--radius) var(--radius) 2px; }
@@ -2349,7 +2348,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
 
   /* Missing value: a grey dash where the figure goes, never a cut-off label. */
   #analysis-eval-card .ev-head:not(.has-eval) .ev-title { overflow: visible; font-size: 0; }
-  #analysis-eval-card .ev-head:not(.has-eval) .ev-title::before { content: "–"; color: var(--label); font-size: 15px; font-weight: 700; }
+  #analysis-eval-card .ev-head:not(.has-eval) .ev-title::before { content: "–"; color: var(--label); font-size: 15px; font-weight: 600; }
 
   /* The book line's action is a text link: no inline padding, so a link that
      wraps to its own line starts on the prose's edge. Its target grows round it. */

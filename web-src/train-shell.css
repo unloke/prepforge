@@ -12,9 +12,9 @@
   min-height: 48px;
   padding: 8px 12px 8px 14px;
 }
-.train-title { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
+.train-title { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
 .train-head-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; }
-.train-head-mode { font-weight: 650; white-space: nowrap; }
+.train-head-mode { font-weight: 500; white-space: nowrap; }
 .train-scope-chip {
   min-width: 0;
   overflow: hidden;
@@ -23,14 +23,14 @@
   background: var(--surface-3);
   color: var(--muted);
   font-size: var(--fs);
-  font-weight: 600;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .train-scope-chip:empty { display: none; }
-.train-count { margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.train-count { margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .train-count:empty { display: none; }
-.train-line-step { color: var(--text); font-size: var(--fs); font-weight: 600; font-variant-numeric: tabular-nums; }
+.train-line-step { color: var(--text); font-size: var(--fs); font-weight: 500; font-variant-numeric: tabular-nums; }
 .train-history-btn { margin-left: auto; }
 #view-train .train-back { gap: 4px; padding-left: 4px; }
 #view-train .train-back .bi { display: block; }
@@ -49,7 +49,7 @@
 .train-outlook { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .train-outlook[hidden] { display: none; }
 .train-outlook-lead { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
-.train-outlook-lead b { margin-right: 4px; color: var(--accent-text); font-size: 20px; font-weight: 650; line-height: 1.1; }
+.train-outlook-lead b { margin-right: 4px; color: var(--accent-text); font-size: 20px; font-weight: 500; line-height: 1.1; }
 .train-outlook-rest { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
 .train-outlook-quiet { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
 .train-skeleton-outlook { width: 154px; height: 32px; }
@@ -80,24 +80,24 @@
   background: var(--panel-soft);
 }
 .train-row-text { grid-area: text; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.train-row-title { margin: 0; font-size: 15px; font-weight: 650; width: fit-content; }
+.train-row-title { margin: 0; font-size: 15px; font-weight: 500; width: fit-content; }
 .train-row-meta { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
 .train-row-meta:empty { display: none; }
 .train-row > .train-row-go { grid-area: go; }
 /* Every row's primary action: one fill, the app's control height. */
-.train-row-go { min-width: 92px; padding: 0 16px; font-weight: 600; }
+.train-row-go { min-width: 92px; padding: 0 16px; font-weight: 500; }
 .train-row-opts { grid-area: opts; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .train-row > [data-unlock-place],
 .train-row-error { grid-column: 1 / -1; }
 .train-row-error { margin: 0; color: var(--danger); font-size: var(--fs); }
 .train-row-error[hidden] { display: none; }
-.train-blitz-row { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 600; user-select: none; }
+.train-blitz-row { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 500; user-select: none; }
 /* Practice has two ways in, so both sit in the action slot: Random position
    beside Play, the options line under them holds only the game's setup
    (opponent at the start, colour at the end). With Lucky on the options line
    the colour wrapped alone onto a third line in a 370px panel. */
 .train-row[data-row="play"] { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "text lucky go" "opts opts opts"; }
-#view-train .train-lucky { grid-area: lucky; padding: 0 10px; font-size: var(--fs); font-weight: 600; }
+#view-train .train-lucky { grid-area: lucky; padding: 0 10px; font-size: var(--fs); font-weight: 500; }
 #view-train .train-color { width: auto; margin-left: auto; }
 #view-train .train-color .seg-btn { flex: 1 1 0; padding: 0 12px; }
 /* Maia's download row belongs to the Maia opponent only. */
@@ -131,7 +131,7 @@
   color: var(--text);
   font: inherit;
   font-size: var(--fs);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 .train-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -160,7 +160,7 @@
   box-shadow: var(--shadow-pop, 0 12px 32px rgb(0 0 0 / 0.16));
 }
 .train-picker:popover-open { display: flex; }
-.train-picker-head { padding: 6px 8px 4px; color: var(--label); font-size: var(--fs); font-weight: 600; }
+.train-picker-head { padding: 6px 8px 4px; color: var(--label); font-size: var(--fs); font-weight: 500; }
 .train-picker-group { padding: 8px 8px 2px; color: var(--label); font-size: var(--fs); }
 .train-pick {
   display: flex;
@@ -179,7 +179,7 @@
 }
 .train-pick:hover:not(:disabled),
 .train-pick:focus-visible { background: var(--accent-soft); outline: none; }
-.train-pick.is-on { font-weight: 650; }
+.train-pick.is-on { font-weight: 500; }
 .train-pick:disabled { color: var(--label); cursor: default; }
 .train-pick-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .train-pick-sub { color: var(--label); font-size: var(--fs); }
@@ -196,14 +196,14 @@
 .train-play-trail .pt-n { color: var(--muted); }
 
 /* ---- Result: fixed shape, the what-changed line reserved ---------------- */
-.train-summary-title { margin: 0; padding: 0; border: 0; font-size: 16px; font-weight: 650; }
+.train-summary-title { margin: 0; padding: 0; border: 0; font-size: 16px; font-weight: 500; }
 /* The result's figures are one line of text, not tiles: the value in ink, its
    word in the muted voice, the dots between them. */
 .sum-line { margin: 0; color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
-.sum-line b { color: var(--text); font-weight: 650; }
+.sum-line b { color: var(--text); font-weight: 500; }
 .sum-sep { margin: 0 6px; }
 /* Back to Train is a text link beside Again, not a second button. */
-#view-train .train-summary-actions .train-link { flex: 0 0 auto; padding: 0 8px; border: 0; background: none; color: var(--accent-text); font-weight: 600; }
+#view-train .train-summary-actions .train-link { flex: 0 0 auto; padding: 0 8px; border: 0; background: none; color: var(--accent-text); font-weight: 500; }
 #view-train .train-summary-actions .train-link:hover { text-decoration: underline; background: none; }
 .delta { display: flex; flex-wrap: wrap; gap: 4px 12px; min-height: 20px; font-size: var(--fs); }
 .delta[hidden] { display: flex; visibility: hidden; }
@@ -258,7 +258,7 @@
    figure on Home, its Start the one filled action, and the next cards sit
    under it as rows that narrow the queue to their repertoire. */
 .train-row[data-row="smart"] { grid-template-areas: "text go" "opts opts" "next next"; }
-.train-row[data-row="smart"] .train-outlook-lead b { font-size: 32px; line-height: 1; }
+.train-row[data-row="smart"] .train-outlook-lead b { font-size: 28px; line-height: 1; }
 .train-due-next { grid-area: next; display: flex; flex-direction: column; gap: 2px; margin: 4px -8px -4px; padding: 0; list-style: none; }
 .train-due-next[hidden] { display: none; }
 .train-due-line {
@@ -288,7 +288,7 @@
 #view-train .un-rep { display: block; min-width: 0; }
 #view-train .un-rep .color-dot { display: inline-block; margin-right: 6px; vertical-align: -1px; }
 /* A quiet tag: the kind is words in the muted voice, not a filled pill. */
-.un-kind { flex: none; color: var(--muted); font-size: var(--fs); font-weight: 600; }
+.un-kind { flex: none; color: var(--muted); font-size: var(--fs); font-weight: 500; }
 .un-row .un-kind { justify-self: start; }
 
 /* ---- Rehearse is one line: its title and count, its repertoire, its action.

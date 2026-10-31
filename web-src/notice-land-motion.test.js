@@ -20,7 +20,7 @@ function rule(selector, from = 0) {
 
 describe("a finished job's notice", () => {
   it("lands its mark once on success", () => {
-    expect(rule('.notice[data-state="done"] .notice-icon')).toMatch(/animation:\s*notice-land var\(--dur-slow\) var\(--ease-emphasis\)/);
+    expect(rule('.notice[data-state="done"] .notice-icon')).toMatch(/animation:\s*notice-land var\(--dur-slow\) var\(--ease-out\)/);
     const frames = /@keyframes notice-land \{([\s\S]*?)\n\}/.exec(css)[1];
     expect(frames).toContain("scale(0.6)");
     // One gesture, not a loop.

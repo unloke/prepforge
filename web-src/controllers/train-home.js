@@ -337,6 +337,9 @@ export async function paintTrainHome() {
   const rehearseBtn = document.getElementById("start-rehearse");
   rehearseBtn.textContent = !signedIn ? "Sign in to train" : rep ? "Start" : "Open Library";
   rehearseBtn.dataset.action = !signedIn ? "signin" : rep ? "start" : "library";
+  // With no repertoire the Due row already leads to Library; a second
+  // Open Library one row down is the same button twice.
+  rehearseBtn.hidden = signedIn && !rep;
   // Practice
   const book = playBook();
   setChip("train-play-book", `vs ${BOOK_NAMES[book]}`);

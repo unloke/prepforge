@@ -130,7 +130,7 @@
   .view > .page-head { margin-bottom: var(--phone-gap); }
   @keyframes page-head-dock { to { box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the nav bar's edge over scrolled rows */ } }
   @keyframes page-title-dock { to { transform: scale(0.773); } }
-  .page-head h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+  .page-head h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
   .page-head-btn {
     position: relative;
     display: flex;
@@ -187,7 +187,7 @@
   }
   /* A streak is a fact, not a state: it is read, not warned about, so it keeps
      the ink and lets the queue carry the emphasis. */
-  #view-dashboard .today-count { color: var(--muted); font-size: 13px; font-weight: 650; }
+  #view-dashboard .today-count { color: var(--muted); font-size: 13px; font-weight: 500; }
   #view-dashboard .today-unit { display: block; color: var(--muted); font-size: 13px; }
   #view-dashboard .today-unit small { display: none; }
   #view-dashboard .today-recap,
@@ -208,7 +208,7 @@
     grid-area: queue;
     color: var(--text);
     font-size: 15px;
-    font-weight: 650;
+    font-weight: 500;
     line-height: 1.3;
     text-wrap: pretty;
   }
@@ -258,7 +258,7 @@
     background: none;
     color: var(--accent-strong);
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 500;
   }
   /* Five filters must all be visible at 390px: a row that scrolls sideways
      reads as a cut-off row. They were five 44px pills at 13px, which filled
@@ -287,10 +287,10 @@
     background: none;
     color: var(--muted);
     font-size: 13px;
-    font-weight: 550;
+    font-weight: 500;
     white-space: nowrap;
   }
-  #view-dashboard .lib-list .seg-btn.is-active { background: var(--panel); color: var(--text); font-weight: 650; }
+  #view-dashboard .lib-list .seg-btn.is-active { background: var(--panel); color: var(--text); font-weight: 500; }
   .search-field {
     width: 100%;
     height: 36px;
@@ -336,7 +336,7 @@
   #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
   #view-dashboard .lib-row :is(.color-dot, .skeleton-dot) { flex: none; width: 26px; height: 26px; }
   #view-dashboard .lib-row .lib-name { min-width: 0; gap: 2px; }
-  #view-dashboard .lib-row .name { font-size: 15px; font-weight: 600; }
+  #view-dashboard .lib-row .name { font-size: 15px; font-weight: 500; }
   #view-dashboard .lib-row .rep-sub { font-size: 13px; }
   /* The desktop row carries a mastery figure in its own column; the phone row
      dropped it, so a phone could not tell a trained repertoire from an
@@ -360,7 +360,7 @@
   #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: nowrap; gap: 2px; padding-left: 34px; }
   #view-dashboard .lib-row .lib-mbar { display: none; }
   #view-dashboard .lib-row .lib-mastery { flex-direction: row; align-items: baseline; gap: 4px; width: auto; line-height: 1.2; }
-  #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: right; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
   #view-dashboard .lib-row .lib-mastery-word { display: inline; color: var(--label); font-size: 13px; }
   /* A shared repertoire is read-only; its name line already says so. */
   #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
@@ -407,7 +407,7 @@
      is its accessible name) and its hit area is the whole row. */
   #view-dashboard .step { position: relative; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 4px; min-height: 44px; margin: 0; padding: 10px 2px 10px 14px; border: 0; }
   #view-dashboard .step + .step { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
-  #view-dashboard .step-text b { display: block; font-size: 15px; font-weight: 600; }
+  #view-dashboard .step-text b { display: block; font-size: 15px; font-weight: 500; }
   #view-dashboard .step-text p { margin: 2px 0 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
   #view-dashboard .step .btn {
     position: static;
@@ -483,7 +483,7 @@
     border: 0;
     background: none;
     color: var(--text);
-    font-weight: 600;
+    font-weight: 500;
   }
   #view-replay .toolbar > .src > .btn:active { background: var(--surface-3); }
   #view-replay .toolbar > .inline-field {
@@ -604,7 +604,7 @@
     background: var(--accent);
     color: var(--accent-ink);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: normal;
     outline: 12px solid var(--bg);
   }
@@ -707,7 +707,7 @@
     padding: 14px 0 4px;
     color: var(--text);
     font-size: 14px;
-    font-weight: 650;
+    font-weight: 500;
   }
   #view-settings :is(.set-row, .pf-row, .acct-row, .conn-row) {
     flex-wrap: nowrap;
@@ -755,7 +755,7 @@
   #view-settings .conn-menu-item { min-height: 44px; padding: 0 18px; border-radius: 0; font-size: 15px; }
   #view-settings .conn-menu-item + .conn-menu-item { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
   #view-settings .acct-block { margin-top: 0; }
-  #view-settings .acct-block-head { color: var(--muted); font-size: 13px; font-weight: 650; }
+  #view-settings .acct-block-head { color: var(--muted); font-size: 13px; font-weight: 500; }
   #view-settings .acct-block > .btn { margin: 4px 0; }
   #view-settings #settings-account-data { padding-top: 0; }
   #view-settings .acct-danger-zone { margin: 0; }
@@ -783,7 +783,7 @@
     box-shadow: none;
     color: var(--accent-strong);
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 500;
     white-space: nowrap;
   }
   #view-settings .set .btn.danger { color: var(--danger-strong); }
@@ -794,7 +794,7 @@
      own white, so it needs an edge to read as chosen, and the other options
      step back to the muted ink. */
   #view-settings .set .seg:not(#piece-style-picker) .seg-btn { color: var(--muted); font-weight: 500; }
-  #view-settings .set .seg:not(#piece-style-picker) .seg-btn.is-active { color: var(--text); font-weight: 650; outline: 1px solid var(--line-strong); outline-offset: -3px; }
+  #view-settings .set .seg:not(#piece-style-picker) .seg-btn.is-active { color: var(--text); font-weight: 500; outline: 1px solid var(--line-strong); outline-offset: -3px; }
   /* Account: the identity heads the card, the rows follow, Sign out closes
      the list as its own row (it hung under the email as an orphan button). */
   #view-settings #settings-account-body { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 12px; }
@@ -818,7 +818,7 @@
     box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */
     color: var(--accent-strong);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
   }
   #view-settings :is(#settings-account-body, #settings-account-data) > .acct-row { min-height: 36px; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
   #view-settings .acct-row-text { min-width: 0; }
@@ -842,7 +842,7 @@
     box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */
     color: var(--accent-strong);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
   }
   #view-settings .acct-block > .btn.conn-link { margin: 0; }
   #view-settings .acct-danger-zone { padding: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
@@ -854,7 +854,7 @@
   #view-settings .pf-row:has(#settings-board-colors) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
   #view-settings #settings-board-colors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   #view-settings .board-color-swatch { flex-direction: column; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; border-radius: var(--radius); background: var(--surface-3); color: var(--text); font-size: 13px; }
-  #view-settings .board-color-swatch[aria-pressed="true"] { background: var(--accent-soft); font-weight: 650; }
+  #view-settings .board-color-swatch[aria-pressed="true"] { background: var(--accent-soft); font-weight: 500; }
   #view-settings .board-color-swatch[aria-pressed="true"]::after { content: none; }
   /* Engine: a long value takes its own line under a small label, its action
      at the right ("Stockfish 19.0.0 lite (WASM)" wrapped beside "Engine" and
@@ -862,7 +862,7 @@
   #view-settings .set-row:has(> .set-row-value) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 12px; padding: 8px 0; }
   #view-settings .set-row:has(> .set-row-value) > span:first-child { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
   #view-settings .set-row-value { display: contents; }
-  #view-settings .set-row-value > b { min-width: 0; font-size: 14px; font-weight: 600; text-align: left; text-wrap: balance; }
+  #view-settings .set-row-value > b { min-width: 0; font-size: 14px; font-weight: 500; text-align: left; text-wrap: balance; }
   #view-settings .pf-row:has(#piece-style-picker) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
 
 
@@ -1025,7 +1025,7 @@
   :is(.phone-back, #build-menu):active { background: var(--surface-3); }
   .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next):active { background: var(--line-strong); }
 
-  /* The main action: a pill centred in the bar's free middle. */
+  /* The main action, centred in the bar's free middle. */
   #run-analysis {
     position: absolute;
     z-index: 6;
@@ -1039,11 +1039,11 @@
     margin: 0 auto;
     padding: 0 16px;
     border: 0;
-    border-radius: 999px;
+    border-radius: 8px;
     background: var(--accent);
     color: var(--accent-ink);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1172,7 +1172,7 @@
     color: var(--accent-strong);
     font: inherit;
     font-size: 15px;
-    font-weight: 650;
+    font-weight: 500;
   }
   .phone-sheet > .sheet-rows {
     display: flex;
@@ -1248,9 +1248,8 @@
     min-width: 0;
     height: 22px;
     color: var(--text);
-    font-size: 17px;
-    font-weight: 650;
-    letter-spacing: -0.01em;
+    font-size: 16px;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1305,7 +1304,7 @@
     color: var(--muted);
     font: inherit;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
   }
   #build-panes > button[aria-selected="true"] { background: var(--panel); background-clip: padding-box; color: var(--text); }
   #view-build #build-sidebar.is-empty #build-panes,
@@ -1333,7 +1332,7 @@
   #build-inspector .dock-fold { display: none; }
   #build-inspector { height: auto !important; max-height: none; margin: 0; overflow: hidden; }
   #build-inspector .dock-tabs { gap: 2px; margin: 10px 12px 0; padding: 2px; border: 0; border-radius: 9px; background: var(--surface-3); }
-  #build-inspector .dock-tabs > [role="tab"] { flex: 1 1 0; min-height: 32px; height: 32px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 14px; font-weight: 600; }
+  #build-inspector .dock-tabs > [role="tab"] { flex: 1 1 0; min-height: 32px; height: 32px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 14px; font-weight: 500; }
   #build-inspector .dock-tabs > [role="tab"][aria-selected="true"] { background: var(--line-strong); color: var(--text); box-shadow: none; }
   #build-inspector .dock-tabs > [role="tab"]::after { content: none; }
   #build-inspector .dock-body { display: flex !important; flex-direction: column; overflow: visible; }
@@ -1495,7 +1494,7 @@
     background: var(--bg);
   }
   #view-train .train-coach-icon { width: 22px; height: 22px; flex: none; }
-  #view-train .train-coach-title { font-size: 15px; font-weight: 600; }
+  #view-train .train-coach-title { font-size: 15px; font-weight: 500; }
   #view-train .train-coach-sub { font-size: 13px; }
 
   /* Session bottom bar: four labelled icons spread evenly (Menu · Flip ·
@@ -1512,12 +1511,12 @@
   /* Home's head is the pages' title row: 44px, the 22px title (a 52px band
      with a 24px title sat 8px lower than every other page's). */
   #view-train[data-train-screen="home"] .train-head { min-height: 44px; padding: 0 var(--phone-gutter); }
-  #view-train .train-title { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
+  #view-train .train-title { font-size: 24px; font-weight: 500; letter-spacing: -0.01em; }
   #view-train .train-home { gap: 12px; }
   /* The panes are navigation, not a setting: underline tabs on one rule, so
      they never read as a second copy of Practice's colour switch. */
   #view-train #train-tabs { display: flex; width: 100%; height: 37px; padding: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
-  #view-train .train-tabs .seg-btn { height: 36px; min-height: 0; margin-bottom: -1px; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); font-size: 13px; font-weight: 600; }
+  #view-train .train-tabs .seg-btn { height: 36px; min-height: 0; margin-bottom: -1px; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); font-size: 13px; font-weight: 500; }
   #view-train .train-tabs .seg-btn.is-active { border-bottom-color: var(--accent); color: var(--text); }
   #view-train:not([data-train-pane="play"]) .train-row[data-row="play"],
   #view-train[data-train-pane="play"] .train-row:not([data-row="play"]) { display: none; }
@@ -1547,7 +1546,7 @@
   }
   #view-train [data-row="play"] :is(.train-row-text, #train-play-book) { display: none; }
   #view-train [data-row="play"] .train-row-opts { display: contents; }
-  #view-train [data-row="play"] .train-sec-label { display: block; color: var(--muted); font-size: 14px; font-weight: 600; }
+  #view-train [data-row="play"] .train-sec-label { display: block; color: var(--muted); font-size: 14px; font-weight: 500; }
   #view-train .train-sec-label[data-sec="opponent"] { grid-area: oplabel; }
   #view-train .train-sec-label[data-sec="color"] { grid-area: aslabel; margin-top: 8px; }
   #view-train #train-bots { grid-area: bots; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -1580,7 +1579,7 @@
     color: var(--text);
     font: inherit;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: transform var(--dur-fast) var(--ease-out);
   }
@@ -1609,7 +1608,7 @@
   #view-train .train-progress-panel .upnext { min-height: 0; padding: 0; background: none; }
   #view-train #train-card-kind { display: none; }
   #view-train .train-summary { gap: 12px; }
-  #view-train .train-summary > .train-summary-title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  #view-train .train-summary > .train-summary-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
   #view-train .sum-line { font-size: 15px; }
   /* The top bar's back arrow is the way home; the actions are one row of
      equal halves, the primary at the thumb's side. */
@@ -1741,7 +1740,7 @@
   .sheet .sheet-sep + [hidden] + .sheet-item { box-shadow: none; }
   /* The account is the sheet's head: a taller row, the name in ink, a chevron
      because it opens the account menu (or Sign in). */
-  #sheet-account { min-height: 60px; font-weight: 600; text-align: left; }
+  #sheet-account { min-height: 60px; font-weight: 500; text-align: left; }
   #sheet-account .avatar { width: 32px; height: 32px; }
   #sheet-account-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #sheet-account .sheet-chev { display: block; flex: none; width: 18px; height: 18px; color: var(--label); }
@@ -1780,7 +1779,7 @@
   .notice-action,
   .notice-stop { height: 44px; padding: 0 10px; border: 0; background: none; font-size: 15px; }
   .notice-action,
-  .notice-action.is-primary { color: var(--accent-strong); font-weight: 650; }
+  .notice-action.is-primary { color: var(--accent-strong); font-weight: 500; }
   .notice-action.is-primary { border: 0; background: none; }
   .notice-action.is-primary:hover { border: 0; background: var(--surface-3); }
   .notice:has(.notice-action) .notice-actions { grid-column: 3; grid-row: 1; gap: 0; margin: 0; padding: 0; }
@@ -1806,7 +1805,7 @@
   /* The open destination is ink; the mark is the same 1px accent line the
      desktop rail uses, on the bar's nearest edge (its top), as wide as the
      label it names. */
-  .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 650; }
+  .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 500; }
   .tabbar .tabbar-item { position: relative; }
   .tabbar .tabbar-item.is-active::after {
     content: "";

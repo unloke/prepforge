@@ -58,7 +58,7 @@
   padding: 10px 12px;
   background: var(--panel-soft);
 }
-.ledger .card-head h2 { font-size: 13.5px; }
+.ledger .card-head h2 { font-size: 13px; }
 .ledger .card-head .faint { color: var(--muted); }
 .ledger-table { flex: 1; overflow: auto; }
 /* Empty, idle and error states live inside the ledger so the page keeps its
@@ -142,7 +142,7 @@
 /* Departure is a move number: right-aligned with tabular figures, and so is its
    header. A result is a fixed-width score between two text columns: centred, so
    "1-0" does not run into the first move beside it. */
-.res { font-weight: 700; white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
+.res { font-weight: 600; white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
 /* The outcome is a small square before the score, as in Chess.com's game
    archive: + won, − lost, = drawn, from the user's side. The score keeps the
    row's ink, so the Preparation badge is still the loudest thing in the row. */
@@ -158,7 +158,7 @@
   color: var(--muted);
   font-size: 12px;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1;
 }
 .res-mark::before { content: "="; }
@@ -203,7 +203,7 @@
    the reading step (15px) while the ledger stays at the dense 13px. */
 .focus-info h2 { font-size: 16px; word-break: break-word; }
 .focus-line { display: flex; align-items: center; gap: 8px; margin: 0; }
-.focus-result { font-weight: 700; font-variant-numeric: tabular-nums; }
+.focus-result { font-weight: 600; font-variant-numeric: tabular-nums; }
 .focus-result.r-win { color: var(--good-text); }
 .focus-result.r-loss { color: var(--danger-strong); }
 .focus-result.r-draw { color: var(--muted); }
@@ -225,13 +225,13 @@
 .move-no { color: var(--label); text-align: right; font-variant-numeric: tabular-nums; }
 .ply { min-width: 0; padding: 0 2px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ply.inprep { background: var(--good-soft); color: var(--good-text); }
-.ply.dep { padding: 0 3px; color: var(--accent-ink); font-weight: 700; }
+.ply.dep { padding: 0 3px; color: var(--accent-ink); font-weight: 600; }
 .ply.dep.t-bad { background: var(--danger); }
 .ply.dep.t-warn { background: var(--warn); }
 .moveline[data-ui] .move-pair.is-departure { background: var(--danger-soft); box-shadow: inset 2px 0 0 var(--danger); }
 .moveline[data-ui] .move-pair.is-departure.t-warn { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
 .moveline[data-ui] .move-pair.is-departure.t-good { background: var(--good-soft); box-shadow: inset 2px 0 0 var(--good); }
-.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font-weight: 650; }
+.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font-weight: 500; }
 @media (prefers-reduced-motion: no-preference) {
   .move-pair.is-departure { animation: departure-mark var(--dur) var(--ease-out) both; }
   @keyframes departure-mark {

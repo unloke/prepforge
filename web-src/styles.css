@@ -169,7 +169,7 @@
      --fs-s used to be 12px: below the legible floor, so every small label in
      the app read smaller than the text around it. It keeps its name because
      the view sheets still address it, but it no longer means "smaller". */
-  --font: "Inter", "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, ui-sans-serif, sans-serif;
   --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace; /* taste-skill-ignore: a font token is not a use of it */
   --fs: 13px;
   --fs-s: 13px;
@@ -208,7 +208,6 @@
   --dur: 220ms;      /* list entry, reveal, show/hide */
   --dur-slow: 300ms; /* the eval bar landing, a panel settling */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* standard: decelerate */
-  --ease-emphasis: cubic-bezier(0.3, 1.3, 0.4, 1); /* emphasized: a small pop */
 
   /* -- In-page stacking: one ordered ladder instead of ad-hoc numbers. Dialogs,
      menus and pickers are <dialog>/[popover] in the top layer and need none. */
@@ -392,7 +391,7 @@
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--accent-text);
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: none;
   transform: translateY(calc(-100% - 12px));
   transition: transform var(--dur-fast) var(--ease-out);
@@ -484,8 +483,17 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+}
+
+h1 {
+  font-weight: 600;
+}
+
+/* Emphasis inside copy is one step up, not the browser's bold. */
+b,
+strong {
+  font-weight: 500;
 }
 
 h2 {
@@ -530,9 +538,8 @@ h2 {
   gap: 10px;
   height: 32px;
   padding: 0 9px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
-  letter-spacing: -0.02em;
   white-space: nowrap;
 }
 
@@ -677,7 +684,7 @@ h2 {
 .tab.is-active {
   background: var(--surface-3);
   color: var(--text);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* Mobile bottom navigation (≤ 760px only; hidden on desktop). */
@@ -695,7 +702,7 @@ h2 {
   background: none;
   color: var(--label);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
@@ -735,7 +742,7 @@ h2 {
   border-radius: 10px;
   background: var(--panel-soft);
   color: var(--text);
-  font-weight: 600;
+  font-weight: 500;
   font-size: 14px;
   cursor: pointer;
 }
@@ -763,7 +770,7 @@ h2 {
   background: var(--accent-soft);
   color: var(--accent-text);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .avatar.sm { width: 24px; height: 24px; font-size: 11px; }
 .avatar .ic { width: 16px; height: 16px; }
@@ -785,7 +792,7 @@ h2 {
 }
 .account-btn:hover { background: var(--surface-3); }
 .account-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.account-text b { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+.account-text b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
 .account-text small { color: var(--label); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
 
 /* The account menu reuses .context-menu chrome. Sign out is the only destructive
@@ -840,7 +847,7 @@ h2 {
   color: var(--muted);
   font: inherit;
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
   white-space: nowrap;
 }
@@ -894,7 +901,7 @@ h2 {
     width: 44px;
     height: 44px;
     margin: -12px -6px -12px -2px;
-    font-size: 17px;
+    font-size: 16px;
   }
   .src-chip { height: auto; min-height: var(--control-h); padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
 }
@@ -940,7 +947,7 @@ h2 {
   color: var(--accent-strong);
   font: inherit;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
 }
 .src-done:hover { text-decoration: underline; }
@@ -948,7 +955,7 @@ h2 {
 
 .src-title {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -976,7 +983,7 @@ h2 {
 }
 
 .src-row.is-self {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .src-name {
@@ -988,7 +995,7 @@ h2 {
 
 .src-self-count {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--accent-strong);
 }
 
@@ -1174,7 +1181,7 @@ h2 {
   background: transparent;
   color: var(--text);
   font-size: var(--fs-s);
-  font-weight: 550;
+  font-weight: 500;
   padding: 0 10px;
   /* The track (2px padding) stands at the control height: 30px on a desktop,
      40px on a touch tablet. The phone redraws the track (phone.css). */
@@ -1320,7 +1327,7 @@ h2 {
    761px, so a page does not change its header shape when the rail folds. */
 @media (min-width: 761px) {
   .workspace .page-head { display: flex; align-items: baseline; gap: 10px; min-height: 44px; }
-  .workspace .page-head h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+  .workspace .page-head h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
   /* The head's icon button mirrors a control the desktop card head already
      shows in words, so on a wide screen it would be a second "New repertoire". */
   .workspace .page-head .page-head-btn { display: none; }
@@ -1395,7 +1402,7 @@ h2 {
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -1632,7 +1639,7 @@ textarea:focus-visible {
   border-radius: var(--radius-chip);
   font-size: var(--fs-xs);
   font-style: normal;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 16px;
   white-space: nowrap;
 }
@@ -1654,7 +1661,7 @@ textarea:focus-visible {
   background: transparent;
   padding: 0;
   color: var(--accent-strong);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .link:hover {
@@ -1708,7 +1715,7 @@ textarea:focus-visible {
   gap: 6px;
   margin: 0;
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 500;
 }
 /* Where the head's three controls sit on a desktop. The phone draws its own
    grid (phone.css), so these placements stop at the phone breakpoint. */
@@ -1726,7 +1733,7 @@ textarea:focus-visible {
   background: var(--surface-3);
   color: var(--muted);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 500;
   text-align: center;
   line-height: 18px;
 }
@@ -1771,8 +1778,8 @@ textarea:focus-visible {
    count like any other and stays in ink. */
 .today-streak[data-lit="1"] .today-count { color: var(--good-text); }
 .today-count {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -1793,8 +1800,8 @@ textarea:focus-visible {
 .today-queue {
   margin: 0;
   color: var(--text);
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   line-height: 1.25;
 }
 /* What else is waiting, in one quieter line under it. */
@@ -1806,7 +1813,7 @@ textarea:focus-visible {
   font-size: var(--fs-s);
   line-height: 1.35;
 }
-.today-more b { color: var(--text); font-weight: 600; }
+.today-more b { color: var(--text); font-weight: 500; }
 /* Colour says good or bad, not up or down: two more mastered moves and one
    fewer weak spot are both progress. */
 .today-recap .up { color: var(--good-text); }
@@ -1819,7 +1826,7 @@ textarea:focus-visible {
   min-width: 0;
   text-align: right;
 }
-.today-recap b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.today-recap b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
 /* Below 1100px the week's history no longer fits beside the queue: squeezing
    both left the queue's second line wrapping over three lines beside a 328px
    column of stats. The history moves to its own right-aligned line under the
@@ -1832,14 +1839,14 @@ textarea:focus-visible {
 /* Lifetime counts (games · repertoires · sessions): the quietest line in the
    strip. Nothing here is what the Train button turns on. */
 .today-counts { color: var(--label); }
-.today-counts b { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.today-counts b { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 /* Streak-at-risk: replaces the second line when local midnight is <5h away and
    nothing has been trained yet: same slot, louder voice. */
 .today-warning {
   margin: 0;
   color: var(--warn-text);
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
 }
 /* Today's action is the shared `.btn.primary`: same height, padding and size as
@@ -1848,7 +1855,7 @@ textarea:focus-visible {
 .today > .btn { padding: 0 16px; }
 /* Today's payload failed: the strip's slot carries the message and the retry,
    at the same quiet weight as the rest of the strip. */
-.today-error { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--danger); font-size: var(--fs-s); font-weight: 600; }
+.today-error { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--danger); font-size: var(--fs-s); font-weight: 500; }
 .today-error .btn { color: var(--text); }
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
@@ -1901,7 +1908,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lr.head {
   color: var(--label);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 }
 /* Table: column header + one grid row per repertoire */
 .lib-cols,
@@ -2031,7 +2038,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-chip.is-shared {
   background: var(--accent-soft);
   color: var(--accent-text);
-  font-weight: 600;
+  font-weight: 500;
 }
 .lib-cell-mastery,
 .lib-cell-queue {
@@ -2138,7 +2145,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
    padding left a blank band above it as tall as the words. 32px still centres
    the invitation in a card of its own height. */
 .lib-rep-list .empty-state.big { padding: 32px 24px; }
-.es-mark { color: var(--label); font-size: 34px; line-height: 1; }
+.es-mark { color: var(--label); font-size: 28px; line-height: 1; }
 
 /* Side dot (repertoire colour) */
 .color-dot {
@@ -2172,13 +2179,13 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   background: var(--panel);
   color: var(--muted);
   font-size: var(--fs-xs);
-  font-weight: 700;
+  font-weight: 600;
 }
 .step-text b { display: block; }
 .step-text p { margin: 0; color: var(--muted); font-size: var(--fs-s); }
 /* Setup checklist: progress in the head, finished steps tick and quiet down. */
 .steps .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 650; }
+.setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 500; }
 .steps .card-head h2 { margin-right: auto; }
 .setup-dismiss { align-self: center; min-width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .setup-dismiss:hover { color: var(--text); background: var(--surface-3); }
@@ -2193,8 +2200,8 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   border-bottom: 2px solid var(--good-text);
   transform: rotate(-45deg) translate(1px, -1px);
 }
-.step.is-done .step-text b { color: var(--muted); font-weight: 600; }
-.step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
+.step.is-done .step-text b { color: var(--muted); font-weight: 500; }
+.step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 500; }
 
 /* The Library is one column at every width, so the old two-track fallbacks
    have nothing left to do. */
@@ -2671,8 +2678,8 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 /* Board coordinates (toggle: .show-coords on the board) */
 .coord {
   position: absolute;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: 0.02em;
   pointer-events: none;
@@ -2708,14 +2715,14 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   color: var(--accent-ink);
   font-family: var(--font);
   font-size: clamp(8px, calc(100cqw / 8 * 0.19), 15px);
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: -0.06em;
   white-space: nowrap;
   box-shadow:
     0 0 0 1.5px rgba(255, 255, 255, 0.92),
     0 1px 3px rgba(0, 0, 0, 0.38);
-  animation: badgeIn var(--dur-fast) var(--ease-emphasis);
+  animation: badgeIn var(--dur-fast) var(--ease-out);
 }
 
 .square-badge.class-brilliant { --badge: var(--brilliant); }
@@ -2787,7 +2794,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 }
 
 .chessboard.is-flipping {
-  animation: boardFlip var(--dur-slow) var(--ease-emphasis);
+  animation: boardFlip var(--dur-slow) var(--ease-out);
 }
 
 
@@ -2907,7 +2914,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid transparent;
@@ -3001,7 +3008,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   padding: 20px var(--build-pad, 14px) 24px;
   text-align: left;
 }
-#view-build .build-empty h3 { font-size: 17px; font-weight: 650; }
+#view-build .build-empty h3 { font-size: 16px; font-weight: 500; }
 #view-build .build-empty .row { justify-content: flex-start; margin-top: 10px; }
 /* With no repertoire open the panel's bands give way to the empty state. The
    class is set by paintBuildEmpty() (app.js), not a `:has()` rule: on an
@@ -3131,7 +3138,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   color: var(--text);
   /* 14px: at 11px the three dots of ⋯ render as one dash. */
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   opacity: 0;
   pointer-events: none;
@@ -3201,7 +3208,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   font-size: var(--fs-s);
   white-space: nowrap;
 }
-.fork-head b { font-weight: 600; color: var(--muted); }
+.fork-head b { font-weight: 500; color: var(--muted); }
 .fork-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 /* The full list is an explicit request, so it may be long — but it scrolls
    inside a capped block. A thirty-move fork opened whole pushed the move tree
@@ -3223,12 +3230,12 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   color: var(--text);
   font: inherit;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
 }
 /* The move number is read, not decorated: it takes the chip's own size. */
 .fork-chip .mtree-num { padding: 0; margin: 0; font-size: inherit; font-weight: 500; }
-.fork-chip.is-main { font-weight: 750; }
+.fork-chip.is-main { font-weight: 600; }
 .fork-chip small { margin-left: 4px; color: var(--label); font-size: inherit; font-weight: 500; }
 .fork-chip:hover { border-color: var(--accent); }
 .fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
@@ -3242,7 +3249,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   color: var(--accent-strong);
   font: inherit;
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 .fork-more:hover { text-decoration: underline; }
@@ -3307,7 +3314,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   color: var(--label);
   font: inherit;
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 .dock-tabs button.is-active { color: var(--text); border-bottom-color: var(--accent); }
@@ -3422,7 +3429,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock-tools:popover-open { display: grid; gap: 12px; }
 .dock-opt { display: grid; gap: 4px; }
 .dock-opt:has(> :is(.seg, select)[hidden]) { display: none; }
-.dock-opt-label { font-size: var(--fs-xs); font-weight: 600; color: var(--label); }
+.dock-opt-label { font-size: var(--fs-xs); font-weight: 500; color: var(--label); }
 .dock-opt > .seg { display: flex; }
 .dock-opt > .seg > .seg-btn { flex: 1 1 0; }
 .dock-opt > select { width: 100%; }
@@ -3545,7 +3552,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    a hint and an opponent reply are news, so their line arrives and nothing
    gestures at you. All of it is once per change, never a loop. */
 #train-banner.flash .train-coach-text { animation: judge-line var(--dur) var(--ease-out) both; }
-#train-banner[data-state="correct"].flash .train-coach-icon { animation: judge-mark var(--dur-slow) var(--ease-emphasis); }
+#train-banner[data-state="correct"].flash .train-coach-icon { animation: judge-mark var(--dur-slow) var(--ease-out); }
 #train-banner[data-state="wrong"].flash .train-coach-icon { animation: judge-nudge 320ms var(--ease-out); }
 @keyframes judge-mark {
   from { transform: scale(0.5); }
@@ -3570,7 +3577,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: color-mix(in srgb, var(--cb) 16%, transparent);
   color: var(--cb);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 600;
 }
 .train-coach-icon::before { content: var(--g, "•"); }
 .train-coach-text { display: flex; flex-direction: column; min-width: 0; }
@@ -3579,9 +3586,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 16px;
+  font-weight: 600;
 }
 .train-coach-sub {
   overflow: hidden;
@@ -3633,8 +3639,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
   color: var(--text);
-  font-size: 13.5px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
 }
 /* The Today strip's one action is a `.btn.primary` like every other primary
    button in the app. It used to be `.btn.lg`, a 36px box that stood 6px taller
@@ -3777,7 +3783,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .sum-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .queued { color: var(--label); font-size: var(--fs-xs); }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
+.toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 500; }
 
 /* Desktop Games and Scout: title and controls share one row, no toolbar card.
    Controls align to a common baseline (src chips + inline field + button),
@@ -3795,7 +3801,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   /* Games and Scout are worked in, not read: their empty states are one
      compact note in the frame the results will fill, not a 48px-padded hero. */
   #view-replay :is(.ledger-empty, .scout-empty).empty-state.big { gap: 4px; padding: 22px 16px; }
-  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big h3 { font-size: 15px; font-weight: 600; }
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big h3 { font-size: 15px; font-weight: 500; }
   #view-replay :is(.ledger-empty, .scout-empty).empty-state.big p { font-size: 13px; color: var(--muted); }
   /* An empty Scout is a card the report lands in, the way the Games ledger is
      before its first Check, not a line of text floating on the page ground. */
@@ -4123,7 +4129,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .coverage-gap-move {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--warn-text);
   font-family: var(--mono);
   font-size: 14px;
@@ -4167,7 +4173,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 26px;
   color: var(--label);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 500;
 }
 /* A short window keeps the Explorer and five engine lines inside the dock's
    ceiling: the rows tighten instead of the dock growing a scrollbar. */
@@ -4264,7 +4270,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @keyframes skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 
 .undo-toast-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.undo-toast-text b { font-weight: 600; }
+.undo-toast-text b { font-weight: 500; }
 .undo-toast .btn { flex: none; color: var(--accent-strong); }
 @media (max-width: 640px) {
   .undo-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
@@ -4318,7 +4324,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .explorer-san {
-  font-weight: 650;
+  font-weight: 500;
   color: var(--text);
 }
 
@@ -4336,7 +4342,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
   white-space: nowrap;
 }
-.explorer-share { color: var(--text); font-weight: 650; }
+.explorer-share { color: var(--text); font-weight: 500; }
 
 /* Always full width: the split is the reading, the game count beside it is
    the confidence. */
@@ -4362,7 +4368,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   justify-content: center;
   overflow: hidden;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .explorer-bar-w { background: var(--explorer-white); color: var(--explorer-white-ink); }
@@ -4376,10 +4382,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .explorer-rows.has-eval .explorer-eval {
   display: block;
   text-align: right;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--muted);
 }
-.explorer-rows.has-eval .explorer-head .explorer-eval { font-weight: 600; color: var(--label); }
+.explorer-rows.has-eval .explorer-head .explorer-eval { font-weight: 500; color: var(--label); }
 .explorer-eval.is-best { color: var(--good-text); }
 .explorer-eval.is-ok { color: var(--text); }
 .explorer-eval.is-weak { color: var(--warn-text); }
@@ -4389,7 +4395,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: center;
   gap: 6px;
 }
-.dock-engine-switch .pf-row-label { font-size: var(--fs-s); color: var(--label); font-weight: 600; }
+.dock-engine-switch .pf-row-label { font-size: var(--fs-s); color: var(--label); font-weight: 500; }
 
 .explorer-bar-d { background: var(--explorer-draw); color: var(--explorer-draw-ink); }
 .explorer-bar-b { background: var(--explorer-black); color: var(--on-accent); }
@@ -4572,7 +4578,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #view-build .mtree-collapse::after { content: ""; position: absolute; inset: -6px -4px -6px -8px; }
 .mtree-collapsed {
   color: var(--muted);
-  font-style: italic;
 }
 
 
@@ -4612,7 +4617,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    label in the app (a 10px tracked capital was the one shouting label left). */
 .context-section {
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--label);
   padding: 8px 10px 2px;
 }
@@ -4626,7 +4631,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overflow: hidden;
   color: var(--text);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0;
   text-overflow: ellipsis;
   text-transform: none;
@@ -4636,7 +4641,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Names the move the node menu acts on (UX walkthrough 2026-10-01 P2-8). */
 .context-target {
   padding: 6px 10px 6px;
-  font-weight: 700;
+  font-weight: 600;
   border-bottom: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */
   margin-bottom: 2px;
 }
@@ -4756,7 +4761,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .modal-title {
   margin: 0;
   padding: 14px 16px 10px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 15px;
 }
 
@@ -4785,9 +4790,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .modal-group-label {
   color: var(--label);
   font-size: var(--fs-xs);
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 500;
 }
 .modal-body > .modal-group-label:first-child { margin-top: -2px; }
 .modal-body > .modal-group-label:not(:first-child) {
@@ -4807,9 +4810,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .modal-stat b {
   color: var(--text);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
 }
 .modal-stat span {
   color: var(--muted);
@@ -4933,7 +4935,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: var(--control-h);
   margin: 0;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -4941,7 +4943,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .modal-field > span {
   font-size: 12px;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 500;
   white-space: pre-line;
   line-height: 1.4;
 }
@@ -5172,7 +5174,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 /* A job that has just finished: the spinner becomes its tick in place, so the
    card settles instead of silently changing meaning. One gesture, not a loop. */
-.notice[data-state="done"] .notice-icon { animation: notice-land var(--dur-slow) var(--ease-emphasis); }
+.notice[data-state="done"] .notice-icon { animation: notice-land var(--dur-slow) var(--ease-out); }
 .notice[data-state="failed"] .notice-icon { animation: notice-land 200ms var(--ease-out); }
 @keyframes notice-land {
   from { transform: scale(0.6); }
@@ -5180,7 +5182,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .notice-main { grid-column: 2; display: grid; gap: 2px; min-width: 0; }
-.notice-title { font-weight: 600; }
+.notice-title { font-weight: 500; }
 .notice-text {
   color: var(--muted);
   font-size: var(--fs-s);
@@ -5229,7 +5231,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--text);
   font: inherit;
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -5361,29 +5363,27 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .engine-window.is-docked .engine-pv[role="button"]:hover { background: var(--panel-soft); }
 .engine-window.is-docked .engine-pv:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .engine-window.is-docked .engine-pv.is-top { background: none; border-color: var(--line-soft); }
-.engine-window.is-docked .engine-pv-eval { padding: 1px 6px; min-width: 0; font-size: 11.5px; }
+.engine-window.is-docked .engine-pv-eval { padding: 1px 6px; min-width: 0; font-size: 12px; }
 .engine-window.is-docked .engine-pv-line { line-height: 22px; text-overflow: ellipsis; }
 .engine-pv.is-pending { cursor: default; }
 .engine-pv.is-pending .engine-pv-eval { color: var(--muted); background: none; border-color: var(--line-soft); }
-.engine-pv.is-pending .engine-pv-line { color: var(--muted); font-style: italic; }
+.engine-pv.is-pending .engine-pv-line { color: var(--muted); }
 /* The whole-game pass has the workers and has not reached this position yet:
    one quiet line, the size of a real row, with no eval slot to fill in. */
 .engine-pv.is-waiting { grid-template-columns: 1fr; cursor: default; }
-.engine-pv.is-waiting .engine-pv-line { color: var(--muted); font-style: italic; }
+.engine-pv.is-waiting .engine-pv-line { color: var(--muted); }
 /* A line the full-game analysis produced, not a search this card ran. It leads
    the row so a narrow card clips the tail of the line, never the mark. */
 .engine-window-pvs.is-analysis-read .engine-pv.is-top .engine-pv-line::before {
   content: "Analysis";
   margin-right: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--muted);
 }
 
 .engine-pv.is-final { cursor: default; }
-.engine-pv.is-final .engine-pv-line { font-weight: 650; }
+.engine-pv.is-final .engine-pv-line { font-weight: 500; }
 
 .engine-window.is-docked .engine-window-close,
 .engine-window.is-docked .engine-window-resize {
@@ -5456,16 +5456,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .engine-head-label {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--accent-strong);
 }
 
 .engine-head-eval {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text);
   background: var(--accent-soft);
   border: 1px solid var(--accent-line);
@@ -5479,7 +5477,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-width: 56px;
   text-align: center;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--muted);
   background: var(--panel);
   border: 1px solid var(--line-soft);
@@ -5505,7 +5503,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .engine-lines-readout {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 11px;
   color: var(--text);
   min-width: 12px;
@@ -5520,7 +5518,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   height: 18px;
   border-radius: 50%;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -5611,7 +5609,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .engine-pv-eval {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 12px;
   padding: 2px 7px;
   border-radius: 999px;
@@ -5775,7 +5773,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .promotion-name {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--muted);
 }
 
@@ -5805,7 +5803,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .engine-banner-title {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--accent-strong);
 }
 
@@ -5907,7 +5905,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .palette-item-label {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .palette-item-hint {
@@ -5958,7 +5956,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .rail-btn .nav-label { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
 /* While the rail widens on hover its labels fade in: they keep one line. */
 .rail :is(.nav-label, .brand-name) { white-space: nowrap; }
-.rail-btn kbd { font-size: 10px; }
+.rail-btn kbd { font-size: 11px; }
 
 /* Page actions inside page headers. */
 .lib-actions,
@@ -5981,7 +5979,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 44px;
   padding: 6px 8px 6px var(--build-pad, 14px);
 }
-#build-rep-header .rep-name { font-size: 14px; font-weight: 650; flex: 0 1 auto; }
+#build-rep-header .rep-name { font-size: 14px; font-weight: 500; flex: 0 1 auto; }
 #build-rep-header .rep-color-sub { font-size: 12px; font-weight: 400; }
 
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
@@ -6032,7 +6030,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--warn-soft);
   color: var(--warn-text);
   font-size: var(--fs-s);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
 }
 #train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
@@ -6049,7 +6047,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .explorer-db.is-active {
   background: var(--panel);
   color: var(--text);
-  font-weight: 650;
+  font-weight: 500;
 }
 
 /* Build's tree: the main line reads as the line, side lines step back and
@@ -6075,7 +6073,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   justify-self: start;
   padding: 3px 8px;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 500;
 }
 /* One score sheet beside the board, as Lichess prints it: a tinted number
    column and White and Black in two equal columns on a 28px pitch at 15px.
@@ -6094,12 +6092,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #builder-tree .mtree-line.is-main > :is(.mtree-var, .mtree-comment) { grid-column: 1 / -1; }
 #builder-tree .mtree-line.is-main > .mtree-var { margin: 1px 0 3px 2.4em; line-height: 1.6; }
 #builder-tree .mtree-var { --mtree-indent: 10px; }
-#builder-tree .mtree-var .mtree-move { padding: 1px 4px; font-weight: 450; }
+#builder-tree .mtree-var .mtree-move { padding: 1px 4px; font-weight: 400; }
 /* The mark rides inline after the move: the touch layouts' hit-area ::after
    (absolute, inset) would otherwise lift the "?" onto the move's letters. */
 #builder-tree .mtree-move.is-gap::after {
   content: " ?";
   position: static;
   color: var(--negative);
-  font-weight: 700;
+  font-weight: 600;
 }

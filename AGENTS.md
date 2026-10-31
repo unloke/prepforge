@@ -36,6 +36,14 @@ Get-Content -Raw -Encoding UTF8 path\to\file.md
 
 - `rg`, Node `fs.readFileSync(path, "utf8")`, and PowerShell `Get-Content -Encoding UTF8` are acceptable. Do not diagnose a document as corrupted until the raw bytes or an explicit UTF-8 read has been checked.
 
+## UI Screenshots
+
+- Before capturing screens to review or compare UI work, put real content in the
+  account: at least one repertoire with a few branches, an analyzed game and a
+  training run. An empty account only shows empty states and hides Build's tree,
+  Analyze's move list and the Library rows, which is where most UI lives.
+- Shoot before and after on the same data so the comparison is fair.
+
 ## UI Copy: No Standing Explanations
 
 - Do not add persistent explanatory text to the UI: no blurbs under headings that
