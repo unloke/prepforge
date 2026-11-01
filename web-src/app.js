@@ -1139,10 +1139,11 @@ function paintBuildEmpty() {
 
 // The shell's own entry points the lazy controllers call (core/app-context.js).
 provideApp({
-  accountService, captureBuildContext, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
-  markTrainPositionDirty, openAuthModal, queueTrainAttempt, refreshAuthStatus,
-  hydrateBuild, refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn, setTrainBanner,
-  switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
+  accountService, captureBuildContext, flushTrainSync, hardFlushBuild, hideAnalysisHandoff, hydrateBuild,
+  lichessAccounts, loadPgnIntoAnalyze, markTrainPositionDirty, openAuthModal, orientAnalysisFromPgn,
+  queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn,
+  resetAnalysisVariations, revealAnalysisResults, runAnalysis, setTrainBanner, showAnalysisPly,
+  startLichessOAuth, switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
 });
 
 // Train sessions (smart queue, rehearsal, practice games, Feeling Lucky) live in
@@ -1643,12 +1644,8 @@ async function init() {
     hideAnalysisRetrySave, showUndoToast,
   });
   accountEntry.initAccountController();
-  analyzeEntry = createAnalyzeEntry({
-    requireSignIn, startLichessOAuth, syncReplayControls, syncViewHeads,
-    lichessAccounts, showUndoToast, get ensureAnalyzeView() { return ensureAnalyzeView; },
-    orientAnalysisFromPgn, loadPgnIntoAnalyze, runAnalysis, resetAnalysisVariations,
-    showAnalysisPly, revealAnalysisResults, hideAnalysisHandoff,
-  });
+  analyzeEntry = createAnalyzeEntry();
+
   accountEntry.bindAnalyzeEntry(analyzeEntry);
   createTrainEntry({ setTrainBanner, updateTrainTurnBadge });
   createBook({ editRepertoire, analysisSelfSide });

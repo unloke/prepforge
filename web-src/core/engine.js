@@ -1,6 +1,6 @@
-import { START_FEN, appState, boards } from "./state.js";
+import { appState, boards } from "./state.js";
 import { hooks } from "./hooks.js";
-import { effectiveStockfishDepth, maiaAnalysisEnabled, pref, setPref } from "./prefs.js";
+import { maiaAnalysisEnabled, pref, setPref } from "./prefs.js";
 import { BROWSER_ENGINE_UNAVAILABLE, activeBoardController, activeViewName, setStatusError } from "./api.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { localSanLine } from "../chess-local.js";
@@ -46,19 +46,14 @@ export function sanLineFromUci(fen, pvUci) {
 // game reads the same entries again and again.
 // The Explorer's row-eval worker lives with Build (it belongs to the Explorer
 // panel); the widget only ever asks it to repaint its Eval column.
-const explorerEvalEngine = { repaint: () => hooks.explorerEvals?.repaint() };
+export const explorerEvalEngine = { repaint: () => hooks.explorerEvals?.repaint() };
 
 let loadedEngineWidget = null;
 let engineWidgetLoading = null;
 let engineWidgetOpenSeq = 0;
 export function loadEngineWidget() {
   engineWidgetLoading ||= import("../controllers/engine-widget.js").then((mod) => {
-    loadedEngineWidget = mod.createEngineWidget({
-      effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
-      boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-      explorerEvalEngine, getAnalyzeSession: () => hooks.analyzeSession?.() || null,
-      analysisStore,
-    });
+    loadedEngineWidget = mod.createEngineWidget();
     return loadedEngineWidget;
   }).catch((error) => {
     engineWidgetLoading = null;

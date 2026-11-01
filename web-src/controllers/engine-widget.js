@@ -7,16 +7,16 @@ import { paintUnlocks } from "../engine-unlock.js";
 import { subscribeDownloads } from "../engine/engine-downloads.js";
 import { createPassFeed } from "./engine-pass-feed.js";
 
-let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
-  boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-  explorerEvalEngine, getAnalyzeSession, analysisStore;
+import { START_FEN, appState, boards } from "../core/state.js";
+import { activeViewName, setStatusError } from "../core/api.js";
+import { effectiveStockfishDepth } from "../core/prefs.js";
+import { analysisStore, createSharedEvaluationProvider, explorerEvalEngine, setEngineBestArrow,
+  setEngineOn } from "../core/engine.js";
 
-export function createEngineWidget(deps) {
-  ({
-    effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
-    boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-    explorerEvalEngine, getAnalyzeSession, analysisStore,
-  } = deps);
+// Analyze's session, read live: it loads (and can reload) after the widget.
+const getAnalyzeSession = () => hooks.analyzeSession?.() || null;
+
+export function createEngineWidget() {
   const widget = new EngineWidget();
   widget.bind();
   return widget;
