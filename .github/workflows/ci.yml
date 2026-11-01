@@ -135,6 +135,9 @@ jobs:
         # Each smoke is killed at 4 min (run-all.mjs); this bounds the step itself.
         timeout-minutes: 20
         run: npm run smoke:ui-v2
+      - name: Lazy-chunk smoke
+        timeout-minutes: 5
+        run: npm run smoke:lazy-chunks
 
   stockfish:
     runs-on: ubuntu-latest
