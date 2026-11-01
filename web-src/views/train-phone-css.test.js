@@ -4,6 +4,7 @@
 // drives all of it: no positional selectors, no second state machine.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { eagerCss } from "../test-styles-source.js";
 
 const css = readFileSync(new URL("../phone.css", import.meta.url), "utf8");
 const phone = css.slice(css.indexOf("/* ---- Train: Home is a page"), css.indexOf("/* ---- Menus: action sheets"));
@@ -64,7 +65,7 @@ it("every Train control is a thumb-sized target on a phone", () => {
   // The switch is one shared control: a 34x20 track at every width with a
   // shared tap area that adds 12px above and below, so 44px is reached without
   // Train redrawing it.
-  const shared = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  const shared = eagerCss;
   const hit = shared.match(/\.pf-switch::after \{[^}]*inset: -(\d+)px/);
   const track = shared.match(/--switch-h:\s*(\d+)px/);
   expect(Number(track[1]) + 2 * Number(hit[1])).toBeGreaterThanOrEqual(44);

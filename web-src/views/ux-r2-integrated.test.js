@@ -4,9 +4,9 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { swapView } from "../view-swap.js";
+import { eagerCss as styles } from "../test-styles-source.js";
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
-const styles = read("../styles.css");
 const phone = read("../phone.css");
 const teams = read("./teams.css");
 const scout = read("./scout.css");

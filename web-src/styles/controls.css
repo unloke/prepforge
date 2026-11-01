@@ -1,0 +1,802 @@
+/* Shared controls: rows, switches, segmented controls, buttons, fields, pills, cards, empty states, skeletons. */
+
+/* PrepForge shared primitives — warm, rounded, compact.
+   .pf-switch / .seg / .pf-info / .pf-info-pop / .pf-row are the one shared
+   implementation every settings-style boolean, choice, and helper uses.
+   Dark theme: semantic foreground tokens stay legible on dark surfaces
+   (--muted/--label are lightened in :root[data-theme="dark"]); the overrides
+   below only remove the remaining hard-coded light-theme colors and
+   disabled/selected states that bypassed the tokens. */
+
+.pf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+}
+
+
+.pf-row-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+
+.pf-row-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+
+.pf-switch {
+  position: relative;
+  width: var(--switch-w);
+  height: var(--switch-h);
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a switch is a form control and keeps its outline */
+  border-radius: 999px;
+  background: var(--panel-soft);
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+
+/* A thumb needs 44px; the switch's drawn box stays 34x20 at every width. The
+   tap area grows around it, so one switch serves a pointer and a thumb and no
+   view redraws the track to reach the floor. */
+.pf-switch::after {
+  content: "";
+  position: absolute;
+  /* -13px from the padding box: 18px inside the 1px border + 26px = 44px. */
+  inset: -13px -5px;
+}
+
+
+.pf-switch:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+
+
+.pf-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+
+.pf-switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+
+.pf-switch.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+
+.pf-switch.is-on:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  filter: brightness(1.07);
+}
+
+
+.pf-switch .pf-knob,
+.pf-switch.is-on .pf-knob {
+  background: #ffffff;
+}
+
+
+.pf-knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: var(--knob);
+  height: var(--knob);
+  border-radius: 50%;
+  background: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); /* taste-skill-ignore: the knob's depth, not a resting shadow */
+  transition: transform var(--dur-fast) var(--ease-out), scale var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+
+.pf-switch.is-on .pf-knob {
+  transform: translateX(calc(var(--switch-w) - var(--knob) - 4px));
+}
+
+
+/* Press: the knob gives under the thumb. scale is its own property, so it
+   rides on top of the slide instead of replacing it. */
+.pf-switch:active .pf-knob {
+  scale: 0.9;
+}
+
+
+/* Segmented control: a track with the chosen option on a panel-coloured plate.
+   The plate takes the app's one control radius; the track is that radius plus
+   its own 2px of padding, so the two curves stay concentric. (The pair was 7/5,
+   a radius found nowhere else in the app.) */
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--surface-3);
+}
+
+
+.seg-btn {
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-s);
+  font-weight: 500;
+  padding: 0 10px;
+  /* The track (2px padding) stands at the control height: 30px on a desktop,
+     40px on a touch tablet. The phone redraws the track (phone.css). */
+  min-height: calc(var(--control-h) - 4px);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+
+.seg-btn:hover {
+  background: var(--panel-soft);
+}
+
+
+.seg-btn:active {
+  transform: scale(0.96);
+}
+
+
+.seg-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+
+/* Segmented control: the chosen tile is a panel-coloured plate on the
+   surface-3 track. One tone step carries the selection - no resting shadow,
+   no ring. Text stays on --text in both states so contrast holds in light
+   and dark. */
+.seg-btn.is-active {
+  background: var(--panel);
+}
+
+
+.seg-btn:disabled {
+  color: var(--label);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+
+.pf-info {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+
+.pf-info:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+
+.pf-info:active {
+  transform: scale(0.92);
+}
+
+
+.pf-info:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+
+/* The ⓘ is drawn, not typed: U+24D8 is missing from the default fonts on
+   Linux and older Android, where it rendered as an empty box. */
+.info-glyph {
+  display: block;
+  width: 15px;
+  height: 15px;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+
+.pf-info-inline {
+  width: 20px;
+  height: 20px;
+  font-size: 13px;
+}
+
+
+.pf-info-pop {
+  padding: 8px 10px;
+  margin: 2px 0 8px;
+  border-radius: var(--radius-card);
+  background: var(--panel-soft);
+  color: var(--muted);
+  /* The note is read, not glimpsed: it is set at the body floor like the rest
+     of the page, not a shade under it. */
+  font-size: 13px;
+  line-height: 1.5;
+  /* The note opens where the eye already is: it settles under the button
+     instead of appearing flat. @starting-style keeps the closed state
+     hidden, so a browser without it shows the note as it is. */
+  transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
+}
+
+
+@starting-style {
+  .pf-info-pop:not([hidden]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+
+/* Modal select field: a select that fills its dialog row. Geometry is the
+   shared field rule's; only the width is the dialog's. */
+.modal-field select {
+  width: 100%;
+  min-width: 0;
+}
+
+
+/* ---- Buttons: one system ----------------------------------------------
+   `.btn` is the whole vocabulary. Variants: primary (the one accent),
+   secondary (the default surface fill), ghost (no fill until hover), danger
+   (destructive, with a quiet ghost form), icon (square, icon only). Sizes: md
+   (default) and sm. Hover, press, focus-visible, disabled and loading are
+   defined once here; every button in the app is `.btn` plus at most one
+   variant class and one size class. */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--control-h);
+  min-height: var(--control-h);
+  padding: 0 14px;
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a white button on a white card is told apart by its edge */
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+
+/* Hover raises contrast, not weight: the edge steps down to the muted ink and
+   the fill to the page tone, so a button answers the pointer on a white card
+   where a one-step fill alone was barely a difference. */
+.btn:hover:not(:disabled, .is-coming-soon) {
+  border-color: var(--muted);
+  background: var(--surface-3);
+}
+
+
+/* Press moves the control down a pixel instead of shrinking it: a scale on a
+   wide button releases outside the shrunk edge and the click is lost, so the
+   one press feedback in the app is a travel every width can take. */
+.btn:active:not(:disabled, .is-coming-soon) {
+  transform: translateY(1px);
+}
+
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+
+.btn.primary:hover:not(:disabled, .is-coming-soon) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+
+.btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--on-accent);
+}
+
+
+.btn.danger:hover:not(:disabled, .is-coming-soon) {
+  background: var(--danger-strong);
+  border-color: var(--danger-strong);
+}
+
+
+/* Quiet destructive action: no fill until hover, then a danger tint. */
+.btn.danger.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--danger-strong);
+}
+
+
+.btn.danger.ghost:hover:not(:disabled, .is-coming-soon) {
+  background: var(--danger-soft);
+  border-color: transparent;
+  color: var(--danger-strong);
+}
+
+
+/* Ghost: no fill or border until hover — a quiet text action. It carries the
+   ink, not the muted grey: a grey label on the page ground read as disabled
+   next to the outlined button beside it (Build's "Browse…"). Quietness is the
+   missing edge, not a lighter word. */
+.btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+}
+
+
+.btn.ghost:hover:not(:disabled, .is-coming-soon) {
+  border-color: transparent;
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+
+/* Icon-only: square, centred, no label. */
+.btn.icon {
+  width: var(--control-h);
+  min-width: var(--control-h);
+  padding: 0;
+  justify-content: center;
+}
+
+
+.btn.sm {
+  height: var(--control-h-sm);
+  min-height: var(--control-h-sm);
+  padding: 0 9px;
+  font-size: var(--fs-s);
+}
+
+
+.btn.sm.icon {
+  width: var(--control-h-sm);
+  min-width: var(--control-h-sm);
+  padding: 0;
+}
+
+
+.btn.block {
+  width: 100%;
+}
+
+
+/* Disabled and engine-unavailable actions read inert without going under the
+   contrast floor: the muted fill and ink land after the variants, so a disabled
+   .btn.primary cannot keep its accent fill, and the label stays legible (a
+   translucent label fails 4.5:1 on the surface it sits on). */
+.btn:disabled,
+.btn.is-coming-soon {
+  cursor: not-allowed;
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  color: var(--muted);
+}
+
+
+/* Reachable but inert: the control still handles the click (that is the point
+   it opens the connect flow), it just reads as unavailable. */
+.btn.is-unavailable {
+  cursor: not-allowed;
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  color: var(--muted);
+}
+
+
+.btn.is-unavailable:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+  color: var(--muted);
+}
+
+
+.btn.is-unavailable:active {
+  transform: none;
+}
+
+
+/* Loading: the label hides behind a busy dot; the width never changes. */
+.btn.is-loading {
+  color: transparent;
+  pointer-events: none;
+  position: relative;
+}
+
+
+.btn.is-loading::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  border-top-color: transparent;
+  animation: spin 600ms linear infinite;
+}
+
+
+.btn.primary.is-loading::after,
+.btn.danger.is-loading::after {
+  border-color: var(--accent-ink);
+  border-top-color: transparent;
+}
+
+
+/* ---- Inputs, selects, textareas: one field style ----------------------
+   One height (var(--control-h)), one radius (var(--radius)), one edge
+   (--line-strong), one fill (--panel) for every text, search, number, email,
+   password and textarea field in the app. A view may set width, placement or a
+   placeholder; the geometry and the states stay here. */
+select,
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
+textarea {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  font-size: var(--fs-s);
+  height: var(--control-h);
+  min-height: var(--control-h);
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a form field keeps its outline */
+  border-radius: var(--radius);
+  background-color: var(--panel);
+  color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+
+select {
+  padding-right: 26px;
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  cursor: pointer;
+}
+
+
+textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+
+/* A number is a short value: right-aligned tabular digits, so a column of them
+   reads down the units. */
+input[type="number"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+
+select:hover:not(:disabled) { border-color: var(--muted); }
+
+
+select:disabled,
+input:disabled,
+textarea:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+
+/* The ring follows the field's own radius and never reshapes it. */
+select:focus-visible,
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]):focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
+}
+
+
+/* ---- One pill ------------------------------------------------------------
+   Status and kind labels that sit inside a row or beside a value: one height,
+   one radius, one weight, sentence case. Each class only sets its colours (a
+   pale tint with dark text of the same hue); a view may set the text size. */
+.status-pill,
+.team-role-badge,
+.lib-chip,
+.kchip,
+.kind-badge,
+.conn-primary,
+.src-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: var(--radius-chip);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 500;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+
+/* A pill with no label (a share whose role the server did not send) draws nothing. */
+:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge, .conn-primary, .src-kind):empty { display: none; }
+
+
+/* The neutral pill: a status with no severity of its own is the quiet surface.
+   Its tone variants (ok, warn, err) set the pale tint of their own hue. */
+.status-pill {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+
+
+.status-pill.ok { background: var(--good-soft); color: var(--good-text); }
+
+
+.status-pill.warn { background: var(--warn-soft); color: var(--warn-text); }
+
+
+.status-pill.err { background: var(--danger-soft); color: var(--danger); }
+
+
+.link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+
+.link:hover {
+  text-decoration: underline;
+}
+
+
+a.btn { display: inline-flex; align-items: center; text-decoration: none; }
+
+
+/* One column-header treatment for every table in the app: the Library grid,
+   the Games ledger and the Scout plan all label their columns the same way.
+   The number columns are right-aligned by the view that owns them. */
+.col-head,
+.lib-cols,
+.lr.head {
+  color: var(--label);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+
+.skeleton-dot {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
+}
+
+
+.skeleton-stack { display: grid; flex: 1; gap: 5px; min-width: 0; }
+
+
+.skeleton-bar.skeleton-thin { height: 8px; }
+
+
+.skeleton-bar.skeleton-chip { width: 64px; height: 16px; border-radius: 8px; }
+
+
+/* ---- One entrance primitive ---------------------------------------------
+   A thing enters once, when it first arrives (list-enter.js marks it
+   `.is-enter` and takes the marker off when the entrance ends). A row already
+   on screen, a skeleton, or content painted while its view is still fading in
+   never enters, so nothing on a page animates twice. Lists stagger by `--i`
+   (capped) at the container's `--stagger`; transform and opacity only, so the
+   rows below never move. */
+.list-enter > .is-enter {
+  animation: row-enter var(--dur) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * var(--stagger, 25ms));
+}
+
+
+#view-dashboard .list-enter,
+#view-teams .list-enter { --stagger: 60ms; }
+
+
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+
+/* Queue chips reuse the mastery-kind colours (colour means chess). */
+.kchip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+
+.kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
+
+
+.kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
+
+
+.kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
+
+
+.empty-state.big {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 24px;
+  border: 0;
+  background: none;
+}
+
+
+.empty-state.big h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
+
+
+/* `pretty` keeps a lone last word ("…you play Y.") from wrapping by itself. */
+.empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
+
+
+.empty-state.big .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+
+
+/* Side dot (repertoire colour) */
+.color-dot {
+  display: inline-block;
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+}
+
+
+.color-dot.white { background: var(--dot-white); }
+
+
+.color-dot.black { background: var(--explorer-black); border-color: var(--muted); }
+
+
+/* A card is a raised panel on the page: one tone step, no outline. The
+   outline it used to carry drew a box around every block and fought the
+   hairline rows inside it. */
+.card {
+  background: var(--panel);
+  border: 0;
+  border-radius: var(--radius-card);
+  padding: 14px;
+}
+
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+
+.empty-state {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+  text-align: center;
+}
+
+
+/* File drag-and-drop target feedback (Analyze box, dashboard import card). */
+.drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+  background: var(--accent-soft);
+}
+
+
+.btn.block { width: 100%; }
+
+
+.spinner {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--surface-3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+
+/* One skeleton for every list-shaped load: a pulse bar the width of the thing
+   that is coming (Library rows, team rows, member rows). The real content's own
+   row classes set the shape; only the bar and the pulse are defined here. */
+.skeleton-bar {
+  display: block;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
+}
+
+
+/* A placeholder for a headline-sized element (a repertoire name, a team name):
+   the same bar, taller, with its own row. */
+.skeleton-line {
+  height: 16px;
+}
+
+
+.skeleton-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 12px;
+}
+
+
+/* The one loading pulse: a flat bar breathing, never a shimmer. */
+@keyframes skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
+

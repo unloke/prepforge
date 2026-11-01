@@ -1,0 +1,314 @@
+/* Games and Scout shell (#view-replay .review): toolbar, summary chips and the Scout grid. */
+
+/* ===========================================================================
+   Games: Opus prototype composition
+   A flat toolbar card (source tray, Sample, Check, outcome filter chips), then
+   the triage grid (ledger + focus card; see views/replay.css). Scout reuses the
+   toolbar / source tray primitives.
+   =========================================================================== */
+.workspace:has(> .view.is-active#view-replay) {
+  max-width: none;
+  padding: 16px;
+}
+
+
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-card);
+  height: 100%;
+  min-height: 0;
+}
+
+
+.games-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+}
+
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+
+/* One control height across the row: the source chips, the sample/colour
+   select, Add and Check are all 30px, so their baselines line up. */
+@media (min-width: 761px) {
+  .toolbar .src-chip { height: var(--control-h); min-height: var(--control-h); }
+}
+
+
+.toolbar .spacer { flex: 1; }
+
+
+.src { display: flex; align-items: center; gap: 6px; min-width: 0; }
+
+
+.src-label { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
+
+
+.inline-field { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
+
+
+.sum-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+
+/* The chosen filter is the sheet's selection mark: the ink label and an accent
+   line under the word, exactly as wide as the word. A filled plate would make
+   the narrowest control on the page the loudest. */
+.sum-chip {
+  position: relative;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+
+.sum-chip::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+
+.sum-chip:active {
+  transform: translateY(1px);
+}
+
+
+.sum-chip.t-good { color: var(--good-text); }
+
+
+.sum-chip.t-bad { color: var(--danger); }
+
+
+.sum-chip.t-warn { color: var(--warn-text); }
+
+
+.sum-chip.t-none { color: var(--none); }
+
+
+.sum-chip.is-on { color: var(--text); background: var(--surface-3); }
+
+
+.sum-chip.is-on::after { opacity: 1; }
+
+
+.sum-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+
+.queued { color: var(--label); font-size: var(--fs-xs); }
+
+
+.replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+
+.toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 500; }
+
+
+/* Desktop Games and Scout: title and controls share one row, no toolbar card.
+   Controls align to a common baseline (src chips + inline field + button),
+   same height everywhere, no extra vertical space. */
+@media (min-width: 861px) {
+  .review > :is(.games-panel, .scout-panel):not([hidden]) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--gap-group) 24px;
+  }
+  .review > section > .page-head { display: block; align-self: center; }
+  .review > section > .toolbar { min-height: 40px; padding: 0; border: 0; background: none; }
+  .review > section > :is(.replay-results, .scout-grid) { grid-column: 1 / -1; }
+  /* Games and Scout are worked in, not read: their empty states are one
+     compact note in the frame the results will fill, not a 48px-padded hero. */
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big { gap: 4px; padding: 22px 16px; }
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big h3 { font-size: 15px; font-weight: 500; }
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big p { font-size: 13px; color: var(--muted); }
+  /* An empty Scout is a card the report lands in, the way the Games ledger is
+     before its first Check, not a line of text floating on the page ground. */
+  .scout-panel .scout-empty { border-radius: var(--radius-card); background: var(--panel); }
+}
+
+
+/* ===========================================================================
+   Scout: Opus prototype composition (skeleton; the report itself is styled in
+   views/scout.css). Toolbar card, then a grid: scrolling main column (profile,
+   colour tabs, colour card, chart cards) + the line-detail card.
+   =========================================================================== */
+.scout-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+}
+
+
+.scout-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  /* Desktop composition: plan column (63%) + detail card (376px fixed, ~25%) */
+  grid-template-columns: 1fr 376px;
+  gap: 24px;
+}
+
+
+/* position: relative makes the scrolling columns the containing block for
+   absolutely-positioned descendants (the .visually-hidden chart summaries).
+   Without it those resolve against the page and, sitting deep inside the
+   scrolled list, stretched the document: the whole Scout page could be
+   dragged down into empty space. */
+.scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; container: scout-main / inline-size; }
+
+
+.scout-main > * { flex-shrink: 0; }
+
+
+.scout-results { display: flex; flex-direction: column; gap: var(--gap-card); }
+
+
+/* The detail card ends with its content: a line's detail runs 448-536px tall,
+   and stretching the card to the 808px grid row left a 284px white hole under
+   it. It still caps at the row and scrolls if a detail runs longer. */
+.scout-side { position: relative; align-self: start; max-height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; container: scout-side / inline-size; }
+
+
+/* No report yet: the detail card has nothing to show. */
+.scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
+
+
+.scout-panel:not(:has(.scout-section)) .scout-side { display: none; }
+
+
+.scout-stream { display: none; align-items: center; gap: 14px; padding: 16px 20px; }
+
+
+.scout-stream > div:last-child { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+
+.scout-stream p { margin: 0; }
+
+
+.scout-stream-detail { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1em; }
+
+
+.scout-panel.is-streaming .scout-stream { display: flex; }
+
+
+/* Mid-stream the page used to be one spinner over blank ground. The skeleton
+   holds the shape the report lands in, so nothing jumps when it arrives. */
+.scout-skeleton { display: none; flex-direction: column; gap: 10px; }
+
+
+.scout-panel.is-streaming .scout-skeleton { display: flex; }
+
+
+.scout-panel.is-streaming:not(:has(#scout-results:empty)) .scout-skeleton { display: none; }
+
+
+.scout-skeleton .sk-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius-card); background: var(--panel); }
+
+
+.scout-skeleton .sk-profile { gap: 8px; }
+
+
+.scout-skeleton .sk-tabs { display: flex; gap: 10px; padding: 0 4px; }
+
+
+.scout-skeleton .sk { display: block; height: 12px; border-radius: 6px; background: var(--line); }
+
+
+.scout-skeleton .sk-name { width: 140px; height: 16px; }
+
+
+.scout-skeleton .sk-sub { width: 96px; height: 11px; }
+
+
+.scout-skeleton .sk-tab { width: 104px; height: 14px; }
+
+
+.scout-skeleton .sk-line { width: 70%; height: 15px; margin-bottom: 6px; }
+
+
+.scout-skeleton .sk-row { height: 40px; border-radius: 8px; background: var(--surface-3); }
+
+
+@media (prefers-reduced-motion: no-preference) {
+  .scout-skeleton .sk { animation: skeleton-pulse 1.4s ease-in-out infinite alternate; }
+  .scout-skeleton .sk-row:nth-child(3) { animation-delay: 0.1s; }
+  .scout-skeleton .sk-row:nth-child(4) { animation-delay: 0.2s; }
+}
+
+
+.scout-panel .scout-empty { display: none; }
+
+
+.scout-panel:not(.is-streaming):has(#scout-results:empty) .scout-empty { display: flex; }
+
+
+/* "0 games fetched" before any scout has run is noise next to the empty card. */
+.scout-panel:not(.is-streaming):has(#scout-results:empty):has(#scout-profile[hidden]) .counter { visibility: hidden; }
+
+
+@media (max-width: 1279px) {
+  .scout-grid { grid-template-columns: 1fr 340px; }
+}
+
+
+/* Scout stacks at ≤1020; Games keeps ledger + detail side by side (and the
+   viewport-height shell) down to 860px, see views/replay.css. */
+@media (max-width: 1020px) {
+  .review:has(> .scout-panel:not([hidden])),
+  .scout-panel { height: auto; }
+  .scout-grid,
+  .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
+  .scout-main,
+  .scout-side { overflow: visible; }
+}
+
+
+@media (max-width: 860px) {
+  .review,
+  .games-panel,
+  .replay-results { height: auto; }
+  /* Between the phone shell and the two-column desktop grid the page title
+     was hidden while the toolbar showed, so Games and Scout were two unnamed
+     rows. The title comes back over its own controls. */
+  .review > section > .page-head { display: block; }
+  .review > section > .page-head h1 { margin: 0 0 2px; }
+}
+
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  .workspace:has(> .view.is-active#view-replay) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
+  .toolbar { gap: 8px; }
+  .toolbar .spacer { display: none; }
+  .sum-chips { width: 100%; }
+  .toolbar .counter { margin-left: 0; }
+  /* Phone: the plan first, then the open line's detail, then the chart cards. */
+  .scout-grid { display: flex; flex-direction: column; }
+  .scout-main,
+  .scout-results,
+  .scout-section:not([hidden]) { display: contents; }
+  /* Stretch, not start: the card is an inline-size container, so sized to its
+     content it has no width of its own and collapsed to its 24px of padding. */
+  .scout-side { order: 1; align-self: stretch; }
+  .scout-intel-charts-strip { order: 2; }
+}
+

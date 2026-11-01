@@ -3,10 +3,10 @@
 // A folded dock keeps no height from an earlier fit, so the tree gets the panel.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { eagerCss as css } from "../test-styles-source.js";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const session = readFileSync(new URL("../controllers/build-session.js", import.meta.url), "utf8");
-const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 
 it("the candidates sit over the tree, with no position trail", () => {
   const above = html.slice(html.indexOf('id="build-empty"'), html.indexOf('class="tree-wrap"'));

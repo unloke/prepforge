@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 
 import { swapView } from "./view-swap.js";
+import { eagerCss as css } from "./test-styles-source.js";
 
-const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
 function view(id, active = false) {
   const classes = new Set(active ? ["is-active"] : []);

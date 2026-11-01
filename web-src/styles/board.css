@@ -1,0 +1,1042 @@
+/* Study layout and the chessboard: board, marks, pieces, board bar, panel shell, mini board, move links. */
+
+/* Study layout */
+
+/* Study layout — desktop workspace geometry.
+   The board column is the page padding plus the board square itself: it hugs
+   the left edge and is only as wide as the board, so there is no dead gutter
+   on either side. The right workspace takes the rest and scrolls internally. */
+.study {
+  --study-h: calc(100dvh - 36px);
+  /* Board square budget: min(100dvh − chrome, (100vw − rail − 48) × share,
+     100vw − rail − padding/gap − panel floor, 820px). With no top bar the
+     height budget is generous, so the width share is what sizes the board:
+     62% on wide screens, 60% on laptops and narrow laptops (a 56% step left
+     a 160px empty band under a 498px board at 1000x700; Lichess draws 528). The panel-floor term keeps the side panel ≥ 360px down to the
+     860px stacking breakpoint, so board and feedback share one screen at
+     ~980×614. The column wraps exactly around it (max-content). */
+  --board-share: 0.62;
+  --study-panel-min: 360px;
+  --board-size: min(
+    calc(var(--study-h) - var(--board-chrome)),
+    calc((100vw - 60px - 48px) * var(--board-share)),
+    calc(100vw - 60px - 44px - var(--study-panel-min)),
+    820px
+  );
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  justify-content: start;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+
+/* Panel containers. These panels get their width from the board, the dock or a
+   side column, not from the window (the Repertoire panel is ~516px at 1440x900
+   and ~1000px at 1920x1080; the Games ledger narrows as the window gets taller),
+   so the layout switches inside them are @container rules on their own width.
+   Viewport @media stays for the page layout around them. */
+#build-sidebar { container: build-panel / inline-size; }
+
+
+#build-inspector { container: dock / inline-size; }
+
+
+.coach-card,
+.an-pane,
+#analysis-eval-card { container-type: inline-size; }
+
+
+.engine-slot { container: engine-card / inline-size; }
+
+
+/* Scout's columns (scout-main, scout-side) and the Games ledger and detail
+   (ledger, focus) name themselves in their own rules. */
+
+/* Study views claim the full workspace width so the board + sidebar fill the
+   viewport instead of sitting inside the narrow list-view column. Study views
+   also pin their height to the viewport (not the page scroll) so the right
+   workspace scrolls internally and the controls never move. */
+#view-analyze,
+#view-build,
+#view-train {
+  height: 100%;
+  min-height: 0;
+}
+
+
+#view-analyze .study,
+#view-build .study,
+#view-train .study {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+
+/* Analyze: one raised panel beside the board (head + scrolling body), so analysis
+   output appearing below never moves the game header above it. Its composition
+   (coach card, chart, move grid, class bars, drawers) is views/analyze-chart.css.
+   The panel is as tall as the board's column, so both end on one line, and the
+   score sheet takes the height: a long game shows more moves before it scrolls.
+   Long content caps at the viewport and scrolls inside. */
+#analyze-sidebar {
+  gap: 0;
+  max-height: var(--study-h);
+  overflow: hidden;
+}
+
+
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px) {
+  #analyze-sidebar {
+    height: auto;
+    align-self: stretch;
+  }
+}
+
+
+.workspace:has(> .view.is-active#view-analyze),
+.workspace:has(> .view.is-active#view-build),
+.workspace:has(> .view.is-active#view-train) {
+  max-width: none;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+
+.board-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  width: var(--board-size);
+  max-width: 100%;
+  justify-self: start;
+}
+
+
+/* Train tab: coach feedback lives in the right workspace (see .train-coach),
+   so the left column starts at the board, nothing above it. */
+#view-analyze .study,
+#view-build .study,
+#view-train .study {
+  --board-chrome: 42px;
+}
+
+
+.board-stack {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid var(--board-frame);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+
+.chessboard {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+}
+
+
+/* Arrows paint above the pieces (z-index 2) so an arrowhead is never hidden under
+   the piece on its target square; coordinates (4) and move badges (5) stay on top. */
+.annotations {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+
+/* Board marks share one language: a mark is the colour of what it means (accent =
+   yours, good-green = the engine's choice, the grade colours = move quality), drawn
+   translucent so the square and piece under it stay readable, flat as Lichess draws them. */
+.annot-arrow {
+  stroke: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+
+.annot-user {
+  fill: var(--arrow-user);
+}
+
+
+.annot-engine {
+  fill: var(--arrow-engine);
+}
+
+
+/* The move that should have been played (Analyze, on an error): its own hue, so it
+   never reads as the engine's next move or as one of yours. */
+.annot-better {
+  fill: var(--arrow-better);
+}
+
+
+/* Prepared continuations: amber with a dark rim reads on either square.
+   The selected continuation is solid and paints above the other options. */
+.annot-branches {
+  opacity: 0.85;
+}
+
+
+.annot-branch {
+  fill: var(--arrow-line);
+  fill-opacity: 0.55;
+  stroke: rgba(35, 29, 16, 0.85);
+  stroke-width: 0.6;
+  paint-order: stroke fill;
+  stroke-linejoin: round;
+  filter: none;
+}
+
+
+.annot-branch.is-pick {
+  fill-opacity: 1;
+  stroke-width: 1;
+}
+
+
+.annot-branch.is-echo {
+  fill: none;
+  stroke-width: 0.7;
+}
+
+
+/* The engine's move keeps its green fill and the continuation's rim. */
+.annot-branch.is-engine {
+  fill: var(--arrow-engine);
+  fill-opacity: 0.55;
+  filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22));
+}
+
+
+.annot-branch.is-engine.is-pick {
+  fill-opacity: 0.8;
+}
+
+
+/* The head of a move whose arrow a longer one from the same square covers (Bd3 under
+   Bc4): solid, with a light rim, so it reads as a second stop on the shaft. */
+.annot-stop {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 0.5;
+  stroke-dasharray: none;
+  stroke-linejoin: round;
+}
+
+
+.annot-branch.annot-stop {
+  fill-opacity: 0.85;
+}
+
+
+.annot-stop.is-idle {
+  opacity: 0.8;
+}
+
+
+/* A peek: the board shows the position a move beside it names (board peek()).
+   The whole board takes an accent wash and frame, so it can never be mistaken for
+   the real position, and the real position's marks step aside until it is over. */
+.chessboard.is-peeking::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+
+.chessboard.is-peeking .square-badge,
+.annotations.is-peeking {
+  visibility: hidden;
+}
+
+
+.square {
+  border: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  cursor: pointer;
+  touch-action: none;
+  position: relative;
+}
+
+
+.square.light {
+  background: var(--square-light);
+}
+
+
+.square.dark {
+  background: var(--square-dark);
+}
+
+
+.square.selected::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--mark-select);
+  pointer-events: none;
+}
+
+
+/* Legal targets: a dot on an empty square, a corner ring around a capturable piece. */
+.square.legal::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30%;
+  height: 30%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--mark-legal);
+  pointer-events: none;
+  z-index: 1;
+}
+
+
+.square.legal:not([data-piece=""])::after {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+  border-radius: 0;
+  background: radial-gradient(circle, transparent 66%, var(--mark-legal) 67%);
+  z-index: 3;
+}
+
+
+.square.legal:hover::after {
+  background: var(--mark-legal-hover);
+}
+
+
+.square.legal:not([data-piece=""]):hover::after {
+  background: radial-gradient(circle, transparent 66%, var(--mark-legal-hover) 67%);
+}
+
+
+/* A square you mark (right-click) is a ring, the same colour as your arrows. */
+.square.highlighted {
+  background-image: radial-gradient(
+    circle,
+    transparent 56%,
+    var(--arrow-user) 57.5%,
+    var(--arrow-user) 66%,
+    transparent 67.5%
+  );
+}
+
+
+/* The last move is a wash laid over the square's own colour by a pseudo
+   layer, not a background, so the square keeps a flat fill. */
+.square.last-move::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--last-move);
+  pointer-events: none;
+}
+
+
+/* An analysed move tints both of its squares with its grade colour (the badge's
+   colour), so quality reads at a glance; routine good moves keep the neutral tint. */
+.chessboard[data-move-class="brilliant"] .square.last-move { --last-move: var(--mark-brilliant); }
+
+
+.chessboard[data-move-class="great"] .square.last-move { --last-move: var(--mark-great); }
+
+
+.chessboard[data-move-class="inaccuracy"] .square.last-move { --last-move: var(--mark-inaccuracy); }
+
+
+.chessboard[data-move-class="mistake"] .square.last-move { --last-move: var(--mark-mistake); }
+
+
+.chessboard[data-move-class="blunder"] .square.last-move { --last-move: var(--mark-blunder); }
+
+
+.chessboard[data-move-class="missed_win"] .square.last-move,
+.chessboard[data-move-class="missed_tactic"] .square.last-move { --last-move: var(--mark-missed); }
+
+
+.piece {
+  width: 86%;
+  height: 86%;
+  display: block;
+  pointer-events: none;
+  position: relative;
+  z-index: 2;
+}
+
+
+.piece path,
+.piece circle {
+  fill: currentColor;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+
+.piece .piece-line {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2;
+}
+
+
+.piece .piece-cut {
+  fill: #f4f3f1;
+  stroke: none;
+}
+
+
+.piece-white .piece-cut {
+  fill: rgba(35, 30, 24, 0.78);
+}
+
+
+.piece-black .piece-line {
+  stroke: rgba(255, 255, 255, 0.34);
+}
+
+
+.piece-white {
+  color: #fafafa;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
+}
+
+
+.piece-black {
+  color: #1d1d1d;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.25));
+}
+
+
+/* A captured piece, held on its square while the capturing piece travels in:
+   it fades out on the mover's own timing (see _animateSlide), so a capture
+   reads as one piece taking another rather than as one arriving into an
+   already-empty square. Positioned over its square's piece slot. */
+.piece-caught {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: 2;
+  will-change: opacity;
+}
+
+
+/* Board coordinates (toggle: .show-coords on the board) */
+.coord {
+  position: absolute;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  display: none;
+  z-index: 4;
+  user-select: none;
+}
+
+
+.square:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+
+/* Move-quality badge on the destination square: a round coin in the grade's colour,
+   sized from the square (so it scales with the board), sitting in the top-right
+   corner clear of the piece. One shape for every grade; only colour and glyph change. */
+.chessboard {
+  container-type: inline-size;
+}
+
+
+.square-badge {
+  --badge: var(--good);
+  position: absolute;
+  top: 3%;
+  right: 3%;
+  z-index: 5;
+  pointer-events: none;
+  width: 30%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--badge);
+  color: var(--accent-ink);
+  font-family: var(--font);
+  font-size: clamp(8px, calc(100cqw / 8 * 0.19), 15px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  white-space: nowrap;
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.92),
+    0 1px 3px rgba(0, 0, 0, 0.38);
+  animation: badgeIn var(--dur-fast) var(--ease-out);
+}
+
+
+.square-badge.class-brilliant { --badge: var(--brilliant); }
+
+
+.square-badge.class-great { --badge: var(--great); }
+
+
+.square-badge.class-best,
+.square-badge.class-excellent,
+.square-badge.class-good,
+.square-badge.class-book { --badge: var(--good); }
+
+
+.square-badge.class-inaccuracy { --badge: var(--inaccuracy); }
+
+
+.square-badge.class-mistake { --badge: var(--warn); }
+
+
+.square-badge.class-blunder { --badge: var(--danger); }
+
+
+.square-badge.class-missed_win,
+.square-badge.class-missed_tactic { --badge: var(--missed); }
+
+
+.square-badge.class-unknown { --badge: var(--label); }
+
+
+.square-badge.class-brilliant {
+  box-shadow:
+    0 0 0 1.5px rgba(255, 255, 255, 0.92),
+    0 1px 3px rgba(0, 0, 0, 0.38),
+    0 0 12px color-mix(in srgb, var(--brilliant) 70%, transparent);
+}
+
+
+@keyframes badgeIn {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+
+.chessboard.show-coords .coord {
+  display: block;
+}
+
+
+/* Drawn, not text: a square's name is "black rook a8", and a rank digit as
+   text inside it fails axe's label-content-name-mismatch. */
+.coord::before { content: attr(data-coord); }
+
+
+.coord-file {
+  right: 3px;
+  bottom: 2px;
+}
+
+
+.coord-rank {
+  left: 3px;
+  top: 2px;
+}
+
+
+.square.light > .coord {
+  color: var(--coord-on-light);
+}
+
+
+.square.dark > .coord {
+  color: var(--coord-on-dark);
+}
+
+
+/* Last-move pulse */
+@keyframes squarePulse {
+  0% { box-shadow: inset 0 0 0 0 transparent; }
+  35% { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent); }
+  100% { box-shadow: inset 0 0 0 0 transparent; }
+}
+
+
+.square.move-pulse {
+  animation: squarePulse var(--dur-slow) var(--ease-out);
+}
+
+
+/* Flip animation */
+@keyframes boardFlip {
+  0% { transform: perspective(900px) rotateY(0deg); }
+  50% { transform: perspective(900px) rotateY(8deg) scale(0.985); filter: brightness(1.06); }
+  100% { transform: perspective(900px) rotateY(0deg); }
+}
+
+
+.chessboard.is-flipping {
+  animation: boardFlip var(--dur-slow) var(--ease-out);
+}
+
+
+/* Confetti */
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: var(--z-toast);
+}
+
+
+.confetti-bit {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  opacity: 0.95;
+  animation-name: confettiFall;
+  animation-timing-function: var(--ease-out);
+  animation-fill-mode: forwards;
+}
+
+
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120vh) rotate(540deg); opacity: 0.4; }
+}
+
+
+/* Drag-and-drop */
+.square.dragging .piece {
+  opacity: 0.25;
+}
+
+
+.square.drag-over {
+  box-shadow: inset 0 0 0 3px var(--accent);
+  border-radius: 2px;
+}
+
+
+.drag-ghost {
+  position: fixed;
+  z-index: var(--z-menu);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.drag-ghost .piece {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.4));
+}
+
+
+/* Board bar (under the board) */
+
+.board-bar {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+
+.bb-nav,
+.bb-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+
+/* Bar icons: line icons; their word labels show only in the phone toolbar.
+   Icon-only buttons carry the `icon` variant class on `.btn`, so there is one
+   button system rather than two. */
+.bi { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+
+.btn.icon .bl,
+.rep-menu-btn .bl,
+.panel-head .btn:not(.icon) > .bi { display: none; }
+
+
+/* Board-bar icons are plain glyphs (no boxed buttons). */
+.board-bar .btn.icon {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+
+.board-bar .btn.icon:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+
+.sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+
+.board-label {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* Google-Docs-style save indicator for local-first Build sync. Saved is the
+   resting state, so it is plain grey words; only a problem (error) earns a
+   tinted chip. */
+.build-sync {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--surface-3);
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+
+.build-sync:is(.is-saved, .is-dirty) {
+  color: var(--label);
+  background: none;
+}
+
+
+.build-sync.is-syncing {
+  color: var(--accent-strong);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+
+.build-sync.is-error {
+  color: var(--warn-text);
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+  background: color-mix(in srgb, var(--warn) 8%, var(--panel-soft));
+}
+
+
+/* One save chip per screen. On desktop that is the board bar's, beside the
+   move label that edits change; the inspector's copy exists for phones, where
+   the board bar sits out of reach (phone.css). */
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
+  #build-sync-head { display: none; }
+}
+
+
+/* ===========================================================================
+   Repertoire: Opus prototype composition
+   One raised panel beside the board: identity head, fork picker, the move
+   tree, and a bottom dock (Explorer / Coverage / Engine).
+   =========================================================================== */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  border: 0;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+
+#view-build .sidebar { gap: 0; }
+
+
+/* The panel body is the flex column its children were always written as:
+   .tree-wrap grows into the leftover height and .dock takes what the drag
+   handle set. Without a column here, `flex` on the children has nothing to
+   resolve against, so the tree never filled the panel and the inspector's
+   dragged flex-basis was ignored. */
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 10px 8px 12px;
+  border-bottom: 1px solid var(--line); /* taste-skill-ignore: a panel head needs a divider */
+}
+
+
+.rep-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+
+.rep-name b { overflow: hidden; text-overflow: ellipsis; }
+
+
+.rep-color-sub { color: var(--label); font-size: var(--fs-s); }
+
+
+.rep-menu-btn { margin-left: auto; flex: none; opacity: 1; }
+
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  .board-bar { height: 44px; }
+
+}
+
+/* Sidebar */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  /* Not a scroll owner: the page viewport scrolls; panels that need their own
+     scroll (move lists, inspector, coach prose) declare it themselves. */
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+}
+
+
+.tools {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+
+/* Mini board: Games focus card, Analyze/dashboard previews and the Scout
+   line-detail card all render this markup. */
+.scout-miniboard-wrap { flex: none; width: 128px; height: 128px; }
+
+
+.scout-miniboard {
+  display: grid; grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: 100%; height: 100%;
+  border: 1px solid var(--line); border-radius: 2px; overflow: hidden;
+}
+
+
+.scout-minisquare {
+  display: flex; align-items: center; justify-content: center;
+}
+
+
+.scout-minisquare.light { background: var(--square-light); }
+
+
+.scout-minisquare.dark  { background: var(--square-dark); }
+
+
+.scout-minisquare.last { background-image: linear-gradient(var(--last-move), var(--last-move)); }
+
+
+.scout-minisquare svg, .scout-minisquare .piece { width: 80%; height: 80%; }
+
+
+/* Move links (move-text.js): a move inside text that acts on the board when it is
+   clicked. The marker is the word's own underline, with no padding, box or border,
+   so a linked move is exactly as wide and as tall as the word it is and a line
+   never grows because a move in it is a link. A .move-ref is its own control and
+   says so at rest; a .move-inline sits inside a control that already is one (a
+   Scout line row, a game row) and leaves the click to it. Hover, press and focus
+   raise the underline's contrast; nothing moves. */
+.move-ref,
+.move-inline {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.18em;
+  text-decoration-color: transparent;
+  overflow-wrap: normal;
+}
+
+
+.move-ref { text-decoration-color: color-mix(in srgb, currentColor 26%, transparent); }
+
+
+.move-ref:hover,
+.move-inline:hover { text-decoration-color: currentColor; }
+
+
+.move-ref:active,
+.move-inline:active { text-decoration-color: currentColor; text-decoration-thickness: 0.16em; }
+
+
+.move-ref:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+
+.move-ref-num, .move-inline-num { color: var(--muted); }
+
+
+/* Responsive */
+
+/* The study screens stack at ≤860px, except a short landscape screen (a
+   phone on its side, 761-860 x ≤520): stacked there, the board shrank to 55vh
+   (about 210px at 844x390) and the panel started under the fold. It keeps the
+   two columns instead, the board sized by the height term of --board-size.
+   A portrait tablet up to 1100px wide (narrower than 5:6) stacks too: beside
+   a 360px panel its board was 436px at 900x1100.
+   The same split is on the other stacked / wide study rules. */
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+  /* Stacked: board over sidebar. Drop the one-screen fit and let the page scroll
+     normally, because a fixed height here would crush the board on a phone. Two
+     columns hold down to 860px (see .study --study-panel-min), so this only
+     covers small tablets and phones. */
+  .study {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  .board-area {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #analyze-sidebar {
+    max-height: none;
+    overflow: visible;
+  }
+
+  #analyze-sidebar .panel-scroll {
+    overflow: visible;
+  }
+
+  /* Cap the board at ~55% of the viewport height so the panel's head (Train
+     feedback + Start, Analyze coach, Repertoire tree) starts above the fold. */
+  .board-stack {
+    max-width: min(55vh, 560px);
+    margin: 0 auto;
+  }
+  /* A portrait tablet has the height to spare: the board takes the width up
+     to 58% of the screen (Train's Start still above the fold at 768x1024),
+     and the bar and panel line up under it. */
+  @media (min-width: 761px) {
+    .study { --stack-w: min(100%, 58vh); }
+    .board-area,
+    .study > .sidebar { width: var(--stack-w); justify-self: center; }
+    .board-stack { max-width: none; }
+  }
+
+  .sidebar {
+    height: auto;
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  /* Repertoire ⋯ menu: 44×44px touch target. */
+  .rep-menu-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  /* Train board-bar icons: 44px touch targets (desktop stays 28px). */
+  .board-bar {
+    height: 52px;
+  }
+
+}
+
+@media (min-width: 960px) {
+  /* Study geometry is authoritative in the base .study block (max-content
+     board column + viewport-height board size); desktop only keeps the shared
+     16px gap, no second column definition. */
+  /* The board is square and its width budget (the share of the row) binds
+     before the height does on most desktops, so a stretched column left a tall
+     empty area under the board. Let the column end at the board instead; the
+     panel keeps the full height. */
+  .study .board-area { justify-self: start; align-self: start; }
+
+}
+
+/* Page actions inside page headers. */
+.lib-actions,
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+
+/* Analyze has no head strip: its actions close the coach's line, so they take
+   the row's leftover width rather than a row of their own. */
+#view-analyze .panel-actions { margin-left: auto; }
+
+
+@media (max-width: 1279px) {
+  .study { --board-share: 0.6; }
+}
+

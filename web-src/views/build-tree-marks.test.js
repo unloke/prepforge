@@ -4,9 +4,9 @@
 // shared move-tree rules that Analyze uses are not changed for this.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { eagerCss as css } from "../test-styles-source.js";
 
 const build = readFileSync(new URL("./build.js", import.meta.url), "utf8");
-const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 
 it("the decorate marks a leaf the opponent has just played as a gap", () => {
   expect(build).toMatch(/const gap = opp && !\(node\.children && node\.children\.length\);/);

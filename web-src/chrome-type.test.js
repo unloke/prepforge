@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+import { eagerCss as css } from "./test-styles-source.js";
 
-const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 const phone = readFileSync(new URL("./phone.css", import.meta.url), "utf8");
 
 describe("shared chrome type", () => {

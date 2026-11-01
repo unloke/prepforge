@@ -1,0 +1,253 @@
+/* Source composer: the source chip tray and its popover (Games, Scout, Analyze). */
+
+.src-chip.is-self { padding-right: 9px; }
+
+
+/* Shared Source Composer: collapsed chip tray + PrepForge-style popover. */
+.src-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+
+/* ---- One chip ------------------------------------------------------------
+   A chip is a control you can act on: a source, a filter. One height, one
+   radius, one weight, sentence case. Colours are the chip's own state; the
+   shape is not. */
+.src-chip,
+.sum-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-chip);
+  background: var(--surface-3);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+
+/* The source chip carries the source's state in its tint: a selected account
+   is the accent tint, the sign-in tray is a dashed outline. */
+.src-chip {
+  max-width: 100%;
+  min-width: 0;
+  padding: 0 4px 0 9px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+
+/* Guest Games tray: an action, not a selected source. */
+.src-chip.src-chip-signin {
+  padding: 0 10px;
+  border: 1px dashed var(--line-strong);
+  background: transparent;
+  cursor: pointer;
+}
+
+
+.src-chip.src-chip-signin:hover { background: var(--accent-soft); }
+
+
+.src-chip-x {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+
+.src-chip-x:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+
+.src-chip-x:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+
+/* Phone: the × keeps its 20px look inside a 44px target, and the chip is
+   drawn at the 36px control height like every other phone control. */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  .src-chip-x {
+    width: 44px;
+    height: 44px;
+    margin: -12px -6px -12px -2px;
+    font-size: 16px;
+  }
+  .src-chip { height: auto; min-height: var(--control-h); padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
+}
+
+
+/* The [popover] root is only a top-layer host; .src-popover is the box. */
+.src-composer-overlay {
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  overflow: visible;
+}
+
+
+.src-popover {
+  position: fixed;
+  width: min(320px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: var(--float);
+  border-radius: var(--radius-card);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a floating popover is a real overlay */
+}
+
+
+/* Title, count, then Done at the head's end: the sheet's close is a text
+   action in its head (iOS / Chess.com sheets), not a lone button on a row of
+   its own under the add field. */
+.src-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+
+.src-count { margin-right: auto; }
+
+
+.src-done {
+  min-height: var(--control-h-sm, 26px);
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+
+.src-done:hover { text-decoration: underline; }
+
+
+.src-done:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; border-radius: 4px; }
+
+
+.src-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+
+.src-count {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+
+.src-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+
+.src-row:hover {
+  background: var(--surface-3);
+}
+
+
+.src-row input {
+  accent-color: var(--accent);
+}
+
+
+.src-row.is-self {
+  font-weight: 600;
+}
+
+
+.src-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.src-self-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-strong);
+}
+
+
+.src-self-count.is-mixed {
+  color: var(--warn-text);
+}
+
+
+.src-row.is-external .src-chip-x {
+  margin-left: auto;
+}
+
+
+.src-divider {
+  border-top: 1px solid var(--line-soft); /* taste-skill-ignore: a divider between groups in a popover */
+}
+
+
+.src-rows {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+
+.src-add-row {
+  display: flex;
+  gap: 6px;
+}
+
+
+.src-add-error {
+  margin: 4px 0 0;
+  color: var(--danger);
+  font-size: var(--fs-s);
+}
+
+
+.src-add-input {
+  flex: 1;
+  min-width: 0;
+}
+

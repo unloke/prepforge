@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { appSource } from "./test-app-source.js";
+import { eagerCss as css } from "./test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
 const app = appSource();
 
@@ -70,7 +70,7 @@ function ruleBody(selector) {
 
 describe("visual system tokens", () => {
   it("declares the shared token set on :root", () => {
-    expect(css.startsWith(":root")).toBe(true);
+    expect(css.replace(/\/\*[\s\S]*?\*\//g, "").trimStart().startsWith(":root")).toBe(true);
     for (const token of REQUIRED_TOKENS) {
       expect(css).toContain(`${token}:`);
     }
