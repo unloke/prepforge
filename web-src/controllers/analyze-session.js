@@ -27,30 +27,23 @@ import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-co
 import { clearReturnState, saveReturnState } from "../handoff-context.js";
 import { createAnalysisSelection } from "./analyze-selection.js";
 
-let accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
-  boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
-  defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
-  engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
-  importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
-  maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
-  refreshAnalyzeRecovery, renderAnalysisTreeEmptyState, requireSignIn,
-  sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
-  showAnalysisRetrySave, showConfirmModal, showInputModal, START_FEN, switchView,
-  syncAnalysisEvalCard, syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateBookline;
+import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, engineLifecycleMark, postJson,
+  setStatus, setStatusError } from "../core/api.js";
+import { analysisStore, engineWidget, sanLineFromUci, savedPvSan, setEngineBestArrow,
+  syncAnalysisEvalCard } from "../core/engine.js";
+import { appState, boards, notices, START_FEN } from "../core/state.js";
+import { boardAfterMove, boardInfo } from "../board/ui.js";
+import { effectiveMaiaRating, effectiveStockfishDepth, maiaAnalysisEnabled, pref } from "../core/prefs.js";
+import { ensureAnalyzeView, renderAnalysisTreeEmptyState } from "../views/analyze-loader.js";
+import { loadPhaseCoach, preloadCoach } from "../coach/coach-loader.js";
+import { showConfirmModal, showInputModal } from "../core/modals.js";
+import { updateBookline } from "../analyze-book-state.js";
+import { accountService, analysisSelfSide, defaultRepertoireNameFromPgn, hideAnalysisRetrySave,
+  importRepertoireFromPgnText, invalidateAnalysisSource, refreshAnalysisHistoryIfOpen,
+  refreshAnalyzeRecovery, requireSignIn, showAnalysisRetrySave, switchView, syncPgnFromTree,
+  syncViewHeads, syncWorkspaceUrl } from "../core/app-context.js";
 
-export function createAnalyzeSession(deps) {
-  ({
-    accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
-    boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
-    defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
-    engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
-    importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
-    maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
-    refreshAnalyzeRecovery, renderAnalysisTreeEmptyState, requireSignIn,
-    sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
-    showAnalysisRetrySave, showConfirmModal, showInputModal, START_FEN, switchView,
-    syncAnalysisEvalCard, syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateBookline,
-  } = deps);
+export function createAnalyzeSession() {
   positionCoach = new PositionCoach();
   positionCoach.bind();
   // Selection (controllers/analyze-selection.js): one path from a picked node to the

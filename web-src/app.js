@@ -39,11 +39,9 @@ import { activateWorkspaceTab, parseWorkspaceLocation, serializeWorkspaceLocatio
 import { createAnalyzeRestore } from "./controllers/analyze-restore.js";
 import { bindCommandPalette, closePalette, createPalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
 import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
-  isBuildReadOnly,
-  deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient, undoLastBuildAdd,
-  hasPendingBuildOpsFor, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
-  reapplyPendingBuildNodes, reloadOpenBuildTree, renderBuilderTree, resolveBuildId, sameFenPosition, setBuildInspector,
-  setExplorerDb, startBuildLive } from "./build-entry.js";
+  isBuildReadOnly, explorerDrawerOpen, explorerEvalEngine, undoLastBuildAdd, queueBuildAdd,
+  reloadOpenBuildTree, renderBuilderTree, resolveBuildId, setBuildInspector, setExplorerDb,
+  startBuildLive } from "./build-entry.js";
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
@@ -51,29 +49,24 @@ import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { provideApp } from "./core/app-context.js";
-import { BROWSER_ENGINE_UNAVAILABLE, OUTBOX_TAB_ID, activeBoardController, activeViewName,
-  api, currentOwnerId, downloadText, engineLifecycleMark, postJson,
-  setStatus, setStatusError } from "./core/api.js";
-import { applyPref, effectiveMaiaRating, effectiveStockfishDepth, loadPrefs, maiaAnalysisEnabled,
-  pref, syncThemeToggle, toggleTheme,
-  STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "./core/prefs.js";
+import { activeBoardController, activeViewName, api, currentOwnerId, postJson, setStatus, setStatusError } from "./core/api.js";
+import { applyPref, loadPrefs, pref, syncThemeToggle, toggleTheme } from "./core/prefs.js";
 import { applyTheme } from "./theme.js";
 import { settleEntrances } from "./list-enter.js";
 import { showConfirmModal, showInputModal } from "./core/modals.js";
 import { isPopoverOpen } from "./core/dialog.js";
 import { openOverflowMenu } from "./core/overflow-menu.js";
 import { hooks } from "./core/hooks.js";
-import { PIECE_SETS, PIECE_STYLE_KEY, boardAfterMove, boardInfo, isPromotionMove, legalMoveFor,
-  legalTargetsFrom, optimisticBoardMove, parseFenBoard, pieceLabel, pieceSvg,
-  renderAnnotations, renderPieceStylePicker, renderPrefsToggles, resolveBoardMove } from "./board/ui.js";
+import { PIECE_SETS, PIECE_STYLE_KEY, boardInfo, isPromotionMove, legalMoveFor, legalTargetsFrom,
+  parseFenBoard, pieceLabel, pieceSvg, renderAnnotations, renderPieceStylePicker, renderPrefsToggles,
+  resolveBoardMove } from "./board/ui.js";
 import { installSoundUnlock, moveCue, playSound } from "./core/sound.js";
-import { engineWidget, setEngineBestArrow, setEngineOn, syncEngineForView, engineWantedIn,
-  applyServerEngineGating, paintEngineBanners, syncAnalysisEvalCard, analysisStore, sanLineFromUci,
-  EXPLORER_EVAL_MAX_LINES } from "./core/engine.js";
-import { _coachReady, loadPhaseCoach, preloadCoach } from "./coach/coach-loader.js";
+import { engineWidget, setEngineOn, syncEngineForView, engineWantedIn, applyServerEngineGating,
+  paintEngineBanners } from "./core/engine.js";
+import { _coachReady, preloadCoach } from "./coach/coach-loader.js";
 import { createAccountEntry } from "./account-entry.js";
-import { bindEvalChart, createAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer,
-  preloadAnalyzeView, renderAnalysisTree, renderAnalysisTreeEmptyState } from "./views/analyze-loader.js";
+import { bindEvalChart, createAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer, preloadAnalyzeView,
+  renderAnalysisTree } from "./views/analyze-loader.js";
 import { createAnalyzeEntry, analysisRecallSeq } from "./controllers/analyze-entry.js";
 
 // Teams: loaded with the Teams view, but the shell needs its entry points
@@ -239,8 +232,6 @@ function preloadBuildGen() {
   }
   return _buildGenReady;
 }
-
-const savedPvSan = new WeakMap();
 
 
 const BoardController = createBoardController({
@@ -1000,18 +991,8 @@ let analyzeSession = null;
 let analyzeSessionLoading = null;
 function loadAnalyzeSession() {
   analyzeSessionLoading ||= import("./controllers/analyze-session.js").then((mod) => {
-    analyzeSession = mod.createAnalyzeSession({
-      accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
-      boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
-      defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
-      engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
-      importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
-      maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
-      refreshAnalyzeRecovery, renderAnalysisTreeEmptyState, requireSignIn,
-      sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
-      showAnalysisRetrySave, showConfirmModal, showInputModal, START_FEN, switchView,
-      syncAnalysisEvalCard, syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateBookline,
-    });
+    analyzeSession = mod.createAnalyzeSession();
+
     return analyzeSession;
   }).catch((error) => {
     analyzeSessionLoading = null;
@@ -1058,21 +1039,8 @@ let buildSession = null;
 let buildSessionLoading = null;
 function loadBuildSession() {
   buildSessionLoading ||= import("./controllers/build-session.js").then((mod) => {
-    buildSession = mod.createBuildSession({
-      activeViewName, api, appState, boardAfterMove, boardInfo, boards,
-      BROWSER_ENGINE_UNAVAILABLE, buildDockFolded, buildOpMatchesRepertoire,
-      buildProvisionalNode, captureBuildContext, closeRepertoireContextMenu, currentOwnerId,
-      deleteBuildNodeLocal, downloadText, effectiveMaiaRating, effectiveStockfishDepth,
-      engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
-      handleRepertoireContextAction, hardFlushBuild, hasPendingBuildOpsFor, invalidateBook,
-      isBuildReadOnly, notices, normalizeUci, openSettingsSection, optimisticBoardMove,
-      OUTBOX_TAB_ID, postJson, preloadBuildGen, queueBuildAdd,
-      reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
-      refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
-      requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync,
-      setStatus, setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH,
-      STOCKFISH_MIN_DEPTH, switchView, syncWorkspaceUrl,
-    });
+    buildSession = mod.createBuildSession();
+
     return buildSession;
   }).catch((error) => {
     buildSessionLoading = null;
@@ -1139,11 +1107,16 @@ function paintBuildEmpty() {
 
 // The shell's own entry points the lazy controllers call (core/app-context.js).
 provideApp({
-  accountService, captureBuildContext, flushTrainSync, hardFlushBuild, hideAnalysisHandoff, hydrateBuild,
-  lichessAccounts, loadPgnIntoAnalyze, markTrainPositionDirty, openAuthModal, orientAnalysisFromPgn,
-  queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn,
-  resetAnalysisVariations, revealAnalysisResults, runAnalysis, setTrainBanner, showAnalysisPly,
-  startLichessOAuth, switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
+  accountService, analysisSelfSide, captureBuildContext, closeRepertoireContextMenu,
+  defaultRepertoireNameFromPgn, ensureBuildView, flushTrainSync, handleRepertoireContextAction,
+  hardFlushBuild, hideAnalysisHandoff, hideAnalysisRetrySave, hydrateBuild,
+  importRepertoireFromPgnText, invalidateAnalysisSource, lichessAccounts, loadPgnIntoAnalyze,
+  markTrainPositionDirty, openAuthModal, openSettingsSection, orientAnalysisFromPgn, preloadBuildGen,
+  queueTrainAttempt, refreshAnalysisHistoryIfOpen, refreshAnalyzeRecovery, refreshAuthStatus,
+  refreshDashboardRepertoires, refreshRepertoireHead, renderBuildRepHeader, requireSignIn,
+  resetAnalysisVariations, revealAnalysisResults, runAnalysis, scheduleBuildFlush,
+  setTrainBanner, showAnalysisPly, showAnalysisRetrySave, startLichessOAuth, switchView,
+  syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
 });
 
 // Train sessions (smart queue, rehearsal, practice games, Feeling Lucky) live in

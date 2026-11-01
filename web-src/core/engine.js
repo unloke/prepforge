@@ -44,6 +44,8 @@ export function sanLineFromUci(fen, pvUci) {
 
 // A saved eval's PV in SAN, worked out once per saved entry: stepping through a
 // game reads the same entries again and again.
+export const savedPvSan = new WeakMap();
+
 // The Explorer's row-eval worker lives with Build (it belongs to the Explorer
 // panel); the widget only ever asks it to repaint its Eval column.
 export const explorerEvalEngine = { repaint: () => hooks.explorerEvals?.repaint() };
