@@ -8,9 +8,9 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { eagerCss as css } from "../test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(join(root, "..", "styles.css"), "utf8");
 
 // The rule body for a selector, starting at its first occurrence.
 function rule(selector) {

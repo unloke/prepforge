@@ -8,9 +8,10 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { cssSource } from "../test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(join(root, "..", "phone.css"), "utf8");
+const css = cssSource("phone.css");
 
 // The rule body for a selector, starting at its first occurrence.
 function rule(selector) {

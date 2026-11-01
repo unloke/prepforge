@@ -7,8 +7,8 @@
 // dividers instead of scrolling the account chip off the screen.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { eagerCss as css } from "./test-styles-source.js";
 
-const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
 it("gives every rail row a 40px target", () => {
   expect(css).toMatch(/\.rail \.tab,\s*\.rail \.rail-btn \{ height: 40px; \}/);

@@ -7,10 +7,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { appSource } from "./test-app-source.js";
+import { eagerCss as css } from "./test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
-const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
 const dashboard = readFileSync(join(root, "views", "dashboard.js"), "utf8");
 

@@ -1,0 +1,1003 @@
+/* Analyze panel: page chrome, the coach card, results, the evaluation and the score sheet. */
+
+/* PGN input belongs to the lazy Analyze view. */
+.pgn-editor {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.pgn-editor:focus-within { border-color: var(--accent); }
+.pgn-editor #pgn-input {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  resize: vertical;
+}
+.pgn-editor #pgn-input:focus-visible { box-shadow: none; }
+.pgn-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 6px 2px; }
+.pgn-error { margin: 0 10px 4px; color: var(--danger); font-size: 13px; }
+.pgn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pgn-action svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.pgn-open { color: var(--accent-strong); font-weight: 500; }
+.pgn-action:hover { color: var(--text); }
+.pgn-action:hover span, .pgn-open:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Analyze — Opus prototype composition. Lazy-loaded with the Analyze view
+   (analyze.js), so the eager styles.css stays under its deploy budget without a
+   ceiling bump. The eager sheet owns the study grid, the raised .panel and its
+   scrolling .panel-scroll; this sheet owns everything inside the panel, the
+   eval chart and the board-side eval bar.
+
+   Every colour comes from theme tokens (light/dark both work), and strokes use
+   non-scaling geometry so the stretched SVG never fattens the main line. Marker
+   classes carry a colour role only: .eval-dot fills with currentColor,
+   .eval-cliff strokes with it. */
+
+/* This page's own rules over the shared chrome --------------------- */
+
+/* The panel is a surface on a grey page, not a card floating over it: the
+   tone step already separates it from the board, so it carries no edge and no
+   shadow. Its head is a row of actions, not a titled section, so nothing
+   rules it off from the band below. */
+#analyze-sidebar.panel {
+  border: 0;
+  box-shadow: none; /* taste-skill-ignore: the shared .panel paints a resting shadow */
+}
+/* No head strip: the panel opens on the coach's line, and the two actions sit
+   at the right end of it (the owner's screenshot). The 46px band above the
+   verdict held a game name that now names the board under the board, and the
+   one sentence it stood on with no game ("Paste a PGN, or open your last
+   game.") was a standing explanation, which this app does not do. */
+
+/* One filled action on the panel: the Analyze button. The report's handoff
+   now lives behind the report fold, so it is only on screen while that fold is
+   open, and the two are never read together. */
+
+/* The board bar's rule is the last line on the phone; the board's own frame
+   and the evaluation row's tone already say where the board ends. */
+#view-analyze .board-bar {
+  border-bottom: 0;
+}
+
+/* Under the board: the game, named. The bar keeps its 40px and its buttons in
+   the same places, so the name takes the slot the current move used to hold and
+   no other geometry changes. It is the page's first fact, so it reads at the
+   body size in the full ink; a name longer than the slot is cut with an
+   ellipsis and its whole text is the tooltip. */
+#view-analyze .board-caption {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* The last move's tint. The shared sheet paints it as a gradient over the
+   square's own fill, which paints the square button with a gradient; a flat
+   mix of the tint into the square's colour says the same thing in one
+   colour. The board's own mark vocabulary (the legal ring, the arrow
+   colour) is shared chrome and stays as it is. */
+#view-analyze .square.last-move {
+  background-image: none;
+  background-color: color-mix(in srgb, var(--square-light) 55%, var(--last-move));
+}
+#view-analyze .square.dark.last-move {
+  background-color: color-mix(in srgb, var(--square-dark) 55%, var(--last-move));
+}
+
+/* Captions on this page are read, not decoration: the drawer titles, the
+   history rows and the coach's own link all carry meaning, so they read at
+   the body size rather than at the app's 12px chrome size. */
+#analyze-open .drawer > summary,
+#analyze-open .btn.sm,
+#analyze-open .history-item .hi-open,
+#analyze-open .history-item .hi-meta {
+  font-size: 13px;
+}
+/* The coach's own link sits inside the card's own rules, so it needs a
+   selector that reaches past them. */
+.coach-card .coach-bookaction {
+  font-size: 13px;
+}
+
+/* The coach's engine offer sits in the Humans row: its action and dismiss
+   take the panel's one control height (the .btn.sm height, as Last game and Analyze), so
+   the panel no longer mixes 22, 24, 26 and 30px controls. */
+.coach-card .coach-unlock .unlock.is-inline { height: var(--control-h-sm); }
+.coach-card .coach-unlock .unlock.is-inline .btn { height: var(--control-h-sm); min-height: var(--control-h-sm); }
+.coach-card .coach-unlock .unlock.is-inline .unlock-x { width: var(--control-h-sm); height: var(--control-h-sm); }
+
+/* The coach card ---------------------------------------------------- */
+
+/* Coach has four stable rows: controls, verdict, human picks and prep.
+   Async Human/prep reads must not move Evaluation or the board below them, so
+   the block keeps a fixed height and the Humans row is reserved even while its
+   read is in flight.
+   The prep row is not reserved: a book-departure note is rare, and reserving it
+   put a 22px track plus its two gaps of empty panel between the Humans pills and
+   the Evaluation card on every other ply (measured 44px at 1440x900 and
+   768x1024). It takes its own line when the coach has one to speak, and the
+   verdict row — which scrolls — gives up the space instead, so nothing outside
+   the card moves when the note lands. */
+.coach-card {
+  --coach-line: 24px;
+  --coach-head: var(--control-h-sm);
+  --coach-foot: var(--control-h-sm);
+  --coach-gap: 6px;
+  --coach-review: 0px;
+  flex: none;
+  display: grid;
+  grid-template-rows: var(--coach-head) minmax(0, 1fr) var(--coach-foot) auto auto;
+  gap: 0;
+  /* Head, three 24px lines of verdict (plus its 4px padding), the Humans row and
+     one 6px gap before each of them. The prep row contributes nothing while it is
+     hidden, so the card ends on the Humans row; when the note does appear it takes
+     its 22px + gap out of the scrolling verdict, and nothing outside moves. */
+  height: calc(var(--coach-head) + var(--coach-line) * 3 + 4px + var(--coach-foot) + var(--coach-gap) * 2 + var(--coach-review));
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+.coach-card > .cc-head { grid-row: 1; }
+.coach-card > .coach-prose { grid-row: 2; }
+.coach-card > .coach-maia { grid-row: 3; }
+.coach-card > .coach-bookline { grid-row: 4; }
+.coach-card > .coach-review { grid-row: 5; }
+/* A reviewed game adds the review bar's row to the card. */
+.coach-card:has(> .coach-review:not([hidden])) { --coach-review: calc(var(--control-h-sm) + var(--coach-gap)); }
+/* The gap between rows is each row's own margin, not a grid gap: a grid gap is
+   also charged after the prep row, and with the note hidden that 6px landed
+   between the Humans row and the Evaluation card as dead space. A display:none
+   row has no box and takes no margin, so the rhythm closes up behind it. The
+   verdict owns the top and bottom margin (its row is the one that gives), so the
+   Humans row keeps its full height and the pills are never squeezed. */
+.coach-card > .coach-prose { margin: var(--coach-gap) 0; }
+/* The row keeps its three lines so the instrument below never moves, but the
+   note's box (and its tone rule) is only as tall as what it says: a one-line
+   "Make a move…" with a 75px rule under it read as an empty field. */
+/* Its box stops inside the row with its margins, and it sets its lines on the
+   card's reserved pitch: a 24px line in a 22px reservation (a short window)
+   ran the second line into the Humans row. */
+.coach-card > .coach-prose { align-self: start; max-height: calc(100% - var(--coach-gap) * 2); line-height: var(--coach-line); }
+.coach-card > .coach-bookline { margin-top: var(--coach-gap); }
+.coach-card > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* One row, always: the coach's name, the phase, the review switch, then the two
+   actions at the right end. Nothing on this line may take a second line — a
+   wrapped head is 4px taller per line and pushes the verdict, the instrument
+   and the score sheet down with it (measured at 982px before: the two-word
+   "Middlegame" chip wrapped the row and moved the evaluation card 10px). The
+   chip is the one part that yields: it clips with an ellipsis and keeps its
+   word in the tooltip, so a long phase costs a few letters, not the layout. */
+.cc-head {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+.cc-head > b { flex: none; }
+/* The switch's name. On a desktop the head has no room for it beside "Coach"
+   (the switch is named through aria-labelledby, which reads it hidden); on a
+   phone it takes the place of the dropped "Coach", and a tap on it flips the
+   switch too. */
+.cc-switch-label { display: none; }
+.phase-chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  padding: 1px 7px;
+  border-radius: var(--radius-chip);
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.phase-chip[hidden] {
+  display: none;
+}
+/* One short paragraph; a quiet left rule carries the verdict's tone so the read
+   never depends on colour alone (the words say it too). The rule runs the
+   note's own height; past five lines the note scrolls rather than pushing the
+   score sheet down. Two lines are reserved in the note's own line box, so a
+   one-line verdict cannot pull the instrument up by 24px between plies. */
+.coach-prose {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  margin: 0;
+  padding: 2px 0 2px 11px;
+  border-left: 3px solid var(--line);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.coach-prose.is-good { border-left-color: var(--good); }
+.coach-prose.is-warn { border-left-color: var(--warn); }
+.coach-prose.is-danger { border-left-color: var(--danger); }
+.coach-prose.is-brilliant { border-left-color: var(--brilliant); }
+/* The move's grade, in the move list's palette, outranks the tone. */
+.coach-prose[data-quality="brilliant"] { border-left-color: var(--brilliant); }
+.coach-prose[data-quality="great"] { border-left-color: var(--great); }
+.coach-prose[data-quality="good"] { border-left-color: var(--good); }
+.coach-prose[data-quality="inaccuracy"] { border-left-color: var(--inaccuracy); }
+.coach-prose[data-quality="mistake"] { border-left-color: var(--warn); }
+.coach-prose[data-quality="blunder"] { border-left-color: var(--danger); }
+.coach-prose[data-quality="missed"] { border-left-color: var(--missed); }
+.coach-bookline {
+  margin: 0;
+  font-size: var(--fs-s);
+  line-height: 1.35;
+  max-height: calc(var(--coach-line) * 1.5);
+  color: var(--muted);
+}
+/* Human picks (Maia): pills filled to each move's share. */
+.coach-maia {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: auto;
+  overflow: hidden;
+}
+.hp-label {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.hp {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: var(--control-h-sm);
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.hp:hover { background: var(--line); }
+.hp b { overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.hp-pct { color: var(--muted); }
+/* The move the player actually made sits a step darker than its neighbours. */
+.hp.is-played { background: var(--line); }
+/* The engine's own choice wears a disc, not a tick: a shape that needs no
+   character to read. */
+.hp.is-best::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--good-text);
+}
+.coach-bookline {
+  padding-top: 0;
+  overflow: auto;
+}
+/* The review bar: the previous and next key moment around the one in focus,
+   and at a mistake the better move or a try at finding it (Chess.com's Best,
+   Retry and Next). One row at the panel's control height (the .btn.sm height
+   every other control in the panel uses); the label gives way before the
+   buttons. */
+.coach-review {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--control-h-sm);
+  margin-top: var(--coach-gap);
+}
+.cr-step {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text);
+  cursor: pointer;
+}
+.cr-step svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cr-step:hover:not(:disabled) { background: var(--line); }
+.cr-step:disabled { opacity: 0.4; cursor: default; }
+.cr-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  height: var(--control-h-sm);
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-s);
+  line-height: var(--control-h-sm);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+.cr-label > :not(.cr-text) { flex: none; }
+.cr-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cr-label .rp-glyph { font-style: normal; font-weight: 600; }
+.cr-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cr-label.is-right .cr-text { color: var(--good-text); }
+.cr-label.is-wrong .cr-text { color: var(--warn-text); }
+.coach-review > .btn { flex: none; }
+.coach-review > .cr-step + .btn { margin-left: auto; }
+/* The book line is a quiet link in the coach's own row, not a button in a box. */
+.coach-bookaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 2px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+.coach-bookaction:hover {
+  background: var(--accent-soft);
+}
+.coach-bookaction:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* ---- Results: win chance, move grid, class bars ----------------------- */
+
+/* Results update in place; data refreshes never replay an entrance. */
+.res-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.res-stack[hidden] {
+  display: none;
+}
+
+.res-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.res-block[hidden] {
+  display: none;
+}
+/* ---- The evaluation pillar ---------------------------------------------
+   The current figure and the win meter on one line, the game graph under
+   them. On a stacked tablet and a phone it sits under (on a phone, over) the
+   board; beside the board it is the panel's second fixed block, so the board
+   keeps Build's size
+   (analyze-panes.js moves the one element). It keeps one height either way, so
+   stepping a game never moves the board or the panes. */
+.eval-card {
+  flex: none;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-3);
+}
+#analysis-eval-card {
+  --an-eval-h: 112px;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(64px, 1fr);
+  grid-template-rows: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 12px;
+  height: var(--an-eval-h);
+  box-sizing: border-box;
+}
+#analysis-eval-card > :not(.ev-head) { grid-column: 1 / -1; grid-row: 2; align-self: stretch; min-height: 0; }
+#analysis-eval-card .ev-head { display: contents; }
+.ev-title { grid-area: 1 / 1; font-size: var(--fs-s); }
+.ev-head.has-eval .ev-title { display: none; }
+#analysis-chart-caption { grid-area: 1 / 1; }
+.ev-meter { grid-area: 1 / 2; }
+.ev-move { display: none; }
+#analysis-eval-card .eval-chart-wrap,
+#analysis-eval-card .eval-live { height: 100%; }
+#analysis-eval-card .eval-chart { height: 100%; }
+/* While a run lands, its count and Stop ride the graph's top right corner. */
+#analysis-eval-card > .analysis-job-dock:not(:empty) {
+  grid-row: 1;
+  grid-column: 2;
+  justify-self: end;
+  align-self: center;
+  z-index: 6;
+}
+.board-area > #analysis-eval-card { margin-top: 2px; }
+
+#analyze-sidebar .panel-scroll > * { min-width: 0; }
+/* The panel's column: the coach, (beside the board) the evaluation, the
+   engine's lines, the score sheet, then the folds — the game report, the PGN
+   box and the recent analyses. The panel ends where the column does, like
+   Train's: the score sheet has its own cap, so a long game scrolls inside the
+   sheet instead of stretching the panel. */
+#analyze-sidebar .panel-scroll { gap: 8px; }
+.analyze-main {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.analyze-main > * { min-width: 0; }
+.analyze-main > :is(.coach-card, .eval-card, .analysis-retry-save, .analysis-import-picker) { flex: none; }
+/* The folds read as one block of lines, not as separate objects: their gap is
+   half the column's. The sources' folds are the sheet's children (phone.css
+   dissolves the sheet into the panel above the phone band). */
+#analyze-open > .drawer { padding-top: 0; }
+#analyze-sidebar .panel-scroll > .analyze-main { margin-bottom: 0; }
+/* The two actions ride the coach's line (see .cc-head) and never wrap: they are
+   the only way to get a game, and a second row of them would move the panel.
+   They read as words, not icon + word: the words are the labels. */
+#analyze-actions { flex-wrap: nowrap; }
+#analyze-actions .btn > .bi { display: none; }
+
+/* ---- The score sheet, the engine and the folds --------------------------
+   One column: the engine's head row and lines, the score sheet taking what is
+   left, then the game report as a fold. The game's sources (the PGN box and
+   the recent analyses) are the panel's next two folds, after this block.
+   Where the panel is too short or narrow to hold the engine's lines and the
+   sheet side by side with the coach (a stacked tablet, a phone), the same
+   panes stand one at a time behind the tabs; the bands below say which. */
+.an-panes {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.an-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+/* The tabs are the narrow and stacked panels' way of showing one pane at a
+   time (the phone band turns them on too); a side-by-side panel shows every
+   pane without them. */
+.an-tabs {
+  flex: none;
+  display: none;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-3);
+}
+.an-tab:hover { color: var(--text); }
+.an-tab[aria-selected="true"] { background: var(--panel); color: var(--text); }
+.an-tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.an-tab[hidden],
+.an-tab[data-pane="coach"] { display: none; }
+.an-pane {
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.an-pane > * { flex: none; min-width: 0; }
+.an-pane[hidden] { display: none; }
+.an-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  font-size: var(--fs-s);
+}
+.an-pane-head > b { font-weight: 600; }
+/* The score sheet keeps its own cap (.moves-grid) and scrolls inside it: the
+   panel is as tall as its column, so a long game never stretches it. */
+.an-panes > .moves-pane:not([hidden]) { flex: none; }
+.an-panes > .engine-pane + .moves-pane { border-top: 1px solid var(--line-soft); padding-top: 6px; }
+/* Beside the board the panel is the column's height (styles.css); the score
+   sheet grows into it before it scrolls, and the folds stay under it. Only the
+   sheet gives up height: everything else keeps its own (no min-height: 0 up
+   the chain), so an opened fold makes the panel scroll instead of folding the
+   coach under it. */
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6) {
+  /* The sheet's basis is its 120px floor, so the main block's own height counts
+     the sheet at that floor: the block never shrinks below it (a long list of
+     recent analyses makes the panel scroll instead), and grows into any room
+     left, which the sheet takes up to its full length. */
+  #analyze-sidebar .panel-scroll > .analyze-main:has(#analysis-results:not([hidden])) { flex: 1 0 auto; }
+  #analyze-sidebar .panel-scroll > #analyze-open { flex: none; }
+  .an-panes > .moves-pane:not([hidden]) { flex: 1 1 auto; overflow: visible; }
+  .an-panes > .moves-pane > .moves-grid { flex: 1 1 120px; min-height: 120px; max-height: max-content; }
+  /* How each side played heads the score sheet, as a review opens with it:
+     the report is no fold here, its players line is its toggle. */
+  .an-panes > .report-pane { order: 1; }
+  .an-panes > .moves-pane { order: 2; }
+  .an-panes > .report-pane > summary { display: none; }
+  .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
+  .an-panes > .report-pane { flex: none; max-height: min(45vh, 420px); overflow: auto; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary + .rp-body { display: none; }
+  #analysis-summary > .rp-summary { cursor: pointer; }
+  #analysis-summary > .rp-summary .rp-chev { visibility: visible; }
+  #analysis-summary > .rp-summary:hover { background: var(--surface-3); }
+}
+/* The report opened is a compact read, not a second column: it keeps under half
+   the screen and scrolls inside itself, so the score sheet stays where it is. */
+.an-panes > .report-pane > summary { margin-bottom: 0; }
+.an-panes > .report-pane[open] {
+  flex: none;
+  max-height: min(45vh, 420px);
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.an-panes > .report-pane[open] > summary { margin-bottom: 10px; }
+#analysis-find-great { align-self: start; margin-top: 10px; }
+
+/* Nothing to report yet (no game analysed): the fold is not offered. */
+.an-panes > .report-pane:has(#analysis-summary:empty):has(#analysis-handoff[hidden]) {
+  display: none;
+}
+/* The engine pane: the live lines when the engine is on, the saved run's best
+   line when it is off. One head row for both: the pane's name, the depth (the
+   saved run's or the live search's), the live search's line stepper and the
+   Live switch; the docked engine window dissolves into the pane's grid
+   (display: contents) so its head joins that row instead of adding one. Its
+   own label, eval (the evaluation pillar shows it), close and resize handle
+   are not drawn here. */
+.engine-pane {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-auto-rows: min-content;
+  align-items: center;
+  align-content: start;
+  gap: 4px 10px;
+}
+.engine-pane > .an-pane-head,
+#analysis-engine-slot,
+#analysis-engine-slot > .engine-window:not([hidden]),
+#analysis-engine-slot .engine-window-head,
+#analysis-engine-slot .engine-head-meta,
+#analysis-engine-slot .engine-head-tools { display: contents; }
+.engine-pane .an-pane-head > b { grid-area: 1 / 1; }
+#analysis-engine-slot .engine-head-depth { grid-area: 1 / 2; }
+#analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
+.engine-pane .ev-engine { grid-area: 1 / 5; }
+#analysis-engine-slot .engine-window-body,
+#analysis-engine-slot .engine-window-unlock { grid-column: 1 / -1; }
+#analysis-engine-slot .engine-head-label,
+#analysis-engine-slot .engine-head-eval,
+#analysis-engine-slot .engine-window-close,
+#analysis-engine-slot .engine-window-resize,
+#analysis-engine-slot .engine-bar { display: none; }
+#analysis-engine-slot .engine-window-body { display: block; padding: 0; }
+
+/* The current eval as plain figures; a small disc in the leading side's colour
+   says who is better (the sign says it too), so stepping through a game never
+   flips a whole box between light and dark. Fixed width: no row shift. */
+.eval-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 64px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+.eval-now:empty { display: none; }
+/* The previous position's number, held while the engine warms up on this one. */
+.eval-now[data-pending="true"] { opacity: 0.5; }
+/* White's share of the win chance, scaled (never laid out) so a search can
+   update it many times a second. */
+.ev-meter {
+  height: 12px;
+  min-width: 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--eval-side-black);
+  overflow: hidden;
+}
+/* The track keeps its own edge: the win meter is an eval display, so it is
+   real interface and keeps its line (data-ui). */
+#analysis-eval-meter[data-ui] { border: 1px solid var(--line-strong); }
+.ev-meter > i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  /* Empty until a number paints it: a mid-width fill reads as a real 50/50. */
+  transform: scaleX(0);
+  background: var(--eval-side-white);
+  /* Stepping the game is the app's most repeated gesture here, so the bar lands
+     inside that budget instead of trailing its own number by a third of a
+     second. The live engine repaints far faster than this and still jumps (see
+     .is-engine below). */
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+/* No number, no win share: an empty track the width of the card reads as a
+   bar that is stuck. The row keeps its label and its action; the middle stays
+   open until there is a number to fill the track with. */
+.ev-head:not(.has-eval) .ev-meter { display: none; }
+/* Search depth as a word plus quiet figures: "Depth 14/20" says how far the
+   search has come without a progress bar under it.
+   min-width: max-content: the card is a grid whose auto tracks shrink when the
+   head row runs out of room, and a 0 minimum let this readout be cut to 34px
+   around 60px of text, and "Depth 16/16" then ran over the Lines stepper
+   (measured at 1024x768, card 379px). Its content is the floor. */
+#analysis-engine-slot .engine-head-depth {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: max-content;
+  padding: 0 0 2px;
+  border: 0;
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 0;
+}
+#analysis-engine-slot .engine-head-depth::before {
+  content: "Depth";
+  font-size: 11px;
+  font-weight: 400;
+}
+#analysis-engine-slot .engine-head-depth::after {
+  content: attr(data-d);
+  font-size: 11px;
+  font-weight: 500;
+}
+#analysis-engine-slot .engine-head-depth:not([data-d])::after { content: ""; }
+/* Lines: a word before the stepper, so the count has a name. Only in the
+   card - the floating panel keeps its bare − N + cluster and tooltips. */
+#analysis-engine-slot .engine-lines::before {
+  content: "Lines";
+  font-size: 11px;
+  color: var(--muted);
+}
+#analysis-engine-slot .engine-lines { gap: 2px; padding: 0; border: 0; background: none; }
+/* The line stepper is a control: it keeps its own edge (the engine slot is
+   real interface, marked data-ui). */
+#analysis-engine-slot[data-ui] .engine-step {
+  width: 18px;
+  height: 18px;
+  background: none;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+#analysis-engine-slot .engine-step:hover { color: var(--text); background: var(--panel-soft); transform: none; }
+#analysis-engine-slot .engine-step:disabled { background: none; opacity: 0.4; }
+.ev-engine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--control-h-sm);
+  padding: 0 10px 0 9px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  cursor: pointer;
+}
+.ev-engine::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.ev-engine:hover { color: var(--text); background: var(--surface-3); }
+.ev-engine:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ev-engine.is-active { color: var(--text); }
+/* The active engine says so with a bigger disc, not with a ring around it. */
+.ev-engine.is-active::before {
+  background: var(--accent);
+  width: 8px;
+  height: 8px;
+}
+/* Engine lines: one 22px row each, eval as muted figures, the move list cut
+   at the edge (a click unfolds it). */
+#analysis-engine-slot .engine-window-body { padding-top: 2px; }
+#analysis-engine-slot .engine-window-pvs { padding: 0; gap: 0; }
+#analysis-engine-slot .engine-pv,
+#analysis-engine-slot .engine-pv.is-top {
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 6px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+}
+#analysis-engine-slot .engine-pv:hover { background: var(--panel-soft); }
+#analysis-engine-slot .engine-pv.is-expanded { height: auto; }
+#analysis-engine-slot .engine-pv-eval,
+#analysis-engine-slot .engine-pv.is-top .engine-pv-eval {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: right;
+}
+#analysis-engine-slot .engine-pv.is-top .engine-pv-eval { color: var(--text); }
+/* The pass's one line of status has no eval to show, so it takes the whole row
+   instead of the 44px eval column (where "Analyze is still running" is cut off). */
+#analysis-engine-slot .engine-pv.is-waiting { grid-template-columns: minmax(0, 1fr); }
+#analysis-engine-slot .engine-pv-line { min-width: 0; line-height: 22px; text-overflow: ellipsis; }
+#analysis-engine-slot .engine-pv.is-expanded .engine-pv-line { overflow-wrap: anywhere; }
+
+/* Whole-game progress: the graph draws itself as positions finish, with the
+   job's count, Stop and a thin track under it. */
+.eval-live { display: none; position: relative; overflow: hidden; border-radius: 6px; }
+#analysis-eval-card:has(.notice[data-state="running"]) .eval-live { display: block; }
+#analysis-eval-card:has(.notice[data-state="running"]) #analysis-eval-graph { display: none; }
+.eval-chart .eval-front { stroke: var(--accent); stroke-opacity: 0.55; }
+.eval-chart .eval-maia-line {
+  fill: none;
+  stroke: var(--brilliant);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.eval-chart .eval-maia-band { fill: url(#eval-maia-glow); }
+.eval-chart .eval-maia-front { stroke: var(--brilliant); stroke-width: 2; }
+
+.analysis-job-dock:empty { display: none; }
+.analysis-job-dock > .notice {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+/* The live graph is the progress display; the dock keeps the count and Stop. */
+.analysis-job-dock :is(.notice-icon, .notice-title, .notice-track, .notice-close) { display: none; }
+.analysis-job-dock > .notice .notice-main { grid-column: 1; display: block; }
+.analysis-job-dock > .notice .notice-actions { grid-column: 2; }
+.analysis-job-dock > .notice .notice-text { font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
+.rb-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  font-size: var(--fs-s);
+}
+.rb-head .faint b {
+  color: var(--text);
+}
+/* Eval chart: a neutral field split by the centre line. The area between the
+   curve and the line is light above it (White better) and dark below it
+   (Black better), so the fill reads as "who is ahead" at a glance. */
+.eval-chart-wrap {
+  position: relative;
+}
+.eval-chart {
+  display: block;
+  width: 100%;
+  height: 64px;
+  /* The plies run edge to edge: the first/last ply's ring and markers overhang
+     the field instead of being clipped. */
+  overflow: visible;
+  border-radius: 6px;
+  /* The field is a quiet step off the card, not a slab of its own tone: at a
+     mid grey it had more weight than either area, and the curve (2.2:1 against
+     it) was the least legible thing in the chart. Quiet, the white and black
+     wedges carry "who is ahead" and the curve reads at 5.9:1. */
+  --eval-field: color-mix(in srgb, var(--panel) 84%, var(--eval-side-black));
+  --eval-area-white: var(--panel);
+  background: var(--eval-field);
+}
+:root[data-theme="dark"] .eval-chart {
+  /* The same step the other way: the field comes up out of the dark card. */
+  --eval-field: color-mix(in srgb, var(--panel) 84%, var(--eval-side-white));
+  /* Lichess's dark chart fills White's side a soft grey, not paper white: at
+     full white the wedge was the brightest thing on the screen after the
+     board. Still clearly lighter than the field and the black wedge. */
+  --eval-area-white: color-mix(in srgb, var(--eval-side-white) 58%, var(--panel));
+}
+.eval-chart .eval-axis { stroke: var(--line-strong); }
+.eval-chart .eval-area-white { fill: var(--eval-area-white); stroke: none; }
+.eval-chart .eval-area-black { fill: var(--eval-side-black); stroke: none; }
+.eval-chart .eval-line {
+  fill: none;
+  stroke: var(--accent-strong);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.eval-chart .eval-cliff { stroke-width: 1.5; stroke-linecap: round; stroke: currentColor; }
+.eval-chart .eval-dot { fill: currentColor; stroke: none; }
+.eval-chart .eval-cursor { stroke: var(--accent); stroke-width: 2; }
+.eval-chart .eval-cursor-dot {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.eval-chart .eval-hover {
+  stroke: var(--text);
+  stroke-opacity: 0.35;
+}
+.eval-chart .eval-m-brilliant { color: var(--brilliant); }
+.eval-chart .eval-m-great { color: var(--great); }
+.eval-chart .eval-m-inaccuracy { color: var(--inaccuracy); }
+.eval-chart .eval-m-mistake { color: var(--warn); }
+.eval-chart .eval-m-blunder { color: var(--danger); }
+.eval-chart .eval-m-missed { color: var(--missed); }
+
+/* Hover/focus readout for the chart: SAN, win chance, and classification as
+   text, so the tooltip never depends on colour alone. analyze.js placeEvalReadout
+   puts it on the far side of the pointer and in the half of the band away from
+   the point, so the column being pointed at and the curve it names stay in view.
+   It is inside the wrap, so the panel's scroll edge never clips it. */
+.eval-chart-tooltip {
+  position: absolute;
+  z-index: 5;
+  /* One tight line: on a phone the band is 44px, and the readout has to fit in
+     one half of it to stay off the curve. */
+  padding: 1px 6px;
+  line-height: 1.25;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  /* Intrinsic width: a shrink-to-fit box with only `left` set collapsed to the
+     leftover sliver near the right edge and wrapped one letter per line. */
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+/* The readout keeps its own edge: it is a chart interface fragment (data-ui). */
+#eval-chart-tooltip[data-ui] { border: 1px solid var(--line-strong); }
+
+/* Moves: the mainline is a three-column grid (number | White | Black); a
+   variation the reader explores interrupts it as a full-width row. Only the
+   direct children of the mainline are grid cells: variation moves keep the
+   shared inline tree flow. The list sits inside the scrolling panel, so it
+   does not contain overscroll: at its top/bottom the wheel moves the panel
+   (or the page when stacked) instead of feeling stuck.
+   On a wide panel the sheet is sized by the panel (see the scroll rules
+   above) and is the panel's only scroller; this cap is what a stacked layout
+   uses, where the panel is as tall as its content. It used to be 190px
+   everywhere, which showed eight move pairs on a 900px screen. */
+.moves-grid {
+  max-height: clamp(190px, 40dvh, 440px);
+  overflow: auto;
+  border: 0;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.moves-grid .mtree-line.is-main {
+  display: grid;
+  /* The two sides of a move belong to each other: sized to their content they
+     sit next to one another, the way a score sheet prints them. The trailing
+     track soaks up the rest of the sheet so a variation row, which spans every
+     track, still draws its rule across the full width. */
+  grid-template-columns: 32px max-content max-content minmax(0, 1fr);
+  column-gap: 18px;
+}
+.moves-grid .mtree-line.is-main > .mtree-num {
+  grid-column: 1;
+  margin: 0;
+  padding: 3px 6px;
+  background: var(--panel-soft);
+  color: var(--label);
+  font-size: var(--fs-s);
+  text-align: right;
+}
+.moves-grid .mtree-line.is-main > .mtree-move {
+  display: flex;
+  align-items: center;
+  /* The grade belongs to the move beside it: pushed to the far end of the
+     column it sat 190px away, closer to the next move than to its own. */
+  justify-content: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 0;
+  font-weight: 500;
+  text-align: left;
+}
+.moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
+.moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
+/* The selected cell's ink. The shared tree paints the current move with
+   --accent-ink, but the mainline ink rule (4 classes) out-ranks it, so on this
+   grid the current move read --text on the accent fill: 2.9:1, and its grade
+   glyph came out in --text too. The cell is a filled pill, so its ink is the
+   accent's (`accent-ink`, white in light and near-black in dark) and the
+   glyph takes the cell's ink instead of its grade colour. Measured after:
+   5.9:1 at 1440x900. */
+.moves-grid .mtree-line.is-main > .mtree-move.is-current { color: var(--accent-ink); }
+/* The mainline's trail is the sheet's own order: filling every move played so
+   far turned the sheet into two blue columns. A variation keeps its trail. */
+.moves-grid .mtree-line.is-main > .mtree-move.on-path { background: none; color: inherit; }
+.moves-grid .mtree-line.is-main > .mtree-move.is-current .mtree-glyph { color: inherit; }
+/* The move list keeps the shared tree's own tiles: the selected move is filled
+   and raised there too, so Analyze reads like the rest of the app. */
+.moves-grid .mtree-line.is-main > .mtree-var {
+  grid-column: 1 / -1;
+  margin: 2px 8px;
+  line-height: 1.8;
+}
+.mtree-glyph {
+  font-style: normal;
+  font-size: var(--fs-s);
+  font-weight: 600;
+}
+/* The grade glyph takes its move's text-safe colour. It used to take the fill
+   colour (--brilliant), which is a 4.25:1 mark for a dot or a bar but a 4:1
+   word for this glyph, under AA at 13px (measured: "!!" at 4:1). The
+   *-text tokens are the ones the rest of the app uses when a grade colour is
+   read rather than filled. */
+.mtree-move.cls-brilliant .mtree-glyph { color: var(--brilliant-text); }
+.mtree-move.cls-great .mtree-glyph { color: var(--great-text); }
+.mtree-move.cls-excellent .mtree-glyph,
+.mtree-move.cls-best .mtree-glyph,
+.mtree-move.cls-good .mtree-glyph,
+.mtree-move.cls-book .mtree-glyph { color: var(--good-text); }
+.mtree-move.cls-inaccuracy .mtree-glyph { color: var(--inaccuracy-text); }
+.mtree-move.cls-mistake .mtree-glyph { color: var(--warn-text); }
+.mtree-move.cls-blunder .mtree-glyph { color: var(--danger); }
+.mtree-move.cls-missed_win .mtree-glyph,
+.mtree-move.cls-missed_tactic .mtree-glyph { color: var(--missed); }
+/* On the selected cell the accent fill carries the glyph in the cell's ink.
+   This has to out-rank the grade rules above, which set their own colour on
+   this same property: without it the glyph inherited the accent-blue ink from
+   the cell while the glyph's own rule painted it dark, measured at 2.9:1. */
+.mtree-move.is-current .mtree-glyph { color: inherit; }

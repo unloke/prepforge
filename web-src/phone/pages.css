@@ -1,0 +1,859 @@
+/* Phone pages: the shared phone controls, then Library, Games and Scout, Settings. */
+
+.bb-views,
+.board-bar .bb-sheet,
+.page-head,
+.phone-panes,
+.phone-back,
+.strip-end,
+.phone-sheet > :is(.sheet-bar, .sheet-rows) { display: none; }
+.phone-sheet { display: contents; }
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  :root {
+    --phone-bar-h: 48px;
+    --phone-gutter: 12px;
+    /* The gap between blocks on a phone. Items inside one block sit closer
+       than this, so a group reads as one unit. */
+    --phone-gap: 20px;
+    /* The shared size tokens: every .btn, .btn.sm, field and menu row reads
+       its height from these (styles.css; .btn.sm follows --control-h). Drawn
+       at the competitors' size (Lichess buttons 34-41px, iOS rows 44px); the
+       thumb's 44px is the hit area around them, not their paint. */
+    --control-h: 36px;
+    --menu-row-h: 44px;
+  }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  /* iOS zooms the page into any field set below 16px. */
+  input:not([type="checkbox"], [type="radio"], [type="range"]),
+  select,
+  textarea { font-size: 16px; }
+  /* One height for every button, tab, chip and field, one radius from the
+     shared rule. A view that needs a denser row changes its layout, not the
+     control's geometry. */
+  .btn,
+  .btn.sm,
+  .seg-btn,
+  .sum-chip,
+  select,
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
+  textarea { min-height: var(--control-h); height: var(--control-h); }
+  .btn.icon,
+  .btn.sm.icon { width: var(--control-h); min-width: var(--control-h); }
+  /* The paint is 36px; the thumb's 44px is a transparent band round it.
+     :where() keeps both rules at zero specificity, so a control that is
+     positioned on purpose (absolute, sticky) or draws its own ::before keeps
+     it. Icon buttons grow sideways too; wide ones only need the height. */
+  :where(.btn, .seg-btn, .sum-chip) { position: relative; }
+  /* -5px from the padding box: a 1px-bordered 36px control reaches 44px. */
+  :where(.btn, .seg-btn, .sum-chip)::before { content: ""; position: absolute; inset: -5px 0; }
+  :where(.btn.icon, .pf-info)::before { inset: -5px; }
+  /* A segment's 2px transparent border is outside its padding box. */
+  :where(.seg-btn)::before { inset: -6px 0; }
+  :where(.pf-info) { position: relative; }
+  :where(.pf-info)::before { content: ""; position: absolute; }
+  /* A segment is a target too: a "1 2 3" track drew 33px-wide options. The
+     track is a 44px control like the buttons beside it: no padding of its own
+     (44px segments in a 2px-padded track stood 48px tall); each segment draws
+     its plate 2px in, inside a transparent border, so the curves stay
+     concentric. */
+  .seg { gap: 0; padding: 0; }
+  .seg-btn {
+    min-width: var(--control-h);
+    border: 2px solid transparent;
+    border-radius: calc(var(--radius) + 2px);
+    background-clip: padding-box;
+  }
+  textarea { height: auto; }
+  /* A card on a phone pads 12px, the gutter's width: 16 + 14 left content 30px
+     in from the screen edge, a fifth of every row spent on margins. */
+  .card { padding: 12px; }
+  /* The switch is the shared 34x20 track at every width; its shared ::after
+     gives a thumb the 44px it needs, so no view redraws it here. */
+
+  /* ---- Pages ------------------------------------------------------------- */
+  .workspace { padding: 12px 12px calc(72px + env(safe-area-inset-bottom)); }
+  /* Pages grow with their content so the document scrolls to the last row;
+     a flex-shrunk workspace left its bottom padding a screen up, under the
+     tab bar's last rows. */
+  .workspace:has(> .view.is-active:is(#view-dashboard, #view-replay, #view-teams, #view-settings)) {
+    flex: none;
+    min-height: 100dvh;
+    max-width: none;
+    padding: 0 var(--phone-gutter) calc(80px + env(safe-area-inset-bottom));
+  }
+  /* A phone browser keeps 100-180px of the screen for its own bars, so a page
+     spends its height on rows, not on ground: blocks sit 12px apart (a card's
+     own 12px padding then makes the 24px step between two groups). */
+  :is(#view-dashboard, #view-replay, #view-teams, #view-settings) { --phone-gap: 12px; }
+  /* The header is a title row, not a hero: the page's own content is what the
+     screen is about, so the name sits at the app-title size (22px) instead of
+     a 32px display size that out-shouts the list under it. Its height is the
+     action button's, not a 56px band around a 30px line.
+     It is the iOS large title: it stays at the top while the page scrolls and
+     settles into a nav bar, the title shrinking to 17px over the first 32px of
+     scroll and a hairline drawing under it, so a scrolled page still names
+     itself and keeps its + in reach. It owns the top safe area (the notch on
+     an installed app), which the workspace no longer pads. */
+  .page-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: calc(44px + env(safe-area-inset-top));
+    margin: 0 calc(-1 * var(--phone-gutter));
+    padding: env(safe-area-inset-top) var(--phone-gutter) 0;
+    background: var(--bg);
+  }
+  @supports (animation-timeline: scroll()) {
+    .page-head,
+    .page-head h1 { animation-timing-function: linear; animation-fill-mode: both; animation-timeline: scroll(root); animation-range: 0 32px; }
+    .page-head { animation-name: page-head-dock; }
+    .page-head h1 { animation-name: page-title-dock; transform-origin: left center; }
+  }
+  /* The header carries no margin of its own: a container that already gaps its
+     children (the Library column, the Games panel) would then space it twice,
+     which is what put ~50px of dead ground under the title. Only a page that
+     stacks its blocks in normal flow gets the gap from here. */
+  .view > .page-head { margin-bottom: var(--phone-gap); }
+  @keyframes page-head-dock { to { box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the nav bar's edge over scrolled rows */ } }
+  @keyframes page-title-dock { to { transform: scale(0.773); } }
+  .page-head h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .page-head-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface-3);
+    color: var(--text);
+  }
+  .page-head-btn::after { content: ""; position: absolute; inset: -4px; } /* a 44px hit area round the 36px disc */
+  .page-head-btn:active { background: var(--line-strong); }
+  .page-head-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+
+  /* Library: Today as one row, filter chips, the repertoire list, setup
+     steps left. */
+  #view-dashboard .lib { gap: var(--phone-gap); }
+  #view-dashboard .lib-grid { gap: var(--phone-gap); }
+  /* The strip answers one question — what to study next — so the queue is the
+     largest line on it and the streak is the quiet meta above. The action
+     keeps the accent and takes a thumb-sized pill. */
+  #view-dashboard .today.card {
+    display: grid;
+    /* The action closes the card on its own line, as wide as the card's text:
+       beside the streak a "Learn new moves" pill took half the row and
+       out-shouted the queue it acts on, and a longer label had nowhere to go. */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "streak"
+      "queue"
+      "more"
+      "train";
+    align-items: center;
+    gap: 2px 12px;
+    min-height: 52px;
+    padding: 12px 14px;
+    background: var(--panel);
+  }
+  #view-dashboard .today-streak {
+    grid-area: streak;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 5px;
+    width: auto;
+    height: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    line-height: 1.1;
+  }
+  /* A streak is a fact, not a state: it is read, not warned about, so it keeps
+     the ink and lets the queue carry the emphasis. */
+  #view-dashboard .today-count { color: var(--muted); font-size: 13px; font-weight: 500; }
+  #view-dashboard .today-unit { display: block; color: var(--muted); font-size: 13px; }
+  #view-dashboard .today-unit small { display: none; }
+  #view-dashboard .today-recap,
+  #view-dashboard .today-counts { display: none; }
+  /* The aside is only the counts and the recap: with both hidden it would
+     leave an empty grid cell. */
+  #view-dashboard .today-aside { display: none; }
+  #view-dashboard .today-body { display: contents; }
+  #view-dashboard .today-warning { grid-area: more; margin-top: 4px; font-size: 13px; }
+  /* A failed read is one card: the strip's grid would clip it into the 40px
+     streak slot, so it spans the full row instead. */
+  #view-dashboard .today-error { grid-column: 1 / -1; grid-area: queue; }
+  #view-dashboard .today > .btn { grid-area: train; }
+  /* The queue never breaks between a figure and its unit, and never leaves a
+     "·" at the end of a line: the two lines are separate elements now, and the
+     queue is two lines at most. */
+  #view-dashboard .today-queue {
+    grid-area: queue;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.3;
+    text-wrap: pretty;
+  }
+  #view-dashboard .today-more {
+    grid-area: more;
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 1.35;
+    text-wrap: pretty;
+  }
+  #view-dashboard .today .btn { min-height: 36px; height: 36px; margin-top: 10px; padding: 0 18px; border-radius: var(--radius); font-size: 14px; }
+
+  #view-dashboard .lib-list.card { padding: 0; background: none; }
+  /* The phone has no card head: the page title names the page, and its
+     magnifier and + carry search and the two ways to add (New repertoire,
+     Import PGN, in the + sheet; library-phone.js), as the Lichess study list
+     does. So the list starts under one row: the filters. The magnifier opens
+     the search field above them, with Cancel beside it. */
+  #view-dashboard .page-head { gap: 8px; }
+  #view-dashboard .page-head h1 { flex: 1 1 auto; }
+  #view-dashboard .lib-list .card-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "filters filters";
+    align-items: center;
+    gap: 10px 4px;
+    min-height: 0;
+    margin: 0 0 10px;
+    padding: 0;
+    border: 0;
+  }
+  #view-dashboard .lib[data-search-open] .lib-list .card-head { grid-template-areas: "search cancel" "filters filters"; }
+  #view-dashboard .lib-list .card-head h2,
+  #view-dashboard .lib-cols,
+  #view-dashboard .lib-actions,
+  #view-dashboard .lib:not([data-search-open]) .lib-list :is(.search-field, .lib-search-cancel) { display: none; }
+  /* Nothing to filter yet (the empty card carries its own actions): no row. */
+  #view-dashboard .lib:not([data-search-open]) .lib-list.is-empty:not(:has(.lib-no-match)) .card-head { display: none; }
+  #view-dashboard .lib-list .seg { grid-area: filters; }
+  #view-dashboard .lib-list .search-field { grid-area: search; width: 100%; margin: 0; }
+  #view-dashboard .lib-search-cancel {
+    display: block;
+    grid-area: cancel;
+    height: 36px;
+    padding: 0 4px 0 8px;
+    border: 0;
+    background: none;
+    color: var(--accent-strong);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  /* Five filters must all be visible at 390px: a row that scrolls sideways
+     reads as a cut-off row. They were five 44px pills at 13px, which filled
+     the width and read as the screen's buttons rather than its filters. They
+     are one track with one filled option: the same target height, no pill
+     around each word. */
+  #view-dashboard .lib-list .seg {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 2px;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border-radius: 12px;
+    background: var(--surface-3);
+  }
+  #view-dashboard .lib-list.is-empty:not(:has(.lib-no-match)) .seg { display: none; }
+  #view-dashboard .lib-list .seg-btn {
+    flex: 1 1 auto;
+    min-width: 36px;
+    min-height: 36px;
+    height: 36px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  #view-dashboard .lib-list .seg-btn.is-active { background: var(--panel); color: var(--text); font-weight: 500; }
+  .search-field {
+    width: 100%;
+    height: 36px;
+    margin: 0;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--surface-3);
+  }
+  .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); /* taste-skill-ignore: a focus ring is not elevation */ }
+  .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--muted); }
+  .search-field input { height: 36px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
+  #view-dashboard .lib-rep-list { border-radius: var(--radius-card); background: var(--panel); overflow: hidden; }
+  #view-dashboard .lib-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 52px;
+    margin: 0;
+    padding: 8px 4px 8px 14px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  #view-dashboard .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
+  /* The open repertoire is marked with the group's own fill, not a 3px accent
+     bar: inside a rounded grouped list a bar on the first row reads as a clip
+     mark, and the accent belongs to the screen's action. */
+  #view-dashboard .lib-row.is-selected,
+  #view-dashboard .lib-row.is-selected:hover { background: var(--surface-3); }
+  #view-dashboard .lib-row.is-selected::before { content: none; }
+  /* The skeleton row is the phone row's flex shape without the ⋯ button. */
+  #view-dashboard .lib-row.is-skeleton { padding-right: 40px; }
+  #view-dashboard .lib-row .skeleton-dot { margin-top: 0; }
+  #view-dashboard .lib-row.is-skeleton .skeleton-stack { gap: 7px; }
+  #view-dashboard .lib-row.is-skeleton .lib-cell-queue { gap: 6px; padding-left: 38px; }
+  #view-dashboard .lib-cell-rep .skeleton-bar { height: 18px; }
+  #view-dashboard .lib-cell-rep .skeleton-thin { height: 14px; }
+  #view-dashboard .lib-row .skeleton-chip { height: 24px; }
+  #view-dashboard .lib-cell-mastery .skeleton-bar { width: 78px; min-width: 78px; }
+  #view-dashboard .lib-list.is-loading .card-head .seg { visibility: visible; }
+  #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
+  #view-dashboard .lib-row :is(.color-dot, .skeleton-dot) { flex: none; width: 26px; height: 26px; }
+  #view-dashboard .lib-row .lib-name { min-width: 0; gap: 2px; }
+  #view-dashboard .lib-row .name { font-size: 15px; font-weight: 500; }
+  #view-dashboard .lib-row .rep-sub { font-size: 13px; }
+  /* The desktop row carries a mastery figure in its own column; the phone row
+     dropped it, so a phone could not tell a trained repertoire from an
+     untrained one. On a phone it closes the name's line at 13px — the size of
+     the row's other quiet facts — and the queue keeps the line under it, so the
+     right edge is one value beside the name rather than two lines of numbers
+     beside the ⋯. */
+  #view-dashboard .lib-row .lib-opt {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "rep rep" "queue mastery";
+    align-items: center;
+    gap: 6px 10px;
+    min-width: 0;
+  }
+  /* The name owns the first line: beside "0% mastered" it was cut to
+     "Sicilian Najdor…" and its subline wrapped. The figure closes the queue's
+     line instead, on the row's right edge. */
+  #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; justify-self: end; display: flex; }
+  #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: nowrap; gap: 2px; padding-left: 34px; }
+  #view-dashboard .lib-row .lib-mbar { display: none; }
+  #view-dashboard .lib-row .lib-mastery { flex-direction: row; align-items: baseline; gap: 4px; width: auto; line-height: 1.2; }
+  #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: right; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  #view-dashboard .lib-row .lib-mastery-word { display: inline; color: var(--label); font-size: 13px; }
+  /* A shared repertoire is read-only; its name line already says so. */
+  #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
+  /* The queue chip is the row's own action under a thumb, and at 18px it was
+     under the 24px minimum target. It grows to 24px, the most it can take
+     inside a row without turning the queue line into a stack of buttons; the
+     row itself is the target for opening the repertoire. */
+  /* Drawn as text with its dot, as Lichess prints a study's counts: three
+     boxed pills wrapped the queue to a second line. The target stays. */
+  #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; padding: 0 4px; font-size: 13px; border-color: transparent; background: none; }
+  /* The chip stays a 24px pill; its hit area grows into the queue line's own
+     band (the 6px gap above, the row's 8px padding below) and stops there. At
+     -10px it reached up over the name's subline, so a tap at the row's middle,
+     meant to open the repertoire, opened Train instead. */
+  #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -6px -2px -8px; }
+  /* With no queue chips the line holds only the mastery note: it starts at
+     the name's left edge instead of hanging off the right. */
+  #view-dashboard .lib-row:not(:has(.kchip, .skeleton-chip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
+  #view-dashboard .lib-cell-queue:not(:has(.kchip, .skeleton-chip)) { display: none; }
+  #view-dashboard .lib-row .row-menu-btn { flex: none; width: 36px; height: 36px; opacity: 1; }
+
+  #view-dashboard .steps.card { padding: 4px 0; background: var(--panel); }
+  #view-dashboard .steps .card-head { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-height: 0; margin: 0; padding: 8px 6px 4px 14px; }
+  #view-dashboard .steps .card-head h2 { flex: 1; font-size: 14px; }
+  #view-dashboard .steps .setup-bar { margin: 0 14px 4px; }
+  #view-dashboard .steps .setup-dismiss { width: 36px; min-width: 36px; height: 36px; min-height: 36px; }
+  #view-dashboard .step.is-done { display: none; }
+  /* The phone checklist hides the finished steps, so a step's number points at
+     a list the phone never drew: one visible step was left reading "2". The
+     title leads instead. */
+  #view-dashboard .step[data-setup-step] { grid-template-columns: minmax(0, 1fr) auto; }
+  #view-dashboard .step .step-n { display: none; }
+  /* A first-run step (signed out, or nothing built yet) is a short paragraph
+     and its action: the action goes under the words, so the title is not
+     squeezed into a 120px column beside a 150px pill. */
+  /* An empty or failed list has nothing to search; its card carries its own
+     actions (Import PGN, Try again). */
+  #view-dashboard .lib:has(.lib-list:is(.is-empty, .is-error):not(:has(.lib-no-match))) #library-search-toggle { display: none; }
+  #view-dashboard .step-text { font-size: 14px; }
+  /* A step is one tappable row with a chevron, as the Chess.com home's
+     cards are: its button repeated the title ("Link your Lichess account" ·
+     "Link Lichess") and squeezed the title onto two lines beside a 150px pill,
+     or dropped under a paragraph as a lone pill. The button stays (its label
+     is its accessible name) and its hit area is the whole row. */
+  #view-dashboard .step { position: relative; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 4px; min-height: 44px; margin: 0; padding: 10px 2px 10px 14px; border: 0; }
+  #view-dashboard .step + .step { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
+  #view-dashboard .step-text b { display: block; font-size: 15px; font-weight: 500; }
+  #view-dashboard .step-text p { margin: 2px 0 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
+  #view-dashboard .step .btn {
+    position: static;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    text-indent: 200%;
+    white-space: nowrap;
+  }
+  #view-dashboard .step .btn {
+    background: var(--label);
+    color: transparent;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat;
+  }
+  #view-dashboard .step .btn::after { content: ""; position: absolute; inset: 0; }
+  #view-dashboard .step:has(.btn:active) { background: var(--surface-3); }
+  /* Signed out: one row of two equal actions, Sign in the filled one. */
+  #view-dashboard .empty-state.big .row { display: flex; flex-wrap: nowrap; gap: 8px; width: 100%; }
+  #view-dashboard .empty-state.big .row .btn { flex: 1 1 0; min-width: 0; }
+
+  /* Games and Scout: the same grouped card — where the games come from, one
+     choice row, then the action across the card. */
+  #view-replay :is(.games-panel, .scout-panel):not([hidden]) { display: flex; flex-direction: column; gap: var(--phone-gap); height: auto; }
+  /* The ≤860px rule sets this title as a block; on a phone it is the pages'
+     title row, its title centred in the 44px bar. */
+  #view-replay .review > section > .page-head { display: flex; }
+  #view-replay .review > section > .page-head h1 { margin: 0; }
+  #view-replay :is(.games-panel, .scout-panel) > .toolbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0;
+    margin: 0;
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--radius-card);
+    background: var(--panel);
+    box-shadow: none;
+  }
+  #view-replay .toolbar > .src,
+  #view-replay .toolbar > .inline-field,
+  #view-replay .toolbar > .sum-chips { grid-column: 1 / -1; }
+  /* The source is two rows: its name, then the chip and Add. Three columns
+     squeezed the chip to a two-word sliver at 390px. */
+  #view-replay .toolbar > .src {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 8px;
+    min-height: 44px;
+    margin: 0;
+    padding: 8px 0;
+  }
+  #view-replay .toolbar > .src > .src-label { grid-column: 1 / -1; color: var(--muted); font-size: 14px; }
+  #view-replay .toolbar > .src > .src-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  /* No source yet: the empty card below says what to add, so the row is just
+     its name and Add on one line instead of a label over a blank cell. */
+  #view-replay .toolbar > .src:has(> .src-chips:empty) { grid-template-columns: minmax(0, 1fr) auto; }
+  #view-replay .toolbar > .src:has(> .src-chips:empty) > .src-label { grid-column: auto; }
+  #view-replay .toolbar > .src:has(> .src-chips:empty) > .src-chips { display: none; }
+  /* A selected source is a state, not the screen's action: it takes the
+     recessed fill and ink text like every other selected control here. */
+  #view-replay .toolbar .src-chip { background: var(--surface-3); color: var(--text); }
+  #view-replay .toolbar > .src > .btn {
+    justify-self: end;
+    margin: 0 -8px 0 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font-weight: 500;
+  }
+  #view-replay .toolbar > .src > .btn:active { background: var(--surface-3); }
+  #view-replay .toolbar > .inline-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 44px;
+    margin: 0;
+    padding: 6px 0;
+    box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped card */
+    color: var(--text);
+    font-size: 15px;
+  }
+  #view-replay .toolbar > .inline-field select { width: auto; min-width: 120px; }
+  #view-replay .toolbar > .spacer { display: none; }
+  #view-replay .toolbar > :is(#lichess-compare-btn, #scout-btn) {
+    justify-content: center;
+    width: 100%;
+    margin: 10px 0 14px;
+  }
+  /* Reset and the count share one row: Reset on the left, the count on the right,
+     so neither floats on its own line under the Start control. */
+  #view-replay .toolbar > #scout-reset-btn:not([hidden]) { grid-column: 1; justify-self: start; min-height: 36px; margin: 0; border: 0; color: var(--text); }
+  #view-replay .toolbar > .counter { grid-column: 2; justify-self: end; margin: 0; color: var(--muted); font-size: 13px; text-align: right; }
+  /* Once there is a report, Start leaves the docked bar and joins the toolbar's
+     last row: Reset, the count, Start. Before that the docked Start is the page's one action. */
+  #view-replay .scout-panel:has(#scout-results > .scout-section) > .toolbar { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; }
+  #view-replay .scout-panel:has(#scout-results > .scout-section) > .toolbar > :is(#scout-reset-btn, .counter, #scout-btn) { grid-row: 3; }
+  #view-replay.is-active .scout-panel:has(#scout-results > .scout-section) > .toolbar > #scout-btn {
+    position: static;
+    grid-column: 3;
+    justify-self: end;
+    width: auto;
+    min-height: 36px;
+    margin: 0;
+    outline: 0;
+  }
+  /* The outcome filters are one strip that scrolls sideways, as the Chess.com
+     app sets its archive filters: four chips wrapped to two rows of boxes. */
+  #view-replay .toolbar > .sum-chips:not([hidden]) {
+    flex-wrap: nowrap;
+    margin: 0 -14px;
+    /* 5px above and below the 36px chips keep their 44px band inside the
+       strip, which clips it as a sideways scroller. */
+    margin-top: -5px;
+    padding: 5px 14px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #view-replay .toolbar > .sum-chips > * { flex: none; }
+  /* The empty answer is a card of its own under the control card, sized to
+     its message: on Games and Scout the tab has either rows or nothing, and
+     both read the same way. Games' ledger already carries the frame. */
+  #view-replay .scout-empty.empty-state.big {
+    padding: 16px;
+    border-radius: var(--radius-card);
+    background: var(--panel);
+  }
+  #view-replay .scout-empty.empty-state.big h3 { font-size: 15px; }
+  /* Games' empty ledger is the same note: the 48px hero padding held one line
+     in a 120px card. */
+  #view-replay .ledger-empty.empty-state.big { padding: 16px; }
+  #view-replay .ledger-empty.empty-state.big h3 { font-size: 15px; }
+  #view-replay .empty-state.big p:empty { display: none; }
+  /* The engine offer (Maia's 46 MB download) waits under the report on a phone:
+     the first screen is the opponent's lines, and the offer's card follows them.
+     Only once there is a report: while games stream the page is short, and the
+     card would sit 500px below the stream with nothing between. */
+  #view-replay .scout-panel:has(#scout-results:not(:empty)) .scout-main > [data-unlock-place="scout"] { order: 2; }
+  /* The report's blocks keep the page's 12px step: the grid's 24px and the
+     offer's own 12px margin put 36px between the offer and the empty card. */
+  #view-replay .scout-grid { row-gap: var(--phone-gap); }
+  #view-replay .scout-main > [data-unlock-place="scout"] { margin-bottom: 0; }
+
+  /* The page's one action docks above the tab bar, where the thumb rests:
+     Check on Games, Start on Scout. Up in the source card it sat in the top
+     third of the screen, the hardest place to reach one-handed. The page keeps
+     room under its last row for it. The 12px ground ring is a plate, not a
+     shadow: rows scrolling under the pill would otherwise peek past its
+     corners. */
+  #view-replay.is-active :is(.games-panel, .scout-panel):not([hidden]) > .toolbar > :is(#lichess-compare-btn, #scout-btn) {
+    position: fixed;
+    z-index: 30;
+    left: var(--phone-gutter);
+    right: var(--phone-gutter);
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 12px);
+    width: auto;
+    margin: 0;
+    font-size: 14px;
+    outline: 12px solid var(--bg);
+  }
+  /* The docked pill floats over rows that scroll under its plate: its hit
+     band would take taps meant for the row just above it (Scout's Black tab). */
+  #view-replay.is-active :is(.games-panel, .scout-panel):not([hidden]) > .toolbar > :is(#lichess-compare-btn, #scout-btn)::before { content: none; }
+  .workspace:has(> .view.is-active#view-replay) { padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 90px); }
+  /* With no source there is nothing to check, so Check leaves the dock rather
+     than sitting in it disabled. The real next step takes the dock: Link
+     Lichess account (or Sign in for a guest), as the page's one filled action.
+     With sources linked but none picked, Add in the card is the step and the
+     dock stays empty. The card's row is then just "Games from" and Add. */
+  #view-replay .games-panel > .toolbar:has(#games-source-chips:empty, .src-chip-signin) > #lichess-compare-btn { display: none; }
+  #view-replay .toolbar > .src:has(.src-chip-signin) > .src-label { grid-column: auto; }
+  #view-replay .toolbar > .src:has(.src-chip-signin) > .src-chips { display: contents; }
+  #view-replay.is-active .games-panel:not([hidden]) .src-chip.src-chip-signin {
+    position: fixed;
+    z-index: 30;
+    left: var(--phone-gutter);
+    right: var(--phone-gutter);
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 12px);
+    justify-content: center;
+    /* The same box and type as Scout's docked Start and every phone primary. */
+    height: 36px;
+    min-height: 0;
+    padding: 0 16px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: normal;
+    outline: 12px solid var(--bg);
+  }
+
+
+
+  /* Settings: one grouped list per section, like the iOS Settings app. Every
+     row is 48px, actions are tinted text, sliders get the row's full width. */
+  #view-settings .settings { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
+  /* The section strip stays on a phone: it is the only way to reach a section
+     there, and it holds while the cards scroll. Six sections do not fit one
+     row at 390px; wrapped into two rows they took 100px of a sticky strip on
+     every scroll. The strip is one row that scrolls sideways inside itself
+     (never the page); a cut-off word at the edge says there is more, and the
+     open section is scrolled into view whenever it changes (settings.js). */
+  #view-settings .settings-nav {
+    position: sticky;
+    top: 0;
+    /* Above the cards' positioned controls (segmented buttons carry a hit
+       area), which otherwise paint over the strip as they scroll under it. */
+    z-index: 1;
+    /* The strip is a flex row: without it the inline links wrapped "Engine"
+       onto a second 44px line. */
+    display: flex;
+    width: auto;
+    max-width: none;
+    flex-wrap: nowrap;
+    gap: 0;
+    margin: 0 calc(-1 * var(--phone-gutter)) 12px;
+    padding: 0 var(--phone-gutter);
+    border-radius: 0;
+    background: var(--bg);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--phone-gutter);
+    scrollbar-width: none;
+    /* Cards pass under the strip while the page scrolls; the hairline says
+       the strip ends there, and the open tab's bar sits on it. */
+    box-shadow: inset 0 -1px 0 var(--line);
+    /* Six sections do not fit one phone row, so the last tab is cut by the
+       edge and reads as a broken word ("Playin"). Fade the edge that still has
+       tabs behind it (settings.js sets data-edge); the cut label then reads as
+       "more this way", and the fade goes away at the end of the strip. */
+    --edge-fade: 28px;
+  }
+  #view-settings .settings-nav[data-edge="end"] {
+    mask-image: linear-gradient(to right, #000 calc(100% - var(--edge-fade)), transparent);
+  }
+  #view-settings .settings-nav[data-edge="start"] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--edge-fade));
+  }
+  #view-settings .settings-nav[data-edge="both"] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--edge-fade), #000 calc(100% - var(--edge-fade)), transparent);
+  }
+  #view-settings .settings-nav::-webkit-scrollbar { display: none; }
+  /* A row of text tabs, like a native segmented header: the open one is ink
+     with a bar under it, the rest are muted words. Pills on pills read as six
+     buttons competing with the cards' own buttons. */
+  #view-settings .settings-nav-link {
+    position: relative;
+    flex: 1 0 auto;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 8px;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  #view-settings .settings-nav-link:hover { background: none; color: var(--text); }
+  #view-settings .settings-nav-link.is-active { background: none; color: var(--text); }
+  #view-settings .settings-nav-link::after {
+    content: "";
+    position: absolute;
+    right: 8px;
+    bottom: 0;
+    left: 8px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  #view-settings .settings-nav-link.is-active::after { opacity: 1; }
+  /* The desktop label column draws its line on the left edge; the strip has none. */
+  #view-settings .settings-nav-link::before { display: none; }
+  #view-settings .settings-content { display: flex; flex-direction: column; gap: var(--phone-gap); }
+  /* The section strip is the page's docked bar; the title scrolls away under
+     it rather than docking above it as a second bar. */
+  #view-settings .page-head { position: static; }
+  #view-settings .set { padding: 0 16px; }
+  /* A long section title plus its info and action buttons (Maia3: "Download",
+     "Reset cache") overflowed 320px; the buttons wrap under the title instead. */
+  #view-settings .set h2 { flex-wrap: wrap; gap: 4px 2px; }
+  /* The section title is a heading, not a stamped label: sentence case, ink,
+     and separated from the rows by space. */
+  #view-settings .set h2 {
+    min-height: 36px;
+    margin: 0;
+    padding: 14px 0 4px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  #view-settings :is(.set-row, .pf-row, .acct-row, .conn-row) {
+    flex-wrap: nowrap;
+    min-height: 44px;
+    padding: 6px 0;
+    border: 0;
+    font-size: 15px;
+  }
+  #view-settings .pf-row-label { font-size: 15px; font-weight: 400; }
+  /* A label is never squeezed under its value: "Engine" ran into "Stockfish
+     19.0.0 lite (WASM)" with no gap. The value side wraps instead. */
+  #view-settings .set-row > span:first-child { flex: none; }
+  #view-settings .set-row-value { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; text-align: right; }
+  /* A slider's thumb gets a thumb-sized hit row; the 4px track stays drawn. */
+  #view-settings input[type="range"] { height: 36px; min-height: 36px; }
+  /* The linked username is a target on a phone. */
+  #view-settings .conn-user { min-width: 36px; min-height: 36px; }
+  /* Settings row buttons are the shared .btn at the shared phone height; only
+     the padding grows for a thumb. */
+  #view-settings .set :is(.btn, .btn.sm) { padding: 0 14px; font-size: 14px; }
+  #view-settings .set .seg-btn { padding: 0 12px; }
+  #view-settings .status-pill { font-size: 13px; }
+  #view-settings .set .faint,
+  #view-settings .set .note { margin: 8px 0; font-size: 13px; }
+  /* Sign out takes its own line under the identity, on the name's own edge
+     (avatar 48px + the block's 12px gap): beside the name it cut the name to
+     "onlyformu…", and 8px short of that edge it read as a stray button. */
+  /* The linked account's ⋯ is a thumb target, and its menu is an action sheet
+     at the thumb like every other phone menu, not a 132px popover over the
+     row under it. */
+  #view-settings .conn-menu-btn { min-width: 36px; height: 36px; font-size: 16px; }
+  /* !important: account.js positions the menu with inline top/left. */
+  #view-settings .conn-menu {
+    top: auto !important;
+    left: 8px !important;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    gap: 0;
+    min-width: 0;
+    padding: 6px 0;
+    border: 0;
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    animation: phone-sheet-up var(--dur-fast) var(--ease-out);
+  }
+  #view-settings .conn-menu-item { min-height: 44px; padding: 0 18px; border-radius: 0; font-size: 15px; }
+  #view-settings .conn-menu-item + .conn-menu-item { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
+  #view-settings .acct-block { margin-top: 0; }
+  #view-settings .acct-block-head { color: var(--muted); font-size: 13px; font-weight: 500; }
+  #view-settings .acct-block > .btn { margin: 4px 0; }
+  #view-settings #settings-account-data { padding-top: 0; }
+  #view-settings .acct-danger-zone { margin: 0; }
+  /* Sliders: the label on its own line, the control under it full width. */
+  #view-settings .set-row:has(.slider) { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 0; }
+  #view-settings .slider { gap: 12px; }
+  #view-settings .slider input[type="range"] { flex: 1 1 auto; width: auto; min-width: 0; }
+  #view-settings .set-row:has(#piece-style-picker) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
+  #view-settings #piece-style-picker { flex-wrap: nowrap; gap: 8px; padding: 0; border: 0; background: none; }
+  #view-settings #piece-style-picker .piece-style-option { flex: 1 1 0; flex-direction: column; justify-content: center; min-height: 36px; height: auto; padding: 6px 8px 6px 6px; border-radius: var(--radius); background: var(--surface-3); }
+
+  /* ---- Settings, round 2: grouped lists with trailing text actions --------
+     Every row is a label on the left and one quiet action or value on the
+     right (iOS Settings, the Chess.com settings screens): boxed buttons of
+     five widths down a card read as a form, and two blue Download blocks
+     out-shouted the page. Groups are split by a band of the page ground, so
+     one card reads as several inset lists without boxes inside boxes. */
+  #view-settings .set :is(.set-row, .acct-row, .dl-head) .btn:not(.primary, .pf-switch),
+  #view-settings .set .dl-head .btn.primary,
+  #view-settings .acct-edit {
+    min-width: 36px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--accent-strong);
+    font-size: 15px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  #view-settings .set .btn.danger { color: var(--danger-strong); }
+  #view-settings .acct-edit { height: 32px; min-height: 32px; font-size: 14px; }
+  #view-settings .acct-edit::after { content: ""; position: absolute; inset: -6px -4px; }
+  #view-settings .acct-edit { position: relative; }
+  /* A segmented control inside a white card: the chosen plate is the card's
+     own white, so it needs an edge to read as chosen, and the other options
+     step back to the muted ink. */
+  #view-settings .set .seg:not(#piece-style-picker) .seg-btn { color: var(--muted); font-weight: 500; }
+  #view-settings .set .seg:not(#piece-style-picker) .seg-btn.is-active { color: var(--text); font-weight: 500; outline: 1px solid var(--line-strong); outline-offset: -3px; }
+  /* Account: the identity heads the card, the rows follow, Sign out closes
+     the list as its own row (it hung under the email as an orphan button). */
+  #view-settings #settings-account-body { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 12px; }
+  #view-settings #settings-account-body > :not(.acct-id) { grid-column: 1 / -1; }
+  #view-settings .acct-id { display: contents; }
+  #view-settings .acct-avatar { align-self: center; }
+  #view-settings .acct-id-text { padding: 14px 0; }
+  #view-settings .acct-id-name { gap: 4px; }
+  #view-settings .set .btn.acct-signout {
+    grid-column: 1 / -1;
+    margin: 0;
+    order: 9;
+    justify-content: flex-start;
+    width: 100%;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */
+    color: var(--accent-strong);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  #view-settings :is(#settings-account-body, #settings-account-data) > .acct-row { min-height: 36px; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
+  #view-settings .acct-row-text { min-width: 0; }
+  #view-settings #set-account .acct-block {
+    margin: 0 -16px;
+    padding: 0 16px;
+    border-top: 8px solid var(--bg); /* taste-skill-ignore: a band of the page ground splits two groups, not a line */
+  }
+  #view-settings .acct-block-head { display: flex; align-items: center; gap: 2px; min-height: 40px; padding: 8px 0 0; }
+  #view-settings #set-connections .hint { margin: 0 0 6px; color: var(--muted); font-size: 14px; line-height: 1.4; }
+  #view-settings .set .btn.conn-link {
+    justify-content: flex-start;
+    width: 100%;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */
+    color: var(--accent-strong);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  #view-settings .acct-block > .btn.conn-link { margin: 0; }
+  #view-settings .acct-danger-zone { padding: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
+  #view-settings .acct-danger-zone > summary { display: flex; align-items: center; min-height: 44px; color: var(--danger-strong); font-size: 15px; font-weight: 500; }
+  #view-settings .acct-danger { padding: 0 0 12px; }
+  /* Appearance: a picker of four takes the row's full width under its label,
+     like the piece sets: "Board colors" broke over two lines beside a 2x2
+     grid of names. Each board is a tile, the chosen one tinted. */
+  #view-settings .pf-row:has(#settings-board-colors) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
+  #view-settings #settings-board-colors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  #view-settings .board-color-swatch { flex-direction: column; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; border-radius: var(--radius); background: var(--surface-3); color: var(--text); font-size: 13px; }
+  #view-settings .board-color-swatch[aria-pressed="true"] { background: var(--accent-soft); font-weight: 500; }
+  #view-settings .board-color-swatch[aria-pressed="true"]::after { content: none; }
+  /* Engine: a long value takes its own line under a small label, its action
+     at the right ("Stockfish 19.0.0 lite (WASM)" wrapped beside "Engine" and
+     left Refresh alone under it). */
+  #view-settings .set-row:has(> .set-row-value) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 12px; padding: 8px 0; }
+  #view-settings .set-row:has(> .set-row-value) > span:first-child { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+  #view-settings .set-row-value { display: contents; }
+  #view-settings .set-row-value > b { min-width: 0; font-size: 14px; font-weight: 500; text-align: left; text-wrap: balance; }
+  #view-settings .pf-row:has(#piece-style-picker) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
+}

@@ -5,8 +5,8 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { eagerCss as css } from "../test-styles-source.js";
 
-const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "styles.css"), "utf8");
 
 it("the desktop panel ends at its content instead of stretching to the board", () => {
   const desktop = css.match(/@media \(min-width: 1101px\)[^{]*\{\s*#view-train \.train-sidebar \{[^}]*\}\s*\}/);

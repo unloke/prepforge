@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 import { RAIL_COLLAPSED_CLASS, bindRailCollapseOnNavigate } from "./rail-nav.js";
+import { eagerCss } from "./test-styles-source.js";
 
 function fakeRail() {
   const listeners = {};
@@ -52,7 +53,7 @@ describe("rail collapse after navigation", () => {
   });
 
   it("gates every hover-expansion rule on the collapse class", () => {
-    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+    const css = eagerCss;
     expect(css).not.toMatch(/\.rail:hover/);
     expect(css).toContain(".rail:not(.is-nav-collapsed):hover");
   });

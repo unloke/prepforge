@@ -3,8 +3,9 @@
 // step (Link Lichess account, or Sign in) takes it instead.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { cssSource } from "../test-styles-source.js";
 
-const css = readFileSync(new URL("../phone.css", import.meta.url), "utf8");
+const css = cssSource("phone.css");
 
 function rule(selector) {
   const start = css.indexOf(selector);

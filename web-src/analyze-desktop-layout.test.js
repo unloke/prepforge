@@ -5,10 +5,11 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+import { cssSource, eagerCss } from "./test-styles-source.js";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const html = read("./index.html");
-const css = read("./views/analyze-chart.css");
+const css = cssSource("views/analyze-chart.css");
 
 const view = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
 const panes = view.slice(view.indexOf('id="analyze-panes"'), view.indexOf('id="analyze-open"'));
@@ -64,14 +65,12 @@ describe("Analyze phone panes", () => {
 });
 
 describe("Analyze desktop geometry", () => {
-  const styles = read("./styles.css");
+  const styles = eagerCss;
 
   it("does not stretch the board column past the board on desktop", () => {
     // The board is a square capped by its width share, so a stretched column
     // left a tall empty area under it (175px at 1180x900) while the panel
     // stayed full height.
-    const desktop = styles.match(/@media \(min-width: 960px\) \{[\s\S]*?\n\}/);
-    expect(desktop).toBeTruthy();
-    expect(desktop[0]).toMatch(/\.study \.board-area \{[^}]*align-self: start;/);
+    expect(styles).toMatch(/@media \(min-width: 960px\) \{[^@]*?\.study \.board-area \{[^}]*align-self: start;/);
   });
 });

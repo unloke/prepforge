@@ -3,8 +3,9 @@
 // result card all read at var(--fs) or larger, never at a small token.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { eagerCss } from "../test-styles-source.js";
 
-const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8")
+const css = eagerCss
   + readFileSync(new URL("../train-shell.css", import.meta.url), "utf8");
 
 const rule = (selector) => {

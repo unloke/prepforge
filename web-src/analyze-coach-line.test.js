@@ -7,11 +7,12 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { cssSource } from "./test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(root, "index.html"), "utf8");
-const css = readFileSync(join(root, "views", "analyze-chart.css"), "utf8");
-const phoneCss = readFileSync(join(root, "phone.css"), "utf8");
+const css = cssSource("views/analyze-chart.css");
+const phoneCss = cssSource("phone.css");
 
 const analyze = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
 const rule = (selector) => {

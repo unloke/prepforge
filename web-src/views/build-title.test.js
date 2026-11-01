@@ -4,10 +4,10 @@
 // there is one heading and no band.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { eagerCss as css } from "../test-styles-source.js";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const build = html.slice(html.indexOf('id="view-build"'), html.indexOf('id="view-train"'));
-const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 
 it("the Build view's only h1 is the repertoire name", () => {
   const h1s = [...build.matchAll(/<h1\b[^>]*>/g)];

@@ -3,12 +3,13 @@
 // earlier phone layout had them; the sheet behind it is that button.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { cssSource } from "./test-styles-source.js";
 
 const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 const entry = readFileSync(new URL("./phone-entry.js", import.meta.url), "utf8");
-const phone = readFileSync(new URL("./phone.css", import.meta.url), "utf8");
+const phone = cssSource("phone.css");
 const css = phone.slice(phone.lastIndexOf("@media (max-width: 760px)"));
-const chart = readFileSync(new URL("./views/analyze-chart.css", import.meta.url), "utf8");
+const chart = cssSource("views/analyze-chart.css");
 
 const sheet = html.slice(html.indexOf('id="analyze-open"'), html.indexOf('id="view-build"'));
 

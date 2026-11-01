@@ -8,8 +8,8 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { eagerCss as css } from "./test-styles-source.js";
 
-const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "styles.css"), "utf8");
 const STACKED = "(max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6)";
 const WIDE = "(min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px)";
 

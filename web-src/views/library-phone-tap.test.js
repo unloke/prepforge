@@ -7,9 +7,10 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { cssSource, eagerCss } from "../test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(join(root, "..", "phone.css"), "utf8");
+const css = cssSource("phone.css");
 
 function rule(selector) {
   const start = css.indexOf(selector);
@@ -49,7 +50,7 @@ it("the dead-end buttons on the Library take the shared control height", () => {
 // control height like the toolbar's other controls; the × that drops a source
 // keeps a 44px target.
 it("source chips take the control height and their × a 44px target on a phone", () => {
-  const styles = readFileSync(join(root, "..", "styles.css"), "utf8");
+  const styles = eagerCss;
   // The chip's phone block starts at the media query whose first rule is the ×.
   const from = styles.indexOf("@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {\n  .src-chip-x {");
   expect(from, "the chip phone block").toBeGreaterThan(-1);

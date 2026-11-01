@@ -5,9 +5,10 @@
 // action, not to the chrome.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { cssSource, eagerCss } from "./test-styles-source.js";
 
-const phone = readFileSync(new URL("./phone.css", import.meta.url), "utf8");
-const body = phone.slice(phone.lastIndexOf("@media (max-width: 760px)"));
+const phone = cssSource("phone.css");
+const body = phone.slice(phone.indexOf("@media (max-width: 760px)"));
 
 function rule(selector) {
   const start = body.indexOf(`\n  ${selector}`);
@@ -86,8 +87,8 @@ it("the bottom bar holds its rows inside the screen", () => {
 // as a live button (measured at 390: rgb(27,28,30) on rgb(239,239,236)).
 it("reads only tokens the app defines, and marks a disabled pill inert", () => {
   const tokens = new Set(
-    ["styles.css", "views/settings.css", "views/analyze-chart.css", "views/teams.css", "views/scout.css", "views/replay.css"]
-      .map((file) => readFileSync(new URL(file, import.meta.url), "utf8"))
+    [eagerCss, ...["views/settings.css", "views/analyze-chart.css", "views/teams.css", "views/scout.css", "views/replay.css"]
+      .map(cssSource)]
       .join("\n")
       .match(/--[a-z0-9-]+\s*:/g)
       ?.map((decl) => decl.replace(/\s*:$/, "")) || [],

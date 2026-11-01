@@ -1,0 +1,176 @@
+/* Reset, document defaults, focus ring, type scale and the text utilities. */
+
+/* `hidden` always wins (hence !important): no view's display rule can resurrect a hidden element. */
+[hidden] { display: none !important; }
+
+
+* {
+  box-sizing: border-box;
+}
+
+
+/* First keyboard entry point: parked above the viewport until it is focused.
+   Fixed, so it belongs to the viewport and not to the page flow, and parked
+   with a transform, so bringing it in never moves the layout under it. */
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: 8px;
+  z-index: var(--z-skip);
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(calc(-100% - 12px));
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+
+/* On desktop the link must clear the icon rail, or it lands on the brand mark. */
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
+  .skip-link {
+    left: 72px;
+  }
+}
+
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+
+body {
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  /* Column shell so the workspace can claim the full viewport height. Study
+     views (Analyze/Build/Train) then fit the board + a scrolling sidebar into
+     one screen instead of pushing content below the fold. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  /* Reserved rail track (desktop): the fixed 60px rail overlays its track when
+     expanded, so main content and the board never move. Zeroed on mobile. */
+  padding-left: 60px;
+}
+
+
+button,
+textarea,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+
+/* Controls are tapped, not read: a long press must not select their label, and
+   touch browsers must not flash their own highlight over ours. */
+button,
+[role="button"],
+.mtree-move {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Press feedback on the row-body controls that are not .btn. */
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+
+/* The move row is wider than a thumb's press: it travels instead of shrinking
+   (see .btn:active). */
+.mtree-move:active {
+  transform: translateY(1px);
+}
+
+
+/* Unified keyboard focus ring — visible only for keyboard users, never on
+   mouse click. Applies to every interactive control for consistency. The ring
+   follows the element's own radius; this rule used to set `border-radius: 4px`
+   here, which reshaped whatever it landed on. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+
+/* The skip link's target. A click on empty space focuses it, and the next key
+   press would ring the whole workspace. */
+#workspace-main:focus { outline: none; }
+
+
+/* Field geometry, states and the select chevron live in one place further
+   down ("Inputs, selects, textareas: one field style"), so a view cannot drift
+   one control away from the rest. */
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 500;
+}
+
+
+h1 {
+  font-weight: 600;
+}
+
+
+/* Emphasis inside copy is one step up, not the browser's bold. */
+b,
+strong {
+  font-weight: 500;
+}
+
+
+h2 {
+  font-size: 15px;
+}
+
+
+.hint {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+
+.muted {
+  color: var(--muted);
+}
+
+
+.faint { color: var(--label); }
+
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+

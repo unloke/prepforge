@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { cssSource } from "../test-styles-source.js";
 
 // The Board card's switches were a two-column grid: each column's switch sat
 // on the right, so the first column's switch landed immediately beside the
 // second column's label and the pair a switch belonged to was a guess. One
 // toggle per line is the fix; these rules keep a second column from coming back.
 const settingsCss = readFileSync(new URL("./settings.css", import.meta.url), "utf8");
-const phoneCss = readFileSync(new URL("../phone.css", import.meta.url), "utf8");
+const phoneCss = cssSource("phone.css");
 
 function body(css, selector) {
   const at = css.indexOf(selector + " {");

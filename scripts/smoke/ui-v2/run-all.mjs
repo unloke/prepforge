@@ -27,6 +27,8 @@ const KILL_GRACE_MS = 10_000;
 const SUITE = [
   ["Library", "library-viewport-smoke.mjs"],
   ["Repertoire", "build-viewport-smoke.mjs"],
+  // The dock options popover left open across the phone breakpoint.
+  ["Dock options", "build-dock-options-smoke.mjs"],
   ["Engine PV", "engine-pv-containment-smoke.mjs"],
   ["Train", "train-viewport-smoke.mjs"],
   ["Games", "games-viewport-smoke.mjs"],

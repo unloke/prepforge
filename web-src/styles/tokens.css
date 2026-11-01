@@ -1,0 +1,385 @@
+/* Design tokens: the light and dark palettes, board colour themes and accent presets. */
+
+:root {
+  color-scheme: light only;
+
+  /* ========================================================================
+     ONE TOKEN SET. Every colour, size, radius, elevation and duration below is
+     referenced by name everywhere else in the app (styles.css, phone.css and
+     every views/*.css). Dark values are re-declared once in the dark-theme
+     block further down; nothing else overrides them.
+
+     ROLE MAPPING (app-sheet "Data terminal", app-screens §9). The sheet's role
+     names on the left, the token names the app already uses on the right:
+
+       ground      --bg          the page
+       surface     --panel       cards and panels: one step from the ground,
+                                 DARKER than it in dark (the sheet's move)
+       raised      --float       everything that floats: menus, dialogs,
+                                 popovers, notices, the promotion picker
+       quiet fill  --panel-soft  a well inside a card (code, empty states)
+       active      --surface-3   hover and pressed fills, recessed tracks
+       border      --line        rule between surfaces inside a card
+       rule        --line-soft   the quieter rule (nested separation)
+       control     --line-strong every form-control and outlined-button edge
+       text        --text        body and figures
+       muted       --muted       secondary copy
+       faint       --label       meta, small labels, placeholders
+       accent      --accent*     selection marks, the one primary action
+       status      --good/--warn/--danger (+ -soft, -text)  state only
+       chart       --grid, --chart-span, the board and mark tokens
+
+     Colour: neutral graphite surfaces, ONE accent reserved for selection,
+     primary actions and focus. Every other hue is semantic and keeps the same
+     meaning in every view (status, mastery/queue kinds, prep outcome, move
+     classification) -- "colour means chess". The accent is user-selectable
+     (theme.js setAccent); the presets below redeclare its six tokens for each
+     theme, so every rule that reads them follows the pick.
+
+     Surfaces are separated by a small step in tone, never by a line. What
+     floats takes --float, a step ABOVE the ground in both themes, so it never
+     melts into the page (the owner's promotion-picker complaint).
+     ==================================================================== */
+
+  /* -- Surfaces -------------------------------------------------------- */
+  --bg: #f3f3f1;         /* ground: the page */
+  --panel: #ffffff;      /* surface: cards and panels */
+  --panel-soft: #f8f8f6; /* quiet fill inside a card */
+  --surface-3: #efefec;  /* active step: hover, pressed, recessed track */
+  --float: #ffffff;      /* raised: anything that floats over the page */
+
+  /* -- Text ------------------------------------------------------------ */
+  --text: #1b1c1e;   /* body */
+  --muted: #55585e;  /* secondary copy */
+  --label: #67696e;  /* small-caps labels, quiet affordances */
+
+  /* -- Hairlines (tone steps, not decoration) -------------------------- */
+  --line: #e2e1dc;       /* between surfaces inside a card */
+  --line-soft: #eeeeec;  /* nested / secondary separation */
+  --line-strong: #cfcdc6; /* control outlines */
+
+  /* -- The one accent -------------------------------------------------- */
+  --accent: #2f5bd3;
+  --accent-soft: #e8eefc;
+  --accent-line: #c9d6f7;
+  --accent-strong: #2447a8;
+  --on-accent: #ffffff;
+
+  /* Ink on an accent fill: white in light, near-black in dark. */
+  --accent-ink: #ffffff;
+  /* Text-safe companion for --accent (AA on panel/panel-soft/bg and on
+     --accent-soft; pinned by visual-system.test.js). */
+  --accent-text: #2447a8;
+  /* Derived from --accent, so an accent preset moves the focus ring with it. */
+  --focus-ring: color-mix(in srgb, var(--accent) 35%, transparent);
+
+  /* -- Semantic status -------------------------------------------------- */
+  --danger: #c73a2c;
+  --danger-soft: #fbe7e4;
+  --danger-strong: #a32b1f;
+  --warn: #b26a00;
+  --warn-soft: #fbf0dc;
+  --good: #1d8a4f;
+  --good-soft: #e3f4ea;
+  --brilliant: #2f7fe0;
+  --great: #4a7fb5;
+  --none: #7b7f86;      /* "nothing to report" grey */
+  --none-soft: #eeeeec;
+
+  /* Text-only companions for the semantic colours. The base tokens also fill
+     charts, dots, badges and borders, so darkening them for WCAG AA would
+     change the visual language; text usages pick the *-text variants instead
+     (>= 4.5:1 on panel/panel-soft/bg and each colour's own tinted background --
+     pinned by the contrast guard in visual-system.test.js). Dark surfaces
+     already clear AA for these hues by a wide margin, so there the text
+     variants alias the base colours. */
+  --warn-text: #8a5200;
+  --good-text: #166b3e;
+  --brilliant-text: #2563b8;
+  --great-text: #3d6c9c;
+  /* The amber is a fill colour: white on it is 2.9:1, so a glyph or word in
+     this grade's colour needs its own darker ink. */
+  --inaccuracy-text: #8a5200;
+
+  /* Classification palette completion: inaccuracy/missed had no semantic token
+     (they were hard-coded in the bars, tree dots and eval chart). */
+  --inaccuracy: #c98a2b;
+  --missed: #7a5fb8;
+
+  /* -- Mastery / queue kinds -------------------------------------------- */
+  --k-mastered: #1d8a4f;
+  --k-learning: #3a7bd5;
+  --k-due: #d08a0b;
+  --k-weak: #d2452f;
+  --k-new: #8b6fd6;
+  --k-polish: #8a9099;
+
+  /* -- Board ------------------------------------------------------------
+     Lichess's blue board and last-move tint (measured), the same in both
+     themes: the squares are the board's colours, not the page's. */
+  --square-light: #dee3e6;
+  --square-dark: #8ca2ad;
+  --board-frame: #6f8394;
+  --dot-white: #ffffff; /* the white side's dot/face */
+
+  /* Board marks (styles.css "Board marks"): last move, selection, legal
+     targets, arrows and the per-grade square tints. */
+  --last-move: rgba(155, 199, 0, 0.41);
+  --highlight: rgba(47, 91, 211, 0.38);
+  --mark-select: rgba(47, 91, 211, 0.3);
+  --mark-legal: rgba(22, 36, 58, 0.22);
+  --mark-legal-hover: rgba(47, 91, 211, 0.45);
+  --mark-brilliant: rgba(47, 127, 224, 0.42);
+  --mark-great: rgba(74, 127, 181, 0.4);
+  --mark-inaccuracy: rgba(232, 172, 64, 0.48);
+  --mark-mistake: rgba(226, 128, 40, 0.48);
+  --mark-blunder: rgba(214, 64, 48, 0.46);
+  --mark-missed: rgba(122, 95, 184, 0.42);
+
+  /* Board annotation arrows: user arrows take the ink-blue accent, the
+     engine's best-move arrow keeps the calm "good" green (colour means
+     chess). */
+  --arrow-user: rgba(47, 91, 211, 0.78);
+  --arrow-engine: rgba(21, 120, 27, 0.8); /* Lichess's green brush */
+  --arrow-better: rgba(176, 62, 196, 0.8);
+  /* Repertoire line options: amber with a contrasting dark rim. */
+  --arrow-line: rgba(214, 143, 20, 0.92);
+  --arrow-rim: rgba(255, 255, 255, 0.9);
+
+  /* Board coordinate labels. */
+  /* Lichess sets a square's name in the other square's hue; here that hue,
+     deepened to 4.5:1 so a 10px label stays readable. */
+  --coord-on-light: #4a6170;
+  --coord-on-dark: #16232b;
+
+  /* -- Explorer result bar ---------------------------------------------- */
+  --explorer-white: #f2f2ef;
+  --explorer-draw: #9a9fa6;
+  --explorer-black: #2e3136;
+  --explorer-track: #e6e6e2;
+  --explorer-white-ink: #1b1c1e;
+  --explorer-draw-ink: #1b1c1e;
+
+  /* Eval bars: a near-white and a near-black face, never two greys. */
+  --eval-side-white: #f4f3ef;
+  --eval-side-black: #25282d;
+
+  /* -- Type ---------------------------------------------------------------
+     13px base / 13px small / 11px extra-small. Tabular figures are set once
+     on <body> below so every number that changes or lines up already reads as
+     a column. The mono stack is for SAN, lines and code.
+     --fs-s used to be 12px: below the legible floor, so every small label in
+     the app read smaller than the text around it. It keeps its name because
+     the view sheets still address it, but it no longer means "smaller". */
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, ui-sans-serif, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace; /* taste-skill-ignore: a font token is not a use of it */
+  --fs: 13px;
+  --fs-s: 13px;
+  --fs-xs: 11px;
+
+  /* -- Radii, elevation, control sizes ------------------------------------ */
+  --radius: 6px;      /* controls, small chips */
+  --radius-card: 10px; /* cards, popovers, dialogs */
+  --radius-chip: 4px; /* status and kind pills: one step under a control */
+  /* One control-size system. Every button, field and menu row takes its height
+     from these three tokens; a phone (phone.css) and a touch screen (touch.css)
+     change the tokens, never a control's own geometry. Controls that share a
+     row share a token, so a row is one height. */
+  --control-h: 30px;    /* default button, field, select (44px on phones) */
+  --control-h-sm: var(--control-h); /* .btn.sm: the same height, smaller type and padding */
+  --menu-row-h: 30px;   /* one row in a menu or popover (48px on phones) */
+  /* -- Spacing scale ----------------------------------------------------
+     Two gaps do the work: between cards, and between the groups a page is
+     made of. Items inside one card sit closer than --gap-card, so a card
+     reads as one unit and the page reads as a few blocks rather than a list
+     of equal gaps. Pages used to set 10, 12, 14 and 20px for the same job. */
+  --gap-card: 12px;    /* between cards in a column or grid */
+  --gap-group: 20px;   /* between a page's groups (Today strip, table, steps) */
+  /* The chevron a <select> draws for itself: one glyph, themed by the token so
+     the arrow is legible on both grounds. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%2367696e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --switch-w: 34px;   /* one switch everywhere; a context may grow the hit box */
+  --switch-h: 20px;
+  --knob: 16px;
+  --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);    /* resting cards */
+  --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08); /* dialogs, floating tools */
+  --shadow-bar: 0 -6px 18px rgba(20, 20, 30, 0.12); /* a bar that floats over scrolling content */
+
+  /* -- Motion: three durations, two curves, and nothing else ----------------- */
+  --dur-fast: 150ms; /* hover, press, colour, opacity */
+  --dur: 220ms;      /* list entry, reveal, show/hide */
+  --dur-slow: 300ms; /* the eval bar landing, a panel settling */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* standard: decelerate */
+
+  /* -- In-page stacking: one ordered ladder instead of ad-hoc numbers. Dialogs,
+     menus and pickers are <dialog>/[popover] in the top layer and need none. */
+  --z-chrome: 45;    /* app chrome (rail) */
+  --z-tool: 500;     /* floating tools (engine window) */
+  --z-menu: 1100;    /* drag ghost */
+  --z-toast: 1200;   /* toast stack, confetti */
+  --z-skip: 1300;    /* skip link */
+
+  font-family: var(--font);
+  font-size: var(--fs);
+  /* Numbers that change or line up read as columns: evals, move numbers,
+     clocks, counts, percentages, stats tables. Set once here instead of per
+     component so a new numeric surface inherits it. */
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+
+/* The dark palette lifts text and borders independently instead of inverting
+   the light theme. This preserves contrast for boards, data labels and status
+   colours in low-light study sessions. Every token declared above is re-declared
+   here -- the two blocks together are the whole colour system.
+
+   Dark is the reference theme. Cards are a tone step above a near-black
+   neutral ground, never navy or slate; what floats (a menu, a dialog, the
+   promotion picker) takes --float, one step above the cards. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces: ground, then a step up for cards, then a step up for floats. */
+  --bg: #111315;
+  --panel: #191c1f;
+  --panel-soft: #1e2226;
+  --surface-3: #262a2f;
+  --float: #22262a;
+
+  /* Text */
+  --text: #e8eaec;
+  --muted: #a9aeb4;
+  --label: #a9aeb4;
+
+  /* Hairlines */
+  --line: #2b3035;
+  --line-soft: #25292d;
+  --line-strong: #3a4046;
+
+  /* The select chevron is an SVG data URL, so it cannot take a var(): it is
+     redeclared with the dark --label grey. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23a9aeb4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+  /* The accent */
+  --accent: #6d8ff0;
+  --accent-soft: #1f2a48;
+  --accent-line: #2d3c66;
+  --accent-strong: #9db4f7;
+  --accent-text: #93abf2;
+  --on-accent: #ffffff;
+  --accent-ink: #0d1020;
+
+  /* Semantic status */
+  --danger: #ef6b5b;
+  --danger-soft: #3a1c18;
+  --danger-strong: #ff8a7a;
+  --warn: #e0a23a;
+  --warn-soft: #33270f;
+  --good: #45b97a;
+  --good-soft: #17301f;
+  --brilliant: #6d9ff0;
+  --great: #8db0da;
+  --none: #8d939a;
+  --none-soft: #25292d;
+
+  /* Dark surfaces already clear AA for these hues by a wide margin, so the text
+     variants alias the base colours (kept as separate tokens so text and fill
+     can diverge per theme if a future tuning needs it). */
+  --warn-text: #e0a23a;
+  --good-text: #45b97a;
+  --brilliant-text: #6d9ff0;
+  --great-text: #8db0da;
+  --inaccuracy-text: #e6bc72;
+
+  /* Classification + mastery kinds */
+  --inaccuracy: #e6bc72;
+  --missed: #a992ef;
+  --k-mastered: #45b97a;
+  --k-learning: #6d9ff0;
+  --k-due: #e0a23a;
+  --k-weak: #ef6b5b;
+  --k-new: #a992ef;
+  --k-polish: #8d939a;
+
+  /* Board */
+  --dot-white: #f8f8f6;
+  --board-frame: #5a6c7b;
+
+  /* Board marks */
+  --highlight: rgba(109, 143, 240, 0.42);
+  --mark-select: rgba(109, 143, 240, 0.38);
+  --mark-legal: rgba(10, 18, 30, 0.3);
+  --mark-legal-hover: rgba(109, 143, 240, 0.55);
+  --mark-brilliant: rgba(80, 150, 240, 0.5);
+  --mark-great: rgba(110, 155, 210, 0.48);
+  --mark-inaccuracy: rgba(236, 184, 90, 0.5);
+  --mark-mistake: rgba(236, 140, 60, 0.5);
+  --mark-blunder: rgba(232, 90, 72, 0.5);
+  --mark-missed: rgba(160, 135, 230, 0.48);
+  --arrow-user: rgba(120, 152, 245, 0.82);
+  --arrow-better: rgba(222, 132, 240, 0.85);
+  --arrow-line: rgba(255, 198, 65, 0.94);
+  --arrow-rim: rgba(14, 17, 22, 0.85);
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-bar: 0 -6px 18px rgba(0, 0, 0, 0.45);
+
+  /* Explorer W/D/B bar: the draw grey sits between the two ends and the Black
+     end is lifted off the panel so it never melts into the background. */
+  --explorer-white: #e9eaec;
+  --explorer-draw: #7c838c;
+  --explorer-black: #45494f;
+  --explorer-track: #2b3035;
+  --explorer-white-ink: #1b1c1e;
+  --explorer-draw-ink: #111315;
+  --eval-side-white: #e9eaec;
+  --eval-side-black: #0e0f11;
+}
+
+
+/* ---- Board colour themes --------------------------------------------------
+   The board reads --square-light and --square-dark on <html data-board>, set
+   before first paint by theme.js (applyBoardTheme). `slate` is the default and
+   takes the theme values above. A swatch in Settings carries the same pair on
+   itself, so the picker shows the board it will make. One pair is the same in
+   both themes: the squares are the board's colours, not the page's. */
+:root[data-board="classic"], .board-color-swatch[data-board="classic"] { --square-light: #f0d9b5; --square-dark: #b58863; }
+
+
+:root[data-board="green"], .board-color-swatch[data-board="green"] { --square-light: #eeeed2; --square-dark: #769656; }
+
+
+:root[data-board="walnut"], .board-color-swatch[data-board="walnut"] { --square-light: #e6c9a0; --square-dark: #8a5a33; }
+
+
+/* ---- Accent presets ------------------------------------------------------
+   The user picks the accent (product.md, "Accent is a user choice"). The
+   choice is a `data-accent` attribute on <html>, set before first paint by
+   theme.js next to the theme; `blue` is the default and needs no override.
+   A preset redeclares the six accent tokens only -- everything else keeps its
+   value, so a preset cannot drift the surfaces or the text tiers. Each pair
+   is measured: --accent-text clears 4.5:1 on --panel, --panel-soft, --bg and
+   its own --accent-soft; --accent-ink clears 4.5:1 on --accent. Both themes
+   are pinned by visual-system.test.js, so a third preset is added only with
+   its measurements. */
+:root[data-accent="orange"] {
+  --accent: #c2410c;
+  --accent-soft: #fdeee3;
+  --accent-line: #f6cfb4;
+  --accent-strong: #a8470f;
+  --accent-text: #9a4109;
+  --accent-ink: #ffffff;
+}
+
+
+:root[data-theme="dark"][data-accent="orange"] {
+  --accent: #f0932b;
+  --accent-soft: #33240f;
+  --accent-line: #5a3a17;
+  --accent-strong: #f7b273;
+  --accent-text: #f7b273;
+  --accent-ink: #0d1020;
+}
+

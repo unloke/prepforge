@@ -1,0 +1,1168 @@
+/* Repertoire (Build) view: the panel, fork bar, inspector dock, coverage and explorer. */
+
+/* With nothing open, the start block is the first thing in the panel body: it
+   sits at the top of the room, where the eye starts, instead of floating in
+   the middle of 700px of empty column. The panel ends with it, like Train's:
+   a full-height white sheet under three buttons reads as content that failed
+   to load. */
+#view-build #build-sidebar.is-empty { height: auto; align-self: start; }
+
+
+#view-build .build-empty {
+  flex: none;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 20px var(--build-pad, 14px) 24px;
+  text-align: left;
+}
+
+
+#view-build .build-empty h3 { font-size: 16px; font-weight: 500; }
+
+
+#view-build .build-empty .row { justify-content: flex-start; margin-top: 10px; }
+
+
+/* With no repertoire open the panel's bands give way to the empty state. The
+   class is set by paintBuildEmpty() (app.js), not a `:has()` rule: on an
+   ancestor of the tree it made every tree rebuild re-style the page. */
+#build-sidebar.is-empty .panel-body > :is(.build-tree-region, .dock-resizer, .dock) { display: none; }
+
+
+/* The one line a new user reads here is running text, so it reads at the size
+   the Library's empty state uses, not at the panel's dense 13px. */
+#view-build .empty-state.big p { color: var(--text); font-size: 16px; }
+
+
+/* Repertoire reads at 13px, and tells its sections apart by tone rather than
+   by rules. The panel is where the work happens — move tokens,
+   Explorer rows and their numbers — and the shared 11/12px steps made the
+   whole ledger squint; the 1px separators between five stacked bands made
+   every band the same weight. */
+#view-build {
+  --fs-xs: 13px;
+  --fs-s: 13px;
+}
+
+
+#view-build :is(.mtree-num, .mtree-collapse, .build-sync) {
+  font-size: var(--fs-s);
+}
+
+
+/* The shared .panel-head and .engine-banner keep their rule for Analyze and
+   Train; in this panel the head and the line sheet carry their own ground. */
+#view-build .panel-head { border-bottom: 0; }
+
+
+/* The banner's tint is its edge; in this panel it needs no rule under it. It
+   is a diagnostic, not a pane: it never shrinks under a long tree (a squeezed
+   grid clipped its own sentence mid-line). */
+#view-build .engine-banner { border: 0; border-radius: 0; flex: none; }
+
+
+/* One line, in the short form. The same state at 16px over two or three lines
+   cost the panel 86px of its height on every session without a browser engine,
+   which is a state and not the work; the full fix is in the tooltip, where a
+   cut sentence belongs. */
+#view-build .engine-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  padding: 5px var(--build-pad, 14px) 6px;
+  white-space: nowrap;
+}
+
+
+#view-build .engine-banner :is(.engine-banner-why, .engine-banner-action) { display: none; }
+
+
+#view-build .engine-banner :is(.engine-banner-title, .engine-banner-brief) {
+  font-size: var(--fs-s);
+  line-height: 1.4;
+}
+
+
+#view-build .engine-banner .engine-banner-title { flex: none; }
+
+
+#view-build .engine-banner .engine-banner-brief { display: inline; min-width: 0; color: var(--muted); }
+
+
+/* Analyze keeps the full sentence; the short form is Build's alone. */
+.engine-banner-brief { display: none; }
+
+
+/* Motion in the panel, on the same rules as the rest of the app: the fork bar
+   and the Explorer rows arrive after a move or a fetch, so they enter with a
+   short rise and stagger; the selected move's fill eases. Transform and
+   opacity only, and the global reduced-motion block turns all of it off. */
+#build-branchbar.is-enter { animation: fork-enter var(--dur) var(--ease-out) both; }
+
+
+@keyframes fork-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+
+
+#explorer-rows > .is-enter,
+#coverage-gaps > .coverage-gap.is-enter {
+  animation: row-enter var(--dur) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 40ms);
+}
+
+
+#build-branchbar .fork-chip { transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+
+
+#build-branchbar .fork-chip:active { transform: scale(0.97); }
+
+
+/* One panel, one ground. The trail, the fork, the tree, the dock and the foot
+   used to alternate between --panel and a recessed --surface-3, which read as
+   five stacked strips with the board beside them. They all sit on the panel
+   now and every block hangs from the same 14px left edge; the only other tone
+   step is the dock's, because reference data under the line is a different
+   kind of thing. */
+#build-sidebar { --build-pad: 14px; }
+
+
+/* The title row: the repertoire name, then the opening of the shown line in
+   quiet small type on the same line. The opening gives way (ellipsis) first. */
+.rep-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+
+.build-opening {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* A move's note, under the move: one line until it is opened. */
+.mtree-comment {
+  margin: 1px 0 3px;
+  padding: 1px 6px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-s);
+  font-style: normal;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+
+.mtree-comment.is-open {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+
+/* The move menu's pointer handle: a small ⋯ badge at the hovered move's
+   corner. It floats, so showing it moves nothing around it. */
+#view-build .mtree-move { position: relative; }
+
+
+.mtree-move .mtree-more {
+  /* -4px stays inside the tree's 4px top padding, so the first row's badge
+     is not cut off by the scrolling tree. */
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  /* 14px: at 11px the three dots of ⋯ render as one dash. */
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+
+@media (hover: hover) {
+  #view-build .mtree-move:hover { z-index: 1; }
+  .mtree-move:hover .mtree-more {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .mtree-move .mtree-more:hover { background: var(--surface-3); }
+}
+
+
+.build-tree-region {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 90px;
+  min-width: 0;
+}
+
+
+.build-tree-region > .tree-wrap { flex: 1 1 auto; min-height: 0; }
+
+
+.forkbar {
+  position: absolute;
+  z-index: 8;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-pop, 0 8px 24px rgb(0 0 0 / 0.16));
+  background: var(--panel);
+  min-width: 0;
+}
+
+
+.forkbar .fork-chips { flex-wrap: wrap; }
+
+
+.forkbar .fork-more { white-space: nowrap; }
+
+
+.fork-close {
+  flex: none;
+  align-self: center;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+
+.fork-close:hover { background: var(--surface-3); color: var(--text); }
+
+
+.fork-close:focus-visible { outline: 2px solid var(--accent); }
+
+
+@media (pointer: coarse) { .fork-close { width: 40px; height: 40px; } }
+
+
+.fork-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--fs-s);
+  white-space: nowrap;
+}
+
+
+.fork-head b { font-weight: 500; color: var(--muted); }
+
+
+.fork-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+
+/* The full list is an explicit request, so it may be long — but it scrolls
+   inside a capped block. A thirty-move fork opened whole pushed the move tree
+   to its 90px floor at 1024 and left the line you are building off screen; at
+   four rows the tree keeps its place while you read the list. */
+.fork-chips.is-all {
+  max-height: 118px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+
+.fork-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+
+/* The move number is read, not decorated: it takes the chip's own size. */
+.fork-chip .mtree-num { padding: 0; margin: 0; font-size: inherit; font-weight: 500; }
+
+
+.fork-chip.is-main { font-weight: 600; }
+
+
+.fork-chip small { margin-left: 4px; color: var(--label); font-size: inherit; font-weight: 500; }
+
+
+.fork-chip:hover { border-color: var(--accent); }
+
+
+.fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+
+
+/* "Show all" is a disclosure, not a move: it sits at the head's right edge,
+   in the secondary ink, so it never reads as a fourth option. */
+.fork-more {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+
+.fork-more:hover { text-decoration: underline; }
+
+
+.fork-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+
+.tree-wrap {
+  /* The tree takes its own height and scrolls past it. The inspector takes
+     the leftover (.dock below), so a short tree never leaves a void. */
+  flex: 0 1 auto;
+  min-height: 90px;
+  padding: 4px var(--build-pad, 12px) var(--build-pad, 12px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+
+.tree-empty { padding: 16px; color: var(--label); text-align: center; }
+
+
+.dock {
+  position: relative;
+  /* Sized to its contents by fitBuildDock() — the Explorer rows, the coverage
+     gaps, the tools row — and capped so the move tree keeps its minimum. A
+     dragged height replaces that inline. Left to "the rest" (a 40%-of-panel
+     floor over three Explorer rows) the surplus showed up as a hole under the
+     rows, and the tree that needed it was squeezed above. */
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Reference data under the line: one tone step down from the panel, so it
+     reads as a different kind of thing without a rule or a card. */
+  background: var(--surface-3);
+}
+
+
+/* The dock's head is one row at every width, like Lichess's opening explorer:
+   the tabs, an options button naming what the open tab shows ("Masters",
+   "Mainline · 8 moves") whose popover holds the settings, then the tab's one
+   action (the Engine switch, Scan) and the fold at the right end. The two-row
+   head (tabs over a wrapped tools row) is gone. */
+.dock { container: dock / inline-size; }
+
+
+.dock-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 4px 0 var(--build-pad, 12px);
+}
+
+
+.dock-tabs {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  margin-left: -10px;
+}
+
+
+.dock-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--label);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+
+.dock-tabs button.is-active { color: var(--text); border-bottom-color: var(--accent); }
+
+
+.dock-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+
+.dock-body { flex: 1; min-height: 0; padding: 8px var(--build-pad, 12px); overflow: auto; }
+
+
+/* Drag handle between the move tree and the inspector: the whole seam is the
+   grab area, the visible grip is a short pill in the middle. The element is
+   zero-height, so the cursor and the touch-action live on both it and its
+   ::before hit area, because a rule on the pseudo alone leaves `getComputedStyle` and
+   any tooling that hovers the element itself reading `auto`. */
+.dock-resizer {
+  position: relative;
+  flex: none;
+  height: 0;
+  z-index: 2;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+
+.dock-resizer::before {
+  content: "";
+  position: absolute;
+  inset: -5px 0 -4px;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+
+.dock-resizer::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+  pointer-events: none;
+}
+
+
+.dock-resizer:hover::after,
+.dock-resizer:focus-visible::after,
+.dock-resizer.is-dragging::after {
+  background: var(--accent);
+  opacity: 1;
+}
+
+
+.dock-resizer.is-dragging::after {
+  width: 56px;
+  margin-left: -28px;
+}
+
+
+body.is-resizing-dock { cursor: row-resize; user-select: none; }
+
+
+.dock-fold {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--label);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+
+.dock-fold:hover { color: var(--text); }
+
+
+.dock-fold span { display: inline-block; transition: transform var(--dur-fast) var(--ease-out); }
+
+
+/* Folded, the dock is its tab strip whatever height it was given open (a fit or
+   a drag leaves an inline floor), and the tree takes the column.
+   !important: beats that inline flex-basis / min-height. */
+.dock.is-folded { flex: none !important; min-height: 0 !important; }
+
+
+
+/* A dragged height is the user's: it holds, and the tree takes the rest. */
+.dock[data-dock-pinned="1"] { flex-grow: 0; }
+
+
+.dock.is-folded > .dock-body { display: none; }
+
+
+.dock.is-folded .dock-tabs { border-bottom: 0; }
+
+
+.dock.is-folded .dock-tabs button.is-active { border-bottom-color: transparent; }
+
+
+.dock.is-folded .dock-fold span { transform: rotate(180deg); }
+
+
+.dock.is-folded :is(.dock-opts, .dock-engine-switch, .inspector-scan) { visibility: hidden; }
+
+
+.dock-opts {
+  flex: 0 1 auto;
+  gap: 6px;
+  min-width: 0;
+  max-width: 220px;
+  padding: 0 10px 0 8px;
+  color: var(--text);
+}
+
+
+.dock-opts .bi { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+
+.dock-opts-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+/* A narrow dock (the 1000px window) keeps the row by showing the button as its
+   icon; its name stays in the tooltip and the accessible name. */
+@container dock (max-width: 470px) {
+  .dock-opts { width: var(--control-h); padding: 0; justify-content: center; }
+  .dock-opts-label { display: none; }
+}
+
+
+/* The open tab's action closes the row at its right end. */
+.dock-head > :is(.dock-engine-switch, .inspector-scan) { margin-left: auto; }
+
+
+.dock-head > .dock-fold { flex: none; }
+
+
+/* The options popover: each setting on its own line, label over control, and
+   the scope sentence under them. */
+.dock-tools {
+  inset: auto;
+  margin: 0;
+  border: 0;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: 12px;
+  border-radius: var(--radius-card);
+  background: var(--float);
+  color: var(--text);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating popover is a real overlay */
+}
+
+
+.dock-tools:popover-open { display: grid; gap: 12px; }
+
+
+.dock-opt { display: grid; gap: 4px; }
+
+
+.dock-opt:has(> :is(.seg, select)[hidden]) { display: none; }
+
+
+.dock-opt-label { font-size: var(--fs-xs); font-weight: 500; color: var(--label); }
+
+
+.dock-opt > .seg { display: flex; }
+
+
+.dock-opt > .seg > .seg-btn { flex: 1 1 0; }
+
+
+.dock-opt > select { width: 100%; }
+
+
+.dock-scope { margin: 0; font-size: var(--fs-s); color: var(--muted); line-height: 1.45; }
+
+
+.dock-scope:empty { display: none; }
+
+
+/* The link prompt's button keeps its own box: wrapped, it starts a line rather
+   than trailing the sentence's last word. */
+#explorer-rows .hint:has(> [data-explorer-link]) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+
+
+.inspector-panel { min-width: 0; }
+
+
+/* Coverage's Maia offer is one line at every width (the name, Download, the
+   dismiss): stacked, it was a card of three rows inside the panel. */
+#coverage-drawer [data-unlock-place] .unlock:not(.is-inline) { grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; min-height: 0; padding: 6px 4px 6px 12px; }
+
+
+#coverage-drawer [data-unlock-place] .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; justify-self: end; }
+
+
+#coverage-drawer [data-unlock-place] .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
+
+
+/* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
+   hands the wheel back to the page at its ends instead of trapping it. */
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+  #view-build .sidebar { max-height: none; overflow: hidden; }
+  .tree-wrap { max-height: 60vh; overscroll-behavior: auto; }
+  /* !important: beats the inline flex-basis a fit or drag left. */
+  .dock { flex: none !important; }
+  .dock-resizer { display: none; }
+}
+
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  .tree-wrap { max-height: none; }
+
+  .dock-tabs button { min-height: 44px; }
+
+}
+
+/* Shared repertoire viewer */
+
+.shared-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--accent-soft);
+  flex-wrap: wrap;
+}
+
+
+.shared-banner-text {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: var(--fs-s);
+  color: var(--muted);
+}
+
+
+.shared-banner-text b {
+  color: var(--accent-text);
+}
+
+
+.btn.icon.danger {
+  color: var(--danger);
+}
+
+
+.shared-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+
+/* Coverage scan rows (Scan lives in the dock head; scope and horizon in its options). */
+.coverage-gaps {
+  display: grid;
+  min-width: 0;
+}
+
+
+.coverage-complete-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px 8px;
+}
+
+
+.coverage-selall {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+
+.coverage-complete-bar .btn {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+
+.coverage-kinds {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+}
+
+
+.coverage-gap {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+
+.coverage-gap-check {
+  cursor: pointer;
+}
+
+
+.coverage-gap-body {
+  display: grid;
+  gap: 5px;
+  cursor: pointer;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 4px;
+  font: inherit;
+}
+
+
+.coverage-summary { padding: 8px 6px 12px; }
+
+
+.coverage-summary > div:first-child { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+
+
+.coverage-summary span { color: var(--muted); font-size: var(--fs-s); }
+
+
+.coverage-mass { display: flex; height: 7px; margin: 10px 0 6px; border-radius: 3px; overflow: hidden; background: var(--surface-3); }
+
+
+.coverage-mass i { display: block; }
+
+
+.coverage-mass .is-covered { background: var(--good); }
+
+
+.coverage-mass .is-gap { background: var(--warn); }
+
+
+/* taste-skill-ignore: pattern for unknown gaps */
+.coverage-mass .is-unknown { background: var(--surface-3); background-image: repeating-linear-gradient(135deg, var(--line-strong) 0 3px, transparent 3px 6px); }
+
+
+.coverage-totals { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+
+
+.coverage-gap-path { color: var(--muted); font-family: var(--mono); font-size: var(--fs-s); overflow-wrap: anywhere; }
+
+
+.coverage-gap-line { display: flex; align-items: center; gap: 10px; }
+
+
+.coverage-gap-impact { margin-left: auto; }
+
+
+.coverage-gap-track { display: block; height: 3px; background: var(--surface-3); }
+
+
+.coverage-gap-track i { display: block; height: 100%; background: var(--warn); }
+
+
+.coverage-gap-select { display: grid; place-items: center; min-width: 30px; min-height: 44px; cursor: pointer; }
+
+
+.coverage-gap:focus-within { background: var(--accent-soft); }
+
+
+.coverage-live, .coverage-stale { padding: 12px 6px; }
+
+
+.coverage-stale { color: var(--warn-text); }
+
+
+.coverage-gap.is-readonly { grid-template-columns: 1fr; }
+
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  .coverage-gap { min-height: 56px; }
+  .coverage-gap-select { min-width: 44px; }
+  /* The label is the checkbox's target: a thumb gets the whole 44px line. */
+  .coverage-selall { min-height: 44px; padding-left: 12px; font-size: var(--fs-s); }
+  .coverage-complete-bar { padding: 0 0 8px; }
+  .coverage-complete-bar .btn { padding: 0 16px; font-size: 14px; }
+}
+
+
+.coverage-gap-body:hover .coverage-gap-move {
+  text-decoration: underline;
+}
+
+
+.coverage-gap-move {
+  font-weight: 600;
+  color: var(--warn-text);
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+
+.coverage-gap-meta {
+  color: var(--muted);
+  font-size: 11px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+
+/* Opening explorer: a Move / Games / W-D-L table. The opening's name is a
+   caption on the data, and the rows are readable without it (the panel head
+   names the repertoire and the trail names the line), so it lives in the dock's
+   options popover instead of taking a line of the dock's height. */
+
+.explorer-rows {
+  display: grid;
+  min-width: 0;
+}
+
+
+.explorer-rows .hint {
+  padding: 4px 0 8px;
+}
+
+
+.explorer-head, .explorer-row {
+  display: grid;
+  grid-template-columns: minmax(48px, 64px) minmax(44px, 68px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.explorer-head {
+  min-height: 26px;
+  color: var(--label);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+
+/* A short window keeps the Explorer and five engine lines inside the dock's
+   ceiling: the rows tighten instead of the dock growing a scrollbar. */
+@media (max-height: 600px) {
+  .explorer-row { min-height: 26px; }
+  .explorer-head { min-height: 20px; }
+}
+
+
+.explorer-head span:nth-child(2) {
+  text-align: right;
+}
+
+
+.explorer-row {
+  position: relative;
+  min-width: 0;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-s);
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
+}
+
+
+.explorer-row:hover {
+  background: var(--surface-3);
+}
+
+
+/* One click anywhere on the row adds the move (or goes to it when it is already
+   in the repertoire); the Move button is its keyboard/screen-reader handle. */
+.explorer-pick {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+
+.explorer-row:has(.explorer-pick:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+
+/* Fewer than a handful of games: the split is noise, so the row steps back. */
+.explorer-row.is-thin .explorer-bar,
+.explorer-row.is-thin .explorer-games { opacity: 0.55; }
+
+
+/* A row was just played: these rows describe the previous position until the
+   next position's stats arrive, so they stop reading as clickable. */
+.explorer-rows.is-stale .explorer-row {
+  cursor: progress;
+  opacity: 0.55;
+  /* Dim only if the next position's stats take a moment: a cached answer lands
+     before the delay, so stepping through a line doesn't flash. Leaving the
+     stale state uses the row's own (no) transition, so fresh rows are instant. */
+  transition: opacity var(--dur-fast) var(--ease-out) 180ms;
+}
+
+
+.explorer-rows.is-stale .explorer-row:hover {
+  background: transparent;
+}
+
+
+/* The rows stay (dimmed) so the panel does not collapse, but a moving bar on
+   the dock says the list belongs to the previous position until the fetch
+   lands. Inset from the tab strip so it reads as the panel loading. */
+.dock:not(.is-folded):has(#explorer-drawer:not([hidden]) #explorer-rows.is-stale)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* The bar is its own 15% width, so translateX(567%) ends at the dock's right
+     edge. A full-width bar scaled to 0.15 moved 566% of the *dock* width
+     (~2400px at 430px) and, with no clipping ancestor, widened the page. */
+  width: 15%;
+  height: 2px;
+  z-index: 3;
+  pointer-events: none;
+  background: var(--accent);
+  animation: dock-loading 1.1s var(--ease-out) infinite;
+}
+
+
+@keyframes dock-loading {
+  0% { opacity: 0.35; transform: translateX(0); }
+  50% { opacity: 1; }
+  100% { opacity: 0.35; transform: translateX(567%); }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .dock:not(.is-folded):has(#explorer-drawer:not([hidden]) #explorer-rows.is-stale)::after {
+    animation: none;
+    opacity: 0.6;
+    width: auto;
+    right: 0;
+  }
+}
+
+
+.explorer-san {
+  font-weight: 500;
+  color: var(--text);
+}
+
+
+/* The mark that says this move is already in the repertoire. It is a dot, not
+   a caption, but at 9px it read as a speck next to the move. */
+.explorer-inrep {
+  color: var(--accent-text);
+  margin-left: 4px;
+  font-size: 11px;
+  vertical-align: 2px;
+}
+
+
+.explorer-games {
+  text-align: right;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+
+.explorer-share { color: var(--text); font-weight: 500; }
+
+
+/* Always full width: the split is the reading, the game count beside it is
+   the confidence. */
+.explorer-bar {
+  display: flex;
+  min-width: 0;
+  height: 22px;
+  /* The white share is the panel's own colour: a frame, as on Lichess, keeps
+     it a segment of the bar. */
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--explorer-track);
+}
+
+
+/* The share printed inside each segment is the row's actual reading, and at
+   10px it was the smallest type on the page. Segments are a third of a 326px
+   bar at desktop and a fifth of a 178px one on a phone, so 11px still fits
+   three digits. */
+.explorer-bar span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+
+.explorer-bar-w { background: var(--explorer-white); color: var(--explorer-white-ink); }
+
+
+/* Engine on: an Eval column between Move and Games. Off: the cell is gone and
+   the three-column layout above is untouched. */
+.explorer-eval { display: none; }
+
+
+.explorer-rows.has-eval .explorer-head,
+.explorer-rows.has-eval .explorer-row {
+  grid-template-columns: minmax(44px, 60px) minmax(46px, 56px) minmax(40px, 60px) minmax(0, 1fr);
+}
+
+
+.explorer-rows.has-eval .explorer-eval {
+  display: block;
+  text-align: right;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+
+.explorer-rows.has-eval .explorer-head .explorer-eval { font-weight: 500; color: var(--label); }
+
+
+.explorer-eval.is-best { color: var(--good-text); }
+
+
+.explorer-eval.is-ok { color: var(--text); }
+
+
+.explorer-eval.is-weak { color: var(--warn-text); }
+
+
+.dock-engine-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
+.dock-engine-switch .pf-row-label { font-size: var(--fs-s); color: var(--label); font-weight: 500; }
+
+
+.explorer-bar-d { background: var(--explorer-draw); color: var(--explorer-draw-ink); }
+
+
+.explorer-bar-b { background: var(--explorer-black); color: var(--on-accent); }
+
+
+/* The caret is an 11px glyph; its hit area reaches 24px without moving a token. */
+#view-build .mtree-collapse { position: relative; }
+
+
+#view-build .mtree-collapse::after { content: ""; position: absolute; inset: -6px -4px -6px -8px; }
+
+
+@media (min-width: 861px) and (max-height: 640px) {
+  .forkbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px var(--build-pad, 12px); }
+
+  .fork-head { margin-bottom: 0; }
+
+  .fork-chip { padding-top: 2px; padding-bottom: 2px; }
+
+  .dock-tabs button { padding-top: 5px; padding-bottom: 5px; }
+
+  .dock-body { padding-top: 6px; padding-bottom: 6px; }
+
+  .explorer-head { padding-top: 1px; padding-bottom: 1px; }
+
+  .explorer-row { padding-top: 2px; padding-bottom: 2px; }
+
+}
+
+#build-rep-header .rep-menu-btn { margin-left: 0; }
+
+
+/* The head is the panel's title and its menu: the repertoire's name one step
+   above the moves under it, the opening it is in quieter beneath. The panel is
+   a tool, so its title is a label, not a headline. */
+#build-rep-header {
+  min-height: 44px;
+  padding: 6px 8px 6px var(--build-pad, 14px);
+}
+
+
+#build-rep-header .rep-name { font-size: 14px; font-weight: 500; flex: 0 1 auto; }
+
+
+#build-rep-header .rep-color-sub { font-size: 12px; font-weight: 400; }
+
+
+/* Explorer database toggle: the chosen database is a plate on the segment
+   track with full-ink text. It used to add accent text, a 1px ring and an
+   accent underline, which put three more accents in a dock that already has
+   the tab's underline — the accent belongs to the current move and the one
+   action, not to every selected chip. */
+.explorer-db.is-active {
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 500;
+}
+

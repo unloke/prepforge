@@ -6,8 +6,9 @@
 // thumb bar.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { cssSource } from "../test-styles-source.js";
 
-const phone = readFileSync(new URL("../phone.css", import.meta.url), "utf8");
+const phone = cssSource("phone.css");
 const body = phone.slice(phone.lastIndexOf("@media (max-width: 760px)"));
 
 it("keeps the board full width and lets the region under it scroll", () => {

@@ -1,0 +1,500 @@
+/* Engine window: the docked engine lines, its slots, and the engine-unavailable banner. */
+
+/* ----- Engine widget (floating, draggable, resizable) ------------------ */
+
+.engine-window {
+  position: fixed;
+  top: 120px;
+  right: 32px;
+  width: 340px;
+  height: 320px;
+  min-width: 280px;
+  min-height: 180px;
+  max-width: 90vw;
+  max-height: 80vh;
+  background: var(--float);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 18px 44px rgba(28, 28, 28, 0.18), 0 4px 12px rgba(28, 28, 28, 0.08);
+  display: flex;
+  flex-direction: column;
+  z-index: var(--z-tool);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.96);
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+}
+
+
+/* Docked in the Repertoire inspector's Engine tab: in flow, no chrome. */
+.engine-window.is-docked {
+  position: static;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  opacity: 1;
+  transform: none;
+  overflow: visible;
+}
+
+
+.engine-window.is-docked .engine-window-head {
+  background: none;
+  border-bottom: 0;
+  padding-left: 0;
+  cursor: default;
+}
+
+
+.engine-window.is-docked .engine-window-body {
+  min-height: 140px;
+  /* Docked: the head's eval chip already carries the number, and a second
+     narrow bar beside the dock added noise, not information. */
+  grid-template-columns: 1fr;
+}
+
+
+.engine-window.is-docked .engine-window-pvs { padding: 4px 0; }
+
+
+/* Docked lines: one fixed-height row each, cut at the edge, so N lines always
+   take N rows: the block never grows while searching or jumps when a line
+   gets longer. */
+.engine-window.is-docked .engine-pv {
+  grid-template-columns: 54px 1fr;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 27px;
+  min-height: 27px;
+  padding: 0 6px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+}
+
+
+/* Only a row that plays into the move list (Analyze) is a control; Build's card
+   is a readout beside the Explorer, which adds moves itself. */
+.engine-window .engine-pv[role="button"] { cursor: pointer; }
+
+
+.engine-window.is-docked .engine-pv[role="button"]:hover { background: var(--panel-soft); }
+
+
+.engine-window.is-docked .engine-pv:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+
+.engine-window.is-docked .engine-pv.is-top { background: none; border-color: var(--line-soft); }
+
+
+.engine-window.is-docked .engine-pv-eval { padding: 1px 6px; min-width: 0; font-size: 12px; }
+
+
+.engine-window.is-docked .engine-pv-line { line-height: 22px; text-overflow: ellipsis; }
+
+
+.engine-pv.is-pending { cursor: default; }
+
+
+.engine-pv.is-pending .engine-pv-eval { color: var(--muted); background: none; border-color: var(--line-soft); }
+
+
+.engine-pv.is-pending .engine-pv-line { color: var(--muted); }
+
+
+/* The whole-game pass has the workers and has not reached this position yet:
+   one quiet line, the size of a real row, with no eval slot to fill in. */
+.engine-pv.is-waiting { grid-template-columns: 1fr; cursor: default; }
+
+
+.engine-pv.is-waiting .engine-pv-line { color: var(--muted); }
+
+
+/* A line the full-game analysis produced, not a search this card ran. It leads
+   the row so a narrow card clips the tail of the line, never the mark. */
+.engine-window-pvs.is-analysis-read .engine-pv.is-top .engine-pv-line::before {
+  content: "Analysis";
+  margin-right: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+
+.engine-pv.is-final { cursor: default; }
+
+
+.engine-pv.is-final .engine-pv-line { font-weight: 500; }
+
+
+.engine-window.is-docked .engine-window-close,
+.engine-window.is-docked .engine-window-resize {
+  display: none;
+}
+
+
+.engine-window.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+
+/* In-panel slots (Build Explorer / Analyze Evaluation card): a compact block,
+   no fixed body height - one pinned line takes one line of space. */
+.engine-slot:empty,
+.engine-slot:has(> .engine-window[hidden]) { display: none; }
+
+
+.engine-slot .engine-window.is-docked .engine-window-body { min-height: 0; }
+
+
+.engine-slot .engine-window.is-docked .engine-window-head { min-height: 0; padding: 2px 0; }
+
+
+.engine-slot .engine-window.is-docked .engine-window-pvs { padding: 2px 0 0; gap: 0; }
+
+
+#explorer-engine-slot {
+  /* Pinned while the Explorer rows scroll underneath. */
+  position: sticky;
+  top: -8px;
+  z-index: 1;
+  margin: -8px -12px 6px;
+  padding: 4px 12px 2px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+
+/* A short desktop window (a laptop with its browser chrome, ~530px tall): the
+   panel is barely taller than the board, and five engine lines over the Explorer
+   left the inspector 80px short of its rows with the tree at its floor. The panel
+   tightens its bands instead of scrolling them: rows a few px shorter, the fork
+   bar on one line. Pitches stay at or above 23px, so rows remain easy targets. */
+@media (min-width: 861px) and (max-height: 640px) {
+  #explorer-engine-slot { top: -6px; margin-top: -6px; margin-bottom: 4px; padding-top: 2px; }
+
+  .engine-window.is-docked .engine-pv { height: 23px; min-height: 23px; }
+
+  .engine-window.is-docked .engine-pv-line { line-height: 21px; }
+
+}
+
+/* ---- Slim header: meta on the left, controls on the right -------------- */
+
+.engine-window-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 6px 5px 10px;
+  background: var(--panel-soft);
+  border-bottom: 1px solid var(--line-soft);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  min-height: 34px;
+  flex-shrink: 0;
+}
+
+
+.engine-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+
+.engine-head-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-strong);
+}
+
+
+.engine-head-eval {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  min-width: 52px;
+  text-align: center;
+}
+
+
+.engine-head-depth {
+  min-width: 56px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+
+.engine-head-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+
+.engine-lines {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 1px 3px;
+}
+
+
+.engine-lines-readout {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text);
+  min-width: 12px;
+  text-align: center;
+}
+
+
+.engine-step {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+
+.engine-step:hover {
+  background: var(--accent-strong);
+  transform: scale(1.1);
+}
+
+
+.engine-step:disabled {
+  background: var(--line);
+  color: var(--muted);
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+.engine-window-close {
+  border: 0;
+  background: transparent;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+
+.engine-window-close:hover {
+  background: var(--line-soft);
+  color: var(--text);
+}
+
+
+/* ---- Body: vertical eval bar + PV list --------------------------------- */
+
+.engine-window-body {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+
+/* The engine window is always docked; its bar only carries the value the
+   Analyze meter reads. */
+.engine-bar { display: none; }
+
+
+/* Eval chip: a two-tone pill that says whose advantage it is by shape of
+   fill, not by an accent colour that reads the same for both sides. */
+.engine-head-eval[data-side="white"] { background: var(--explorer-white); color: var(--explorer-white-ink); border-color: var(--line-strong); }
+
+
+.engine-head-eval[data-side="black"] { background: var(--explorer-black); color: var(--on-accent); border-color: var(--muted); }
+
+
+.engine-window-pvs {
+  padding: 8px;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  font-size: 13px;
+}
+
+
+.engine-pv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line-soft);
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+  min-width: 0;
+  overflow: hidden;
+}
+
+
+.engine-pv.is-top {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+
+.engine-pv-eval {
+  font-weight: 600;
+  font-size: 12px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  min-width: 48px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+
+.engine-pv.is-top .engine-pv-eval {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent-strong);
+}
+
+
+.engine-pv-line {
+  color: var(--text);
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  min-width: 0;
+}
+
+
+.engine-pv-line .pv-move-num {
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+
+.engine-pv-line .pv-move {
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+
+.engine-pv[data-line] .pv-move:hover { background: var(--surface-3); }
+
+
+.engine-pv-line .pv-move.is-current {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+
+.engine-window-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  background: linear-gradient(
+    135deg,
+    transparent 0 35%,
+    var(--line) 35% 50%,
+    transparent 50% 60%,
+    var(--line) 60% 75%,
+    transparent 75% 100%
+  );
+}
+
+
+.engine-banner {
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-card);
+  background: var(--accent-soft);
+  color: var(--text);
+  padding: 10px 12px;
+  margin: 0 0 10px;
+  display: grid;
+  gap: 4px;
+  max-height: 72px;
+  overflow: auto;
+}
+
+
+.panel > .engine-banner {
+  margin: 0;
+  max-height: none;
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+
+
+.engine-banner-title {
+  font-weight: 600;
+  color: var(--accent-strong);
+}
+
+
+.engine-banner-why,
+.engine-banner-action {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+
+.engine-banner-action {
+  color: var(--text);
+}
+

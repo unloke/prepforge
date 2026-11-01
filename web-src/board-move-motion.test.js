@@ -18,10 +18,10 @@ import { describe, expect, it } from "vitest";
 import {
   MOVE_SLIDE_MS, boardTransition, caughtPiece, moveMotion, playMoveMotion,
 } from "./board/move-motion.js";
+import { eagerCss as css } from "./test-styles-source.js";
 
 const controller = readFileSync(new URL("./board/board-controller.js", import.meta.url), "utf8");
 const motion = readFileSync(new URL("./board/move-motion.js", import.meta.url), "utf8");
-const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
 // --- the smallest DOM the motion needs --------------------------------------
 function pieceElement(name = "piece xy") {
