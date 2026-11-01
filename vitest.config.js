@@ -1,7 +1,6 @@
 ﻿// Vitest config for PrepForge Chess.
-// Vite app root remains web-src (vite.config.js). The default test command is the
-// product gate: research protocols have their own explicit vitest.research.config.mjs
-// entry point so they cannot make a deployable product red.
+// Vite app root remains web-src (vite.config.js). This is the product gate; research/
+// is not discovered.
 import { defineConfig } from "vitest/config";
 import { stockfishIdentity } from "./scripts/sync-stockfish.mjs";
 

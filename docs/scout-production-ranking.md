@@ -130,7 +130,7 @@ validation is required before making that claim.
 ## Path guard
 
 v10 gates only the leaf. The guard (`web-src/scout-path-guard.js`, from
-`research/scout-v11`) also checks every position after a preparing-side move in a
+[`research/scout-v11`](https://github.com/unloke/prepforge/tree/history/archive/2026-10-31/research/scout-v11) on the `history` branch) also checks every position after a preparing-side move in a
 shown line, with the same rule (CP < -75 or an adverse mate). Each line is read deepest
 first with one `ucinewgame`: a depth-6 screen, confirmed at depth 8 when it is within
 50cp of the floor. Unsafe after the anchor: the next most common continuation (<= 3).
@@ -148,7 +148,7 @@ changes, the replay falls back to cached position verdicts and the pass runs aga
 The research verdict was FAIL (-34.5% masked rows, against a 40% target); the guarded
 selection is the only ranking path the app runs.
 
-The former `?scoutV13=1` experimental runtime was retired; its code lives under `research/lib/`, unrelated to scoring
-version 10. Its existing shared research dependencies and legacy v12 vocabulary
-module retain their previous status. Historical material on the `history` branch
-does not constrain current production ranking.
+The former `?scoutV13=1` experimental runtime was retired and its code moved to
+[`archive/2026-10-31/research/lib/`](https://github.com/unloke/prepforge/tree/history/archive/2026-10-31/research/lib) on the `history`
+branch. Historical material on the `history` branch does not constrain current
+production ranking.
