@@ -6,9 +6,10 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { eagerCss } from "../test-styles-source.js";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const css = readFileSync(join(root, "styles.css"), "utf8") + readFileSync(join(root, "train-shell.css"), "utf8");
+const css = eagerCss + readFileSync(join(root, "train-shell.css"), "utf8");
 
 const rule = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

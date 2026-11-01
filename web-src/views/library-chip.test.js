@@ -6,12 +6,7 @@
 // in lower case. These rules pin that so a later chip pass cannot shrink it
 // back into a cap.
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const root = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(join(root, "..", "styles.css"), "utf8");
+import { eagerCss as css } from "../test-styles-source.js";
 
 function rule(selector) {
   const start = css.indexOf(selector);

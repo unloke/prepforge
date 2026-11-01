@@ -4,9 +4,9 @@
 // their height.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { eagerCss as styles } from "./test-styles-source.js";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
-const styles = read("./styles.css");
 const scout = read("./views/scout.css");
 const replay = read("./views/replay.css");
 const unlock = read("./engine-unlock.css");

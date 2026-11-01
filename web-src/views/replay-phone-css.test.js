@@ -6,12 +6,13 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { cssSource } from "../test-styles-source.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "replay.css"), "utf8");
 // Both phone blocks: round 1 (row geometry) and the r2 composition after it.
 const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
-const shared = readFileSync(join(here, "..", "phone.css"), "utf8");
+const shared = cssSource("phone.css");
 
 it("the Games outcome chips take the shared control height on a phone", () => {
   expect(shared).toMatch(/\.sum-chip,\n  select,/);

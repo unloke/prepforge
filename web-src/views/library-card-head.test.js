@@ -4,12 +4,7 @@
 // two lines in a row where one was meant. The column header under it brings
 // the line; the head does not.
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const root = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(join(root, "..", "styles.css"), "utf8");
+import { eagerCss as css } from "../test-styles-source.js";
 
 // The rule body for a selector, starting at its first occurrence.
 function rule(selector) {

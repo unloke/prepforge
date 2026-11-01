@@ -7,8 +7,8 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+import { eagerCss as css } from "./test-styles-source.js";
 
-const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 const build = readFileSync(new URL("./views/build.js", import.meta.url), "utf8");
 const session = readFileSync(new URL("./controllers/build-session.js", import.meta.url), "utf8");
 const state = readFileSync(new URL("./core/state.js", import.meta.url), "utf8");

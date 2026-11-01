@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
   ACCENT_MODES,
@@ -15,6 +14,7 @@ import {
   setAccent,
   storeTheme,
 } from "./theme.js";
+import { eagerCss } from "./test-styles-source.js";
 
 function fakeStorage(initial = null) {
   let value = initial;
@@ -79,7 +79,7 @@ describe("board colour themes", () => {
   });
 
   it("has a CSS pair for every named board", () => {
-    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+    const css = eagerCss;
     for (const board of BOARD_MODES.filter((name) => name !== "slate")) {
       expect(css).toMatch(new RegExp(`:root\\[data-board="${board}"\\][^{]*\\{[^}]*--square-light`));
     }

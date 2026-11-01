@@ -1,0 +1,731 @@
+/* Library view (#view-dashboard): Today strip, repertoire table and next steps. */
+
+/* Library — Opus prototype composition: Today strip, then the repertoire
+   table + 340px preview pane, then Next steps. Real listing data only
+   (root_fen + cached health); the prototype Lines / Last trained columns
+   and preview move line have no API source and stay out. */
+.workspace:has(> .view.is-active#view-dashboard) {
+  max-width: none;
+  padding: 16px;
+}
+
+
+.lib {
+  display: flex;
+  flex-direction: column;
+  /* The Today strip is its own band: the gap to the table is wider than the
+     gap inside a card, so the two do not read as one surface. */
+  gap: var(--gap-group);
+  max-width: 1640px;
+}
+
+
+#view-dashboard,
+#view-teams {
+  --fs-xs: 13px;
+  --fs-s: 13px;
+}
+
+
+#view-dashboard .empty-state p,
+#view-teams .team-empty p {
+  color: var(--text);
+  font-size: 16px;
+}
+
+
+.lib .card { padding: 0; }
+
+
+/* The Library head is two rows at every width: the card's name with the two
+   actions that add to it, then the controls that narrow it (filters, search).
+   Run as one wrapping row, "New repertoire" dropped under the search as soon
+   as the card was narrower than 1180, so the table's first row started 88px
+   down at one width and 50px at another. */
+.lib .card-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
+  margin: 0;
+  padding: 12px;
+}
+
+
+.lib .card-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+
+/* Where the head's three controls sit on a desktop. The phone draws its own
+   grid (phone.css), so these placements stop at the phone breakpoint. */
+@media (min-width: 761px) {
+  .lib-actions { grid-column: 2; grid-row: 1; }
+  /* A segmented control is as wide as its options. Stretched across the card's
+     first column the five filters read as a progress bar, not a control. */
+  .lib-list .card-head .seg { grid-column: 1; grid-row: 2; justify-self: start; max-width: 100%; }
+  .lib-list .card-head .search-field { grid-column: 2; grid-row: 2; width: 220px; margin-left: 0; }
+}
+
+
+.count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  text-align: center;
+  line-height: 18px;
+}
+
+
+/* The phone header is hidden on wide screens, so on desktop the page needs a
+   name of its own — the same rule Settings keeps. The + beside it is the
+   phone's route to New repertoire; on a desktop the card head already carries
+   that action, so only the name is shown. */
+@media (min-width: 761px) {
+  #view-dashboard .page-head {
+    display: flex;
+    align-items: baseline;
+    margin: 0;
+  }
+  /* The title is the shell's one 26/700 rule (a 22/650 copy here made
+     Library's name smaller than Games', Scout's and Teams'). */
+  #view-dashboard .page-head-btn { display: none; }
+}
+
+
+/* Today strip. It and the next steps arrive once, when their data lands. */
+#view-dashboard .today.is-enter,
+#view-dashboard .steps.is-enter { animation: view-enter var(--dur-slow) var(--ease-out) both; }
+
+
+/* The strip answers one question — what to study next — and answers it in one
+   line. The queue is the strip's loudest text; the streak beside it is the
+   quiet meta, and the week's history and the lifetime counts are two small
+   lines at the far end, over the action. Read as four 13px grey lines on one
+   row, nothing led and the queue was the third thing the eye found. */
+.today {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+
+.lib .today { padding: 14px 16px; }
+
+
+.today-streak {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+
+/* A trained-today streak says so with the figure's colour; until then it is a
+   count like any other and stays in ink. */
+.today-streak[data-lit="1"] .today-count { color: var(--good-text); }
+
+
+.today-count {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+
+.today-unit {
+  color: var(--muted);
+  font-size: var(--fs-s);
+  line-height: 1.2;
+}
+
+
+.today-unit small { display: block; color: var(--label); font-size: var(--fs-xs); }
+
+
+.today-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+
+/* The one thing the button turns on, at the size a fact is read at. */
+.today-queue {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+
+/* What else is waiting, in one quieter line under it. */
+.today-more,
+.today-recap,
+.today-counts {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  line-height: 1.35;
+}
+
+
+.today-more b { color: var(--text); font-weight: 500; }
+
+
+/* Colour says good or bad, not up or down: two more mastered moves and one
+   fewer weak spot are both progress. */
+.today-recap .up { color: var(--good-text); }
+
+
+.today-recap .down { color: var(--danger-strong); }
+
+
+.today-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+  text-align: right;
+}
+
+
+.today-recap b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+
+/* Below 1100px the week's history no longer fits beside the queue: squeezing
+   both left the queue's second line wrapping over three lines beside a 328px
+   column of stats. The history moves to its own right-aligned line under the
+   strip, and the queue keeps the width. */
+@media (max-width: 1100px) and (min-width: 761px) {
+  .today { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .today > .btn { grid-column: 3; grid-row: 1; }
+  .today-aside { grid-column: 1 / -1; grid-row: 2; flex-direction: row; justify-content: flex-end; align-items: baseline; gap: 14px; }
+}
+
+
+/* Lifetime counts (games · repertoires · sessions): the quietest line in the
+   strip. Nothing here is what the Train button turns on. */
+.today-counts { color: var(--label); }
+
+
+.today-counts b { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+
+/* Streak-at-risk: replaces the second line when local midnight is <5h away and
+   nothing has been trained yet: same slot, louder voice. */
+.today-warning {
+  margin: 0;
+  color: var(--warn-text);
+  font-size: var(--fs-s);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+
+/* Today's action is the shared `.btn.primary`: same height, padding and size as
+   the two buttons on the card head below it. It used to be a 38px box at 14px
+   beside their 30px at 13px, which read as a different control family. */
+.today > .btn { padding: 0 16px; }
+
+
+/* Today's payload failed: the strip's slot carries the message and the retry,
+   at the same quiet weight as the rest of the strip. */
+.today-error { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--danger); font-size: var(--fs-s); font-weight: 500; }
+
+
+.today-error .btn { color: var(--text); }
+
+
+/* Grid: the repertoire table, with "Next steps" as a band under it while the
+   setup is unfinished. As a 340px side card the checklist ended half a screen
+   above the table's last row and floated in a column of empty ground, and the
+   table lost 340px of the width its four columns need. Both cards now run the
+   page's one width and end at their own content. */
+.lib-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gap-card);
+  align-items: start;
+}
+
+
+.lib-list { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; }
+
+
+.steps { grid-column: 1; grid-row: 2; overflow: hidden; }
+
+
+/* Filter chips + search share the card head row (prototype). */
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 220px;
+  height: var(--control-h);
+  margin-left: auto;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a form field keeps its outline */
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--label);
+}
+
+
+/* The phone's Cancel for the search it opens from the page head (phone.css). */
+.lib-search-cancel { display: none; }
+
+
+.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */ }
+
+
+.search-field input {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+
+.search-field input:focus-visible { box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
+
+
+/* Table: column header + one grid row per repertoire */
+.lib-cols,
+.lib-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(150px, 1fr) minmax(150px, 1fr) 32px;
+  column-gap: 12px;
+  align-items: center;
+  padding: 0 12px;
+}
+
+
+.lib-cols {
+  min-height: 30px;
+  border-bottom: 1px solid var(--line);
+}
+
+
+/* Empty library (signed out / no repertoires): the onboarding card has no
+   filter chips or column header, only the search stays. */
+.lib-list.is-empty .card-head .seg,
+.lib-list.is-empty .lib-cols { display: none; }
+
+
+/* Failed load: same empty layout, and the search goes too (nothing to filter). */
+.lib-list.is-error .card-head .search-field { display: none; }
+
+
+/* Nothing matched: the filter chips must stay reachable or narrowing to zero
+   rows is a dead end (the empty card carries a Clear filter action too). */
+.lib-list.is-empty:not(.is-error):has(.lib-no-match) .card-head .seg { display: flex; }
+
+
+.lib-no-match { display: grid; justify-items: center; gap: 10px; }
+
+
+.lib-no-match p { margin: 0; }
+
+
+/* Nothing to filter or add over yet: the empty card (and Get started) carry
+   New / Import / Sign in, so the header keeps only its title. While the first
+   load runs, the column header stays out over an empty table. */
+.lib-list.is-empty .card-head .search-field,
+.lib-list.is-empty:not(.is-error) .lib-actions { display: none; }
+
+
+.lib-list.is-loading :is(.card-head h2, .card-head .seg, .lib-cols) { visibility: hidden; }
+
+
+.lib-row.is-skeleton .skeleton-stack { gap: 1px; }
+
+
+.lib-row.is-skeleton .skeleton-bar { height: 17px; }
+
+
+.lib-row.is-skeleton .skeleton-chip { height: 18px; }
+
+
+/* Cold-start skeleton: real .lib-row geometry (grid columns, phone layout,
+   list-enter stagger) with the content replaced by bars. Nothing is clickable
+   and nothing announces content that isn't there yet. */
+.lib-row.is-skeleton { cursor: default; }
+
+
+.lib-row.is-skeleton:hover { background: none; }
+
+
+.lib-row {
+  min-height: 54px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+
+.lib-row:hover { background: var(--panel-soft); }
+
+
+/* A table row cannot scale on press, so the press reads as a step deeper
+   into the surface. */
+.lib-row:active { background: var(--surface-3); }
+
+
+.lib-row:focus-visible { outline-offset: -2px; border-radius: 0; }
+
+
+/* Selection is one tone step and one 3px bar, in the page's own ink rather than
+   the accent: the accent marks the screen's action, and a selected row is a
+   place, not a button. A blue tint under a blue bar under a two-tone bar under
+   three coloured chips was four colour systems in one row. */
+.lib-row.is-selected,
+.lib-row.is-selected:hover {
+  position: relative;
+  background: var(--surface-3);
+}
+
+
+.lib-row.is-selected::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: var(--text);
+}
+
+
+.lib-row.is-disabled .name { color: var(--label); }
+
+
+/* ARIA: the option role covers the info cells; the ⋯ button is its sibling. */
+.lib-opt { display: contents; }
+
+
+.lib-cell-rep {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+
+.lib-cell-rep .color-dot { margin-top: 4px; }
+
+
+.lib-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
+
+.lib-name-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+
+
+.lib-name .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.rep-sub { color: var(--label); font-size: var(--fs-xs); }
+
+
+.lib-chip {
+  flex: none;
+  background: var(--surface-3);
+  color: var(--label);
+}
+
+
+/* A shared tag is a tag, not a micro-label: it sits at the size of the other
+   chips instead of a 10px tracked cap, and says "shared" in lower case. */
+.lib-chip.is-shared {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 500;
+}
+
+
+.lib-cell-mastery,
+.lib-cell-queue {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+
+.lib-cell-queue { flex-wrap: wrap; }
+
+
+.lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
+
+
+.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); }
+
+
+/* The word names the number; the desktop column header already does, so the
+   phone row is the only place that needs it. */
+#view-dashboard .lib-mastery-word { display: none; }
+
+
+/* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
+   missing one) and enough height to compare rows at a glance. One hue: the
+   trained-but-not-mastered part is the same green, paler, so the bar reads as
+   one measure ("how much of this repertoire have you got") rather than two
+   unrelated quantities in green and blue. */
+.lib-mbar {
+  flex: 1;
+  min-width: 60px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+  position: relative;
+}
+
+
+.lib-mbar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+
+.lib-mbar i.is-started { background: color-mix(in srgb, var(--k-mastered) 32%, var(--surface-3)); }
+
+
+.lib-mbar i.is-mastered { background: var(--k-mastered); }
+
+
+.lib-mastery-none {
+  width: auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  color: var(--label);
+  font-size: var(--fs-xs);
+}
+
+
+/* In a Library row the queue is one neutral chip with one coloured dot: three
+   tinted pills in red, amber and violet beside a green mastery bar and the
+   selected row's tint made five colours where the row says one thing (what is
+   waiting). The dot keeps the chess hue, so the kind is still read at a glance;
+   the chip itself is the row's quiet surface. Scout's and Train's chips keep
+   their tint — outside a table row a lone chip has no bar or selection to
+   compete with. */
+.lib-row .kchip.k-weak,
+.lib-row .kchip.k-due,
+.lib-row .kchip.k-new { background: var(--surface-3); color: var(--text); }
+
+
+/* The open row is filled with the chips' own grey: there the chip steps up to
+   the card's white so it still reads as a pill. */
+.lib-row.is-selected .kchip:is(.k-weak, .k-due, .k-new) { background: var(--panel); }
+
+
+.lib-row .kchip.k-weak::before { background: var(--k-weak); }
+
+
+.lib-row .kchip.k-due::before { background: var(--k-due); }
+
+
+.lib-row .kchip.k-new::before { background: var(--k-new); }
+
+
+button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-out); }
+
+
+button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
+
+
+button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+
+.lib-rep-list .empty-state:not(.big) { border: 0; background: none; border-radius: 0; }
+
+
+/* The Library's empty card is nothing but its invitation, so the 48px block
+   padding left a blank band above it as tall as the words. 32px still centres
+   the invitation in a card of its own height. */
+.lib-rep-list .empty-state.big { padding: 32px 24px; }
+
+
+.es-mark { color: var(--label); font-size: 28px; line-height: 1; }
+
+
+/* Next steps */
+.step {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+}
+
+
+/* The mark column is a checklist, not an index: a finished step ticks, an
+   open one is an empty ring. */
+.step-n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+
+.step-text b { display: block; }
+
+
+.step-text p { margin: 0; color: var(--muted); font-size: var(--fs-s); }
+
+
+/* Setup checklist: progress in the head, finished steps tick and quiet down. */
+.steps .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+
+
+.setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 500; }
+
+
+.steps .card-head h2 { margin-right: auto; }
+
+
+.setup-dismiss { align-self: center; min-width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
+
+
+.setup-dismiss:hover { color: var(--text); background: var(--surface-3); }
+
+
+.setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+
+
+.setup-bar i { display: block; height: 100%; background: var(--good); transition: width var(--dur-slow) var(--ease-out); }
+
+
+.step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); border-color: transparent; }
+
+
+.step-n.is-done::before {
+  content: "";
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid var(--good-text);
+  border-bottom: 2px solid var(--good-text);
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+
+.step.is-done .step-text b { color: var(--muted); font-weight: 500; }
+
+
+.step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 500; }
+
+
+/* The Library is one column at every width, so the old two-track fallbacks
+   have nothing left to do. */
+@media (min-width: 1021px) {
+  /* A list page ends at its last row. The table used to be told to take the
+     height it was given, so three repertoires sat in a card that ran to the
+     bottom of the window with about 70% of it empty white. */
+  .lib-grid { align-items: start; }
+  /* The error card and the empty card are the only thing in this card, so both
+     stand in the middle of it. The error used to float at the top of the card
+     with the whole surface empty under it. */
+  .lib-grid:has(> .lib-list.is-empty) > .lib-list { display: flex; flex-direction: column; }
+  .lib-list.is-empty > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+  /* The checklist's rows sit next to each other: it ends where its last step
+     ends instead of spreading three steps over half a screen of white. */
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step { flex: 0 0 auto; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 16px 14px; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-n { width: 28px; height: 28px; font-size: var(--fs-s); }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text b { font-size: 14px; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text p { margin-top: 2px; font-size: 13px; }
+}
+
+
+/* Next steps is a band under the table: its steps run across the width in one
+   row while they fit, so the card closes the page in two lines rather than a
+   tall stack under a full-width table. A step needs room for its title beside
+   its action: at 320px "Link your Lichess account" broke in two, and at 240px
+   three steps left the third alone on a ragged second line. */
+@media (min-width: 761px) {
+  .steps { display: flex; flex-wrap: wrap; align-items: center; }
+  .steps > .card-head { flex: 1 1 100%; }
+  .steps > .setup-bar { flex: 1 1 100%; }
+  .steps > .step { flex: 1 1 0; min-width: 320px; }
+}
+
+
+/* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
+   44px touch targets. */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  .workspace:has(> .view.is-active#view-dashboard) {
+    padding: 8px 8px calc(64px + env(safe-area-inset-bottom));
+  }
+
+  .lib { gap: 10px; }
+
+  .today { grid-template-columns: auto 1fr; gap: 10px 12px; }
+
+  .today > .btn { grid-column: 1 / -1; height: 44px; }
+
+  .today-streak { padding-right: 0; border-right: 0; }
+
+  .today-body { grid-column: 1 / -1; }
+
+  .search-field { width: 100%; margin-left: 0; }
+
+  .lib .card-head .seg { max-width: 100%; overflow-x: auto; }
+
+  .lib-cols { display: none; }
+
+  .lib-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; padding: 10px 12px; }
+
+  .lib-cell-rep { grid-column: 1; grid-row: 1; }
+
+  .lib-cell-mastery,
+  .lib-cell-queue { grid-column: 1 / -1; }
+
+}
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  /* Library's Import / New live in the More sheet on phones (prototype). */
+  #library-actions { display: none; }
+
+}
+
+.lib-list .card-head .search-field { margin-left: auto; }
+
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  .lib-actions { width: 100%; }
+  .lib-actions .btn { flex: 1; }
+}
+

@@ -9,8 +9,8 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+import { cssSource, eagerCss as css } from "./test-styles-source.js";
 
-const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
 function rule(selector, from = 0) {
   const start = css.indexOf(`${selector} {`, from);
@@ -19,7 +19,7 @@ function rule(selector, from = 0) {
   return css.slice(open, css.indexOf("}", open));
 }
 
-const phone = readFileSync(new URL("./phone.css", import.meta.url), "utf8");
+const phone = cssSource("phone.css");
 
 describe("things that open", () => {
   it("drops a context menu in from its trigger", () => {

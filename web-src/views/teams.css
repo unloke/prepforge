@@ -546,7 +546,7 @@ select.team-role-select {
   }
   #view-teams #team-share-rep { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
   .workspace:has(> #view-teams.is-active .team-detail:not([hidden]) [data-team-panel]:not([hidden]) .sub-head .btn:not([hidden])) {
-    padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 84px) !important;
+    padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 84px);
   }
   #view-teams .team-invite-foot,
   #view-teams .team-detail[aria-busy="true"]::after { padding: 12px 16px; font-size: 13px; }

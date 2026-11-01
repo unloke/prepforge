@@ -1,0 +1,288 @@
+/* Move tree: the variation tree shared by Build, Analyze and Train, and the main-line score sheet. */
+
+/* Analyze panel styles (coach, chart, move grid, class bars, drawers) live in
+   views/analyze-chart.css, lazy-loaded with the Analyze view. */
+
+/* ===========================================================================
+   Move tree (shared by Analyze study lines + Build repertoire)
+
+   The mainline is a flowing run of inline moves. A variation is a block that
+   interrupts the flow and is *nested in the DOM* under the move it branches
+   from, so each level indents one notch further by pure nesting, a
+   variation-within-a-variation can never slide back to the margin.
+   =========================================================================== */
+
+/* ---- Tree body --------------------------------------------------------- */
+.mtree {
+  display: block;
+}
+
+
+.mtree-line {
+  display: block;
+}
+
+
+/* A variation: one notch in, with a rail down its whole height. Its moves
+   flow inline, so the rail is the only connector; nested variations stack
+   their rails a notch apart. */
+.mtree-var {
+  --mtree-indent: 10px;
+  --mtree-rail: 2px;
+  display: block;
+  position: relative;
+  margin: 2px 0 2px var(--mtree-indent);
+  padding: 1px 0 1px calc(var(--mtree-indent) + var(--mtree-rail));
+  color: var(--muted);
+}
+
+
+.mtree-var::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  width: var(--mtree-rail);
+  border-radius: var(--mtree-rail);
+  background: var(--line);
+}
+
+
+.mtree-var .mtree-var::before {
+  background: var(--line-soft);
+}
+
+
+/* The variation that leads to the current move gets an accent rail. The class
+   is set by the renderer (movetree.js): a `:has(> .mtree-move.is-current)`
+   selector here made every selection change re-evaluate a subtree selector
+   over the whole tree, which cost 96 ms per navigation at 10,000 moves. */
+.mtree-var.is-on-path::before {
+  background: var(--accent-line);
+}
+
+
+.mtree-tok { white-space: nowrap; }
+
+
+.mtree-num {
+  color: var(--label);
+  font-size: 12px;
+  margin-right: 1px;
+  padding-left: 2px;
+}
+
+
+/* ---- A single move ----------------------------------------------------- */
+.mtree-move {
+  border: 0;
+  background: transparent;
+  padding: 1px 6px;
+  margin: 0 1px;
+  border-radius: 5px;
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+
+/* The mainline is the line, so it reads at full ink; variations stay one step
+   back. Weight is not the tree's signal (it used to bold every mainline move
+   and every own move at once, which is every move). */
+.mtree-line.is-main > .mtree-move {
+  color: var(--text);
+}
+
+
+.mtree-move:hover {
+  background: var(--surface-3);
+}
+
+
+/* The one selected move: a filled pill, and the only strong mark in the tree.
+   The path that leads to it is drawn by the variation rails, so no move on the
+   way here carries a second accent fill. */
+.mtree-move.is-current {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-1);
+}
+
+
+/* A faint trail marking the line that leads to the current move (Analyze's
+   game list). Build does not paint it: its trail above the tree already says
+   where you stand, and filling every move on the way here spent the accent on
+   almost the whole tree. */
+.mtree-move.on-path {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+
+/* Study variations read as italic "what-if" moves. */
+.mtree-move.is-variation {
+  font-weight: 500;
+  font-style: italic;
+}
+
+
+/* Opponent replies are context, not cards of yours. */
+.mtree-move.is-opp {
+  color: var(--muted);
+}
+
+
+.mtree-move.is-disabled {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+
+/* The move you just added arrives once, in place, so a line you made is
+   distinguishable from the ones already there. Transform and opacity only: a
+   new token must not shift the tokens around it. */
+.mtree-move.is-added { animation: move-added var(--dur) var(--ease-out) both; }
+
+
+@keyframes move-added {
+  from { opacity: 0; transform: translateY(4px) scale(0.94); }
+}
+
+
+/* Training status, one mark per move: a dot before a move that is DUE
+   (amber) or WEAK (red) — the two states that ask you to do something. Every
+   other status (learning, mastered, untrained) stays unmarked and says its
+   name in the move's tooltip, so a calm tree is not a tree without data. */
+.mtree-move:is(.m-due, .m-weak)::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 5px 0 -1px;
+  border-radius: 50%;
+  vertical-align: 0.12em;
+  background: var(--k-due);
+}
+
+
+.mtree-move.m-weak::before { background: var(--k-weak); }
+
+
+/* The selected move keeps full contrast whatever it is decorated with: the
+   opponent-move grey (and a disabled move's fade) must not bleed onto the
+   accent fill. Dark theme: white on the lighter accent is only ~3:1, so the
+   label goes dark instead. */
+.mtree-move.is-current.is-opp,
+.mtree-move.is-current {
+  color: var(--accent-ink);
+}
+
+
+.mtree-move.is-current.is-disabled { opacity: 0.8; }
+
+
+/* Per-variation collapse toggle. */
+.mtree-collapse {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--label);
+  font-size: 11px;
+  line-height: 1;
+  padding: 0 4px 0 0;
+  vertical-align: baseline;
+}
+
+
+.mtree-collapse:hover {
+  color: var(--accent-strong);
+}
+
+
+.mtree-collapsed {
+  color: var(--muted);
+}
+
+
+.mtree-move.is-menu-target {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+
+/* Build's tree: the main line reads as the line, side lines step back and
+   sit under their fork, and a position with no answer on our side carries
+   one mark. Scoped here (not in the shared move-tree rules that Analyze
+   uses): the classes come from build.js's decorate(). */
+/* The main line is a score sheet: one numbered row per move pair, White and
+   Black in their own columns, and each side line indented under the move it
+   leaves from, in smaller grey type that runs inline. */
+#builder-tree .mtree-line.is-main {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 7.5em) minmax(0, 7.5em) 1fr;
+  align-items: center;
+}
+
+
+#builder-tree .mtree-line.is-main > .mtree-num {
+  grid-column: 1;
+  justify-self: end;
+  padding: 0 6px 0 0;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+
+#builder-tree .mtree-line.is-main > .mtree-move {
+  justify-self: start;
+  padding: 3px 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+
+/* One score sheet beside the board, as Lichess prints it: a tinted number
+   column and White and Black in two equal columns on a 28px pitch at 15px.
+   Analyze's sheet, Build's main line and a Practice game share it (Analyze's
+   was 13px on 21px rows with both moves hugging the left, Build's 14px/650 on
+   30px). */
+@media (min-width: 761px) {
+  :is(.moves-grid, #builder-tree) .mtree-line.is-main, .train-play-trail { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr); column-gap: 0; }
+  :is(.moves-grid, #builder-tree) .mtree-line.is-main > :is(.mtree-num, .mtree-move), .train-play-trail > span { display: flex; align-items: center; justify-self: stretch; min-height: 28px; margin: 0; padding: 0 10px; border-radius: 0; font-size: 15px; font-weight: 500; text-align: left; }
+  :is(.moves-grid, #builder-tree) .mtree-line.is-main > .mtree-num, .train-play-trail > .pt-n { align-self: stretch; justify-content: center; padding: 0 4px; background: var(--surface-3); color: var(--label); font-size: 13px; }
+  #view-train .train-play-trail:not([hidden], :empty) { display: grid; align-content: start; max-height: 50vh; padding: 0; overflow: auto; }
+  .train-play-trail > .pt-m.is-last { background: var(--accent); color: var(--accent-ink); }
+}
+
+
+#builder-tree .mtree-line.is-main > .mtree-move.is-w { grid-column: 2; }
+
+
+#builder-tree .mtree-line.is-main > .mtree-move.is-b { grid-column: 3; }
+
+
+#builder-tree .mtree-line.is-main > :is(.mtree-var, .mtree-comment) { grid-column: 1 / -1; }
+
+
+#builder-tree .mtree-line.is-main > .mtree-var { margin: 1px 0 3px 2.4em; line-height: 1.6; }
+
+
+#builder-tree .mtree-var { --mtree-indent: 10px; }
+
+
+#builder-tree .mtree-var .mtree-move { padding: 1px 4px; font-weight: 400; }
+
+
+/* The mark rides inline after the move: the touch layouts' hit-area ::after
+   (absolute, inset) would otherwise lift the "?" onto the move's letters. */
+#builder-tree .mtree-move.is-gap::after {
+  content: " ?";
+  position: static;
+  color: var(--negative);
+  font-weight: 600;
+}
+

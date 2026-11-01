@@ -27,7 +27,7 @@ function declarationLines() {
 function topLevelFactoryCalls() {
   const calls = [];
   for (let i = 0; i < lines.length; i++) {
-    if (!/^(?:(?:export\s+)?(?:const|let)\s+[\w${}\s,]+=\s*)?create\w*\(\{/.test(lines[i])) continue;
+    if (!/^(?:(?:export\s+)?(?:const|let)\s+[\w${}\s,]+=\s*)?(?:create\w*|provideApp)\(\{/.test(lines[i])) continue;
     let depth = 0;
     let body = "";
     for (let j = i; j < lines.length; j++) {
@@ -45,7 +45,7 @@ function topLevelFactoryCalls() {
 }
 
 describe("app.js init order", () => {
-  it("declares every argument of a top-level controller factory before the call", () => {
+  it("declares every argument of a top-level controller factory or provideApp before the call", () => {
     const declared = declarationLines();
     const calls = topLevelFactoryCalls();
     expect(calls.some((call) => call.names.has("hydrateBuild"))).toBe(true);

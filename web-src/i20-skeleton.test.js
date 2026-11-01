@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton, teamRowsSkeleton } from "./views/team-skeleton.js";
+import { eagerCss } from "./test-styles-source.js";
 
 // Item 20: the panes used to disagree on how they said "loading" — the
 // directory and the members pane printed a dashed "Loading…" empty-state box,
@@ -79,7 +80,7 @@ describe("Library cold-start skeleton", () => {
   });
 
   it("gives the skeleton the same bar and pulse as the tree skeleton", () => {
-    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+    const css = eagerCss;
     // One definition of the bar and the keyframes, shared by every skeleton.
     expect(css.match(/^\.skeleton-bar \{/gm)).toHaveLength(1);
     expect(css.match(/@keyframes skeleton-pulse/g)).toHaveLength(1);

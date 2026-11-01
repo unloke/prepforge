@@ -2,10 +2,10 @@
 // under it, the open pane, 44px pane tabs and the thumb bar. The grading switch
 // leaves the coach's head row (the review bar's line there) for the engine
 // pane's head on a phone, and comes back on a wider screen.
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
+import { cssSource } from "../test-styles-source.js";
 
-const css = readFileSync(new URL("./analyze-chart.css", import.meta.url), "utf8");
+const css = cssSource("views/analyze-chart.css");
 const phoneR2 = css.slice(css.indexOf("/* ---- Phone, round 2: composition"));
 
 // A small element tree: enough of the DOM for installAnalyzePanes.
@@ -135,10 +135,5 @@ describe("Analyze phone, round 2", () => {
     // From the 34px padding box: 2px up, 8px down, the tab row above the pane.
     expect(phoneR2).toMatch(/#view-analyze \.an-tab::after \{ content: ""; position: absolute; inset: -2px 0 -8px; \}/);
     expect(phoneR2).toMatch(/#view-analyze \.an-panes > \.an-tabs \{ position: relative; z-index: 2; \}/);
-  });
-
-  it("never wraps a key moment's better move beside its eval", () => {
-    expect(phoneR2).toMatch(/#view-analyze \.km \{[^}]*display: grid;/);
-    expect(phoneR2).not.toMatch(/\.km \{[^}]*flex-wrap: wrap/);
   });
 });

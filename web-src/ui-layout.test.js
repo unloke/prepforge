@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { appSource } from "./test-app-source.js";
+import { cssSource, eagerCss as css } from "./test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
 const app = appSource();
 // app.js on its own: assertions about startup order are about the shell, not
@@ -15,8 +15,8 @@ const coverageController = readFileSync(join(root, "controllers", "coverage.js")
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 const replayCss = readFileSync(join(root, "views", "replay.css"), "utf8");
-const analyzeCss = readFileSync(join(root, "views", "analyze-chart.css"), "utf8");
-const phoneCss = readFileSync(join(root, "phone.css"), "utf8");
+const analyzeCss = cssSource("views/analyze-chart.css");
+const phoneCss = cssSource("phone.css");
 const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
 const scoutView = readFileSync(join(root, "views", "scout.js"), "utf8");
 const composer = readFileSync(join(root, "views", "shared", "source-composer.js"), "utf8");
@@ -224,7 +224,7 @@ describe("workspace chrome layout", () => {
     expect(rule).toMatch(/margin:\s*0;/);
     // The save chip lives beside the inspector tools here, not in the far-off
     // board bar.
-    expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
+    expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none; \}/);
     expect(phone).toMatch(/#build-rep-header \.build-sync \{/);
     // Desktop is the reverse: the board bar's chip is the only one. Both were
     // visible at 1440 (board bar + inspector tools), printing one state twice.

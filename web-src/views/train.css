@@ -1,0 +1,420 @@
+/* Train view: the train panel, coach banner, cards and up-next queue. */
+
+/* ===========================================================================
+   Train: Opus prototype composition
+   One raised panel beside the board: mode segmented control, coach banner
+   strip, then a scrolling stack of .tcard sections (setup / progress /
+   summary). The blitz clock overlays the board's top edge, so toggling
+   it never moves the board. Mirrors prototype .train .panel / .coach-banner /
+   .tcard / .stats / .upnext.
+   =========================================================================== */
+#view-train .train-sidebar {
+  gap: 0;
+  max-height: var(--study-h);
+  overflow: hidden;
+}
+
+
+/* The panel ends where its content does. Stretched to the board's height it
+   was a white sheet with 400px of empty ground under the last row in every
+   state, and the eye read that ground as content that failed to load. Long
+   setup content (Practice game's pickers) still caps at the viewport and
+   scrolls inside. */
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px) {
+  #view-train .train-sidebar { height: auto; align-self: start; }
+}
+
+
+#view-train .board-area { position: relative; }
+
+
+.panel-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-card);
+  padding: 14px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+
+/* The panel's cards are not boxes: the content sits on the panel and the
+   fills inside it (chips, the up-next field, the health rows) carry the
+   structure. */
+#view-train .tcard { border: 0; }
+
+
+#view-train .tcard > h3 { border-bottom: 0; font-size: var(--fs); }
+
+
+/* Nothing in this panel that is meant to be read sits under the body size. */
+#view-train .tcard p,
+#view-train .note { font-size: var(--fs); }
+
+
+#view-train .btn.sm { font-size: var(--fs); }
+
+
+#view-train .seg { display: flex; width: 100%; }
+
+
+#view-train .seg-btn { flex: 1; min-width: 0; font-size: var(--fs); transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+
+
+#view-train .seg-btn:active:not(:disabled) { transform: scale(0.97); }
+
+
+.blitz-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--text) 20%, transparent);
+  pointer-events: none;
+}
+
+
+.blitz-bar i { display: block; height: 100%; width: 100%; background: var(--k-due); }
+
+
+/* Coach banner: a strip under the mode control; data-state tints it. */
+.train-coach {
+  --cb: var(--label);
+  flex: none;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--panel-soft);
+}
+
+
+#train-banner[data-state="move"] { --cb: var(--accent); --g: "♟"; }
+
+
+#train-banner[data-state="teach"] { --cb: var(--k-new); --g: "✦"; background: color-mix(in srgb, var(--k-new) 8%, var(--panel)); }
+
+
+/* A miss is a compact row like the others: the icon and the move carry the red. */
+#train-banner[data-state="wrong"] { --cb: var(--danger); --g: "↺"; padding: 10px 12px; }
+
+
+#train-banner[data-state="wrong"] .train-coach-title .move-ref { color: var(--danger); }
+
+
+#train-banner[data-state="reveal"] { --cb: var(--warn); --g: "!"; background: var(--warn-soft); }
+
+
+#train-banner[data-state="review"] { --cb: var(--warn); --g: "↻"; background: var(--warn-soft); }
+
+
+#train-banner[data-state="correct"] { --cb: var(--good); --g: "✓"; background: var(--good-soft); }
+
+
+#train-banner[data-state="done"] { --cb: var(--good); --g: "★"; }
+
+
+/* A failure (opponent unavailable, a sync that did not land) is not a finish:
+   it kept the green star and read as success. */
+#train-banner[data-state="error"] { --cb: var(--danger); --g: "!"; }
+
+
+#train-banner[data-state="runin"] { --g: "…"; }
+
+
+/* Idle has nothing to signal; a ▶ in a circle read as a play button. */
+#train-banner[data-state="idle"] { grid-template-columns: minmax(0, 1fr) auto; }
+
+
+#train-banner[data-state="idle"] .train-coach-icon { display: none; }
+
+
+/* The judge answers in the direction the answer went: a right move pops its
+   tick, a wrong one gives a single short nudge. Only a verdict moves the mark —
+   a hint and an opponent reply are news, so their line arrives and nothing
+   gestures at you. All of it is once per change, never a loop. */
+#train-banner.flash .train-coach-text { animation: judge-line var(--dur) var(--ease-out) both; }
+
+
+#train-banner[data-state="correct"].flash .train-coach-icon { animation: judge-mark var(--dur-slow) var(--ease-out); }
+
+
+#train-banner[data-state="wrong"].flash .train-coach-icon { animation: judge-nudge 320ms var(--ease-out); }
+
+
+@keyframes judge-mark {
+  from { transform: scale(0.5); }
+  to { transform: none; }
+}
+
+
+@keyframes judge-nudge {
+  0% { transform: translateX(-3px); }
+  35% { transform: translateX(3px); }
+  65% { transform: translateX(-2px); }
+  100% { transform: none; }
+}
+
+
+@keyframes judge-line {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+
+.train-coach-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cb) 16%, transparent);
+  color: var(--cb);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+
+.train-coach-icon::before { content: var(--g, "•"); }
+
+
+.train-coach-text { display: flex; flex-direction: column; min-width: 0; }
+
+
+.train-coach-title {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+
+.train-coach-sub {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--muted);
+  font-size: var(--fs);
+}
+
+
+.train-coach-sub:empty { display: none; }
+
+
+/* The sub line is clamped to two lines; a tap on the banner shows the rest
+   (the full text is also in its title). */
+#train-banner .train-coach-sub.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
+
+
+#train-banner:has(.train-coach-sub:not(:empty)) { cursor: pointer; }
+
+
+#train-banner[data-state="correct"] .train-coach-title { color: var(--good-text); }
+
+
+#train-banner[data-state="reveal"] .train-coach-title,
+#train-banner[data-state="review"] .train-coach-title { color: var(--warn-text); }
+
+
+.train-turn-badge {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+
+
+/* Contrasting disc so the side-to-move's king always pops. */
+.train-turn-badge[data-side="white"] { background: var(--text); }
+
+
+.train-turn-badge[data-side="black"] { background: var(--dot-white); }
+
+
+.train-turn-badge .piece { width: 78%; height: 78%; }
+
+
+/* Cards. A .tcard is the section unit the Games triage builds its ledger and
+   focus cards from: a bordered, panel-filled block whose quiet inner rows and
+   chips sit on --panel-soft, so three levels of hierarchy (panel → card → fill)
+   instead of one undifferentiated white sheet. */
+.tcard:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+}
+
+
+.tcard p { margin: 0; font-size: var(--fs-s); }
+
+
+/* The card's own head, in the Games ledger-head terms: title, then a hairline
+   separating it from the controls below. */
+.tcard > h3 {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+/* The Today strip's one action is a `.btn.primary` like every other primary
+   button in the app. It used to be `.btn.lg`, a 36px box that stood 6px taller
+   than the two buttons on the Library's card head beside it; one control height
+   is what makes a page of controls read as one system. */
+.note {
+  padding: 7px 9px;
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: var(--fs-s);
+}
+
+
+/* The line to the position, its end in view: rtl puts the ellipsis first. */
+.train-line-path {
+  display: block;
+  width: 100%;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: var(--fs-s)/16px var(--mono);
+  direction: rtl;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+
+.train-line-path bdi { direction: ltr; unicode-bidi: isolate; }
+
+
+/* It is a button: it says so under the pointer and to the keyboard. */
+.train-line-path:hover { color: var(--text); }
+
+
+.train-line-path:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+
+.train-line-path[aria-expanded="true"] { direction: ltr; white-space: normal; }
+
+
+.prog { height: 4px; border-radius: 2px; overflow: hidden; background: var(--surface-3); }
+
+
+.prog i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--dur-slow) var(--ease-out); }
+
+
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+
+.kchip.k-learning { color: var(--accent-text); background: color-mix(in srgb, var(--k-learning) 13%, transparent); }
+
+
+.kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
+
+
+.kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
+
+
+.upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: var(--radius); background: var(--panel-soft); }
+
+
+.un-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+  font-size: var(--fs);
+}
+
+
+/* The kind leads the row; the repertoire and its line follow it as one run of
+   text, so a short repertoire name does not open a hole in a fixed column. */
+.un-row .kchip { justify-self: start; }
+
+
+.un-what { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+
+
+.un-rep { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+.un-line { color: var(--label); font: var(--fs) var(--mono); white-space: nowrap; }
+
+
+/* The queue's kind chips are read at a glance mid-session, so they sit at the
+   panel's body size rather than the app's smallest step. Only the type moves;
+   the pill's height, padding and radius are the shared ones. */
+#view-train .kchip { font-size: var(--fs); }
+
+
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+  #view-train .train-sidebar { max-height: none; overflow: visible; }
+  #view-train .panel-scroll { overflow: visible; }
+}
+
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  #view-train .board-bar .btn.icon {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+}
+
+/* Train coach banner: one fixed height (title + two clamped lines), so a
+   short "Learned!" and a long coach note never push the cards below it. */
+#view-train .train-coach {
+  box-sizing: border-box;
+  height: 84px;
+}
+
+
+/* Up next reserves its three rows, so the session card never changes height
+   card by card. */
+/* A hint is asked for while looking at the board, but the hint itself is in the
+   coach strip above it and the stats card renders below it; on a phone that row
+   sits past the fold the moment the board is tapped. So hold the hint line at the
+   top of the scroller until the answer is played: the words stay next to the
+   position they describe. */
+#view-train .train-hint-line {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: -4px -4px 0;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  font-size: var(--fs-s);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+
+#train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
+

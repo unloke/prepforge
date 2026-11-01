@@ -7,6 +7,7 @@ import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { cssSource } from "../test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(root, "scout.css"), "utf8");
@@ -31,14 +32,14 @@ it("the retry action sits at the end of the error row", () => {
 });
 
 it("on a phone the engine offer follows the report once there is one", () => {
-  const phone = readFileSync(join(root, "..", "phone.css"), "utf8");
+  const phone = cssSource("phone.css");
   expect(phone).toMatch(/\.scout-panel:has\(#scout-results:not\(:empty\)\) \.scout-main > \[data-unlock-place="scout"\] \{ order: 2; \}/);
 });
 
 // The identity is one line above the tabs, and the engine status takes no height
 // in that line: on the desktop it sits over the tabs' row, out of the flow.
 it("on a phone the docked Start gives way to the toolbar once there is a report", () => {
-  const phone = readFileSync(join(root, "..", "phone.css"), "utf8");
+  const phone = cssSource("phone.css");
   // "A report" is the colour sections; an error block alone keeps the docked Start.
   // :has() cannot nest, so the test is written as one level of :has.
   expect(phone).toMatch(/\.scout-panel:has\(#scout-results > \.scout-section\) > \.toolbar > #scout-btn \{\s*position: static;/);

@@ -3,6 +3,14 @@ import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
 import { createSyncController } from "./controllers/sync.js";
 import { loadDurableOutbox } from "./sync-queue.js";
 import { appSource } from "./test-app-source.js";
+import { appState as sharedState } from "./core/state.js";
+import { postJson, setStatus, setStatusError } from "./core/api.js";
+import { setBuildSync } from "./train-entry.js";
+import { provideApp } from "./core/app-context.js";
+
+vi.mock("./core/api.js", async (orig) => ({ ...await orig(), currentOwnerId: () => "owner", OUTBOX_TAB_ID: "save-test",
+  postJson: vi.fn(), setStatus: vi.fn(), setStatusError: vi.fn() }));
+vi.mock("./train-entry.js", async (orig) => ({ ...await orig(), setBuildSync: vi.fn() }));
 
 const source = appSource();
 function compile(name, deps) {
@@ -22,13 +30,15 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function harness() {
   const root = node("root", null, 0), saved = node("saved", "root", 1);
   const pending = node("tmp-next", "saved", 2);
-  const appState = {
+  // The sync controller reads the shared appState, so the harness fills that one.
+  for (const key of Object.keys(sharedState)) delete sharedState[key];
+  const appState = Object.assign(sharedState, {
     build: { repertoire_id: "r", nodes: [root, saved, pending] },
     buildNodeById: new Map([root, saved, pending].map(n => [n.id, n])),
     buildCurrentNodeId: pending.id, buildIdMap: {},
     buildPending: [{ tempId: pending.id, parentRef: saved.id, node: pending, repertoire_id: "r" }],
     buildPendingDeletes: [], buildUndoDeletes: new Set(),
-  };
+  });
   const positions = [];
   const deps = {
     appState, coverageView: null, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
@@ -106,11 +116,14 @@ describe("repertoire save reconciliation", () => {
 function syncHarness() {
   const h = harness();
   Object.assign(h.appState, { ownerGeneration: 1, trainSync: { pending: [] }, buildPending: [] });
-  const deps = { ...h.deps, currentOwnerId: () => "owner", captureBuildContext: () => () => true,
-    OUTBOX_TAB_ID: "save-test", hydrateBuild: h.hydrate, setStatus: vi.fn(), setStatusError: vi.fn(),
-    postJson: vi.fn(), setBuildSync: vi.fn(state => { h.appState.buildSyncState = state; }),
-  };
-  const controller = createSyncController(deps);
+  postJson.mockReset();
+  setStatus.mockReset();
+  setStatusError.mockReset();
+  setBuildSync.mockImplementation(state => { h.appState.buildSyncState = state; });
+  provideApp({ captureBuildContext: () => () => true, hydrateBuild: h.hydrate });
+  const deps = { ...h.deps, currentOwnerId: () => "owner", OUTBOX_TAB_ID: "save-test",
+    hydrateBuild: h.hydrate, setStatus, setStatusError, postJson, setBuildSync };
+  const controller = createSyncController();
   const queue = compile("queueBuildAdd", deps);
   return { ...h, deps, controller, queue };
 }

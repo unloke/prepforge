@@ -1,7 +1,14 @@
 import { html } from "../html.js";
 // Train sessions: the smart queue, line rehearsal, practice games and Feeling Lucky.
-// Lazy-loaded by app.js the first time Train is used. The functions stay at module
-// level; createTrainSession binds the app.js state and helpers they share, once.
+// Lazy-loaded by app.js the first time Train is used. Shared state and services
+// come from their own modules; the shell's entry points from core/app-context.js.
+//
+// Smart queue (Train v2): a card-based scheduler client over /api/train/smart/*.
+// Per card: run-in animation (the approach plays itself, the opponent's last
+// move is the recall cue) → prompt. New cards are taught first; everything else
+// is tested cold. First miss auto-hints and allows a retry (attempt 2, ungraded
+// server-side); a second miss reveals the answer and the card returns a few
+// positions later. Only attempt 1 is graded.
 
 import { isAuthError } from "../auth-gate.js";
 import { localBoardInfo } from "../chess-local.js";
@@ -15,38 +22,56 @@ import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailable
 import { playBookName, playTrailRows, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
 import { isNothingToTrainError } from "../train-start.js";
 import { planTrainRunIn } from "../train-flow.js";
-import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
+import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, showTrainResult, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
+import { appState, boards, notices, START_FEN } from "../core/state.js";
+import { api, currentOwnerId, localDateString, postJson, setStatus, setStatusError, sleep } from "../core/api.js";
+import { effectiveMaiaRating } from "../core/prefs.js";
+import { playSound } from "../core/sound.js";
+import { boardAfterMove, boardInfo, optimisticBoardMove } from "../board/ui.js";
+import { maiaPhaseCoach } from "../coach/coach-loader.js";
+import { ensureExplorerClient } from "../build-entry.js";
+import { ensureTrainView, renderTrainStats, setTrainSyncState } from "../train-entry.js";
+import { accountService, flushTrainSync, hardFlushBuild, loadPgnIntoAnalyze, markTrainPositionDirty, openAuthModal,
+  queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn,
+  setTrainBanner, switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge } from "../core/app-context.js";
 
-let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
-  currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, loadPgnIntoAnalyze,
-  loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty, openAuthModal,
-  notices, optimisticBoardMove, playSound, postJson, queueTrainAttempt,
-  refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
-  setTrainSyncState, sleep, START_FEN, switchView, syncViewHeads,
-  syncWorkspaceUrl, updateTrainTurnBadge, trainRecovery, home;
+// The session's answer-recovery flow (train-recovery.js), bound to the
+// session functions it repaints through.
+const trainRecovery = createTrainRecovery({
+  api, appState, boards, currentOwnerId, notices, setStatus, setStatusError,
+  setTrainBanner, syncTrainSessionControls, renderTraining, finishTrainingSession,
+});
 
-export function createTrainSession(deps) {
-  ({
-    accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo,
-    boards, currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView,
-    flushTrainSync, hardFlushBuild, loadPgnIntoAnalyze,
-    loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
-    notices, openAuthModal, optimisticBoardMove, playSound, postJson,
-    queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead,
-    renderTrainStats, requireSignIn,
-    setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
-    switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
-  } = deps);
-  trainRecovery = createTrainRecovery({
-    api, appState, boards, currentOwnerId, notices, setStatus, setStatusError,
-    setTrainBanner, syncTrainSessionControls, renderTraining, finishTrainingSession,
-  });
-  home = createTrainHome({
-    ...deps, startTraining, startPlaySessionTracked, onFeelingLucky, trainHint, skipTrainingLine,
-    takebackPlaySession, resignPlaySession, openPlayInAnalyze, clearBlitzTimer, setBlitzBarVisible, resetTrainBoardIdle,
-  });
+const loadTrainResume = () => import("../train-resume.js");
+
+// Blitz mode: an answer clock per card (smart queue only). Entirely
+// client-side: a timeout submits the null move "0000" as attempt 1, so the
+// server grades an honest first-attempt miss. Teach prompts and retries are
+// untimed; the toggle is read once at session start.
+const BLITZ_KEY = "prepforge-blitz";
+export const BLITZ_SECONDS = 10;
+
+export function blitzEnabled() {
+  try {
+    return localStorage.getItem(BLITZ_KEY) === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+export function setBlitzEnabled(on) {
+  try {
+    if (on) localStorage.setItem(BLITZ_KEY, "1");
+    else localStorage.removeItem(BLITZ_KEY);
+  } catch (_) { /* private mode: the toggle just won't persist */ }
+}
+
+// Binds Train's Home screen (once, when app.js first loads Train) and returns
+// the entry points the shell calls.
+export function createTrainSession() {
+  const home = createTrainHome();
   return {
     clearBlitzTimer, loadTrainRepertoireOptions, onFeelingLucky, openPlayInAnalyze, openTrain: home.openTrain,
     resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setPlayPickerColor,
@@ -56,7 +81,7 @@ export function createTrainSession(deps) {
 }
 
 
-async function skipTrainingLine() {
+export async function skipTrainingLine() {
   if (appState.play && appState.play.active) {
     setStatus("Skip is for the spaced-repetition queue. Start or Random position to change position.");
     return;
@@ -151,7 +176,7 @@ function syncTrainSessionControls() {
   syncViewHeads();
 }
 
-async function resetTrainBoardIdle(label) {
+export async function resetTrainBoardIdle(label) {
   updateTrainTurnBadge(null);
   const labelEl = document.getElementById("train-board-label");
   if (labelEl) labelEl.textContent = label || "";
@@ -178,7 +203,7 @@ function sideToMoveFromFen(fen) {
   return (fen || "").split(" ")[1] === "b" ? "black" : "white";
 }
 
-async function startTraining(mode, options = {}) {
+export async function startTraining(mode, options = {}) {
   mode = mode || appState.trainMode || "smart";
   // Practice game starts via startPlaySession; never post "play" to /api/train/start (422).
   if (mode === "play") return;
@@ -449,7 +474,7 @@ function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, stat
 
 // Start a practice game and remember the in-flight start, so a move made on the
 // board while it sets up is played into the new game instead of being dropped.
-function startPlaySessionTracked(options) {
+export function startPlaySessionTracked(options) {
   const pending = startPlaySession(options).finally(() => {
     if (appState.playStarting === pending) appState.playStarting = null;
   });
@@ -755,7 +780,7 @@ async function submitPlayMove(playedUci) {
   await playOpponentReply();
 }
 
-async function onFeelingLucky() {
+export async function onFeelingLucky() {
   if (appState.luckyBusy) return;
   appState.luckyBusy = true;
   const luckyButton = document.getElementById("feeling-lucky");
@@ -829,7 +854,7 @@ async function runFeelingLuckyClick() {
   }
 }
 
-async function takebackPlaySession() {
+export async function takebackPlaySession() {
   const play = appState.play;
   if (!play || !play.history || !play.history.length) return;
   play.replySeq = (play.replySeq || 0) + 1;
@@ -863,7 +888,7 @@ async function takebackPlaySession() {
   if (!yourMove) await playOpponentReply();
 }
 
-function resignPlaySession() {
+export function resignPlaySession() {
   const play = appState.play;
   if (!play || !play.active) return;
   play.result = play.userColor === "black" ? "1-0" : "0-1";
@@ -889,10 +914,10 @@ function endPlayGame(title, failure = "") {
       cards: play.history.filter((ply) => ply.by === "user").length, correct: 0, mistakes: 0, skipped: 0, learned: 0,
     });
   }
-  home.showTrainResult({ ...playResult(play), runId: `play:${play.startedAt}` });
+  showTrainResult({ ...playResult(play), runId: `play:${play.startedAt}` });
 }
 
-async function openPlayInAnalyze() {
+export async function openPlayInAnalyze() {
   const play = appState.play;
   if (!play) return;
   const pgn = playSessionPgn(play, appState.lichessUsername);
@@ -1088,7 +1113,7 @@ function finishTrainingSession() {
     repertoires: [training?.repertoire_name].filter(Boolean), startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
     cards: Number(training?.lines?.length) || 0, correct: stats.correct, mistakes: stats.mistakes, skipped: stats.skipped || 0, learned: 0,
   });
-  home.showTrainResult({ ...drillResult(training, stats), runId });
+  showTrainResult({ ...drillResult(training, stats), runId });
   celebrate();
 }
 
@@ -1117,7 +1142,7 @@ function celebrate() {
 
 // Progressive hint: idea, piece, full answer (with arrow). Each click reveals
 // one more level, so it teaches rather than just spoiling the move.
-async function trainHint() {
+export async function trainHint() {
   if (appState.smart) {
     smartHint();
     return;
@@ -1167,12 +1192,12 @@ function currentTrainingPrompt() {
 
 // Mount/unmount the clock for a whole session. During a blitz session the bar
 // stays in the layout (merely emptied between cards) so the board never jumps.
-function setBlitzBarVisible(on) {
+export function setBlitzBarVisible(on) {
   const bar = document.getElementById("train-blitz");
   if (bar) bar.hidden = !on;
 }
 
-function clearBlitzTimer() {
+export function clearBlitzTimer() {
   if (appState.blitzTimer) {
     window.clearTimeout(appState.blitzTimer);
     appState.blitzTimer = null;
@@ -1777,7 +1802,7 @@ async function finishSmartSession() {
     });
   }
   document.getElementById("train-board-label").textContent = finalFen ? "Final position" : "";
-  home.showTrainResult({ ...smartResult(smart, stats), runId: `${smart.sessionId}:${smart.generation}` });
+  showTrainResult({ ...smartResult(smart, stats), runId: `${smart.sessionId}:${smart.generation}` });
   invalidateTrainPreview();
   celebrate();
   // Flush the graded attempts FIRST so the "after" health includes this session.
@@ -1797,7 +1822,7 @@ async function finishSmartSession() {
   // The user may have moved on while the summary loaded.
   if (appState.smart !== smart || appState.trainResult?.mode !== "smart") return;
   appState.smart = null;
-  home.showTrainResult({ ...smartResult(smart, stats, after), runId: `${smart.sessionId}:${smart.generation}` });
+  showTrainResult({ ...smartResult(smart, stats, after), runId: `${smart.sessionId}:${smart.generation}` });
   // Every cached count of what is left to train is now stale.
   refreshRepertoireHead();
   void refreshDashboardRepertoires().catch(() => {});

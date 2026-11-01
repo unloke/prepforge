@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { cssSource } from "../test-styles-source.js";
 
-const CHART_STYLES = readFileSync(new URL("./analyze-chart.css", import.meta.url), "utf8");
+const CHART_STYLES = cssSource("views/analyze-chart.css");
 
 // The phone pins the board: the evaluation band over it, the open pillar under
 // it, the pillar tabs on the thumb bar. Every band shares the screen's gutter.

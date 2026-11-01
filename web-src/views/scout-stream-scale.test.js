@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { planRowEntranceEnabled, scoutRenderDebounceMs, scoutRenderForceEvery } from "./scout.js";
+import { eagerCss } from "../test-styles-source.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -115,7 +116,7 @@ describe("scout group spacing", () => {
 });
 
 describe("scout streaming skeleton", () => {
-  const css = readFileSync(resolve(here, "../styles.css"), "utf8");
+  const css = eagerCss;
   const html = readFileSync(resolve(here, "../index.html"), "utf8");
 
   it("holds the report's shape while games stream, and only then", () => {
@@ -183,7 +184,7 @@ describe("scout phone composition", () => {
 });
 
 describe("scout line detail card", () => {
-  const css = readFileSync(resolve(here, "../styles.css"), "utf8");
+  const css = eagerCss;
 
   it("ends with its content instead of stretching to the grid row", () => {
     // A line's detail runs 448-536px; stretched to the 808px row it left a

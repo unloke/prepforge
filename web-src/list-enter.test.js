@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { ENTER, enterOnce, enterRows, reveal, settleEntrances } from "./list-enter.js";
+import { eagerCss as css } from "./test-styles-source.js";
 
-const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 
 function fakeEl({ key = "", skeleton = false, rendered = true, viewEntering = false } = {}) {
   const classes = new Set(skeleton ? ["is-skeleton"] : []);

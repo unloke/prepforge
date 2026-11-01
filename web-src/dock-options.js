@@ -38,12 +38,18 @@ export function toggleDockOptions() {
     tools.hidePopover();
     return;
   }
-  openPopover(tools, { opener: button });
   // On a phone it is a sheet at the thumb (phone.css); elsewhere it hangs
-  // under the button, kept inside the window.
-  const phone = window.matchMedia(PHONE).matches;
-  const at = button.getBoundingClientRect();
-  tools.style.left = phone ? "" : `${Math.round(Math.max(8, Math.min(at.left, window.innerWidth - tools.offsetWidth - 8)))}px`;
-  tools.style.top = phone ? "" : `${Math.round(Math.min(at.bottom + 4, window.innerHeight - tools.offsetHeight - 8))}px`;
+  // under the button, kept inside the window. A window crossing the phone
+  // breakpoint while it is open places it again: a desktop left/top kept on
+  // the phone sheet pushes it off-screen.
+  const media = window.matchMedia(PHONE);
+  const place = () => {
+    const at = button.getBoundingClientRect();
+    tools.style.left = media.matches ? "" : `${Math.round(Math.max(8, Math.min(at.left, window.innerWidth - tools.offsetWidth - 8)))}px`;
+    tools.style.top = media.matches ? "" : `${Math.round(Math.min(at.bottom + 4, window.innerHeight - tools.offsetHeight - 8))}px`;
+  };
+  openPopover(tools, { opener: button, onClose: () => media.removeEventListener("change", place) });
+  media.addEventListener("change", place);
+  place();
   tools.querySelector(".seg:not([hidden]) .is-active, select:not([hidden])")?.focus();
 }

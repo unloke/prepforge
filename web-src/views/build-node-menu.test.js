@@ -6,11 +6,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { eagerCss as css } from "../test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const webSrc = join(root, "..");
 const session = readFileSync(join(webSrc, "controllers", "build-session.js"), "utf8");
-const css = readFileSync(join(webSrc, "styles.css"), "utf8");
 
 const menuSource = () =>
   session.slice(session.indexOf("function openNodeContextMenu("), session.indexOf("async function handleNodeContextAction("));

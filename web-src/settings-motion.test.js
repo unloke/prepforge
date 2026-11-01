@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+import { cssSource, eagerCss as css } from "./test-styles-source.js";
 
-const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
-const phone = readFileSync(new URL("./phone.css", import.meta.url), "utf8");
+const phone = cssSource("phone.css");
 const settings = readFileSync(new URL("./views/settings.css", import.meta.url), "utf8");
 
 describe("settings motion", () => {

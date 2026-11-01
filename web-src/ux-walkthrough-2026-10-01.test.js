@@ -4,9 +4,6 @@
 // the email shape check (P3-2), hint retention after a miss (P1-4) and the
 // Train save chip copy (P2-7).
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
 import { authInputError, authReasonFor, isOpeningKeystroke } from "./controllers/account.js";
@@ -14,8 +11,8 @@ import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
 import { syncChipVariant } from "./sync-chip.js";
 import { nodeMenuHeading } from "./node-menu.js";
 import { appSource } from "./test-app-source.js";
+import { eagerCss } from "./test-styles-source.js";
 
-const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
 
 describe("repertoire color is a two-way choice (P0-4)", () => {
@@ -154,7 +151,7 @@ describe("Repertoire node menu names its move (P2-8)", () => {
 });
 
 describe("command palette scrim matches modals in both themes (P2-3)", () => {
-  const css = readFileSync(join(root, "styles.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const css = eagerCss.replace(/\/\*[\s\S]*?\*\//g, "");
   // Background of the rule whose selector is exactly `selector`.
   const bg = (selector) => {
     for (const m of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {

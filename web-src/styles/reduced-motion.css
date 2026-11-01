@@ -1,0 +1,35 @@
+/* Reduced motion. Last, so it settles every animation and transition above. */
+
+/* ----- Reduced motion --------------------------------------------------- */
+/* Respect the OS "reduce motion" setting: keep meaningful state changes but
+   drop looping/decorative animation (confetti, pulses, board flip, toast
+   slide) and collapse transitions to near-instant. */
+/* Respect the OS "reduce motion" setting: no travel, only a quick fade.
+   Transforms that carry meaning (the press scale, the sheet rising, a card
+   entering) are removed; colour and opacity changes still land so state stays
+   legible. */
+/* The * block keeps !important: it must also settle animations and transitions
+   set inline by JS (confetti chips) and by any more specific rule. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  *::backdrop {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .confetti-layer {
+    display: none;
+  }
+
+  .btn:active,
+  .btn.icon:active,
+  .sheet-row:active {
+    transform: none;
+  }
+}
+
