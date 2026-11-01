@@ -1,6 +1,5 @@
 import { html } from "./html.js";
 import { bindPgnInput } from "./analyze-pgn-open.js";
-import { confirmAbandonGame } from "./train-play.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
@@ -23,9 +22,8 @@ import { installMoveLinks } from "./move-links.js";
 import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { buildRole } from "./share-roles.js";
-import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
-  setBuildSync, setTrainSyncState, renderTrainStats } from "./train-entry.js";
-import { commitPendingUndos, showUndoToast } from "./undo.js";
+import { createTrainEntry, preloadTrainView, renderBuildSync, setBuildSync } from "./train-entry.js";
+import { showUndoToast } from "./undo.js";
 import { analysisGameName } from "./analyze-name.js";
 import { setBoardCaption } from "./board-caption.js";
 import { readCsrfCookie, CSRF_HEADER } from "./csrf.js";
@@ -54,8 +52,8 @@ import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { provideApp } from "./core/app-context.js";
 import { BROWSER_ENGINE_UNAVAILABLE, OUTBOX_TAB_ID, activeBoardController, activeViewName,
-  api, currentOwnerId, downloadText, engineLifecycleMark, localDateString, postJson,
-  setStatus, setStatusError, sleep } from "./core/api.js";
+  api, currentOwnerId, downloadText, engineLifecycleMark, postJson,
+  setStatus, setStatusError } from "./core/api.js";
 import { applyPref, effectiveMaiaRating, effectiveStockfishDepth, loadPrefs, maiaAnalysisEnabled,
   pref, syncThemeToggle, toggleTheme,
   STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "./core/prefs.js";
@@ -72,7 +70,7 @@ import { installSoundUnlock, moveCue, playSound } from "./core/sound.js";
 import { engineWidget, setEngineBestArrow, setEngineOn, syncEngineForView, engineWantedIn,
   applyServerEngineGating, paintEngineBanners, syncAnalysisEvalCard, analysisStore, sanLineFromUci,
   EXPLORER_EVAL_MAX_LINES } from "./core/engine.js";
-import { _coachReady, loadPhaseCoach, maiaPhaseCoach, preloadCoach } from "./coach/coach-loader.js";
+import { _coachReady, loadPhaseCoach, preloadCoach } from "./coach/coach-loader.js";
 import { createAccountEntry } from "./account-entry.js";
 import { bindEvalChart, createAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer,
   preloadAnalyzeView, renderAnalysisTree, renderAnalysisTreeEmptyState } from "./views/analyze-loader.js";
@@ -276,12 +274,7 @@ const scheduleExplorerRefresh = viaBuildSession("scheduleExplorerRefresh");
 const selectBuildNode = viaBuildSession("selectBuildNode");
 const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
 
-const syncController = createSyncController({
-  appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync,
-  hasPendingBuildOpsFor, hydrateBuild,
-  setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString,
-  OUTBOX_TAB_ID,
-});
+const syncController = createSyncController();
 const {
   scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt,
   markTrainPositionDirty, beaconFlushTrain, flushTrainSync,
@@ -1146,9 +1139,9 @@ function paintBuildEmpty() {
 
 // The shell's own entry points the lazy controllers call (core/app-context.js).
 provideApp({
-  accountService, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
+  accountService, captureBuildContext, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
   markTrainPositionDirty, openAuthModal, queueTrainAttempt, refreshAuthStatus,
-  refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn, setTrainBanner,
+  hydrateBuild, refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn, setTrainBanner,
   switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
 });
 

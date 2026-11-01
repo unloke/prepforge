@@ -17,8 +17,10 @@ export function provideApp(entries) {
 const forward = (name) => (...args) => app[name](...args);
 
 export const accountService = forward("accountService");
+export const captureBuildContext = forward("captureBuildContext");
 export const flushTrainSync = forward("flushTrainSync");
 export const hardFlushBuild = forward("hardFlushBuild");
+export const hydrateBuild = forward("hydrateBuild");
 export const lichessAccounts = forward("lichessAccounts");
 export const loadPgnIntoAnalyze = forward("loadPgnIntoAnalyze");
 export const markTrainPositionDirty = forward("markTrainPositionDirty");
