@@ -22,6 +22,10 @@ const MIME = {
   ".json": "application/json; charset=utf-8",
 };
 
+// views/scout.js and the shared web-src/scout.js both emit scout-<hash>.js; the
+// view is the one scout-controller imports lazily (set by staticChecks).
+let scoutView = null;
+
 function chunkKind(url) {
   const name = url.split("/").pop() || "";
   if (/^engine-widget-/.test(name)) return "engine-widget";
@@ -31,7 +35,7 @@ function chunkKind(url) {
   if (/^movetree-/.test(name)) return "movetree";
   if (/^build-P/.test(name) || /^build-[A-Za-z0-9]+\.js$/.test(name)) return "build-view";
   if (/^teams-/.test(name)) return "teams";
-  if (/^scout-/.test(name) && !/^scout-engine-/.test(name)) return "scout-view";
+  if (name === scoutView) return "scout-view";
   if (/^settings-/.test(name)) return "settings";
   if (/^dashboard-/.test(name)) return "dashboard";
   if (/^index-/.test(name)) return "index";
@@ -41,6 +45,14 @@ function chunkKind(url) {
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
+
+// Files a minified chunk imports statically (`from"./x.js"` / `import"./x.js"`).
+function staticImports(text) {
+  return [...text.matchAll(/(?:from|import)\s*["']\.\/([^"']+\.js)["']/g)].map((m) => m[1]);
+}
+
+// Engine runtime and weights: never on the shell's critical path or the idle warm-up.
+const HEAVY = /\.wasm$|\.onnx$|^\/static\/engine\/|\/maia3-worker-/;
 
 async function readAsset(namePattern) {
   const files = await readdir(ASSETS_DIR);
@@ -74,9 +86,17 @@ async function staticChecks() {
 
   await readAsset(/^engine-widget-/);
   assert(/engine-widget-/.test(index.text), "index chunk should lazy-map engine-widget");
-  await readAsset(/^settings-/);
+  const scoutController = await readAsset(/^scout-controller-/);
+  scoutView = scoutController.text.match(/import\(\s*[`"']\.\/(scout-[A-Za-z0-9_-]+\.js)[`"']\s*\)/)?.[1];
+  assert(scoutView, `${scoutController.name} should lazy-import the scout view chunk`);
   const dashboard = await readAsset(/^dashboard-/);
-  assert(!/maia3-weight-cache/.test(index.text), "index chunk must not static-import maia3-weight-cache");
+  // The shell statically imports the small engine modules (download state, the
+  // Maia provider and its IndexedDB cache helpers); the heavy parts (ORT worker,
+  // wasm, weights, engine widget) must stay behind dynamic import()/fetch.
+  const indexStatic = staticImports(index.text);
+  for (const heavy of ["maia3-worker-", "engine-widget-", "analyze-", "train-", "settings-", "replay-"]) {
+    assert(!indexStatic.some((f) => f.startsWith(heavy)), `index chunk must not static-import ${heavy}*`);
+  }
   for (const prefix of ["analyze-", "train-", "settings-", "build-"]) {
     assert(
       !new RegExp(`${prefix}[A-Za-z0-9_-]+\\.js`).test(dashboard.text),
@@ -129,7 +149,6 @@ async function browserChecks() {
 
   console.log("[lazy-chunk-smoke] browser capture…");
   const server = await startStaticServer();
-  const loaded = new Set();
 
   let browser;
   for (const channel of ["msedge", "chrome", undefined]) {
@@ -141,19 +160,48 @@ async function browserChecks() {
     }
   }
   assert(browser, "no Chromium-based browser available for headless capture");
-  try {
-    const page = await browser.newPage();
-    page.on("response", (response) => {
-      const url = response.url();
+  const base = `http://127.0.0.1:${PORT}`;
+  // Opens the shell and records chunk kinds and heavy engine requests. saveData
+  // turns off the idle view warm-up (view-prefetch.js) so on-demand loading can
+  // be checked view by view.
+  async function open({ saveData }) {
+    const context = await browser.newContext();
+    if (saveData) {
+      await context.addInitScript(() => {
+        Object.defineProperty(Navigator.prototype, "connection", { get: () => ({ saveData: true }) });
+      });
+    }
+    const page = await context.newPage();
+    const seen = { loaded: new Set(), heavy: new Set() };
+    page.on("request", (request) => {
+      const url = new URL(request.url()).pathname;
+      if (HEAVY.test(url)) seen.heavy.add(url);
       if (!url.includes("/assets/") || !url.endsWith(".js")) return;
       const kind = chunkKind(url);
-      if (kind) loaded.add(kind);
+      if (kind) seen.loaded.add(kind);
     });
-
-    const base = `http://127.0.0.1:${PORT}`;
     await page.goto(`${base}/`, { waitUntil: "networkidle" });
     await page.waitForTimeout(800);
+    return { context, page, ...seen };
+  }
+  const noHeavy = (heavy, when) => assert(heavy.size === 0, `${when} fetched engine runtime/weights: ${[...heavy].join(", ")}`);
 
+  try {
+    // Idle warm-up: after first paint every view chunk is fetched, the engine is not.
+    const warm = await open({ saveData: false });
+    const warmKinds = ["dashboard", "build-view", "analyze", "movetree", "train", "replay", "settings", "teams"];
+    // One view per idle slot (each capped at 4 s), so give the queue time to drain.
+    for (let waited = 0; waited < 20000 && !warmKinds.every((k) => warm.loaded.has(k)); waited += 250) {
+      await warm.page.waitForTimeout(250);
+    }
+    await warm.page.waitForTimeout(1000);
+    for (const kind of warmKinds) assert(warm.loaded.has(kind), `idle warm-up should fetch ${kind} chunk`);
+    assert(!warm.loaded.has("engine-widget"), "idle warm-up fetched engine widget chunk");
+    noHeavy(warm.heavy, "idle warm-up");
+    await warm.context.close();
+
+    // On demand (warm-up off): each view's chunk loads when the view opens.
+    const { page, loaded, heavy } = await open({ saveData: true });
     const afterInitialLoad = new Set(loaded);
     assert(!afterInitialLoad.has("engine-widget"), "initial dashboard load fetched engine widget chunk");
     assert(!afterInitialLoad.has("analyze"), "initial dashboard load fetched analyze chunk");
@@ -165,6 +213,7 @@ async function browserChecks() {
     // to bind the visible guest actions. Other view chunks remain deferred.
     assert(afterInitialLoad.has("dashboard"), "active dashboard should fetch dashboard chunk");
     assert(afterInitialLoad.has("index"), "dashboard load should fetch index chunk");
+    noHeavy(heavy, "initial dashboard load");
 
     await page.click('[data-testid="nav-build"]');
     await page.waitForTimeout(1200);
@@ -183,6 +232,7 @@ async function browserChecks() {
     assert(!afterBuild.has("movetree"), "build tab (empty rep) fetched movetree chunk");
     assert(afterBuild.has("build-view"), "build tab should preload build view chunk");
     assert(!afterBuild.has("engine-widget"), "Build with engine off fetched engine widget chunk");
+    noHeavy(heavy, "Build with engine off");
 
     await page.click('[data-testid="nav-analyze"]');
     await page.waitForTimeout(1200);
@@ -203,27 +253,6 @@ async function browserChecks() {
     await page.waitForTimeout(1200);
     assert(loaded.has("replay"), "replay tab should fetch replay chunk");
     assert(!loaded.has("scout-view"), "replay tab open must not fetch scout view chunk");
-
-    // Settings moved into the account menu: open the chip menu when the legacy
-    // top-level/More selectors are absent, then choose the settings action.
-    if (await page.locator("#more-nav > summary").count()) {
-      try {
-        await page.locator("#more-nav > summary").click({ timeout: 2000 });
-      } catch {
-        // Top-level nav exposes settings directly; fall through to the click.
-      }
-    }
-    if (await page.locator('[data-testid="nav-settings"]').count()) {
-      await page.click('[data-testid="nav-settings"]');
-    } else {
-      // Settings is account-menu-only and the guest chip opens auth instead;
-      // verify the settings chunk mapping statically, then mark it covered.
-      const settings = await readAsset(/^settings-/);
-      assert(/openSettings|settings/i.test(settings.text), "settings chunk missing expected content");
-      loaded.add("settings");
-    }
-    await page.waitForTimeout(1200);
-    assert(loaded.has("settings"), "settings tab should fetch settings chunk");
 
     console.log("[lazy-chunk-smoke] browser capture ok");
     console.log(`[lazy-chunk-smoke] chunks observed: ${[...loaded].sort().join(", ")}`);
