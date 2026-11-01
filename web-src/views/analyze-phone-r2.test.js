@@ -2,7 +2,6 @@
 // under it, the open pane, 44px pane tabs and the thumb bar. The grading switch
 // leaves the coach's head row (the review bar's line there) for the engine
 // pane's head on a phone, and comes back on a wider screen.
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { cssSource } from "../test-styles-source.js";
 

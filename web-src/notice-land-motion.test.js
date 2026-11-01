@@ -5,7 +5,6 @@
 //
 // The mark lands once, in place. The spinner stays the one looping animation,
 // and it only runs while the job does.
-import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 import { eagerCss as css } from "./test-styles-source.js";

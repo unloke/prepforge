@@ -7,12 +7,7 @@
 // sizes to its rows. The one case that still needs a floor is the empty library,
 // whose card centres the first-run invitation.
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { eagerCss as css } from "../test-styles-source.js";
-
-const root = dirname(fileURLToPath(import.meta.url));
 
 // The body of a rule, matched on the selector itself so a longer selector
 // that merely contains it (".lib-grid > .steps") is not picked up.

@@ -5,12 +5,7 @@
 // between two ticks read as two different lists, and the phone shows no
 // number at all.
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { eagerCss as css } from "../test-styles-source.js";
-
-const root = dirname(fileURLToPath(import.meta.url));
 
 // The rule body for a selector, starting at its first occurrence.
 function rule(selector) {

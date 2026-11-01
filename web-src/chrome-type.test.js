@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 import { cssSource, eagerCss as css } from "./test-styles-source.js";

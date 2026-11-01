@@ -4,12 +4,8 @@
 // at 390x660. This pins the phone rules so a later density pass cannot shrink
 // them back.
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { cssSource, eagerCss } from "../test-styles-source.js";
 
-const root = dirname(fileURLToPath(import.meta.url));
 const css = cssSource("phone.css");
 
 function rule(selector) {

@@ -4,9 +4,6 @@
 // the email shape check (P3-2), hint retention after a miss (P1-4) and the
 // Train save chip copy (P2-7).
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
 import { authInputError, authReasonFor, isOpeningKeystroke } from "./controllers/account.js";
@@ -16,7 +13,6 @@ import { nodeMenuHeading } from "./node-menu.js";
 import { appSource } from "./test-app-source.js";
 import { eagerCss } from "./test-styles-source.js";
 
-const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
 
 describe("repertoire color is a two-way choice (P0-4)", () => {

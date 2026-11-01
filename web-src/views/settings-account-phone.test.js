@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { cssSource } from "../test-styles-source.js";
 
 // The identity block on a phone heads a grouped list: avatar and name on one

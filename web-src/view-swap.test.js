@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
 
 import { swapView } from "./view-swap.js";
 import { eagerCss as css } from "./test-styles-source.js";

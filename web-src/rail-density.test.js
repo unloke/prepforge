@@ -6,7 +6,6 @@
 // room for both the taller rows and the group dividers, so it drops the
 // dividers instead of scrolling the account chip off the screen.
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { eagerCss as css } from "./test-styles-source.js";
 
 

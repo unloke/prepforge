@@ -8,12 +8,7 @@
 // of the queue is one quieter line under it, and the week's history and the
 // lifetime counts sit at the far end over the action.
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { eagerCss as css } from "../test-styles-source.js";
-
-const root = dirname(fileURLToPath(import.meta.url));
 
 // The rule body for a selector, matched at the start of a line so an
 // id-scoped variant cannot be picked up by accident.

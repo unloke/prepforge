@@ -4,7 +4,6 @@
 // the open destination in ink-blue — the one accent belongs to the screen's
 // action, not to the chrome.
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { cssSource, eagerCss } from "./test-styles-source.js";
 
 const phone = cssSource("phone.css");

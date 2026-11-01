@@ -2,7 +2,6 @@
 // nothing to check, so a disabled Check games must not hold the dock: the next
 // step (Link Lichess account, or Sign in) takes it instead.
 import { expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { cssSource } from "../test-styles-source.js";
 
 const css = cssSource("phone.css");
