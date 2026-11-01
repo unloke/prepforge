@@ -570,7 +570,7 @@
   /* The docked pill floats over rows that scroll under its plate: its hit
      band would take taps meant for the row just above it (Scout's Black tab). */
   #view-replay.is-active :is(.games-panel, .scout-panel):not([hidden]) > .toolbar > :is(#lichess-compare-btn, #scout-btn)::before { content: none; }
-  .workspace:has(> #view-replay.is-active) { padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 90px) !important; }
+  .workspace:has(> .view.is-active#view-replay) { padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 90px); }
   /* With no source there is nothing to check, so Check leaves the dock rather
      than sitting in it disabled. The real next step takes the dock: Link
      Lichess account (or Sign in for a guest), as the page's one filled action.
@@ -730,6 +730,7 @@
      at the thumb like every other phone menu, not a 132px popover over the
      row under it. */
   #view-settings .conn-menu-btn { min-width: 36px; height: 36px; font-size: 16px; }
+  /* !important: account.js positions the menu with inline top/left. */
   #view-settings .conn-menu {
     top: auto !important;
     left: 8px !important;

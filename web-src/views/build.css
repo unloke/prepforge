@@ -521,11 +521,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 
 /* Folded, the dock is its tab strip whatever height it was given open (a fit or
-   a drag leaves an inline floor), and the tree takes the column. */
+   a drag leaves an inline floor), and the tree takes the column.
+   !important: beats that inline flex-basis / min-height. */
 .dock.is-folded { flex: none !important; min-height: 0 !important; }
 
-
-.panel-body:has(> .dock.is-folded) > #builder-tree { flex-grow: 1 !important; }
 
 
 /* A dragged height is the user's: it holds, and the tree takes the rest. */
@@ -645,6 +644,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   #view-build .sidebar { max-height: none; overflow: hidden; }
   .tree-wrap { max-height: 60vh; overscroll-behavior: auto; }
+  /* !important: beats the inline flex-basis a fit or drag left. */
   .dock { flex: none !important; }
   .dock-resizer { display: none; }
 }

@@ -224,7 +224,7 @@ describe("workspace chrome layout", () => {
     expect(rule).toMatch(/margin:\s*0;/);
     // The save chip lives beside the inspector tools here, not in the far-off
     // board bar.
-    expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
+    expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none; \}/);
     expect(phone).toMatch(/#build-rep-header \.build-sync \{/);
     // Desktop is the reverse: the board bar's chip is the only one. Both were
     // visible at 1440 (board bar + inspector tools), printing one state twice.

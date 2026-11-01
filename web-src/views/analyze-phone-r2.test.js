@@ -137,9 +137,4 @@ describe("Analyze phone, round 2", () => {
     expect(phoneR2).toMatch(/#view-analyze \.an-tab::after \{ content: ""; position: absolute; inset: -2px 0 -8px; \}/);
     expect(phoneR2).toMatch(/#view-analyze \.an-panes > \.an-tabs \{ position: relative; z-index: 2; \}/);
   });
-
-  it("never wraps a key moment's better move beside its eval", () => {
-    expect(phoneR2).toMatch(/#view-analyze \.km \{[^}]*display: grid;/);
-    expect(phoneR2).not.toMatch(/\.km \{[^}]*flex-wrap: wrap/);
-  });
 });

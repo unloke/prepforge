@@ -113,7 +113,7 @@
      arrows must be placed: auto-placement would fill that track first. */
   .study .board-bar :is(#analysis-prev, #build-parent, #train-hint) { order: 5; grid-column: -3 / -2; }
   .study .board-bar :is(#analysis-next, #build-next, #train-skip) { order: 6; grid-column: -2 / -1; }
-  :is(#analysis-start, #analysis-end) { display: none !important; }
+  :is(#analysis-start, #analysis-end) { display: none; }
 
   /* Icon buttons: the label stays in title / aria-label. */
   .study .board-bar .btn.icon,
@@ -138,8 +138,7 @@
   #build-menu .bl { display: none; }
   .study .board-bar :is(.bi, .bb-views svg) { display: block; width: 20px; height: 20px; }
   .bb-views svg { fill: none; stroke: currentColor; stroke-width: 1.7; }
-  .bb-views[aria-expanded="true"],
-  .bb-sheet[aria-expanded="true"] { color: var(--accent-strong) !important; }
+  .study .board-bar :is(.bb-views, .bb-sheet)[aria-expanded="true"] { color: var(--accent-strong); }
   .study .board-bar :is(#train-hint, #play-takeback):disabled { opacity: 0.4; }
 
   /* Move arrows: one split control. The chevron is the button's own SVG; a
@@ -240,7 +239,7 @@
   /* The save chip is the header's (see #build-sync-head below): the board
      bar's copy would sit at the screen's bottom, far from the tree the edit
      happened in. */
-  .study .board-bar .build-sync { display: none !important; }
+  .study .board-bar .build-sync { display: none; }
   /* The tab bar waits under the thumb bar; Menu raises it. */
   body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
     bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
@@ -446,7 +445,7 @@
   #view-build #build-sidebar.is-empty #build-panes,
   #view-build:not([data-pane="explorer"], [data-pane="coverage"]) #build-inspector,
   #view-build:is([data-pane="explorer"], [data-pane="coverage"]) .build-tree-region,
-  #build-inspector .dock-tabs { display: none !important; }
+  #build-inspector .dock-tabs { display: none; }
 
   #build-sidebar > .panel-body > * { order: 3; }
   #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
@@ -466,12 +465,12 @@
   #view-build .tree-wrap { max-height: none; padding: 10px var(--build-pad, 12px); overflow: visible; line-height: 1.6; }
   #view-build .dock-resizer,
   #build-inspector .dock-fold { display: none; }
-  #build-inspector { height: auto !important; max-height: none; margin: 0; overflow: hidden; }
+  #build-inspector { height: auto; max-height: none; margin: 0; overflow: hidden; }
   #build-inspector .dock-tabs { gap: 2px; margin: 10px 12px 0; padding: 2px; border: 0; border-radius: 9px; background: var(--surface-3); }
   #build-inspector .dock-tabs > [role="tab"] { flex: 1 1 0; min-height: 32px; height: 32px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 14px; font-weight: 500; }
   #build-inspector .dock-tabs > [role="tab"][aria-selected="true"] { background: var(--line-strong); color: var(--text); box-shadow: none; }
   #build-inspector .dock-tabs > [role="tab"]::after { content: none; }
-  #build-inspector .dock-body { display: flex !important; flex-direction: column; overflow: visible; }
+  #build-inspector .dock-body { display: flex; flex-direction: column; overflow: visible; }
   #build-inspector .inspector-panel { overflow: visible; }
   /* One row, the same in both panes, like Lichess's explorer: the options
      button names the pane's setting ("Masters", "Mainline · 8 moves") and opens
@@ -487,8 +486,8 @@
   #build-inspector .inspector-scan { padding: 0 18px; font-size: 14px; }
   /* The options are a sheet at the thumb, the menus' sheet. */
   #build-dock-tools {
-    top: auto !important;
-    left: 8px !important;
+    top: auto;
+    left: 8px;
     right: 8px;
     bottom: calc(8px + env(safe-area-inset-bottom));
     width: auto;
@@ -770,6 +769,7 @@
   :root .train-pick { min-height: 48px; font-size: 16px; }
 
   /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */
+  /* !important: the menus are placed with inline top/left by their openers. */
   .context-menu:not(.account-menu) {
     top: auto !important;
     left: 8px !important;

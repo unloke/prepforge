@@ -239,8 +239,6 @@
   /* A phase head is read on a phone: 12px, not the 11px chrome size (the seven
      grade heads keep 11px, where "Brilliant" and "Blunder" still fit). */
   .rp-phase.rp-col { font-size: 12px; }
-  /* "4…Nxe5" is one token: it never breaks after the move number. */
-  .km-move { white-space: nowrap; }
   .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
   .analysis-retry-save:not([hidden]),
   .analysis-import-picker:not([hidden]) { margin: 6px var(--phone-gutter); padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
@@ -606,18 +604,6 @@
   #view-analyze .report-pane { gap: 16px; padding-top: 12px; }
   #view-analyze .report, #view-analyze .rp-body { gap: 16px; }
   #view-analyze .rp-sec { padding: 0; }
-  /* Key moments: the move, its kind and the eval on one line; the better move
-     on a second, under the move, never wrapped beside the eval. */
-  #view-analyze .km {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-    padding: 0;
-  }
-  #view-analyze .km-go { grid-template-columns: 8px 64px minmax(0, 1fr) auto; gap: 8px; min-height: 44px; }
-  #view-analyze .km-kind { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #view-analyze .km-best { margin: -8px 0 0; padding: 0 8px 8px 32px; font-size: 13px; }
-  #view-analyze .km-eval { justify-self: end; }
   /* The grade table: a symbol per head, 44px rows. */
   #view-analyze .rp-tr > :first-child { flex-basis: 20px; }
   #view-analyze .rp-side-h { padding-left: 4px; }
@@ -757,8 +743,6 @@
   /* Report: 36px moment rows and 28px grade rows. */
   #view-analyze .report-pane { gap: 12px; padding-top: 8px; }
   #view-analyze .report, #view-analyze .rp-body { gap: 12px; }
-  #view-analyze .km-go { min-height: 36px; }
-  #view-analyze .km-best { margin-top: -6px; padding-bottom: 6px; font-size: 12px; }
   #view-analyze .rp-counts .rp-n { height: 28px; line-height: 28px; }
   .rp-tr { min-height: 28px; }
   .rp-n { height: 28px; line-height: 28px; }

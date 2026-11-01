@@ -47,7 +47,7 @@
 }
 .rp-summary[aria-expanded="true"] .rp-chev { transform: rotate(-135deg); }
 
-.rp-disc, .km-disc {
+.rp-disc {
   flex: none;
   width: 8px;
   height: 8px;
@@ -55,7 +55,7 @@
   background: var(--eval-side-white);
   box-shadow: inset 0 0 0 1px var(--line-strong); /* taste-skill-ignore: a white piece's disc needs its edge on a white panel */
 }
-.rp-black .rp-disc, .rp-disc.rp-black, .km-disc.km-black { background: var(--eval-side-black); }
+.rp-black .rp-disc, .rp-disc.rp-black { background: var(--eval-side-black); }
 .rp-name {
   display: inline-flex;
   align-items: center;
@@ -113,7 +113,7 @@
 }
 button.rp-n { cursor: pointer; }
 button.rp-n:hover { background: var(--surface-3); }
-button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible, .rp-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+button.rp-n:focus-visible, .rp-phase:focus-visible, .rp-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .rp-n.is-zero { color: var(--label); font-weight: 400; }
 /* Each grade's glyph in its text-safe colour, as in the move list. */
 .g-brilliant .rp-glyph { color: var(--brilliant-text); }
@@ -129,45 +129,6 @@ button.rp-n.g-mistake { color: var(--warn-text); }
 
 .rp-sec { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0 8px; }
 .rp-h { margin: 0; color: var(--muted); font-size: var(--fs-s); font-weight: 500; }
-
-/* Key moments, one line each: the move, its kind, the eval it swung and, at an
-   error, the better move as a link. */
-.rp-km { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
-.km { display: flex; align-items: center; gap: 8px; padding-right: 8px; border-radius: 6px; }
-.km.is-current { background: var(--accent-soft); }
-.km-go {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 8px 64px 104px auto;
-  justify-content: start;
-  align-items: center;
-  gap: 8px;
-  min-height: 26px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.km-go:hover { background: var(--surface-3); }
-.km-move { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; font-weight: 500; }
-.km-eval { color: var(--muted); font-size: var(--fs-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.km-best { flex: none; color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
-@media (max-width: 760px) {
-  .km { gap: 4px; padding-right: 4px; }
-  .km-go { grid-template-columns: 8px 56px 88px auto; gap: 6px; padding: 0 4px; }
-}
-.km-kind { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
-.km-kind .rp-glyph { margin-right: 4px; }
-.km.g-brilliant .km-kind { color: var(--brilliant-text); }
-.km.g-great .km-kind { color: var(--great-text); }
-.km.g-mistake .km-kind { color: var(--warn-text); }
-.km.g-blunder .km-kind { color: var(--danger); }
-.km-best .move-ref { color: var(--good-text); font-weight: 500; }
 
 /* A phase's head is its jump: the name and the moves it spans. */
 .rp-phase { border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--fs-xs); cursor: pointer; }

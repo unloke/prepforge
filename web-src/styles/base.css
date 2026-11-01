@@ -1,6 +1,6 @@
 /* Reset, document defaults, focus ring, type scale and the text utilities. */
 
-/* `hidden` always wins: no view's display rule can resurrect a hidden element. */
+/* `hidden` always wins (hence !important): no view's display rule can resurrect a hidden element. */
 [hidden] { display: none !important; }
 
 
