@@ -52,6 +52,7 @@ import { libraryRowsSkeleton } from "./views/library-skeleton.js";
 import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
+import { provideApp } from "./core/app-context.js";
 import { BROWSER_ENGINE_UNAVAILABLE, OUTBOX_TAB_ID, activeBoardController, activeViewName,
   api, currentOwnerId, downloadText, engineLifecycleMark, localDateString, postJson,
   setStatus, setStatusError, sleep } from "./core/api.js";
@@ -114,10 +115,6 @@ const importRepertoireFromPgnText = viaLibrary("importRepertoireFromPgnText");
 // owned by coverage-entry.js and shared-viewer.js.
 let coverageEntry = null;
 let sharedViewer = null;
-
-function loadTrainResume() {
-  return import("./train-resume.js");
-}
 
 // Sign-in + the Lichess identity (account-entry.js) and the Analyze entry
 // points (controllers/analyze-entry.js). Both are imported at boot: the account
@@ -1147,22 +1144,20 @@ function paintBuildEmpty() {
   if (sidebar) sidebar.classList.toggle("is-empty", !appState.build);
 }
 
+// The shell's own entry points the lazy controllers call (core/app-context.js).
+provideApp({
+  accountService, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
+  markTrainPositionDirty, openAuthModal, queueTrainAttempt, refreshAuthStatus,
+  refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn, setTrainBanner,
+  switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
+});
+
 // Train sessions (smart queue, rehearsal, practice games, Feeling Lucky) live in
 // controllers/train-session.js, loaded the first time Train is used. The wrappers
 // below wait for it, so a click that lands before the chunk does is not lost.
 let trainSessionLoading = null;
 function loadTrainSession() {
-  trainSessionLoading ||= import("./controllers/train-session.js").then((mod) => mod.createTrainSession({
-    accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo,
-    boards, currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView,
-    flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
-    loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
-    notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson,
-    queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead,
-    renderTrainStats, requireSignIn, confirmAbandonGame, showConfirmModal, setBlitzEnabled,
-    setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
-    switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
-  })).catch((error) => {
+  trainSessionLoading ||= import("./controllers/train-session.js").then((mod) => mod.createTrainSession()).catch((error) => {
     trainSessionLoading = null;
     throw error;
   });
@@ -1281,8 +1276,6 @@ function setTrainBanner(state, title, sub) {
   requestAnimationFrame(() => banner.classList.add("flash"));
 }
 
-const PLAY_COLOR_KEY = "prepforge.play_color";
-
 function updateTrainTurnBadge(side) {
   const badge = document.getElementById("train-turn-badge");
   if (!badge) return;
@@ -1301,42 +1294,6 @@ function updateTrainTurnBadge(side) {
   // Show the side-to-move as a real piece (king of that colour), not a bare
   // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
   badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
-}
-
-// ===== Smart queue trainer (Train v2) ========================================
-//
-// Card-based scheduler client over /api/train/smart/*. The flow per card:
-// run-in animation (the approach plays itself, the opponent's last move is the
-// recall cue) → prompt. New cards are taught first (arrow + idea, play it
-// once); everything else is tested cold. Failure is two-stage: first miss
-// auto-hints and lets the player retry (attempt 2, ungraded server-side),
-// second miss reveals the answer and the card returns a few positions later.
-// Only attempt 1 is graded, so the accuracy chips match the server's
-// spaced-repetition writes.
-
-// ----- Blitz mode: an answer clock per card (smart queue only) ---------------
-//
-// Entirely client-side. A timeout submits the null move "0000" as attempt 1, so
-// the server grades an honest first-attempt miss — in blitz, not producing the
-// move in time means it isn't known cold. Teach prompts (kind=new) and retries
-// are untimed; the toggle is read once at session start.
-
-const BLITZ_KEY = "prepforge-blitz";
-const BLITZ_SECONDS = 10;
-
-function blitzEnabled() {
-  try {
-    return localStorage.getItem(BLITZ_KEY) === "1";
-  } catch (_) {
-    return false;
-  }
-}
-
-function setBlitzEnabled(on) {
-  try {
-    if (on) localStorage.setItem(BLITZ_KEY, "1");
-    else localStorage.removeItem(BLITZ_KEY);
-  } catch (_) { /* private mode: the toggle just won't persist */ }
 }
 
 // Apply one button's gated state: disable + greyed style + explanatory title,

@@ -39,7 +39,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("view prefetch", () => {
   it("covers every view controller the shell loads lazily", () => {
     const lazy = [...app.matchAll(/import\("(\.\/views\/[a-z-]+-controller\.js|\.\/train-resume\.js)"\)/g)].map((m) => m[1]);
-    expect(lazy.length).toBeGreaterThanOrEqual(5);
+    expect(lazy.length).toBeGreaterThanOrEqual(4);
     for (const spec of lazy) expect(source).toContain(`import("${spec}")`);
   });
 
