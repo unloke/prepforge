@@ -5,11 +5,11 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
-import { eagerCss } from "./test-styles-source.js";
+import { cssSource, eagerCss } from "./test-styles-source.js";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const html = read("./index.html");
-const css = read("./views/analyze-chart.css");
+const css = cssSource("views/analyze-chart.css");
 
 const view = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
 const panes = view.slice(view.indexOf('id="analyze-panes"'), view.indexOf('id="analyze-open"'));

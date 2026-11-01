@@ -4,8 +4,9 @@
 // pane's head on a phone, and comes back on a wider screen.
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
+import { cssSource } from "../test-styles-source.js";
 
-const css = readFileSync(new URL("./analyze-chart.css", import.meta.url), "utf8");
+const css = cssSource("views/analyze-chart.css");
 const phoneR2 = css.slice(css.indexOf("/* ---- Phone, round 2: composition"));
 
 // A small element tree: enough of the DOM for installAnalyzePanes.

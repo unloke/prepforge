@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
-import { eagerCss as css } from "./test-styles-source.js";
+import { cssSource, eagerCss as css } from "./test-styles-source.js";
 
-const phone = readFileSync(new URL("./phone.css", import.meta.url), "utf8");
+const phone = cssSource("phone.css");
 
 describe("shared chrome type", () => {
   it("keeps the rail group labels readable", () => {

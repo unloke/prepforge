@@ -1,0 +1,534 @@
+/* Analyze: the game report, drawers, game sources, motion and the layout bands. */
+
+/* ---- The game report ----------------------------------------------------
+   One summary line per player over the body: the key moments one line each,
+   then the grade counts and the phases as small tables (a column per grade or
+   phase, a row per side). Type and rules, not tiles. Every figure is tabular,
+   every count and moment is a control that goes to its move, and every move
+   named is a move link. The body folds under the summary only where the report
+   heads the score sheet (the wide panel); a tab of its own shows it whole. */
+.report, .rp-body { display: flex; flex-direction: column; gap: 12px; font-size: var(--fs); }
+.report:empty { display: none; }
+.rp-summary { cursor: default; }
+.rp-summary .rp-chev { visibility: hidden; }
+
+/* The summary: one row per player (name, accuracy, errors), the chevron at
+   the right. The whole block is the control. Side by side in one line the two
+   players ran into each other in a narrow panel ("1 mistakeAnonym…"). */
+.rp-summary {
+  display: grid;
+  grid-template-columns: minmax(3em, max-content) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 12px;
+  width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-s);
+  text-align: left;
+}
+.rp-summary .rp-disc { display: none; } /* the sides come in colour order; the names carry them */
+.rp-summary .rp-side { display: contents; }
+.rp-summary .rp-acc { text-align: right; }
+.rp-summary .rp-errs { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-summary .rp-chev { grid-column: 4; grid-row: 1 / span 2; }
+.rp-errs { color: var(--muted); }
+.rp-chev {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(45deg);
+}
+.rp-summary[aria-expanded="true"] .rp-chev { transform: rotate(-135deg); }
+
+.rp-disc, .km-disc {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--eval-side-white);
+  box-shadow: inset 0 0 0 1px var(--line-strong); /* taste-skill-ignore: a white piece's disc needs its edge on a white panel */
+}
+.rp-black .rp-disc, .rp-disc.rp-black, .km-disc.km-black { background: var(--eval-side-black); }
+.rp-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-summary .rp-name { color: var(--text); }
+.rp-acc {
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.rp-summary .rp-acc { font-size: var(--fs-s); font-weight: 500; }
+
+/* Grades and phases: a column each, a row per side named by its disc. Equal
+   columns, so the two tables line up as one. */
+.rp-tr { display: flex; align-items: center; min-height: 24px; }
+.rp-tr + .rp-tr { border-top: 1px solid var(--rule, var(--line)); } /* taste-skill-ignore: rows of a real table (role=table) */
+.rp-tr > * { flex: 1 1 0; min-width: 0; }
+.rp-tr > :first-child { flex: 0 0 24px; }
+.rp-side-h { display: inline-flex; align-items: center; padding-left: 8px; }
+.rp-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 2px 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.25;
+  text-align: center;
+}
+.rp-col-word, .rp-span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-glyph { font-style: normal; font-weight: 600; min-width: 1.4em; text-align: center; }
+.rp-n {
+  height: 22px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 500;
+  line-height: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+button.rp-n { cursor: pointer; }
+button.rp-n:hover { background: var(--surface-3); }
+button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible, .rp-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.rp-n.is-zero { color: var(--label); font-weight: 400; }
+/* Each grade's glyph in its text-safe colour, as in the move list. */
+.g-brilliant .rp-glyph { color: var(--brilliant-text); }
+.g-great .rp-glyph { color: var(--great-text); }
+:is(.g-best, .g-good) .rp-glyph { color: var(--good-text); }
+.g-inaccuracy .rp-glyph { color: var(--inaccuracy-text); }
+.g-mistake .rp-glyph { color: var(--warn-text); }
+.g-blunder .rp-glyph { color: var(--danger); }
+.g-missed .rp-glyph { color: var(--missed); }
+/* The errors a player came for read in their grade's colour. */
+button.rp-n.g-blunder { color: var(--danger); }
+button.rp-n.g-mistake { color: var(--warn-text); }
+
+.rp-sec { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0 8px; }
+.rp-h { margin: 0; color: var(--muted); font-size: var(--fs-s); font-weight: 500; }
+
+/* Key moments, one line each: the move, its kind, the eval it swung and, at an
+   error, the better move as a link. */
+.rp-km { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
+.km { display: flex; align-items: center; gap: 8px; padding-right: 8px; border-radius: 6px; }
+.km.is-current { background: var(--accent-soft); }
+.km-go {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 8px 64px 104px auto;
+  justify-content: start;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.km-go:hover { background: var(--surface-3); }
+.km-move { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; font-weight: 500; }
+.km-eval { color: var(--muted); font-size: var(--fs-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.km-best { flex: none; color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
+@media (max-width: 760px) {
+  .km { gap: 4px; padding-right: 4px; }
+  .km-go { grid-template-columns: 8px 56px 88px auto; gap: 6px; padding: 0 4px; }
+}
+.km-kind { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
+.km-kind .rp-glyph { margin-right: 4px; }
+.km.g-brilliant .km-kind { color: var(--brilliant-text); }
+.km.g-great .km-kind { color: var(--great-text); }
+.km.g-mistake .km-kind { color: var(--warn-text); }
+.km.g-blunder .km-kind { color: var(--danger); }
+.km-best .move-ref { color: var(--good-text); font-weight: 500; }
+
+/* A phase's head is its jump: the name and the moves it spans. */
+.rp-phase { border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.rp-phase:hover { background: var(--surface-3); }
+.rp-phase { color: var(--text); }
+.rp-span { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.rp-opening { display: block; color: var(--muted); font-size: var(--fs-s); overflow-wrap: anywhere; }
+.rp-opening-name { margin-left: 6px; color: var(--text); font-weight: 500; }
+.rp-prep { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
+.rp-prep .move-ref { color: var(--text); font-weight: 500; }
+.rp-rep { color: var(--muted); }
+.rp-rep::before { content: "· "; }
+
+.analysis-handoff {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+}
+.analysis-handoff[hidden] {
+  display: none;
+}
+
+/* F-03: saved-on-device notice + Retry save. F-04: batch import summary.
+   A notice is a filled tint, not an outlined box. */
+.analysis-retry-save,
+.analysis-import-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 14%, var(--panel-soft));
+}
+.analysis-retry-save[hidden],
+.analysis-import-picker[hidden] {
+  display: none;
+}
+.analysis-import-picker select {
+  max-width: 100%;
+}
+
+/* ---- Drawers: the report, the PGN source, recent analyses ----------- */
+
+/* ---- Where games come from ------------------------------------------------
+   The panel's last two folds: the PGN box and the recent analyses, under the
+   game report. With no game on the board they take the room under the coach
+   instead, so the first game arrives through them. A phone lays them out as
+   the Games sheet (phone.css), which is why they sit in the sheet's own
+   container. */
+#analyze-sidebar .panel-scroll > #analyze-open { margin: 0; }
+/* No game yet: no score sheet and no report, so the sources (the sheet
+   dissolves into the column, phone.css) sit under the coach and take the
+   room. */
+#view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes { flex: none; }
+#view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes > :is(.moves-pane, .report-pane) { display: none; }
+#analyze-open > .drawer:first-of-type { margin-top: 0; }
+
+.drawer {
+  flex: none;
+  padding-top: 8px;
+}
+.drawer summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px; /* the row a pointer hits, not its 15px line */
+  margin-bottom: 2px;
+  font-size: var(--fs-s);
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+.drawer summary::-webkit-details-marker { display: none; }
+.drawer summary::before {
+  content: "▸";
+  color: var(--muted);
+}
+.drawer[open] summary::before {
+  content: "▾";
+}
+.drawer textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 96px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-soft);
+  color: var(--text);
+  font: 13px/1.45 var(--mono);
+  resize: vertical;
+}
+.analysis-history {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 8px;
+  padding: 0 4px;
+  border: 0;
+  cursor: pointer;
+}
+.history-item .hi-open {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--fs-s);
+  text-align: left;
+  cursor: pointer;
+}
+/* The delete affordance is hidden until the row is hovered or focused, so the
+   list stays a list of games and not a list of games with a bin each. */
+.history-item .hi-delete {
+  flex: none;
+  align-self: center;
+  opacity: 0;
+  color: var(--label);
+}
+.history-item:hover .hi-delete,
+.history-item:focus-within .hi-delete {
+  opacity: 1;
+}
+.history-item .hi-delete:hover {
+  color: var(--danger);
+}
+.history-item:hover {
+  background: var(--panel-soft);
+}
+.history-item:hover .hi-open {
+  color: var(--accent-text);
+}
+.hi-players {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.hi-meta {
+  flex: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---- Motion ------------------------------------------------------------
+   This page is a tool: it moves to answer a touch, and once when a run
+   lands. Feedback is under the hand, the entrances are the results
+   arriving, and nothing that updates every second moves at all. */
+
+.ev-engine,
+.an-tab,
+.coach-bookaction,
+.history-item,
+.history-item .hi-open,
+.history-item .hi-delete {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* Press: the control gives a little under the finger. */
+.ev-engine:active,
+.an-tab:active,
+.coach-bookaction:active,
+.history-item .hi-open:active,
+.history-item .hi-delete:active {
+  transform: scale(0.97);
+}
+
+/* The live engine repaints the win share many times a second: a transition
+   would smear it into a blur. It jumps instead. */
+#analysis-eval-card.is-engine .ev-meter > i {
+  transition: none;
+}
+
+/* Control feedback respects reduced motion; values already update in place. */
+@media (prefers-reduced-motion: reduce) {
+  .ev-meter > i {
+    transition: none;
+  }
+  .ev-engine,
+  .an-tab,
+  .coach-bookaction,
+  .history-item,
+  .history-item .hi-open,
+  .history-item .hi-delete {
+    transition: none;
+  }
+}
+
+/* ---- Layout bands -----------------------------------------------------------
+   Side by side (761px and up, the default here): one column holds the coach,
+   the engine's head row, the score sheet, then the report and the game's
+   sources as folds. A stacked tablet puts the panel under the board in two
+   columns, with the engine's lines on the left and the report and the moves
+   behind tabs on the right; a phone pins the board and tabs every pillar. */
+#view-analyze { --an-eval-h: 112px; }
+/* The evaluation under the board takes its height out of the board's square. */
+#view-analyze .study:has(.board-area > #analysis-eval-card:not([hidden])) {
+  --board-chrome: calc(42px + 8px + var(--an-eval-h));
+}
+@media (min-width: 761px) {
+  /* A short window keeps two lines of verdict, so the panes keep their room. */
+  @media (max-height: 640px) {
+    .coach-card { --coach-line: 22px; height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2 + var(--coach-review)); }
+    #view-analyze { --an-eval-h: 100px; }
+  }
+}
+/* A wide panel says a verdict in one or two lines; a third reserved line was
+   an empty band over the engine. */
+@media (min-width: 1280px) {
+  .coach-card { height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2 + var(--coach-review)); }
+}
+
+/* Stacked tablet: the board (with the evaluation under it) is sized so the
+   panel under it keeps 300px; the panel is two columns, the coach over the
+   engine on the left, the report and the moves behind tabs on the right. One
+   screen, no page scroll. */
+@media (min-width: 761px) and (max-width: 860px) and (orientation: portrait), (min-width: 761px) and (max-width: 860px) and (min-height: 521px), (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6) {
+  #view-analyze .study {
+    --stack-w: min(100%, calc(100dvh - 36px - 42px - 8px - var(--an-eval-h) - 16px - 300px));
+    height: var(--study-h);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  #view-analyze .study > #analyze-sidebar {
+    width: 100%;
+    justify-self: stretch;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+  #analyze-sidebar .panel-scroll { overflow: hidden; }
+  .analyze-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-template-rows: 34px auto minmax(0, 1fr) auto;
+    gap: 10px 16px;
+  }
+  .analyze-main > .coach-card { grid-column: 1; grid-row: 1 / 3; }
+  .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { grid-column: 1 / -1; grid-row: 4; }
+  .an-panes { display: contents; }
+  .an-tabs { display: flex; grid-column: 2; grid-row: 1; }
+  .an-tab[data-pane="engine"] { display: none; }
+  /* One pane at a time on the right, and the engine's lines under the coach.
+     The tab names the pane it opens, so the report shows its content without
+     repeating its own name. There is no engine tab here, so a stored "engine"
+     opens the report. */
+  #view-analyze[data-pane="moves"] .an-panes > .report-pane { display: none; }
+  #view-analyze:not([data-pane="moves"]) .an-panes > .moves-pane { display: none; }
+  .an-panes > .report-pane { flex: 1 1 auto; }
+  .an-panes > .report-pane > summary { display: none; }
+  .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
+  #view-analyze[data-pane="moves"] .an-panes > .moves-pane:not([hidden]) { display: flex; }
+  #view-analyze .an-panes > .engine-pane { grid-column: 1; grid-row: 3; display: grid; }
+  .an-panes > :is(.report-pane, .moves-pane) { grid-column: 2; grid-row: 2 / 4; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open { grid-column: 2; grid-row: 1 / 4; }
+  #view-analyze .panel-scroll > #analyze-open { min-height: 0; }
+  /* No game yet: the coach and engine on the left, both ways to open a game
+     (the source and the recent analyses) stacked on the right. The sheet is
+     display: contents here, so its folds are this grid's own items. The
+     report/moves switch has nothing to switch until a game is loaded. */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); grid-auto-rows: min-content; align-content: start; gap: 6px 16px; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll > .analyze-main { display: flex; grid-column: 1; grid-row: 1 / span 4; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open > .drawer { grid-column: 2; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .an-tabs { display: none; }
+}
+
+/* A phone on its side keeps the tabs: the panel beside the board is 390px
+   tall, and one pane at a time is all it holds. The tab names the pane it
+   opens, so the report shows its content without repeating its own name. */
+@media (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
+  .analyze-main { flex: 1 1 auto; min-height: 0; }
+  .an-panes { flex: 1 1 auto; min-height: 0; }
+  .an-tabs { display: flex; }
+  .an-pane { flex: 1 1 auto; }
+  #view-analyze:not([data-pane="engine"]) .an-panes > .engine-pane,
+  #view-analyze:not([data-pane="report"]) .an-panes > .report-pane,
+  #view-analyze:not([data-pane="moves"]) .an-panes > .moves-pane { display: none; }
+  .an-panes > .report-pane > summary { display: none; }
+  .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
+  #view-analyze[data-pane="engine"] .an-panes > .engine-pane { display: grid; }
+  #view-analyze[data-pane="report"] .an-panes > .report-pane { display: flex; }
+  #view-analyze[data-pane="moves"] .an-panes > .moves-pane:not([hidden]) { display: flex; }
+}
+
+/* With a game open the panel belongs to the game: its sources (a PGN, the
+   recent analyses) stay behind the board bar's Games button and open over the
+   panel, so a long list of past games never takes the score sheet's room. */
+@media (min-width: 761px), (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
+  #analyze-sidebar { position: relative; }
+  #view-analyze:has(#analysis-results:not([hidden])) .board-bar .bb-sheet { display: inline-flex; }
+  #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
+  #analyze-open.is-open {
+    position: absolute;
+    z-index: 30;
+    inset: auto 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: calc(100% - 180px);
+    padding: 6px 14px 14px;
+    border-radius: var(--radius-card);
+    background: var(--panel);
+    box-shadow: var(--shadow-2); /* taste-skill-ignore: a popover floats over the panel */
+    overflow: auto;
+  }
+  #analyze-open.is-open > .sheet-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 36px;
+    font-size: var(--fs);
+  }
+  #analyze-open .sheet-done {
+    min-height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--accent-text);
+    font: inherit;
+    font-size: var(--fs-s);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  #analyze-open .sheet-done:hover { background: var(--accent-soft); }
+  #analyze-open.is-open > .sheet-copy { display: flex; gap: 8px; }
+  #analyze-open .sheet-copy .sheet-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--control-h-sm);
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: var(--fs-s);
+    cursor: pointer;
+  }
+  #analyze-open .sheet-copy .sheet-row:hover { background: var(--accent-soft); }
+  #analyze-open .sheet-copy svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+}

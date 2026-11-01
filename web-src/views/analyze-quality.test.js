@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
+import { cssSource } from "../test-styles-source.js";
 
 function render(quality) {
   const host = { dataset: { open: "true" }, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [] };
@@ -56,7 +57,7 @@ describe("analysis quality summary", () => {
 // bare switch read as nothing).
 describe("coach engine-review switch", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  const css = readFileSync(new URL("./analyze-chart.css", import.meta.url), "utf8");
+  const css = cssSource("views/analyze-chart.css");
 
   it("is labelled and titled in place, with no standing description", () => {
     const tag = html.match(/<button[^>]*id="explain-engine-toggle"[^>]*>/)[0];

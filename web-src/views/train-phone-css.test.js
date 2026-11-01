@@ -4,9 +4,9 @@
 // drives all of it: no positional selectors, no second state machine.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { eagerCss } from "../test-styles-source.js";
+import { cssSource, eagerCss } from "../test-styles-source.js";
 
-const css = readFileSync(new URL("../phone.css", import.meta.url), "utf8");
+const css = cssSource("phone.css");
 const phone = css.slice(css.indexOf("/* ---- Train: Home is a page"), css.indexOf("/* ---- Menus: action sheets"));
 
 it("Home is a page with no board; the Result keeps the final board but no thumb bar; the tab bar stays on both", () => {

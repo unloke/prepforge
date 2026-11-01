@@ -676,6 +676,22 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
 
 
+.row-menu-btn {
+  justify-self: end;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+
+/* The row's ⋯ is the shared quiet icon button (.btn.ghost.icon); it only
+   stays dim until its row is hovered or selected. */
+.lib-row:hover .row-menu-btn,
+.lib-row.is-selected .row-menu-btn,
+.row-menu-btn:focus-visible { opacity: 1; color: var(--text); }
+
+
 .empty-state.big {
   display: flex;
   flex-direction: column;
@@ -714,6 +730,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .color-dot.black { background: var(--explorer-black); border-color: var(--muted); }
 
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  .row-menu-btn { grid-column: 2; grid-row: 1; width: 44px; height: 44px; }
+
+}
 
 /* A card is a raised panel on the page: one tone step, no outline. The
    outline it used to carry drew a box around every block and fought the

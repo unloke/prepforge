@@ -564,22 +564,6 @@ button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
 button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 
-.row-menu-btn {
-  justify-self: end;
-  font-size: 14px;
-  line-height: 1;
-  opacity: 0.7;
-  transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
-}
-
-
-/* The row's ⋯ is the shared quiet icon button (.btn.ghost.icon); it only
-   stays dim until its row is hovered or selected. */
-.lib-row:hover .row-menu-btn,
-.lib-row.is-selected .row-menu-btn,
-.row-menu-btn:focus-visible { opacity: 1; color: var(--text); }
-
-
 .lib-rep-list .empty-state:not(.big) { border: 0; background: none; border-radius: 0; }
 
 
@@ -705,21 +689,31 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   .workspace:has(> .view.is-active#view-dashboard) {
     padding: 8px 8px calc(64px + env(safe-area-inset-bottom));
   }
+
   .lib { gap: 10px; }
+
   .today { grid-template-columns: auto 1fr; gap: 10px 12px; }
+
   .today > .btn { grid-column: 1 / -1; height: 44px; }
+
   .today-streak { padding-right: 0; border-right: 0; }
+
   .today-body { grid-column: 1 / -1; }
+
   .search-field { width: 100%; margin-left: 0; }
+
   .lib .card-head .seg { max-width: 100%; overflow-x: auto; }
+
   .lib-cols { display: none; }
+
   .lib-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; padding: 10px 12px; }
+
   .lib-cell-rep { grid-column: 1; grid-row: 1; }
+
   .lib-cell-mastery,
   .lib-cell-queue { grid-column: 1 / -1; }
-  .row-menu-btn { grid-column: 2; grid-row: 1; width: 44px; height: 44px; }
-}
 
+}
 
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   /* Library's Import / New live in the More sheet on phones (prototype). */

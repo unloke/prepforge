@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { appSource } from "./test-app-source.js";
-import { eagerCss as css } from "./test-styles-source.js";
+import { cssSource, eagerCss as css } from "./test-styles-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(root, "index.html"), "utf8");
@@ -15,8 +15,8 @@ const coverageController = readFileSync(join(root, "controllers", "coverage.js")
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 const replayCss = readFileSync(join(root, "views", "replay.css"), "utf8");
-const analyzeCss = readFileSync(join(root, "views", "analyze-chart.css"), "utf8");
-const phoneCss = readFileSync(join(root, "phone.css"), "utf8");
+const analyzeCss = cssSource("views/analyze-chart.css");
+const phoneCss = cssSource("phone.css");
 const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
 const scoutView = readFileSync(join(root, "views", "scout.js"), "utf8");
 const composer = readFileSync(join(root, "views", "shared", "source-composer.js"), "utf8");

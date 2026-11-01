@@ -1,0 +1,1012 @@
+/* Phone study screens (Analyze, Repertoire, Train), then menus, dialogs, the More
+   sheet and notices, and last the round-5 board density rules. */
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  /* ---- Study screens ---------------------------------------------------- */
+  .workspace:has(> .view.is-active:is(#view-analyze, #view-build, #view-train)) {
+    position: fixed;
+    inset: 0;
+    max-width: none;
+    padding: 0;
+    overflow: hidden;
+  }
+  :is(#view-analyze, #view-build, #view-train) .study {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: 100%;
+    padding-top: env(safe-area-inset-top);
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .study > .board-area { display: contents; }
+  /* The board takes the width, less what the screen reserves for the rows
+     around it. */
+  .study .board-stack {
+    order: 1;
+    flex: none;
+    max-width: none;
+    margin: 0 auto;
+    border-width: 0;
+    border-radius: 0;
+  }
+  :is(#analyze-sidebar, #build-sidebar, #view-train .train-sidebar),
+  #analyze-actions { display: contents; }
+  /* Analyze has no panel head to dissolve (the two actions ride the coach's
+     line); Build's and Train's keep theirs. Last game is a row in the Games
+     sheet here, and the pill in the thumb bar carries Analyze. */
+  #fetch-my-game { display: none; }
+  .study .engine-banner { order: 0; flex: none; }
+  /* A diagnostic does not get a fifth of the screen above the board. Same one
+     line as the desktop panel: the cause and the fix are behind the action's
+     tooltip, which the row itself is. It keeps the phone gutter so its words
+     sit on the same edge as the repertoire's name under it. */
+  #view-build .engine-banner { gap: 0 6px; padding: 6px var(--phone-gutter) 8px; margin: 0; }
+  #view-build .engine-banner :is(.engine-banner-title, .engine-banner-action) { font-size: 13px; line-height: 1.4; }
+  /* The scroller under the board. */
+  :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) {
+    order: 2;
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 10px 12px 16px;
+    border: 0;
+    background: var(--bg);
+    font-size: 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) > * { flex: none; }
+
+  /* Thumb bar: [Menu][Flip] [ pill ] [‹][›]; Analyze adds Report after Menu. */
+  .study .board-bar {
+    position: relative;
+    order: 4;
+    flex: none;
+    display: grid;
+    grid-template-columns: 40px 40px minmax(0, 1fr) 48px 48px;
+    column-gap: 4px;
+    align-items: center;
+    height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+    margin-top: auto;
+    padding: 0 10px env(safe-area-inset-bottom);
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+    /* A held arrow repeats; it must not start a text selection or callout. */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .study .board-bar button { touch-action: none; }
+  .mtree-move { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 48px 48px; }
+  .study .board-bar :is(.bb-nav, .bb-right) { display: contents; }
+  .study .board-bar :is(.bb-views, .bb-sheet) { display: flex; }
+  .study .board-bar .bb-views { order: 1; }
+  .study .board-bar .bb-sheet { order: 2; }
+  .study .board-bar [id$="-flip"] { order: 3; }
+  .study .board-bar .board-label {
+    grid-area: 1 / -4 / 2 / -3;
+    justify-self: center;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .study .board-bar .board-label { color: var(--muted); font-size: 13px; }
+  /* Build names the shown move in the bar's free middle, between Flip and the
+     arrows (Lichess's bottom bar): on the Explorer and Coverage panes the tree
+     is hidden, and this is what says which position the rows are for. */
+  /* Analyze's middle track holds the Analyze pill, which is the one thing a
+     phone puts there (see #run-analysis below). The bar's slot names the game
+     on a wide screen; a phone has no room for it beside the pill without
+     covering it, so the eval row under the board names the position instead. */
+  #view-analyze .board-bar .board-label { display: none; }
+  /* The last two tracks. The pill is absolute in the free middle, so the
+     arrows must be placed: auto-placement would fill that track first. */
+  .study .board-bar :is(#analysis-prev, #build-parent, #train-hint) { order: 5; grid-column: -3 / -2; }
+  .study .board-bar :is(#analysis-next, #build-next, #train-skip) { order: 6; grid-column: -2 / -1; }
+  :is(#analysis-start, #analysis-end) { display: none !important; }
+
+  /* Icon buttons: the label stays in title / aria-label. */
+  .study .board-bar .btn.icon,
+  .phone-back,
+  #build-menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    min-width: 0;
+    height: 40px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius);
+    background: none;
+    box-shadow: none;
+    color: var(--muted);
+    font-size: 0;
+  }
+  .study .board-bar .bl,
+  #build-menu .bl { display: none; }
+  .study .board-bar :is(.bi, .bb-views svg) { display: block; width: 20px; height: 20px; }
+  .bb-views svg { fill: none; stroke: currentColor; stroke-width: 1.7; }
+  .bb-views[aria-expanded="true"],
+  .bb-sheet[aria-expanded="true"] { color: var(--accent-strong) !important; }
+  .study .board-bar :is(#train-hint, #play-takeback):disabled { opacity: 0.4; }
+
+  /* Move arrows: one split control. The chevron is the button's own SVG; a
+     drawn ::before chevron here doubled it once the glyphs became SVG. */
+  .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) {
+    width: 48px;
+    height: 36px;
+    background: var(--surface-3);
+    color: var(--text);
+  }
+  .study .board-bar :is(#analysis-prev, #build-parent) { border-radius: var(--radius) 2px 2px var(--radius); }
+  .study .board-bar :is(#analysis-next, #build-next) { border-radius: 2px var(--radius) var(--radius) 2px; }
+
+  /* Touch screens keep :hover after a tap; show the press instead. */
+  .study .board-bar .btn.icon:hover,
+  :is(.phone-back, #build-menu):hover { filter: none; background: none; }
+  .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next):hover { background: var(--surface-3); }
+  .study .board-bar .btn.icon:active,
+  :is(.phone-back, #build-menu):active { background: var(--surface-3); }
+  .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next):active { background: var(--line-strong); }
+
+  /* The main action, centred in the bar's free middle. */
+  #run-analysis {
+    position: absolute;
+    z-index: 6;
+    left: var(--pill-left);
+    right: 114px;
+    bottom: calc(env(safe-area-inset-bottom) + (var(--phone-bar-h) - 32px) / 2);
+    width: fit-content;
+    max-width: calc(100% - var(--pill-left) - 114px);
+    height: 32px;
+    min-height: 0;
+    margin: 0 auto;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #run-analysis { --pill-left: 142px; }
+  /* Repertoire has its own way out (the header's back button), so its bar
+     drops Views: Flip and the move arrows. */
+  #view-build .board-bar .bb-views { display: none; }
+  /* Repertoire's bar has room for all four arrows, as Lichess's nav row:
+     |‹ ‹ › ›|, the ends a step narrower than the steps; the shown move's name
+     keeps the middle. */
+  #view-build .board-bar { grid-template-columns: 40px minmax(0, 1fr) 40px 48px 48px 40px; }
+  #view-build .board-bar .board-label { grid-area: 1 / 2 / 2 / 3; }
+  #view-build .board-bar :is(#build-root, #build-parent, #build-next, #build-end) { grid-row: 1; }
+  #view-build .board-bar #build-root { grid-column: 3; }
+  #view-build .board-bar #build-parent { grid-column: 4; }
+  #view-build .board-bar #build-next { grid-column: 5; }
+  #view-build .board-bar #build-end { grid-column: 6; }
+  #view-build .board-bar :is(#build-root, #build-end) {
+    width: 40px;
+    height: 36px;
+    background: var(--surface-3);
+    color: var(--text);
+  }
+  #view-build .board-bar #build-root { border-radius: var(--radius) 2px 2px var(--radius); }
+  #view-build .board-bar #build-parent,
+  #view-build .board-bar #build-next { border-radius: 2px; }
+  #view-build .board-bar #build-end { border-radius: 2px var(--radius) var(--radius) 2px; }
+  #view-build .board-bar :is(#build-root, #build-end):hover { background: var(--surface-3); }
+  #view-build .board-bar :is(#build-root, #build-end):active { background: var(--line-strong); }
+  /* Under 360px the icons and arrows leave the pill too little room for its
+     name (Analyze kept 44px): tighten the bar so the action stays readable. */
+  @media (max-width: 359px) {
+    #view-build .board-bar { grid-template-columns: 40px minmax(0, 1fr) 36px 44px 44px 36px; }
+    #view-build .board-bar :is(#build-root, #build-end) { width: 36px; }
+    #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
+    #view-analyze .board-bar .btn.icon { width: 40px; }
+    .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) { width: 44px; }
+    #run-analysis {
+      right: 106px;
+      max-width: calc(100% - var(--pill-left) - 106px);
+      padding: 0 10px;
+      font-size: 14px;
+    }
+    #run-analysis { --pill-left: 142px; }
+  }
+  #run-analysis .bi { display: none; }
+  #run-analysis .bl { display: inline; }
+  #run-analysis:hover { background: var(--accent); filter: none; }
+  #run-analysis:active { filter: brightness(0.92); }
+  /* A disabled pill reads inert: the same grey the shared `.btn:disabled` uses
+     (--label, the token for quiet affordances), so it is the fill and the ink
+     that say "not now" rather than the accent. It used to name --faint, which is
+     not defined anywhere: the declaration was dropped at computed-value time and
+     the pill fell back to inherited ink (measured at 390: rgb(27,28,30) on
+     rgb(239,239,236), which read as a live button at 55% opacity). */
+  #run-analysis:disabled { background: var(--surface-3); color: var(--label); }
+  /* The save chip is the header's (see #build-sync-head below): the board
+     bar's copy would sit at the screen's bottom, far from the tree the edit
+     happened in. */
+  .study .board-bar .build-sync { display: none !important; }
+  /* The tab bar waits under the thumb bar; Menu raises it. */
+  body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+    height: 64px;
+    padding-bottom: 0;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    box-shadow: var(--shadow-bar); /* taste-skill-ignore: a bar that floats over scrolling content is a real overlay */
+    transform: translateY(calc(100% + var(--phone-bar-h) + 40px));
+    visibility: hidden;
+    transition: transform var(--dur) var(--ease-out), visibility 0s linear var(--dur);
+  }
+  body.phone-nav-open:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--dur) var(--ease-out);
+  }
+  /* ---- Bottom sheet (Analyze's report) ----------------------------------- */
+  .phone-sheet.is-open {
+    position: fixed;
+    z-index: 60;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 82dvh;
+    padding: 6px var(--phone-gutter) calc(20px + env(safe-area-inset-bottom));
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    background: var(--panel);
+    /* The dim is the sheet's own spread shadow: it paints outside the sheet's
+       box, never over its fill (a z -1 ::before inside the sheet's layer
+       painted over the fill). The ::before stays as the tap-to-close catcher. */
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45), 0 -12px 40px rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a bottom sheet is a real overlay */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    animation: phone-sheet-up var(--dur) var(--ease-out);
+  }
+  .phone-sheet.is-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+  }
+  .phone-sheet.is-open > * { flex: none; }
+  @keyframes phone-sheet-up { from { transform: translateY(40%); opacity: 0.4; } }
+  .phone-sheet.is-open > .sheet-bar {
+    position: sticky;
+    top: -6px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    margin: 0 calc(-1 * var(--phone-gutter));
+    padding: 4px var(--phone-gutter) 0;
+    background: var(--panel);
+    font-size: 16px;
+  }
+  .sheet-done {
+    min-height: 36px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--accent-strong);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .phone-sheet > .sheet-rows {
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    background: var(--surface-3);
+    overflow: hidden;
+  }
+  .sheet-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 15px;
+    text-align: left;
+  }
+  .sheet-row + .sheet-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
+  .sheet-row svg { flex: none; width: 20px; height: 20px; fill: none; stroke: var(--accent-strong); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .sheet-row:active { background: var(--line); }
+  /* A row that opens something in place carries the mark for it, so the sheet
+     says which rows are lists and which are actions. It points down while the
+     list is showing and turns up when it is put away. */
+  .sheet-row[aria-expanded]::after {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-left: auto;
+    border: solid var(--muted);
+    border-width: 0 1.6px 1.6px 0;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .sheet-row[aria-expanded="true"]::after { transform: translateY(2px) rotate(-135deg); }
+
+  /* ---- Repertoire ------------------------------------------------------
+     Header (back, name, ⋯) over the board; under it one pane at a time (the
+     line tree, Explorer or Coverage). The board takes the full width when the
+     screen leaves 250px for the header, the pane switch and a few tree rows
+     (430x740 does); a shorter screen trims the board, not the tree. With
+     nothing open the panel is the empty card, which needs 304px whole (its
+     second action row is otherwise under the thumb bar at 390x660). The
+     reserves are set in Round 3 below. */
+  /* Header (back, name, ⋯) over the board: the board's top neighbour here (the
+     board bar is the thumb bar below). Flow layout, one line, vertically
+     centred; the tree's totals close the panel underneath the dock. */
+  #build-rep-header {
+    order: 0;
+    flex: none;
+    display: flex;
+    align-items: center;
+    column-gap: 8px;
+    min-height: var(--phone-head-h);
+    margin: 0;
+    /* The back and ⋯ buttons are 44px targets: a -8px margin pulled the icons
+       to the board's edge but left the ⋯ hit area 8px past the screen. The
+       header's own 4px inset keeps both whole on screen. */
+    padding: 0 4px;
+    border: 0;
+    background: var(--bg);
+  }
+  /* The repertoire's name is this screen's title: it takes the shell's title
+     size and ink, at the same left edge as the board under it. */
+  #build-rep-header .rep-title { flex: 1 1 0; flex-direction: column; align-items: stretch; justify-content: center; gap: 0; }
+  #build-rep-header .rep-name {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    height: 22px;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #build-rep-header .rep-color-sub { display: none; }
+  /* The save state is the title's subline, on every pane (it sat in the
+     Explorer's tools row, so the Moves pane, where edits happen, never showed it). */
+  #build-rep-header .build-sync {
+    align-self: flex-start;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    line-height: 16px;
+  }
+  #build-rep-header .build-sync:is(.is-saved, .is-dirty) { color: var(--label); }
+  #build-rep-header .phone-back { color: var(--text); }
+  #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  #build-rep-header #build-menu { grid-column: 3; }
+  #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
+
+  /* Under the board one pane at a time (the line tree, Explorer or Coverage)
+     so stepping through the tree scrolls the tree and nothing else. */
+  /* The pane switch is one segmented track (the app's .seg: a surface-3 track,
+     the chosen pane on a panel plate), not three grey buttons side by side. */
+  #build-panes {
+    position: sticky;
+    top: -10px;
+    z-index: 9;
+    display: flex;
+    margin: -10px -12px 0;
+    padding: 6px 12px 4px;
+    background: var(--bg);
+  }
+  #build-panes::before {
+    content: "";
+    position: absolute;
+    inset: 6px 12px 4px;
+    z-index: -1;
+    border-radius: calc(var(--radius) + 2px);
+    background: var(--surface-3);
+  }
+  #build-panes > button {
+    flex: 1 1 0;
+    min-height: 44px;
+    border: 2px solid transparent;
+    border-radius: calc(var(--radius) + 2px);
+    background: none;
+    background-clip: padding-box;
+    color: var(--muted);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  #build-panes > button[aria-selected="true"] { background: var(--panel); background-clip: padding-box; color: var(--text); }
+  #view-build #build-sidebar.is-empty #build-panes,
+  #view-build:not([data-pane="explorer"], [data-pane="coverage"]) #build-inspector,
+  #view-build:is([data-pane="explorer"], [data-pane="coverage"]) .build-tree-region,
+  #build-inspector .dock-tabs { display: none !important; }
+
+  #build-sidebar > .panel-body > * { order: 3; }
+  #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
+  #build-sidebar > .panel-body > #build-inspector { order: 1; }
+  #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty),
+  #build-sidebar > .panel-body > .shared-banner:not([hidden]) {
+    border: 0;
+    border-radius: var(--radius-card);
+    background: var(--panel);
+  }
+  /* A shared repertoire: who shared it, then its two actions as one row that
+     fills the card, the copy (the primary) wider than Train. */
+  #shared-banner .shared-banner-text { flex-basis: 100%; }
+  #shared-banner .shared-banner-actions { flex: 1 1 100%; flex-wrap: nowrap; }
+  #shared-banner .shared-banner-actions > .btn { flex: 1 1 0; min-width: 0; }
+  #shared-banner .shared-banner-actions > .btn.primary { flex-grow: 2; }
+  #view-build .tree-wrap { max-height: none; padding: 10px var(--build-pad, 12px); overflow: visible; line-height: 1.6; }
+  #view-build .dock-resizer,
+  #build-inspector .dock-fold { display: none; }
+  #build-inspector { height: auto !important; max-height: none; margin: 0; overflow: hidden; }
+  #build-inspector .dock-tabs { gap: 2px; margin: 10px 12px 0; padding: 2px; border: 0; border-radius: 9px; background: var(--surface-3); }
+  #build-inspector .dock-tabs > [role="tab"] { flex: 1 1 0; min-height: 32px; height: 32px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 14px; font-weight: 500; }
+  #build-inspector .dock-tabs > [role="tab"][aria-selected="true"] { background: var(--line-strong); color: var(--text); box-shadow: none; }
+  #build-inspector .dock-tabs > [role="tab"]::after { content: none; }
+  #build-inspector .dock-body { display: flex !important; flex-direction: column; overflow: visible; }
+  #build-inspector .inspector-panel { overflow: visible; }
+  /* One row, the same in both panes, like Lichess's explorer: the options
+     button names the pane's setting ("Masters", "Mainline · 8 moves") and opens
+     a sheet with the database, scope and horizon; the pane's one action (the
+     Engine switch, Scan) closes the row at the right. Round 1 drew two rows: a
+     full-width track, then the ⓘ, the save chip and the action. */
+  #build-inspector .dock-head { gap: 8px; padding: 8px 12px 0; }
+  #build-inspector .dock-opts { width: auto; max-width: none; padding: 0 14px 0 12px; font-size: 14px; justify-content: flex-start; }
+  #build-inspector .dock-opts-label { display: inline; }
+  #build-inspector .dock-opts .bi { width: 18px; height: 18px; }
+  #build-inspector .dock-engine-switch { min-height: 44px; padding-right: 4px; }
+  #build-inspector .dock-engine-switch .pf-row-label { font-size: 14px; }
+  #build-inspector .inspector-scan { padding: 0 18px; font-size: 14px; }
+  /* The options are a sheet at the thumb, the menus' sheet. */
+  #build-dock-tools {
+    top: auto !important;
+    left: 8px !important;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    max-width: none;
+    padding: 16px;
+    box-shadow: none;
+    animation: phone-sheet-up var(--dur-fast) var(--ease-out);
+  }
+  #build-dock-tools:popover-open { gap: 16px; padding-top: 8px; }
+  #build-dock-tools::backdrop { background: rgba(0, 0, 0, 0.45); }
+  #build-dock-tools .dock-opt { gap: 6px; }
+  #build-dock-tools .dock-opt-label { font-size: 13px; }
+  #build-dock-tools .seg-btn { font-size: 15px; }
+  #build-dock-tools select { padding: 0 34px 0 12px; font-size: 15px; }
+  #build-dock-tools .dock-scope { font-size: 14px; }
+  #build-inspector .explorer-row { min-height: 46px; }
+  /* The row is the action; its Move button (the focusable handle) is as tall
+     as the row, so the target a screen reader and a thumb find is the row's. */
+  #build-inspector .explorer-pick { align-self: stretch; display: flex; align-items: center; min-height: 44px; text-align: left; }
+  /* "White / Draw / Black" broke onto two lines once Eval took a column. One
+     line fits a 390px pane with the eval layout's columns tightened; a narrower
+     one clips the label instead of widening the drawer. */
+  #build-inspector .explorer-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #build-inspector .explorer-rows.has-eval :is(.explorer-head, .explorer-row) {
+    grid-template-columns: minmax(44px, 56px) minmax(40px, 48px) minmax(60px, 68px) minmax(0, 1fr);
+    column-gap: 6px;
+  }
+  /* The engine's line steppers are 18px dots: the dots stay, their tap areas
+     grow to 40px (the readout between them is not a target). */
+  /* The Explorer's engine card keeps one line: on a 360px phone the button's
+     size note goes before the engine's name is clipped mid-word. */
+  @container unlock (max-width: 330px) {
+    #explorer-engine-slot .unlock-size { display: none; }
+  }
+  .engine-step { position: relative; }
+  .engine-step::after { content: ""; position: absolute; inset: -11px; }
+  /* The fork is one row, as Lichess lays out its next-move choices: the label,
+     then the chips in a line that scrolls sideways. Chips are drawn 36px with
+     centred text and a 44px target round each. */
+  #view-build .forkbar { font-size: 13px; flex-wrap: nowrap; gap: 10px; padding: 4px var(--build-pad, 12px); }
+  #view-build .forkbar .fork-chips:not(.is-all) {
+    flex: 1;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 4px 0;
+  }
+  #view-build .forkbar:has(.fork-chips.is-all) { flex-wrap: wrap; }
+  /* The chips are the count: the row keeps its width for them. */
+  #view-build .fork-head .count { display: none; }
+  #view-build .fork-chip {
+    position: relative;
+    flex: none;
+    align-items: center;
+    height: var(--control-h);
+    min-height: 0;
+    padding: 0 12px;
+  }
+  #view-build .fork-chip::after { content: ""; position: absolute; inset: -4px 0; }
+  #view-build .fork-chip small { font-size: var(--fs-s); }
+  /* A move is a thumb target, not a mouse target: the main line runs on a
+     36px pitch (side lines 32px) and each move's hit area fills its line, while
+     the drawn token keeps the score sheet's size (its current-move fill and
+     due/weak dot stay on the text, not on the line's box). */
+  #view-build .mtree { line-height: 36px; }
+  #builder-tree .mtree-line.is-main > .mtree-var { line-height: 32px; }
+  #view-build .mtree-move { position: relative; line-height: 1.6; }
+  #view-build .mtree-move::after { content: ""; position: absolute; inset: -8px -1px; }
+  #view-build .mtree-collapse { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }
+  /* The empty answer is a card under the board. Three buttons side by side
+     clipped "New repertoire" at 390px, so the one action gets the row and the
+     two alternatives share the row under it. It is padded to fit the panel a
+     740px screen leaves (188px measured): the shared 48px padding put the
+     action row under the thumb bar. */
+  #view-build .build-empty { padding: 10px 20px; gap: 2px; }
+  #view-build .build-empty .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-self: stretch;
+    justify-content: stretch;
+    gap: 8px;
+  }
+  #view-build .build-empty .btn { padding: 0 12px; }
+  #view-build .build-empty .btn.primary { flex: 1 1 100%; }
+  #view-build .build-empty .btn:not(.primary) { flex: 1 1 0; min-width: 0; }
+
+  /* ---- Train: Home is a page, a Session and its Result are the board ----
+     Home splits into two panes, Drill and Practice (a segmented control at the
+     top, as the Chess.com app splits its play and lesson screens), so each
+     pane has one primary action, full width at the thumb: Drill's is the Due
+     queue's Start, Practice's is Play under the opponent cards and colour
+     (Chess.com's play-vs-bot setup). A Session reads like a Chessable drill:
+     a top bar (back · mode · scope · n / N) and its progress line above the
+     edge-to-edge board, the coach line under it, and a bottom bar of four
+     labelled icons. The Result keeps the final board above its card. */
+  #view-train[data-train-screen="home"] :is(.board-stack, .board-bar, .blitz-bar),
+  #view-train[data-train-screen="result"] :is(.board-bar, .blitz-bar) { display: none; }
+  #view-train[data-train-screen="result"] .board-stack { pointer-events: none; }
+  #view-train:is([data-train-screen="home"], [data-train-screen="result"]) .study {
+    padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+  }
+  body:has(#view-train.is-active:is([data-train-screen="home"], [data-train-screen="result"])) .tabbar {
+    bottom: 0;
+    height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+    visibility: visible;
+    transition: none;
+  }
+
+  /* Header. Home: the page title. Session and Result: a 48px top bar over the
+     board, the back arrow alone (its word stays for screen readers), the mode
+     and scope as one line of text that ellipsizes, the count at the end. */
+  #view-train .train-head { order: 0; min-height: 52px; padding: 8px var(--phone-gutter) 4px; }
+  #view-train:not([data-train-screen="home"]) .train-head { min-height: var(--phone-head-h); padding: 0 var(--phone-gutter) 0 4px; gap: 4px; }
+  #view-train .train-back { flex: none; width: 44px; padding: 0; justify-content: center; }
+  #view-train .train-back > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #view-train .train-back .bi { width: 22px; height: 22px; }
+  #view-train .train-head-main { gap: 0; font-size: 15px; }
+  #view-train .train-head-mode { flex: none; }
+  #view-train .train-scope-chip { padding: 0; background: none; color: var(--muted); font-size: 15px; font-weight: 400; }
+  #view-train .train-scope-chip::before { content: "\00a0·\00a0"; }
+  #view-train .train-count { padding-left: 8px; font-size: 13px; }
+  #view-train .train-head-prog { order: 0; height: 3px; margin: 0 var(--phone-gutter) 8px; }
+  #view-train[data-train-mode="play"] .train-head-prog { display: none; }
+  #view-train .blitz-bar { order: 1; }
+  #view-train .train-coach {
+    order: 2;
+    flex: none;
+    height: auto;
+    min-height: 48px;
+    margin: 0;
+    padding: 6px var(--phone-gutter);
+    gap: 10px;
+    border: 0;
+    background: var(--bg);
+  }
+  #view-train .train-coach-icon { width: 22px; height: 22px; flex: none; }
+  #view-train .train-coach-title { font-size: 15px; font-weight: 500; }
+  #view-train .train-coach-sub { font-size: 13px; }
+
+  /* Session bottom bar: four labelled icons spread evenly (Menu · Flip ·
+     Hint · Skip, or Menu · Flip · Takeback · Resign). The scope is the top
+     bar's, so the bar carries no text of its own to ellipsize. */
+  #view-train .board-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 4px; padding-inline: 8px; }
+  #view-train .board-bar .board-label { display: none; }
+  #view-train .board-bar .btn.icon { flex-direction: column; gap: 2px; width: 100%; height: 44px; border-radius: var(--radius); }
+  #view-train .board-bar .bl { display: block; font-size: 12px; font-weight: 500; line-height: 14px; }
+  .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
+  .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
+
+  /* Home */
+  /* Home's head is the pages' title row: 44px, the 22px title (a 52px band
+     with a 24px title sat 8px lower than every other page's). */
+  #view-train[data-train-screen="home"] .train-head { min-height: 44px; padding: 0 var(--phone-gutter); }
+  #view-train .train-title { font-size: 24px; font-weight: 500; letter-spacing: -0.01em; }
+  #view-train .train-home { gap: 12px; }
+  /* The panes are navigation, not a setting: underline tabs on one rule, so
+     they never read as a second copy of Practice's colour switch. */
+  #view-train #train-tabs { display: flex; width: 100%; height: 37px; padding: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
+  #view-train .train-tabs .seg-btn { height: 36px; min-height: 0; margin-bottom: -1px; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); font-size: 13px; font-weight: 500; }
+  #view-train .train-tabs .seg-btn.is-active { border-bottom-color: var(--accent); color: var(--text); }
+  #view-train:not([data-train-pane="play"]) .train-row[data-row="play"],
+  #view-train[data-train-pane="play"] .train-row:not([data-row="play"]) { display: none; }
+  #view-train .train-row { gap: 12px; padding: 12px 14px; border-radius: var(--radius-card); }
+  #view-train .train-row-title { font-size: 15px; }
+  #view-train .train-row-meta { font-size: 13px; }
+  #view-train .train-row-opts { flex-wrap: nowrap; }
+  /* An option chip fills its line and reads as a field, the chevron at its end. */
+  #view-train .train-row-opts > .train-chip { flex: 1 1 auto; min-width: 0; padding: 0 14px; }
+  /* Fields share the buttons' corner, so a field and its Start read as one row. */
+  #view-train .train-chip { justify-content: space-between; border-radius: var(--radius); font-size: 14px; }
+  /* Due queue: the lead card. Title and count, scope with Blitz on one line,
+     the next cards, then its Start across the card's foot. */
+  #view-train .train-row[data-row="smart"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "opts" "next" "go"; }
+  #view-train .train-row[data-row="smart"] .train-row-go { width: 100%; }
+  #view-train .train-due-line { align-items: center; min-height: 32px; }
+  /* Rehearse: one line under its title, the repertoire field and its Start. */
+  #view-train .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text text" "opts go"; }
+  #view-train .train-row[data-row="all_lines"] .train-row-go { min-width: 96px; }
+  /* Practice: Opponent cards, Play as, then Random position beside Play. The
+     pane's tab names it, so the card drops its title; the desktop chip gives
+     way to the cards. */
+  #view-train .train-row[data-row="play"] {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "oplabel oplabel" "bots bots" "reps reps" "unlock unlock" "aslabel aslabel" "color color" "lucky go";
+    gap: 8px;
+  }
+  #view-train [data-row="play"] :is(.train-row-text, #train-play-book) { display: none; }
+  #view-train [data-row="play"] .train-row-opts { display: contents; }
+  #view-train [data-row="play"] .train-sec-label { display: block; color: var(--muted); font-size: 14px; font-weight: 500; }
+  #view-train .train-sec-label[data-sec="opponent"] { grid-area: oplabel; }
+  #view-train .train-sec-label[data-sec="color"] { grid-area: aslabel; margin-top: 8px; }
+  #view-train #train-bots { grid-area: bots; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  /* The opponent's repertoires read as a settings row: its name at the
+     left, the pick at the right before the chevron. */
+  #view-train #train-play-reps { grid-area: reps; gap: 8px; padding: 0 14px; }
+  #view-train #train-play-reps::before { content: "Repertoires"; margin-right: auto; color: var(--muted); font-weight: 500; }
+  #view-train [data-row="play"] .train-color { grid-area: color; width: 100%; margin: 0; }
+  #view-train .train-color .seg-btn { font-size: 15px; }
+  #view-train [data-row="play"] [data-unlock-place] { grid-area: unlock; }
+  #view-train .train-lucky-more { display: none; }
+  #view-train [data-row="play"] .train-lucky { grid-area: lucky; margin-top: 8px; padding: 0 16px; font-size: 15px; }
+  #view-train [data-row="play"] .train-row-go { grid-area: go; margin-top: 8px; border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+  #view-train [data-row="play"] .train-row-go:disabled { border-color: var(--surface-3); background: var(--surface-3); color: var(--label); }
+  /* Maia's offer is one line of the card: the engine's name, then its
+     download and the dismiss at the right edge. */
+  #view-train [data-row="play"] [data-unlock-place="train-practice"] .unlock:not(.is-inline) { grid-template-columns: minmax(0, 1fr) auto auto; justify-content: stretch; gap: 4px; }
+  .train-bot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    min-width: 0;
+    min-height: 88px;
+    padding: 14px 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .train-bot:active:not(:disabled) { transform: scale(0.97); }
+  .train-bot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .train-bot.is-on { border-color: var(--accent); outline: 1px solid var(--accent); outline-offset: -2px; color: var(--accent-strong); }
+  .train-bot:disabled { color: var(--label); cursor: default; }
+  .train-bot-icon { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .train-bot-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .train-bot-sub { color: var(--label); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  #view-train #train-home > .train-recent { gap: 8px; padding: 8px 16px 0; border-top: 0; font-size: 14px; }
+
+  /* Session panel and the Result card */
+  #view-train .train-line-path { margin-block: -8px -4px; padding-block: 14px; }
+  #view-train .train-sidebar .tcard {
+    margin: 0;
+    padding: 12px;
+    border: 0;
+    border-radius: var(--radius-card);
+    background: var(--panel);
+    box-shadow: none;
+    font-size: 14px;
+  }
+  /* Up next is rows of the card, not a box inside it; and the banner's line
+     under "Your move" already names the card's kind, so its chip goes. */
+  #view-train .train-progress-panel .upnext { min-height: 0; padding: 0; background: none; }
+  #view-train #train-card-kind { display: none; }
+  #view-train .train-summary { gap: 12px; }
+  #view-train .train-summary > .train-summary-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  #view-train .sum-line { font-size: 15px; }
+  /* The top bar's back arrow is the way home; the actions are one row of
+     equal halves, the primary at the thumb's side. */
+  #view-train .train-summary-actions { flex-wrap: nowrap; }
+  #view-train .train-summary-actions .btn { flex: 1 1 0; min-width: 0; }
+  #view-train .train-summary-actions #play-analyze { order: -1; }
+  #view-train .train-summary-actions .train-link { display: none; }
+  /* The picker is a bottom sheet at the thumb. train-shell.css arrives later
+     with Train's chunk, so these rules carry :root to win over its popover. */
+  :root .train-picker {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 70dvh;
+    border: 0;
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    animation: phone-sheet-up var(--dur-fast) var(--ease-out);
+  }
+  :root .train-picker::backdrop { background: rgba(0, 0, 0, 0.45); }
+  :root .train-pick { min-height: 48px; font-size: 16px; }
+
+  /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */
+  .context-menu:not(.account-menu) {
+    top: auto !important;
+    left: 8px !important;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    max-height: 72dvh;
+    padding: 6px 0;
+    border: 0;
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    animation: phone-sheet-up var(--dur-fast) var(--ease-out);
+  }
+  .context-menu:not(.account-menu)::backdrop { background: rgba(0, 0, 0, 0.45); }
+  .context-menu button {
+    min-height: var(--menu-row-h);
+    padding: 0 18px;
+    border-radius: 0;
+    font-size: 15px;
+  }
+  /* Groups split by a rule instead of a caption, so Delete stays in view. */
+  .context-menu .context-target { padding: 8px 18px 10px; font-size: 14px; text-align: center; }
+  .context-menu .context-section { display: none; }
+  /* Only between groups: a rule at the top of the menu splits nothing. */
+  .context-menu button ~ .context-section + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
+
+  /* ---- Dialogs: bottom sheets ------------------------------------------
+     Sign in, confirm, share and invite rise from the bottom edge like every
+     other phone sheet, full width, with 48px fields and thumb-sized buttons.
+     A 380px card floating at the top left its Sign in button in the hardest
+     place to reach, and its 32px fields under the iOS 44px floor. */
+  /* :root + element: beats a dialog's own desktop width (.share-modal,
+     .welcome, .modal.training-history) wherever its CSS loads. The More
+     sheet keeps its floating inset (below). */
+  :root dialog.modal:not(.sheet) {
+    inset: auto 0 0;
+    margin: auto 0 0;
+    width: 100%;
+    max-width: none;
+  }
+  .modal {
+    max-height: calc(100dvh - env(safe-area-inset-top) - 24px);
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+  }
+  .modal:not([open], :popover-open) { transform: translateY(24%); }
+  @starting-style {
+    .modal:is([open], :popover-open) { transform: translateY(24%); }
+  }
+  .modal-title { display: flex; align-items: center; min-height: 44px; padding: 6px 8px 6px var(--phone-gutter); font-size: 16px; }
+  .modal-body { gap: 14px; padding: 0 var(--phone-gutter) 16px; }
+  .modal-field > span { font-size: 13px; }
+  .modal-field :is(input, select) { padding: 0 14px; }
+  .modal-footer { flex-wrap: nowrap; gap: 8px; padding: 8px var(--phone-gutter) 16px; }
+  /* A dialog's footer is one row at the thumb, never two: the actions share it
+     in equal parts and a label that cannot fit is shortened at its source,
+     not wrapped (a wrapped footer left "Back" alone on a line over a
+     full-width "Download 99 MB and start"). Both must read as buttons, so a
+     ghost Back / Cancel takes the quiet fill instead of floating as a word. */
+  .modal-footer .btn { flex: 1 1 0; min-width: 0; overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+  .modal-footer .btn.ghost:not(.danger) { background: var(--surface-3); }
+  /* One primary: the quiet action keeps its label's width, the primary takes
+     the rest of the row (the Chess.com dialog footer). */
+  .modal-footer:has(.btn.primary) .btn:not(.primary) { flex: 0 0 auto; min-width: 104px; padding: 0 16px; }
+  .auth-close { width: 36px; height: 36px; margin-left: auto; font-size: 24px; }
+  .auth-modal .auth-google { font-size: 15px; }
+  .auth-link { min-height: 36px; padding: 0 2px; font-size: 14px; }
+  .auth-footer { flex-direction: column-reverse; align-items: stretch; }
+  .auth-footer .btn { flex: none; width: 100%; }
+  .auth-footer .auth-switch { align-self: center; font-size: 14px; }
+
+  /* ---- More sheet: one grouped list ---------------------------------------- */
+  .sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
+  .sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    inset: auto 0 0;
+    width: auto;
+    max-width: none;
+    margin: auto 8px calc(8px + env(safe-area-inset-bottom));
+    padding: 6px 0;
+    border-radius: var(--radius-card);
+  }
+  .sheet-item {
+    min-height: 44px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .sheet-item:not([hidden]) ~ .sheet-item { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
+  .sheet-item .ic { width: 22px; height: 22px; color: var(--accent-strong); }
+  .sheet-item:active { background: var(--surface-3); }
+  /* Three groups, the way the Chess.com More screen reads: who you are, where
+     else to go, then the utilities. A band of the recessed tone splits them,
+     so a group's first row carries no rule of its own. */
+  .sheet .sheet-sep { height: 8px; margin: 4px 0; background: var(--surface-3); }
+  .sheet .sheet-sep + .sheet-item:not([hidden]),
+  .sheet .sheet-sep + [hidden] + .sheet-item { box-shadow: none; }
+  /* The account is the sheet's head: a taller row, the name in ink, a chevron
+     because it opens the account menu (or Sign in). */
+  #sheet-account { min-height: 60px; font-weight: 500; text-align: left; }
+  #sheet-account .avatar { width: 32px; height: 32px; }
+  #sheet-account-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #sheet-account .sheet-chev { display: block; flex: none; width: 18px; height: 18px; color: var(--label); }
+  body.is-guest #sheet-account-label { color: var(--accent-strong); }
+  /* The command palette is a keyboard tool: a touch screen has no use for it. */
+  @media (hover: none) {
+    #sheet-palette { display: none; }
+  }
+
+  /* ---- Notifications: one compact card, bottom-right ------------------- */
+  /* Above the tab bar (pages) or the thumb bar (study screens), clear of the
+     board and Analyze's chart. Only the newest card shows; the next surfaces
+     when it leaves. Swipe it away or tap ×. */
+  /* A snackbar, as the Chess.com and Lichess apps show one: the width of the
+     screen less its gutters, the message on the left and its one action as a
+     tinted word on the same line, never a filled button parked alone on a
+     second line under the message. */
+  .notices {
+    right: 8px;
+    left: 8px;
+    bottom: calc(var(--phone-bar-h) + 8px + env(safe-area-inset-bottom));
+    width: auto;
+  }
+  .notices > .notice:not(:last-child) { display: none; }
+  .notice {
+    min-height: 44px;
+    padding: 6px 2px 6px 12px;
+    column-gap: 8px;
+    border-radius: var(--radius-card);
+    font-size: 14px;
+  }
+  .notice-text { font-size: 12px; }
+  .notice-title[hidden] + .notice-text { font-size: 14px; }
+  .notice:not([data-tone="error"], .has-actions, :hover, :focus-within) .notice-close { opacity: 1; }
+  .notice-close { width: 44px; height: 44px; }
+  .notice-action,
+  .notice-stop { height: 44px; padding: 0 10px; border: 0; background: none; font-size: 15px; }
+  .notice-action,
+  .notice-action.is-primary { color: var(--accent-strong); font-weight: 500; }
+  .notice-action.is-primary { border: 0; background: none; }
+  .notice-action.is-primary:hover { border: 0; background: var(--surface-3); }
+  .notice:has(.notice-action) .notice-actions { grid-column: 3; grid-row: 1; gap: 0; margin: 0; padding: 0; }
+  .job-dock > .notice { min-height: 0; padding: 8px 6px 8px 10px; font-size: var(--fs); }
+
+  /* The tab bar is chrome: it is the same white as the cards and sits on the
+     page ground, told apart by a tone step rather than a shadow. Its top rule
+     is an inset shadow, not a border, so the bar is the height its items fill. */
+  .tabbar { height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom)); border-top: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: the bar's top rule */ }
+  .tabbar .tabbar-item {
+    min-height: 0;
+    height: var(--phone-bar-h);
+    gap: 2px;
+    color: var(--label);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .tabbar .tabbar-item svg { width: 20px; height: 20px; }
+  /* A touch screen keeps :hover on the last tab tapped, so the shared .tab
+     hover fill sat on it as a grey block after every switch. The press is the
+     tab's scale; the open destination is its ink. */
+  .tabbar .tabbar-item:hover { background: none; }
+  /* The open destination is ink; the mark is the same 1px accent line the
+     desktop rail uses, on the bar's nearest edge (its top), as wide as the
+     label it names. */
+  .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 500; }
+  .tabbar .tabbar-item { position: relative; }
+  .tabbar .tabbar-item.is-active::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 40px;
+    height: 1px;
+    background: var(--accent);
+    transform: translateX(-50%);
+  }
+
+  /* ---- Round 5: one board, competitor density ------------------------------
+     Measured on Lichess at 390x664 and 390x844 (mobile Safari UA): the board is
+     the full width on every board screen and never resizes for a pane; under
+     it a 48px control band (41px buttons), 37px tabs, 14.5px moves on a 25px
+     pitch, 12-15px text. So here: the same board under one 44px top strip
+     (Build's header, Train's top bar, Analyze's eval band) on every screen and
+     tab; the region under it scrolls; a screen too short to leave it 140px
+     scrolls the study itself, the board going up with it (Lichess's page). The
+     44px of Apple's guideline is a hit area, not a drawn size: small visuals
+     reach it through padding or an ::after. */
+  :root { --phone-head-h: 44px; --phone-tab-h: 36px; }
+  .study .board-stack { width: 100vw; }
+  /* No scrollbar gutter and no sideways scroll: the study only scrolls down.
+     With overflow-x left auto, a nearest-scrollIntoView nudged it sideways
+     and the 100vw board sat 1px off the left edge. */
+  :is(#view-analyze, #view-build, #view-train) .study { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  :is(#view-analyze, #view-build, #view-train) .study::-webkit-scrollbar { display: none; }
+  .study .board-bar { position: sticky; bottom: 0; z-index: 5; }
+  :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) { flex: 1 0 140px; padding: 0 var(--phone-gutter) 12px; }
+
+  /* Pane tabs (Build's, Analyze's): Lichess's tool tabs, drawn as underline
+     tabs on the row's rule; each tab is the full 36px row, its hit area 44. */
+  #build-panes {
+    position: sticky;
+    top: 0;
+    gap: 0;
+    height: var(--phone-tab-h);
+    margin: 0 calc(-1 * var(--phone-gutter)) 4px;
+    padding: 0 var(--phone-gutter);
+    box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the tab row's rule */
+  }
+  #build-panes::before { content: none; }
+  #build-panes > button {
+    position: relative;
+    min-height: 0;
+    height: var(--phone-tab-h);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    font-size: 13px;
+  }
+  #build-panes > button[aria-selected="true"] { border-bottom-color: var(--accent); background: none; }
+  /* The band grows 10px down from the 34px padding box into the pane's top
+     (the board above keeps its last rank): a 44px target round a 36px tab.
+     The row sits over the pane so the band is what a finger meets there. */
+  #build-panes { z-index: 2; }
+  #build-panes > button::after { content: ""; position: absolute; inset: 0 0 -10px; }
+  #view-build #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty) { border-radius: 0; background: none; }
+  #view-build .tree-wrap { padding: 4px 0; font-size: 14px; line-height: 28px; }
+
+  /* Train session: the progress line is the top bar's lower edge, so the board
+     starts at 44 here too. */
+  #view-train .train-head { position: relative; }
+  #view-train .train-head-prog { position: absolute; left: var(--phone-gutter); right: var(--phone-gutter); bottom: 0; margin: 0; }
+  #view-train:not([data-train-screen="home"], [data-train-screen="result"]) .train-sidebar > .panel-scroll { padding-block: 0; }
+}

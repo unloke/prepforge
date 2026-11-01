@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { eagerCss as sharedCss } from "../test-styles-source.js";
+import { cssSource, eagerCss as sharedCss } from "../test-styles-source.js";
 
 // Settings is a thumb target on a phone: switches were 38x26 and the info
 // buttons 24x24, both under the 40px target. The phone sheets (settings.css +
 // phone.css) set the sizes; these rules keep a later edit from shrinking them.
 const settingsCss = readFileSync(new URL("./settings.css", import.meta.url), "utf8");
-const phoneCss = readFileSync(new URL("../phone.css", import.meta.url), "utf8");
+const phoneCss = cssSource("phone.css");
 
 function ruleBody(css, selector) {
   const at = css.indexOf(selector + " {");

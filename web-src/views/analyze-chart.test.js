@@ -7,15 +7,12 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
-import { eagerCss as STYLES } from "../test-styles-source.js";
+import { cssSource, eagerCss as STYLES } from "../test-styles-source.js";
 
 // The chart rules ship in a lazy sheet (loaded with the Analyze view) so the
 // eager styles.css stays under its deploy budget. The token contract spans both:
 // theme variables live in styles.css, the chart selectors in analyze-chart.css.
-const CHART_STYLES = readFileSync(
-  new URL("./analyze-chart.css", import.meta.url),
-  "utf8",
-);
+const CHART_STYLES = cssSource("views/analyze-chart.css");
 const ALL_STYLES = `${STYLES}\n${CHART_STYLES}`;
 
 // ---- Minimal fake DOM -------------------------------------------------------

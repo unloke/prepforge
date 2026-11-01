@@ -1,0 +1,827 @@
+/* Analyze on a phone, the report key (every width), then the later phone rounds. */
+
+/* ---- Phone ------------------------------------------------------------
+   Shell, thumb bar and sheets in phone.css. One screen, no page scroll: the
+   evaluation (figure and game graph) over the board, the board pinned, then
+   the open pillar, then the pillar tabs right above the thumb bar, where a
+   thumb reaches them. The coach is a tab here. The game sources are the
+   Games sheet, and fill the screen under the board while no game is loaded. */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  #view-analyze {
+    --phone-eval-h: 64px;
+    --phone-tabs-h: 44px;
+  }
+  #analyze-sidebar :is(.panel-scroll, .analyze-main) { display: contents; }
+  #analyze-sidebar .panel-scroll > *,
+  .analyze-main > * { order: 2; flex: none; min-width: 0; }
+
+  /* The evaluation: the figure, then the game graph, one band. A finger on the
+     graph scrubs the game; the band never changes height. 64px, not 56: the
+     readout ("4. Ba4 · +0.22 · Best") is a whole line, and at 44px of graph it
+     sat on the curve it was reading. */
+  #view-analyze #analysis-eval-card {
+    order: 0;
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0 10px;
+    height: var(--phone-eval-h);
+    padding: 6px var(--phone-gutter);
+    margin: 0;
+    border-radius: 0;
+    background: var(--bg);
+  }
+  #analysis-eval-card > :not(.ev-head) { grid-row: 1; grid-column: 2; }
+  /* The word stays inside the figure's 72px column instead of running under the graph. */
+  #analysis-eval-card .ev-title { grid-area: 1 / 1; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  #analysis-eval-card .ev-meter { display: none; }
+  #analysis-eval-card .eval-chart { border-radius: 6px; touch-action: pan-y; }
+  #analysis-eval-card > .analysis-job-dock:not(:empty) {
+    position: absolute;
+    top: 6px;
+    right: var(--phone-gutter);
+    padding: 0 8px;
+    border-radius: 6px;
+    background: var(--panel);
+  }
+
+  /* The coach, when its tab is open: the review switch, the verdict (it scrolls
+     inside), the human picks, the prep note. The panel keeps its place; the
+     verdict takes the room, so a long one reads instead of ending in a band of
+     plain ground (measured at 390x844: 292px of card for 26px of verdict). */
+  #analysis-explain {
+    order: 2;
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 4px var(--phone-gutter);
+    border-radius: 0;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  /* Another pillar open: the coach steps aside, but its Analyze action stays in
+     the thumb bar (phone.css places it there). */
+  #view-analyze:not([data-pane="coach"]) #analysis-explain,
+  #view-analyze:not([data-pane="coach"]) #analysis-explain .cc-head { display: contents; }
+  #view-analyze:not([data-pane="coach"]) #analysis-explain > :not(.cc-head),
+  #view-analyze:not([data-pane="coach"]) #analysis-explain .cc-head > :not(#analyze-actions) { display: none; }
+  #analysis-explain > * { flex: none; margin: 0; }
+  #analysis-explain .cc-head { gap: 6px; min-height: 0; }
+  #analysis-explain .cc-head > b { display: none; }
+  #analysis-explain .cc-switch-label { display: block; flex: none; color: var(--muted); font-size: 14px; white-space: nowrap; cursor: pointer; }
+  /* The verdict hugs its words: the tone rule is the note's own height, never a
+     full-height column beside a one-line sentence. What it cannot fit scrolls
+     inside itself rather than pushing the rows under it down the screen, and
+     the rows keep their order from the top — the room a tall phone leaves over
+     falls at the panel's end, where the tab strip's tone closes it, not between
+     the verdict and the action that answers it. */
+  #analysis-explain .coach-prose {
+    flex: 0 1 auto;
+    min-height: 0;
+    padding-left: 10px;
+    font-size: 16px;
+    line-height: 1.4;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  /* On phones the coach head floats beside the text. The switch is a 22px
+     control: its own padding gives it a 44px target (the border-box stays at a
+     knob-tall 22px, so the header keeps its height). */
+  #analysis-explain .cc-head .pf-switch {
+    position: relative;
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: none;
+  }
+  #analysis-explain .cc-head .pf-switch.is-on { background: none; }
+  #analysis-explain .cc-head .pf-switch .pf-knob { display: none; }
+  #analysis-explain .cc-head .pf-switch::before {
+    content: "";
+    position: absolute;
+    top: 11px;
+    left: 3px;
+    width: 34px;
+    height: 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--panel-soft);
+  }
+  /* The switch is a form control: it keeps its own edge (data-ui). */
+  #analysis-explain .cc-head .pf-switch[data-ui]::before {
+    border: 1px solid var(--line-strong);
+  }
+  #analysis-explain .cc-head .pf-switch::after {
+    content: "";
+    position: absolute;
+    top: 14px;
+    left: 6px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  #analysis-explain .cc-head .pf-switch.is-on::before { border-color: var(--accent); background: var(--accent); }
+  #analysis-explain .cc-head .pf-switch.is-on::after { background: #ffffff; transform: translateX(16px); }
+  @media (prefers-reduced-motion: reduce) {
+    #analysis-explain .cc-head .pf-switch::after { transition: none; }
+  }
+  /* 32px of row for 28px pills (each keeps a 44px target): five picks fit across
+     a 390px phone, and the verdict above keeps three lines on a 664px one. */
+  #analysis-explain .coach-maia { height: 32px; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; gap: 4px; padding: 0 7px; }
+  #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
+  #analysis-explain .coach-bookline { max-height: none; }
+  /* One 44px row: the steps, the label and the Best/Retry action share the
+     thumb height (the steps were 36x40 beside a 44px label). */
+  #analysis-explain .cr-step { width: 44px; height: 44px; }
+  #analysis-explain .cr-count { display: none; }
+  #analysis-explain .coach-review > .btn { height: 44px; min-height: 44px; padding: 0 10px; }
+  #analysis-explain .cr-label { height: 44px; line-height: 44px; }
+  /* The engine-offer row keeps its one line, but its two controls are a thumb's
+     size here (they were 22px: a pointer's row). The row's height is the
+     controls' height, so nothing overlaps the verdict above it. */
+  #analysis-explain .coach-unlock .unlock.is-inline { height: 44px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x { width: 44px; height: 44px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x svg { width: 16px; height: 16px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text b,
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { font-size: 13px; }
+  /* The gain is a sentence ("What players at your rating would play"), not a
+     number: on a phone's 358px row it clipped at "woul…" beside the two
+     controls. It wraps to two 13px lines inside the same 44px, and the name
+     drops to its own line above it rather than sharing one. */
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text { display: grid; gap: 0; white-space: normal; line-height: 15px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 14px; white-space: normal; }
+
+  /* The open pillar fills the room over the tabs; the tabs sit on the thumb bar. */
+  .an-panes {
+    order: 3;
+    flex: 1 1 0;
+    min-height: 0;
+    gap: 0;
+  }
+  #view-analyze[data-pane="coach"] .an-panes { flex: none; }
+  .an-panes > .an-tabs {
+    display: flex;
+    order: 2;
+    height: var(--phone-tabs-h);
+    box-sizing: border-box;
+    margin: 0 var(--phone-gutter) 6px;
+    padding: 3px;
+    border-radius: 12px;
+  }
+  /* The whole strip is the target: a tab fills its track top to bottom and its
+     name is centred in that height (the 44px track is set further down). */
+  .an-tab { position: relative; height: auto; align-self: stretch; font-size: 14px; border-radius: 9px; }
+  .an-tab[data-pane="coach"]:not([hidden]) { display: block; }
+  /* A phone steps the game under the board; it has no score sheet tab. */
+  .an-tab[data-pane="moves"] { display: none; }
+  .an-pane {
+    flex: 1 1 auto;
+    padding: 8px var(--phone-gutter) 10px;
+    overscroll-behavior: contain;
+  }
+  /* The tab names the pane, so the report's own summary would say it twice. */
+  .an-panes > .report-pane > summary { display: none; }
+  .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
+  #view-analyze:not([data-pane="engine"]) .engine-pane,
+  #view-analyze:not([data-pane="report"]) .report-pane,
+  #view-analyze:not([data-pane="moves"]) .moves-pane { display: none; }
+  #view-analyze[data-pane="report"] .an-panes > .report-pane { display: flex; }
+  #view-analyze[data-pane="moves"] .an-panes > .moves-pane:not([hidden]) { display: flex; }
+  #view-analyze[data-pane="engine"] .an-panes > .engine-pane { display: grid; }
+  .an-pane-head { min-height: 32px; }
+  .engine-pane .an-pane-head > b { display: none; }
+  /* The engine card on a phone is a short band over the board. Its controls are
+     a thumb's size (the shared row draws them at 22px for a pointer), and the
+     gain is a sentence, not a number: beside a 141px button it clipped at
+     "Deeper evaluatio…", so the name takes its own line and the gain wraps to
+     two 13px lines inside the 44px the button already set. */
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) { min-height: 44px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) > .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-x { width: 44px; height: 44px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-x svg { width: 16px; height: 16px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-text { display: grid; gap: 0; white-space: normal; line-height: 15px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 14px; white-space: normal; }
+  /* Analyze's one action is the pill in the thumb bar (phone.css draws it at
+     40px, a pointer's height): it is the control a thumb is meant to land on,
+     so it takes the 44px floor. The bar is 56px, so 6px stays above and below. */
+  #view-analyze #run-analysis { height: 44px; bottom: calc(env(safe-area-inset-bottom) + (var(--phone-bar-h) - 44px) / 2); }
+  /* The engine's head row is a thumb row: the depth, the line stepper and the
+     Live switch all sit on it. */
+  #analysis-engine-pane .an-pane-head { min-height: 44px; }
+  #analysis-engine-pane .ev-engine { height: 44px; padding: 0 16px 0 14px; font-size: 14px; }
+  /* Engine off: Live is the pane's only control, so it starts on the pane's
+     edge instead of floating at the far end of an empty head row. */
+  #analysis-engine-pane:not(:has(.engine-window:not([hidden]))) .ev-engine { grid-area: 1 / 1; }
+  /* A line is a row a thumb picks: 44px tall, its text at the row's middle. */
+  #analysis-engine-slot .engine-pv,
+  #analysis-engine-slot .engine-pv.is-top { height: 44px; min-height: 44px; font-size: 14px; }
+  #analysis-engine-slot .engine-pv-line { line-height: 44px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* The stepper is a 32px dot, which is a pointer's size. Its own box stays the
+     dot; the head row's 44px is the hit area a thumb gets, without a bigger
+     accent circle or a row that overlaps its neighbour. */
+  #analysis-engine-slot[data-ui] .engine-step { position: relative; width: 32px; height: 32px; }
+  #analysis-engine-slot[data-ui] .engine-step::after { content: ""; position: absolute; inset: -6px; }
+  .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
+  .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
+  .moves-grid .mtree-line.is-main > .mtree-num { justify-content: flex-end; }
+  .rp-tr { min-height: 36px; }
+  .rp-n { height: 36px; line-height: 36px; }
+  .rp-phase { min-height: 44px; justify-content: center; }
+  /* A phase head is read on a phone: 12px, not the 11px chrome size (the seven
+     grade heads keep 11px, where "Brilliant" and "Blunder" still fit). */
+  .rp-phase.rp-col { font-size: 12px; }
+  /* "4…Nxe5" is one token: it never breaks after the move number. */
+  .km-move { white-space: nowrap; }
+  .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
+  .analysis-retry-save:not([hidden]),
+  .analysis-import-picker:not([hidden]) { margin: 6px var(--phone-gutter); padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
+
+  /* The Games sheet: where games come from. */
+  #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
+  /* No game: the Games sheet fills the screen, so its button leaves the bar
+     and the bar closes up (a hidden 44px track left a hole between Menu and
+     Flip), with the pill centred in the wider middle. */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 52px 52px; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar .bb-sheet { display: none; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #run-analysis { --pill-left: 106px; }
+  /* 360-374px: the 84px middle clipped the pill's padding; the arrows give 4px
+     each and the pill pads 14px, so "Analyze" sits whole. */
+  @media (min-width: 360px) and (max-width: 374px) {
+    #view-analyze .board-bar { grid-template-columns: 44px 44px 44px minmax(0, 1fr) 48px 48px; }
+    #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 48px 48px; }
+    #view-analyze .board-bar :is(#analysis-prev, #analysis-next) { width: 48px; }
+    #view-analyze #run-analysis { right: 114px; max-width: calc(100% - var(--pill-left) - 114px); padding: 0 14px; }
+  }
+  @media (max-width: 359px) {
+    #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 40px 40px minmax(0, 1fr) 44px 44px; }
+    #view-analyze:not(:has(#analysis-results:not([hidden]))) #run-analysis { --pill-left: 98px; }
+  }
+  :is(#analyze-open) :is(#pgn-drawer, #history-drawer:not([hidden])) {
+    margin: 0;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--surface-3);
+  }
+  /* The sheet's rows are the entry points (Last game / Past analyses / Paste a
+     PGN), so a drawer's own summary would name the same action twice. */
+  #analyze-open > .drawer > summary { display: none; }
+  #analyze-open > .drawer:not([open]) { display: none; }
+  #pgn-input { min-height: 120px; }
+  #analyze-open .pgn-editor { border-radius: 10px; }
+  #analyze-open .pgn-action { font-size: 14px; }
+  /* The open button is the whole row (it was its 18px line beside a 44px bin). */
+  #analyze-open .history-item { min-height: 48px; padding: 2px 2px; font-size: 15px; }
+  #analyze-open .history-item .hi-open { min-height: 44px; font-size: 15px; }
+  #analyze-open .history-item .hi-meta { font-size: 13px; }
+  /* Touch target, and always visible: a phone has no hover to reveal it. */
+  #analyze-open .history-item .hi-delete {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    border-color: transparent;
+    background: none;
+    opacity: 1;
+  }
+
+  /* No game yet: the sources fill the screen under the board, the pillars and
+     the coach step aside (Analyze stays in the thumb bar). */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes { display: none; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open {
+    order: 3;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    padding: 4px 12px 16px;
+    overflow-y: auto;
+  }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open > * { flex: none; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open :is(.sheet-rows, #pgn-drawer, #history-drawer:not([hidden])) { background: var(--panel); }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain,
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain .cc-head { display: contents; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain > :not(.cc-head),
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain .cc-head > :not(#analyze-actions) { display: none; }
+}
+
+
+/* ---- Report: symbol heads and their key (every width) ---------------------
+   Seven grade columns cut their words on a phone ("Inacc…", "Brilli…"). Each
+   head is the board badge instead (the grade's symbol on its colour), named in
+   aria-label and the tooltip; Key opens the names as a legend on demand. */
+.rp-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rp-key-btn {
+  flex: none;
+  height: var(--control-h-sm);
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 500;
+  cursor: pointer;
+}
+.rp-key-btn:hover, .rp-key-btn[aria-expanded="true"] { background: var(--surface-3); color: var(--text); }
+.rp-key-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.rp-badge {
+  --badge: var(--label);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--badge);
+  color: var(--accent-ink);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+.rp-badge.g-brilliant { --badge: var(--brilliant); }
+.rp-badge.g-great { --badge: var(--great); }
+.rp-badge:is(.g-best, .g-good) { --badge: var(--good); }
+/* White on the amber is 2.9:1: this one badge takes dark ink. */
+.rp-badge.g-inaccuracy { --badge: var(--inaccuracy); color: #1b1c1e; }
+.rp-badge.g-mistake { --badge: var(--warn); }
+.rp-badge.g-blunder { --badge: var(--danger); }
+.rp-badge.g-missed { --badge: var(--missed); }
+.rp-col { justify-content: center; }
+.rp-key {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 4px 12px;
+  margin: 0;
+  padding: 4px 0 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--fs-s);
+}
+.rp-key[hidden] { display: none; }
+.rp-key li { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+
+/* The run's saved line for the shown position: a phone's engine pane shows it
+   while the live engine is off (below). */
+#analysis-saved-line { display: none; }
+
+/* ---- Phone, round 2: composition ------------------------------------------
+   Lichess mobile and Chess.com's Game Review: the evaluation over the board,
+   the board, one scrolling strip of the game's moves under it, then the open
+   pane (the coach's bubble, the engine's lines or the report), the pane tabs
+   and the thumb bar. Each row is one line at every phone width. */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  #view-analyze {
+    --phone-strip-h: 44px;
+    --phone-tabs-h: 50px;
+  }
+  /* The panes take their own places in the screen's column. */
+  #view-analyze:has(#analysis-results:not([hidden])) .an-panes { display: contents; }
+  #view-analyze .board-bar { order: 6; }
+  #view-analyze #analysis-explain,
+  #view-analyze .an-pane,
+  #view-analyze .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { order: 3; }
+  #view-analyze .an-panes > .an-tabs { order: 4; }
+
+  /* The move strip: the game as one line that scrolls sideways, the shown move
+     filled and kept in the middle (movetree.js centres it). A graded move
+     carries its symbol in the grade's colour, as on the board. */
+  #view-analyze #analysis-results.moves-pane:not([hidden]) {
+    order: 2;
+    display: block;
+    flex: none;
+    height: var(--phone-strip-h);
+    padding: 0;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  #view-analyze #analysis-moves {
+    height: var(--phone-strip-h);
+    max-height: none;
+    border-radius: 0;
+    font-size: 15px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  #view-analyze #analysis-moves::-webkit-scrollbar { display: none; }
+  #analysis-moves .mtree { display: flex; width: max-content; height: 100%; }
+  #view-analyze #analysis-moves .mtree-line.is-main {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0;
+    height: 100%;
+    padding: 0 var(--phone-gutter);
+  }
+  #analysis-moves .mtree-line.is-main > .mtree-num,
+  #analysis-moves .mtree-var .mtree-num {
+    flex: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0 2px 0 10px;
+    background: none;
+    color: var(--label);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #analysis-moves .mtree-line.is-main > .mtree-num:first-child { padding-left: 0; }
+  /* A move is a 44px target; its pill is the middle 32px. */
+  #view-analyze #analysis-moves .mtree-move {
+    position: relative;
+    z-index: 0;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 0;
+    margin: 0;
+    padding: 0 8px;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    font-weight: 500;
+  }
+  #view-analyze #analysis-moves .mtree-move::before {
+    content: "";
+    position: absolute;
+    inset: 6px 0;
+    z-index: -1;
+    border-radius: 8px;
+    background: transparent;
+  }
+  #view-analyze #analysis-moves .mtree-move:active::before { background: var(--surface-3); }
+  #view-analyze #analysis-moves .mtree-move.is-current { color: var(--accent-ink); }
+  #view-analyze #analysis-moves .mtree-move.is-current::before { background: var(--accent); }
+  #view-analyze #analysis-moves .mtree-move.on-path { background: none; color: var(--text); }
+  #analysis-moves .mtree-glyph { font-size: 13px; }
+  /* Only the variation being read shows, inline after its move. */
+  #analysis-moves .mtree-var { display: none; }
+  #analysis-moves .mtree-var.is-on-path {
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: 100%;
+    margin: 0 4px;
+    padding: 0 0 0 8px;
+  }
+  #analysis-moves .mtree-var.is-on-path::before { top: 12px; bottom: 12px; background: var(--accent); }
+  #analysis-moves .mtree-var .mtree-tok { display: flex; align-items: center; }
+
+  /* The coach's bubble (Chess.com): the moment and its key-moment steps on one
+     44px line, the verdict in a bubble under it, then the human picks. The
+     grading switch lives in the engine pane here (analyze-panes.js). */
+  #view-analyze[data-pane="coach"] #analysis-explain { gap: 8px; padding: 6px var(--phone-gutter) 8px; }
+  #analysis-explain:has(> .coach-review:not([hidden])) .cc-head { display: contents; }
+  #analysis-explain:has(> .coach-review:not([hidden])) .cc-head > :not(#analyze-actions) { display: none; }
+  #analysis-explain > .coach-review { order: -1; gap: 0; height: 44px; }
+  #analysis-explain .coach-review > .cr-label { order: 0; flex: 1 1 auto; gap: 8px; padding: 0; font-size: 15px; font-weight: 500; }
+  /* Retry is the moment's one action: the accent's tint, the steps' shape. */
+  #analysis-explain .coach-review > .btn { order: 1; margin: 0 8px 0 auto; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); padding: 0 14px; font-weight: 500; }
+  #analysis-explain .coach-review > .cr-step { order: 2; width: 48px; border-radius: 12px 4px 4px 12px; }
+  #analysis-explain .coach-review > .cr-step ~ .cr-step { order: 3; margin-left: 2px; border-radius: 4px 12px 12px 4px; }
+  #analysis-explain .coach-review > .cr-label + .cr-step { margin-left: auto; }
+  #analysis-explain .coach-review > .btn + .cr-step,
+  #analysis-explain .coach-review > .cr-step:has(~ .btn) { margin-left: 0; }
+  /* The moment's grade is the board's badge, not a loose glyph. */
+  #analysis-explain .cr-label .rp-glyph {
+    display: inline-grid;
+    place-items: center;
+    align-self: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--label);
+    color: var(--accent-ink);
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: -0.06em;
+  }
+  #analysis-explain .cr-label .rp-glyph:empty { display: none; }
+  #analysis-explain .cr-label.g-brilliant .rp-glyph { background: var(--brilliant); }
+  #analysis-explain .cr-label.g-great .rp-glyph { background: var(--great); }
+  #analysis-explain .cr-label.g-mistake .rp-glyph { background: var(--warn); }
+  #analysis-explain .cr-label.g-blunder .rp-glyph { background: var(--danger); }
+  #analysis-explain .coach-prose {
+    flex: 0 1 auto;
+    padding: 10px 14px 10px 12px;
+    border-left-width: 3px;
+    border-radius: 3px 14px 14px 3px;
+    background: var(--panel);
+  }
+  #analysis-explain .coach-unlock .unlock.is-inline { padding: 0; }
+
+  /* The engine pane: its head row (Live, and the depth and line count while it
+     runs), the lines (or the run's saved line), then the grading switch as a
+     settings row at the pane's end. */
+  #analysis-engine-pane .cc-switch-label,
+  #analysis-engine-pane .pf-switch { order: 10; }
+  #analysis-engine-pane .cc-switch-label { display: block; grid-column: 1 / 5; color: var(--text); font-size: 15px; white-space: nowrap; cursor: pointer; }
+  #analysis-engine-pane .pf-switch { grid-column: 5; justify-self: end; margin-right: -6px; }
+  #analysis-engine-pane > #analysis-saved-line { grid-column: 1 / -1; }
+  #analysis-engine-pane .pf-switch {
+    position: relative;
+    box-sizing: border-box;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: none;
+  }
+  #analysis-engine-pane .pf-switch .pf-knob { display: none; }
+  #analysis-engine-pane .pf-switch::before {
+    content: "";
+    position: absolute;
+    top: 13px;
+    left: 3px;
+    width: 34px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--panel-soft);
+    box-shadow: inset 0 0 0 1px var(--line-strong); /* taste-skill-ignore: a switch track's edge */
+  }
+  #analysis-engine-pane .pf-switch::after {
+    content: "";
+    position: absolute;
+    top: 16px;
+    left: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  #analysis-engine-pane .pf-switch.is-on::before { background: var(--accent); box-shadow: none; }
+  #analysis-engine-pane .pf-switch.is-on::after { background: #ffffff; transform: translateX(16px); }
+
+  /* Live off: the run's own line, set as a live engine line is. */
+  #analysis-engine-pane:not(:has(.engine-window:not([hidden]))) #analysis-saved-line:not([hidden]) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  #analysis-saved-line .sl-eval { flex: none; min-width: 48px; font-variant-numeric: tabular-nums; }
+  #analysis-saved-line .sl-pv { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  #analysis-saved-line .sl-depth { flex: none; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+  /* Pane tabs: each tab is the whole 44px track (a thumb on the word's edge
+     still lands on it); the selected pill is drawn 3px inside it. */
+  #view-analyze .an-panes > .an-tabs { height: 44px; padding: 0; gap: 0; }
+  #view-analyze .an-tab { height: 44px; align-self: auto; background: none; border-radius: 12px; }
+  #view-analyze .an-tab::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    z-index: -1;
+    border-radius: 9px;
+    background: transparent;
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+  #view-analyze .an-tab { z-index: 0; }
+  #view-analyze .an-tab[aria-selected="true"] { background: none; }
+  #view-analyze .an-tab[aria-selected="true"]::before { background: var(--panel); }
+
+  /* Report spacing; player summary styling lives in analyze-report.css. */
+  #view-analyze .report-pane { gap: 16px; padding-top: 12px; }
+  #view-analyze .report, #view-analyze .rp-body { gap: 16px; }
+  #view-analyze .rp-sec { padding: 0; }
+  /* Key moments: the move, its kind and the eval on one line; the better move
+     on a second, under the move, never wrapped beside the eval. */
+  #view-analyze .km {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0;
+  }
+  #view-analyze .km-go { grid-template-columns: 8px 64px minmax(0, 1fr) auto; gap: 8px; min-height: 44px; }
+  #view-analyze .km-kind { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #view-analyze .km-best { margin: -8px 0 0; padding: 0 8px 8px 32px; font-size: 13px; }
+  #view-analyze .km-eval { justify-self: end; }
+  /* The grade table: a symbol per head, 44px rows. */
+  #view-analyze .rp-tr > :first-child { flex-basis: 20px; }
+  #view-analyze .rp-side-h { padding-left: 4px; }
+  #view-analyze .rp-counts .rp-col { min-height: 32px; padding: 0; }
+  #view-analyze .rp-counts .rp-n { height: 44px; line-height: 44px; }
+  #view-analyze .rp-badge { width: 24px; height: 24px; font-size: 12px; }
+  #view-analyze .rp-key-btn { height: 44px; padding: 0 12px; }
+  #view-analyze .rp-key { grid-template-columns: 1fr 1fr; }
+  #view-analyze .rp-key li { min-height: 28px; }
+  /* The report's last actions are full-width rows, never a lone button. */
+  #view-analyze #analysis-find-great:not([hidden]) { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
+
+  /* The Games sheet's past analyses: the players on the first line, the result
+     and day under them, the bin at the row's end. */
+  #analyze-open .history-item { min-height: 56px; }
+  #analyze-open .history-item .hi-open { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 56px; }
+  #analyze-open .history-item .hi-players { max-width: 100%; }
+  #analyze-open .history-item .hi-delete { align-self: stretch; height: auto; min-height: 56px; }
+  /* 360-374px: the review line keeps "15.Be3 Blunder" whole beside Retry and
+     the steps; the players' error counts keep their words. */
+  @media (max-width: 374px) {
+    #analysis-explain .coach-review > .cr-step { width: 44px; }
+    #analysis-explain .coach-review > .btn { margin-right: 6px; padding: 0 10px; }
+    #analysis-explain .coach-review > .cr-label { gap: 6px; font-size: 14px; }
+  }
+
+  /* ---- Phone, round 5: one board, Lichess's density --------------------------
+     The board is the full width in every tab and state (phone.css). Over it one
+     44px strip: the evaluation (Lichess sets its eval at 15px/700 in a 37px
+     tool tab) with the graph as its scrubber, or, before a game has a graph,
+     the game's name (analyze-panes.js moves the caption there). Under it the
+     move strip (32px, 14px moves), the tabs (36px underline tabs), the open
+     pane, which scrolls, and the 48px thumb bar. Visuals are drawn at the
+     competitors' sizes; small controls keep a 44px hit area through ::after. */
+  #view-analyze { --phone-eval-h: 44px; --phone-strip-h: 32px; --phone-tabs-h: 36px; }
+  #view-analyze .study { height: 100%; }
+  #view-analyze #analysis-eval-card { grid-template-columns: 56px minmax(0, 1fr); gap: 0 8px; padding: 6px var(--phone-gutter); }
+  #analysis-eval-card .eval-now { font-size: 15px; font-weight: 600; }
+  #analysis-eval-card .eval-chart { border-radius: 4px; }
+  /* The scrubber's target is the whole 44px strip: the 32px field plus the
+     card's 6px padding above and below it (analyze.js scrubs on the band). */
+  #view-analyze #analysis-eval-graph { touch-action: pan-y; }
+  #view-analyze #analysis-eval-graph::before { content: ""; position: absolute; inset: -6px 0; }
+  /* The field paints (and takes the mouse) over the band. */
+  #view-analyze #analysis-eval-graph > .eval-chart { position: relative; }
+  #view-analyze .board-area > .board-caption {
+    order: 0;
+    flex: none;
+    height: var(--phone-eval-h);
+    margin: 0;
+    padding: 0 var(--phone-gutter);
+    overflow: hidden;
+    font-size: 14px;
+    line-height: var(--phone-eval-h);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #view-analyze .study:has(#analysis-eval-card:not([hidden])) .board-area > .board-caption { display: none; }
+
+  /* The move strip. */
+  #view-analyze #analysis-moves { font-size: 14px; }
+  /* Room after the last move, so snapping the strip to a whole first token
+     (movetree.js) never pushes the current last move off the right edge. */
+  #analysis-moves .mtree { padding-right: 96px; }
+  #analysis-moves .mtree-line.is-main > .mtree-num,
+  #analysis-moves .mtree-var .mtree-num { padding: 0 2px 0 8px; font-size: 12px; }
+  #view-analyze #analysis-moves .mtree-move { min-width: 0; height: var(--phone-strip-h); padding: 0 6px; font-weight: 500; }
+  #view-analyze #analysis-moves .mtree-move::before { inset: 4px 0; border-radius: var(--radius-chip); }
+  #view-analyze #analysis-moves .mtree-move::after { content: ""; position: absolute; inset: -6px 0; }
+  #analysis-moves .mtree-glyph { font-size: 12px; }
+  #analysis-moves .mtree-var.is-on-path::before { top: 8px; bottom: 8px; }
+
+  /* Tabs: underline tabs on the row's rule (Lichess's tool row is 37px). */
+  #view-analyze .an-panes > .an-tabs {
+    order: 3;
+    height: var(--phone-tabs-h);
+    margin: 0;
+    padding: 0 var(--phone-gutter);
+    border-radius: 0;
+    background: none;
+    box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the tab row's rule */
+  }
+  #view-analyze .an-tab { height: var(--phone-tabs-h); border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
+  #view-analyze .an-tab::before { content: none; }
+  /* From the 34px padding box (the 2px underline is border): 2px up, 8px
+     down into the pane's top padding, the row above both: a 44px target
+     round a 36px tab. */
+  #view-analyze .an-panes > .an-tabs { position: relative; z-index: 2; }
+  #view-analyze .an-tab::after { content: ""; position: absolute; inset: -2px 0 -8px; }
+  #view-analyze .an-tab[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--text); }
+
+  /* The open pane takes what is left and scrolls inside it. */
+  #view-analyze #analysis-explain,
+  #view-analyze .an-pane,
+  #view-analyze .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { order: 4; }
+  #view-analyze[data-pane="coach"] #analysis-explain,
+  #view-analyze .an-panes > .an-pane:not(.moves-pane) { flex: 1 1 0; min-height: 72px; overflow-y: auto; }
+  #view-analyze[data-pane="coach"] #analysis-explain { gap: 6px; padding: 4px var(--phone-gutter); }
+
+  /* Coach: the moment on a 36px line, the verdict as plain text (no card), the
+     human picks as 26px chips. */
+  #analysis-explain > .coach-review { height: 36px; }
+  #analysis-explain .cr-label { height: 36px; line-height: 36px; }
+  #analysis-explain .coach-review > .cr-label { gap: 8px; font-size: 14px; font-weight: 500; }
+  #analysis-explain .cr-label .rp-glyph { width: 20px; height: 20px; font-size: 11px; }
+  #analysis-explain .coach-review > .btn { height: 28px; min-height: 0; margin-right: 6px; padding: 0 10px; border-radius: var(--radius); font-size: 13px; font-weight: 500; }
+  #analysis-explain .cr-step { position: relative; width: 40px; height: 28px; }
+  #analysis-explain .coach-review > .cr-step { width: 40px; border-radius: var(--radius) 2px 2px var(--radius); }
+  #analysis-explain .coach-review > .cr-step ~ .cr-step { border-radius: 2px var(--radius) var(--radius) 2px; }
+  #analysis-explain .cr-step::after { content: ""; position: absolute; inset: -8px 0; }
+  #analysis-explain .coach-prose { flex: none; padding: 0 0 0 10px; border-left-width: 2px; border-radius: 0; background: none; font-size: 14px; line-height: 20px; overflow: visible; }
+  #analysis-explain .coach-maia { height: 28px; }
+  #analysis-explain .hp { height: 26px; padding: 0 6px; border-radius: var(--radius-chip); font-size: 13px; }
+  #analysis-explain .coach-unlock .unlock.is-inline { height: 32px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .btn { height: 28px; min-height: 0; padding: 0 10px; font-size: 13px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x { width: 28px; height: 28px; }
+
+  /* Engine: a 32px head row, one 28px row per line at 14px, the grading switch
+     as a 36px settings row. */
+  #analysis-engine-pane { row-gap: 2px; }
+  #analysis-engine-pane .an-pane-head { min-height: 32px; }
+  #analysis-engine-pane .ev-engine { height: 28px; padding: 0 10px; font-size: 13px; }
+  #analysis-engine-slot .engine-pv,
+  #analysis-engine-slot .engine-pv.is-top { height: 28px; min-height: 0; font-size: 14px; }
+  #analysis-engine-slot .engine-pv-line { line-height: 28px; }
+  #analysis-engine-slot[data-ui] .engine-step { width: 26px; height: 26px; }
+  #analysis-engine-slot[data-ui] .engine-step::after { inset: -9px; }
+  #analysis-engine-pane .cc-switch-label { font-size: 14px; line-height: 36px; }
+  #analysis-engine-pane .pf-switch { height: 36px; }
+  #analysis-engine-pane .pf-switch::before { top: 9px; }
+  #analysis-engine-pane .pf-switch::after { top: 12px; }
+  #analysis-engine-pane:not(:has(.engine-window:not([hidden]))) #analysis-saved-line:not([hidden]) { height: 28px; padding: 0; font-size: 14px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) { min-height: 36px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) > .btn { height: 28px; min-height: 0; padding: 0 10px; font-size: 13px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-x { width: 28px; height: 28px; }
+
+  /* Report: 36px moment rows and 28px grade rows. */
+  #view-analyze .report-pane { gap: 12px; padding-top: 8px; }
+  #view-analyze .report, #view-analyze .rp-body { gap: 12px; }
+  #view-analyze .km-go { min-height: 36px; }
+  #view-analyze .km-best { margin-top: -6px; padding-bottom: 6px; font-size: 12px; }
+  #view-analyze .rp-counts .rp-n { height: 28px; line-height: 28px; }
+  .rp-tr { min-height: 28px; }
+  .rp-n { height: 28px; line-height: 28px; }
+  .rp-phase { min-height: 32px; }
+  #view-analyze .rp-key-btn { height: 28px; padding: 0 8px; }
+  #view-analyze #analysis-find-great:not([hidden]),
+  .analysis-handoff .btn { min-height: 36px; border-radius: var(--radius); font-size: 14px; }
+
+  /* The thumb bar's pill keeps the bar's 32px (phone.css). */
+  #view-analyze #run-analysis { height: 32px; bottom: calc(env(safe-area-inset-bottom) + (var(--phone-bar-h) - 32px) / 2); }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 40px 40px minmax(0, 1fr) 48px 48px; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #run-analysis { --pill-left: 98px; }
+  @media (min-width: 360px) and (max-width: 374px) {
+    #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
+    #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 40px 40px minmax(0, 1fr) 44px 44px; }
+    #view-analyze .board-bar :is(#analysis-prev, #analysis-next) { width: 44px; }
+    #view-analyze #run-analysis { right: 104px; max-width: calc(100% - var(--pill-left) - 104px); }
+  }
+
+  /* The Games sheet's rows. */
+  #analyze-open .history-item,
+  #analyze-open .history-item .hi-open { min-height: 48px; font-size: 14px; }
+  #analyze-open .history-item .hi-delete { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+}
+
+/* ---- Phone, round 6 -----------------------------------------------------
+   The row under the board is the navigation row (Lichess: |‹ ‹ › ›|): the
+   move strip scrolls between the game's two ends; ‹ and › stay at the thumb
+   in the bar. A position with no evaluation shows a dash, not a clipped word. */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  #view-analyze #analysis-results.moves-pane:not([hidden]) { display: flex; flex-direction: row; align-items: stretch; gap: 0; }
+  #view-analyze #analysis-moves { flex: 1 1 auto; min-width: 0; }
+  #view-analyze .strip-end {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: var(--phone-strip-h);
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--panel);
+    color: var(--muted);
+  }
+  #view-analyze .strip-end::before { inset: -6px 0; }
+  #view-analyze .strip-end .bi { width: 18px; height: 18px; }
+  #view-analyze .strip-end:hover { filter: none; background: var(--panel); }
+  #view-analyze .strip-end:active { background: var(--surface-3); }
+  #view-analyze .strip-end:first-child { box-shadow: inset -1px 0 0 var(--line); /* taste-skill-ignore: the strip's end divider */ }
+  #view-analyze .strip-end:last-child { box-shadow: inset 1px 0 0 var(--line); /* taste-skill-ignore: the strip's end divider */ }
+
+  /* Missing value: a grey dash where the figure goes, never a cut-off label. */
+  #analysis-eval-card .ev-head:not(.has-eval) .ev-title { overflow: visible; font-size: 0; }
+  #analysis-eval-card .ev-head:not(.has-eval) .ev-title::before { content: "–"; color: var(--label); font-size: 15px; font-weight: 600; }
+
+  /* The book line's action is a text link: no inline padding, so a link that
+     wraps to its own line starts on the prose's edge. Its target grows round it. */
+  #analysis-explain .coach-bookaction { position: relative; margin-left: 0; padding: 2px 0; }
+  #analysis-explain .coach-bookaction::after { content: ""; position: absolute; inset: -10px -6px; }
+
+  /* Copy rows show with a game on the board. */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open .sheet-copy { display: none; }
+}
