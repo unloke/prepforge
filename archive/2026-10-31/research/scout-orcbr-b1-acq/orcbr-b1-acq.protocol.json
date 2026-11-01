@@ -1,0 +1,165 @@
+{
+  "kind": "scout-orcbr-b1-raw-acquisition-protocol",
+  "version": 1,
+  "protocolId": "scout-orcbr-b1-raw-acq-v1",
+  "candidateId": "orcbr-b1",
+  "role": "raw-materialization-only",
+  "researchOnly": true,
+  "outcomeBlind": true,
+  "nonConfirmatory": true,
+  "productAuthorization": false,
+  "productVerdict": "preserve-v2",
+  "moduleAStatus": "CLOSED_NOT_REOPENED",
+  "scoutProductionDefault": "v2-unmodified",
+  "calAllowed": false,
+  "testAllowed": false,
+  "calTestSplitAllowed": false,
+  "outcomeEvaluationAllowed": false,
+  "orcbrGatesAllowed": false,
+  "networkEnabledDefault": false,
+  "networkRequiresExplicitExecuteFlag": true,
+  "humanAuthorization": false,
+  "claimBoundary": {
+    "establishes": [
+      "lawful sealed raw NDJSON custody for ORCBR-B1 schema/structural research under a separate acquisition identity",
+      "deterministic subject panel selection independent of ORCBR outcomes",
+      "exact raw/capped byte hashes and HTTP receipts with no raw identity in reports"
+    ],
+    "forbids": [
+      "ORCBR algorithm execution under this identity",
+      "retuning frozen ORCBR thresholds after seeing data",
+      "CAL/TEST split or outcome evaluation",
+      "product or card authorization",
+      "Module A reopen",
+      "Scout v2 replacement",
+      "reusing EBB/SHPFA/other opened subjects or artifacts as confirmatory evidence",
+      "reusing burned Black-panel subjects (including unbrainless87 robust-y cohort) or ORCBR fixtures as acquisition subjects",
+      "result-based or performance-based subject selection"
+    ]
+  },
+  "relatedAlgorithmProtocolId": "scout-orcbr-b1-v1",
+  "relatedAlgorithmProtocolNote": "Algorithm thresholds remain frozen in scout-orcbr-b1-v1; this identity never mutates them.",
+  "subjectSource": {
+    "kind": "repo-metadata-literal-allowlist",
+    "description": "Neutral public Lichess usernames already present in non-outcome repository metadata (smoke/docs/examples only). Selection is independent of ORCBR performance.",
+    "sourceFiles": [
+      {
+        "path": "tests/e2e/scout_smoke.mjs",
+        "role": "e2e-default-public-export"
+      },
+      {
+        "path": "scripts/scout-fetch-games.mjs",
+        "role": "raw-preserving-fetch-example"
+      }
+    ],
+    "candidateAllowlist": [
+      "DrNykterstein"
+    ],
+    "selectionRule": "normalize lower; exclude forbidden; require appearance in at least one sourceFile; sort localeCompare ascending; take first maxSubjects (must have >= minSubjects)",
+    "minSubjects": 1,
+    "maxSubjects": 1,
+    "resultBasedSelectionForbidden": true,
+    "orcbrOutcomeSelectionForbidden": true
+  },
+  "forbiddenSubjects": {
+    "rule": "case-insensitive exact match on normalized Lichess id",
+    "subjects": [
+      "unbrainless87",
+      "subject1",
+      "opprepeat",
+      "subject",
+      "opp_fixture",
+      "orcbrfixture"
+    ],
+    "categories": [
+      "prior-burned-black-panels",
+      "robust-y-unbrainless87-cohort-anchor",
+      "orcbr-synthetic-fixtures",
+      "ebb-shpfa-opened-foreign-custody"
+    ],
+    "note": "Authentic parent EBB/SHPFA raw is foreign burned/TEST-opened and forbidden. Inventory: NO_EXISTING_LAWFUL_RAW_CUSTODY."
+  },
+  "fetch": {
+    "baseUrl": "https://lichess.org/api/games/user/{username}",
+    "maxGamesPerSubject": 200,
+    "perfType": "blitz,rapid,classical",
+    "excludeBullet": true,
+    "pgnInJson": true,
+    "moves": true,
+    "clocks": true,
+    "evals": false,
+    "opening": false,
+    "acceptHeader": "application/x-ndjson",
+    "untilParam": "until",
+    "untilSource": "acquisitionUntilMs from freeze snapshot (games created before freeze boundary)",
+    "maxParam": "max",
+    "interSubjectDelayMs": 1200,
+    "rateLimitPolicy": "stop-on-429-no-aggressive-retry",
+    "httpFailurePolicy": "stop-acquisition-write-receipt",
+    "timeoutMs": 120000
+  },
+  "cap": {
+    "rule": "keep first maxGamesPerSubject complete non-empty NDJSON lines in export order; preserve exact line bytes including newlines between kept lines; trailing newline on capped file",
+    "deterministic": true
+  },
+  "custody": {
+    "studyRoot": "tmp/scout-orcbr-b1-acq",
+    "rawMayContainUpstreamIdentity": true,
+    "reportsMustNotContainRawIdentity": true,
+    "artifacts": [
+      "protocol.snapshot.json",
+      "subject-panel.json",
+      "custody/subjects/<subjectKey>/raw.ndjson",
+      "custody/subjects/<subjectKey>/raw.sha256",
+      "custody/subjects/<subjectKey>/capped.ndjson",
+      "custody/subjects/<subjectKey>/capped.sha256",
+      "custody/subjects/<subjectKey>/http-receipt.json",
+      "manifest.json",
+      "report.json"
+    ]
+  },
+  "salt": {
+    "scheme": "hmac-sha256-subjectKey",
+    "keyPrefix": "subj_",
+    "hexChars": 16,
+    "researchSalt": "orcbr-b1-raw-acq-v1-custody-salt",
+    "saltSource": "frozen-in-protocol-identity",
+    "neverEmitRawIdentityInReports": true,
+    "saltHashAlgorithm": "sha256"
+  },
+  "panelRole": {
+    "acquisitionPanel": "non-confirmatory-raw-custody",
+    "algorithmPanel": "not-this-identity",
+    "cal": false,
+    "test": false,
+    "trainLabel": "not-assigned-under-acquisition"
+  },
+  "burnDeclaration": {
+    "statusOnInspect": "ACQUIRED_RAW_BURNED_FOR_ORCBR_SCHEMA_STRUCTURAL_RESEARCH_ONCE_INSPECTED",
+    "statusOnSuccessfulExecute": "ACQUIRED_RAW_SEALED_NEWLY_BURNED_FOR_ORCBR_SCHEMA_STRUCTURAL_RESEARCH",
+    "confirmatoryReuse": "forbidden",
+    "ebbShpfaReuse": "forbidden",
+    "note": "Acquisition outputs are newly burned for ORCBR schema/structural research once inspected; they are not confirmatory holdouts and must not be laundered as EBB/SHPFA/Module A confirmation."
+  },
+  "verdicts": [
+    "ACQ_PROTOCOL_FROZEN",
+    "ACQ_PANEL_SELECTED",
+    "STOP_ACQUISITION_PANEL_UNAVAILABLE",
+    "ACQ_NETWORK_DISABLED",
+    "ACQ_EXECUTE_OK",
+    "STOP_ACQUISITION_HTTP_FAILURE",
+    "STOP_ACQUISITION_RATE_LIMIT",
+    "STOP_ACQUISITION_FREEZE_REQUIRED",
+    "INVALID",
+    "TAMPER_DETECTED"
+  ],
+  "lifecycle": {
+    "commands": ["freeze", "select", "execute", "status", "verify"],
+    "order": ["freeze", "select", "execute"],
+    "networkCommand": "execute",
+    "executeFlag": "--confirm-execute",
+    "finalReportLast": true,
+    "reportHashField": "reportSha256",
+    "reportHashOmitField": true
+  }
+}

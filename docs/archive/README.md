@@ -13,6 +13,7 @@ instructions, product constraints, deployment status, or a task queue to resume.
 | `research/` | Earlier Scout selectors, benchmark protocols, sample results and v12/v13 design history |
 | `history/` | Original architecture, SaaS roadmap, browser migration and sync plans |
 | `memory/` | Obsolete local implementation notes with old migration/test references |
+| `2026-10-31/` | Dated reports removed from `main` on 2026-10-31: async persistence review and follow-up, Scout v10 leaf nondeterminism, the 2026-10-08 operations walkthrough, 2026-10-27 playtests and the 2026-10-01 issue-discovery benchmark |
 
 [manifest.json](manifest.json) records every original and archived path and the
 reason for the move. Files retain historical wording, including instructions

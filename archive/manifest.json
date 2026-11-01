@@ -58,5 +58,310 @@
     "source": "web-src/scout-v12-report.test.js",
     "destination": "archive/tests/web-src/scout-v12-report.test.js",
     "reason": "Retired v12 renderer has no UI call site; v13 shared constant remains covered by its active funnel/report tests."
+  },
+  {
+    "source": "coach-review-ratings.json",
+    "destination": "archive/2026-10-31/coach-review-ratings.json",
+    "reason": "Raw coach review ratings; no reader in code or tests (commentary.test.js reads web-src/coach/fixtures/rated-moves.json)."
+  },
+  {
+    "source": "research/lib/scout-bias-cohort.js",
+    "destination": "archive/2026-10-31/research/lib/scout-bias-cohort.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-bias-features.js",
+    "destination": "archive/2026-10-31/research/lib/scout-bias-features.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-bias-features.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-bias-features.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-bias-fit.js",
+    "destination": "archive/2026-10-31/research/lib/scout-bias-fit.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-bias-routes.js",
+    "destination": "archive/2026-10-31/research/lib/scout-bias-routes.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-bias-routes.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-bias-routes.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-graph.js",
+    "destination": "archive/2026-10-31/research/lib/scout-graph.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-graph.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-graph.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-maia-harness.js",
+    "destination": "archive/2026-10-31/research/lib/scout-maia-harness.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-ref-df-census.js",
+    "destination": "archive/2026-10-31/research/lib/scout-ref-df-census.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-route-audit.js",
+    "destination": "archive/2026-10-31/research/lib/scout-route-audit.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-route-audit.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-route-audit.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-shadow-prep-exact-solver.js",
+    "destination": "archive/2026-10-31/research/lib/scout-shadow-prep-exact-solver.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-shadow-prep-p0.js",
+    "destination": "archive/2026-10-31/research/lib/scout-shadow-prep-p0.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v12-report.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v12-report.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-adapter.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-adapter.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-adapter.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-adapter.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-extension.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-extension.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-extension.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-extension.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-funnel.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-funnel.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-funnel.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-funnel.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-package.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-package.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-package.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-package.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-report.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-report.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-report.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-report.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-stream.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-stream.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-stream.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-stream.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-style.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-style.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v13-style.test.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v13-style.test.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v15-engine-cache.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v15-engine-cache.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/lib/scout-v15-study.js",
+    "destination": "archive/2026-10-31/research/lib/scout-v15-study.js",
+    "reason": "Retired ?scoutV13 runtime, bias/route-audit and shadow-prep helpers; imported only by each other, their own tests, and the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/scout-orcbr-b1-acq/orcbr-b1-acq.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1-acq/orcbr-b1-acq.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1-acq/orcbr-b1-acq.protocol.json",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1-acq/orcbr-b1-acq.protocol.json",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1-acq/orcbr-b1-acq.test.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1-acq/orcbr-b1-acq.test.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1/orcbr-b1-gates.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1/orcbr-b1-gates.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1/orcbr-b1-gates.test.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1/orcbr-b1-gates.test.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1/orcbr-b1-generate.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1/orcbr-b1-generate.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1/orcbr-b1-generate.test.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1/orcbr-b1-generate.test.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1/orcbr-b1-schema.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1/orcbr-b1-schema.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1/orcbr-b1-schema.test.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1/orcbr-b1-schema.test.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1/orcbr-b1-units.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1/orcbr-b1-units.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1/orcbr-b1-units.test.js",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1/orcbr-b1-units.test.js",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-orcbr-b1/orcbr-b1.protocol.json",
+    "destination": "archive/2026-10-31/research/scout-orcbr-b1/orcbr-b1.protocol.json",
+    "reason": "ORCBR B1 protocol and tests; no importer outside its own folder, not in CI or docs."
+  },
+  {
+    "source": "research/scout-ref-df/ericrosen-ref-df-phase0.protocol.json",
+    "destination": "archive/2026-10-31/research/scout-ref-df/ericrosen-ref-df-phase0.protocol.json",
+    "reason": "Protocol for the finished shadow-prep / ref-df study; read only by the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/scout-selection-baseline.js",
+    "destination": "archive/2026-10-31/research/scout-selection-baseline.js",
+    "reason": "Superseded selector; no importer anywhere."
+  },
+  {
+    "source": "research/scout-selection-greedy.js",
+    "destination": "archive/2026-10-31/research/scout-selection-greedy.js",
+    "reason": "Superseded selector; no importer anywhere."
+  },
+  {
+    "source": "research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",
+    "destination": "archive/2026-10-31/research/scout-shadow-prep/ericrosen-shadow-prep-p0.protocol.json",
+    "reason": "Protocol for the finished shadow-prep / ref-df study; read only by the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/scout-shadow-prep/ericrosen-shadow-prep-solver-dev.protocol.json",
+    "destination": "archive/2026-10-31/research/scout-shadow-prep/ericrosen-shadow-prep-solver-dev.protocol.json",
+    "reason": "Protocol for the finished shadow-prep / ref-df study; read only by the archived shadow-prep scripts."
+  },
+  {
+    "source": "research/scout-v11/PROTOCOL.md",
+    "destination": "archive/2026-10-31/research/scout-v11/PROTOCOL.md",
+    "reason": "Path-guard research; shipped as web-src/scout-path-guard.js. No importer."
+  },
+  {
+    "source": "research/scout-v11/engine.mjs",
+    "destination": "archive/2026-10-31/research/scout-v11/engine.mjs",
+    "reason": "Path-guard research; shipped as web-src/scout-path-guard.js. No importer."
+  },
+  {
+    "source": "research/scout-v11/mate-semantics.mjs",
+    "destination": "archive/2026-10-31/research/scout-v11/mate-semantics.mjs",
+    "reason": "Path-guard research; shipped as web-src/scout-path-guard.js. No importer."
+  },
+  {
+    "source": "research/scout-v11/package.py",
+    "destination": "archive/2026-10-31/research/scout-v11/package.py",
+    "reason": "Path-guard research; shipped as web-src/scout-path-guard.js. No importer."
+  },
+  {
+    "source": "research/scout-v11/path-diagnostics.mjs",
+    "destination": "archive/2026-10-31/research/scout-v11/path-diagnostics.mjs",
+    "reason": "Path-guard research; shipped as web-src/scout-path-guard.js. No importer."
+  },
+  {
+    "source": "research/scout-v11/path-guard.mjs",
+    "destination": "archive/2026-10-31/research/scout-v11/path-guard.mjs",
+    "reason": "Path-guard research; shipped as web-src/scout-path-guard.js. No importer."
+  },
+  {
+    "source": "research/scout-v11/replay.mjs",
+    "destination": "archive/2026-10-31/research/scout-v11/replay.mjs",
+    "reason": "Path-guard research; shipped as web-src/scout-path-guard.js. No importer."
+  },
+  {
+    "source": "research/scout-v11/summarize.mjs",
+    "destination": "archive/2026-10-31/research/scout-v11/summarize.mjs",
+    "reason": "Path-guard research; shipped as web-src/scout-path-guard.js. No importer."
+  },
+  {
+    "source": "research/scout-v11/test_path_guard.mjs",
+    "destination": "archive/2026-10-31/research/scout-v11/test_path_guard.mjs",
+    "reason": "Path-guard research; shipped as web-src/scout-path-guard.js. No importer."
+  },
+  {
+    "source": "scripts/scout-shadow-prep-exact-solver-dev.mjs",
+    "destination": "archive/2026-10-31/scripts/scout-shadow-prep-exact-solver-dev.mjs",
+    "reason": "Driver for the finished shadow-prep study; not in package.json, CI or docs."
+  },
+  {
+    "source": "scripts/scout-shadow-prep-p0.mjs",
+    "destination": "archive/2026-10-31/scripts/scout-shadow-prep-p0.mjs",
+    "reason": "Driver for the finished shadow-prep study; not in package.json, CI or docs."
+  },
+  {
+    "source": "vitest.research.config.mjs",
+    "destination": "archive/2026-10-31/vitest.research.config.mjs",
+    "reason": "Only discovered research/**/*.test.js; every research test moved here, so the config would run zero files."
   }
 ]

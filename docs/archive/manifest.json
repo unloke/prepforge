@@ -296,5 +296,359 @@
     "destination": "docs/archive/audits/ui-db-algorithm-improvement-report-2026-10-08.md",
     "reason": "Uncommitted review report from a finished round; findings were fixed or superseded by later audits.",
     "sha256": "df2357475c17e3f8b3bb0e9a88a5556057ffb28b6051cf596d9fb8ff3b2dec51"
+  },
+  {
+    "source": "docs/async-persistence-followup-results.md",
+    "destination": "docs/archive/2026-10-31/async-persistence-followup-results.md",
+    "reason": "Dated persistence review/follow-up report (2026-10-04); fixes landed, current behavior is in backend-consistency.md and training-flow.md.",
+    "sha256": "cb348533d03aa5e2dc6e3b6b1bf64ff8f625d1bec55d91d5e2ac3cb503525da6"
+  },
+  {
+    "source": "docs/async-persistence-review.md",
+    "destination": "docs/archive/2026-10-31/async-persistence-review.md",
+    "reason": "Dated persistence review/follow-up report (2026-10-04); fixes landed, current behavior is in backend-consistency.md and training-flow.md.",
+    "sha256": "18c86a9ce44aca718e9fee35a509582bc4d090990303fdcc9d72dd2712c50747"
+  },
+  {
+    "source": "docs/benchmarks/user-review-20261001/README.md",
+    "destination": "docs/archive/2026-10-31/benchmarks/user-review-20261001/README.md",
+    "reason": "Frozen 2026-10-01 issue-discovery benchmark; dated evidence, not current documentation.",
+    "sha256": "3b5888ce9e7501c563c9b4ab194215aa1e03aea5b957402ed5609fcb4d91d419"
+  },
+  {
+    "source": "docs/benchmarks/user-review-20261001/agent-prompt.md",
+    "destination": "docs/archive/2026-10-31/benchmarks/user-review-20261001/agent-prompt.md",
+    "reason": "Frozen 2026-10-01 issue-discovery benchmark; dated evidence, not current documentation.",
+    "sha256": "f04cbfdfcbdf4a2dce11b2ddc39d27a08ca8e2f8290a273740869ff72a5d12e9"
+  },
+  {
+    "source": "docs/benchmarks/user-review-20261001/manifest.json",
+    "destination": "docs/archive/2026-10-31/benchmarks/user-review-20261001/manifest.json",
+    "reason": "Frozen 2026-10-01 issue-discovery benchmark; dated evidence, not current documentation.",
+    "sha256": "a40de91275b868de59e1b6545ccc77601afab73cd6339b6d00c4a0d8523e0f3e"
+  },
+  {
+    "source": "docs/benchmarks/user-review-20261001/results-template.md",
+    "destination": "docs/archive/2026-10-31/benchmarks/user-review-20261001/results-template.md",
+    "reason": "Frozen 2026-10-01 issue-discovery benchmark; dated evidence, not current documentation.",
+    "sha256": "41e250b6708a32d8722aa116a33b416dd64db9ebd04ef0b0a8f5699054655ff1"
+  },
+  {
+    "source": "docs/benchmarks/user-review-20261001/scorecard.md",
+    "destination": "docs/archive/2026-10-31/benchmarks/user-review-20261001/scorecard.md",
+    "reason": "Frozen 2026-10-01 issue-discovery benchmark; dated evidence, not current documentation.",
+    "sha256": "28e6ed57fc712f64a81463492bfbc5b6e0fc906266d2ebe1471055470a5b52dd"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/report.html",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/report.html",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "1a34e1e08259868177d18d555b0cb60413cf126dee1e1e59eb2feeac9cb54824"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/pgn-field.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/pgn-field.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "51a06b8f7bebfbb44d41ff509dc0c8e692b7e6a184d5602786beb379e31a5bce"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/pgn-inline-error.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/pgn-inline-error.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "13edfeae39f9ef56760454a80fc51a1841e1289a45c9752efd8334bbc9dbad3e"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/pgn-integrated-1440.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/pgn-integrated-1440.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "af3439c14268ef3e5ba3a197fb0edcb72448d99358d9bf01b586f4b23855a9c0"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/pgn-integrated-390.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/pgn-integrated-390.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "134164e09eaaf68d6dc65d7cfb106a5fc20bdb3340d48d33a143563fd5077ffd"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/pgn-interim-before.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/pgn-interim-before.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "acaf217ff82282ce71461414b041d88dcdbfc66e26d54127faec664e770b2dd3"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/preview-after.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/preview-after.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "95dbb9b545ad685221283b6a1b9020e1e3c87947d8ea88d964ec99a8be2a9417"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/preview-before.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/preview-before.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "7dfbab41d73c598e8db92d742c899fbb4013138f6977a2e592bf7fa821ee131f"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/preview-neutral-after.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/preview-neutral-after.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "b7570c8e0899ff3f517afc58bf5a2e15d3135ada269b6a9b9dd0c35ddfbba9a9"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/skip-after.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/skip-after.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "cff65815e992bb9294ebdf80cd744454af95ea4e3199b5a0bd69f5ac228e7fad"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/skip-before.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/skip-before.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "2132da3ef9f28e164c1ee50f395e3a867e0397e03a99beb1074b1558bbef377c"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/variation-after.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/variation-after.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "0aa756fed3ab3b6969755826152c208282cd7911fb9d65335d4e59f5cd1bb912"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/screenshots/variation-before.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/screenshots/variation-before.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "85f8671f21a7dc236f6752e05a66cde964bb26d556589d73b0ae57703a96096c"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-2/test-plan.md",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-2/test-plan.md",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "a18be7c92261bc4a36edaa9d4d424ed808a99248e865d3aff6fed1b5f04e627b"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/report.html",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/report.html",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "c0b0f9899f65533637e939bdbcdb66d90280d87dbcaedb114fc879c74539167e"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/luna-editor-mobile.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/luna-editor-mobile.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "9dda38d558b5a87a922a6ab38b15a822b45bae9d1e06eec59c23479bf5f5eab4"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/luna-games-mobile.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/luna-games-mobile.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "1dbe31a794cf43af4c2298742eb71c991678631d7dd9b76c07ddc1f6d9afdfa1"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/luna-library-desktop.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/luna-library-desktop.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "7cd9e88c2218aacdbbb69f4b764df351baee945ff0bd7d8e45d1374b476e2c61"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/luna-report-desktop.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/luna-report-desktop.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "38b6aa20a5587374d797ba68a88a1f4191e247a48f55831e2a53e3ef45ee166b"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/luna-report-mobile-retest.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/luna-report-mobile-retest.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "f82400697d92981d814566931b085c3ffb5cc664bd8917a68838146323c9c2e2"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/luna-scout-desktop.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/luna-scout-desktop.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "c8a4c3ce093192033adb7372576595d3fc184c78e367d7ef499dd83c379d0c27"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/luna-settings-mobile.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/luna-settings-mobile.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "37746e4d70ae76101ec34715522aec9e817c8252c47e3aad0ec3429925f6a746"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/luna-teams-desktop.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/luna-teams-desktop.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "4e57dc71da9284a1e01b0cbd79685e0067625d8ac4f6e6c8d27dac339fa3b79f"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/luna-train-mobile.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/luna-train-mobile.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "abe64f087cf3beabd4eac365f542646820e50b1b1e34f6d4921ac8415225d84c"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-after-1440.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-after-1440.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "9bba687167a7ee3a0f45124c6e5380300a07d7737635c4d7fd9d103858d8d42e"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-after-360.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-after-360.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "aff19683f628ae7b006822559909b78982970b3d6828c59a34e0786205508c31"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-after-390.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-after-390.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "49d87987d1ce119f55362335e88096abae6bea33056cb02f8b314f23617634e4"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-after-768.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-after-768.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "1b13e74cc08cab22064c3147a5ba5740f4cfed3f14aa5a74a99232f285c0d4b0"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-before-1440.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-before-1440.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "9b7546f10c92765be242cb9c79d7a578e88ad28b24b8d83fdffedc307ca3c39f"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-before-390.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-before-390.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "9d4c0949414eb18dabb331a6ddd151ca65d186687a9110b156f94a3ba082cfd2"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-before-768.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-before-768.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "f638f00c94aff416676503445ef61cceb7a4b06e3bb8a5e5756a5be568478703"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-compact-final-1440.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-compact-final-1440.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "f545d0335eac43301a8086caf65af096242dc99e837bdb7c8f2053c4bf935818"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-errors-final-1440.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-errors-final-1440.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "7b673b9545894dfd48f0fbc811a0fe7f8963349ceb8cd7a49593ecbba8e585a7"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-errors-final-360.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-errors-final-360.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "19c772d4760c31790f091abf843cb1170296d19ce71905447b94e0759efaf2ed"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-errors-final-390.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-errors-final-390.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "6a73b2d91d52598300e6ed92307272ab64aa6f5c8c08230f13c233c3bf6950ea"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-errors-final-768.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-errors-final-768.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "2fadbae4f672a1f743880bd56eabb0a2b7e38dcf09d5d2666c7936c7c0b3c7f3"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-expanded-final-1440.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-expanded-final-1440.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "ddcf3a7b3f04b90b9500f71242b59a48666669dbd001af8639b456f3515dcc42"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-expanded-final-360.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-expanded-final-360.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "6248083ee21caf7fb6c5ce92b48f91dca8fe132388c7c1be8f82957ebd2b998f"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-expanded-final-390.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-expanded-final-390.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "199fc38c67f34c068a348dd5658dd1d1b06115708259468ca35ed62ca6ecc7e2"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-expanded-final-768.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-expanded-final-768.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "9b41b26443a51055706fc5d87cd217960eacfba4d485442b9872a062e9eecece"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-open-after-1440.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-open-after-1440.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "b31d91079053955e43cdd0212bebefba95e2513e413debe8a3d92dd880f20765"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-open-after-360.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-open-after-360.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "aff19683f628ae7b006822559909b78982970b3d6828c59a34e0786205508c31"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-open-after-390.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-open-after-390.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "382dc3e924c372c479738b86c9e28e5f4c5eba779e138dbe2f35c769db6bf468"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-open-after-768.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-open-after-768.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "8afbc48093ad5b303e89abf9ce5ee3d0b31b9689b831a27cd2b4ea422b7c5efe"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-open-before-1440.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-open-before-1440.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "9612e7a2d4f9f29ab2ade27b2910a4e1bef4586e45fadefe5f8af25921f7d418"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-open-before-390.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-open-before-390.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "2c5cb18b23c33a94b1ac5fd18f26631bc0d4af1e7b262a8f7af53ebb4331cf38"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/report-open-before-768.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/report-open-before-768.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "91706774900f2acf78e2b5161d94d40e68a0c208f1b80b519f92a5b9e3326b9e"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/review-nav-after.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/review-nav-after.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "aecb6281acedb960823c758d4f253c889c60545d23465b126990abe14a3964b3"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/screenshots/review-nav-before.png",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/screenshots/review-nav-before.png",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "714e12f79ed5a517c14882e1c6c0078b6ff8e4f6c5e027d2509c4159a199793a"
+  },
+  {
+    "source": "docs/playtest/2026-10-27-3/test-plan.md",
+    "destination": "docs/archive/2026-10-31/playtest/2026-10-27-3/test-plan.md",
+    "reason": "Dated playtest report (2026-10-27); finished, not current documentation.",
+    "sha256": "08cb4538be2d275815f574b65d360b0e11c52fba693e514d57ee1d235df48e98"
+  },
+  {
+    "source": "docs/scout-v10-leaf-nondeterminism.md",
+    "destination": "docs/archive/2026-10-31/scout-v10-leaf-nondeterminism.md",
+    "reason": "Dated 2026-10-05 investigation recorded on the scout-v11 path-guard research branch; finding is unfixed, track it as an issue rather than a doc.",
+    "sha256": "106f15d87a3eb42f94833b8887162742b99146e85a2330d5f200e977f96808b3"
+  },
+  {
+    "source": "docs/user-operations.md",
+    "destination": "docs/archive/2026-10-31/user-operations.md",
+    "reason": "Dated 2026-10-08 operations walkthrough with outdated navigation labels; superseded by getting-started.md.",
+    "sha256": "1438cb97f3db31799eee6d5033ed5a3c1cf201b88ed695de3c4159bada198b9d"
   }
 ]
