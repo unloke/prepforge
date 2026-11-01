@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTrainSession } from "./train-session.js";
+import { appState, boards } from "../core/state.js";
+import { provideApp } from "../core/app-context.js";
 
 vi.mock("./train-home.js", async (importOriginal) => ({
   ...await importOriginal(),
   createTrainHome: () => ({ openTrain: vi.fn() }),
 }));
+vi.mock("../core/api.js", async (orig) => ({ ...await orig(), setStatus: vi.fn() }));
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -23,16 +26,13 @@ describe("Practice to Analyze account handoff", () => {
     const loadPgnIntoAnalyze = vi.fn().mockResolvedValue(undefined);
     const switchView = vi.fn();
     const setOrientation = vi.fn();
-    const session = createTrainSession({
-      appState: {
-        lichessUsername,
-        play: { userColor, book: "maia", rating: 1500, history: [{ san: "e4" }] },
-      },
-      boards: { analysis: { setOrientation } },
-      loadPgnIntoAnalyze,
-      switchView,
-      setStatus: vi.fn(),
+    Object.assign(appState, {
+      lichessUsername,
+      play: { userColor, book: "maia", rating: 1500, history: [{ san: "e4" }] },
     });
+    boards.analysis = { setOrientation };
+    provideApp({ loadPgnIntoAnalyze, switchView });
+    const session = createTrainSession();
 
     await session.openPlayInAnalyze();
 

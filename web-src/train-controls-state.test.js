@@ -5,6 +5,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDocument, setup } from "./controllers/train-home.fixture.js";
 import { createTrainHome } from "./controllers/train-home.js";
+vi.mock("./core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
+vi.mock("./train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
+vi.mock("./controllers/train-session.js", () => import("./controllers/train-session.fixture.js"));
 
 let doc;
 beforeEach(() => {

@@ -3,6 +3,11 @@ import { appState } from "../core/state.js";
 import { api, currentOwnerId, localDayOf, setStatus, setStatusError } from "../core/api.js";
 import { holdNewGameNudge, markLichessSeen, orientAnalysisForSelf, syncFetchMyGameButton } from "../account-entry.js";
 import { analysisHistoryResult } from "../analyze-orient.js";
+import { showUndoToast } from "../undo.js";
+import { ensureAnalyzeView } from "../views/analyze-loader.js";
+import { hideAnalysisHandoff, lichessAccounts, loadPgnIntoAnalyze, orientAnalysisFromPgn, requireSignIn,
+  resetAnalysisVariations, revealAnalysisResults, runAnalysis, showAnalysisPly, startLichessOAuth,
+  syncViewHeads } from "../core/app-context.js";
 
 // The Analyze entry points that are not the analysis run itself: "My last
 // game", the saved-list "Recent analyses", recalling one, and deleting one with
@@ -10,16 +15,8 @@ import { analysisHistoryResult } from "../analyze-orient.js";
 // this module is what the shell's Analyze buttons and drawer call.
 
 // The analysis session is lazy (it pulls chess.js, the coach and the engine), so
-// its entry points arrive as deps rather than imports; the shell passes the
-// wrappers it already keeps.
-let requireSignIn, startLichessOAuth, syncViewHeads, lichessAccounts,
-  showUndoToast, ensureAnalyzeView, orientAnalysisFromPgn, loadPgnIntoAnalyze, runAnalysis,
-  resetAnalysisVariations, showAnalysisPly, revealAnalysisResults, hideAnalysisHandoff;
-
-export function createAnalyzeEntry(deps) {
-  ({ requireSignIn, startLichessOAuth, syncViewHeads, lichessAccounts,
-    showUndoToast, ensureAnalyzeView, orientAnalysisFromPgn, loadPgnIntoAnalyze, runAnalysis,
-    resetAnalysisVariations, showAnalysisPly, revealAnalysisResults, hideAnalysisHandoff } = deps);
+// its entry points come through the shell's wrappers in core/app-context.js.
+export function createAnalyzeEntry() {
   return {
     fetchMyLichessGame, importLatestGame, loadAnalysisHistory, refreshAnalysisHistoryIfOpen,
     invalidateAnalysisSource, recallAnalysis, deleteSavedAnalysis, syncPgnFromTree,

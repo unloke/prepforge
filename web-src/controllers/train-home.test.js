@@ -7,6 +7,9 @@ import {
   createTrainHome, dueIn, dueMeta, dueStartState, outlookHtml, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
 } from "./train-home.js";
 import { saveRun } from "../train-history.js";
+vi.mock("../core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
+vi.mock("../train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
+vi.mock("./train-session.js", () => import("./train-session.fixture.js"));
 
 let doc;
 beforeEach(() => {
@@ -116,7 +119,7 @@ describe("the Due row", () => {
   it("holds its loaded shape while the first preview is pending", async () => {
     trainRowError("smart", "");
     const { deps } = setup();
-    deps.localDateString = () => "2099-01-01";
+    deps.localDateString.mockReturnValue("2099-01-01");
     let resolve;
     deps.api.mockImplementation(() => new Promise((done) => { resolve = done; }));
     const pending = createTrainHome(deps).paintTrainHome();
@@ -138,7 +141,7 @@ describe("the Due row", () => {
 
   it("ignores a late preview after the Due scope changes", async () => {
     const { appState, deps } = setup({ trainScope: { repertoireId: "r1", label: "Italian" } });
-    deps.localDateString = () => "2099-01-04";
+    deps.localDateString.mockReturnValue("2099-01-04");
     const pending = new Map();
     deps.api.mockImplementation((url) => new Promise((resolve) => pending.set(url, resolve)));
     const home = createTrainHome(deps);
@@ -158,14 +161,14 @@ describe("the Due row", () => {
   it("uses the row error on failure and renders zero without placeholder rows", async () => {
     trainRowError("smart", "");
     const { deps } = setup();
-    deps.localDateString = () => "2099-01-02";
+    deps.localDateString.mockReturnValue("2099-01-02");
     deps.api.mockRejectedValueOnce(new Error("offline"));
     await createTrainHome(deps).paintTrainHome();
     expect(doc.getElementById("train-due-error").textContent).toContain("Couldn't load the queue");
     expect(doc.getElementById("train-outlook").hidden).toBe(true);
     trainRowError("smart", "");
     const zero = setup();
-    zero.deps.localDateString = () => "2099-01-03";
+    zero.deps.localDateString.mockReturnValue("2099-01-03");
     zero.deps.api.mockResolvedValueOnce({ next_session: { cards: 0 }, outlook: { now: 0, today: 0, week: 0, next: null } });
     await createTrainHome(zero.deps).paintTrainHome();
     expect(doc.getElementById("start-train").dataset.action).toBe("build");

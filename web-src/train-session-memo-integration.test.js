@@ -41,7 +41,7 @@ function harness(overrides = {}) {
     currentOwnerId: () => appState.accountUserId,
     trainStatsReset: () => { appState.trainStats = mapTrainUiSession(payload).stats; },
     invalidateTrainPreview: vi.fn(), trainRowError: vi.fn(), smartResult,
-    home: { showTrainResult: vi.fn((result) => { appState.trainResult = result; }) },
+    showTrainResult: vi.fn((result) => { appState.trainResult = result; }),
     setStatus: vi.fn(), setTrainBanner: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
     postJson: vi.fn(async () => payload), clearBlitzTimer: vi.fn(), blitzEnabled: () => true,
     pendingHandoffs: () => [], setBlitzBarVisible: vi.fn(), boards: {},
@@ -212,7 +212,7 @@ describe("Smart memo integration at Start", () => {
     await h.start();
     h.appState.smart.blitz = false;
     await finish();
-    const shown = h.deps.home.showTrainResult.mock.calls.map((call) => call[0]);
+    const shown = h.deps.showTrainResult.mock.calls.map((call) => call[0]);
     expect(shown).toHaveLength(2);
     expect(shown[0].foot).toBe("");
     expect(shown[1].foot).toBe("2 reviews due tomorrow");
@@ -235,11 +235,11 @@ describe("Smart memo integration at Start", () => {
     });
     await h.start();
     const done = finish();
-    await vi.waitFor(() => expect(h.deps.home.showTrainResult).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(h.deps.showTrainResult).toHaveBeenCalledTimes(1));
     h.appState.trainResult = null; // ‹ Train
     late.resolve({ due_tomorrow: 1 });
     await done;
-    expect(h.deps.home.showTrainResult).toHaveBeenCalledTimes(1);
+    expect(h.deps.showTrainResult).toHaveBeenCalledTimes(1);
   });
 
   it("Finish clears only this owner/session's memo", async () => {

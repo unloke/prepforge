@@ -1,6 +1,5 @@
 import { html } from "./html.js";
 import { bindPgnInput } from "./analyze-pgn-open.js";
-import { confirmAbandonGame } from "./train-play.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
@@ -23,9 +22,8 @@ import { installMoveLinks } from "./move-links.js";
 import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { buildRole } from "./share-roles.js";
-import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
-  setBuildSync, setTrainSyncState, renderTrainStats } from "./train-entry.js";
-import { commitPendingUndos, showUndoToast } from "./undo.js";
+import { createTrainEntry, preloadTrainView, renderBuildSync, setBuildSync } from "./train-entry.js";
+import { showUndoToast } from "./undo.js";
 import { analysisGameName } from "./analyze-name.js";
 import { setBoardCaption } from "./board-caption.js";
 import { readCsrfCookie, CSRF_HEADER } from "./csrf.js";
@@ -41,40 +39,34 @@ import { activateWorkspaceTab, parseWorkspaceLocation, serializeWorkspaceLocatio
 import { createAnalyzeRestore } from "./controllers/analyze-restore.js";
 import { bindCommandPalette, closePalette, createPalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
 import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
-  isBuildReadOnly,
-  deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient, undoLastBuildAdd,
-  hasPendingBuildOpsFor, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
-  reapplyPendingBuildNodes, reloadOpenBuildTree, renderBuilderTree, resolveBuildId, sameFenPosition, setBuildInspector,
-  setExplorerDb, startBuildLive } from "./build-entry.js";
+  isBuildReadOnly, explorerDrawerOpen, explorerEvalEngine, undoLastBuildAdd, queueBuildAdd,
+  reloadOpenBuildTree, renderBuilderTree, resolveBuildId, setBuildInspector, setExplorerDb,
+  startBuildLive } from "./build-entry.js";
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
 import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
-import { BROWSER_ENGINE_UNAVAILABLE, OUTBOX_TAB_ID, activeBoardController, activeViewName,
-  api, currentOwnerId, downloadText, engineLifecycleMark, localDateString, postJson,
-  setStatus, setStatusError, sleep } from "./core/api.js";
-import { applyPref, effectiveMaiaRating, effectiveStockfishDepth, loadPrefs, maiaAnalysisEnabled,
-  pref, syncThemeToggle, toggleTheme,
-  STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "./core/prefs.js";
+import { provideApp } from "./core/app-context.js";
+import { activeBoardController, activeViewName, api, currentOwnerId, postJson, setStatus, setStatusError } from "./core/api.js";
+import { applyPref, loadPrefs, pref, syncThemeToggle, toggleTheme } from "./core/prefs.js";
 import { applyTheme } from "./theme.js";
 import { settleEntrances } from "./list-enter.js";
 import { showConfirmModal, showInputModal } from "./core/modals.js";
 import { isPopoverOpen } from "./core/dialog.js";
 import { openOverflowMenu } from "./core/overflow-menu.js";
 import { hooks } from "./core/hooks.js";
-import { PIECE_SETS, PIECE_STYLE_KEY, boardAfterMove, boardInfo, isPromotionMove, legalMoveFor,
-  legalTargetsFrom, optimisticBoardMove, parseFenBoard, pieceLabel, pieceSvg,
-  renderAnnotations, renderPieceStylePicker, renderPrefsToggles, resolveBoardMove } from "./board/ui.js";
+import { PIECE_SETS, PIECE_STYLE_KEY, boardInfo, isPromotionMove, legalMoveFor, legalTargetsFrom,
+  parseFenBoard, pieceLabel, pieceSvg, renderAnnotations, renderPieceStylePicker, renderPrefsToggles,
+  resolveBoardMove } from "./board/ui.js";
 import { installSoundUnlock, moveCue, playSound } from "./core/sound.js";
-import { engineWidget, setEngineBestArrow, setEngineOn, syncEngineForView, engineWantedIn,
-  applyServerEngineGating, paintEngineBanners, syncAnalysisEvalCard, analysisStore, sanLineFromUci,
-  EXPLORER_EVAL_MAX_LINES } from "./core/engine.js";
-import { _coachReady, loadPhaseCoach, maiaPhaseCoach, preloadCoach } from "./coach/coach-loader.js";
+import { engineWidget, setEngineOn, syncEngineForView, engineWantedIn, applyServerEngineGating,
+  paintEngineBanners } from "./core/engine.js";
+import { _coachReady, preloadCoach } from "./coach/coach-loader.js";
 import { createAccountEntry } from "./account-entry.js";
-import { bindEvalChart, createAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer,
-  preloadAnalyzeView, renderAnalysisTree, renderAnalysisTreeEmptyState } from "./views/analyze-loader.js";
+import { bindEvalChart, createAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer, preloadAnalyzeView,
+  renderAnalysisTree } from "./views/analyze-loader.js";
 import { createAnalyzeEntry, analysisRecallSeq } from "./controllers/analyze-entry.js";
 
 // Teams: loaded with the Teams view, but the shell needs its entry points
@@ -114,10 +106,6 @@ const importRepertoireFromPgnText = viaLibrary("importRepertoireFromPgnText");
 // owned by coverage-entry.js and shared-viewer.js.
 let coverageEntry = null;
 let sharedViewer = null;
-
-function loadTrainResume() {
-  return import("./train-resume.js");
-}
 
 // Sign-in + the Lichess identity (account-entry.js) and the Analyze entry
 // points (controllers/analyze-entry.js). Both are imported at boot: the account
@@ -245,8 +233,6 @@ function preloadBuildGen() {
   return _buildGenReady;
 }
 
-const savedPvSan = new WeakMap();
-
 
 const BoardController = createBoardController({
   pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
@@ -279,12 +265,7 @@ const scheduleExplorerRefresh = viaBuildSession("scheduleExplorerRefresh");
 const selectBuildNode = viaBuildSession("selectBuildNode");
 const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
 
-const syncController = createSyncController({
-  appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync,
-  hasPendingBuildOpsFor, hydrateBuild,
-  setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString,
-  OUTBOX_TAB_ID,
-});
+const syncController = createSyncController();
 const {
   scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt,
   markTrainPositionDirty, beaconFlushTrain, flushTrainSync,
@@ -1010,18 +991,8 @@ let analyzeSession = null;
 let analyzeSessionLoading = null;
 function loadAnalyzeSession() {
   analyzeSessionLoading ||= import("./controllers/analyze-session.js").then((mod) => {
-    analyzeSession = mod.createAnalyzeSession({
-      accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
-      boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
-      defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
-      engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
-      importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
-      maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
-      refreshAnalyzeRecovery, renderAnalysisTreeEmptyState, requireSignIn,
-      sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
-      showAnalysisRetrySave, showConfirmModal, showInputModal, START_FEN, switchView,
-      syncAnalysisEvalCard, syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateBookline,
-    });
+    analyzeSession = mod.createAnalyzeSession();
+
     return analyzeSession;
   }).catch((error) => {
     analyzeSessionLoading = null;
@@ -1068,21 +1039,8 @@ let buildSession = null;
 let buildSessionLoading = null;
 function loadBuildSession() {
   buildSessionLoading ||= import("./controllers/build-session.js").then((mod) => {
-    buildSession = mod.createBuildSession({
-      activeViewName, api, appState, boardAfterMove, boardInfo, boards,
-      BROWSER_ENGINE_UNAVAILABLE, buildDockFolded, buildOpMatchesRepertoire,
-      buildProvisionalNode, captureBuildContext, closeRepertoireContextMenu, currentOwnerId,
-      deleteBuildNodeLocal, downloadText, effectiveMaiaRating, effectiveStockfishDepth,
-      engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
-      handleRepertoireContextAction, hardFlushBuild, hasPendingBuildOpsFor, invalidateBook,
-      isBuildReadOnly, notices, normalizeUci, openSettingsSection, optimisticBoardMove,
-      OUTBOX_TAB_ID, postJson, preloadBuildGen, queueBuildAdd,
-      reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
-      refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
-      requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync,
-      setStatus, setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH,
-      STOCKFISH_MIN_DEPTH, switchView, syncWorkspaceUrl,
-    });
+    buildSession = mod.createBuildSession();
+
     return buildSession;
   }).catch((error) => {
     buildSessionLoading = null;
@@ -1147,22 +1105,26 @@ function paintBuildEmpty() {
   if (sidebar) sidebar.classList.toggle("is-empty", !appState.build);
 }
 
+// The shell's own entry points the lazy controllers call (core/app-context.js).
+provideApp({
+  accountService, analysisSelfSide, captureBuildContext, closeRepertoireContextMenu,
+  defaultRepertoireNameFromPgn, ensureBuildView, flushTrainSync, handleRepertoireContextAction,
+  hardFlushBuild, hideAnalysisHandoff, hideAnalysisRetrySave, hydrateBuild,
+  importRepertoireFromPgnText, invalidateAnalysisSource, lichessAccounts, loadPgnIntoAnalyze,
+  markTrainPositionDirty, openAuthModal, openSettingsSection, orientAnalysisFromPgn, preloadBuildGen,
+  queueTrainAttempt, refreshAnalysisHistoryIfOpen, refreshAnalyzeRecovery, refreshAuthStatus,
+  refreshDashboardRepertoires, refreshRepertoireHead, renderBuildRepHeader, requireSignIn,
+  resetAnalysisVariations, revealAnalysisResults, runAnalysis, scheduleBuildFlush,
+  setTrainBanner, showAnalysisPly, showAnalysisRetrySave, startLichessOAuth, switchView,
+  syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
+});
+
 // Train sessions (smart queue, rehearsal, practice games, Feeling Lucky) live in
 // controllers/train-session.js, loaded the first time Train is used. The wrappers
 // below wait for it, so a click that lands before the chunk does is not lost.
 let trainSessionLoading = null;
 function loadTrainSession() {
-  trainSessionLoading ||= import("./controllers/train-session.js").then((mod) => mod.createTrainSession({
-    accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo,
-    boards, currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView,
-    flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
-    loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
-    notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson,
-    queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead,
-    renderTrainStats, requireSignIn, confirmAbandonGame, showConfirmModal, setBlitzEnabled,
-    setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
-    switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
-  })).catch((error) => {
+  trainSessionLoading ||= import("./controllers/train-session.js").then((mod) => mod.createTrainSession()).catch((error) => {
     trainSessionLoading = null;
     throw error;
   });
@@ -1281,8 +1243,6 @@ function setTrainBanner(state, title, sub) {
   requestAnimationFrame(() => banner.classList.add("flash"));
 }
 
-const PLAY_COLOR_KEY = "prepforge.play_color";
-
 function updateTrainTurnBadge(side) {
   const badge = document.getElementById("train-turn-badge");
   if (!badge) return;
@@ -1301,42 +1261,6 @@ function updateTrainTurnBadge(side) {
   // Show the side-to-move as a real piece (king of that colour), not a bare
   // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
   badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
-}
-
-// ===== Smart queue trainer (Train v2) ========================================
-//
-// Card-based scheduler client over /api/train/smart/*. The flow per card:
-// run-in animation (the approach plays itself, the opponent's last move is the
-// recall cue) → prompt. New cards are taught first (arrow + idea, play it
-// once); everything else is tested cold. Failure is two-stage: first miss
-// auto-hints and lets the player retry (attempt 2, ungraded server-side),
-// second miss reveals the answer and the card returns a few positions later.
-// Only attempt 1 is graded, so the accuracy chips match the server's
-// spaced-repetition writes.
-
-// ----- Blitz mode: an answer clock per card (smart queue only) ---------------
-//
-// Entirely client-side. A timeout submits the null move "0000" as attempt 1, so
-// the server grades an honest first-attempt miss — in blitz, not producing the
-// move in time means it isn't known cold. Teach prompts (kind=new) and retries
-// are untimed; the toggle is read once at session start.
-
-const BLITZ_KEY = "prepforge-blitz";
-const BLITZ_SECONDS = 10;
-
-function blitzEnabled() {
-  try {
-    return localStorage.getItem(BLITZ_KEY) === "1";
-  } catch (_) {
-    return false;
-  }
-}
-
-function setBlitzEnabled(on) {
-  try {
-    if (on) localStorage.setItem(BLITZ_KEY, "1");
-    else localStorage.removeItem(BLITZ_KEY);
-  } catch (_) { /* private mode: the toggle just won't persist */ }
 }
 
 // Apply one button's gated state: disable + greyed style + explanatory title,
@@ -1693,12 +1617,8 @@ async function init() {
     hideAnalysisRetrySave, showUndoToast,
   });
   accountEntry.initAccountController();
-  analyzeEntry = createAnalyzeEntry({
-    requireSignIn, startLichessOAuth, syncReplayControls, syncViewHeads,
-    lichessAccounts, showUndoToast, get ensureAnalyzeView() { return ensureAnalyzeView; },
-    orientAnalysisFromPgn, loadPgnIntoAnalyze, runAnalysis, resetAnalysisVariations,
-    showAnalysisPly, revealAnalysisResults, hideAnalysisHandoff,
-  });
+  analyzeEntry = createAnalyzeEntry();
+
   accountEntry.bindAnalyzeEntry(analyzeEntry);
   createTrainEntry({ setTrainBanner, updateTrainTurnBadge });
   createBook({ editRepertoire, analysisSelfSide });

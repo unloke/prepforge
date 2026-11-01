@@ -5,10 +5,18 @@ import {
 } from "../sync-queue.js";
 import { classifySyncError, describeSyncError } from "../sync-errors.js";
 
-let appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID, buildQueue, trainQueue;
+import { appState } from "../core/state.js";
+import { OUTBOX_TAB_ID, currentOwnerId, localDateString, postJson, setStatus, setStatusError } from "../core/api.js";
+import { CSRF_HEADER, readCsrfCookie } from "../csrf.js";
+import { commitPendingUndos } from "../undo.js";
+import { buildOpMatchesRepertoire, hasPendingBuildOpsFor, resolveBuildId } from "../build-entry.js";
+import { setBuildSync, setTrainSyncState } from "../train-entry.js";
+import { captureBuildContext, hydrateBuild } from "../core/app-context.js";
 
-export function createSyncController(deps) {
-  ({ appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID } = deps);
+// The two outbox queues, built once by createSyncController.
+let buildQueue, trainQueue;
+
+export function createSyncController() {
   const buildState = {
     get timer() { return appState.buildFlushTimer; },
     set timer(value) { appState.buildFlushTimer = value; },

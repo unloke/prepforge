@@ -20,36 +20,24 @@ import { buildRole } from "../share-roles.js";
 import { countOf } from "../plural.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
 
-let activeViewName, api, appState, boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE,
-  buildDockFolded, buildOpMatchesRepertoire, buildProvisionalNode, captureBuildContext,
-  closeRepertoireContextMenu, currentOwnerId, deleteBuildNodeLocal, downloadText,
-  effectiveMaiaRating, effectiveStockfishDepth, engineLifecycleMark, engineWidget,
-  ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
-  explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
-  hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-  openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
-  preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
-  refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
-  requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
-  setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
-  switchView, syncWorkspaceUrl;
+import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, downloadText,
+  engineLifecycleMark, OUTBOX_TAB_ID, postJson, setStatus, setStatusError } from "../core/api.js";
+import { appState, boards, notices, START_FEN } from "../core/state.js";
+import { boardAfterMove, boardInfo, optimisticBoardMove } from "../board/ui.js";
+import { buildDockFolded, buildOpMatchesRepertoire, buildProvisionalNode, deleteBuildNodeLocal,
+  ensureExplorerClient, explorerDrawerOpen, explorerEvalEngine, hasPendingBuildOpsFor, isBuildReadOnly,
+  normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes, renderBuilderTree,
+  resolveBuildId, sameFenPosition } from "../build-entry.js";
+import { effectiveMaiaRating, effectiveStockfishDepth, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "../core/prefs.js";
+import { engineWidget, EXPLORER_EVAL_MAX_LINES } from "../core/engine.js";
+import { invalidateBook } from "../analyze-book-state.js";
+import { renderBuildSync, setBuildSync } from "../train-entry.js";
+import { showInputModal } from "../core/modals.js";
+import { captureBuildContext, closeRepertoireContextMenu, ensureBuildView, handleRepertoireContextAction,
+  hardFlushBuild, openSettingsSection, preloadBuildGen, refreshDashboardRepertoires, renderBuildRepHeader,
+  requireSignIn, scheduleBuildFlush, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 
-export function createBuildSession(deps) {
-  ({
-    activeViewName, api, appState, boardAfterMove, boardInfo, boards,
-    BROWSER_ENGINE_UNAVAILABLE, buildDockFolded, buildOpMatchesRepertoire, buildProvisionalNode,
-    captureBuildContext, closeRepertoireContextMenu, currentOwnerId, deleteBuildNodeLocal,
-    downloadText, effectiveMaiaRating, effectiveStockfishDepth, engineLifecycleMark,
-    engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
-    explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
-    hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-    openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
-    preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
-    refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
-    requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
-    setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
-    switchView, syncWorkspaceUrl,
-  } = deps);
+export function createBuildSession() {
   initBuildDockLayout();
   return {
     buildBranchContext, buildBranchKey, buildGoBack, buildGoForward, buildGoRoot, buildGoToEnd,

@@ -50,7 +50,7 @@ describe("lazy engine widget", () => {
     expect(h.deps.importWidget).not.toHaveBeenCalled();
   });
 
-  it("imports and injects once, opens only the latest request, and reads Analyze live", async () => {
+  it("imports once, creates the widget without injected deps and opens only the latest request", async () => {
     const h = harness();
     const first = h.engineWidget.openForCurrent();
     const second = h.engineWidget.openForCurrent();
@@ -59,11 +59,7 @@ describe("lazy engine widget", () => {
     expect(h.deps.importWidget).toHaveBeenCalledOnce();
     expect(h.createEngineWidget).toHaveBeenCalledOnce();
     expect(h.widget.openForCurrent).toHaveBeenCalledOnce();
-    const injected = h.createEngineWidget.mock.calls[0][0];
-    expect(injected.getAnalyzeSession()).toBeNull();
-    const session = { positionCoach: {} };
-    h.setSession(session);
-    expect(injected.getAnalyzeSession()).toBe(session);
+    expect(h.createEngineWidget).toHaveBeenCalledWith();
     expect(h.engineWidget.isOpen()).toBe(true);
     expect(h.engineWidget.lastSnapshot).toBe(h.widget.lastSnapshot);
     h.engineWidget.onBoardChanged();

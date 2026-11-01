@@ -20,7 +20,7 @@ describe("Train back to Home", () => {
     expect(home).toContain('$("train-back").addEventListener("click", () => void leaveToHome());');
     expect(home).toContain('$("train-summary-home").addEventListener("click", () => void leaveToHome());');
     const body = home.slice(home.indexOf("export async function leaveToHome("), home.indexOf("\n}\n", home.indexOf("export async function leaveToHome(")));
-    expect(body).toContain('confirmAbandonGame(d.appState.play, d.showConfirmModal, "Leave this game?", "Leave game")');
+    expect(body).toContain('confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game")');
   });
 
   it("only a live game with moves counts as progress to lose", () => {
