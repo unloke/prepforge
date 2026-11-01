@@ -83,7 +83,7 @@ defines the merge checks, including PostgreSQL, browser engines and Docker.
 | Workspace layouts | `npm run smoke:ui-v2` (build first; requires a Chromium browser) |
 | Browser Stockfish | `npm run smoke:stockfish` |
 
-Research tests are separate: `npm run test:research`. The default Python suite
+The default Python suite
 excludes browser E2E tests; CI runs those with Playwright and Chromium installed.
 See the workflow for the selected E2E commands and service setup.
 

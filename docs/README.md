@@ -27,17 +27,6 @@
 | [Training ownership](compare-identity-boundary.md) | Personal training evidence and repertoire identity |
 | [Backend consistency](backend-consistency.md) | Analysis snapshots, training transactions and sync versions |
 | [Training flow and I/O](training-flow.md) | Continuous practice, deletion feedback and measured SQL work |
-| [Persistence review](async-persistence-review.md) | Async saves, recovery storage and measured costs |
-| [Persistence follow-up](async-persistence-followup-results.md) | Follow-up validation and IndexedDB recovery |
-
-## Validation notes
-
-These documents record a bounded review or an open finding. Check their dates
-and the current source before using them to describe the product.
-
-- [Detailed operations walkthrough](user-operations.md): desktop and mobile review from 2026-10-08; some navigation labels have since changed. Use [Getting started](getting-started.md) for the current introductory flow.
-- [Scout leaf nondeterminism](scout-v10-leaf-nondeterminism.md): investigation of plans differing across sessions.
-- [Issue discovery benchmark](benchmarks/user-review-20261001/README.md): frozen source, inspection prompt and scoring workflow.
 
 ## Keeping documentation current
 
@@ -51,4 +40,6 @@ Update setup commands alongside `package.json`, `pyproject.toml`, CI and runtime
 configuration. Verify feature claims against the implementation. A dated review
 is evidence of that review's scope, not a permanent product requirement.
 
-Archived plans, audits and finished reports live on the `history` branch.
+Archived plans, audits and finished reports live on the [`history` branch](https://github.com/unloke/prepforge/tree/history/docs/archive)
+(for example the persistence reviews, operations walkthrough, playtests and issue-discovery
+benchmark under [`docs/archive/2026-10-31/`](https://github.com/unloke/prepforge/tree/history/docs/archive/2026-10-31)).

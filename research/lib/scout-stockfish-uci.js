@@ -1,4 +1,4 @@
-// Node Stockfish UCI pool — shared by scout-bias-routes and scout-route-audit harnesses.
+// Node Stockfish UCI pool for scripts/scout-selection-v2-study.mjs (regenerates tests/fixtures/scout).
 
 import { spawn } from "node:child_process";
 
