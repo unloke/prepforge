@@ -124,7 +124,7 @@ async function main() {
     // 1) Open the repertoire so appState.build is a live tree — the precondition
     //    that made the old refresh corrupt it.
     await page.click(`.lib-row[data-repertoire-id="${repertoireId}"]`);
-    await page.locator("#builder-tree .mtree-move").first().waitFor({ timeout: TIMEOUT_MS });
+    await page.locator('#view-build[aria-busy="false"] #builder-tree .mtree-move[data-node-id]').first().waitFor({ timeout: TIMEOUT_MS });
     const headerBefore = ((await page.locator("#build-rep-name").textContent()) || "").trim();
     if (!/Completion E2E/.test(headerBefore)) fail(`Repertoire header should name the repertoire, got "${headerBefore}"`);
 

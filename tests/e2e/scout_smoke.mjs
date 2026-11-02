@@ -335,7 +335,7 @@ async function main() {
       fail(`counter regressed after Resume (${countAfterResume} < ${countAfterStop})`);
     }
 
-    const firstLine = page.locator(".scout-line").first();
+    const firstLine = page.locator("#scout-results .scout-line").first();
     await firstLine.waitFor({ timeout: TIMEOUT_MS });
     const prepText = (await firstLine.textContent()) || "";
     // This fresh account has no repertoire, so a row is just the line: no
@@ -351,13 +351,13 @@ async function main() {
     // Polled: the app's CSP forbids the string eval behind page.waitForFunction.
     const statusDeadline = Date.now() + TIMEOUT_MS;
     for (;;) {
-      const settled = await page.$$eval(".scout-weakness-row", (rows) =>
+      const settled = await page.$$eval("#scout-results .scout-weakness-row", (rows) =>
         rows.length > 0 && rows.every((row) => row.dataset.pathStatus));
       if (settled) break;
       if (Date.now() > statusDeadline) fail("plan rows never received a path-guard status");
       await sleep(500);
     }
-    const pathRows = await page.$$eval(".scout-weakness-row", (rows) => rows.map((row) => {
+    const pathRows = await page.$$eval("#scout-results .scout-weakness-row", (rows) => rows.map((row) => {
       const marker = row.querySelector(".path-risk");
       return {
         status: row.dataset.pathStatus,

@@ -12,7 +12,7 @@ const SCENARIOS = [
   {
     id: "confirmedHit",
     async assert(page) {
-      const prepLine = page.locator(".scout-line").first();
+      const prepLine = page.locator("#scout-results .scout-line").first();
       await prepLine.waitFor({ timeout: TIMEOUT_MS });
       const prepText = await prepLine.textContent();
       // Same copy contract as scout_smoke.mjs: the framing is
