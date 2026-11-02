@@ -43,7 +43,7 @@ describe("move menu — entries the panel can show", () => {
   it("offers the shown move's menu from ⋯ only on a move, not the start position", () => {
     // The root node carries san "root", so the ⋯ menu listed "Move 1. root…".
     const open = session.slice(session.indexOf("function openBuildMenu("), session.indexOf("function openBuildMenu(") + 1600);
-    expect(open).toMatch(/node\?\.san && node\.parent_id \? \[\["build-node-menu"/);
+    expect(open).toMatch(/node\?\.san && node\.parent_id \? \[item\("build-node-menu"/);
     // "Move 3. d4…" read as the verb; the entry names the move as its object.
     expect(open).toContain("`Options for ${nodeMenuHeading(node)}…`");
   });

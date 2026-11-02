@@ -350,6 +350,30 @@ opening_nodes = Table(
     Index("idx_opening_nodes_repertoire_parent", "repertoire_id", "parent_id"),
 )
 
+# Position identity omits move counters and normalizes legal en-passant. No
+# node FK: a conversation survives deletion or rearrangement of its move path.
+position_threads = Table(
+    "position_threads", metadata,
+    Column("id", Text, primary_key=True),
+    Column("repertoire_id", Text, ForeignKey("repertoires.id", ondelete="CASCADE"), nullable=False),
+    Column("position_key", Text, nullable=False),
+    Column("fen", Text, nullable=False),
+    Column("created_by", Text, ForeignKey("users.id", ondelete="SET NULL")),
+    Column("resolved", Integer, nullable=False, server_default="0"),
+    Column("created_at", UTCDateTime(), nullable=False),
+    UniqueConstraint("repertoire_id", "position_key", name="uq_position_threads_position"),
+)
+
+position_messages = Table(
+    "position_messages", metadata,
+    Column("id", Text, primary_key=True),
+    Column("thread_id", Text, ForeignKey("position_threads.id", ondelete="CASCADE"), nullable=False),
+    Column("author_id", Text, ForeignKey("users.id", ondelete="SET NULL")),
+    Column("body", Text, nullable=False),
+    Column("created_at", UTCDateTime(), nullable=False),
+    Index("ix_position_messages_thread_id", "thread_id"),
+)
+
 training_sessions = Table(
     "training_sessions",
     metadata,

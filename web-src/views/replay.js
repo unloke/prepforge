@@ -416,26 +416,23 @@ export function createReplayView({
   // Ledger loading rows: the `.lr` row's own grid with the unknown values as
   // bars, the same primitives as the Library and Teams skeletons. aria-hidden;
   // the Check button carries the busy state.
-  const LEDGER_ROW_SIZES = [
-    { badge: 86, players: 62, res: 30, preview: 74, dep: 42 },
-    { badge: 74, players: 48, res: 30, preview: 66, dep: 42 },
-    { badge: 86, players: 70, res: 30, preview: 80, dep: 42 },
-    { badge: 74, players: 54, res: 30, preview: 58, dep: 42 },
-  ];
   function replayLedgerSkeleton() {
-    const rows = LEDGER_ROW_SIZES.map(
-      (size) => html`
+    const summary = document.getElementById("replay-summary");
+    if (summary) {
+      summary.innerHTML = html`${Object.values(REPLAY_KINDS).map((meta) => html`<span class="sum-chip skeleton-text" aria-hidden="true">0 ${meta.label}</span>`)}`;
+      summary.hidden = false;
+    }
+    const rows = Array.from({ length: 4 }, () => html`
       <div class="lr is-skeleton" aria-hidden="true">
-        <span><span class="skeleton-bar skeleton-chip" style="width:${size.badge}%"></span></span>
-        <span class="players"><span class="skeleton-bar" style="width:${size.players}%"></span><span class="skeleton-bar skeleton-thin" style="width:${size.players - 18}%"></span></span>
-        <span class="res"><span class="skeleton-bar" style="width:${size.res}%"></span></span>
-        <span class="open-prev"><span class="skeleton-bar" style="width:${size.preview}%"></span></span>
-        <span class="num"><span class="skeleton-bar" style="width:${size.dep}%"></span></span>
-      </div>`
-    );
+        <span><i class="kind-badge skeleton-text">You left prep</i></span>
+        <span class="players"><span class="pl skeleton-text">You vs Opponent</span><small class="skeleton-text">Nov 2</small></span>
+        <span class="res skeleton-text"><i class="res-mark"></i>1-0</span>
+        <span class="open-prev skeleton-text">e4 e5 Nf3 Nc6</span>
+        <span class="num skeleton-text">4. d3</span>
+      </div>`);
     // The focus card mirrors the board-plus-text shape it is replaced by, so
     // the triage does not jump when the first rows land.
-    const focus = html`<section class="focus card is-skeleton" aria-hidden="true"><div class="focus-top"><div class="focus-board"><div class="scout-miniboard skeleton-board"></div></div><div class="focus-info"><span class="skeleton-bar skeleton-thin" style="width:38%"></span><span class="skeleton-bar" style="width:62%"></span><span class="skeleton-bar" style="width:80%"></span><span class="skeleton-bar" style="width:44%"></span><span class="skeleton-bar skeleton-chip" style="width:64px"></span></div></div><span class="skeleton-bar skeleton-thin" style="width:70%"></span></section>`;
+    const focus = html`<section class="focus card is-skeleton" aria-hidden="true"><div class="focus-top"><div class="focus-board"><div class="scout-miniboard skeleton-board"></div></div><div class="focus-info"><h2 class="skeleton-text">You vs Opponent</h2><p class="focus-line"><span class="kind-badge skeleton-text">Preparation</span><span class="skeleton-text">1–0</span></p><ul class="reasons"><li><span class="skeleton-text">Opening repertoire · in prep through this move</span></li><li><span class="skeleton-text">Your departure and the prepared reply</span></li></ul><div class="actions"><span class="btn skeleton-text">Analyze</span><span class="btn skeleton-text">Open game</span></div></div></div><div class="moveline">${[1, 2, 3, 4].map(() => html`<div class="move-pair"><span class="move-no skeleton-text">0.</span><span class="ply skeleton-text">Nf3</span><span class="ply skeleton-text">Nc6</span></div>`)}</div></section>`;
     return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui>${LEDGER_HEAD}${rows}</div></section>${focus}</div>`;
   }
 

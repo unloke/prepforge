@@ -1,0 +1,112 @@
+{
+  "#build-board": [
+    {
+      "columns": "48.75px 48.75px 48.75px 48.75px 48.75px 48.75px 48.75px 48.75px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 390,
+      "lineHeight": "normal",
+      "w": 390,
+      "x": 0,
+      "y": 44
+    }
+  ],
+  ".build-tree-region": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 224,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 484
+    }
+  ],
+  ".mtree-line.is-main": [
+    {
+      "columns": "33.5938px 105px 105px 122.406px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 216,
+      "lineHeight": "36px",
+      "w": 366,
+      "x": 12,
+      "y": 488
+    }
+  ],
+  ".mtree-move.is-w": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 28.3984375,
+      "lineHeight": "22.4px",
+      "w": 31.2109375,
+      "x": 46.59375,
+      "y": 491.796875
+    },
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 28.3984375,
+      "lineHeight": "22.4px",
+      "w": 39.34375,
+      "x": 46.59375,
+      "y": 527.796875
+    },
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 28.3984375,
+      "lineHeight": "22.4px",
+      "w": 40.6640625,
+      "x": 46.59375,
+      "y": 563.796875
+    },
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 28.3984375,
+      "lineHeight": "22.4px",
+      "w": 31.2109375,
+      "x": 46.59375,
+      "y": 599.796875
+    },
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 28.3984375,
+      "lineHeight": "22.4px",
+      "w": 39.34375,
+      "x": 46.59375,
+      "y": 635.796875
+    },
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 28.3984375,
+      "lineHeight": "22.4px",
+      "w": 40.6640625,
+      "x": 46.59375,
+      "y": 671.796875
+    }
+  ],
+  ".tree-wrap": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 224,
+      "lineHeight": "28px",
+      "w": 366,
+      "x": 12,
+      "y": 484
+    }
+  ]
+}

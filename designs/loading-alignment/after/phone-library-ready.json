@@ -1,0 +1,50 @@
+{
+  "#dashboard-repertoires": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 85.5,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 244.640625
+    }
+  ],
+  ".lib-name": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "2px",
+      "h": 39.5,
+      "lineHeight": "normal",
+      "w": 197.7109375,
+      "x": 64,
+      "y": 252.640625
+    }
+  ],
+  ".lib-row": [
+    {
+      "columns": "minmax(0px, 1fr) auto",
+      "display": "flex",
+      "gap": "4px",
+      "h": 85.5,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 244.640625
+    }
+  ],
+  ".today": [
+    {
+      "columns": "338px",
+      "display": "grid",
+      "gap": "2px 12px",
+      "h": 130.640625,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 56
+    }
+  ]
+}

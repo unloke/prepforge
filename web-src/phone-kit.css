@@ -40,3 +40,5 @@
   .src-count { font-size: 13px; }
   .src-done { min-width: 44px; min-height: 44px; font-size: 16px; }
 }
+
+.context-menu .menu-forward { float: right; margin-left: 24px; color: var(--muted); }

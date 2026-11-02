@@ -3,6 +3,8 @@ import { bindPgnInput } from "./analyze-pgn-open.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
+import { promptRenameRepertoire } from "./repertoire-rename.js";
+import { paintBuildSkeleton } from "./views/build-skeleton.js";
 import "./phone.css";
 import "./touch.css";
 import "./phone-kit.css";
@@ -681,6 +683,7 @@ function setBuildLoading(on, { restore = true } = {}) {
     if (node && boards.build) {
       const info = localBoardInfo(node.fen);
       boards.build.setPosition({ fen: node.fen, legalMoves: info.legal_moves, lastMove: node.uci });
+      boards.build.setAnnotations(node.arrows || [], node.circles || []);
     }
     renderBuildRepHeader();
     renderBuilderTree();
@@ -689,20 +692,11 @@ function setBuildLoading(on, { restore = true } = {}) {
   }
   if (boards.build) {
     boards.build.setPosition({ fen: boards.build.fen, legalMoves: [], lastMove: null });
+    boards.build.setAnnotations([], []);
   }
   if (appState.currentView !== "build") switchView("build", { fromUrl: true });
   paintBuildEmpty();
-  const nameEl = document.getElementById("build-rep-name");
-  if (nameEl) {
-    nameEl.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%"></span>`;
-    // The old tree's size is not this tree's: the caption goes with it.
-    nameEl.title = "";
-  }
-  const tree = document.getElementById("builder-tree");
-  if (tree) {
-    tree.innerHTML =
-      html`<div class="skeleton-row" role="status" aria-label="Loading repertoire">${[72, 56, 84, 48, 64, 40].map((w) => html`<span class="skeleton-bar" style="width:${w}%"></span>`)}</div>`;
-  }
+  paintBuildSkeleton(document);
 }
 
 function updateBuildReadOnlyUi(payload) {
@@ -805,20 +799,9 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
     }
     if (action === "rename") {
       const meta = await fetchRepertoireMeta(repertoireId);
-      const result = await showInputModal({
-        title: "Rename repertoire",
-        okLabel: "Save",
-        fields: [{ name: "name", label: "New name", default: meta?.name || "" }],
+      await promptRenameRepertoire({
+        repertoireId, name: meta?.name || "", afterSave: refreshDashboardRepertoires,
       });
-      if (!result) return;
-      const name = (result.name || "").trim();
-      if (!name) {
-        setStatus("Name is empty");
-        return;
-      }
-      await postJson("/api/build/rename", { repertoire_id: repertoireId, name });
-      await refreshDashboardRepertoires();
-      setStatus(`Renamed to ${name}`);
       return;
     }
     if (action === "share") {
@@ -1077,6 +1060,8 @@ async function ensureBuildView() {
       buildBranchContext,
       isReadOnly: isBuildReadOnly,
       onTreeRendered: syncViewHeads,
+      boardRenderers: { parseFenBoard, pieceSvg },
+      collaborationApi: { api, postJson, hydrateBuild, showInputModal },
     });
   }
   return buildView;
@@ -1101,8 +1086,8 @@ function renderBuildRepHeader() {
 function paintBuildEmpty() {
   const empty = document.getElementById("build-empty");
   const sidebar = document.getElementById("build-sidebar");
-  if (empty) empty.hidden = !!appState.build;
-  if (sidebar) sidebar.classList.toggle("is-empty", !appState.build);
+  if (empty) empty.hidden = !!appState.build || appState.buildLoading;
+  if (sidebar) sidebar.classList.toggle("is-empty", !appState.build && !appState.buildLoading);
 }
 
 // The shell's own entry points the lazy controllers call (core/app-context.js).

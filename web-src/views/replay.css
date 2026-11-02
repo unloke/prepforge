@@ -190,7 +190,7 @@
 .kind-badge.t-warn { background: var(--warn-soft); color: var(--warn-text); }
 .kind-badge.t-none { background: var(--none-soft); color: var(--none); }
 
-.focus { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow: auto; }
+.focus { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow: auto; scrollbar-gutter: stable; }
 /* Board above, detail text below, at every width: the board takes the card's
    full width instead of sharing it with the text. */
 .focus-top { display: flex; flex-direction: column; gap: 12px; }

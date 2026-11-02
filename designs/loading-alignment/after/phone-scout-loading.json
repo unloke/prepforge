@@ -1,0 +1,75 @@
+{
+  ".scout-grid": [
+    {
+      "columns": "minmax(0px, 1fr)",
+      "display": "flex",
+      "gap": "12px 24px",
+      "h": 846.3671875,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 228.5
+    }
+  ],
+  ".scout-loading-side .scout-miniboard": [],
+  ".scout-skeleton .cs-head": [
+    {
+      "columns": "167.914px 85.8984px 64.1875px",
+      "display": "grid",
+      "gap": "8px 10px",
+      "h": 88.1953125,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 407.5
+    }
+  ],
+  ".scout-skeleton .scout-color-tabs": [
+    {
+      "columns": "181px 181px",
+      "display": "grid",
+      "gap": "4px",
+      "h": 51,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 344.5
+    }
+  ],
+  ".scout-skeleton .scout-intel": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 258.671875,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 752.1953125
+    }
+  ],
+  ".scout-skeleton .scout-profile": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 104,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 228.5
+    }
+  ],
+  ".scout-skeleton .scout-weakness-row": [
+    {
+      "columns": "256.562px 49.4375px",
+      "display": "grid",
+      "gap": "10px",
+      "h": 52,
+      "lineHeight": "normal",
+      "w": 336,
+      "x": 27,
+      "y": 685.1953125
+    }
+  ]
+}

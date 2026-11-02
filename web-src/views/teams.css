@@ -58,10 +58,8 @@
   padding: 9px 12px;
 }
 #teams-list[data-ui] .team-row { border-top: 1px solid var(--line); }
-.team-row.is-skeleton { min-height: 53px; cursor: default; }
+.team-row.is-skeleton { min-height: 54px; cursor: default; }
 .team-row.is-skeleton .tr-text { flex: 1; }
-.team-row.is-skeleton .skeleton-name { height: 12px; margin-block: 2.5px; }
-.team-row.is-skeleton .skeleton-subline { height: 10px; margin-block: 3.5px; }
 .team-badge-skeleton { flex: none; width: 46px; height: 15px; border-radius: 10px; }
 .tr-text {
   display: flex;
@@ -99,7 +97,6 @@
 .mem-row.is-skeleton { cursor: default; }
 .mem-row.is-skeleton:hover { background: none; }
 .mem-row.is-skeleton .mem-id { flex: 1; min-width: 0; }
-.mem-row.is-skeleton .skeleton-subline { height: 10px; }
 .member-skeleton .skeleton-dot { width: 24px; height: 24px; margin-top: 0; }
 .member-skeleton .mem-id { flex-wrap: nowrap; align-items: center; gap: 6px; }
 .member-skeleton .member-role-skeleton { flex: none; width: 54px; height: 18px; border-radius: 10px; }
@@ -385,7 +382,7 @@ select.team-role-select {
   }
   #view-teams .team-row { grid-template-columns: minmax(0, 1fr) auto auto; padding-right: 12px; }
   /* A team row pushes the team: the chevron says so, as a list row does in iOS. */
-  #view-teams .team-row:not(.is-skeleton)::after {
+  #view-teams .team-row::after {
     content: "";
     width: 8px;
     height: 8px;
@@ -393,6 +390,7 @@ select.team-role-select {
     border-width: 2px 2px 0 0;
     transform: rotate(45deg);
   }
+  #view-teams .team-row.is-skeleton::after { visibility: hidden; }
   #view-teams .team-row .name { font-size: 15px; font-weight: 500; }
   #view-teams :is(.team-row, .mem-row) .sub {
     overflow: hidden;
@@ -410,8 +408,6 @@ select.team-role-select {
     font-size: 14px;
     font-weight: 500;
   }
-  #view-teams .member-skeleton .skeleton-name { height: 12px; margin-block: 3.5px; }
-  #view-teams .member-skeleton .skeleton-subline { height: 10px; margin-block: 3.5px; }
   #view-teams .mem-id > .name + .sub::before { content: none; }
   #view-teams .sub-role { display: inline; }
   /* A role is a word in the row's right column, not a pill: Owner, Admin ⌄
@@ -549,7 +545,6 @@ select.team-role-select {
     padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 84px);
   }
   #view-teams .team-invite-foot,
-  #view-teams .team-detail[aria-busy="true"]::after { padding: 12px 16px; font-size: 13px; }
   .invite-modal .invite-done { min-height: 36px; font-size: 15px; }
   .invite-modal .modal-footer .btn { min-width: 0; padding: 0 10px; }
   .invite-modal .modal-footer .btn.danger-quiet { padding: 0 4px; }
@@ -596,7 +591,6 @@ select.team-role-select {
 .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }
 
 .team-detail[inert] .btn { visibility: hidden; }
-.team-detail[aria-busy="true"]::after { content: "\00a0"; display: block; padding: 10px 12px; font-size: var(--fs-s); flex: none; background: var(--panel-soft); }
 .team-detail[aria-busy="true"] > .team-invite-foot { display: none; }
 .team-detail > .card-head { min-height: 50px; }
 #team-members > .mem-row { min-height: 47px; }

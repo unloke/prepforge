@@ -1,0 +1,50 @@
+{
+  "#team-detail-card": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 178,
+      "lineHeight": "normal",
+      "w": 981,
+      "x": 428,
+      "y": 80
+    }
+  ],
+  "#team-members .mem-row": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 47,
+      "lineHeight": "normal",
+      "w": 981,
+      "x": 428,
+      "y": 211
+    }
+  ],
+  "#teams-shared": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 41.5,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 292
+    }
+  ],
+  ".team-row": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 54,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 180
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "PrepForge menu and loading comparisons": {
+      "versions": [
+        {
+          "path": "index.html",
+          "createdAt": "2026-11-02T17:12:54.507Z",
+          "status": "approved",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-11-02T17:12:54.508Z",
+  "updatedAt": "2026-11-02T17:27:42.103Z"
+}

@@ -314,16 +314,6 @@
   #view-dashboard .lib-row.is-selected,
   #view-dashboard .lib-row.is-selected:hover { background: var(--surface-3); }
   #view-dashboard .lib-row.is-selected::before { content: none; }
-  /* The skeleton row is the phone row's flex shape without the ⋯ button. */
-  #view-dashboard .lib-row.is-skeleton { padding-right: 40px; }
-  #view-dashboard .lib-row .skeleton-dot { margin-top: 0; }
-  #view-dashboard .lib-row.is-skeleton .skeleton-stack { gap: 7px; }
-  #view-dashboard .lib-row.is-skeleton .lib-cell-queue { gap: 6px; padding-left: 38px; }
-  #view-dashboard .lib-cell-rep .skeleton-bar { height: 18px; }
-  #view-dashboard .lib-cell-rep .skeleton-thin { height: 14px; }
-  #view-dashboard .lib-row .skeleton-chip { height: 24px; }
-  #view-dashboard .lib-cell-mastery .skeleton-bar { width: 78px; min-width: 78px; }
-  #view-dashboard .lib-list.is-loading .card-head .seg { visibility: visible; }
   #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
   #view-dashboard .lib-row :is(.color-dot, .skeleton-dot) { flex: none; width: 26px; height: 26px; }
   #view-dashboard .lib-row .lib-name { min-width: 0; gap: 2px; }
@@ -502,9 +492,9 @@
   #view-replay .toolbar > .counter { grid-column: 2; justify-self: end; margin: 0; color: var(--muted); font-size: 13px; text-align: right; }
   /* Once there is a report, Start leaves the docked bar and joins the toolbar's
      last row: Reset, the count, Start. Before that the docked Start is the page's one action. */
-  #view-replay .scout-panel:has(#scout-results > .scout-section) > .toolbar { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; }
-  #view-replay .scout-panel:has(#scout-results > .scout-section) > .toolbar > :is(#scout-reset-btn, .counter, #scout-btn) { grid-row: 3; }
-  #view-replay.is-active .scout-panel:has(#scout-results > .scout-section) > .toolbar > #scout-btn {
+  #view-replay .scout-panel:is(.is-streaming, :has(#scout-results > .scout-section)) > .toolbar { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; }
+  #view-replay .scout-panel:is(.is-streaming, :has(#scout-results > .scout-section)) > .toolbar > :is(#scout-reset-btn, .counter, #scout-btn) { grid-row: 3; }
+  #view-replay.is-active .scout-panel:is(.is-streaming, :has(#scout-results > .scout-section)) > .toolbar > #scout-btn {
     position: static;
     grid-column: 3;
     justify-self: end;

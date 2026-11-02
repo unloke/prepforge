@@ -7,7 +7,7 @@ Build your opening repertoire. Rehearse it. Check what happened over the board.
 [![CI](https://github.com/unloke/prepforge/actions/workflows/ci.yml/badge.svg)](https://github.com/unloke/prepforge/actions/workflows/ci.yml)
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE)
 
-![Repertoire workspace with visible branch arrows and floating move choices](docs/assets/repertoire-desktop.png)
+![Repertoire workspace with activity, discussions and a route ornament](docs/assets/repertoire-desktop.png)
 
 PrepForge is a chess preparation app that connects opening study, spaced repetition
 and game review. Keep your lines in a repertoire, practice the moves you need to
@@ -26,6 +26,10 @@ or consult the engine. Generate continuations from a position and use Coverage
 to find missing replies, preview them and add the ones you want to prepare.
 Branch choices float over the move tree. Deleted moves disappear immediately;
 the compact Undo control restores the branch without shifting the workspace.
+Choose More → Explore → Atlas to move from a route map to branching positions
+and a focused move sheet. Repertoire headings carry a route ornament drawn from the actual tree.
+
+![Repertoire atlas with the current tree's branching routes](docs/assets/repertoire-atlas.png)
 
 ### Remember your moves
 
@@ -63,6 +67,14 @@ repertoire. Deep scan checks games for engine-detected mistakes and refutations.
 Share a repertoire with people or teams using View only, Can copy or Can edit
 roles. Public links allow viewing or copying, depending on the owner's setting.
 Personal training progress belongs to the player.
+More → Collaborate contains Activity, Discuss position and Share.
+Activity shows authors, recent edits and unread move markers. Owners can restore
+a recorded tree edit when it does not conflict with later work. Position
+discussions follow transpositions, remain after a line is deleted, and can be
+resolved or attached to another position. Notes and names stay in their dialog
+when saving fails.
+
+![Discussion anchored to a repertoire position](docs/assets/repertoire-discussion.png)
 
 <details>
 <summary>Training and mobile screenshots</summary>

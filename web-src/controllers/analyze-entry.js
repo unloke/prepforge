@@ -123,7 +123,8 @@ export async function loadAnalysisHistory() {
   const isCurrent = () => seq === analysisHistorySeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const host = document.getElementById("analysis-history");
   if (!host) return;
-  host.innerHTML = html`<div class="muted hint">Loading…</div>`;
+  if (!host.querySelector(".history-item")) host.innerHTML = html`<div class="history-item" aria-hidden="true"><span class="hi-open"><span class="hi-players skeleton-text">Player vs Opponent</span><span class="hi-meta skeleton-text">2026-11-02</span></span><span class="btn icon sm hi-delete skeleton-text"><span>×</span></span></div>`;
+  host.setAttribute("aria-busy", "true");
   const rows = new Map();
   let cursor = null, loading = false;
   async function loadPage() {
@@ -166,6 +167,7 @@ export async function loadAnalysisHistory() {
         setStatusError(error.message);
       } else host.innerHTML = html`<div class="empty-state">${error.message}</div>`;
     } finally {
+      if (isCurrent()) host.setAttribute("aria-busy", "false");
       loading = false;
       if (button && isCurrent()) button.disabled = false;
     }
@@ -222,6 +224,8 @@ export async function recallAnalysis(gameId, listItem = null, { sourceSeq = inva
   const seq = sourceSeq;
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
+  const sidebar = document.getElementById("analyze-sidebar");
+  sidebar?.setAttribute("aria-busy", "true");
   try {
     const payload = await api(`/api/analyses/${encodeURIComponent(gameId)}`);
     const view = await ensureAnalyzeView();
@@ -251,6 +255,8 @@ export async function recallAnalysis(gameId, listItem = null, { sourceSeq = inva
   } catch (error) {
     if (seq === analysisRecallSeq && !quiet) setStatusError(error.message);
     return false;
+  } finally {
+    if (seq === analysisRecallSeq) sidebar?.setAttribute("aria-busy", "false");
   }
 }
 

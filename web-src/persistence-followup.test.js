@@ -49,7 +49,7 @@ it.each([false,true])('Settings reads wait for pending write (failure=%s)', asyn
 });
 it.each(['success','failure'])('History ignores old owner %s responses',async(outcome)=>{
   const response=deferred(),appState={ownerGeneration:1};let owner='A';
-  const host={get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelector:()=>null,querySelectorAll:()=>[]};
+  const host={setAttribute() {}, get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelector:()=>null,querySelectorAll:()=>[]};
   const load=compile('async function loadAnalysisHistory(',{appState,currentOwnerId:()=>owner,document:{getElementById:()=>host},api:()=>response.promise,localDayOf:String},'let analysisHistorySeq=0;');
   const pending=load();owner='B';appState.ownerGeneration++;host.innerHTML='';
   if(outcome==='success') response.resolve({analyses:[{game_id:'A',white:'Private'}]});else response.reject(Error('A error'));
@@ -57,7 +57,7 @@ it.each(['success','failure'])('History ignores old owner %s responses',async(ou
 });
 it('History follows cursors, deduplicates games and retains scroll',async()=>{
   let click;const button={addEventListener:(_t,fn)=>{click=fn;}};
-  const host={get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },scrollTop:77,querySelector:()=>button,querySelectorAll:()=>[]};
+  const host={setAttribute() {}, get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },scrollTop:77,querySelector:()=>button,querySelectorAll:()=>[]};
   const api=vi.fn().mockResolvedValueOnce({analyses:[{game_id:'one'}],next_cursor:'next'}).mockResolvedValueOnce({analyses:[{game_id:'one'},{game_id:'two'}]});
   const load=compile('async function loadAnalysisHistory(',{appState:{},currentOwnerId:()=> 'A',document:{getElementById:()=>host},api,localDayOf:String},'let analysisHistorySeq=0;');
   await load();expect(String(host.innerHTML)).toContain('Load more');await click();
@@ -88,7 +88,7 @@ it('team directory caches empty results and rejects old refreshes and owners',as
   appState.accountUserId='B';appState.ownerGeneration++;await loadTeamDirectory(appState,api);expect(api).toHaveBeenCalledTimes(3);
 });
 it('shared repertoire refresh ignores an older response',async()=>{
-  const first=deferred(),second=deferred();const host={get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelectorAll:()=>[]};
+  const first=deferred(),second=deferred();const host={children:[],setAttribute() {}, get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelectorAll:()=>[]};
   const appState={};const load=compile('async function loadSharedRepertoires(',{appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>host},api:vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),teamById:()=>null,sharedRepRowsSkeleton,enterRows:()=>{}},'let sharedRepertoiresSeq=0;');
   const a=load(),b=load();second.resolve({shared:[]});await b;first.resolve({shared:[{id:'stale'}]});await a;expect(String(host.innerHTML)).not.toContain('stale');
 });

@@ -1,0 +1,38 @@
+{
+  "#build-board": [
+    {
+      "columns": "102.25px 102.25px 102.25px 102.25px 102.25px 102.25px 102.25px 102.25px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 818,
+      "lineHeight": "normal",
+      "w": 818,
+      "x": 75,
+      "y": 19
+    }
+  ],
+  "#build-inspector": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 426.7734375,
+      "lineHeight": "normal",
+      "w": 516,
+      "x": 910,
+      "y": 455.2265625
+    }
+  ],
+  ".build-tree-region": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 326.03125,
+      "lineHeight": "normal",
+      "w": 516,
+      "x": 910,
+      "y": 129.1953125
+    }
+  ]
+}

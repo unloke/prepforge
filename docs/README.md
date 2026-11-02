@@ -27,6 +27,7 @@
 | [Training ownership](compare-identity-boundary.md) | Personal training evidence and repertoire identity |
 | [Backend consistency](backend-consistency.md) | Analysis snapshots, training transactions and sync versions |
 | [Training flow and I/O](training-flow.md) | Continuous practice, deletion feedback and measured SQL work |
+| [Repertoire collaboration](repertoire-collaboration.md) | Recent activity, inverse edits, position discussions and Atlas |
 
 ## Keeping documentation current
 

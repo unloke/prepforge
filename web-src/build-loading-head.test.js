@@ -1,6 +1,7 @@
 ﻿// Regression: the loading skeleton must not keep the previous repertoire's
 // Generate button, and the tree's no-repertoire branch must repaint the head.
 import { html } from "./html.js";
+import { paintBuildSkeleton } from "./views/build-skeleton.js";
 import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 
@@ -19,7 +20,8 @@ function harness() {
   const deps = {
     appState,
     html,
-    boards: { build: { setPosition: vi.fn(), setBranchArrows: vi.fn() } },
+    paintBuildSkeleton,
+    boards: { build: { setPosition: vi.fn(), setBranchArrows: vi.fn(), setAnnotations: vi.fn() } },
     switchView: vi.fn(),
     paintBuildEmpty: () => painted.push("empty"),
     document: { getElementById: (id) => (id === "build-empty" ? { hidden: true } : null) },

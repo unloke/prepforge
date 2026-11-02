@@ -192,7 +192,7 @@
 .scout-coverage-fill.bad { background: var(--danger); }
 
 .intel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; background: var(--panel-soft); }
-.headline { margin: 0; max-width: 62ch; font-size: 16px; font-weight: 500; line-height: 1.4; }
+.headline { min-height: 2.8em; margin: 0; max-width: 62ch; font-size: 16px; font-weight: 500; line-height: 1.4; }
 .scout-repertoire-reads { display: flex; flex-wrap: wrap; gap: 6px; }
 .scout-read-chip {
   display: inline-flex;
@@ -459,7 +459,7 @@
 .scout-sparkline polyline { vector-effect: non-scaling-stroke; }
 
 /* ---- Line-detail card (side) ---- */
-.line-title { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.line-title { min-height: 2.8em; margin: 0; font-size: 14px; font-weight: 500; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .scout-side .scout-miniboard-wrap { width: 100%; max-width: 320px; height: auto; aspect-ratio: 1; align-self: center; }
 .scout-side .scout-miniboard { width: 100%; height: auto; aspect-ratio: 1; }
 .scout-line-status { font-size: var(--fs-s); font-weight: 500; }
@@ -537,6 +537,7 @@
   .cs-head { order: 0; }
   .plan { order: 1; }
   .intel { order: 2; }
+  .intel .headline { min-height: 4.2em; }
   /* The identity card repeats the player the section head names and the score
      the colour tabs already show. On a phone it keeps the sample-size chips
      and the two actions, and gives the rest of its height to the lines. */
@@ -613,3 +614,5 @@
   animation: scout-row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--enter-index, 0), 11) * 35ms);
 }
+
+.scout-engine-progress.is-idle:empty { display: none; }

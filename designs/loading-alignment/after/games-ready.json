@@ -1,0 +1,122 @@
+{
+  ".focus": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "12px",
+      "h": 804,
+      "lineHeight": "normal",
+      "w": 512,
+      "x": 912,
+      "y": 80
+    }
+  ],
+  ".focus-board": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 473,
+      "lineHeight": "normal",
+      "w": 473,
+      "x": 924,
+      "y": 92
+    }
+  ],
+  ".lr:not(.head)": [
+    {
+      "columns": "156px 260px 64px 176px 80px",
+      "display": "grid",
+      "gap": "16px",
+      "h": 50,
+      "lineHeight": "normal",
+      "w": 824,
+      "x": 76,
+      "y": 150
+    },
+    {
+      "columns": "156px 260px 64px 176px 80px",
+      "display": "grid",
+      "gap": "16px",
+      "h": 50,
+      "lineHeight": "normal",
+      "w": 824,
+      "x": 76,
+      "y": 200
+    },
+    {
+      "columns": "156px 260px 64px 176px 80px",
+      "display": "grid",
+      "gap": "16px",
+      "h": 50,
+      "lineHeight": "normal",
+      "w": 824,
+      "x": 76,
+      "y": 250
+    },
+    {
+      "columns": "156px 260px 64px 176px 80px",
+      "display": "grid",
+      "gap": "16px",
+      "h": 50,
+      "lineHeight": "normal",
+      "w": 824,
+      "x": 76,
+      "y": 300
+    }
+  ],
+  ".players": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 35,
+      "lineHeight": "normal",
+      "w": 260,
+      "x": 260,
+      "y": 157
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 35,
+      "lineHeight": "normal",
+      "w": 260,
+      "x": 260,
+      "y": 207
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 35,
+      "lineHeight": "normal",
+      "w": 260,
+      "x": 260,
+      "y": 257
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 35,
+      "lineHeight": "normal",
+      "w": 260,
+      "x": 260,
+      "y": 307
+    }
+  ],
+  ".triage": [
+    {
+      "columns": "824px 512px",
+      "display": "grid",
+      "gap": "12px",
+      "h": 804,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 80
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "#build-board": [
+    {
+      "columns": "48.75px 48.75px 48.75px 48.75px 48.75px 48.75px 48.75px 48.75px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 390,
+      "lineHeight": "normal",
+      "w": 390,
+      "x": 0,
+      "y": 76.1953125
+    }
+  ],
+  ".build-tree-region": [],
+  ".mtree-line.is-main": [],
+  ".mtree-move.is-w": [],
+  ".tree-wrap": []
+}

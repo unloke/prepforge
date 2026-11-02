@@ -1,0 +1,26 @@
+{
+  "#team-detail-card": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 187.5,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 8
+    }
+  ],
+  "#team-members .mem-row": [
+    {
+      "columns": "24px 194px 108px",
+      "display": "grid",
+      "gap": "10px",
+      "h": 51,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 103
+    }
+  ]
+}

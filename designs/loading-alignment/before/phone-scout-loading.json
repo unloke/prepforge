@@ -1,0 +1,20 @@
+{
+  ".scout-grid": [
+    {
+      "columns": "minmax(0px, 1fr)",
+      "display": "flex",
+      "gap": "12px 24px",
+      "h": 581.5,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 210
+    }
+  ],
+  ".scout-loading-side .scout-miniboard": [],
+  ".scout-skeleton .cs-head": [],
+  ".scout-skeleton .scout-color-tabs": [],
+  ".scout-skeleton .scout-intel": [],
+  ".scout-skeleton .scout-profile": [],
+  ".scout-skeleton .scout-weakness-row": []
+}

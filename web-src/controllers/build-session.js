@@ -1,4 +1,6 @@
 import { html } from "../html.js";
+import { openOverflowMenu } from "../core/overflow-menu.js";
+import { promptRenameRepertoire } from "../repertoire-rename.js";
 import { enterRows } from "../list-enter.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
 import { isPopoverOpen, menuKeys, openPopover } from "../core/dialog.js";
@@ -128,79 +130,52 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   syncWorkspaceUrl();
 }
 
-// The ⋯ menu in the Repertoire header: the same repertoire actions as the
-// Library row's ⋯ (minus "Open in Repertoire" — you are here), plus the
-// page-only Export PGN and New repertoire. Reuses the shared context-menu
-// element and the Library's action handler so the two menus cannot drift.
-// An editor of someone else's repertoire gets Export only: training, renaming,
-// sharing, enabling and deleting stay with the owner.
-function buildMenuItems({ hasRep, isActive, isOwner = true }) {
-  const owned = [
-    ["train", "Start training"],
-    ["build-rename", "Rename…"],
-    ["build-export-pgn", "Export PGN"],
-    ["share", "Share…"],
-    ["toggle-active", isActive ? "Disable" : "Enable"],
-    ["delete", "Delete…"],
-  ];
-  return [
-    // Generating writes moves, so it is there for anyone who can edit the tree.
-    ...(hasRep ? [["build-generate", "Generate moves…"]] : []),
-    ...(hasRep ? (isOwner ? owned : [["build-export-pgn", "Export PGN"]]) : []),
-    ["build-new-rep", "New repertoire…"],
-  ];
-}
-
 function openBuildMenu(event) {
   event.preventDefault();
   event.stopPropagation();
   const menu = document.getElementById("repertoire-context-menu");
   if (!menu) return;
-  const hasRep = !!appState.build && !isBuildReadOnly();
-  const repId = hasRep ? appState.build.repertoire_id : null;
-  const meta = hasRep
-    ? (appState.repertoireList || []).find((r) => String(r.id) === String(repId))
-    : null;
-  const isActive = !meta || meta.is_active !== false;
-  // The shown move's own menu, for screens without a right-click. The start
-  // position is not a move (its node carries san "root"). "Move 3. d4…" read
-  // as the verb (relocate it), so the entry names the move as its object.
-  const node = hasRep ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
+  const rep = appState.build;
+  const repId = rep?.repertoire_id;
+  const editable = !!rep && !isBuildReadOnly();
+  const owner = !!rep && !appState.sharedToken && buildRole(rep) === "owner";
+  const collaborative = !!rep && !appState.sharedToken && appState.signedIn;
+  const meta = (appState.repertoireList || []).find((r) => String(r.id) === String(repId));
+  const isActive = meta?.is_active !== false;
+  const node = editable ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
+  const item = (action, label, extra = {}) => ({ action, label, ...extra });
   const items = [
-    ...(node?.san && node.parent_id ? [["build-node-menu", `Options for ${nodeMenuHeading(node)}…`]] : []),
-    ...buildMenuItems({ hasRep, isActive, isOwner: buildRole(appState.build) === "owner" }),
+    ...(node?.san && node.parent_id ? [item("build-node-menu", `Options for ${nodeMenuHeading(node)}…`)] : []),
+    ...(owner ? [item("train", "Start training")] : []),
+    ...(rep ? [item("explore", "Explore", { group: 1, children: [
+      item("build-atlas", "Atlas"),
+      ...(editable ? [item("build-generate", "Generate moves…")] : []),
+    ] })] : []),
+    ...(collaborative ? [item("collaborate", "Collaborate", { group: 1, children: [
+      item("build-discuss", buildView.discussionLabel()), item("build-activity", buildView.activityLabel()),
+      ...(owner ? [item("share", "Share…", { group: 1 })] : []),
+    ] })] : []),
+    ...(rep ? [item("manage", "Manage", { group: 1, children: [
+      ...(owner ? [item("build-rename", "Rename…")] : []),
+      item("build-export-pgn", "Export PGN"),
+      ...(owner ? [item("toggle-active", isActive ? "Disable" : "Enable"), item("delete", "Delete…", { group: 1, danger: true })] : []),
+    ] })] : []),
+    item("build-new-rep", "New repertoire…", { group: 2 }),
   ];
-  // Three groups: this move (its options, Generate), the repertoire, New.
-  const firstRep = items.find(([action]) => action !== "build-node-menu" && action !== "build-generate")?.[0];
-  const sepBefore = (action) => hasRep && (action === "build-new-rep" || (action === firstRep && items[0][0] !== firstRep));
-  menu.innerHTML = html`${items
-    .map(
-      ([action, label]) =>
-        html`<button type="button" role="menuitem" tabindex="-1" data-action="${action}"${sepBefore(action) ? html` class="menu-sep-before"` : ""}>${label}</button>`
-    )}`;
-  const close = openPopover(menu, { opener: event.currentTarget });
-  menuKeys(menu, close);
   const anchor = event.currentTarget.getBoundingClientRect();
-  const rect = menu.getBoundingClientRect();
-  menu.style.left = `${Math.max(8, Math.min(anchor.right - rect.width, window.innerWidth - rect.width - 8))}px`;
-  menu.style.top = `${Math.min(anchor.bottom + 4, window.innerHeight - rect.height - 8)}px`;
-  menu.querySelector("button")?.focus();
-  menu.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", async () => {
-      closeRepertoireContextMenu();
-      const action = button.dataset.action;
-      if (action === "build-node-menu") {
-        openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
-      } else if (action === "build-generate") await generateFromCurrentNode();
-      else if (action === "build-rename") await renameRepertoire();
-      else if (action === "build-export-pgn") await exportBuild("pgn");
-      else if (action === "build-new-rep") {
-        await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
-      } else if (repId) {
-        await handleRepertoireContextAction(action, repId, isActive);
-      }
-    });
-  });
+  openOverflowMenu(menu, { event, title: rep?.name || "Repertoire", items, onPick: async (action) => {
+    closeRepertoireContextMenu();
+    if (action === "build-node-menu") {
+      openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
+    } else if (action === "build-atlas") buildView.openAtlas();
+    else if (action === "build-activity") await buildView.openActivity();
+    else if (action === "build-discuss") await buildView.openDiscussion();
+    else if (action === "build-generate") await generateFromCurrentNode();
+    else if (action === "build-rename") await renameRepertoire();
+    else if (action === "build-export-pgn") await exportBuild("pgn");
+    else if (action === "build-new-rep") await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
+    else if (repId) await handleRepertoireContextAction(action, repId, isActive);
+  } });
 }
 
 async function renameRepertoire() {
@@ -208,27 +183,13 @@ async function renameRepertoire() {
     setStatus("Open a repertoire first");
     return;
   }
-  const result = await showInputModal({
-    title: "Rename repertoire",
-    okLabel: "Save",
-    fields: [{ name: "name", label: "New name", default: appState.build.name }],
+  const repertoireId = appState.build.repertoire_id;
+  await promptRenameRepertoire({
+    repertoireId, name: appState.build.name,
+    afterSave: async (payload) => {
+      if (appState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, appState.buildCurrentNodeId);
+    },
   });
-  if (!result) return;
-  const name = (result.name || "").trim();
-  if (!name) {
-    setStatus("Name is empty");
-    return;
-  }
-  try {
-    const payload = await postJson("/api/build/rename", {
-      repertoire_id: appState.build.repertoire_id,
-      name,
-    });
-    await hydrateBuild(payload, appState.buildCurrentNodeId);
-    setStatus(`Renamed to ${name}`);
-  } catch (error) {
-    setStatusError(error.message);
-  }
 }
 
 async function selectBuildNode(nodeId, { branchChoiceId = null } = {}) {
@@ -365,8 +326,7 @@ function applyBuildDockHeight(px, { pinned = false } = {}) {
   const dock = document.getElementById("build-inspector");
   if (!dock) return null;
   dock.dataset.dockPinned = pinned ? "1" : "";
-  // A pinned inspector holds its height, so the tree takes the rest of the
-  // column (an unpinned one fills the leftover, and the tree keeps its content).
+  // The inspector keeps its fitted or pinned height; the tree takes the rest.
   const tree = document.querySelector(".build-tree-region");
   if (tree) tree.style.flexGrow = pinned ? "1" : "";
   const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
@@ -404,8 +364,7 @@ function initBuildDockLayout() {
   if (!dock || !resizer) return;
   const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
   if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored, { pinned: true });
-  // Open unless the user folded it: the Explorer is the data the screen's
-  // question needs, so it fills the column under the tree by default.
+  // Open unless the user folded it; fit the inspector to its content.
   setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
   fold?.addEventListener("click", (event) => {
     setBuildDockFolded(!buildDockFolded());
@@ -1755,23 +1714,30 @@ async function handleNodeContextAction(action, nodeId) {
       setStatus("Line PGN copied");
       return;
     }
-    let value = null;
     if (action === "add_comment") {
-      const result = await showInputModal({
+      const repertoireId = appState.build.repertoire_id;
+      await showInputModal({
         title: `Note on ${nodeMenuHeading(node)}`,
         okLabel: "Save",
         fields: [
           { name: "comment", label: "Note", type: "textarea", default: node.comment || "" },
         ],
+        onSubmit: async (result, close) => {
+          const payload = await postJson("/api/build/action", {
+            repertoire_id: repertoireId, node_id: nodeId, action, value: result.comment,
+          });
+          if (appState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, nodeId);
+          close(result);
+          setStatus("Note saved");
+        },
       });
-      if (!result) return;
-      value = result.comment;
+      return;
     }
     const payload = await postJson("/api/build/action", {
       repertoire_id: appState.build.repertoire_id,
       node_id: nodeId,
       action,
-      value,
+      value: null,
     });
     await hydrateBuild(payload, nodeId);
     setStatus("Node updated");

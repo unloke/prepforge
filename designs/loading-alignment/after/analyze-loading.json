@@ -1,0 +1,62 @@
+{
+  "#analysis-board": [
+    {
+      "columns": "102.25px 102.25px 102.25px 102.25px 102.25px 102.25px 102.25px 102.25px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 818,
+      "lineHeight": "normal",
+      "w": 818,
+      "x": 75,
+      "y": 19
+    }
+  ],
+  "#analysis-moves": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 120,
+      "lineHeight": "normal",
+      "w": 473,
+      "x": 924,
+      "y": 858
+    }
+  ],
+  "#analysis-report": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 521,
+      "lineHeight": "normal",
+      "w": 473,
+      "x": 924,
+      "y": 322
+    }
+  ],
+  "#analyze-sidebar": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "0px",
+      "h": 864,
+      "lineHeight": "normal",
+      "w": 516,
+      "x": 910,
+      "y": 18
+    }
+  ],
+  ".history-item": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 30,
+      "lineHeight": "normal",
+      "w": 472,
+      "x": 932,
+      "y": 830
+    }
+  ]
+}

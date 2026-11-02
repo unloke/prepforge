@@ -17,9 +17,11 @@
 卡片右側的 × 可以收起選項，↑／↓ 會重新開啟。
 
 右側走法樹可以切換局面；Explorer 的 Masters／Players 提供對局統計。
-需要延伸時，從棋譜的 ⋯ 選單選 Generate moves。
+需要延伸時，從棋譜的 More → Explore 選 Generate moves。
 等待 Saved 後返回 Library，再開啟一次，確認內容已儲存。
 刪除走法時，該步與後續分支會立即從畫面移除；底部的 Undo 可立即還原。
+從 More → Explore → Atlas 開啟各路線的真實分支圖；選一條路線查看分岔局面，再選 Moves 或回應棋步，
+就會聚焦該段棋譜。按 All lines 回到整棵樹。註解或改名儲存失敗時，可在原對話框重試。
 
 ![棋盤、分支與 Explorer](assets/repertoire-desktop.png)
 
@@ -81,7 +83,18 @@ Scout 可以新增對手的 Lichess 來源，依顏色與棋速查看常走路�
 With White／With Black 指對手的執子方；加入準備時，選相反顏色的棋譜。
 先檢查路線詳情，再用 Add to prep 選目標棋譜。
 
-Library 的棋譜選單提供分享入口，Teams 管理團隊與共享棋譜。
+共享棋譜中，從 More → Collaborate 開啟 Activity，查看修改者、時間與受影響的棋步；未讀修改的棋步旁會有小點。
+按棋步跳到局面，確認後用 Mark read 清除標記。擁有者可按 Restore edit 還原近期樹狀編輯；
+遇到同一內容後來又被修改、或新增後續走法時，需先處理較新的操作。還原不包含訓練紀錄。
+
+選棋步後，從 More → Collaborate → Discuss position 就目前局面留言、回覆或 Resolve；所有能讀取該棋譜的登入成員都能參與。
+轉位會共用同一局面討論。原分支刪除後，討論仍列在 Detached position；編輯者可選替代局面，
+從討論列表打開原串，再按 Attach here 重新掛上。公開分享連結不提供討論入口。
+
+![局面討論與回覆](assets/repertoire-discussion.png)
+
+More → Manage 提供 Rename、Export PGN、Enable／Disable 與 Delete；可編輯棋步的選項與 Start training 位於 More 第一層。
+Library 的棋譜選單也提供分享入口，Teams 管理團隊與共享棋譜。
 對個人與團隊可設定 View only、Can copy 或 Can edit。
 公開連結只提供瀏覽或複製；有複製權限時，接收者可選 Copy to my account，
 再編輯自己的副本。

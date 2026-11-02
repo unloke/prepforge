@@ -77,6 +77,8 @@ const ROOT_NODE = "node-root";
 const HEALTH = { trainable: 0, mastered: 0, weak: 0, due: 0, learning: 0, untrained: 0, mastery_pct: 0, shallow_lines: 0 };
 const ME = { id: "u1", email: "dialogs@x.test", plan: "free", display_name: null, has_password: true };
 const FIXTURES = {
+  "/api/build/activity": { revision: 1, entries: [], unread_nodes: [], truncated: false },
+  "/api/build/discussions": { threads: [] },
   "/api/auth/me": ME,
   "/api/auth/providers": { google: false, password: true },
   "/api/csrf": { csrf_token: "x" },
@@ -261,6 +263,7 @@ for (const vp of VIEWPORTS) {
   if (await menu.isVisible().catch(() => false)) {
     await overlay(vp, page, "generate", { opener: '[data-testid="build-menu"]', open: async () => {
       await page.keyboard.press("Enter");
+      await page.locator('#repertoire-context-menu [data-action="explore"]').click();
       await page.locator('#repertoire-context-menu [data-action="build-generate"]').click();
     } });
   } else check(`${vp.name} generate`, false, "Build's menu button is not visible");

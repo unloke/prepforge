@@ -367,6 +367,7 @@ export function createDashboardView({
     // repertoire, not Train, which can only answer "no active repertoire".
     // A past training session does not change that — the account can have
     // trained before and still have no repertoire to train now.
+    const queuePending = ownRepertoireCount() === null;
     const firstRun = ownRepertoireCount() === 0;
     // "Queue is clear" is a claim about a queue. With no repertoire there is
     // no queue at all, so the line says what is missing instead.
@@ -413,10 +414,12 @@ export function createDashboardView({
       <span class="today-unit">day streak</span>
     </div>
     <div class="today-body">
-      <p class="today-queue">${queue.primary}</p>
+      ${queuePending
+        ? html`<p class="today-queue skeleton-text" aria-hidden="true">Loading queue</p>`
+        : html`<p class="today-queue">${queue.primary}</p>`}
       ${warningHtml || (queue.more.length
         ? html`<p class="today-more">${queue.more.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}</p>`
-        : best)}
+        : best || html`<p class="today-more" aria-hidden="true"></p>`)}
     </div>
     <div class="today-aside">
       ${recapHtml}

@@ -1,11 +1,12 @@
 import { html } from "./html.js";
+import { paintBuildSkeleton } from "./views/build-skeleton.js";
 import { describe, expect, it, vi } from "vitest";
 import { localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
 function compile(marker, deps) {
-  deps = { html, ...deps };
+  deps = { html, paintBuildSkeleton, ...deps };
   const start = source.indexOf(marker);
   const end = source.indexOf("\n}\n", start) + 2;
   return new Function(...Object.keys(deps), `return (${source.slice(start, end)});`)(...Object.values(deps));
@@ -18,7 +19,7 @@ function deferred() {
 const FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 function harness() {
-  const parent = { id: "A-root", fen: FEN, uci: null };
+  const parent = { id: "A-root", fen: FEN, uci: null, arrows: ["Ga1a2"], circles: ["Gb3"] };
   const appState = {
     currentView: "dashboard", buildLoading: false,
     build: { repertoire_id: "A", nodes: [parent] },
@@ -34,6 +35,7 @@ function harness() {
   const board = {
     fen: FEN, legalMoves: localBoardInfo(FEN).legal_moves,
     setPosition(next) { Object.assign(this, next); },
+    setAnnotations: vi.fn(),
   };
   const common = {
     appState, boards: { build: board }, document: { getElementById }, localBoardInfo,
@@ -95,11 +97,13 @@ describe("repertoire load isolation", () => {
     const h = harness();
     const load = h.edit("B");
     await waitForRequest(h, "B");
+    expect(h.board.setAnnotations).toHaveBeenLastCalledWith([], []);
     h.requests.get("B").reject(new Error("offline"));
     await load;
     expect(h.appState.build.repertoire_id).toBe("A");
     expect(h.appState.buildLoading).toBe(false);
     expect(h.board.legalMoves).toContain("e2e4");
+    expect(h.board.setAnnotations).toHaveBeenLastCalledWith(["Ga1a2"], ["Gb3"]);
     expect(h.deps.setStatusError).toHaveBeenCalledWith("offline");
   });
 

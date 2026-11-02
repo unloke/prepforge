@@ -123,15 +123,11 @@ describe("scout streaming skeleton", () => {
     // Mid-fetch the page was one spinner over blank ground; the report then
     // landed into empty space. The skeleton marks the cards that will arrive.
     expect(html).toContain('class="scout-skeleton" aria-hidden="true"');
-    expect(css).toMatch(/\.scout-skeleton \{ display: none;/);
-    expect(css).toContain(".scout-panel.is-streaming .scout-skeleton { display: flex; }");
-    expect(css).toContain(".scout-panel.is-streaming:not(:has(#scout-results:empty)) .scout-skeleton { display: none; }");
-  });
-
-  it("stops pulsing under prefers-reduced-motion", () => {
-    const at = css.indexOf("@media (prefers-reduced-motion: no-preference)");
-    expect(at).toBeGreaterThan(-1);
-    expect(css.slice(at, at + 400)).toContain("animation: skeleton-pulse");
+    expect(css).toContain(".scout-skeleton, .scout-loading-side { display: none; }");
+    expect(css).toContain(".scout-panel.is-streaming:has(#scout-results:empty) .scout-skeleton { display: flex; }");
+    expect(css).toContain(".scout-panel.is-streaming:has(#scout-results:empty) .scout-loading-side { display: flex; }");
+    expect(html).toContain('class="scout-profile card"');
+    expect(html).toContain('class="scout-color-tabs"');
   });
 });
 

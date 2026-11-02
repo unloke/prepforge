@@ -126,8 +126,7 @@ async function openGamesSheet(page) {
     d.addEventListener("toggle", () => resolve(), { once: true });
     d.open = true;
   })));
-  await page.waitForFunction(() => document.querySelector("#analysis-history .history-item") &&
-    !document.querySelector("#analysis-history > .hint"), null, { timeout: 10000 });
+  await page.waitForFunction(() => document.querySelector('#analysis-history[aria-busy="false"] .history-item[data-game-id]'), null, { timeout: 10000 });
 }
 
 // A short or narrow panel, and a phone, show one pillar at a time behind tabs.

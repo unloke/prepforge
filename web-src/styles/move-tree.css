@@ -264,6 +264,8 @@
 
 #builder-tree .mtree-line.is-main > .mtree-move.is-b { grid-column: 3; }
 
+#builder-tree .build-skeleton .mtree-move { pointer-events: none; }
+
 
 #builder-tree .mtree-line.is-main > :is(.mtree-var, .mtree-comment) { grid-column: 1 / -1; }
 

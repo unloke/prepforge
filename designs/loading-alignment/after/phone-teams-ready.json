@@ -1,0 +1,26 @@
+{
+  ".incoming": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 85.5,
+      "lineHeight": "normal",
+      "w": 374,
+      "x": 8,
+      "y": 186.5
+    }
+  ],
+  ".team-row": [
+    {
+      "columns": "274.039px 41.9609px 10px",
+      "display": "grid",
+      "gap": "8px 10px",
+      "h": 50.5,
+      "lineHeight": "normal",
+      "w": 374,
+      "x": 8,
+      "y": 124
+    }
+  ]
+}

@@ -7,7 +7,7 @@
 [![CI](https://github.com/unloke/prepforge/actions/workflows/ci.yml/badge.svg)](https://github.com/unloke/prepforge/actions/workflows/ci.yml)
 [![授權：AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](../LICENSE)
 
-![棋譜工作區：清楚的分支箭頭與浮動走法選擇](assets/repertoire-desktop.png)
+![棋譜工作區：活動、局面討論與路線圖紋](assets/repertoire-desktop.png)
 
 PrepForge 把開局準備、間隔複習與賽後檢查放在同一個網頁應用。
 把要下的路線存進棋譜，練習自己的回應，再對照 Lichess 實戰，檢查忘記的走法與尚未準備的局面。
@@ -23,6 +23,9 @@ Stockfish 在你的裝置上評估局面；Maia3 依指定棋力預測人類的�
 在 Explorer 查看 Masters、Players 的對局資料與引擎候選，從目前局面產生延伸路線。
 Coverage 會找出缺少的回應；先預覽，再選擇要加入的準備。
 分支選擇浮在走法樹上方；刪除走法會立即更新畫面，底部的小型 Undo 可立即還原整個分支。
+從 More → Explore → Atlas 可由路線圖總覽進入分岔局面，再聚焦到局部棋譜；標題旁的路線圖紋取自實際走法樹。
+
+![開局圖譜：實際棋譜的分支路線](assets/repertoire-atlas.png)
 
 ### 練熟自己的回應
 
@@ -55,6 +58,12 @@ Deep scan 會用引擎尋找對局中的失誤與反駁。
 
 對個人或團隊設定 View only、Can copy、Can edit 權限。
 公開連結可設為僅瀏覽或允許複製；個人的訓練進度歸屬於該玩家。
+More → Collaborate 集中 Activity、Discuss position 與 Share。
+Activity 顯示修改者、近期操作與未讀棋步；擁有者可在不衝突於後續編輯時還原某筆樹狀操作。
+局面討論會跟隨轉位，原分支刪除後仍保留，也能標記解決或重新掛到其他局面。
+註解與改名儲存失敗時，對話框保留輸入，供原處重試。
+
+![錨定在棋譜局面上的討論](assets/repertoire-discussion.png)
 
 <details>
 <summary>訓練與手機畫面</summary>

@@ -1,0 +1,26 @@
+{
+  "#analysis-board": [
+    {
+      "columns": "48.75px 48.75px 48.75px 48.75px 48.75px 48.75px 48.75px 48.75px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 390,
+      "lineHeight": "normal",
+      "w": 390,
+      "x": 0,
+      "y": 175.9921875
+    }
+  ],
+  "#analysis-results": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "0px",
+      "h": 32,
+      "lineHeight": "normal",
+      "w": 390,
+      "x": 0,
+      "y": 565.9921875
+    }
+  ]
+}

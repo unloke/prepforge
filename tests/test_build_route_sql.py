@@ -32,6 +32,7 @@ def _measured(engine, request):
     assert response.status_code == 200, response.text
     tree_reads = sum(
         statement.lstrip().upper().startswith("SELECT") and "opening_nodes" in statement
+        and "opening_nodes.id IN" not in statement
         for statement in statements
     )
     return len(statements), tree_reads, response.json()
@@ -120,11 +121,11 @@ def test_build_route_sql_counts_sqlite(client):
     if os.getenv("BUILD_SQL_BENCHMARK"):
         print(f"SQLite route SQL counts: {counts}")
     assert counts["load"] <= 12, counts
-    assert counts["mark_prepared"] <= 10, counts
-    # +1 over the pre-D-02 budget: the annotation echo reads the fresh
-    # revision (the write itself bumps it inside the same mutation).
-    assert counts["annotations"] <= 8, counts
-    assert counts["disable_branch"] <= 10, counts
+    assert counts["mark_prepared"] <= 12, counts
+    # Activity stores two bounded reads of touched rows (before/after);
+    # these are point reads, not a hydration of the complete tree.
+    assert counts["annotations"] <= 10, counts
+    assert counts["disable_branch"] <= 12, counts
 
 
 def test_build_route_sql_counts_postgres(monkeypatch):
@@ -145,8 +146,8 @@ def test_build_route_sql_counts_postgres(monkeypatch):
     if os.getenv("BUILD_SQL_BENCHMARK"):
         print(f"PostgreSQL route SQL counts: {counts}")
     assert counts["load"] <= 12, counts
-    assert counts["mark_prepared"] <= 10, counts
-    # +1 over the pre-D-02 budget: the annotation echo reads the fresh
-    # revision (the write itself bumps it inside the same mutation).
-    assert counts["annotations"] <= 8, counts
-    assert counts["disable_branch"] <= 10, counts
+    assert counts["mark_prepared"] <= 12, counts
+    # Activity stores two bounded reads of touched rows (before/after);
+    # these are point reads, not a hydration of the complete tree.
+    assert counts["annotations"] <= 10, counts
+    assert counts["disable_branch"] <= 12, counts

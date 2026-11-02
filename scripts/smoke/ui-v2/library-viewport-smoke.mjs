@@ -56,6 +56,8 @@ const FIXTURE_REPS = {
 };
 
 const api = (path, url) => {
+  if (path.startsWith("/api/build/activity")) return { revision: 1, entries: [], unread_nodes: [], truncated: false };
+  if (path.startsWith("/api/build/discussions")) return { threads: [] };
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "Smoke Tester", email: "s@x.test" };
   if (path.startsWith("/api/auth/providers")) return { google: false };
   if (path.startsWith("/api/csrf")) return { csrf_token: "x" };

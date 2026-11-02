@@ -81,7 +81,9 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
     def _bump_revision(
         self, conn: Connection, repertoire_id: str, *,
         nodes: Iterable[str] = (), removed: Iterable[str] = (),
-        meta: bool = False, reset: bool = False,
+        meta: bool = False, reset: bool = False, before: Optional[dict] = None,
+        metadata_before: Optional[dict] = None, discussion_id: Optional[str] = None,
+        reverted_revision: Optional[int] = None,
     ) -> int:
         """Every tree/metadata write bumps the repertoire revision and appends the
         ``repertoire_ops`` row for it, in the same transaction. A fenced request
@@ -101,6 +103,27 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 ))
             self._expected_revisions[repertoire_id] = current
         op = {"nodes": sorted(set(nodes)), "removed": sorted(set(removed)), "meta": meta, "reset": reset}
+        if before is not None:
+            after = self._node_rows(conn, repertoire_id, set(before) | set(op["nodes"]))
+            delta = {}
+            for node_id in set(before) | set(after):
+                old, new = before.get(node_id), after.get(node_id)
+                if old == new:
+                    continue
+                if old is not None and new is not None:
+                    keys = {key for key in old if old[key] != new[key]}
+                    old, new = ({key: row[key] for key in keys} for row in (old, new))
+                delta[node_id] = {"before": old, "after": new}
+            if delta:
+                op["delta"] = delta
+        if metadata_before:
+            row = conn.execute(select(t.repertoires).where(t.repertoires.c.id == repertoire_id)).mappings().one()
+            op["metadata"] = {key: {"before": value, "after": row[key]}
+                              for key, value in metadata_before.items() if row[key] != value}
+        if discussion_id:
+            op["discussion_id"] = discussion_id
+        if reverted_revision is not None:
+            op["reverted_revision"] = reverted_revision
         conn.execute(t.repertoire_ops.insert().values(
             repertoire_id=repertoire_id, revision=current, actor_user_id=self.op_actor,
             client_id=self.op_client, kind=self.op_kind,
@@ -113,6 +136,15 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 t.repertoire_ops.c.revision <= current - OPS_KEPT,
             ))
         return current
+
+    @staticmethod
+    def _node_rows(conn: Connection, repertoire_id: str, node_ids: Iterable[str]) -> dict:
+        ids = list(node_ids)
+        if not ids:
+            return {}
+        return {row["id"]: dict(row) for row in conn.execute(select(t.opening_nodes).where(
+            t.opening_nodes.c.repertoire_id == repertoire_id, t.opening_nodes.c.id.in_(ids),
+        )).mappings()}
 
     def repertoire_ops_since(self, repertoire_id: str, since: int) -> List[Dict[str, Any]]:
         """The logged writes after ``since``, oldest first."""
@@ -194,6 +226,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         if not changes:
             return
         with self._edit_write() as conn:
+            before = self._node_rows(conn, repertoire_id, [change["id"] for change in changes])
             groups: Dict[str, Dict[str, Any]] = {}
             for change in changes:
                 values = {key: value for key, value in change.items() if key != "id"}
@@ -207,10 +240,11 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     .where(t.opening_nodes.c.repertoire_id == repertoire_id)
                     .values(**group["values"])
                 )
-            self._bump_revision(conn, repertoire_id, nodes=[change["id"] for change in changes])
+            self._bump_revision(conn, repertoire_id, nodes=[change["id"] for change in changes], before=before)
 
     def set_node_annotations(self, repertoire_id: str, node_id: str, arrows: List[str], circles: List[str]) -> None:
         with self._edit_write() as conn:
+            before = self._node_rows(conn, repertoire_id, [node_id])
             changed = conn.execute(update(t.opening_nodes).where(
                 t.opening_nodes.c.id == node_id,
                 t.opening_nodes.c.repertoire_id == repertoire_id,
@@ -220,7 +254,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             ))
             if changed.rowcount != 1:
                 raise NodeGone(node_id)
-            self._bump_revision(conn, repertoire_id, nodes=[node_id])
+            self._bump_revision(conn, repertoire_id, nodes=[node_id], before=before)
 
     def save_changed_nodes(self, repertoire_id: str, nodes: List[OpeningNode], *, receipt: Optional[tuple] = None) -> None:
         """Persist changed or new nodes without walking the rest of the tree."""
@@ -230,6 +264,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     self.write_user_setting(conn, *receipt)
             return
         with self._edit_write() as conn:
+            before = self._node_rows(conn, repertoire_id, [node.id for node in nodes])
             pos_cache: Dict[str, int] = {}
             rows = []
             for node in nodes:
@@ -242,7 +277,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 set_={name: stmt.excluded[name] for name in rows[0] if name != "id"},
             )
             conn.execute(stmt, rows)
-            self._bump_revision(conn, repertoire_id, nodes=[node.id for node in nodes])
+            self._bump_revision(conn, repertoire_id, nodes=[node.id for node in nodes], before=before)
             if receipt is not None:
                 self.write_user_setting(conn, *receipt)
 
@@ -252,12 +287,14 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         if fields.keys() - {"name", "is_active"}:
             raise ValueError("unsupported repertoire fields")
         with self._edit_write() as conn:
+            row = conn.execute(select(t.repertoires).where(t.repertoires.c.id == repertoire_id)).mappings().one()
+            before = {key: row[key] for key in fields}
             conn.execute(
                 update(t.repertoires)
                 .where(t.repertoires.c.id == repertoire_id)
                 .values(**fields, updated_at=datetime.now(timezone.utc))
             )
-            self._bump_revision(conn, repertoire_id, meta=True)
+            self._bump_revision(conn, repertoire_id, meta=True, metadata_before=before)
 
     def _repertoire_from_rows(
         self,
@@ -783,6 +820,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             return
         week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         with self._edit_write() as conn:
+            before = self._node_rows(conn, repertoire_id, node_ids)
             # Progress rows cascade away with their nodes; keep the review
             # timestamps of this week so the dashboard's review count stays put.
             tp = t.training_progress
@@ -808,7 +846,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     t.opening_nodes.c.id.in_(node_ids),
                 )
             )
-            self._bump_revision(conn, repertoire_id, removed=node_ids)
+            self._bump_revision(conn, repertoire_id, removed=node_ids, before=before)
             if receipt is not None:
                 self.write_user_setting(conn, *receipt)
             self._archive_reviews(conn, reviewed, week_ago)

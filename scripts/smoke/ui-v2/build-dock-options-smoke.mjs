@@ -24,6 +24,8 @@ const NODES = [
 ];
 const REP = { id: "rep-1", name: "Caro-Kann: Advance", color: "black", root_fen: START, notes: "", tags: [], is_active: true, team_id: null, visibility: "private", health: { trainable: 1, mastered: 0, weak: 0, due: 0, learning: 0, untrained: 1, mastery_pct: 0, shallow_lines: 0 } };
 const api = (path) => {
+  if (path.startsWith("/api/build/activity")) return { revision: 1, entries: [], unread_nodes: [], truncated: false };
+  if (path.startsWith("/api/build/discussions")) return { threads: [] };
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "Smoke Tester", email: "s@x.test" };
   if (path.startsWith("/api/auth/providers")) return { google: false };
   if (path.startsWith("/api/csrf")) return { csrf_token: "x" };

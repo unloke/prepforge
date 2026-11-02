@@ -1,0 +1,39 @@
+{
+  "#repertoire-list": [],
+  ".lib-name": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "1px",
+      "h": 36,
+      "lineHeight": "normal",
+      "w": 126.34375,
+      "x": 107,
+      "y": 301.046875
+    }
+  ],
+  ".lib-row": [
+    {
+      "columns": "577.078px 339.461px 339.453px 32px",
+      "display": "grid",
+      "gap": "normal 12px",
+      "h": 54,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 292.546875
+    }
+  ],
+  ".today": [
+    {
+      "columns": "79.1484px 916.336px 197.844px 62.6719px",
+      "display": "grid",
+      "gap": "8px 20px",
+      "h": 68.546875,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 80
+    }
+  ]
+}
