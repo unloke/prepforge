@@ -174,13 +174,13 @@ async function runViewport(vp) {
   check(await page.locator("#teams-list .is-skeleton").count() === 1, "first paint must show the directory skeleton before lazy chunks arrive");
   check(await page.locator("#teams-list").getAttribute("aria-busy") === "true", "directory announces loading");
   check(!await page.locator(".team-empty").isVisible(), "loading must not claim no team is selected");
-  check(await page.locator("#teams-shared .is-skeleton").count() === 2, "incoming shares must have skeletons on the first paint");
+  check(await page.locator("#teams-shared .skeleton-text").count() === 1, "incoming shares must have a loading placeholder on the first paint");
   check(await page.locator("#view-teams .incoming").isVisible(), "incoming shares must be present on the first paint");
   const desktopDetail = vp.width > 760;
   check(await page.locator("#team-detail-card").isVisible() === desktopDetail, "the desktop detail skeleton is present before modules load; a phone keeps its directory");
   const initialIncoming = await page.locator("#view-teams .incoming").boundingBox();
   const initialMembers = desktopDetail ? await page.locator("#team-members .mem-row").first().boundingBox() : null;
-  const firstBar = await page.locator("#teams-list .skeleton-name").first().boundingBox();
+  const firstBar = await page.locator("#teams-list .name.skeleton-text").first().boundingBox();
   check(firstBar?.width > 30 && firstBar?.height >= 10, "cold skeleton bars need their eager geometry");
   await shot("cold");
   releaseChunks();
@@ -192,7 +192,7 @@ async function runViewport(vp) {
   check(Math.abs(afterModules.y - initialIncoming.y) <= 1, "incoming skeleton must not move when modules arrive");
   gates.incoming.release();
   await page.waitForTimeout(100);
-  check(await page.locator("#teams-shared .is-skeleton").count() === 2,
+  check(await page.locator("#teams-shared .skeleton-text").count() === 1,
     "fast incoming data must wait for team names instead of showing a temporary label");
   await shot("before-directory");
   gates.directory.release();

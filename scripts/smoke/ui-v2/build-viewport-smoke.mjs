@@ -84,6 +84,8 @@ function bigBuildNodes() {
 }
 
 const api = (path) => {
+  if (path.startsWith("/api/build/activity")) return { revision: 1, entries: [], unread_nodes: [], truncated: false };
+  if (path.startsWith("/api/build/discussions")) return { threads: [] };
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "Smoke Tester", email: "s@x.test" };
   if (path.startsWith("/api/auth/providers")) return { google: false };
   if (path.startsWith("/api/csrf")) return { csrf_token: "x" };
@@ -254,7 +256,13 @@ async function runViewport(vp) {
   await page.waitForTimeout(150);
   const moreItems = await page.locator("#repertoire-context-menu button").allTextContents();
   check(moreItems.some((t) => /^Options for 3./.test(t)), `the More menu should carry the current move's entry, got ${moreItems.join(" | ")}`);
-  check(moreItems.some((t) => /^Generate moves/.test(t)), `the More menu should carry Generate, got ${moreItems.join(" | ")}`);
+  check(moreItems.some((t) => /^Explore/.test(t)), `the More menu should carry Explore, got ${moreItems.join(" | ")}`);
+  check(!moreItems.some((t) => /^Generate moves/.test(t)), "Generate should be inside Explore");
+  await page.locator('#repertoire-context-menu [data-action="explore"]').focus();
+  await page.keyboard.press("ArrowRight");
+  check(await page.locator('#repertoire-context-menu [data-action="build-generate"]').isVisible(), "Explore should offer Generate moves");
+  await page.keyboard.press("ArrowLeft");
+  check(await page.locator('#repertoire-context-menu [data-action="explore"]').evaluate((el) => el === document.activeElement), "back should restore focus to Explore");
   await page.keyboard.press("Escape");
   await page.evaluate(() => { const m = document.getElementById("repertoire-context-menu"); if (m) m.hidden = true; });
   await page.waitForTimeout(100);
@@ -306,11 +314,13 @@ async function runViewport(vp) {
   // Only checked above the phone breakpoint: the handle is hidden below 760.
   if (vp.width > 760) {
     const resizer = page.locator('[data-testid="build-dock-resizer"]');
+    // Start above the fitted content height so a 120px shrink stays above
+    // the fold threshold; then test folding separately below.
+    await resizer.focus();
+    for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
     const seam = await resizer.evaluate((el) => ({ x: el.getBoundingClientRect().x, y: el.getBoundingClientRect().y }));
     const dockH = () => page.evaluate(() => document.getElementById("build-inspector").getBoundingClientRect().height);
     const growBy = 120;
-    // The inspector fills the column, so its top seam can only move down: a
-    // drag up takes the tree's floor and stops there. The drag goes down.
     const startDock = await dockH();
     const startTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
     // Drag in the right half of the seam, well clear of the tree's left gutter.
