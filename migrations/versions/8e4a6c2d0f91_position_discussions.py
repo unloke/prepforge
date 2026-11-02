@@ -29,6 +29,7 @@ def upgrade():
         sa.Column("body", sa.Text(), nullable=False),
         sa.Column("created_at", UTCDateTime(), nullable=False),
     )
+    op.create_index("ix_position_messages_thread_id", "position_messages", ["thread_id"])
 
 
 def downgrade():

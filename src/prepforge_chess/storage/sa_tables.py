@@ -371,6 +371,7 @@ position_messages = Table(
     Column("author_id", Text, ForeignKey("users.id", ondelete="SET NULL")),
     Column("body", Text, nullable=False),
     Column("created_at", UTCDateTime(), nullable=False),
+    Index("ix_position_messages_thread_id", "thread_id"),
 )
 
 training_sessions = Table(

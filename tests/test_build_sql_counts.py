@@ -43,13 +43,14 @@ def test_build_mutations_have_constant_statement_counts():
     # Budget note: every tree mutation carries two extra statements — the
     # repertoire revision bump and its repertoire_ops row — and the Build
     # payload one extra read (the fresh revision). All O(1); the guard is still
-    # "no per-node work".
+    # "no per-node work". Inverse edits add two batched point reads of only
+    # the rows being written, independent of the rest of the tree size.
     count, _ = count_statements(engine, lambda: builder.mark_prepared(rep.id, first.id))
-    assert count <= 5
+    assert count <= 7
     count, _ = count_statements(
         engine, lambda: builder.set_annotations(rep.id, first.id, ["Ge2e4"], ["Rd4"])
     )
-    assert count <= 5
+    assert count <= 7
     count, _ = count_statements(engine, lambda: build_workspace_payload(repo, rep.id))
     assert count <= 4
     count, _ = count_statements(engine, lambda: build_workspace_payload(repo, rep.id))
@@ -61,7 +62,7 @@ def test_build_mutations_have_constant_statement_counts():
             {"tempId": "tmp-3", "parentRef": root.id, "uci": "g1f3"},
         ]
     ))
-    assert count <= 5
+    assert count <= 7
 
 
 def _seed_chain(builder, name, ucs):
