@@ -13,6 +13,7 @@
 @import "./styles/engine.css";
 @import "./views/library.css";
 @import "./views/build.css";
+@import "./views/build-lineage.css";
 @import "./views/train.css";
 @import "./views/review.css";
 @import "./styles/reduced-motion.css";

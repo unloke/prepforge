@@ -2,6 +2,8 @@ import { html } from "../html.js";
 import { reveal } from "../list-enter.js";
 import { countOf } from "../plural.js";
 import { encodeLine, moveTextHtml, plyOfFen } from "../move-text.js";
+import { openBuildAtlas, positionThumbnail, routeGlyph } from "./build-atlas.js";
+import { createBuildCollaboration } from "./build-collaboration.js";
 // Build tab tree/header rendering (lazy-loaded from app.js).
 
 // A trained move's status, said the way a person says it. The tree paints only
@@ -53,7 +55,36 @@ export function createBuildView({
   buildBranchContext,
   isReadOnly = () => false,
   onTreeRendered = () => {},
+  collaborationApi = null,
+  boardRenderers = null,
 }) {
+  let focusId = null, focusRepertoire = null;
+  const miniBoard = (fen) => positionThumbnail(fen, appState.build?.color, boardRenderers);
+  const collaboration = collaborationApi ? createBuildCollaboration({
+    appState, selectBuildNode, miniBoard, ...collaborationApi,
+  }) : null;
+
+  function focusLine(id) {
+    focusId = id;
+    focusRepertoire = appState.build?.repertoire_id;
+    renderBuilderTree();
+  }
+
+  function renderTools() {
+    const tools = document.getElementById("build-lineage-tools");
+    if (!tools) return;
+    tools.hidden = !appState.build;
+    collaboration?.sync();
+    if (!appState.build) return;
+    document.getElementById("build-atlas").onclick = () => openBuildAtlas({ appState, miniBoard, focusLine, selectBuildNode });
+    const crumb = document.getElementById("build-focus");
+    if (focusRepertoire !== appState.build.repertoire_id || !appState.buildNodeById.has(focusId)) focusId = null;
+    if (crumb) {
+      crumb.hidden = !focusId;
+      crumb.innerHTML = focusId ? html`<button type="button" class="btn sm ghost" data-unfocus>All lines</button><span aria-hidden="true">›</span><b>${buildPath(focusId).filter((n) => n.parent_id).map((n) => n.san).join(" ")}</b>` : "";
+      crumb.querySelector("[data-unfocus]")?.addEventListener("click", () => focusLine(null));
+    }
+  }
   function buildPath(nodeId) {
     const path = [];
     let current = appState.buildNodeById.get(nodeId);
@@ -88,6 +119,10 @@ export function createBuildView({
       raw: bnode,
       children: (childrenByParent.get(bnode.id) || []).map(make),
     });
+    if (focusId && focusRepertoire === appState.build.repertoire_id) {
+      const focused = appState.buildNodeById.get(focusId);
+      if (focused?.parent_id) return { id: "focused-line", children: [make(focused)] };
+    }
     return make(rootNode);
   }
 
@@ -96,10 +131,12 @@ export function createBuildView({
     if (!nameEl) return;
     if (!appState.build) {
       nameEl.textContent = "No repertoire open";
+      renderTools();
       return;
     }
     nameEl.innerHTML =
-      html`<span class="color-dot ${appState.build.color}"></span><b>${appState.build.name}</b><span class="rep-color-sub"> · ${appState.build.color}</span>`;
+      html`<span class="color-dot ${appState.build.color}"></span><b>${appState.build.name}</b><span class="rep-color-sub"> · ${appState.build.color}</span><span class="rep-route-mark">${routeGlyph(appState.build.nodes, appState.build.nodes.find((n) => !n.parent_id)?.id, appState.buildCurrentNodeId)}</span>`;
+    renderTools();
   }
 
   // Which fork is showing its whole list. Opening it is a request for this
@@ -238,6 +275,7 @@ export function createBuildView({
 
   function renderBuilderTree() {
     paintedTree = null;
+    renderTools();
     const container = document.getElementById("builder-tree");
     const branchBar = document.getElementById("build-branchbar");
     if (!appState.build) {
@@ -307,6 +345,7 @@ export function createBuildView({
     });
     renderBuildOpening();
     container.innerHTML = treeHtml;
+    collaboration?.markMoves();
     paintedTree = appState.build;
     // The arrival is over once the token has landed: drop the flag now so no
     // later render replays it, and drop the class on animationend so nothing
@@ -367,6 +406,12 @@ export function createBuildView({
   function updateBuildTreeSelection() {
     const container = document.getElementById("builder-tree");
     const renderer = getMoveTreeRenderer();
+    if (focusId && !buildPath(appState.buildCurrentNodeId).some((n) => n.id === focusId)) {
+      focusId = null;
+      renderBuilderTree();
+      return;
+    }
+    renderTools();
     // The tree renderer chunk is still loading: the first paint of this tree is
     // a render, not a mark move (renderBuilderTree waits for the chunk itself).
     if (!container || !renderer || paintedTree !== appState.build) {

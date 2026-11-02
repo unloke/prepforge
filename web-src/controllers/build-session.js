@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { promptRenameRepertoire } from "../repertoire-rename.js";
 import { enterRows } from "../list-enter.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
 import { isPopoverOpen, menuKeys, openPopover } from "../core/dialog.js";
@@ -209,17 +210,10 @@ async function renameRepertoire() {
     return;
   }
   const repertoireId = appState.build.repertoire_id;
-  await showInputModal({
-    title: "Rename repertoire",
-    okLabel: "Save",
-    fields: [{ name: "name", label: "New name", default: appState.build.name }],
-    onSubmit: async (result, close) => {
-      const name = (result.name || "").trim();
-      if (!name) throw new Error("Enter a name.");
-      const payload = await postJson("/api/build/rename", { repertoire_id: repertoireId, name });
+  await promptRenameRepertoire({
+    repertoireId, name: appState.build.name,
+    afterSave: async (payload) => {
       if (appState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, appState.buildCurrentNodeId);
-      close(result);
-      setStatus(`Renamed to ${name}`);
     },
   });
 }
@@ -1748,7 +1742,6 @@ async function handleNodeContextAction(action, nodeId) {
       setStatus("Line PGN copied");
       return;
     }
-    let value = null;
     if (action === "add_comment") {
       const repertoireId = appState.build.repertoire_id;
       await showInputModal({
@@ -1772,7 +1765,7 @@ async function handleNodeContextAction(action, nodeId) {
       repertoire_id: appState.build.repertoire_id,
       node_id: nodeId,
       action,
-      value,
+      value: null,
     });
     await hydrateBuild(payload, nodeId);
     setStatus("Node updated");

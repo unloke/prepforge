@@ -1,0 +1,98 @@
+/* Chess-book headings, copperplate-like route lines, and the existing ink/accent.
+   The ornament is generated from the open repertoire, never a random motif. */
+#build-rep-header #build-rep-name { position: relative; padding-right: 72px; }
+#build-rep-name b { font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 500; letter-spacing: -0.4px; }
+.rep-route-mark { position: absolute; width: 64px; right: 0; top: 2px; opacity: 0.85; pointer-events: none; }
+.route-glyph { display: block; width: 100%; height: auto; overflow: visible; }
+.route-glyph path { fill: none; stroke: var(--line); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.route-glyph .route-active { stroke: var(--accent); fill: none; }
+.route-glyph .route-dots { fill: var(--label); stroke: none; }
+.route-glyph .route-dots.route-active { fill: var(--accent); }
+.build-lineage-tools { display: flex; flex: none; align-items: center; gap: 2px; padding: 3px var(--build-pad, 14px) 5px; }
+.lineage-tool-spacer { flex: 1; }
+.build-lineage-tools .btn { min-height: 30px; }
+#view-build.is-loading #build-lineage-tools { visibility: hidden; }
+#view-build.is-loading :is(#build-focus, #build-opening) { display: none; }
+.build-lineage-tools .has-unseen { color: var(--accent-text); }
+.build-lineage-tools .has-unseen::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.build-focus { display: flex; align-items: center; gap: 7px; padding: 0 var(--build-pad, 14px) 6px; font-size: 12px; }
+.build-focus b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; }
+#builder-tree .mtree-move.has-unseen .mtree-san::after { content: ""; display: inline-block; width: 4px; height: 4px; margin: 0 0 5px 4px; border-radius: 50%; background: var(--accent); }
+#builder-tree .mtree-move.has-unseen.is-current .mtree-san::after { background: currentColor; }
+.lineage-modal { width: min(900px, calc(100vw - 40px)); max-height: min(800px, calc(100dvh - min(14vh, 120px) - 24px)); padding: 0; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
+.lineage-modal .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px 12px; border-bottom: 1px solid var(--line); }
+.lineage-modal .modal-title { font: 500 26px/1.2 Georgia, "Times New Roman", serif; letter-spacing: -0.5px; }
+.lineage-body { min-height: 0; overflow: auto; padding: 20px 24px 24px; }
+.lineage-loading { padding: 30px 0; color: var(--muted); }
+.lineage-error { color: var(--danger); font-size: 13px; padding: 8px 0; }
+.lineage-error .btn { margin-left: 10px; }
+.activity-modal { width: min(640px, calc(100vw - 40px)); }
+.activity-tools { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+.activity-tools > span { flex: 1; }
+.activity-list, .discussion-messages { list-style: none; margin: 0; padding: 0; }
+.activity-entry { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; padding: 14px 0; border-top: 1px solid var(--line); }
+.activity-entry > div { min-width: 0; }
+.activity-entry header, .discussion-messages header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; font-size: 13px; }
+.activity-entry time, .discussion-messages time { color: var(--muted); font-size: 11px; }
+.person-initial { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; font: italic 17px Georgia, serif; background: var(--surface-3); }
+.activity-entry.is-unread .person-initial { border-color: var(--accent-text); color: var(--accent-text); }
+.activity-action { display: inline-block; margin-top: 5px; font-size: 14px; }
+.activity-count { margin-left: 9px; color: var(--muted); font: 12px var(--mono); }
+.activity-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.activity-revision { font: 11px var(--mono); color: var(--muted); padding-top: 3px; }
+.position-thumbnail { display: grid; grid-template-columns: repeat(8, 1fr); width: 104px; aspect-ratio: 1; flex: none; overflow: hidden; border: 1px solid var(--line); }
+.position-thumbnail > span { display: grid; place-items: center; aspect-ratio: 1; min-width: 0; }
+.position-thumbnail .light { background: var(--square-light); }
+.position-thumbnail .dark { background: var(--square-dark); }
+.position-thumbnail svg { width: 100%; height: 100%; }
+.discussion-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 24px; }
+.discussion-index { display: flex; flex-direction: column; gap: 5px; }
+.discussion-link { appearance: none; background: none; border: 0; border-left: 2px solid transparent; text-align: left; color: var(--text); font: inherit; padding: 10px; cursor: pointer; }
+.discussion-link small { display: block; color: var(--muted); margin-top: 4px; font-size: 11px; }
+.discussion-link.is-active { background: var(--surface-3); border-color: var(--accent-text); }
+.discussion-content { min-width: 0; }
+.discussion-position { display: flex; align-items: center; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.discussion-position h3 { font: 500 22px Georgia, serif; margin: 0 0 10px; }
+.discussion-position .btn { margin: 2px 4px 2px 0; }
+.discussion-detached { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.discussion-messages li { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.discussion-messages p { margin: 7px 0 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.discussion-compose { display: grid; justify-items: start; gap: 8px; padding-top: 18px; }
+.discussion-compose label { font-size: 12px; }
+.discussion-compose textarea { width: 100%; min-height: 88px; padding: 10px; resize: vertical; font-family: inherit; font-size: 14px; line-height: 1.5; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.atlas-identity { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.atlas-identity h3 { font: 500 30px/1.2 Georgia, serif; letter-spacing: -0.7px; margin: 0; }
+.atlas-identity > span { color: var(--muted); font-size: 13px; }
+.atlas-summary, .atlas-stats { display: flex; flex-wrap: wrap; gap: 16px; color: var(--muted); font-size: 12px; }
+.atlas-summary { padding: 12px 0 24px; }
+.atlas-families { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.atlas-family { position: relative; text-align: left; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 0; padding: 18px 20px; cursor: pointer; overflow: hidden; }
+.atlas-family:hover { border-color: var(--accent-text); background: var(--panel-soft); }
+.atlas-serial { color: var(--muted); font: italic 14px Georgia, serif; }
+.atlas-family h4 { margin: 8px 0 16px; font: 500 24px/1.2 Georgia, serif; }
+.atlas-family .route-glyph { margin: 6px 0 18px; }
+.atlas-enter { position: absolute; top: 16px; right: 20px; font-size: 20px; color: var(--accent-text); }
+.atlas-due { color: var(--danger); }
+.atlas-crumbs { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; font-size: 13px; }
+.atlas-crumbs > b { flex: 1; }
+.atlas-fork-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.atlas-fork { display: flex; align-items: flex-start; gap: 14px; border-top: 1px solid var(--line); padding: 16px 0; }
+.atlas-fork > div:not(.position-thumbnail) { min-width: 0; }
+.atlas-fork h4 { font-size: 13px; font-weight: 500; margin: 0 0 10px; line-height: 1.6; }
+.atlas-replies { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.atlas-pagination { display: flex; justify-content: center; align-items: center; gap: 14px; font-size: 12px; padding-top: 12px; }
+@media (max-width: 760px) {
+  #view-build #build-lineage-tools { position: sticky; top: var(--phone-tab-h); z-index: 2; background: var(--bg); padding: 4px 0; border-bottom: 1px solid var(--line); }
+  #build-lineage-tools .btn { min-height: 44px; }
+  #view-build:is([data-pane="explorer"], [data-pane="coverage"]) :is(#build-lineage-tools, #build-focus) { display: none; }
+  .lineage-modal { width: 100%; max-height: 90dvh; }
+  .lineage-modal .modal-header { padding: 16px; }
+  .lineage-body { padding: 16px; }
+  .atlas-families, .atlas-fork-grid { grid-template-columns: minmax(0, 1fr); }
+  .atlas-identity h3 { font-size: 24px; }
+  .discussion-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .discussion-index { flex-direction: row; overflow-x: auto; }
+  .discussion-link { flex: none; border-left: 0; border-bottom: 2px solid transparent; }
+  .activity-entry { grid-template-columns: 24px minmax(0, 1fr); }
+  .activity-revision { display: none; }
+}

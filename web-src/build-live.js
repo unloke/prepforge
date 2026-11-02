@@ -17,6 +17,7 @@ export const BUILD_MUTATIONS = new Set([
   "/api/build/rename", "/api/build/add-move", "/api/build/add-moves",
   "/api/build/delete-nodes", "/api/build/generate/apply-plan",
   "/api/build/action", "/api/build/annotations",
+  "/api/build/activity/revert", "/api/build/discussions", "/api/build/discussions/update",
 ]);
 
 export const LIVE_POLL_MS = 3000;

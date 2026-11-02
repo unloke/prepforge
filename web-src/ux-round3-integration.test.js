@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { parsePgn } from "./analyze-pgn.js";
 import { createAnalyzeView } from "./views/analyze.js";
 import { parseWorkspaceLocation } from "./workspace-url.js";
+import { paintBuildSkeleton } from "./views/build-skeleton.js";
 import { appSource } from "./test-app-source.js";
 import { createAnalysisSelection } from "./controllers/analyze-selection.js";
 
@@ -179,7 +180,7 @@ describe("Recall source ownership", () => {
 describe("Boot route lifecycle", () => {
   it("a repertoire command picked during boot counts as navigation despite deferred URL sync", async () => {
     const appState = { currentView: "dashboard", signedIn: true };
-    const deps = { appState, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
+    const deps = { appState, paintBuildSkeleton, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
       hardFlushBuild: async () => {}, api: async () => ({ repertoire_id: "picked", nodes: [] }), hydrateBuild: vi.fn(),
       loadReturnState: () => null, syncWorkspaceUrl: vi.fn(), updateBuildReadOnlyUi: vi.fn(), setStatusError: vi.fn(),
       window: { location: { href: "http://x/#/dashboard" } }, parseWorkspaceLocation,

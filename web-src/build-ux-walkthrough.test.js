@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { appSource } from "./test-app-source.js";
 import { eagerCss as css } from "./test-styles-source.js";
+import { buildSkeleton } from "./views/build-skeleton.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
@@ -264,8 +265,9 @@ describe("Repertoire opens immediately with a loading state (P2-5)", () => {
     expect(edit.indexOf("setBuildLoading(true)")).toBeLessThan(edit.indexOf("await api("));
     const loading = extractByMarker("function setBuildLoading(on, { restore = true } = {}) {");
     expect(loading).toContain('switchView("build", { fromUrl: true })');
-    expect(loading).toContain("skeleton-row");
-    expect(loading).toContain("skeleton-bar");
+    expect(loading).toContain("paintBuildSkeleton(document)");
+    expect(String(buildSkeleton())).toContain("mtree-line is-main");
+    expect(String(buildSkeleton())).toContain("skeleton-bar");
   });
 });
 

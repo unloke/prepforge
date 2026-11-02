@@ -3,7 +3,8 @@ import { bindPgnInput } from "./analyze-pgn-open.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
-import { buildSkeleton } from "./views/build-skeleton.js";
+import { promptRenameRepertoire } from "./repertoire-rename.js";
+import { paintBuildSkeleton } from "./views/build-skeleton.js";
 import "./phone.css";
 import "./touch.css";
 import "./phone-kit.css";
@@ -693,19 +694,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   }
   if (appState.currentView !== "build") switchView("build", { fromUrl: true });
   paintBuildEmpty();
-  const fork = document.getElementById("build-branchbar");
-  if (fork) fork.hidden = true;
-  const nameEl = document.getElementById("build-rep-name");
-  if (nameEl) {
-    nameEl.innerHTML = html`<span class="color-dot skeleton-dot"></span><span class="skeleton-bar skeleton-line" style="display:inline-block;width:180px;max-width:70%"></span>`;
-    // The old tree's size is not this tree's: the caption goes with it.
-    nameEl.title = "";
-  }
-  const tree = document.getElementById("builder-tree");
-  if (tree) {
-    tree.innerHTML =
-      buildSkeleton();
-  }
+  paintBuildSkeleton(document);
 }
 
 function updateBuildReadOnlyUi(payload) {
@@ -808,20 +797,9 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
     }
     if (action === "rename") {
       const meta = await fetchRepertoireMeta(repertoireId);
-      const result = await showInputModal({
-        title: "Rename repertoire",
-        okLabel: "Save",
-        fields: [{ name: "name", label: "New name", default: meta?.name || "" }],
+      await promptRenameRepertoire({
+        repertoireId, name: meta?.name || "", afterSave: refreshDashboardRepertoires,
       });
-      if (!result) return;
-      const name = (result.name || "").trim();
-      if (!name) {
-        setStatus("Name is empty");
-        return;
-      }
-      await postJson("/api/build/rename", { repertoire_id: repertoireId, name });
-      await refreshDashboardRepertoires();
-      setStatus(`Renamed to ${name}`);
       return;
     }
     if (action === "share") {
@@ -1080,6 +1058,8 @@ async function ensureBuildView() {
       buildBranchContext,
       isReadOnly: isBuildReadOnly,
       onTreeRendered: syncViewHeads,
+      boardRenderers: { parseFenBoard, pieceSvg },
+      collaborationApi: { api, postJson, hydrateBuild, showInputModal },
     });
   }
   return buildView;
