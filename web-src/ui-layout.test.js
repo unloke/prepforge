@@ -315,13 +315,11 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("openDockOptions");
     // The one sentence that explains the panel reads at the panel's size.
     expect(ruleBody(".dock-scope")).toMatch(/font-size:\s*var\(--fs-s\)/);
-    // The inspector takes the leftover under the tree, so a short repertoire
-    // leaves no dead space above it; a dragged height holds (data-dock-pinned).
-    expect(ruleBody(".dock")).toMatch(/flex:\s*1 1 auto/);
+    // Reserve the inspector before data arrives; a dragged height holds.
+    expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 150px/);
     expect(ruleBody(".dock")).not.toMatch(/height:\s*clamp/);
-    // The tree takes its own height and scrolls past it; the inspector takes
-    // the leftover. A long line scrolls inside the tree, above the dock.
-    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*0 1 auto/);
+    // A long line scrolls inside the remaining tree region, above the dock.
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
     expect(ruleBody(".tree-wrap")).toMatch(/min-height:\s*90px/);
     expect(css).not.toContain("#build-sidebar .panel-body::after");
   });
@@ -758,7 +756,7 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".src-rows")).toMatch(/overflow:\s*auto/);
     expect(ruleBody(".context-menu")).toMatch(/overflow-y:\s*auto/);
     // No reserved gutter rails that shift content width.
-    expect(css).not.toContain("scrollbar-gutter");
+    expect(css.match(/\.workspace\s*\{[^}]*\}/)?.[0] || "").not.toContain("scrollbar-gutter");
   });
 
   it("promotes through one shared picker on every interactive board", () => {

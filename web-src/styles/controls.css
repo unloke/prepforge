@@ -729,6 +729,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 
 .color-dot.black { background: var(--explorer-black); border-color: var(--muted); }
+.color-dot.skeleton-dot { margin-top: 0; }
 
 
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
@@ -821,3 +822,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* The one loading pulse: a flat bar breathing, never a shimmer. */
 @keyframes skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 
+
+/* Mask text inside its real typographic box; loading does not invent a second layout. */
+/* Keep lazy-loaded view typography from exposing placeholder text. */
+.skeleton-text.skeleton-text { position: relative; color: transparent; -webkit-text-fill-color: transparent; user-select: none; }
+.skeleton-text > * { visibility: hidden; }
+.skeleton-text::after { content: ""; position: absolute; inset-inline: 0; top: 50%; height: 0.65em; transform: translateY(-50%); border-radius: 2px; background: var(--surface-3); }

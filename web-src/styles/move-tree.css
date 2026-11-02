@@ -264,8 +264,6 @@
 
 #builder-tree .mtree-line.is-main > .mtree-move.is-b { grid-column: 3; }
 
-#builder-tree .build-skeleton .skeleton-bar { display: block; height: 10px; max-width: 100%; }
-#builder-tree .build-skeleton .mtree-num .skeleton-bar { width: 10px; }
 #builder-tree .build-skeleton .mtree-move { pointer-events: none; }
 
 

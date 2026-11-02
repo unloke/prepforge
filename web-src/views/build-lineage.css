@@ -1,3 +1,5 @@
+#build-menu { position: relative; }
+#build-menu.has-unseen::after { content: ""; position: absolute; top: 5px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-text); }
 /* Chess-book headings, copperplate-like route lines, and the existing ink/accent.
    The ornament is generated from the open repertoire, never a random motif. */
 #build-rep-header #build-rep-name { position: relative; padding-right: 72px; }
@@ -8,13 +10,7 @@
 .route-glyph .route-active { stroke: var(--accent); fill: none; }
 .route-glyph .route-dots { fill: var(--label); stroke: none; }
 .route-glyph .route-dots.route-active { fill: var(--accent); }
-.build-lineage-tools { display: flex; flex: none; align-items: center; gap: 2px; padding: 3px var(--build-pad, 14px) 5px; }
-.lineage-tool-spacer { flex: 1; }
-.build-lineage-tools .btn { min-height: 30px; }
-#view-build.is-loading #build-lineage-tools { visibility: hidden; }
 #view-build.is-loading :is(#build-focus, #build-opening) { display: none; }
-.build-lineage-tools .has-unseen { color: var(--accent-text); }
-.build-lineage-tools .has-unseen::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .build-focus { display: flex; align-items: center; gap: 7px; padding: 0 var(--build-pad, 14px) 6px; font-size: 12px; }
 .build-focus b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; }
 #builder-tree .mtree-move.has-unseen .mtree-san::after { content: ""; display: inline-block; width: 4px; height: 4px; margin: 0 0 5px 4px; border-radius: 50%; background: var(--accent); }
@@ -82,9 +78,7 @@
 .atlas-replies { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
 .atlas-pagination { display: flex; justify-content: center; align-items: center; gap: 14px; font-size: 12px; padding-top: 12px; }
 @media (max-width: 760px) {
-  #view-build #build-lineage-tools { position: sticky; top: var(--phone-tab-h); z-index: 2; background: var(--bg); padding: 4px 0; border-bottom: 1px solid var(--line); }
-  #build-lineage-tools .btn { min-height: 44px; }
-  #view-build:is([data-pane="explorer"], [data-pane="coverage"]) :is(#build-lineage-tools, #build-focus) { display: none; }
+  #view-build:is([data-pane="explorer"], [data-pane="coverage"]) #build-focus { display: none; }
   .lineage-modal { width: 100%; max-height: 90dvh; }
   .lineage-modal .modal-header { padding: 16px; }
   .lineage-body { padding: 16px; }

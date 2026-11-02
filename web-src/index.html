@@ -363,12 +363,6 @@
             </div>
             <div class="undo-toast" id="build-undo" data-testid="build-undo" role="status" aria-live="polite" hidden></div>
             <div class="job-dock" id="build-job-dock" data-testid="build-job-dock"></div>
-            <div class="build-lineage-tools" id="build-lineage-tools" hidden>
-              <button type="button" class="btn sm ghost" id="build-atlas">Atlas <span aria-hidden="true">↗</span></button>
-              <span class="lineage-tool-spacer"></span>
-              <button type="button" class="btn sm ghost" id="build-activity">Activity</button>
-              <button type="button" class="btn sm ghost" id="build-discuss">Discuss</button>
-            </div>
             <nav class="build-focus" id="build-focus" aria-label="Focused line" hidden></nav>
             <div class="build-tree-region">
             <div class="forkbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
@@ -616,19 +610,31 @@
               <div class="scout-main">
                 <div data-unlock-place="scout" hidden></div>
                 <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b id="scout-stream-phase">Loading your repertoire…</b><p id="scout-stream-detail" class="scout-stream-detail"></p></div></div>
-                <div class="scout-skeleton" aria-hidden="true">
-                  <div class="sk-card sk-profile"><span class="sk sk-name"></span><span class="sk sk-sub"></span></div>
-                  <div class="sk-tabs"><span class="sk sk-tab"></span><span class="sk sk-tab"></span></div>
-                  <div class="sk-card sk-rows">
-                    <span class="sk sk-line"></span>
-                    <span class="sk sk-row"></span><span class="sk sk-row"></span><span class="sk sk-row"></span>
-                    <span class="sk sk-row"></span><span class="sk sk-row"></span><span class="sk sk-row"></span>
+                <div class="scout-skeleton" aria-hidden="true" inert>
+                  <div class="scout-profile card">
+                    <div class="prof-row"><div class="prof-id"><span class="prof-name skeleton-text">Opponent name</span><span class="faint skeleton-text">Games analyzed</span></div><div class="speed-chips"><span class="speed skeleton-text">All</span><span class="speed skeleton-text">Rapid 00</span></div><span class="spacer"></span><span class="btn sm skeleton-text">Copy report</span><span class="btn sm skeleton-text">Deep scan</span></div>
+                    <div class="scout-color-rec skeleton-text">Opponent · White and Black</div>
+                  </div>
+                  <div class="scout-loading-results">
+                    <div class="scout-color-tabs"><span class="scout-color-tab"><span class="scout-color-dot white"></span><span class="scout-color-tab-label">With White</span><small class="skeleton-text">00 games</small></span><span class="scout-color-tab"><span class="scout-color-dot black"></span><span class="scout-color-tab-label">With Black</span><small class="skeleton-text">00 games</small></span></div>
+                    <section class="color-sec card">
+                      <div class="cs-head"><span class="scout-section-who skeleton-text">Opponent with White</span><span class="wdl-compact"><span class="scout-wdl scout-wdl-compact"><span class="scout-wdl-pill skeleton-text">W0</span><span class="scout-wdl-pill skeleton-text">D0</span><span class="scout-wdl-pill skeleton-text">L0</span></span></span><span class="scout-section-score skeleton-text">scores 00%</span><span class="spacer"></span><div class="cov"><span class="scout-coverage-label skeleton-text">Repertoire coverage</span><span class="scout-coverage-short skeleton-text">Coverage</span></div><span class="btn sm scout-prepare-all skeleton-text">Add all gaps</span></div>
+                      <div class="scout-intel intel"><p class="headline skeleton-text">Opening summary</p><div class="scout-repertoire-reads"><span class="scout-read-chip"><small class="skeleton-text">Expect</small><span class="skeleton-text">1. e4 (00%)</span></span><span class="scout-read-chip"><small class="skeleton-text">Predictable until</small><span class="skeleton-text">1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 · 00% of games</span></span><span class="scout-read-chip"><small class="skeleton-text">Style</small><span class="skeleton-text">Opening style</span></span></div></div>
+                      <div class="scout-game-plan plan">
+                        <div class="plan-head"><b class="scout-col-label skeleton-text">Your game plan as Black</b></div>
+                        <div class="scout-first-moves"><span class="scout-sub-label skeleton-text">Opponent's first moves</span><div class="first-moves"><div class="fm"><b class="skeleton-text">e4</b><span class="share skeleton-text"></span><span class="skeleton-text">00%</span><span class="sc skeleton-text">scores 00%</span></div></div></div>
+                        <div><span class="btn sm skeleton-text">Run Deep scan</span></div>
+                        <div class="col-head scout-lines-head"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>
+                        <div class="scout-lines lines" data-ui><div class="scout-line line-row scout-weakness-row"><div class="lr-main skeleton-text">1. e4 e5 2. Nf3 Nc6</div><span class="lr-meta skeleton-text">Last played</span><span class="scout-lr-score lr-score"><span class="scout-score-cell"><span class="scout-score-pct skeleton-text">00%</span><span class="scout-n skeleton-text">0 games</span></span></span><span class="lr-wdl skeleton-text"></span><span class="lr-flags"><span class="skeleton-text">+</span></span></div></div>
+                      </div>
+                    </section>
                   </div>
                 </div>
                 <div class="scout-empty empty-state big"><h3>Scout an opponent</h3><p id="scout-empty-hint">Add a Lichess username as a source, then Start.</p></div>
                 <div id="scout-profile" class="scout-profile profile card" hidden></div>
                 <div id="scout-results" class="scout-results"></div>
               </div>
+              <aside class="scout-side card scout-loading-side" aria-hidden="true" inert><h2 class="line-title skeleton-text">1. e4 e5 2. Nf3 Nc6</h2><div class="scout-miniboard-wrap focus-board"><div class="scout-miniboard skeleton-board"></div></div><p class="scout-line-reason note skeleton-text">Seen in games · last played today</p><div class="actions"><span class="btn skeleton-text">Analyze</span><span class="btn skeleton-text">Add to prep</span></div></aside>
               <aside id="scout-side" class="scout-side card" aria-label="Line detail" hidden></aside>
             </div>
           </section>
@@ -728,7 +734,7 @@
           </nav>
           <div class="settings-content">
             <section class="card set" id="set-account" data-area="account" data-testid="settings-account">
-              <div id="settings-account-body" data-testid="settings-account-body" role="status" aria-label="Loading account"><div class="acct-id"><span class="skeleton-dot acct-skeleton-avatar"></span><span class="acct-id-text"><span class="skeleton-bar skeleton-line" style="width:42%"></span><span class="skeleton-bar skeleton-thin" style="width:26%"></span><span class="acct-id-meta"><span class="skeleton-bar acct-skeleton-tag"></span><span class="skeleton-bar acct-skeleton-pill"></span></span></span></div></div>
+              <div id="settings-account-body" data-testid="settings-account-body"></div>
               <!-- Chess accounts sit with the account: each linked Lichess
                    identity IS you ("Self") in Games and Scout. -->
               <div class="acct-block" id="set-connections" data-testid="settings-connections">

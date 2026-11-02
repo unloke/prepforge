@@ -29,15 +29,14 @@ export function createBuildCollaboration({ appState, api, postJson, hydrateBuild
     });
   }
 
-  function paintButtons() {
-    const button = document.getElementById("build-activity");
-    if (!button) return;
-    const unread = data?.entries.filter((entry) => entry.unread).length || 0;
-    button.textContent = unread ? `Activity · ${unread}` : "Activity";
-    button.classList.toggle("has-unseen", unread > 0);
-    const discuss = document.getElementById("build-discuss");
+  const unreadCount = () => data?.entries.filter((entry) => entry.unread).length || 0;
+  const activityLabel = () => unreadCount() ? `Activity · ${unreadCount()}` : "Activity";
+  const discussionLabel = () => {
     const thread = discussions.find((item) => item.position_key === keyOf(node()?.fen));
-    if (discuss) discuss.textContent = thread ? `Discuss · ${thread.messages.length}` : "Discuss";
+    return thread ? `Discuss position · ${thread.messages.length}` : "Discuss position";
+  };
+  function paintButtons() {
+    document.getElementById("build-menu")?.classList.toggle("has-unseen", unreadCount() > 0);
     markMoves();
   }
 
@@ -199,18 +198,10 @@ export function createBuildCollaboration({ appState, api, postJson, hydrateBuild
       if (generation !== appState.ownerGeneration) drafts.clear();
       generation = appState.ownerGeneration;
     }
-    const bar = document.getElementById("build-lineage-tools");
-    if (!bar) return;
     const available = !!(rid() && !appState.sharedToken && appState.signedIn);
-    for (const id of ["build-activity", "build-discuss"]) {
-      const button = document.getElementById(id);
-      if (button) button.hidden = !available;
-    }
-    if (!available) return;
-    document.getElementById("build-activity").onclick = () => { void openActivity(); };
-    document.getElementById("build-discuss").onclick = () => { void openDiscussion(); };
+    if (!available) { paintButtons(); return; }
     paintButtons();
     void load().catch(() => {});
   }
-  return { sync, markMoves };
+  return { sync, markMoves, openActivity, openDiscussion, activityLabel, discussionLabel };
 }

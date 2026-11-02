@@ -21,7 +21,7 @@ describe("Recent analyses refresh ordering", () => {
   it.each(["success", "failure"])("an older %s cannot overwrite the post-save list", async (outcome) => {
     const old = deferred();
     const fresh = deferred();
-    const host = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [], querySelector: () => null };
+    const host = { setAttribute() {}, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [], querySelector: () => null };
     const deps = { appState: {}, currentOwnerId: () => "owner", document: { getElementById: () => host }, localDayOf: (iso) => String(iso || "").slice(0, 10),
       api: vi.fn().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise) };
     const load = compile("async function loadAnalysisHistory(", deps, "let analysisHistorySeq = 0;");
@@ -39,7 +39,7 @@ describe("Recent analyses refresh ordering", () => {
 describe("Recall from Recent analyses", () => {
   function recallHarness(api) {
     const appState = { analysis: null };
-    const pgn = { value: "x" };
+    const pgn = { setAttribute() {}, value: "x" };
     const deps = {
       appState, api, document: { getElementById: () => pgn },
       hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(),
@@ -87,7 +87,7 @@ describe("Library initial chunk failure", () => {
   it("replaces the spinner with an actionable error and can retry as a guest", async () => {
     const classes = new Set(["is-loading"]);
     const retry = { addEventListener: vi.fn() };
-    const host = { get innerHTML() { return this._html ?? "spinner"; }, set innerHTML(value) { this._html = String(value); }, querySelector: () => retry };
+    const host = { setAttribute() {}, get innerHTML() { return this._html ?? "spinner"; }, set innerHTML(value) { this._html = String(value); }, querySelector: () => retry };
     const card = { classList: { toggle: (name, on) => on ? classes.add(name) : classes.delete(name) } };
     const view = { renderSignedOut: vi.fn(), loadDashboard: vi.fn() };
     const ensureDashboardView = vi.fn().mockRejectedValueOnce(new Error("chunk missing")).mockResolvedValue(view);

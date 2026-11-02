@@ -26,8 +26,8 @@ or consult the engine. Generate continuations from a position and use Coverage
 to find missing replies, preview them and add the ones you want to prepare.
 Branch choices float over the move tree. Deleted moves disappear immediately;
 the compact Undo control restores the branch without shifting the workspace.
-Open Atlas to move from a route map to branching positions and a focused move
-sheet. Repertoire headings carry a route ornament drawn from the actual tree.
+Choose More → Explore → Atlas to move from a route map to branching positions
+and a focused move sheet. Repertoire headings carry a route ornament drawn from the actual tree.
 
 ![Repertoire atlas with the current tree's branching routes](docs/assets/repertoire-atlas.png)
 
@@ -67,6 +67,7 @@ repertoire. Deep scan checks games for engine-detected mistakes and refutations.
 Share a repertoire with people or teams using View only, Can copy or Can edit
 roles. Public links allow viewing or copying, depending on the owner's setting.
 Personal training progress belongs to the player.
+More → Collaborate contains Activity, Discuss position and Share.
 Activity shows authors, recent edits and unread move markers. Owners can restore
 a recorded tree edit when it does not conflict with later work. Position
 discussions follow transpositions, remain after a line is deleted, and can be

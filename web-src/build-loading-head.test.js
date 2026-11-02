@@ -21,7 +21,7 @@ function harness() {
     appState,
     html,
     paintBuildSkeleton,
-    boards: { build: { setPosition: vi.fn(), setBranchArrows: vi.fn() } },
+    boards: { build: { setPosition: vi.fn(), setBranchArrows: vi.fn(), setAnnotations: vi.fn() } },
     switchView: vi.fn(),
     paintBuildEmpty: () => painted.push("empty"),
     document: { getElementById: (id) => (id === "build-empty" ? { hidden: true } : null) },

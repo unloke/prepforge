@@ -683,6 +683,7 @@ function setBuildLoading(on, { restore = true } = {}) {
     if (node && boards.build) {
       const info = localBoardInfo(node.fen);
       boards.build.setPosition({ fen: node.fen, legalMoves: info.legal_moves, lastMove: node.uci });
+      boards.build.setAnnotations(node.arrows || [], node.circles || []);
     }
     renderBuildRepHeader();
     renderBuilderTree();
@@ -691,6 +692,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   }
   if (boards.build) {
     boards.build.setPosition({ fen: boards.build.fen, legalMoves: [], lastMove: null });
+    boards.build.setAnnotations([], []);
   }
   if (appState.currentView !== "build") switchView("build", { fromUrl: true });
   paintBuildEmpty();
@@ -1084,8 +1086,8 @@ function renderBuildRepHeader() {
 function paintBuildEmpty() {
   const empty = document.getElementById("build-empty");
   const sidebar = document.getElementById("build-sidebar");
-  if (empty) empty.hidden = !!appState.build;
-  if (sidebar) sidebar.classList.toggle("is-empty", !appState.build);
+  if (empty) empty.hidden = !!appState.build || appState.buildLoading;
+  if (sidebar) sidebar.classList.toggle("is-empty", !appState.build && !appState.buildLoading);
 }
 
 // The shell's own entry points the lazy controllers call (core/app-context.js).

@@ -127,16 +127,16 @@ describe("the Due row", () => {
     expect(doc.getElementById("start-train").dataset.action).toBe("start");
     expect(doc.getElementById("start-train").disabled).toBe(false);
     expect(doc.getElementById("train-outlook").hidden).toBe(false);
-    expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("skeleton-bar");
-    expect(String(doc.getElementById("train-due-meta").innerHTML)).toContain("skeleton-bar");
-    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-skeleton-line/g)).toHaveLength(3);
+    expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("skeleton-text");
+    expect(String(doc.getElementById("train-due-meta").innerHTML)).toContain("skeleton-text");
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/<li aria-hidden/g)).toHaveLength(5);
     expect(doc.getElementById("train-due-next").getAttribute("aria-busy")).toBe("true");
     resolve({ next_session: { cards: 3, new: 3, upcoming: [] }, outlook: { now: 1, today: 2, week: 5 } });
     await pending;
     expect(doc.getElementById("train-due-meta").textContent).toBe("3 cards");
     expect(doc.getElementById("train-outlook").hidden).toBe(false);
     expect(doc.getElementById("train-due-next").hidden).toBe(true);
-    expect(String(doc.getElementById("train-outlook").innerHTML)).not.toContain("skeleton-bar");
+    expect(String(doc.getElementById("train-outlook").innerHTML)).not.toContain("skeleton-text");
   });
 
   it("ignores a late preview after the Due scope changes", async () => {
@@ -151,7 +151,7 @@ describe("the Due row", () => {
     const [firstUrl, secondUrl] = [...pending.keys()];
     pending.get(firstUrl)({ next_session: { cards: 1 }, outlook: { now: 1, today: 1, week: 1 } });
     await first;
-    expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("skeleton-bar");
+    expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("skeleton-text");
     pending.get(secondUrl)({ next_session: { cards: 2 }, outlook: { now: 2, today: 2, week: 2 } });
     await second;
     expect(doc.getElementById("train-due-meta").textContent).toBe("2 cards");

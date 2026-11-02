@@ -211,50 +211,28 @@
 .scout-panel.is-streaming .scout-stream { display: flex; }
 
 
-/* Mid-stream the page used to be one spinner over blank ground. The skeleton
-   holds the shape the report lands in, so nothing jumps when it arrives. */
-.scout-skeleton { display: none; flex-direction: column; gap: 10px; }
-
-
-.scout-panel.is-streaming .scout-skeleton { display: flex; }
-
-
-.scout-panel.is-streaming:not(:has(#scout-results:empty)) .scout-skeleton { display: none; }
-
-
-.scout-skeleton .sk-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius-card); background: var(--panel); }
-
-
-.scout-skeleton .sk-profile { gap: 8px; }
-
-
-.scout-skeleton .sk-tabs { display: flex; gap: 10px; padding: 0 4px; }
-
-
-.scout-skeleton .sk { display: block; height: 12px; border-radius: 6px; background: var(--line); }
-
-
-.scout-skeleton .sk-name { width: 140px; height: 16px; }
-
-
-.scout-skeleton .sk-sub { width: 96px; height: 11px; }
-
-
-.scout-skeleton .sk-tab { width: 104px; height: 14px; }
-
-
-.scout-skeleton .sk-line { width: 70%; height: 15px; margin-bottom: 6px; }
-
-
-.scout-skeleton .sk-row { height: 40px; border-radius: 8px; background: var(--surface-3); }
-
-
-@media (prefers-reduced-motion: no-preference) {
-  .scout-skeleton .sk { animation: skeleton-pulse 1.4s ease-in-out infinite alternate; }
-  .scout-skeleton .sk-row:nth-child(3) { animation-delay: 0.1s; }
-  .scout-skeleton .sk-row:nth-child(4) { animation-delay: 0.2s; }
+/* Loading occupies the report's real profile, tabs, plan and detail columns. */
+.scout-skeleton, .scout-loading-side { display: none; }
+.scout-skeleton { flex-direction: column; gap: 10px; }
+.scout-loading-results { display: flex; flex-direction: column; gap: 12px; }
+#view-replay:has(#scout-color option:checked:not([value="both"])) .scout-skeleton .scout-color-rec,
+#view-replay:has(#scout-color option[value="white"]:checked) .scout-skeleton .scout-color-tab:has(.black),
+#view-replay:has(#scout-color option[value="black"]:checked) .scout-skeleton .scout-color-tab:has(.white) { display: none; }
+.scout-panel.is-streaming:has(#scout-results:empty) .scout-skeleton { display: flex; }
+.scout-panel.is-streaming:has(#scout-results:empty) .scout-loading-side { display: flex; }
+.scout-panel.is-streaming:has(#scout-results:empty) .scout-grid { grid-template-columns: minmax(0, 1fr) 376px; }
+.scout-panel.is-streaming:has(#scout-results:empty) .scout-stream { position: absolute; bottom: 12px; left: 12px; right: 28px; z-index: 1; margin: 0; }
+.scout-panel.is-streaming:has(#scout-results:empty) #scout-results { display: none; }
+.scout-main { scrollbar-gutter: stable; }
+.scout-skeleton .scout-weakness-row { min-height: 52px; }
+@media (max-width: 1279px) and (min-width: 1021px) {
+  .scout-panel.is-streaming:has(#scout-results:empty) .scout-grid { grid-template-columns: minmax(0, 1fr) 340px; }
 }
-
+@media (max-width: 1020px) {
+  .scout-panel.is-streaming:has(#scout-results:empty) .scout-grid { grid-template-columns: minmax(0, 1fr); }
+  .scout-main { scrollbar-gutter: auto; }
+  .scout-panel.is-streaming:has(#scout-results:empty) .scout-loading-side { display: none; }
+}
 
 .scout-panel .scout-empty { display: none; }
 
@@ -308,6 +286,8 @@
   .scout-section:not([hidden]) { display: contents; }
   /* Stretch, not start: the card is an inline-size container, so sized to its
      content it has no width of its own and collapsed to its 24px of padding. */
+  .scout-panel.is-streaming:has(#scout-results:empty) :is(.scout-skeleton, .scout-loading-results) { display: contents; }
+  .scout-panel.is-streaming .scout-main > [data-unlock-place="scout"] { order: 2; }
   .scout-side { order: 1; align-self: stretch; }
   .scout-intel-charts-strip { order: 2; }
 }

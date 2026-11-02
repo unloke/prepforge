@@ -8,7 +8,7 @@ do not establish live engine output or production service availability.
 | File | Viewport | Date | Source |
 | --- | --- | --- | --- |
 | `repertoire-desktop.png` | 1440 × 900 | 2026-11-02 | Isolated real API account, Open games · White, 21 moves / 5 lines, selected Bb5 |
-| `repertoire-mobile.png` | 390 × 844 | 2026-11-02 | Same account and tree, mobile toolbar pinned under pane tabs |
+| `repertoire-mobile.png` | 390 × 844 | 2026-11-02 | Same account and tree at Bb5; occasional actions in More |
 | `repertoire-atlas.png` | 1440 × 900 | 2026-11-02 | Same tree, Atlas overview; route paths derive from actual nodes |
 | `repertoire-discussion.png` | 1440 × 900 | 2026-11-02 | Same tree, Morgan/Alex discussion at Bb5 |
 | `repertoire-undo.png` | 1440 × 900 | 2026-10-30 | Same fixture, deleted branch and compact Undo |
@@ -50,10 +50,30 @@ For the November collaboration captures, create two local fixture members and
 grant one edit access. Build five branches under e4/d4, complete a training run
 and save an analysis. Have the editor add a continuation and a note, and have
 both members post at Bb5. Capture Build at Bb5, open Atlas, and open Discuss.
-For mobile, select Bb5 at 390 × 844 and confirm the toolbar stays visible.
+For mobile, select Bb5 at 390 × 844. Open Atlas through More → Explore;
+open Activity and Discuss position through More → Collaborate. The three
+occasional actions are no longer a standing toolbar.
 Use the same database for any before/after pair. New-feature comparisons show
 the old workspace where that feature was absent; operation comparisons must
 be labelled separately (for example detached → reattached).
+
+The menu and loading review is in `designs/loading-alignment/index.html`, with
+desktop and phone before/after images plus CSS-pixel geometry JSON. Its baseline
+is `5aea536c`, after the original collaboration implementation. The earlier
+22 functional comparisons against `799b4e38` are retained in its
+`feature-walkthrough/` folder; their toolbar positions have been superseded.
+Games uses the same four-result local JSON response for both versions. Scout
+uses the same 24-game local PGN response, processed by the real app. These
+external response fixtures do not establish live service behavior.
+
+Capture loading and settled states without changing viewport or scroll offset.
+Measure row height, column positions, board size and section boundaries with
+`getBoundingClientRect()`; retain those raw values alongside each PNG. Unknown
+row counts and text wrapping are data-dependent, not promises of equal total
+page height. Settings Appearance, Board and Engine render directly; the Account
+loading comparison is the global boot hold, not an account-shaped skeleton.
+The frozen Analyze baseline displays an engine-isolation warning; preserve it
+and label the environment difference instead of attributing it to a UI change.
 
 Inspect the desktop and mobile images before replacing these files. Use the
 repertoire desktop/mobile captures, live session and Undo captures, and the

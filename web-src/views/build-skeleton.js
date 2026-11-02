@@ -2,9 +2,9 @@ import { html } from "../html.js";
 
 // Use the score sheet's own grid, including its number gutter and side columns.
 export function buildSkeleton() {
-  return html`<div class="mtree build-skeleton" role="status" aria-label="Loading repertoire">${[0, 1, 2, 3, 4, 5].map((i) =>
-    html`<div class="mtree-line is-main"><span class="mtree-num"><i class="skeleton-bar"></i></span><span class="mtree-move is-w"><i class="skeleton-bar" style="width:${[42, 55, 36][i % 3]}px"></i></span><span class="mtree-move is-b"><i class="skeleton-bar" style="width:${[38, 48, 52][i % 3]}px"></i></span></div>`
-  )}</div>`;
+  return html`<div class="mtree build-skeleton" role="status" aria-label="Loading repertoire"><div class="mtree-line is-main" aria-hidden="true">${[0, 1, 2, 3, 4, 5].map((i) =>
+    html`<span class="mtree-num"><span class="skeleton-text">${i + 1}.</span></span><span class="mtree-move is-w"><span class="skeleton-text">${["e4", "Nf3", "Bb5"][i % 3]}</span></span><span class="mtree-move is-b"><span class="skeleton-text">${["e5", "Nc6", "a6"][i % 3]}</span></span>`
+  )}</div></div>`;
 }
 
 export function paintBuildSkeleton(document) {

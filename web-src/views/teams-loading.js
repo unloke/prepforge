@@ -1,5 +1,5 @@
 import { html } from "../html.js";
-import { teamRowsSkeleton, memberRowsSkeleton, sharedRepRowsSkeleton } from "./team-skeleton.js";
+import { teamRowsSkeleton, memberRowsSkeleton } from "./team-skeleton.js";
 import { appState } from "../core/state.js";
 import { PHONE_QUERY } from "../phone-layout.js";
 import teamsStylesHref from "./teams.css?url";
@@ -27,16 +27,22 @@ function paintTeamsLoading() {
   document.querySelector("#view-teams .team-empty").hidden = true;
   document.querySelector("#view-teams .incoming").hidden = false;
   const incoming = document.getElementById("teams-shared");
-  if (!incoming.children.length) incoming.innerHTML = sharedRepRowsSkeleton();
+  if (!incoming.children.length) incoming.innerHTML = html`<div class="empty-state" aria-hidden="true"><span class="skeleton-text">Incoming repertoire</span></div>`;
   const detail = document.getElementById("team-detail-card");
   if (!globalThis.matchMedia(PHONE_QUERY).matches && detail.hidden) {
     const known = appState.teams.find((team) => team.id === appState.selectedTeamId) || appState.teams[0];
     detail.hidden = false;
     detail.inert = true;
     detail.setAttribute("aria-busy", "true");
-    document.getElementById("team-detail-name").innerHTML = known ? html`${known.name}` : html`<span class="skeleton-bar" style="width:120px"></span>`;
-    document.getElementById("team-members").innerHTML = memberRowsSkeleton(known?.member_count ?? 3);
+    document.getElementById("team-detail-name").innerHTML = known ? html`${known.name}` : html`<span class="skeleton-text">Opening workshop</span>`;
+    document.getElementById("team-members").innerHTML = memberRowsSkeleton(known?.member_count ?? 1);
     document.getElementById("team-add-member").hidden = !!known && !["owner", "admin"].includes(known.role);
+    const role = document.getElementById("team-detail-role");
+    role.textContent = known?.role === "owner" ? "Owner" : "";
+    document.getElementById("team-invite-foot").hidden = true;
+    document.getElementById("team-detail-invite").hidden = !!known && !["owner", "admin"].includes(known.role);
+    document.getElementById("team-detail-rename").hidden = !!known && !["owner", "admin"].includes(known.role);
+    document.getElementById("team-detail-delete").hidden = known?.role !== "owner";
   }
   document.getElementById("teams-search").disabled = true;
   document.getElementById("teams-new").disabled = true;

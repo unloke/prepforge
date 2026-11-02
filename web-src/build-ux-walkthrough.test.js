@@ -176,29 +176,42 @@ describe("Move counts (P2-4)", () => {
   });
 });
 
-describe("Repertoire ⋯ menu matches the Library menu (P2-14)", () => {
-  const { buildMenuItems } = compile(["function buildMenuItems({ hasRep, isActive, isOwner = true }) {"]);
-
-  it("offers the Library's repertoire actions (no redundant Open) plus page actions", () => {
-    const actions = buildMenuItems({ hasRep: true, isActive: true }).map(([a]) => a);
-    for (const shared of ["train", "share", "toggle-active", "delete"]) {
-      expect(actions).toContain(shared);
-    }
-    expect(actions).toContain("build-rename");
-    expect(actions).toContain("build-export-pgn");
-    expect(actions).not.toContain("edit");
-    expect(buildMenuItems({ hasRep: true, isActive: false }).find(([a]) => a === "toggle-active")[1]).toBe("Enable");
-    expect(buildMenuItems({ hasRep: false, isActive: true }).map(([a]) => a)).toEqual(["build-new-rep"]);
+describe("Repertoire ⋯ menu", () => {
+  function menuFor(role, readOnly = false) {
+    let shown;
+    const appState = { build: role ? { repertoire_id: "r", name: "Open games" } : null,
+      signedIn: true, repertoireList: [{ id: "r", is_active: false }], buildNodeById: new Map() };
+    const { openBuildMenu } = compile(["function openBuildMenu(event) {"], {
+      appState, document: { getElementById: () => ({}) }, isBuildReadOnly: () => readOnly,
+      buildRole: () => role, buildView: { activityLabel: () => "Activity", discussionLabel: () => "Discuss position" },
+      openOverflowMenu: (_menu, options) => { shown = options.items; },
+    });
+    openBuildMenu({ preventDefault() {}, stopPropagation() {}, currentTarget: { getBoundingClientRect: () => ({}) } });
+    return shown;
+  }
+  const actions = (items) => items.flatMap((item) => [item.action, ...actions(item.children || [])]);
+  it("groups occasional tools and separates deletion", () => {
+    const items = menuFor("owner");
+    expect(items.map((item) => item.action)).toEqual(["train", "explore", "collaborate", "manage", "build-new-rep"]);
+    for (const action of ["build-atlas", "build-generate", "build-activity", "build-discuss", "share", "build-rename", "build-export-pgn", "toggle-active", "delete"]) expect(actions(items)).toContain(action);
+    const manage = items.find((item) => item.action === "manage").children;
+    expect(manage.find((item) => item.action === "toggle-active").label).toBe("Enable");
+    expect(manage.at(-1)).toMatchObject({ action: "delete", danger: true, group: 1 });
   });
-
-  it("gives an editor of someone else's repertoire Generate and Export only", () => {
-    expect(buildMenuItems({ hasRep: true, isActive: true, isOwner: false }).map(([a]) => a))
-      .toEqual(["build-generate", "build-export-pgn", "build-new-rep"]);
+  it("keeps collaboration available to readers without owner or edit actions", () => {
+    const allowed = actions(menuFor("read", true));
+    expect(allowed).toContain("build-atlas");
+    expect(allowed).toContain("build-discuss");
+    expect(allowed).toContain("build-activity");
+    for (const action of ["build-generate", "train", "share", "build-rename", "toggle-active", "delete"]) expect(allowed).not.toContain(action);
+    expect(actions(menuFor(null))).toEqual(["build-new-rep"]);
   });
-
-  it("retires the 'builder' name in the Library menu", () => {
-    expect(app).not.toContain("Edit in builder");
-    expect(app).toContain('{ action: "edit", label: "Open in Repertoire" }');
+  it("allows editors to generate without granting owner actions", () => {
+    const allowed = actions(menuFor("edit"));
+    expect(allowed).toContain("build-generate");
+    expect(allowed).toContain("build-export-pgn");
+    expect(allowed).not.toContain("delete");
+    expect(allowed).not.toContain("share");
   });
 });
 
@@ -267,7 +280,7 @@ describe("Repertoire opens immediately with a loading state (P2-5)", () => {
     expect(loading).toContain('switchView("build", { fromUrl: true })');
     expect(loading).toContain("paintBuildSkeleton(document)");
     expect(String(buildSkeleton())).toContain("mtree-line is-main");
-    expect(String(buildSkeleton())).toContain("skeleton-bar");
+    expect(String(buildSkeleton())).toContain("skeleton-text");
   });
 });
 

@@ -57,9 +57,9 @@ export function paintTrainPreviewLoading(busy) {
   outlook.setAttribute("aria-busy", String(busy));
   list.setAttribute("aria-busy", String(busy));
   if (!busy) return;
-  outlook.innerHTML = '<span class="skeleton-bar train-skeleton-outlook" aria-hidden="true"></span>';
+  outlook.innerHTML = '<span class="train-outlook-lead skeleton-text"><b>0</b> due now</span><span class="train-outlook-rest skeleton-text">0 this week</span>';
   outlook.hidden = false;
-  meta.innerHTML = '<span class="skeleton-bar train-skeleton-meta" aria-hidden="true"></span>';
-  list.innerHTML = Array.from({ length: 3 }, () => '<li class="train-skeleton-line" aria-hidden="true"><span class="skeleton-bar train-skeleton-kind"></span><span class="skeleton-bar train-skeleton-rep"></span><span class="skeleton-bar train-skeleton-pos"></span></li>').join("");
+  meta.innerHTML = '<span class="skeleton-text">0 cards</span>';
+  list.innerHTML = Array.from({ length: 5 }, () => '<li aria-hidden="true"><button type="button" class="train-due-line" tabindex="-1" disabled><span class="un-kind skeleton-text">New move</span><span class="train-due-rep"><span class="color-dot skeleton-dot"></span><span class="skeleton-text">Opening repertoire</span></span><span class="train-due-pos skeleton-text">1.e4 e5</span></button></li>').join("");
   list.hidden = false;
 }

@@ -216,7 +216,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 90px;
   min-width: 0;
 }
@@ -357,9 +357,9 @@
 
 
 .tree-wrap {
-  /* The tree takes its own height and scrolls past it. The inspector takes
-     the leftover (.dock below), so a short tree never leaves a void. */
-  flex: 0 1 auto;
+  /* Reserve the inspector's fitted height; the tree uses the remaining room
+     throughout loading and scrolls within that same region. */
+  flex: 1 1 auto;
   min-height: 90px;
   padding: 4px var(--build-pad, 12px) var(--build-pad, 12px);
   overflow: auto;
@@ -379,8 +379,8 @@
      dragged height replaces that inline. Left to "the rest" (a 40%-of-panel
      floor over three Explorer rows) the surplus showed up as a hole under the
      rows, and the tree that needed it was squeezed above. */
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 1 150px;
+  min-height: 150px;
   display: flex;
   flex-direction: column;
   /* Reference data under the line: one tone step down from the panel, so it

@@ -126,7 +126,7 @@ async function openTeamDetail(teamId) {
     role.className = `team-role-badge r-${known?.role || "member"}`;
   }
   const shares = document.getElementById("team-shared-repertoires");
-  if (shares) shares.innerHTML = sharedRepRowsSkeleton(2);
+  if (shares) shares.innerHTML = sharedRepRowsSkeleton(1);
   teamsView?.renderTeamTabCounts({ members: known?.member_count || 0, repertoires: 0 });
   renderTeamInviteFooter(null);
   const card = document.getElementById("team-detail-card");
@@ -135,7 +135,7 @@ async function openTeamDetail(teamId) {
   card.inert = false;
   card.hidden = false;
   card.setAttribute?.("aria-busy", "true");
-  membersEl.innerHTML = memberRowsSkeleton(known?.member_count ?? 3);
+  membersEl.innerHTML = memberRowsSkeleton(known?.member_count ?? 1);
   let detail;
   try {
     detail = await api(`/api/teams/${encodeURIComponent(teamId)}`);
@@ -577,7 +577,7 @@ async function loadSharedRepertoires() {
   if (!container) return;
   // First load only: a refresh keeps the rows on screen until the fresh ones
   // land, instead of flashing a skeleton over them.
-  if (!container.querySelector?.(".shared-rep-row")) container.innerHTML = sharedRepRowsSkeleton(2);
+  if (!container.children.length) container.innerHTML = sharedRepRowsSkeleton(1);
   try {
     const [payload] = await Promise.all([api("/api/repertoires"), loadTeamDirectory(appState, api)]);
     if (!isCurrent()) return;

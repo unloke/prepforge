@@ -71,12 +71,8 @@ export function createBuildView({
   }
 
   function renderTools() {
-    const tools = document.getElementById("build-lineage-tools");
-    if (!tools) return;
-    tools.hidden = !appState.build;
     collaboration?.sync();
     if (!appState.build) return;
-    document.getElementById("build-atlas").onclick = () => openBuildAtlas({ appState, miniBoard, focusLine, selectBuildNode });
     const crumb = document.getElementById("build-focus");
     if (focusRepertoire !== appState.build.repertoire_id || !appState.buildNodeById.has(focusId)) focusId = null;
     if (crumb) {
@@ -434,6 +430,11 @@ export function createBuildView({
   }
 
   return {
+    openAtlas: () => openBuildAtlas({ appState, miniBoard, focusLine, selectBuildNode }),
+    openActivity: () => collaboration?.openActivity(),
+    openDiscussion: () => collaboration?.openDiscussion(),
+    activityLabel: () => collaboration?.activityLabel() || "Activity",
+    discussionLabel: () => collaboration?.discussionLabel() || "Discuss position",
     renderBuildRepHeader,
     renderBuilderTree,
     updateBuildTreeSelection,

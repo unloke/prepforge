@@ -1,5 +1,11 @@
 # Repertoire activity and position discussions
 
+Build’s More menu groups Atlas and generation under Explore, and discussions,
+Activity and owner sharing under Collaborate. Manage contains naming, export,
+activation and deletion; move options and owner training stay at the first level.
+Public links expose Atlas and export, while collaboration requires an authenticated
+member. The same menu supports keyboard navigation and phone action sheets.
+
 Build uses the existing revision log for synchronization and its recent activity
 list. It retains 500 operations, trimmed every 100 revisions; Activity is recent
 history, not a permanent audit archive. A per-user repertoire cursor records the
