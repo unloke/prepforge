@@ -1,5 +1,8 @@
 """Inverse edits must preserve subsequent work and the access boundary."""
-from test_repertoire_access import world, _post, _load  # noqa: F401
+import test_repertoire_access as access
+from test_repertoire_access import _post, _load
+
+world = access.world
 
 
 def _edit(w, who, value):

@@ -4,6 +4,7 @@ import { countOf } from "../plural.js";
 import { encodeLine, moveTextHtml, plyOfFen } from "../move-text.js";
 import { openBuildAtlas, positionThumbnail, routeGlyph } from "./build-atlas.js";
 import { createBuildCollaboration } from "./build-collaboration.js";
+import "./build-lineage.css";
 // Build tab tree/header rendering (lazy-loaded from app.js).
 
 // A trained move's status, said the way a person says it. The tree paints only

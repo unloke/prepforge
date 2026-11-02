@@ -1,4 +1,7 @@
-from test_repertoire_access import world, _post, _load  # noqa: F401
+import test_repertoire_access as access
+from test_repertoire_access import _post, _load
+
+world = access.world
 
 
 def _start(w, who="view", **fields):
