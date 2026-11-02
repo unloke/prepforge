@@ -1,0 +1,87 @@
+{
+  "#dashboard-repertoires": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 54,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 292.546875
+    }
+  ],
+  "#dashboard-today": [
+    {
+      "columns": "79.1484px 842.664px 197.844px 136.344px",
+      "display": "grid",
+      "gap": "8px 20px",
+      "h": 68.546875,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 80
+    }
+  ],
+  ".lib-cell-mastery": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "4px",
+      "h": 17.5,
+      "lineHeight": "normal",
+      "w": 339.4609375,
+      "x": 677.078125,
+      "y": 310.296875
+    }
+  ],
+  ".lib-cell-queue": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "4px",
+      "h": 18,
+      "lineHeight": "normal",
+      "w": 339.453125,
+      "x": 1028.5390625,
+      "y": 310.046875
+    }
+  ],
+  ".lib-cell-rep": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 36.5,
+      "lineHeight": "normal",
+      "w": 577.078125,
+      "x": 88,
+      "y": 300.796875
+    }
+  ],
+  ".lib-opt": [],
+  ".lib-row": [
+    {
+      "columns": "577.078px 339.461px 339.453px 32px",
+      "display": "grid",
+      "gap": "normal 12px",
+      "h": 54,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 292.546875
+    }
+  ],
+  ".row-menu-btn": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "6px",
+      "h": 30,
+      "lineHeight": "14px",
+      "w": 30,
+      "x": 1381.9921875,
+      "y": 304.046875
+    }
+  ]
+}

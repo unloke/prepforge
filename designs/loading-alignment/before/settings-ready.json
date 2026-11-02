@@ -1,0 +1,120 @@
+{
+  "#set-account": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 383.75,
+      "lineHeight": "normal",
+      "w": 812,
+      "x": 224,
+      "y": 60
+    }
+  ],
+  "#set-connections": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 90,
+      "lineHeight": "normal",
+      "w": 772,
+      "x": 244,
+      "y": 219.5
+    }
+  ],
+  ".acct-avatar": [
+    {
+      "columns": "48px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 48,
+      "lineHeight": "normal",
+      "w": 48,
+      "x": 244,
+      "y": 94.75
+    }
+  ],
+  ".acct-id": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "14px",
+      "h": 83.5,
+      "lineHeight": "normal",
+      "w": 772,
+      "x": 244,
+      "y": 76
+    }
+  ],
+  ".acct-id-email": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 17.5,
+      "lineHeight": "normal",
+      "w": 626.484375,
+      "x": 306,
+      "y": 114
+    }
+  ],
+  ".acct-id-meta": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "6px",
+      "h": 18,
+      "lineHeight": "normal",
+      "w": 626.484375,
+      "x": 306,
+      "y": 137.5
+    }
+  ],
+  ".acct-id-name": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "6px",
+      "h": 30,
+      "lineHeight": "normal",
+      "w": 626.484375,
+      "x": 306,
+      "y": 82
+    }
+  ],
+  ".acct-id-text": [
+    {
+      "columns": "626.484px",
+      "display": "grid",
+      "gap": "2px",
+      "h": 73.5,
+      "lineHeight": "normal",
+      "w": 626.484375,
+      "x": 306,
+      "y": 82
+    }
+  ],
+  ".acct-row": [
+    {
+      "columns": "200px 540px",
+      "display": "grid",
+      "gap": "24px 32px",
+      "h": 46,
+      "lineHeight": "normal",
+      "w": 772,
+      "x": 244,
+      "y": 159.5
+    },
+    {
+      "columns": "200px 540px",
+      "display": "grid",
+      "gap": "24px 32px",
+      "h": 46,
+      "lineHeight": "normal",
+      "w": 772,
+      "x": 244,
+      "y": 349
+    }
+  ]
+}

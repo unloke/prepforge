@@ -1,0 +1,58 @@
+{
+  "#train-due-next li": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 32,
+      "lineHeight": "normal",
+      "w": 354,
+      "x": 18,
+      "y": 205
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 32,
+      "lineHeight": "normal",
+      "w": 354,
+      "x": 18,
+      "y": 239
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 32,
+      "lineHeight": "normal",
+      "w": 354,
+      "x": 18,
+      "y": 273
+    }
+  ],
+  "#train-home [data-row=\"smart\"]": [
+    {
+      "columns": "338px",
+      "display": "grid",
+      "gap": "12px",
+      "h": 268,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 93
+    }
+  ],
+  "#train-outlook": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "4px 10px",
+      "h": 12,
+      "lineHeight": "normal",
+      "w": 154,
+      "x": 26,
+      "y": 129
+    }
+  ]
+}

@@ -110,3 +110,6 @@ research/**/*.pt
 
 # taste-skill inspector working files
 .taste-skill/
+
+# Regenerated download archive; the review page and source images are tracked.
+/designs/loading-alignment/screenshots.zip

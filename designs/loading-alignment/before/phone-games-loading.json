@@ -1,0 +1,122 @@
+{
+  ".focus": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "12px",
+      "h": 490,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 462
+    }
+  ],
+  ".focus-board": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 342,
+      "lineHeight": "normal",
+      "w": 342,
+      "x": 24,
+      "y": 474
+    }
+  ],
+  ".lr:not(.head)": [
+    {
+      "columns": "332px 0px",
+      "display": "grid",
+      "gap": "4px 10px",
+      "h": 55,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 230
+    },
+    {
+      "columns": "332px 0px",
+      "display": "grid",
+      "gap": "4px 10px",
+      "h": 55,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 285
+    },
+    {
+      "columns": "332px 0px",
+      "display": "grid",
+      "gap": "4px 10px",
+      "h": 55,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 340
+    },
+    {
+      "columns": "332px 0px",
+      "display": "grid",
+      "gap": "4px 10px",
+      "h": 55,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 395
+    }
+  ],
+  ".players": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 20,
+      "lineHeight": "normal",
+      "w": 332,
+      "x": 24,
+      "y": 237
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 20,
+      "lineHeight": "normal",
+      "w": 332,
+      "x": 24,
+      "y": 292
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 20,
+      "lineHeight": "normal",
+      "w": 332,
+      "x": 24,
+      "y": 347
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 20,
+      "lineHeight": "normal",
+      "w": 332,
+      "x": 24,
+      "y": 402
+    }
+  ],
+  ".triage": [
+    {
+      "columns": "minmax(0px, 1fr)",
+      "display": "flex",
+      "gap": "12px",
+      "h": 759.5,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 192.5
+    }
+  ]
+}

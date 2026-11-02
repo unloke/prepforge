@@ -1,0 +1,124 @@
+{
+  "#build-board": [
+    {
+      "columns": "102.25px 102.25px 102.25px 102.25px 102.25px 102.25px 102.25px 102.25px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 818,
+      "lineHeight": "normal",
+      "w": 818,
+      "x": 75,
+      "y": 19
+    }
+  ],
+  "#build-inspector": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 150,
+      "lineHeight": "normal",
+      "w": 516,
+      "x": 910,
+      "y": 732
+    }
+  ],
+  ".build-tree-region": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 670,
+      "lineHeight": "normal",
+      "w": 516,
+      "x": 910,
+      "y": 62
+    }
+  ],
+  ".mtree-line.is-main": [
+    {
+      "columns": "40px 224px 224px",
+      "display": "grid",
+      "gap": "normal 0px",
+      "h": 168,
+      "lineHeight": "22.75px",
+      "w": 488,
+      "x": 924,
+      "y": 66
+    }
+  ],
+  ".mtree-move.is-w": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 28,
+      "lineHeight": "26.25px",
+      "w": 224,
+      "x": 964,
+      "y": 66
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 28,
+      "lineHeight": "26.25px",
+      "w": 224,
+      "x": 964,
+      "y": 94
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 28,
+      "lineHeight": "26.25px",
+      "w": 224,
+      "x": 964,
+      "y": 122
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 28,
+      "lineHeight": "26.25px",
+      "w": 224,
+      "x": 964,
+      "y": 150
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 28,
+      "lineHeight": "26.25px",
+      "w": 224,
+      "x": 964,
+      "y": 178
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 28,
+      "lineHeight": "26.25px",
+      "w": 224,
+      "x": 964,
+      "y": 206
+    }
+  ],
+  ".tree-wrap": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 670,
+      "lineHeight": "22.75px",
+      "w": 516,
+      "x": 910,
+      "y": 62
+    }
+  ]
+}

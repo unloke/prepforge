@@ -1,0 +1,96 @@
+{
+  "#scout-profile": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 104,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 228.5
+    }
+  ],
+  "#scout-results .cs-head": [
+    {
+      "columns": "167.914px 85.8984px 64.1875px",
+      "display": "grid",
+      "gap": "8px 10px",
+      "h": 88.1953125,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 407.5
+    }
+  ],
+  "#scout-results .scout-color-tabs": [
+    {
+      "columns": "181px 181px",
+      "display": "grid",
+      "gap": "4px",
+      "h": 51,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 344.5
+    }
+  ],
+  "#scout-results .scout-intel": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 258.671875,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 803.1953125
+    }
+  ],
+  "#scout-results .scout-weakness-row": [
+    {
+      "columns": "256.562px 49.4375px",
+      "display": "grid",
+      "gap": "10px",
+      "h": 52,
+      "lineHeight": "normal",
+      "w": 336,
+      "x": 27,
+      "y": 685.1953125
+    },
+    {
+      "columns": "256.562px 49.4375px",
+      "display": "grid",
+      "gap": "10px",
+      "h": 51,
+      "lineHeight": "normal",
+      "w": 336,
+      "x": 27,
+      "y": 737.1953125
+    }
+  ],
+  "#scout-side .scout-miniboard": [
+    {
+      "columns": "39.75px 39.75px 39.75px 39.75px 39.75px 39.75px 39.75px 39.75px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 320,
+      "lineHeight": "normal",
+      "w": 320,
+      "x": 35,
+      "y": 1133.0625
+    }
+  ],
+  ".scout-grid": [
+    {
+      "columns": "minmax(0px, 1fr)",
+      "display": "flex",
+      "gap": "12px 24px",
+      "h": 1769.7578125,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 228.5
+    }
+  ]
+}

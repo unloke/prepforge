@@ -1,0 +1,78 @@
+{
+  "#train-due-next li": [
+    {
+      "columns": "none",
+      "display": "list-item",
+      "gap": "normal",
+      "h": 32,
+      "lineHeight": "normal",
+      "w": 354,
+      "x": 18,
+      "y": 222
+    },
+    {
+      "columns": "none",
+      "display": "list-item",
+      "gap": "normal",
+      "h": 32,
+      "lineHeight": "normal",
+      "w": 354,
+      "x": 18,
+      "y": 256
+    },
+    {
+      "columns": "none",
+      "display": "list-item",
+      "gap": "normal",
+      "h": 32,
+      "lineHeight": "normal",
+      "w": 354,
+      "x": 18,
+      "y": 290
+    },
+    {
+      "columns": "none",
+      "display": "list-item",
+      "gap": "normal",
+      "h": 32,
+      "lineHeight": "normal",
+      "w": 354,
+      "x": 18,
+      "y": 324
+    },
+    {
+      "columns": "none",
+      "display": "list-item",
+      "gap": "normal",
+      "h": 32,
+      "lineHeight": "normal",
+      "w": 354,
+      "x": 18,
+      "y": 358
+    }
+  ],
+  "#train-home [data-row=\"smart\"]": [
+    {
+      "columns": "338px",
+      "display": "grid",
+      "gap": "12px",
+      "h": 353,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 93
+    }
+  ],
+  "#train-outlook": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "4px 10px",
+      "h": 29,
+      "lineHeight": "normal",
+      "w": 146.8671875,
+      "x": 26,
+      "y": 129
+    }
+  ]
+}

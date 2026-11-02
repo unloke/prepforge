@@ -1,0 +1,98 @@
+{
+  "#team-detail-card": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 178,
+      "lineHeight": "normal",
+      "w": 981,
+      "x": 428,
+      "y": 80
+    }
+  ],
+  "#team-members": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 47,
+      "lineHeight": "normal",
+      "w": 981,
+      "x": 428,
+      "y": 211
+    }
+  ],
+  "#teams-list": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 54,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 180
+    }
+  ],
+  ".dir": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 154,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 80
+    }
+  ],
+  ".incoming": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 87.5,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 246
+    }
+  ],
+  ".mem-row": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 47,
+      "lineHeight": "normal",
+      "w": 981,
+      "x": 428,
+      "y": 211
+    }
+  ],
+  ".team-row": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 54,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 180
+    }
+  ],
+  ".teams": [
+    {
+      "columns": "340px 981px",
+      "display": "grid",
+      "gap": "12px",
+      "h": 868,
+      "lineHeight": "normal",
+      "w": 1333,
+      "x": 76,
+      "y": 80
+    }
+  ]
+}

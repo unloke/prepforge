@@ -1,0 +1,26 @@
+{
+  "#build-rep-header": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 44,
+      "lineHeight": "normal",
+      "w": 516,
+      "x": 910,
+      "y": 18
+    }
+  ],
+  "#repertoire-context-menu": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 210,
+      "lineHeight": "normal",
+      "w": 280,
+      "x": 1138,
+      "y": 59
+    }
+  ]
+}

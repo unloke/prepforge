@@ -1,0 +1,86 @@
+{
+  ".scout-grid": [
+    {
+      "columns": "948px 376px",
+      "display": "grid",
+      "gap": "24px",
+      "h": 804,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 80
+    }
+  ],
+  ".scout-loading-side .scout-miniboard": [
+    {
+      "columns": "39.75px 39.75px 39.75px 39.75px 39.75px 39.75px 39.75px 39.75px",
+      "display": "grid",
+      "gap": "normal",
+      "h": 320,
+      "lineHeight": "normal",
+      "w": 320,
+      "x": 1076,
+      "y": 139.1953125
+    }
+  ],
+  ".scout-skeleton .cs-head": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "12px",
+      "h": 52,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 295.5
+    }
+  ],
+  ".scout-skeleton .scout-color-tabs": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "4px",
+      "h": 33.5,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 250
+    }
+  ],
+  ".scout-skeleton .scout-intel": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 119.890625,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 347.5
+    }
+  ],
+  ".scout-skeleton .scout-profile": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 98,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 142
+    }
+  ],
+  ".scout-skeleton .scout-weakness-row": [
+    {
+      "columns": "501px 150px 74px 72px 44px",
+      "display": "grid",
+      "gap": "10px",
+      "h": 52,
+      "lineHeight": "normal",
+      "w": 901,
+      "x": 91,
+      "y": 642.390625
+    }
+  ]
+}

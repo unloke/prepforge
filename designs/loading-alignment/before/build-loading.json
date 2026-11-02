@@ -1,0 +1,19 @@
+{
+  "#build-branchbar": [],
+  "#build-inspector": [],
+  "#build-rep-header": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 44,
+      "lineHeight": "normal",
+      "w": 516,
+      "x": 910,
+      "y": 18
+    }
+  ],
+  "#builder-tree": [],
+  ".mtree-line.is-main": [],
+  ".mtree-move.is-w": []
+}

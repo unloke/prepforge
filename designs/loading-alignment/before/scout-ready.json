@@ -1,0 +1,156 @@
+{
+  "#scout-profile": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 98,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 142
+    }
+  ],
+  "#scout-results": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "12px",
+      "h": 766.890625,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 250
+    }
+  ],
+  "#scout-side": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 474.3828125,
+      "lineHeight": "normal",
+      "w": 376,
+      "x": 1048,
+      "y": 80
+    }
+  ],
+  ".color-sec": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 464.890625,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 327.5
+    }
+  ],
+  ".cs-head": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "12px",
+      "h": 52,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 327.5
+    }
+  ],
+  ".prof-row": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 37.5,
+      "lineHeight": "normal",
+      "w": 907,
+      "x": 88,
+      "y": 152
+    }
+  ],
+  ".scout-color-rec": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 32.5,
+      "lineHeight": "normal",
+      "w": 252.9296875,
+      "x": 88,
+      "y": 197.5
+    }
+  ],
+  ".scout-color-tabs": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "4px",
+      "h": 33.5,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 282
+    }
+  ],
+  ".scout-grid": [
+    {
+      "columns": "948px 376px",
+      "display": "grid",
+      "gap": "24px",
+      "h": 804,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 80
+    }
+  ],
+  ".scout-intel": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 119.890625,
+      "lineHeight": "normal",
+      "w": 931,
+      "x": 76,
+      "y": 379.5
+    }
+  ],
+  ".scout-main": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 804,
+      "lineHeight": "normal",
+      "w": 948,
+      "x": 76,
+      "y": 80
+    }
+  ],
+  ".scout-weakness-row": [
+    {
+      "columns": "501px 150px 74px 72px 44px",
+      "display": "grid",
+      "gap": "10px",
+      "h": 52,
+      "lineHeight": "normal",
+      "w": 901,
+      "x": 91,
+      "y": 674.390625
+    },
+    {
+      "columns": "501px 150px 74px 72px 44px",
+      "display": "grid",
+      "gap": "10px",
+      "h": 51,
+      "lineHeight": "normal",
+      "w": 901,
+      "x": 91,
+      "y": 726.390625
+    }
+  ]
+}

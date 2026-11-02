@@ -1,0 +1,100 @@
+{
+  "#scout-profile": [],
+  "#scout-results": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "12px",
+      "h": 0,
+      "lineHeight": "normal",
+      "w": 1346,
+      "x": 76,
+      "y": 675.5
+    }
+  ],
+  "#scout-side": [],
+  ".scout-grid": [
+    {
+      "columns": "1348px",
+      "display": "grid",
+      "gap": "24px",
+      "h": 804,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 80
+    }
+  ],
+  ".scout-main": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 804,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 80
+    }
+  ],
+  ".scout-skeleton": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 446,
+      "lineHeight": "normal",
+      "w": 1346,
+      "x": 76,
+      "y": 219.5
+    }
+  ],
+  ".scout-stream": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "14px",
+      "h": 67.5,
+      "lineHeight": "normal",
+      "w": 1346,
+      "x": 76,
+      "y": 142
+    }
+  ],
+  ".sk-profile": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 63,
+      "lineHeight": "normal",
+      "w": 1346,
+      "x": 76,
+      "y": 219.5
+    }
+  ],
+  ".sk-rows": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 349,
+      "lineHeight": "normal",
+      "w": 1346,
+      "x": 76,
+      "y": 316.5
+    }
+  ],
+  ".sk-tabs": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 14,
+      "lineHeight": "normal",
+      "w": 1346,
+      "x": 76,
+      "y": 292.5
+    }
+  ]
+}

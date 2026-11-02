@@ -1,0 +1,38 @@
+{
+  "#analysis-history": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "2px",
+      "h": 52,
+      "lineHeight": "normal",
+      "w": 338,
+      "x": 26,
+      "y": 762
+    }
+  ],
+  "#history-drawer": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 72,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 752
+    }
+  ],
+  ".history-item": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 52,
+      "lineHeight": "normal",
+      "w": 338,
+      "x": 26,
+      "y": 762
+    }
+  ]
+}

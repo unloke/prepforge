@@ -1,0 +1,26 @@
+{
+  "#set-appearance": [
+    {
+      "columns": "772px",
+      "display": "grid",
+      "gap": "2px",
+      "h": 226,
+      "lineHeight": "normal",
+      "w": 812,
+      "x": 224,
+      "y": 60
+    }
+  ],
+  "#view-settings": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 868,
+      "lineHeight": "normal",
+      "w": 1348,
+      "x": 76,
+      "y": 16
+    }
+  ]
+}

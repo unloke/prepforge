@@ -1,0 +1,27 @@
+{
+  "#analysis-history": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "2px",
+      "h": 28,
+      "lineHeight": "normal",
+      "w": 338,
+      "x": 26,
+      "y": 786
+    }
+  ],
+  "#history-drawer": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 48,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 776
+    }
+  ],
+  ".history-item": []
+}

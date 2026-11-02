@@ -1,0 +1,118 @@
+{
+  "#team-detail-card": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "normal",
+      "h": 215.5,
+      "lineHeight": "normal",
+      "w": 981,
+      "x": 428,
+      "y": 80
+    }
+  ],
+  "#team-members": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 47,
+      "lineHeight": "normal",
+      "w": 981,
+      "x": 428,
+      "y": 211
+    }
+  ],
+  "#teams-list": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 53,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 180
+    }
+  ],
+  ".dir": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 153,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 80
+    }
+  ],
+  ".incoming": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 148,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 245
+    }
+  ],
+  ".mem-row": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 47,
+      "lineHeight": "normal",
+      "w": 981,
+      "x": 428,
+      "y": 211
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 51,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 291
+    },
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 51,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 342
+    }
+  ],
+  ".team-row": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 53,
+      "lineHeight": "normal",
+      "w": 340,
+      "x": 76,
+      "y": 180
+    }
+  ],
+  ".teams": [
+    {
+      "columns": "340px 981px",
+      "display": "grid",
+      "gap": "12px",
+      "h": 868,
+      "lineHeight": "normal",
+      "w": 1333,
+      "x": 76,
+      "y": 80
+    }
+  ]
+}

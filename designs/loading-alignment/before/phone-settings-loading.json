@@ -1,0 +1,14 @@
+{
+  "#boot-hold": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "10px",
+      "h": 337.59375,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 0
+    }
+  ]
+}

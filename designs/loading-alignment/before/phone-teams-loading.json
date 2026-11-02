@@ -1,0 +1,26 @@
+{
+  "#teams-shared": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 120,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 220
+    }
+  ],
+  ".team-row": [
+    {
+      "columns": "272px 46px 0px",
+      "display": "grid",
+      "gap": "8px 10px",
+      "h": 48,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 116
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "#set-account": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 383.75,
+      "lineHeight": "normal",
+      "w": 812,
+      "x": 224,
+      "y": 60
+    }
+  ],
+  "#settings-account-body": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 129.5,
+      "lineHeight": "normal",
+      "w": 772,
+      "x": 244,
+      "y": 76
+    }
+  ]
+}

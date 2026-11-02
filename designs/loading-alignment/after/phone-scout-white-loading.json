@@ -1,0 +1,38 @@
+{
+  ".scout-skeleton .cs-head": [
+    {
+      "columns": "167.914px 85.8984px 64.1875px",
+      "display": "grid",
+      "gap": "8px 10px",
+      "h": 88.1953125,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 407.5
+    }
+  ],
+  ".scout-skeleton .scout-color-tabs": [
+    {
+      "columns": "181px 181px",
+      "display": "grid",
+      "gap": "4px",
+      "h": 51,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 344.5
+    }
+  ],
+  ".scout-skeleton .scout-profile": [
+    {
+      "columns": "none",
+      "display": "flex",
+      "gap": "8px",
+      "h": 104,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 228.5
+    }
+  ]
+}

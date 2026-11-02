@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PrepForge · 選單與逐頁載入對照</title>
+<style>
+:root{color-scheme:light;--ink:#232522;--muted:#666b64;--paper:#f5f5f1;--line:#d6d9d0;--accent:#3c4d96}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.7 system-ui,"Microsoft JhengHei",sans-serif}button,a{touch-action:manipulation}a{color:var(--accent)}button{font:inherit;cursor:pointer;background:none;color:inherit;border:1px solid var(--line);padding:6px 12px;border-radius:4px}button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}button[aria-pressed=true]{background:var(--ink);color:white;border-color:var(--ink)}button:disabled{opacity:.35;cursor:default}header{padding:32px 32px 24px;border-bottom:1px solid var(--line)}.eyebrow{display:flex;justify-content:space-between;gap:20px;color:var(--muted);font-size:12px}h1{font:400 clamp(27px,3vw,42px)/1.3 Georgia,"Microsoft JhengHei",serif;margin:14px 0}header p{margin:0;max-width:1000px;color:var(--muted)}.layout{display:grid;grid-template-columns:218px minmax(0,1fr)}nav{border-right:1px solid var(--line);padding:20px 12px;max-height:calc(100vh - 20px);overflow:auto;position:sticky;top:0;align-self:start}nav button{display:block;width:100%;text-align:left;border:0;border-radius:0;margin-bottom:2px;padding:8px 12px}nav button[aria-current=page]{background:#e4e7df;color:var(--ink);box-shadow:inset 3px 0 var(--accent)}nav a{display:block;padding:14px 12px;font-size:12px}main{min-width:0;padding:24px}.toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}.switches{display:flex;gap:6px}h2{font:400 28px/1.3 Georgia,"Microsoft JhengHei",serif;margin:0 0 8px}.note{color:var(--muted);margin:0 0 20px;max-width:1100px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}figure{margin:0;min-width:0}figcaption{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin-bottom:8px}figure>a{display:block;background:#e9ebe4;border:1px solid var(--line)}img{width:100%;height:auto;display:block}body[data-size=phone] figure>a{max-width:390px;margin:auto}body[data-size=phone] figcaption{max-width:390px;margin:0 auto 8px}.measure{margin-top:28px;border-top:1px solid var(--line);padding-top:18px}.measure h3{font-size:15px;font-weight:600;margin:0 0 8px}.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}th,td{padding:8px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}th{font-weight:500;color:var(--muted)}td:first-child{font-family:monospace;max-width:400px;overflow:hidden;text-overflow:ellipsis}.same{color:#3e6848}.delta{color:#805122}details{margin-top:16px}summary{cursor:pointer;font-size:13px}footer{padding:22px 32px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}.links{display:flex;gap:18px;flex-wrap:wrap;margin-top:18px}.status{font-size:12px;color:var(--muted)}@media(max-width:800px){header{padding:20px}header .eyebrow{flex-wrap:wrap}.layout{grid-template-columns:1fr}nav{display:flex;position:static;gap:4px;max-height:none;border-right:0;border-bottom:1px solid var(--line);padding:10px;overflow:auto}nav button{width:auto;white-space:nowrap;margin:0}nav a{white-space:nowrap;padding:8px}main{padding:18px}.pair{gap:10px}h2{font-size:25px}.note{font-size:13px}.switches button{padding:5px 9px}}@media(max-width:500px){.pair{grid-template-columns:1fr;gap:24px}}
+</style>
+<header>
+ <div class="eyebrow"><span>PrepForge / Interface review</span><span>2026-11-02 · 1440 × 900 / 390 × 844 CSS px</span></div>
+ <h1>把偶爾用的操作收好，讓載入和實際畫面對上。</h1>
+ <p>20 組對照，包含七個主要頁面、設定分頁、選單與三個功能入口。每頁可切換桌面／手機與載入／完成；點圖開啟原圖，下方保留實測座標。</p>
+ <div class="links"><a href="screenshots.zip">下載全部截圖與量測</a><a href="feature-walkthrough/index.html">上一輪 22 組功能操作</a><a href="provenance.md">資料與截圖來源</a></div>
+</header>
+<div class="layout"><nav aria-label="對照頁面" id="pages"></nav><main>
+ <div class="toolbar"><div class="switches" aria-label="視口"><button data-size="desktop" aria-pressed="true">桌面</button><button data-size="phone" aria-pressed="false">手機</button></div><div class="switches" aria-label="載入狀態"><button data-stage="loading" aria-pressed="true">載入</button><button data-stage="ready" aria-pressed="false">完成</button></div></div>
+ <h2 id="title"></h2><p class="note" id="note"></p>
+ <div class="pair" id="pair"></div><div id="measure"></div>
+</main></div>
+<footer>同一份本地帳戶、分支棋譜、已完成訓練與已分析對局。Games／Scout 的外部回應使用固定樣本；這份對照驗證佈局，不驗證即時外部服務或引擎品質。未知筆數及文字長度造成的差異保留於量測表。沒有加入 Coach 信心分級。</footer>
+<script>
+let data,page,size='desktop',stage='loading';
+const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const n=v=>Math.round(v*100)/100;
+function canonical(s){return s.replace('.scout-skeleton .scout-profile','#scout-profile').replace('.scout-loading-side','#scout-side').replace('.scout-skeleton','#scout-results');}
+function measures(side){
+ let variants=page.variants[size];if(!variants?.loading||!variants?.ready)return '';
+ let a=data.measurements[variants.loading[side]?.replace('.png','')],b=data.measurements[variants.ready[side]?.replace('.png','')];if(!a||!b)return '';
+ let ready=Object.fromEntries(Object.entries(b).map(([s,v])=>[canonical(s),v]));
+ let rows=Object.entries(a).flatMap(([s,values])=>{let x=values[0],y=ready[canonical(s)]?.[0];if(!x||!y)return[];let delta=['x','y','w','h'].map(k=>n(y[k]-x[k]));return `<tr><td title="${esc(s)}">${esc(s)}</td><td>${n(x.x)}, ${n(x.y)} · ${n(x.w)} × ${n(x.h)}</td><td>${n(y.x)}, ${n(y.y)} · ${n(y.w)} × ${n(y.h)}</td><td class="${delta.every(v=>v===0)?'same':'delta'}">${delta.join(' / ')}</td><td>${values.length} → ${ready[canonical(s)].length}</td></tr>`;}).join('');
+ if(!rows)return '';
+ return `<div class="table-wrap"><table><thead><tr><th>區塊／首列</th><th>載入 x,y · w×h</th><th>完成 x,y · w×h</th><th>Δ x / y / w / h</th><th>筆數</th></tr></thead><tbody>${rows}</tbody></table></div><p class="status">CSS pixels；顯示每種 selector 的第一個可見元素。未知筆數及內容換行會使後續區塊移動，不能把整頁總高度當成固定規格。</p>`;
+}
+function render(){
+ if(!page.variants[size])size=Object.keys(page.variants)[0];let v=page.variants[size];if(!v[stage])stage=Object.keys(v)[0];
+ document.body.dataset.size=size;$('#title').textContent=page.name;$('#note').textContent=page.note;
+ document.querySelectorAll('[data-size]').forEach(b=>{if(b.tagName!=='BUTTON')return;b.disabled=!page.variants[b.dataset.size];b.setAttribute('aria-pressed',b.dataset.size===size);});
+ document.querySelectorAll('[data-stage]').forEach(b=>{b.disabled=!v[b.dataset.stage];b.setAttribute('aria-pressed',b.dataset.stage===stage);});
+ document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.id===page.id?'page':'false'));
+ $('#pair').innerHTML=['before','after'].map((side,i)=>`<figure><figcaption><span>${i?'修改後':'修改前'}</span><span>${size==='phone'?'390 × 844':'1440 × 900'} · ${stage==='loading'?'載入':'完成'}</span></figcaption><a href="${v[stage][side]}" target="_blank" rel="noopener"><img src="${v[stage][side]}" alt="${esc(page.name)} ${i?'修改後':'修改前'}"></a></figure>`).join('');
+ let after=measures('after'),before=measures('before');$('#measure').innerHTML=after?`<section class="measure"><h3>修改後：載入 → 完成</h3>${after}${before?`<details><summary>查看修改前量測</summary>${before}</details>`:''}</section>`:'';
+ history.replaceState(null,'','#'+page.id);
+}
+fetch('data.json').then(r=>r.json()).then(d=>{data=d;$('#pages').innerHTML=d.pages.map(p=>`<button data-id="${p.id}">${esc(p.name)}</button>`).join('');page=d.pages.find(p=>p.id===location.hash.slice(1))||d.pages.find(p=>p.id==='menu');$('#pages').onclick=e=>{let b=e.target.closest('button');if(b){page=d.pages.find(p=>p.id===b.dataset.id);render();}};document.querySelectorAll('button[data-size]').forEach(b=>b.onclick=()=>{size=b.dataset.size;render();});document.querySelectorAll('button[data-stage]').forEach(b=>b.onclick=()=>{stage=b.dataset.stage;render();});render();}).catch(e=>{$('#note').textContent='無法載入對照資料：'+e.message;});
+</script>
+</html>

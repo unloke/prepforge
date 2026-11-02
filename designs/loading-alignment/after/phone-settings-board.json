@@ -1,0 +1,14 @@
+{
+  "#set-board": [
+    {
+      "columns": "none",
+      "display": "block",
+      "gap": "normal",
+      "h": 328,
+      "lineHeight": "normal",
+      "w": 366,
+      "x": 12,
+      "y": 92
+    }
+  ]
+}
