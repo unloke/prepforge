@@ -3,6 +3,7 @@ import { bindPgnInput } from "./analyze-pgn-open.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
+import { buildSkeleton } from "./views/build-skeleton.js";
 import "./phone.css";
 import "./touch.css";
 import "./phone-kit.css";
@@ -692,16 +693,18 @@ function setBuildLoading(on, { restore = true } = {}) {
   }
   if (appState.currentView !== "build") switchView("build", { fromUrl: true });
   paintBuildEmpty();
+  const fork = document.getElementById("build-branchbar");
+  if (fork) fork.hidden = true;
   const nameEl = document.getElementById("build-rep-name");
   if (nameEl) {
-    nameEl.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%"></span>`;
+    nameEl.innerHTML = html`<span class="color-dot skeleton-dot"></span><span class="skeleton-bar skeleton-line" style="display:inline-block;width:180px;max-width:70%"></span>`;
     // The old tree's size is not this tree's: the caption goes with it.
     nameEl.title = "";
   }
   const tree = document.getElementById("builder-tree");
   if (tree) {
     tree.innerHTML =
-      html`<div class="skeleton-row" role="status" aria-label="Loading repertoire">${[72, 56, 84, 48, 64, 40].map((w) => html`<span class="skeleton-bar" style="width:${w}%"></span>`)}</div>`;
+      buildSkeleton();
   }
 }
 

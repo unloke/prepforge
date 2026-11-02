@@ -208,27 +208,20 @@ async function renameRepertoire() {
     setStatus("Open a repertoire first");
     return;
   }
-  const result = await showInputModal({
+  const repertoireId = appState.build.repertoire_id;
+  await showInputModal({
     title: "Rename repertoire",
     okLabel: "Save",
     fields: [{ name: "name", label: "New name", default: appState.build.name }],
+    onSubmit: async (result, close) => {
+      const name = (result.name || "").trim();
+      if (!name) throw new Error("Enter a name.");
+      const payload = await postJson("/api/build/rename", { repertoire_id: repertoireId, name });
+      if (appState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, appState.buildCurrentNodeId);
+      close(result);
+      setStatus(`Renamed to ${name}`);
+    },
   });
-  if (!result) return;
-  const name = (result.name || "").trim();
-  if (!name) {
-    setStatus("Name is empty");
-    return;
-  }
-  try {
-    const payload = await postJson("/api/build/rename", {
-      repertoire_id: appState.build.repertoire_id,
-      name,
-    });
-    await hydrateBuild(payload, appState.buildCurrentNodeId);
-    setStatus(`Renamed to ${name}`);
-  } catch (error) {
-    setStatusError(error.message);
-  }
 }
 
 async function selectBuildNode(nodeId, { branchChoiceId = null } = {}) {
@@ -1757,15 +1750,23 @@ async function handleNodeContextAction(action, nodeId) {
     }
     let value = null;
     if (action === "add_comment") {
-      const result = await showInputModal({
+      const repertoireId = appState.build.repertoire_id;
+      await showInputModal({
         title: `Note on ${nodeMenuHeading(node)}`,
         okLabel: "Save",
         fields: [
           { name: "comment", label: "Note", type: "textarea", default: node.comment || "" },
         ],
+        onSubmit: async (result, close) => {
+          const payload = await postJson("/api/build/action", {
+            repertoire_id: repertoireId, node_id: nodeId, action, value: result.comment,
+          });
+          if (appState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, nodeId);
+          close(result);
+          setStatus("Note saved");
+        },
       });
-      if (!result) return;
-      value = result.comment;
+      return;
     }
     const payload = await postJson("/api/build/action", {
       repertoire_id: appState.build.repertoire_id,
