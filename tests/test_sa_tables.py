@@ -38,6 +38,8 @@ def _expected_tables() -> set[str]:
         "repertoire_access",
         "opening_nodes",
         "repertoire_ops",
+        "position_threads",
+        "position_messages",
         "training_sessions",
         "training_progress",
         "alembic_version",
