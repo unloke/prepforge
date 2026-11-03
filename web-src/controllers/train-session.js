@@ -11,7 +11,7 @@ import { html } from "../html.js";
 // positions later. Only attempt 1 is graded.
 
 import { isAuthError } from "../auth-gate.js";
-import { localBoardInfo } from "../chess-local.js";
+import { localBoardInfo, localPremoveMoves } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { maiaErrorText, watchMaiaInit } from "../maia-init-notice.js";
 import { pendingHandoffs, trackPreparationPractice, transitionHandoff } from "../handoff-context.js";
@@ -20,6 +20,7 @@ import { coachTipMayReplace, promptCueSan, teachWhy, trainTeachLine, wrongMoveBa
 import { createTrainRecovery } from "../train-recovery.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { playBookName, playTrailRows, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
+import { createPlayMoveHandler } from "../train-play-input.js";
 import { isNothingToTrainError } from "../train-start.js";
 import { planTrainRunIn } from "../train-flow.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, showTrainResult, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
@@ -475,10 +476,16 @@ function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, stat
 // Start a practice game and remember the in-flight start, so a move made on the
 // board while it sets up is played into the new game instead of being dropped.
 export function startPlaySessionTracked(options) {
+  appState.trainStarting = true;
   const pending = startPlaySession(options).finally(() => {
-    if (appState.playStarting === pending) appState.playStarting = null;
+    if (appState.playStarting === pending) {
+      appState.playStarting = null;
+      appState.trainStarting = false;
+      syncTrainScreen();
+    }
   });
   appState.playStarting = pending;
+  syncTrainScreen();
   return pending;
 }
 
@@ -605,8 +612,9 @@ async function startPlaySession({
       : "";
   paintPlayPosition({
     fen: info.fen,
-    legalMoves: sideToMoveFromFen(info.fen) === userColor ? info.legal_moves : [],
-    banner: "Your move",
+    legalMoves: sideToMoveFromFen(info.fen) === userColor ? info.legal_moves : localPremoveMoves(info.fen, userColor),
+    banner: sideToMoveFromFen(info.fen) === userColor ? "Your move" : "Opponent thinking…",
+    state: "idle",
     sub: `${why}${luckyMeta}`,
     label: playBookLabel(appState.play),
   });
@@ -742,43 +750,16 @@ async function playOpponentReply() {
     sub: `${sourceLabel} played ${after.move.san}${reason}`,
     label: playBookLabel(play),
   });
+  const premove = play.premove;
+  play.premove = null;
+  boards.train.setPremove(null);
+  if (premove && ended.legalMoves.includes(premove)) await submitPlayMove(premove);
 }
 
-async function submitPlayMove(playedUci) {
-  const play = appState.play;
-  if (!play || !play.active || !playedUci) return;
-  const info = await boardInfo(play.fen);
-  if (!info.legal_moves.includes(playedUci)) return;
-  const nodeIdBefore = play.nodeId;
-  await optimisticBoardMove(boards.train, play.fen, playedUci);
-  const after = await boardAfterMove(play.fen, playedUci);
-  play.fen = after.board.fen;
-  play.ply += 1;
-  const repertoireCursorsBefore = playAdvanceNode(playedUci);
-  recordPlayPly({
-    uci: playedUci,
-    san: after.move.san,
-    fenBefore: info.fen,
-    fenAfter: after.board.fen,
-    by: "user",
-    nodeIdBefore,
-    nodeIdAfter: play.nodeId,
-    repertoireCursorsBefore,
-    repertoireCursorsAfter: playCursorSnapshot(play),
-  });
-  boards.train.setPosition({
-    fen: after.board.fen,
-    legalMoves: [],
-    lastMove: playedUci,
-  });
-  const ended = playPositionAfterReply(after.board);
-  if (ended.terminal) {
-    play.result = ended.result;
-    endPlayGame(ended.banner);
-    return;
-  }
-  await playOpponentReply();
-}
+const submitPlayMove = createPlayMoveHandler({
+  appState, boards, advanceNode: playAdvanceNode, recordPly: recordPlayPly,
+  cursorSnapshot: playCursorSnapshot, endGame: endPlayGame, opponentReply: playOpponentReply,
+});
 
 export async function onFeelingLucky() {
   if (appState.luckyBusy) return;
@@ -857,6 +838,8 @@ async function runFeelingLuckyClick() {
 export async function takebackPlaySession() {
   const play = appState.play;
   if (!play || !play.history || !play.history.length) return;
+  play.premove = null;
+  boards.train.setPremove(null);
   play.replySeq = (play.replySeq || 0) + 1;
   const undone = takebackToUserMove(play.history);
   play.history = undone.history;
@@ -902,6 +885,8 @@ export function resignPlaySession() {
 function endPlayGame(title, failure = "") {
   const play = appState.play;
   if (!play) return;
+  play.premove = null;
+  boards.train.setPremove(null);
   play.active = false;
   play.ended = title;
   play.failure = failure;

@@ -297,6 +297,9 @@
   .train-row[data-row="all_lines"] .train-row-opts { justify-content: flex-start; }
 }
 
-/* Phone-only parts of Home (phone.css): the Drill / Practice tabs, Practice's
-   opponent cards and its section labels. The desktop rows keep their chips. */
-#view-train :is(.train-tabs, .train-bots, .train-sec-label) { display: none; }
+/* Practice's opponent cards and section labels are phone-only. The tabs
+   switch Home's rows at every viewport width. */
+#view-train :is(.train-bots, .train-sec-label) { display: none; }
+#view-train #train-tabs { display: flex; width: 100%; }
+#view-train:not([data-train-pane="play"]) .train-row[data-row="play"],
+#view-train[data-train-pane="play"] .train-row:not([data-row="play"]) { display: none; }

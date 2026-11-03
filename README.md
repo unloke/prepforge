@@ -39,6 +39,8 @@ against Maia, Lichess Explorer or your own repertoire. Use hints, retry mistakes
 or turn on timed Blitz training.
 Due moves run in repertoire order, keeping shared opening context between lines.
 Answers advance locally while progress saves in the background.
+Practice supports promotion choices and premoves while the opponent thinks.
+Click an empty square to cancel a premove and clear your board annotations.
 
 ### Check your games
 

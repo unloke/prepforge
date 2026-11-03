@@ -5,7 +5,7 @@ import { recentRuns } from "../train-history.js";
 import { lineTail } from "../views/train.js";
 import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
 import { createTrainPreview, paintTrainPreviewLoading } from "./train-preview.js";
-import { appState } from "../core/state.js";
+import { appState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
 import { lichessAccounts, requireSignIn, switchView } from "../core/app-context.js";
@@ -54,7 +54,7 @@ export function createTrainHome() {
 export function trainScreenOf(state) {
   const mode = state.trainMode || "smart";
   if (state.trainResult && state.trainResult.mode === mode) return "result";
-  if (mode === "play") return state.play ? (state.play.active ? "session" : "result") : state.playStarting ? "session" : "home";
+  if (mode === "play") return state.play ? (state.play.active ? "session" : "result") : state.playStarting || state.trainStarting ? "session" : "home";
   if (state.trainStarting || state.smart?.prompt || state.training?.prompt || state.trainBusy && (state.smart || state.training)) return "session";
   return "home";
 }
@@ -107,7 +107,10 @@ export function syncTrainScreen() {
     paintActions(screen, mode);
     if (screen === "home") void paintTrainHome();
   };
-  if (!before || before === screen) {
+  // Starting is one state change. A route fade already carries its content;
+  // another captured transition during async setup makes it enter twice.
+  if (!before || before === screen || state.trainStarting || state.playStarting ||
+      document.documentElement.classList.contains?.("view-swap")) {
     apply();
     return;
   }
@@ -173,7 +176,7 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
   state.trainMode = mode;
   if (mode === "smart") setDueScope(repertoireId);
   if (mode === "all_lines" && repertoireId) state.trainingRepertoireId = String(repertoireId);
-  if (autostart && mode !== "play") state.trainStarting = true;
+  if (autostart) state.trainStarting = true;
   const enter = () => {
     if (state.currentView !== "train") switchView("train");
     syncTrainScreen();
@@ -190,6 +193,7 @@ function resetSessions() {
   const state = appState;
   state.playStartToken = (state.playStartToken || 0) + 1;
   state.playStarting = null;
+  boards.train?.setPremove(null);
   state.play = null;
   state.smart = null;
   state.training = null;

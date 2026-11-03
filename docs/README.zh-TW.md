@@ -33,6 +33,7 @@ FSRS 依作答紀錄安排複習。Due queue 集中待練走法，Rehearse 逐�
 Practice 則能與 Maia、Lichess Explorer 或自己的棋譜對弈。
 需要時使用提示、重練錯題，或開啟限時 Blitz 訓練。
 Due queue 依棋譜順序連續練習，相鄰路線保留共用的開局；作答後立即推進，進度在背景儲存。
+Practice 支援選擇升變棋種，也能在對手思考時預走（premove）；點棋盤空格可取消預走並清除自畫記號。
 
 ### 檢查實戰偏離
 

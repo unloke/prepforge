@@ -21,6 +21,8 @@ class BoardController {
     this.overlay = document.getElementById(config.overlayId);
     this.onMove = config.onMove;
     this.onAnnotate = config.onAnnotate || null;
+    this.onCancel = config.onCancel || null;
+    this.premove = null;
     this.fen = null;
     this.legalMoves = [];
     this.selected = null;
@@ -215,19 +217,19 @@ class BoardController {
         this._toggleHighlight(squareName);
         return;
       }
+      this.clearMarks();
       // Clicking a legal target while a piece is selected plays the move.
       if (this.selected && this.selected !== squareName) {
         const from = this.selected;
         if (isPromotionMove(from, squareName, this.legalMoves)) {
           this._setSelected(null);
           const board = this;
-          resolveBoardMove({
-            from,
-            to: squareName,
-            moves: this.legalMoves,
-            board,
-            play: (uci) => board.play(uci),
-          });
+          const fen = this.fen;
+          const moves = this.legalMoves;
+          this._promotionOnRelease = () => {
+            if (board.fen !== fen) return;
+            resolveBoardMove({ from, to: squareName, moves, board, play: (uci) => board.play(uci) });
+          };
           return;
         }
         const move = legalMoveFor(from, squareName, this.legalMoves);
@@ -252,7 +254,13 @@ class BoardController {
 
     this.board.addEventListener("pointerup", (event) => {
       if (event.button === 2) this._finishAnnotation(event);
+      if (event.button === 0 && this._promotionOnRelease) {
+        const choose = this._promotionOnRelease;
+        this._promotionOnRelease = null;
+        window.setTimeout(choose, 0);
+      }
     });
+    this.board.addEventListener("pointercancel", () => { this._promotionOnRelease = null; });
 
     // Keyboard parity for the click-to-move model. The board is one Tab stop
     // (see _applyRovingTabindex):
@@ -302,6 +310,7 @@ class BoardController {
   // so the Enter/Space flow has one home (the pointer path intentionally keeps
   // its own drag-aware flow).
   _handleSquareActivation(squareName) {
+    this.clearMarks();
     if (this.selected && this.selected !== squareName) {
       const from = this.selected;
       if (isPromotionMove(from, squareName, this.legalMoves)) {
@@ -418,13 +427,13 @@ class BoardController {
       this._setSelected(null);
       const board = this;
       const moves = this.legalMoves;
-      resolveBoardMove({
-        from,
-        to: target,
-        moves,
-        board,
-        play: (uci) => board.play(uci),
-      });
+      const fen = this.fen;
+      // Opening an auto popover during pointerup lets the drag's following
+      // click light-dismiss it immediately. Finish the gesture first.
+      window.setTimeout(() => {
+        if (board.fen !== fen) return;
+        resolveBoardMove({ from, to: target, moves, board, play: (uci) => board.play(uci) });
+      }, 0);
       return;
     }
     const move = legalMoveFor(from, target, this.legalMoves);
@@ -432,10 +441,7 @@ class BoardController {
       this._draggedMove = move;
       this._setSelected(null);
       this.play(move);
-    } else {
-      // The piece goes back to its square; the sound says why.
-      playSound("illegal");
-    }
+    } else this._setSelected(null);
   }
 
   _cancelDrag() {
@@ -485,6 +491,20 @@ class BoardController {
     this._renderArrows();
   }
 
+  clearMarks() {
+    if (this.arrows.length || this.highlights.size) {
+      this.setAnnotations([], []);
+      this._notifyAnnotate();
+    }
+    if (this.premove) this.setPremove(null);
+    this.onCancel?.();
+  }
+
+  setPremove(move) {
+    this.premove = move || null;
+    this._updateClasses();
+  }
+
   _notifyAnnotate() {
     if (this.onAnnotate) this.onAnnotate(this.arrows.slice(), [...this.highlights]);
   }
@@ -502,10 +522,15 @@ class BoardController {
     // only in halfmove/fullmove is the same position arriving twice, not a move.
     const positionChanged = positionKey(this.fen) !== positionKey(fen);
     const prevFen = this.fen;
+    if (fenChanged) {
+      this._cancelPromotion?.();
+      this._promotionOnRelease = null;
+    }
     // A same-position refresh (an autosave, a re-render) must not yank a piece
     // out of the user's hand: keep the drag and selection while they stay legal.
-    const keepInteraction = !fenChanged && (this.dragFrom || this.selected) &&
-      legalMoves.some((move) => move.startsWith(this.dragFrom || this.selected));
+    const held = this.dragFrom || this.selected;
+    const keepInteraction = held && legalMoves.some((move) => move.startsWith(held)) &&
+      (!fenChanged || parseFenBoard(prevFen)[held] === parseFenBoard(fen)[held]);
     if (!keepInteraction) this._cancelDrag();
 
     // What this change moved, and the travel it needs, read NOW — before any DOM
@@ -530,6 +555,7 @@ class BoardController {
     // position change drops them; a same-position refresh (an autosave, a
     // re-render) keeps them. Nothing is notified: they were saved already.
     if (positionChanged) {
+      this.premove = null;
       this.arrows = [];
       this.highlights = new Set();
     }
@@ -641,6 +667,8 @@ class BoardController {
       square.classList.toggle("selected", this.selected === squareName);
       square.classList.toggle("legal", legalTargets.has(squareName));
       square.classList.toggle("highlighted", this.highlights.has(squareName));
+      square.classList.toggle("premove", Boolean(this.premove &&
+        (this.premove.slice(0, 2) === squareName || this.premove.slice(2, 4) === squareName)));
       // Keyboard selection state must be visible to assistive tech too: the
       // Enter/Space pick-and-move flow toggles .selected, so mirror it as
       // aria-pressed on the square button.

@@ -746,6 +746,7 @@ async function trainTakeback(page) {
     check(await page.locator('#train-bots .train-bot[data-book="explorer"]').getAttribute("aria-pressed") === "true",
       "train takeback: the Lichess card is picked");
   } else {
+    await page.locator('[data-testid="train-tab-play"]').click();
     await page.locator("#train-play-book").click();
     await page.locator('.train-picker .train-pick[data-id="explorer"]').click();
   }
