@@ -20,8 +20,8 @@
 需要延伸時，從棋譜的 More → Explore 選 Generate moves。
 等待 Saved 後返回 Library，再開啟一次，確認內容已儲存。
 刪除走法時，該步與後續分支會立即從畫面移除；底部的 Undo 可立即還原。
-從 More → Explore → Atlas 開啟各路線的真實分支圖；選一條路線查看分岔局面，再選 Moves 或回應棋步，
-就會聚焦該段棋譜。按 All lines 回到整棵樹。註解或改名儲存失敗時，可在原對話框重試。
+點標題顏色旁的路線圖（或 More → Explore → Atlas），查看棋譜總分、結構輪廓與分支路線。個人訓練熟悉度另列為 Imprint；未訓練時顯示破折號。
+註解或改名儲存失敗時，可在原對話框重試。
 
 ![棋盤、分支與 Explorer](assets/repertoire-desktop.png)
 
@@ -41,7 +41,9 @@ Move 顯示目前路線的進度；作答在本機處理，儲存不會阻擋下
 | Practice | 選 Maia、Lichess Explorer 或自己的棋譜作為對手來源，再按 Play |
 | Blitz | 在 Due queue 開始前打開開關，每手限時 10 秒 |
 
-Practice 的對局可以用 Analyze 帶進分析工作區。
+Random position 只採用 Stockfish 評估在 −1.5～+1.5 內且無將殺的局面；找不到合適局面時可重試。
+Practice 結束後按 Analyze game，會載入棋譜並自動開始整局分析。
+Lichess Explorer 資料不足時由 Maia 接手，後續不再逐步查詢資料庫；悔棋後會重新判斷。
 手機與桌面都可用 Drill／Practice 分頁切換。對手思考時可拖曳自己的棋子預走（premove），
 對手落子後會重新檢查合法性；不合法的預走會取消。點空格可取消預走並清除自畫箭頭與圈選。
 兵到達底線時，選擇后、車、象或馬完成升變；按 Escape 或點選單外可取消。

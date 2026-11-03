@@ -41,8 +41,15 @@ neither discussion data nor activity. Message bodies are rendered as escaped tex
 The message thread index was measured with 20,000 messages across 500 threads:
 the repertoire query dropped from 3.09 ms with a message scan to 0.15 ms with
 `ix_position_messages_thread_id` in an in-memory SQLite run. No cache or data cap
-was added. Atlas renders the current in-memory tree; its six-board pages are UI
-pagination and all forks remain reachable. A 2,000-node route uses combined SVG
+was added. Atlas renders the current in-memory tree and opens from the route map
+beside the repertoire color, or More → Explore. The dossier presents a structural
+index and four facets: Reach (mean ending depth), Weave (branch breadth), Poise
+(depth consistency) and Resolve (own-side endings weighted by depth). Saturating
+scales keep one long line or many shallow branches from dominating. These are
+structural heuristics, not engine accuracy or measured opponent coverage.
+Disabled subtrees are excluded; an empty tree has no index. Imprint separately
+reports the percentage of enabled own-side moves marked mastered, with no score
+before training. Shared views omit Imprint. A 2,000-node route uses combined SVG
 paths rather than one element per edge.
 
 Schema authority: Alembic revision `8e4a6c2d0f91`, following `7b3e5a9c1d2f`.

@@ -63,3 +63,31 @@ node tests/e2e/train_repertoire_flow_smoke.mjs
 ```
 
 Browser captures go to `out/train-repertoire-flow/`.
+
+## Practice opponent and review handoff
+
+A successful Explorer read with no usable book reply hands the rest of the game
+to Maia. Later positions skip Explorer; taking back resets that out-of-book
+state so an earlier position can use the database again. Sign-in/link failures
+retain their distinct status. Repertoire replies still take precedence when a
+local branch is available. This removes a serial network round-trip before each
+Maia reply without adding another cache.
+
+Selecting Maia starts its shared model initialization when Play opens the board,
+without blocking the player's first turn. Other opponent types load Maia only
+when it is actually needed. Localhost and production keep separate origin-scoped
+weight caches even on the same computer.
+
+Practice's Analyze game action loads the PGN at the start and calls the same
+whole-game review entry point as Last game. Source epochs and account generation
+fence delayed handoffs; PGN normalization by the move tree does not cancel the
+review. A failed load reports an error instead of analyzing a previous game.
+
+`train-play-async.test.js` covers ongoing book reads, the Maia takeover and
+rechecking after takeback. `controllers/train-session-handoff.test.js` covers
+automatic review, load failures, normalized PGN and ownership changes.
+The real browser evidence under `designs/atlas-analysis/real/` includes a
+controlled 2-second Explorer response: only the initial miss queries Explorer;
+three subsequent replies take 75–86 ms. The auto-review smoke reaches prepare
+and classify-save successfully without pressing Review a second time. These
+are local measurements with a controlled Explorer feed, not a production SLA.

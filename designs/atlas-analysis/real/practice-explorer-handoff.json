@@ -1,0 +1,23 @@
+{
+  "injectedExplorerLatencyMs": 2000,
+  "firstReplyMs": 3493,
+  "turns": [
+    {
+      "uci": "a7a6",
+      "ms": 86,
+      "explorerReads": 1
+    },
+    {
+      "uci": "b7b6",
+      "ms": 76,
+      "explorerReads": 1
+    },
+    {
+      "uci": "c7c6",
+      "ms": 75,
+      "explorerReads": 1
+    }
+  ],
+  "explorerReads": 1,
+  "errors": []
+}

@@ -70,10 +70,56 @@ export function positionThumbnail(fen, orientation, renderers) {
   return html`<div class="position-thumbnail" aria-hidden="true">${squares}</div>`;
 }
 
-export function openBuildAtlas({ appState, miniBoard, focusLine, selectBuildNode }) {
+// Own-side training only; disabled ancestors exclude their entire subtree.
+export function atlasAnalysis(nodes, color) {
+  const children = indexTree(nodes), ids = new Set(nodes.map((n) => n.id));
+  const counts = { mastered: 0, learning: 0, due: 0, weak: 0, untrained: 0 }, enabled = [], leaves = [];
+  const stack = nodes.filter((n) => !ids.has(n.parent_id));
+  while (stack.length) {
+    const node = stack.pop();
+    if (node.is_enabled === false) continue;
+    enabled.push(node);
+    const kids = (children.get(node.id) || []).filter((n) => n.is_enabled !== false);
+    if (node.parent_id && !kids.length) leaves.push(node);
+    stack.push(...kids);
+    if (node.parent_id && node.move_side === color) counts[Object.hasOwn(counts, node.mastery) ? node.mastery : "untrained"]++;
+  }
+  const trainable = Object.values(counts).reduce((a, b) => a + b, 0), trained = trainable - counts.untrained;
+  const depths = new Map();
+  for (const node of leaves) { const move = Math.ceil(node.ply / 2); depths.set(move, (depths.get(move) || 0) + 1); }
+  return { counts, trainable, trained, score: trained ? Math.round(counts.mastered / trainable * 100) : null,
+    review: counts.due + counts.weak, nodes: enabled, leaves, depths,
+    forks: enabled.filter((n) => (children.get(n.id) || []).filter((c) => c.is_enabled !== false).length > 1).length,
+    deepest: Math.max(0, ...depths.keys()) };
+}
+
+// A structural fingerprint, not engine accuracy. Saturating depth and breadth
+// prevent one long line or many shallow forks from dominating the index.
+export function atlasProfile(data, color) {
+  const depths = data.leaves.map((n) => Math.max(0, Number(n.ply) || 0) / 2);
+  const mean = depths.length ? depths.reduce((a, b) => a + b, 0) / depths.length : 0;
+  const max = Math.max(0, ...depths);
+  const values = [
+    100 * (1 - Math.exp(-mean / 12)),
+    100 * Math.max(0, depths.length - 1) / (depths.length + 3),
+    max ? 100 * mean / max * Math.min(1, mean / 8) : 0,
+    depths.length ? 100 * data.leaves.filter((n) => n.move_side === color).length / depths.length * (1 - Math.exp(-mean / 8)) : 0,
+  ];
+  const scores = values.map((n) => Math.round(n));
+  return { scores, index: depths.length ? (values[0] * 0.35 + values[1] * 0.25 + values[2] * 0.2 + values[3] * 0.2).toFixed(1) : null };
+}
+
+function profileGlyph(scores) {
+  const point = (i, scale) => {
+    const angle = (i * 90 - 90) * Math.PI / 180;
+    return `${(150 + Math.cos(angle) * 100 * scale).toFixed(2)},${(150 + Math.sin(angle) * 100 * scale).toFixed(2)}`;
+  };
+  return html`<svg class="atlas-fingerprint" viewBox="0 0 300 300" aria-hidden="true"><circle class="atlas-orbit" cx="150" cy="150" r="126"/>${[0.25, 0.5, 0.75, 1].map((s) => html`<polygon class="atlas-grid" points="${scores.map((_, i) => point(i, s)).join(" ")}"/>`)}<path class="atlas-axis" d="M150 24V276M24 150H276"/><polygon class="atlas-envelope" points="${scores.map((s, i) => point(i, s / 100)).join(" ")}"/>${scores.map((s, i) => { const [cx, cy] = point(i, s / 100).split(","); return html`<circle class="atlas-vertex" cx="${cx}" cy="${cy}" r="3"/>`; })}<text x="150" y="13" text-anchor="middle">I</text><text x="292" y="154" text-anchor="middle">II</text><text x="150" y="295" text-anchor="middle">III</text><text x="8" y="154" text-anchor="middle">IV</text></svg>`;
+}
+
+export function openBuildAtlas({ appState }) {
   const build = appState.build;
   if (!build) return;
-  const children = indexTree(build.nodes), byId = appState.buildNodeById;
   const root = build.nodes.find((node) => !node.parent_id);
   if (!root) return;
   const dialog = modalDialog("lineage-modal atlas-modal");
@@ -81,47 +127,15 @@ export function openBuildAtlas({ appState, miniBoard, focusLine, selectBuildNode
   const close = openModal(dialog);
   dialog.querySelector("[data-close]").onclick = () => close();
   const body = dialog.querySelector(".lineage-body");
-  const moveLabel = (node) => node.parent_id ? `${node.move_number}${node.move_side === "black" ? "…" : "."} ${node.san}` : "All lines";
-  const pathLabel = (node) => {
-    const moves = [];
-    while (node?.parent_id) { moves.push(node.san); node = byId.get(node.parent_id); }
-    return moves.reverse().join(" ");
-  };
-  const stats = (nodes) => {
-    const leaves = nodes.filter((node) => !(children.get(node.id)?.length)).length;
-    const due = nodes.filter((node) => node.mastery === "due" || node.mastery === "weak").length;
-    return html`<span>${leaves} ${leaves === 1 ? "line" : "lines"}</span><span>${nodes.length} moves</span>${due ? html`<span class="atlas-due">${due} to review</span>` : ""}`;
-  };
-  const showFamilies = () => {
-    const families = children.get(root.id) || [];
-    body.innerHTML = html`<div class="atlas-identity"><h3>${build.name}</h3><span>${build.color === "black" ? "Black" : "White"}</span></div><div class="atlas-summary">${stats(build.nodes.filter((node) => node.parent_id))}</div><div class="atlas-families">${families.map((family, i) => {
-      const nodes = subtreeNodes(family, children);
-      let named = family, title = "";
-      while (named) {
-        title = appState.buildOpeningByFen?.get(String(named.fen).split(" ").slice(0, 4).join(" ")) || title;
-        const kids = children.get(named.id) || [];
-        named = kids.length === 1 ? kids[0] : null;
-      }
-      return html`<button type="button" class="atlas-family" data-family="${family.id}"><span class="atlas-serial">${String(i + 1).padStart(2, "0")}</span><h4>${title || moveLabel(family)}</h4>${routeGlyph(nodes, family.id, appState.buildCurrentNodeId)}<span class="atlas-stats">${stats(nodes)}</span><span class="atlas-enter" aria-hidden="true">↗</span></button>`;
-    })}</div>`;
-    body.querySelectorAll("[data-family]").forEach((button) => { button.onclick = () => showForks(byId.get(button.dataset.family)); });
-  };
-  const showForks = (family, page = 0) => {
-    const nodes = subtreeNodes(family, children);
-    const forks = nodes.filter((node) => (children.get(node.id)?.length || 0) > 1);
-    const places = forks.length ? forks : [family];
-    // A page of boards is navigable on a phone too; the full tree stays available.
-    const pageSize = 6, shown = places.slice(page * pageSize, (page + 1) * pageSize);
-    body.innerHTML = html`<nav class="atlas-crumbs" aria-label="Atlas location"><button type="button" class="btn ghost sm" data-all>All lines</button><span>›</span><b>${moveLabel(family)}</b><button type="button" class="btn sm" data-focus="${family.id}">Open line →</button></nav><div class="atlas-fork-grid">${shown.map((position) => html`<article class="atlas-fork">${miniBoard(position.fen)}<div><h4 title="${pathLabel(position)}">${pathLabel(position)}</h4><div class="atlas-replies">${(children.get(position.id) || []).map((reply) => html`<button type="button" class="btn sm" data-focus="${reply.id}">${moveLabel(reply)}</button>`)}</div><button type="button" class="btn sm ghost" data-focus="${position.id}">Moves →</button></div></article>`)}</div>${places.length > pageSize ? html`<div class="atlas-pagination"><button type="button" class="btn sm" data-prev ${page === 0 ? html`disabled` : ""}>Previous</button><span>${page * pageSize + 1}–${Math.min(places.length, (page + 1) * pageSize)} / ${places.length}</span><button type="button" class="btn sm" data-next ${(page + 1) * pageSize >= places.length ? html`disabled` : ""}>Next</button></div>` : ""}`;
-    body.querySelector("[data-all]").onclick = showFamilies;
-    body.querySelector("[data-prev]")?.addEventListener("click", () => showForks(family, page - 1));
-    body.querySelector("[data-next]")?.addEventListener("click", () => showForks(family, page + 1));
-    body.querySelectorAll("[data-focus]").forEach((button) => { button.onclick = () => {
-      close();
-      const target = byId.get(button.dataset.focus);
-      focusLine(children.get(target.id)?.length ? target.id : target.parent_id);
-      void selectBuildNode(target.id);
-    }; });
-  };
-  showFamilies();
+  const data = atlasAnalysis(build.nodes, build.color), profile = atlasProfile(data, build.color);
+  const personal = !appState.sharedToken && !build.shared;
+  const names = ["Reach", "Weave", "Poise", "Resolve"];
+  const numerals = ["I", "II", "III", "IV"];
+  const moveCount = data.nodes.filter((n) => n.parent_id).length;
+  body.innerHTML = html`<div class="atlas-identity"><div><span class="atlas-kicker">Opening dossier</span><h3>${build.name}</h3></div><span class="atlas-side"><i class="${build.color === "black" ? "is-black" : ""}"></i>${build.color === "black" ? "Black" : "White"}</span></div>
+    <div class="atlas-portrait"><section class="atlas-index" aria-label="Atlas index" title="A structural repertoire profile, not an engine evaluation."><span class="atlas-kicker">Atlas index</span><div class="atlas-index-number"><strong>${profile.index ?? "—"}</strong><span>/ 100</span></div><div class="atlas-index-rule"><i style="--value:${profile.index ?? 0}%"></i></div><span class="atlas-classification">${profile.index === null ? "Uncharted" : Number(profile.index) < 30 ? "Emergent" : Number(profile.index) < 60 ? "Composed" : "Intricate"}</span></section>
+    <div class="atlas-seal">${profileGlyph(profile.scores)}</div>
+    <section class="atlas-facets" aria-label="Repertoire profile">${names.map((name, i) => html`<div class="atlas-facet"><span class="atlas-facet-id">${numerals[i]}</span><span>${name}</span><b>${profile.index === null ? "—" : profile.scores[i]}</b><div class="atlas-facet-track"><i style="--value:${profile.scores[i]}%;--delay:${i * 70}ms"></i></div></div>`)}</section></div>
+    <section class="atlas-map" aria-label="Repertoire routes"><div class="atlas-section-head"><h4>Lineage</h4><span>${String(data.leaves.length).padStart(2, "0")} ${data.leaves.length === 1 ? "route" : "routes"}</span></div>${routeGlyph(data.nodes, root.id, appState.buildCurrentNodeId)}</section>
+    <footer class="atlas-foot"><span><b>${moveCount}</b> moves</span><span><b>${data.forks}</b> forks</span><span><b>${data.deepest}</b> depth</span>${personal ? html`<span class="atlas-imprint" title="Personal training imprint"><span>Imprint</span><b>${data.score ?? "—"}</b></span>` : ""}</footer>`;
 }

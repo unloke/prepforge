@@ -26,6 +26,7 @@ function harness({
     throw new Error("No sharp titled game found — try again");
   });
   const deps = {
+    evaluatePosition: vi.fn(async () => ({ score_cp: 25, mate_in: null })),
     luckyDbStartFn,
     luckyTitledStartFn,
     storage: null,
@@ -39,6 +40,28 @@ function harness({
 }
 
 describe("I'm Feeling Lucky entry", () => {
+  it.each([151, -151, 900, -900, null, NaN])("rejects an unbalanced or missing engine score %s", async (score_cp) => {
+    const h = harness({ titledPicked: PICKED });
+    const picked = await runFeelingLucky({ ...h.deps, evaluatePosition: async () => ({ score_cp }) });
+    expect(picked).toBeNull();
+    expect(h.calls.session).toHaveLength(0);
+    expect(h.calls.banner.at(-1).join(" ")).toMatch(/No balanced position/);
+  });
+
+  it.each([-150, 0, 150])("accepts a verified score inside the inclusive range: %s", async (score_cp) => {
+    const h = harness({ titledPicked: PICKED });
+    expect(await runFeelingLucky({ ...h.deps, evaluatePosition: async () => ({ score_cp }) })).toEqual(PICKED);
+    expect(h.calls.session).toHaveLength(1);
+  });
+
+  it("rejects mate and reports engine failure without starting practice", async () => {
+    const h = harness({ titledPicked: PICKED });
+    await runFeelingLucky({ ...h.deps, evaluatePosition: async () => ({ score_cp: 0, mate_in: 3 }) });
+    expect(h.calls.session).toHaveLength(0);
+    await runFeelingLucky({ ...h.deps, evaluatePosition: async () => { throw new Error("Engine stopped"); } });
+    expect(h.calls.session).toHaveLength(0);
+    expect(h.calls.banner.at(-1).join(" ")).toMatch(/Could not verify/);
+  });
   it("uses the dynamic live Lichess selector by default", async () => {
     const live = {
       ...PICKED,
@@ -119,7 +142,7 @@ describe("I'm Feeling Lucky entry", () => {
     const picked = await runFeelingLucky(h.deps);
     expect(picked).toBeNull();
     expect(h.calls.session).toHaveLength(0);
-    expect(h.calls.banner.at(-1).join(" ")).toMatch(/Nothing sharp/);
+    expect(h.calls.banner.at(-1).join(" ")).toMatch(/No balanced position/);
     expect(h.calls.banner.at(-1).join(" ")).toMatch(/fresh Lichess games/);
   });
 

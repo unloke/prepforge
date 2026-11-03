@@ -295,6 +295,22 @@ async function runViewport(vp) {
     await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `repertoire-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
   }
 
+  // Direct Atlas entry, structural profile, personal imprint and keyboard dismissal.
+  const atlasEntry = page.getByRole("button", { name: "Open repertoire atlas", exact: true });
+  await atlasEntry.click();
+  const atlas = page.locator(".atlas-modal[open]");
+  await atlas.waitFor();
+  check(await atlas.locator(".atlas-imprint b").textContent() === "25", "personal imprint must be 1 / 4 = 25");
+  check(Number(await atlas.locator(".atlas-index-number strong").textContent()) > 0, "nonempty repertoire has a structural index");
+  check(await atlas.locator(".atlas-facet").count() === 4, "four structural facets render");
+  check(await atlas.locator("button, select").count() === 1, "Atlas has only a close control");
+  check(await atlas.locator(".position-thumbnail").count() === 0, "Atlas should analyze routes rather than repeat boards");
+  await page.waitForTimeout(750);
+  check(await atlas.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "Atlas must fit the viewport");
+  if (process.env.UI_V2_SHOTS) await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `atlas-${vp.name}.png`) });
+  await page.keyboard.press("Escape");
+  check(await atlasEntry.evaluate((el) => el === document.activeElement), "Atlas should restore keyboard focus");
+
   // Dock: the inspector starts open and its Explorer fills the column under
   // the tree; on a phone the Explorer is a pane of its own.
   console.log(`[${vp.name}] at dock step; tree trained=${trained}`);
@@ -430,6 +446,9 @@ async function runViewport(vp) {
   const rootText = await rootOnly.evaluate(() => document.body.innerText);
   check(!/Cannot read properties/.test(rootText), "a root-only repertoire should raise no error toast");
   check(rootErrors.length === 0, `a root-only repertoire threw: ${rootErrors.join(" | ")}`);
+  await rootOnly.getByRole("button", { name: "Open repertoire atlas", exact: true }).click();
+  check(await rootOnly.locator(".atlas-index-number strong").textContent() === "—", "empty repertoire must not invent a score");
+  await rootOnly.keyboard.press("Escape");
   await rootOnly.close();
 
   await page.close();
@@ -472,6 +491,11 @@ async function runViewport(vp) {
     host?.forkInStaticHost === true,
     "Copy button should live inside the static host",
   );
+
+  await sharedPage.getByRole("button", { name: "Open repertoire atlas", exact: true }).click();
+  sharedCheck(await sharedPage.locator(".atlas-imprint").count() === 0, "public Atlas hides personal imprint");
+  sharedCheck(await sharedPage.locator(".atlas-facet").count() === 4, "public Atlas keeps structural scores");
+  await sharedPage.keyboard.press("Escape");
 
   // Exactly one banner in the document — a leftover from the legacy
   // create/prepend path would show up as a second node.

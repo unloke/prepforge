@@ -26,8 +26,9 @@ or consult the engine. Generate continuations from a position and use Coverage
 to find missing replies, preview them and add the ones you want to prepare.
 Branch choices float over the move tree. Deleted moves disappear immediately;
 the compact Undo control restores the branch without shifting the workspace.
-Choose More → Explore → Atlas to move from a route map to branching positions
-and a focused move sheet. Repertoire headings carry a route ornament drawn from the actual tree.
+Click the route map beside the repertoire color to open Atlas: a repertoire
+dossier with a structural index, four profile scores, an animated fingerprint
+and the branching routes. Personal training appears as a separate Imprint.
 
 ![Repertoire atlas with the current tree's branching routes](docs/assets/repertoire-atlas.png)
 
@@ -39,7 +40,10 @@ against Maia, Lichess Explorer or your own repertoire. Use hints, retry mistakes
 or turn on timed Blitz training.
 Due moves run in repertoire order, keeping shared opening context between lines.
 Answers advance locally while progress saves in the background.
+Random positions require a Stockfish evaluation between −1.5 and +1.5, with no forced mate.
 Practice supports promotion choices and premoves while the opponent thinks.
+Once the Lichess book runs out, Maia takes over without a network lookup on
+every move. Analyze game starts the full review automatically.
 Click an empty square to cancel a premove and clear your board annotations.
 
 ### Check your games

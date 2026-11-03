@@ -11,8 +11,34 @@
 
 import { luckyDbStart } from "./train-lucky-db.js";
 import { luckyTitledStart } from "./train-lucky-titled.js";
+import { balancedPracticeEval, createLuckyBalanceCheck } from "./train-lucky-balance.js";
 
-export async function runFeelingLucky({
+export async function runFeelingLucky(options = {}) {
+  const balance = createLuckyBalanceCheck();
+  let confirmedFen = null;
+  const acceptPosition = async (fen) => {
+    options.setBanner?.("runin", "Checking position…", "Stockfish · −1.5 to +1.5");
+    let pv;
+    try { pv = await (options.evaluatePosition || balance.evaluate)(fen); }
+    catch (cause) { const error = new Error(cause?.message || String(cause)); error.balanceCheck = true; throw error; }
+    const accepted = balancedPracticeEval(pv);
+    confirmedFen = accepted ? fen : null;
+    return accepted;
+  };
+  try {
+    return await runFeelingLuckySelection({ ...options, acceptPosition,
+      isConfirmed: (fen) => confirmedFen === fen });
+  } catch (error) {
+    const message = error?.message || String(error);
+    options.onStatus?.(message);
+    options.setBanner?.("idle", "Could not verify position", "Retry — Stockfish must confirm an evaluation between −1.5 and +1.5.");
+    return null;
+  } finally {
+    balance.close();
+  }
+}
+
+async function runFeelingLuckySelection({
   luckyDbStartFn = luckyDbStart,
   luckyTitledStartFn = luckyTitledStart,
   // Reference feeds are an explicit emergency/test-only opt-in.
@@ -24,6 +50,8 @@ export async function runFeelingLucky({
   onStatus = () => {},
   setBanner = () => {},
   startSession = async () => {},
+  acceptPosition,
+  isConfirmed,
 } = {}) {
   setBanner(
     "runin",
@@ -33,6 +61,10 @@ export async function runFeelingLucky({
   let dbError = null;
   let sessionFailed = null;
   const beginSession = async (picked) => {
+    if (!isConfirmed(picked.fen) && !await acceptPosition(picked.fen)) {
+      setBanner("idle", "No balanced position found", "Try again · evaluation must be between −1.5 and +1.5.");
+      return false;
+    }
     // startSession (Play-session paint) failures are product failures, not
     // sampler failures: never relabel them as "Database unavailable" /
     // "Nothing sharp". Surface the real message and stop.
@@ -89,6 +121,7 @@ export async function runFeelingLucky({
       engine: null,
       maia: null,
       onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
+      acceptPosition,
     });
 
 
@@ -102,6 +135,7 @@ export async function runFeelingLucky({
         storage,
         exclude,
         allowReferences: Boolean(allowReferences),
+        acceptPosition,
         onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
       });
       if (picked) {
@@ -109,6 +143,7 @@ export async function runFeelingLucky({
         return null;
       }
     } catch (error) {
+      if (error.balanceCheck) throw error;
       const msg = (error && error.message) || String(error);
       if (!isNoQuality(msg) || isTransport(msg)) {
         onStatus(msg);
@@ -129,6 +164,7 @@ export async function runFeelingLucky({
           return null;
         }
       } catch (error) {
+        if (error.balanceCheck) throw error;
         dbError = error;
         const msg = (error && error.message) || String(error);
         if (isTransport(msg)) {
@@ -143,8 +179,8 @@ export async function runFeelingLucky({
   else onStatus("No sharp database game found — try again.");
   setBanner(
     "idle",
-    "Nothing sharp this time",
-    "Try again — Lucky queries fresh Lichess games on each click.",
+    "No balanced position found",
+    "Try again · −1.5 to +1.5 from fresh Lichess games.",
   );
   return null;
 }

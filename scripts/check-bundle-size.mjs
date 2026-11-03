@@ -95,7 +95,10 @@ const LIMITS = [
   // origin/main f1a78ed4, after pruning ~2.1 KB of rules later phone blocks
   // overrode and the unused phone-kit chip/action-bar/row primitives. The
   // ceiling moves by exactly that 15,195 B delta; gzip ~33 KB.
-  { prefix: "index-", suffix: ".css", maxBytes: 178_195, label: "main stylesheet" },
+  // 2026-11-02 neutral skeleton bars: rounded placeholders, shared pulse and
+  // move-tree sizing bring the reviewed stylesheet to 178,578 B (+383 B
+  // over the previous ceiling); retain a narrow 178,600 B cap.
+  { prefix: "index-", suffix: ".css", maxBytes: 178_600, label: "main stylesheet" },
 ];
 
 let files;

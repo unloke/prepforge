@@ -4,6 +4,7 @@ import { localBoardAfterMove, localBoardInfo } from "./chess-local.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote } from "./train-opponent.js";
 import { appSource } from "./test-app-source.js";
 import { maiaErrorText } from "./maia-init-notice.js";
+import { takebackToUserMove } from "./train-play.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -97,9 +98,30 @@ describe("Play opponent response ownership", () => {
       sideToMoveFromFen: () => "white", setStatus: vi.fn(), setStatusError: vi.fn(),
       syncTrainPickerVisibility: vi.fn(), syncTrainSessionControls: vi.fn(), syncWorkspaceUrl: vi.fn(),
       updateTrainTurnBadge: vi.fn(), playOpponentReply: vi.fn(), renderPlayTrail: vi.fn(),
+      getSharedMaia3Provider: vi.fn(() => ({ warmup: vi.fn(() => new Promise(() => {})) })),
     };
     return { appState, info, paint, deps, start: compile("async function startPlaySession(", deps) };
   }
+
+  it("starts loading Maia while the player considers their first move without blocking the board", async () => {
+    const h = startHarness();
+    const pending = h.start();
+    h.info.resolve(localBoardInfo(FEN));
+    expect(await pending).toBe(true);
+    expect(h.deps.getSharedMaia3Provider).toHaveBeenCalledOnce();
+    expect(h.paint).toHaveBeenCalledOnce();
+    expect(h.deps.playOpponentReply).not.toHaveBeenCalled();
+  });
+
+  it("does not download Maia for a selected Explorer opponent", async () => {
+    const h = startHarness();
+    h.deps.playBook = () => "explorer";
+    h.start = compile("async function startPlaySession(", h.deps);
+    const pending = h.start();
+    h.info.resolve(localBoardInfo(FEN));
+    expect(await pending).toBe(true);
+    expect(h.deps.getSharedMaia3Provider).not.toHaveBeenCalled();
+  });
 
   it("does not install a practice session after switching modes during Start", async () => {
     const h = startHarness();
@@ -195,6 +217,51 @@ describe("Play opponent response ownership", () => {
     expect(h.deps.endPlayGame).toHaveBeenCalledWith("Opponent unavailable", "Maia3 worker request failed");
     // The one reason that means "the move generator returned nothing" is NOT given.
     expect(h.play.failure).not.toContain("no legal move");
+  });
+
+  it("stops serial Explorer reads once the game leaves the database", async () => {
+    const h = harness();
+    h.deps.fetchPlayExplorer.mockResolvedValue({ totalGames: 0, moves: [] });
+    h.deps.fetchPlayMaia.mockResolvedValue([{ move_uci: "e7e5", probability: 1 }]);
+    await h.reply();
+    const firstHistory = h.play.history.length;
+    h.play.fen = localBoardAfterMove(h.play.fen, "g1f3").board.fen;
+    h.deps.fetchPlayMaia.mockResolvedValue([{ move_uci: "b8c6", probability: 1 }]);
+    await h.reply();
+    expect(h.deps.fetchPlayExplorer).toHaveBeenCalledTimes(1);
+    expect(h.deps.fetchPlayMaia).toHaveBeenCalledTimes(2);
+    expect(h.play.history).toHaveLength(firstHistory + 1);
+  });
+
+  it("keeps querying Explorer while the book still has a reply", async () => {
+    const h = harness();
+    h.deps.fetchPlayExplorer.mockResolvedValue(STATS);
+    await h.reply();
+    h.play.fen = localBoardAfterMove(h.play.fen, "g1f3").board.fen;
+    h.deps.fetchPlayExplorer.mockResolvedValue({ totalGames: 100, moves: [{ uci: "b8c6", share: 1 }] });
+    await h.reply();
+    expect(h.deps.fetchPlayExplorer).toHaveBeenCalledTimes(2);
+    expect(h.deps.fetchPlayMaia).not.toHaveBeenCalled();
+  });
+
+  it("rechecks the book after taking back into an earlier position", async () => {
+    const h = harness();
+    h.play.startFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    h.play.userColor = "white";
+    h.deps.fetchPlayExplorer.mockResolvedValue({ totalGames: 0, moves: [] });
+    h.deps.fetchPlayMaia.mockResolvedValue([{ move_uci: "e7e5", probability: 1 }]);
+    await h.reply();
+    const takeback = compile("async function takebackPlaySession(", { ...h.deps,
+      takebackToUserMove, renderPlayTrail: vi.fn(), playOpponentReply: h.reply,
+      sideToMoveFromFen: (fen) => fen.split(" ")[1] === "w" ? "white" : "black",
+    });
+    await takeback();
+    expect(h.play.fen).toBe(h.play.startFen);
+    h.play.fen = localBoardAfterMove(h.play.fen, "e2e4").board.fen;
+    h.deps.fetchPlayExplorer.mockResolvedValue(STATS);
+    await h.reply();
+    expect(h.deps.fetchPlayExplorer).toHaveBeenCalledTimes(2);
+    expect(h.deps.fetchPlayMaia).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the no-legal-move message for an empty move generator", async () => {

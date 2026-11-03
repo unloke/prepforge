@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { indexTree, positionThumbnail, routeGlyph, subtreeNodes } from "./build-atlas.js";
+import { atlasAnalysis, atlasProfile, indexTree, positionThumbnail, routeGlyph, subtreeNodes } from "./build-atlas.js";
 import { html } from "../html.js";
 
 const nodes = [
@@ -12,6 +12,47 @@ const nodes = [
 ];
 
 describe("Repertoire atlas", () => {
+  it("profiles tree structure without inventing training evidence", () => {
+    const tree = [{ id: "r", parent_id: null }, ...Array.from({ length: 20 }, (_, i) => ({
+      id: `p${i}`, parent_id: i ? `p${i - 1}` : "r", ply: i + 1, move_side: i % 2 ? "black" : "white",
+    }))];
+    const untrained = atlasProfile(atlasAnalysis(tree, "black"), "black");
+    expect(Number(untrained.index)).toBeGreaterThan(0);
+    tree.forEach((n) => { n.mastery = "mastered"; });
+    expect(atlasProfile(atlasAnalysis(tree, "black"), "black")).toEqual(untrained);
+    expect(atlasProfile(atlasAnalysis([], "black"), "black").index).toBeNull();
+    const shallow = atlasProfile(atlasAnalysis(tree.slice(0, 3), "black"), "black");
+    expect(Number(untrained.index)).toBeGreaterThan(Number(shallow.index));
+    expect(untrained.scores.every((n) => Number.isFinite(n) && n >= 0 && n <= 100)).toBe(true);
+    const disabled = [...tree, { id: "off", parent_id: "r", is_enabled: false, ply: 500 }];
+    expect(atlasProfile(atlasAnalysis(disabled, "black"), "black")).toEqual(untrained);
+  });
+
+  it("scores own enabled moves and excludes descendants of a disabled branch", () => {
+    const tree = [
+      { id: "r", parent_id: null },
+      { id: "a", parent_id: "r", move_side: "white", mastery: "mastered", ply: 1 },
+      { id: "b", parent_id: "a", move_side: "black", mastery: "weak", ply: 2 },
+      { id: "c", parent_id: "b", move_side: "white", mastery: "due", ply: 3 },
+      { id: "d", parent_id: "r", is_enabled: false, ply: 1 },
+      { id: "e", parent_id: "d", move_side: "white", mastery: "weak", ply: 2 },
+    ];
+    const result = atlasAnalysis(tree, "white");
+    expect(result.score).toBe(50);
+    expect(result.trainable).toBe(2);
+    expect(result.review).toBe(1);
+    expect(result.deepest).toBe(2);
+    expect(result.leaves.map((n) => n.id)).toEqual(["c"]);
+    expect([...result.depths.values()].reduce((a, b) => a + b, 0)).toBe(result.leaves.length);
+  });
+
+  it("distinguishes untrained from a trained score of zero, including empty trees", () => {
+    expect(atlasAnalysis([], "white").score).toBeNull();
+    const tree = [{ id: "r", parent_id: null }, { id: "a", parent_id: "r", move_side: "white", ply: 1 }];
+    expect(atlasAnalysis(tree, "white").score).toBeNull();
+    tree[1].mastery = "learning";
+    expect(atlasAnalysis(tree, "white").score).toBe(0);
+  });
   it("focus keeps the selected branch and all its continuations, excluding siblings", () => {
     const branch = subtreeNodes(nodes[1], indexTree(nodes));
     expect(branch.map((n) => n.id)).toEqual(["e4", "e5", "nf3", "c5"]);
