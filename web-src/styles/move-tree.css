@@ -265,6 +265,9 @@
 #builder-tree .mtree-line.is-main > .mtree-move.is-b { grid-column: 3; }
 
 #builder-tree .build-skeleton .mtree-move { pointer-events: none; }
+#builder-tree .build-skeleton .mtree-line.is-main > .mtree-num { background: none; }
+#builder-tree .build-skeleton .mtree-move .skeleton-text { display: block; width: 48px; height: 14px; }
+#builder-tree .build-skeleton .mtree-move:nth-child(6n + 2) .skeleton-text { width: 36px; }
 
 
 #builder-tree .mtree-line.is-main > :is(.mtree-var, .mtree-comment) { grid-column: 1 / -1; }

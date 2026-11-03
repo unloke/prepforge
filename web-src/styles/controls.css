@@ -827,4 +827,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* Keep lazy-loaded view typography from exposing placeholder text. */
 .skeleton-text.skeleton-text { position: relative; color: transparent; -webkit-text-fill-color: transparent; user-select: none; }
 .skeleton-text > * { visibility: hidden; }
-.skeleton-text::after { content: ""; position: absolute; inset-inline: 0; top: 50%; height: 0.65em; transform: translateY(-50%); border-radius: 2px; background: var(--surface-3); }
+.skeleton-text::after { content: ""; position: absolute; inset-inline: 0; top: 50%; height: 0.8em; max-height: 20px; transform: translateY(-50%); border-radius: 5px; background: color-mix(in srgb, var(--text) 8%, var(--panel)); animation: skeleton-pulse 1.8s ease-in-out infinite alternate; }
+/* The content box reserves layout; loading hides decorative borders and tracks. */
+.skeleton-text.skeleton-text { background: none; border-color: transparent; box-shadow: none; }
+.skeleton-bar, .skeleton-dot { background: color-mix(in srgb, var(--text) 8%, var(--panel)); animation-duration: 1.8s; }

@@ -1,0 +1,27 @@
+{
+  "errors": [],
+  "checks": [
+    {
+      "width": 1440,
+      "overflow": false,
+      "bodyOverflow": false,
+      "controls": 1,
+      "index": "34.7"
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "bodyOverflow": false,
+      "controls": 1,
+      "index": "34.7"
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "bodyOverflow": false,
+      "controls": 1,
+      "index": "34.7"
+    }
+  ],
+  "reducedMotionAnimations": 0
+}

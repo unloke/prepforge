@@ -132,7 +132,8 @@ export function createBuildView({
       return;
     }
     nameEl.innerHTML =
-      html`<span class="color-dot ${appState.build.color}"></span><b>${appState.build.name}</b><span class="rep-color-sub"> · ${appState.build.color}</span><span class="rep-route-mark">${routeGlyph(appState.build.nodes, appState.build.nodes.find((n) => !n.parent_id)?.id, appState.buildCurrentNodeId)}</span>`;
+      html`<span class="color-dot ${appState.build.color}"></span><b>${appState.build.name}</b><span class="rep-color-sub"> · ${appState.build.color}</span><button type="button" class="rep-route-mark" aria-label="Open repertoire atlas" title="Open repertoire atlas" aria-haspopup="dialog">${routeGlyph(appState.build.nodes, appState.build.nodes.find((n) => !n.parent_id)?.id, appState.buildCurrentNodeId)}</button>`;
+    nameEl.querySelector?.(".rep-route-mark")?.addEventListener("click", () => openBuildAtlas({ appState }));
     renderTools();
   }
 
@@ -431,7 +432,7 @@ export function createBuildView({
   }
 
   return {
-    openAtlas: () => openBuildAtlas({ appState, miniBoard, focusLine, selectBuildNode }),
+    openAtlas: () => openBuildAtlas({ appState }),
     openActivity: () => collaboration?.openActivity(),
     openDiscussion: () => collaboration?.openDiscussion(),
     activityLabel: () => collaboration?.activityLabel() || "Activity",
