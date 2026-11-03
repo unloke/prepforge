@@ -344,6 +344,10 @@
 
 
 /* A square you mark (right-click) is a ring, the same colour as your arrows. */
+.square.premove {
+  background: color-mix(in srgb, var(--accent) 42%, var(--square-light));
+}
+
 .square.highlighted {
   background-image: radial-gradient(
     circle,

@@ -168,7 +168,7 @@ export function isPromotionMove(from, to, moves) {
 // the initial focus but nothing is committed until the player chooses —
 // Escape or an outside click cancels and leaves the position untouched.
 // Returns a Promise resolving to the chosen 5-char UCI, or null on cancel.
-export function showPromotionPicker({ from, to, moves, anchorBoard, color }) {
+export function showPromotionPicker({ from, to, moves, anchorBoard, color, onOpen }) {
   return new Promise((resolve) => {
     const options = promotionOptions(from, to, moves);
     if (options.length === 0) {
@@ -212,6 +212,10 @@ export function showPromotionPicker({ from, to, moves, anchorBoard, color }) {
         resolve(choice);
       },
     });
+    onOpen?.(close);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) close();
+    });
     const box = boardEl?.getBoundingClientRect();
     if (box?.width) {
       Object.assign(overlay.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
@@ -238,14 +242,10 @@ export function resolveBoardMove({ from, to, moves, board, play }) {
     if (move) play(move);
     return;
   }
-  const sideIsBlack = (() => {
-    try {
-      const rank = board && board.fen ? board.fen.split(" ")[1] : "w";
-      return rank === "b";
-    } catch (_) {
-      return false;
-    }
-  })();
+  const fen = board?.fen;
+  const piece = board?.squares?.get(from)?.dataset.piece;
+  // During a premove the player is the opposite of the FEN's side to move.
+  const sideIsBlack = piece ? piece === piece.toLowerCase() : fen?.split(" ")[1] === "b";
   const boardEl = board && board.board ? board.board : null;
   void showPromotionPicker({
     from,
@@ -253,8 +253,10 @@ export function resolveBoardMove({ from, to, moves, board, play }) {
     moves,
     anchorBoard: boardEl,
     color: sideIsBlack ? "black" : "white",
+    onOpen: (close) => { board._cancelPromotion = close; },
   }).then((uci) => {
-    if (uci) play(uci);
+    board._cancelPromotion = null;
+    if (uci && board.fen === fen) play(uci);
   });
 }
 

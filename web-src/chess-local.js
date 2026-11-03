@@ -31,6 +31,62 @@ export function localBoardInfo(fen) {
   };
 }
 
+// Premove destinations ignore check and the opponent's pending move. The real
+// legal list is checked again when the opponent lands. Pawns may queue a capture
+// on an empty square, since the opponent can move a piece there.
+export function localPremoveMoves(fen, color) {
+  const chess = new Chess(fen);
+  const side = color === "black" ? "b" : "w";
+  const moves = [];
+  const at = (x, y) => `${"abcdefgh"[x]}${y + 1}`;
+  for (let x = 0; x < 8; x++) for (let y = 0; y < 8; y++) {
+    const from = at(x, y);
+    const piece = chess.get(from);
+    if (piece?.color !== side) continue;
+    for (let tx = 0; tx < 8; tx++) for (let ty = 0; ty < 8; ty++) {
+      const dx = tx - x, dy = ty - y;
+      const ax = Math.abs(dx), ay = Math.abs(dy);
+      if (!ax && !ay) continue;
+      const to = at(tx, ty);
+      const target = chess.get(to);
+      if (target?.color === side) continue;
+      let reachable = false;
+      if (piece.type === "p") {
+        const forward = side === "w" ? 1 : -1;
+        reachable = dy === forward && (ax === 1 || !ax && !target) ||
+          !ax && dy === 2 * forward && y === (side === "w" ? 1 : 6) &&
+          !target && !chess.get(at(x, y + forward));
+      } else if (piece.type === "n") reachable = ax * ay === 2;
+      else if (piece.type === "k") {
+        reachable = Math.max(ax, ay) === 1;
+        const rights = fen.split(" ")[2];
+        const home = side === "w" ? 0 : 7;
+        if (x === 4 && y === home && ty === home && (tx === 2 || tx === 6)) {
+          const right = tx === 6 ? "k" : "q";
+          const rook = chess.get(at(tx === 6 ? 7 : 0, home));
+          reachable = rights.includes(side === "w" ? right.toUpperCase() : right) &&
+            rook?.type === "r" && rook.color === side &&
+            (tx === 6 ? [5, 6] : [1, 2, 3]).every((file) => !chess.get(at(file, home)));
+        }
+      } else {
+        reachable = piece.type !== "b" && (!ax || !ay) || piece.type !== "r" && ax === ay;
+        if (reachable) for (let step = 1; step < Math.max(ax, ay); step++) {
+          if (chess.get(at(x + Math.sign(dx) * step, y + Math.sign(dy) * step))) {
+            reachable = false;
+            break;
+          }
+        }
+      }
+      if (reachable) {
+        if (piece.type === "p" && (ty === 0 || ty === 7)) {
+          for (const promotion of ["q", "r", "b", "n"]) moves.push(`${from}${to}${promotion}`);
+        } else moves.push(`${from}${to}`);
+      }
+    }
+  }
+  return moves;
+}
+
 // Apply one UCI move to a FEN and echo the resulting move + board. Shape matches
 // the server's board_move(). chess.js throws on an illegal move, which the
 // callers translate into a status message — same behaviour as the old 400.

@@ -22,7 +22,7 @@ const STATS = { totalGames: 100, moves: [{ uci: "e7e5", total: 100, share: 1 }] 
 function harness() {
   const play = { active: true, book: "explorer", fen: FEN, ply: 0, history: [] };
   const appState = { play };
-  const board = { fen: FEN, setPosition(next) { Object.assign(this, next); } };
+  const board = { fen: FEN, setPosition(next) { Object.assign(this, next); }, setPremove: vi.fn() };
   const banner = { title: "Opponent thinking…" };
   const explorer = deferred();
   const deps = {
@@ -39,6 +39,7 @@ function harness() {
     updateTrainTurnBadge: vi.fn(), syncTrainSessionControls: vi.fn(),
     maiaErrorText: (error) => String(error?.message || "Maia could not start."),
     endPlayGame: vi.fn((title, failure) => { play.active = false; play.ended = title; play.failure = failure; }),
+    submitPlayMove: vi.fn(),
   };
   const reply = compile("async function playOpponentReply(", deps);
   return { play, appState, board, banner, explorer, deps, reply };
@@ -153,6 +154,18 @@ describe("Play opponent response ownership", () => {
     expect(h.play.history).toHaveLength(1);
     expect(h.play.ply).toBe(1);
     expect(h.board.fen).toBe(localBoardAfterMove(FEN, "e7e5").board.fen);
+  });
+
+  it.each([["g1f3", true], ["e4d5", false], [null, false]])("revalidates queued %s after the opponent lands", async (premove, valid) => {
+    const h = harness();
+    h.play.premove = premove;
+    const pending = h.reply();
+    h.explorer.resolve(STATS);
+    await pending;
+    expect(h.play.premove).toBeNull();
+    expect(h.board.setPremove).toHaveBeenCalledWith(null);
+    expect(h.deps.submitPlayMove).toHaveBeenCalledTimes(valid ? 1 : 0);
+    if (valid) expect(h.deps.submitPlayMove).toHaveBeenCalledWith(premove);
   });
 
   it.each(["restart", "resign", "takeback"])("drops an Explorer reply after %s", async (action) => {

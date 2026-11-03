@@ -32,6 +32,7 @@ describe("which screen is up", () => {
 
   it("is the Session for a live game and the Result once it ends", () => {
     expect(trainScreenOf({ trainMode: "play", playStarting: {} })).toBe("session");
+    expect(trainScreenOf({ trainMode: "play", trainStarting: true })).toBe("session");
     expect(trainScreenOf({ trainMode: "play", play: { active: true } })).toBe("session");
     expect(trainScreenOf({ trainMode: "play", play: { active: false } })).toBe("result");
   });

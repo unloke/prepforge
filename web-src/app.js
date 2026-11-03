@@ -1675,6 +1675,7 @@ async function init() {
     boardId: "train-board",
     overlayId: "train-annotations",
     onMove: (moveUci) => submitTrainingMove(moveUci),
+    onCancel: () => { if (appState.play) appState.play.premove = null; },
   });
   notices.bind();
   document.getElementById("coach-maia")?.addEventListener("click", (event) => {

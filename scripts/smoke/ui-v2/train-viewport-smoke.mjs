@@ -195,7 +195,7 @@ async function runViewport(vp) {
       `${start.id} must be a real target, got ${JSON.stringify({ drawn: start.box?.height, hit: start.hit })}`);
   };
   for (const start of home.starts) {
-    if (phone && start.id === "start-play") check(!start.box, "the Drill pane must not show Practice's Play");
+    if (start.id === "start-play") check(!start.box, "the Drill pane must not show Practice's Play");
     else startOnScreen(start, home.bar, home.vh);
   }
   check(home.overflow <= 0, `no horizontal overflow on Home, got ${home.overflow}px`);
@@ -237,6 +237,9 @@ async function runViewport(vp) {
     await page.waitForTimeout(250);
   } else {
     // Practice: the opponent picker opens from its chip.
+    await page.locator('[data-testid="train-tab-play"]').click();
+    check(!await page.locator("#start-train").isVisible(), "desktop Practice hides Drill");
+    check(await page.locator("#start-play").isVisible(), "desktop Practice shows Play");
     await page.locator("#train-play-book").click();
     await page.waitForTimeout(250);
     const picker = await page.locator('[role="listbox"]:visible, .train-picker:visible').count();
@@ -244,6 +247,7 @@ async function runViewport(vp) {
     await shot("play-picker");
     await page.keyboard.press("Escape");
     await page.waitForTimeout(200);
+    await page.locator('[data-testid="train-tab-drill"]').click();
   }
 
   // Session: the Due queue from the fixture, started from Home.
