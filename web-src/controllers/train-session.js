@@ -21,6 +21,7 @@ import { createTrainRecovery } from "../train-recovery.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { playBookName, playTrailRows, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
 import { createPlayMoveHandler } from "../train-play-input.js";
+import { analysisRecallSeq, invalidateAnalysisSource } from "./analyze-entry.js";
 import { isNothingToTrainError } from "../train-start.js";
 import { planTrainRunIn } from "../train-flow.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, showTrainResult, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
@@ -36,7 +37,7 @@ import { ensureExplorerClient } from "../build-entry.js";
 import { ensureTrainView, renderTrainStats, setTrainSyncState } from "../train-entry.js";
 import { accountService, flushTrainSync, hardFlushBuild, loadPgnIntoAnalyze, markTrainPositionDirty, openAuthModal,
   queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn,
-  setTrainBanner, switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge } from "../core/app-context.js";
+  runAnalysis, setTrainBanner, switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge } from "../core/app-context.js";
 
 // The session's answer-recovery flow (train-recovery.js), bound to the
 // session functions it repaints through.
@@ -620,6 +621,9 @@ async function startPlaySession({
   });
   renderPlayTrail();
   syncTrainSessionControls();
+  // Start the same shared initialization during the player's first turn.
+  // The reply awaits it when needed; opening the board never waits on a download.
+  if (book === "maia") void getSharedMaia3Provider().warmup().catch(() => {});
   if (sideToMoveFromFen(info.fen) !== userColor) {
     await playOpponentReply();
   }
@@ -661,8 +665,9 @@ async function playOpponentReply() {
   // is thin/unavailable (or has no legal move).
   if (play.book === "explorer" || (play.book === "repertoire" && !repertoireReplies.length)) {
     if (play.explorerOff) {
-      // Already known to need sign-in / a linked account: don't ask every move.
-      explorer = { totalGames: 0, moves: [], unavailable: play.explorerOff };
+      // Once out of book, the game belongs to Maia. Authentication failures
+      // also stay off, but retain their distinct unavailable reason.
+      explorer = { totalGames: 0, moves: [], ...(play.explorerOff === "out-of-book" ? {} : { unavailable: play.explorerOff }) };
     } else {
       explorer = await fetchPlayExplorer(fen);
       if (!isCurrent()) return;
@@ -681,6 +686,7 @@ async function playOpponentReply() {
     maiaPredictions,
   });
   if (!reply.uci) {
+    if (play.book !== "maia" && !explorer.unavailable) play.explorerOff = "out-of-book";
     const maia = await fetchPlayMaia(fen);
     if (!isCurrent()) return;
     // Maia could not start at all: the Result card names the reason instead of
@@ -846,6 +852,7 @@ export async function takebackPlaySession() {
   play.active = true;
   play.result = null;
   play.fen = undone.fen || play.startFen;
+  if (play.explorerOff === "out-of-book") play.explorerOff = null;
   play.nodeId = undone.nodeId || play.rootNodeId;
   if (play.repertoires?.length) {
     play.repertoireCursors = undone.repertoireCursors || playCursorsAtFen(play.repertoires, play.fen);
@@ -904,18 +911,27 @@ function endPlayGame(title, failure = "") {
 
 export async function openPlayInAnalyze() {
   const play = appState.play;
-  if (!play) return;
+  if (!play?.history?.length) return;
+  const owner = currentOwnerId(), generation = appState.ownerGeneration;
+  const sourceSeq = invalidateAnalysisSource();
+  const isCurrent = () => sourceSeq === analysisRecallSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const pgn = playSessionPgn(play, appState.lichessUsername);
   const input = document.getElementById("pgn-input");
   if (input) input.value = pgn;
   const drawer = document.getElementById("pgn-drawer");
-  if (drawer) drawer.open = true;
+  if (drawer) drawer.open = false;
   switchView("analyze");
   if (boards.analysis) boards.analysis.setOrientation(play.userColor === "black" ? "black" : "white");
-  if (input) {
-    await loadPgnIntoAnalyze(input.value, { goToEnd: true, quiet: true }).catch(() => {});
+  if (!input) return;
+  try {
+    const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq });
+    if (!isCurrent()) return;
+    if (!loaded) { setStatusError("Could not load this Practice game. Try Analyze game again."); return; }
+    setStatus("Loaded this Practice game · analyzing");
+    await runAnalysis();
+  } catch (error) {
+    if (isCurrent()) setStatusError(error.message);
   }
-  setStatus("Loaded this Practice game in Analyze");
 }
 
 // Another repertoire move at this position is prep, not a miss: it lands,

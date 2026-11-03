@@ -133,7 +133,8 @@ function pickRepertoireReplyDetail(children, legalUcis, rng = Math.random) {
 /**
  * Choose the opponent's next move.
  * book: "repertoire" | "explorer" | "maia"
- * Explorer below EXPLORER_THIN_SAMPLE games falls back to Maia for that ply only.
+ * Explorer below EXPLORER_THIN_SAMPLE games yields Maia; the session keeps that
+ * handoff until takeback or restart.
  * My repertoire treats all active repertoires as one equally likely coverage
  * book. When the merged book has no legal reply, Explorer gets the next
  * chance; Maia is the final fallback when Explorer is thin/unavailable.

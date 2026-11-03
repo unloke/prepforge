@@ -23,7 +23,7 @@ Stockfish 在你的裝置上評估局面；Maia3 依指定棋力預測人類的�
 在 Explorer 查看 Masters、Players 的對局資料與引擎候選，從目前局面產生延伸路線。
 Coverage 會找出缺少的回應；先預覽，再選擇要加入的準備。
 分支選擇浮在走法樹上方；刪除走法會立即更新畫面，底部的小型 Undo 可立即還原整個分支。
-從 More → Explore → Atlas 可由路線圖總覽進入分岔局面，再聚焦到局部棋譜；標題旁的路線圖紋取自實際走法樹。
+點標題顏色旁的路線圖即可開啟 Atlas，以棋譜鑑定卡呈現總分、四項結構評分、動態輪廓與分支路線；個人訓練紀錄另顯示為 Imprint。
 
 ![開局圖譜：實際棋譜的分支路線](assets/repertoire-atlas.png)
 
@@ -33,7 +33,9 @@ FSRS 依作答紀錄安排複習。Due queue 集中待練走法，Rehearse 逐�
 Practice 則能與 Maia、Lichess Explorer 或自己的棋譜對弈。
 需要時使用提示、重練錯題，或開啟限時 Blitz 訓練。
 Due queue 依棋譜順序連續練習，相鄰路線保留共用的開局；作答後立即推進，進度在背景儲存。
+Random 局面須經 Stockfish 確認評估介於 −1.5～+1.5，並排除將殺局面。
 Practice 支援選擇升變棋種，也能在對手思考時預走（premove）；點棋盤空格可取消預走並清除自畫記號。
+離開 Lichess 資料庫後由 Maia 接手，不再逐步等待網路查詢；結束後按 Analyze game 會自動開始整局分析。
 
 ### 檢查實戰偏離
 

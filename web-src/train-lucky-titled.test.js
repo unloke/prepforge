@@ -4,10 +4,12 @@ import {
   currentGameUrl,
   luckyTitledStart,
   playerTopUrl,
+  pgnEvalCpByFen,
   singleGameUrl,
   splitPgnBlocks,
   titledGamesUrl,
 } from "./train-lucky-titled.js";
+import { Chess } from "chess.js";
 
 const GAME_A = `[Event "rated blitz game"]
 [Site "https://lichess.org/rrdtEiYG"]
@@ -47,6 +49,37 @@ function dynamicHarness({
   const fetchCurrentGamePgn = vi.fn(async () => feed);
   return { fetchTopPlayers, fetchPgn, fetchCurrentGamePgn };
 }
+
+it("keeps sparse PGN evals attached to their actual position", () => {
+  const evals = pgnEvalCpByFen('[Result "*"]\n\n1. e4 {[%eval 0.2]} e5 2. Nf3 {[%eval -4.2]} Nc6 3. Bb5 {[%eval #3]} *');
+  const board = new Chess();
+  board.move("e4"); expect(evals.get(board.fen())).toBe(20);
+  board.move("e5"); expect(evals.has(board.fen())).toBe(false);
+  board.move("Nf3"); expect(evals.get(board.fen())).toBe(-420);
+  board.move("Nc6"); expect(evals.has(board.fen())).toBe(false);
+  board.move("Bb5"); expect(evals.get(board.fen())).toBe(Infinity);
+});
+
+it("tries another position in the same feed when the engine rejects the first", async () => {
+  const acceptPosition = vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true);
+  const h = dynamicHarness();
+  const picked = await luckyTitledStart({ ...h, rng: () => 0, phase: "middlegame", acceptPosition });
+  expect(acceptPosition).toHaveBeenCalledTimes(2);
+  expect(picked.fen).toBe(acceptPosition.mock.calls[1][0]);
+  expect(picked.fen).not.toBe(acceptPosition.mock.calls[0][0]);
+  expect(h.fetchPgn).toHaveBeenCalledTimes(1);
+});
+
+it("never restores decided candidates when too few PGN evals pass the gate", async () => {
+  const board = new Chess(); board.loadPgn(GAME_A);
+  const moves = board.history(); board.reset();
+  board.header("Result", "1-0", "GameId", "decided1");
+  for (const move of moves) { board.move(move); board.setComment("[%eval 9.0]"); }
+  const h = dynamicHarness({ feed: board.pgn() });
+  const acceptPosition = vi.fn(async () => true);
+  await expect(luckyTitledStart({ ...h, acceptPosition, allowCurrentGame: false })).rejects.toThrow(/No sharp/);
+  expect(acceptPosition).not.toHaveBeenCalled();
+});
 
 describe("live Lichess endpoint URLs", () => {
   it("uses the documented recent-game feed filters", () => {

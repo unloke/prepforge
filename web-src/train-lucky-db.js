@@ -321,7 +321,7 @@ export async function luckyDbStart({
   fetchStats = null,
   engine = null,
   maia = null,
-  onStatus = null,
+  onStatus = null, acceptPosition = null,
   verifyGame = verifyReplay,
   maxWalkPly = 96,
 } = {}) {
@@ -364,7 +364,7 @@ export async function luckyDbStart({
       maia,
       verifyGame,
       maxWalkPly,
-      say,
+      say, acceptPosition,
     });
     if (picked) {
       rememberLuckyPhase(picked.phase, storage);
@@ -390,7 +390,7 @@ async function luckyDbStartFromSeed({
   maia,
   verifyGame = verifyReplay,
   maxWalkPly = 96,
-  say,
+  say, acceptPosition,
 }) {
   say("Asking the Lichess database for master positions…");
   const entries = (seed && seed.topGames) || [];
@@ -432,8 +432,8 @@ async function luckyDbStartFromSeed({
     if (!candidate) continue;
     const enriched = await enrichCandidate(candidate, scored, { fetchStats, rating, say });
     const confirmed = await confirmCandidate(enriched, { engine, maia, rating });
-    confirmed.gameId = entry.id != null ? String(entry.id) : null;
-    confirmed.sans = sans;
+    if (acceptPosition && !await acceptPosition(confirmed.fen)) continue;
+    confirmed.gameId = entry.id != null ? String(entry.id) : null; confirmed.sans = sans;
     confirmed.seedFen = (walk && walk.startFen) || seedFen;
     void storage;
     return confirmed;

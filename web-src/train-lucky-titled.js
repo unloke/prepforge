@@ -1,3 +1,5 @@
+import { Chess } from "chess.js";
+import { LUCKY_MAX_ABS_CP } from "./train-lucky-balance.js";
 // I'm Feeling Lucky — live titled-game round.
 //
 // Production's fast path chooses a titled/high-rated player at click time,
@@ -265,6 +267,7 @@ export async function luckyTitledStart({
   fetchCurrentGamePgn = defaultFetchCurrentGamePgn,
   fetchTopPlayers = defaultFetchTopPlayers,
   onStatus = null,
+  acceptPosition = null,
   maxRequests = TITLED_MAX_REQUESTS,
   maxPlayersPerClick = TITLED_MAX_PLAYERS_PER_CLICK,
   clickDeadlineMs = TITLED_CLICK_DEADLINE_MS,
@@ -322,6 +325,7 @@ export async function luckyTitledStart({
       const payload = await fetchTopPlayers(discoveryPerfType, discoveryCount, options);
       discoveredNames = leaderboardPlayerNames(payload);
     } catch (error) {
+      if (error.balanceCheck) throw error;
       if (isTransportError(error)) transportError = error;
     }
   }
@@ -358,6 +362,7 @@ export async function luckyTitledStart({
       say(`Fetching fresh games from ${username}…`);
       raw = await fetchPgn(username, gamesPerPlayer, options);
     } catch (error) {
+      if (error.balanceCheck) throw error;
       if (isTransportError(error)) transportError = error;
       // A 429/5xx/network error is not retried against another user feed in
       // the same click. The bounded current-game path below is the only
@@ -365,7 +370,7 @@ export async function luckyTitledStart({
       if (transportError) break;
       continue;
     }
-    const pick = pickFromBlocks(splitPgnBlocks(raw), targetPhase, {
+    const pick = await pickFromBlocks(splitPgnBlocks(raw), targetPhase, {
       storage,
       rng,
       exclude,
@@ -374,6 +379,7 @@ export async function luckyTitledStart({
       fallbackId: username,
       sourceUrl: titledGamesUrl(username, gamesPerPlayer),
       finishedOnly: true,
+      acceptPosition,
     });
     if (pick) return { ...pick, source: "lichess-user-feed", player: username };
   }
@@ -388,7 +394,7 @@ export async function luckyTitledStart({
       requestCount += 1;
       say(`Trying ${attemptedPlayer}'s current game…`);
       const raw = await fetchCurrentGamePgn(attemptedPlayer, options);
-      const pick = pickFromBlocks(splitPgnBlocks(raw), targetPhase, {
+      const pick = await pickFromBlocks(splitPgnBlocks(raw), targetPhase, {
         storage,
         rng,
         exclude,
@@ -397,9 +403,11 @@ export async function luckyTitledStart({
         fallbackId: attemptedPlayer,
         sourceUrl: currentGameUrl(attemptedPlayer),
         finishedOnly: true,
+        acceptPosition,
       });
       if (pick) return { ...pick, source: "lichess-current-game", player: attemptedPlayer };
     } catch (error) {
+      if (error.balanceCheck) throw error;
       if (isTransportError(error)) transportError = error;
     }
   }
@@ -423,10 +431,11 @@ export async function luckyTitledStart({
         if (!options) throw exhausted();
         raw = await fetchSinglePgn(gameId, options);
       } catch (error) {
+        if (error.balanceCheck) throw error;
         if (isTransportError(error)) transportError = error;
         continue;
       }
-      const pick = pickFromBlocks(splitPgnBlocks(raw), targetPhase, {
+      const pick = await pickFromBlocks(splitPgnBlocks(raw), targetPhase, {
         storage,
         rng,
         exclude,
@@ -435,6 +444,7 @@ export async function luckyTitledStart({
         fallbackId: gameId,
         sourceUrl: singleGameUrl(gameId),
         finishedOnly: true,
+        acceptPosition,
       });
       if (pick) return { ...pick, source: "lichess-reference", player: null };
     }
@@ -473,23 +483,16 @@ function leaderboardPlayerNames(payload) {
   return out;
 }
 
-function pgnEvalCpByPly(block) {
-  let body = String(block || "")
-    .split(/\r?\n/)
-    .filter((line) => !line.trim().startsWith("["))
-    .join(" ");
-  let previous;
-  do {
-    previous = body;
-    body = body.replace(/\([^()]*\)/g, " ");
-  } while (body !== previous);
-  return [...body.matchAll(/\[%eval\s+([^\]\s]+)\]/g)].map((match) => {
-    const raw = String(match[1] || "");
-    if (/^#-/.test(raw)) return -100000;
-    if (/^#/.test(raw)) return 100000;
-    const pawns = Number(raw);
-    return Number.isFinite(pawns) ? Math.round(pawns * 100) : null;
-  });
+export function pgnEvalCpByFen(block) {
+  const game = new Chess(), evals = new Map();
+  try { game.loadPgn(block); } catch { return evals; }
+  for (const { fen, comment } of game.getComments()) {
+    const raw = comment.match(/\[%eval\s+([^\]\s]+)\]/)?.[1];
+    if (!raw) continue;
+    const cp = raw.startsWith("#") ? Infinity : Number(raw) * 100;
+    if (!Number.isNaN(cp)) evals.set(fen, cp);
+  }
+  return evals;
 }
 
 function gameIdFromBlock(block, fallbackId = "") {
@@ -500,7 +503,7 @@ function gameIdFromBlock(block, fallbackId = "") {
   return match ? match[1] : site || fallbackId;
 }
 
-function pickFromBlocks(
+async function pickFromBlocks(
   blocks,
   targetPhase,
   {
@@ -512,6 +515,7 @@ function pickFromBlocks(
     fallbackId = "",
     sourceUrl = null,
     finishedOnly = false,
+    acceptPosition = null,
   } = {},
 ) {
   const candidates = [];
@@ -534,22 +538,10 @@ function pickFromBlocks(
     if (!positions) continue;
     const short = sans.length < 24;
     const rawScored = scoreGamePositions(positions, short ? { minPly: 2, maxPlyFromEnd: 1 } : {});
-    const evals = pgnEvalCpByPly(block);
-    // Lichess annotated PGNs let us reject already-decided positions. Fixture
-    // and bulk feeds without eval tags remain usable; the local critical score
-    // is still the gate in that case.
-    const evalScored = evals.length
-      ? rawScored.filter((candidate) => {
-          const cp = evals[candidate.position.ply - 1];
-          return Number.isFinite(cp) && Math.abs(cp) <= 350;
-        })
-      : rawScored;
-    // A partially annotated PGN should not become unusable merely because a
-    // few candidate plies lack an eval comment. Use the eval gate when it
-    // covers a meaningful slice; otherwise retain the local critical score.
-    const scored = evalScored.length >= Math.max(3, Math.ceil(rawScored.length * 0.2))
-      ? evalScored
-      : rawScored;
+    const evals = pgnEvalCpByFen(block);
+    // Missing annotations require the final engine check; known bad evals never bypass the range.
+    const scored = rawScored.filter((c) => !evals.has(c.position.fen)
+      || Math.abs(evals.get(c.position.fen)) <= LUCKY_MAX_ABS_CP);
     for (const candidate of scored) {
       candidates.push({
         ...candidate,
@@ -561,7 +553,15 @@ function pickFromBlocks(
       });
     }
   }
-  const candidate = pickPhaseCandidate(candidates, targetPhase, { rng, exclude });
+  let candidate = null;
+  while (candidates.length) {
+    candidate = pickPhaseCandidate(candidates, targetPhase, { rng, exclude });
+    if (!candidate) return null;
+    if (!acceptPosition || await acceptPosition(candidate.position.fen)) break;
+    const rejected = candidate.position.fen;
+    for (let i = candidates.length - 1; i >= 0; i--) if (candidates[i].position.fen === rejected) candidates.splice(i, 1);
+    candidate = null;
+  }
   if (!candidate) return null;
   const pos = candidate.position;
   rememberLuckyPhase(candidate.phase, storage);
