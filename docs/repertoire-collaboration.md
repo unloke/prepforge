@@ -44,33 +44,32 @@ the repertoire query dropped from 3.09 ms with a message scan to 0.15 ms with
 was added.
 
 Atlas opens from the route map beside the repertoire color, or More → Explore.
-It presents a branching route map, Preparation index, a four-facet radar and raw
-move, route, fork and depth counts. Whole repertoire selects the repertoire root;
-Current position selects the current subtree. Scope changes recalculate the profile.
-Disabled subtrees are excluded; the current path is highlighted.
+It presents a branching route map, Preparation index, a five-facet radar and raw
+move, route, fork and depth counts. Whole repertoire selects the root; Current
+position selects its subtree. Disabled subtrees are excluded.
 
-Preparation is computed locally from legal moves and canonical positions, merging
-position-equivalent continuations only inside the selected scope. It ignores all
-annotations and uses no engine, LLM or network. A dedicated worker keeps legal
-replay off the UI thread; changing scope or closing Atlas cancels the worker.
-Only move/position fields are sent to it. The horizon is 16 plies from the
-selected root. At own decisions, the deterministic preference is enabled prepared
-mainline, then prepared, then mainline, then lexicographic UCI. Multiple candidates
-within a preference use the deterministic UCI order.
+A cancellable worker validates legal moves and merges equivalent positions only
+within scope. It reads prepared/mainline flags and no annotations, engine, LLM or
+network. Each occurrence selects its best own priority tier; tied chapter plans
+coexist. Core traversal follows preferred tiers for both sides, while other
+opponent responses can establish answered breadth without diluting core depth.
 
-The facets are Replies (stored own-response availability), Reach (stored-route
-survival to the horizon), Depth (survival accumulated across the horizon), and
-Move orders (shared response availability across own-position occurrences with
-at least two canonical incoming edges or distinct reply sets, including empty
-sets). Identical copies add neither arrivals nor reply sets; Move orders displays
-a dash when no groups qualify.
-Checkmate/stalemate absorb survival regardless of winner. Repeated positions
-stop traversal rather than adding artificial depth. Opponent
-choices receive equal weight over unique stored moves: this is a reference over
-the saved graph, not empirical encounter probability. Omitted alternatives are
-not assessed. Preparation index is the equal mean of applicable facets, a product
-convention rather than a validated holistic quality measure. Method and corpus
-results live in [Atlas research](../research/atlas-quality/README.md).
+The existing gamePhase detector bounds opening content after consecutive
+non-opening positions and two quiet plies without check. Later model-game moves
+earn nothing. A 32-ply relative limit applies when no completion is detected;
+a scope already outside opening uses the limit. Repetition and stored losses stop
+progress; winning mate/stalemate complete it. This does not prove tactical safety.
+
+Replies displays core own-response availability; Reach measures distinct answered
+opponent alternatives; Depth measures core completion. Preparation is the
+geometric mean of Reach and Depth, avoiding duplicate penalties for missing
+replies. Consistency compares nonempty preferred reply sets at repeated positions,
+ignoring chapter endpoints. Ease compares two-action plans under matched own
+setups and similar opponent pawn structures. Both describe learning load and do
+not reduce the total; intentional alternatives are not quality errors. Missing
+comparison data displays a dash. Equal stored weights are not empirical opponent
+frequencies, and unrecorded moves remain unknown. See [Atlas research](../research/atlas-quality/README.md)
+for the 38-study re-review, controlled-damage checks and remaining ambiguities.
 
 Tree PGN import/export preserves starting-position prose and drawings. Variation
 introductions are retained with the corresponding branch's move note, using the

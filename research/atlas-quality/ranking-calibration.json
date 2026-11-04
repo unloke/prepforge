@@ -1,0 +1,3204 @@
+{
+  "scorer_sha256": "0ba3060b6c20e2fc59c0d4aae7e6b7095054621d84e389df4748d0dda6476c43",
+  "method": "All 38 studies informed development. Structural damage is controlled evidence of missing preparation, not a label that an author or chess choice is bad. Baseline is frozen at commit 11d8952f. No likes or text fitting.",
+  "reports": 45,
+  "shortened_increases": [],
+  "holes_increases": [],
+  "observations": [
+    {
+      "id": "2EaSmZtz",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 72.17199830217942,
+      "final": 79.23395235458827,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 98.98989898989899
+        },
+        {
+          "key": "reach",
+          "value": 92
+        },
+        {
+          "key": "depth",
+          "value": 68.2393391927083
+        },
+        {
+          "key": "moveOrders",
+          "value": 55.55555555555556
+        },
+        {
+          "key": "ease",
+          "value": 27.246315192743765
+        }
+      ],
+      "counts": {
+        "positions": 360,
+        "occurrences": 706,
+        "moves": 368,
+        "ownPositions": 99,
+        "answeredPositions": 98,
+        "repeatedGroups": 9,
+        "commonGroups": 5,
+        "answeredAlternatives": 45,
+        "easePositions": 49,
+        "easePairs": 48,
+        "identicalPositionPairs": 4,
+        "openingBoundaries": 14
+      },
+      "shortened": {
+        "score": 42.30570561133246,
+        "delta": -36.928246743255805
+      },
+      "holes": {
+        "removed_nodes": 538,
+        "score": 44.77189996321118,
+        "delta": -34.462052391377085
+      },
+      "horizon_sensitivity": {
+        "h16": 90.53633371179887,
+        "h24": 83.77972886534069,
+        "h32": 79.23395235458827
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 80.86781398863958
+        },
+        {
+          "scale": 4,
+          "score": 79.23395235458827
+        },
+        {
+          "scale": 8,
+          "score": 76.24290620146587
+        }
+      ]
+    },
+    {
+      "id": "artuehhC",
+      "color": "white",
+      "role": "repertoire-and-exercises",
+      "baseline": 94.05118897306397,
+      "final": 75.77722283113839,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 96.42857142857143
+        },
+        {
+          "key": "reach",
+          "value": 75
+        },
+        {
+          "key": "depth",
+          "value": 76.56250000000001
+        },
+        {
+          "key": "moveOrders",
+          "value": 100
+        },
+        {
+          "key": "ease",
+          "value": 41.30434782608697
+        }
+      ],
+      "counts": {
+        "positions": 111,
+        "occurrences": 254,
+        "moves": 112,
+        "ownPositions": 56,
+        "answeredPositions": 54,
+        "repeatedGroups": 2,
+        "commonGroups": 2,
+        "answeredAlternatives": 11,
+        "easePositions": 23,
+        "easePairs": 29,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 2
+      },
+      "shortened": {
+        "score": 36.2284418654736,
+        "delta": -39.54878096566479
+      },
+      "holes": {
+        "removed_nodes": 213,
+        "score": 30.251918475173955,
+        "delta": -45.52530435596444
+      },
+      "horizon_sensitivity": {
+        "h16": 85.3149801226803,
+        "h24": 80.03905296791062,
+        "h32": 75.77722283113839
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 81.00925873009825
+        },
+        {
+          "scale": 4,
+          "score": 75.77722283113839
+        },
+        {
+          "scale": 8,
+          "score": 67.77720855862981
+        }
+      ]
+    },
+    {
+      "id": "D8QPC8Zr",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 66.22990038029101,
+      "final": 84.19691425682043,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 95.16129032258064
+        },
+        {
+          "key": "reach",
+          "value": 92.5925925925926
+        },
+        {
+          "key": "depth",
+          "value": 76.56250000000001
+        },
+        {
+          "key": "moveOrders",
+          "value": 100
+        },
+        {
+          "key": "ease",
+          "value": 28.71082621082621
+        }
+      ],
+      "counts": {
+        "positions": 502,
+        "occurrences": 808,
+        "moves": 506,
+        "ownPositions": 62,
+        "answeredPositions": 59,
+        "repeatedGroups": 3,
+        "commonGroups": 3,
+        "answeredAlternatives": 49,
+        "easePositions": 78,
+        "easePairs": 69,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 10
+      },
+      "shortened": {
+        "score": 41.83300132670378,
+        "delta": -42.363912930116655
+      },
+      "holes": {
+        "removed_nodes": 653,
+        "score": 38.95968612369898,
+        "delta": -45.237228133121455
+      },
+      "horizon_sensitivity": {
+        "h16": 95.45214042184236,
+        "h24": 88.86513702581206,
+        "h32": 84.19691425682043
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 85.80080912295553
+        },
+        {
+          "scale": 4,
+          "score": 84.19691425682043
+        },
+        {
+          "scale": 8,
+          "score": 81.2417104524602
+        }
+      ]
+    },
+    {
+      "id": "ACmyH8gC",
+      "color": "white",
+      "role": "repertoire-and-model-games",
+      "baseline": 57.22881585189341,
+      "final": 67.68079797244198,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 97.27891156462584
+        },
+        {
+          "key": "depth",
+          "value": 47.08821614583332
+        },
+        {
+          "key": "moveOrders",
+          "value": 16.666666666666668
+        },
+        {
+          "key": "ease",
+          "value": 23.52580202263746
+        }
+      ],
+      "counts": {
+        "positions": 991,
+        "occurrences": 1242,
+        "moves": 995,
+        "ownPositions": 195,
+        "answeredPositions": 195,
+        "repeatedGroups": 6,
+        "commonGroups": 1,
+        "answeredAlternatives": 142,
+        "easePositions": 158,
+        "easePairs": 235,
+        "identicalPositionPairs": 5,
+        "openingBoundaries": 17
+      },
+      "shortened": {
+        "score": 43.8445947050316,
+        "delta": -23.836203267410383
+      },
+      "holes": {
+        "removed_nodes": 980,
+        "score": 46.61293703600758,
+        "delta": -21.0678609364344
+      },
+      "horizon_sensitivity": {
+        "h16": 90.8275898376042,
+        "h24": 78.00635170346486,
+        "h32": 67.68079797244198
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 68.14596357036788
+        },
+        {
+          "scale": 4,
+          "score": 67.68079797244198
+        },
+        {
+          "scale": 8,
+          "score": 66.77834695286882
+        }
+      ]
+    },
+    {
+      "id": "NGpnogsw",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 79.46428571428571,
+      "final": 75.28355488659948,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 63.63636363636363
+        },
+        {
+          "key": "depth",
+          "value": 89.0625
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 37.5
+        }
+      ],
+      "counts": {
+        "positions": 99,
+        "occurrences": 382,
+        "moves": 99,
+        "ownPositions": 31,
+        "answeredPositions": 31,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 6,
+        "easePositions": 8,
+        "easePairs": 6,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 3
+      },
+      "shortened": {
+        "score": 22.360679774997898,
+        "delta": -52.92287511160158
+      },
+      "holes": {
+        "removed_nodes": 349,
+        "score": 22.360679774997898,
+        "delta": -52.92287511160158
+      },
+      "horizon_sensitivity": {
+        "h16": 70.71067811865476,
+        "h24": 75,
+        "h32": 75.28355488659948
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 83.22910148099241
+        },
+        {
+          "scale": 4,
+          "score": 75.28355488659948
+        },
+        {
+          "scale": 8,
+          "score": 64.46898479113814
+        }
+      ]
+    },
+    {
+      "id": "8Uztu7Xx",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 68.58192695948136,
+      "final": 94.42427972864144,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 98.12865497076024
+        },
+        {
+          "key": "reach",
+          "value": 99.35064935064935
+        },
+        {
+          "key": "depth",
+          "value": 89.74218749999999
+        },
+        {
+          "key": "moveOrders",
+          "value": 25.43859649122807
+        },
+        {
+          "key": "ease",
+          "value": 30.104432871436003
+        }
+      ],
+      "counts": {
+        "positions": 7331,
+        "occurrences": 22200,
+        "moves": 7401,
+        "ownPositions": 855,
+        "answeredPositions": 839,
+        "repeatedGroups": 114,
+        "commonGroups": 29,
+        "answeredAlternatives": 611,
+        "easePositions": 1074,
+        "easePairs": 2726,
+        "identicalPositionPairs": 104,
+        "openingBoundaries": 365
+      },
+      "shortened": {
+        "score": 49.193495504995376,
+        "delta": -45.23078422364606
+      },
+      "holes": {
+        "removed_nodes": 20716,
+        "score": 48.85176721401857,
+        "delta": -45.572512514622865
+      },
+      "horizon_sensitivity": {
+        "h16": 99.07956210611431,
+        "h24": 97.33655862276788,
+        "h32": 94.42427972864144
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 94.57794017159063
+        },
+        {
+          "scale": 4,
+          "score": 94.42427972864144
+        },
+        {
+          "scale": 8,
+          "score": 94.11919240533386
+        }
+      ]
+    },
+    {
+      "id": "8c8bmUfy",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 59.553664017096786,
+      "final": 90.10408744038703,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 97.36842105263158
+        },
+        {
+          "key": "reach",
+          "value": 98.6842105263158
+        },
+        {
+          "key": "depth",
+          "value": 82.26996527777779
+        },
+        {
+          "key": "moveOrders",
+          "value": 6.451612903225806
+        },
+        {
+          "key": "ease",
+          "value": 27.396114248040117
+        }
+      ],
+      "counts": {
+        "positions": 1696,
+        "occurrences": 4161,
+        "moves": 1706,
+        "ownPositions": 152,
+        "answeredPositions": 148,
+        "repeatedGroups": 31,
+        "commonGroups": 2,
+        "answeredAlternatives": 299,
+        "easePositions": 414,
+        "easePairs": 912,
+        "identicalPositionPairs": 39,
+        "openingBoundaries": 61
+      },
+      "shortened": {
+        "score": 46.74962188579333,
+        "delta": -43.3544655545937
+      },
+      "holes": {
+        "removed_nodes": 3922,
+        "score": 44.447437638672476,
+        "delta": -45.65664980171456
+      },
+      "horizon_sensitivity": {
+        "h16": 97.37693189395199,
+        "h24": 93.80262817255912,
+        "h32": 90.10408744038703
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 90.40195300470018
+        },
+        {
+          "scale": 4,
+          "score": 90.10408744038703
+        },
+        {
+          "scale": 8,
+          "score": 89.51708387943084
+        }
+      ]
+    },
+    {
+      "id": "fTpa2qZW",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 74.7646231130513,
+      "final": 96.23877074083913,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 98.9795918367347
+        },
+        {
+          "key": "reach",
+          "value": 97.79005524861878
+        },
+        {
+          "key": "depth",
+          "value": 94.71209490740738
+        },
+        {
+          "key": "moveOrders",
+          "value": 42.857142857142854
+        },
+        {
+          "key": "ease",
+          "value": 37.914397994339865
+        }
+      ],
+      "counts": {
+        "positions": 1671,
+        "occurrences": 11394,
+        "moves": 1689,
+        "ownPositions": 294,
+        "answeredPositions": 291,
+        "repeatedGroups": 21,
+        "commonGroups": 9,
+        "answeredAlternatives": 176,
+        "easePositions": 258,
+        "easePairs": 331,
+        "identicalPositionPairs": 13,
+        "openingBoundaries": 40
+      },
+      "shortened": {
+        "score": 43.7587526258753,
+        "delta": -52.480018114963826
+      },
+      "holes": {
+        "removed_nodes": 10624,
+        "score": 37.45174364234396,
+        "delta": -58.787027098495166
+      },
+      "horizon_sensitivity": {
+        "h16": 97.40329596849925,
+        "h24": 97.62984556829765,
+        "h32": 96.23877074083913
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 96.77492402999752
+        },
+        {
+          "scale": 4,
+          "score": 96.23877074083913
+        },
+        {
+          "scale": 8,
+          "score": 95.19266607740809
+        }
+      ]
+    },
+    {
+      "id": "CfSYkcMp",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 67.03504404797157,
+      "final": 76.38585524607211,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 94.8051948051948
+        },
+        {
+          "key": "depth",
+          "value": 61.54513888888889
+        },
+        {
+          "key": "moveOrders",
+          "value": 100
+        },
+        {
+          "key": "ease",
+          "value": 25.00000000000001
+        }
+      ],
+      "counts": {
+        "positions": 449,
+        "occurrences": 637,
+        "moves": 454,
+        "ownPositions": 60,
+        "answeredPositions": 60,
+        "repeatedGroups": 2,
+        "commonGroups": 2,
+        "answeredAlternatives": 72,
+        "easePositions": 101,
+        "easePairs": 131,
+        "identicalPositionPairs": 3,
+        "openingBoundaries": 8
+      },
+      "shortened": {
+        "score": 33.071891388307385,
+        "delta": -43.313963857764726
+      },
+      "holes": {
+        "removed_nodes": 580,
+        "score": 37.31012536223182,
+        "delta": -39.07572988384029
+      },
+      "horizon_sensitivity": {
+        "h16": 93.16186190529471,
+        "h24": 83.60435725599805,
+        "h32": 76.38585524607211
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 77.39763251236124
+        },
+        {
+          "scale": 4,
+          "score": 76.38585524607211
+        },
+        {
+          "scale": 8,
+          "score": 74.47590660941917
+        }
+      ]
+    },
+    {
+      "id": "yteYURRC",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 56.817908375685036,
+      "final": 95.94957541712871,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 92.72727272727273
+        },
+        {
+          "key": "depth",
+          "value": 99.28385416666663
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 34.09909909909911
+        }
+      ],
+      "counts": {
+        "positions": 529,
+        "occurrences": 1344,
+        "moves": 528,
+        "ownPositions": 118,
+        "answeredPositions": 118,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 50,
+        "easePositions": 74,
+        "easePairs": 77,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 20
+      },
+      "shortened": {
+        "score": 43.72373160976031,
+        "delta": -52.225843807368406
+      },
+      "holes": {
+        "removed_nodes": 1258,
+        "score": 34.86083443891982,
+        "delta": -61.0887409782089
+      },
+      "horizon_sensitivity": {
+        "h16": 94.87301633047343,
+        "h24": 95.58159779337595,
+        "h32": 95.94957541712871
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 97.74318064810221
+        },
+        {
+          "scale": 4,
+          "score": 95.94957541712871
+        },
+        {
+          "scale": 8,
+          "score": 92.63996796876731
+        }
+      ]
+    },
+    {
+      "id": "vPqdbuqZ",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 78.77049180327869,
+      "final": 77.45966692414834,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 60
+        },
+        {
+          "key": "depth",
+          "value": 100
+        },
+        {
+          "key": "moveOrders",
+          "value": 33.333333333333336
+        },
+        {
+          "key": "ease",
+          "value": 49.166666666666664
+        }
+      ],
+      "counts": {
+        "positions": 147,
+        "occurrences": 628,
+        "moves": 147,
+        "ownPositions": 71,
+        "answeredPositions": 71,
+        "repeatedGroups": 3,
+        "commonGroups": 1,
+        "answeredAlternatives": 5,
+        "easePositions": 12,
+        "easePairs": 11,
+        "identicalPositionPairs": 2,
+        "openingBoundaries": 7
+      },
+      "shortened": {
+        "score": 38.72983346207417,
+        "delta": -38.72983346207417
+      },
+      "holes": {
+        "removed_nodes": 592,
+        "score": 26.516504294495533,
+        "delta": -50.943162629652804
+      },
+      "horizon_sensitivity": {
+        "h16": 77.45966692414834,
+        "h24": 77.45966692414834,
+        "h32": 77.45966692414834
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 86.60254037844386
+        },
+        {
+          "scale": 4,
+          "score": 77.45966692414834
+        },
+        {
+          "scale": 8,
+          "score": 65.46536707079771
+        }
+      ]
+    },
+    {
+      "id": "2XxhfIAJ",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 57.24270741315153,
+      "final": 97.70818484635798,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 98.89196675900277
+        },
+        {
+          "key": "reach",
+          "value": 99.4358251057828
+        },
+        {
+          "key": "depth",
+          "value": 96.01056134259252
+        },
+        {
+          "key": "moveOrders",
+          "value": 65.11627906976744
+        },
+        {
+          "key": "ease",
+          "value": 28.684066617184428
+        }
+      ],
+      "counts": {
+        "positions": 6571,
+        "occurrences": 30746,
+        "moves": 6623,
+        "ownPositions": 361,
+        "answeredPositions": 357,
+        "repeatedGroups": 43,
+        "commonGroups": 28,
+        "answeredAlternatives": 704,
+        "easePositions": 870,
+        "easePairs": 874,
+        "identicalPositionPairs": 45,
+        "openingBoundaries": 323
+      },
+      "shortened": {
+        "score": 45.3742606486515,
+        "delta": -52.33392419770648
+      },
+      "holes": {
+        "removed_nodes": 29349,
+        "score": 39.733511410550484,
+        "delta": -57.974673435807496
+      },
+      "horizon_sensitivity": {
+        "h16": 99.30406257408966,
+        "h24": 99.38251975746078,
+        "h32": 97.70818484635798
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 97.84628835676328
+        },
+        {
+          "scale": 4,
+          "score": 97.70818484635798
+        },
+        {
+          "scale": 8,
+          "score": 97.43372311080235
+        }
+      ]
+    },
+    {
+      "id": "2XxhfIAJ",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 73.75242344637729,
+      "final": 95.12266844219047,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 98.92703862660944
+        },
+        {
+          "key": "reach",
+          "value": 99.36406995230524
+        },
+        {
+          "key": "depth",
+          "value": 91.06231312692901
+        },
+        {
+          "key": "moveOrders",
+          "value": 53.06122448979592
+        },
+        {
+          "key": "ease",
+          "value": 33.4179376650702
+        }
+      ],
+      "counts": {
+        "positions": 5658,
+        "occurrences": 30746,
+        "moves": 5697,
+        "ownPositions": 466,
+        "answeredPositions": 461,
+        "repeatedGroups": 49,
+        "commonGroups": 26,
+        "answeredAlternatives": 624,
+        "easePositions": 821,
+        "easePairs": 860,
+        "identicalPositionPairs": 62,
+        "openingBoundaries": 252
+      },
+      "shortened": {
+        "score": 48.80224129355388,
+        "delta": -46.3204271486366
+      },
+      "holes": {
+        "removed_nodes": 30133,
+        "score": 34.85175491423425,
+        "delta": -60.270913527956225
+      },
+      "horizon_sensitivity": {
+        "h16": 99.32426255405868,
+        "h24": 97.05548214176507,
+        "h32": 95.12266844219047
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 95.27425844822803
+        },
+        {
+          "scale": 4,
+          "score": 95.12266844219047
+        },
+        {
+          "scale": 8,
+          "score": 94.82164658468918
+        }
+      ]
+    },
+    {
+      "id": "oBsew7N6",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 97.94520547945206,
+      "final": 69.82120021884471,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 96.61016949152543
+        },
+        {
+          "key": "reach",
+          "value": 60
+        },
+        {
+          "key": "depth",
+          "value": 81.25
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 39.583333333333336
+        }
+      ],
+      "counts": {
+        "positions": 120,
+        "occurrences": 186,
+        "moves": 120,
+        "ownPositions": 59,
+        "answeredPositions": 57,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 5,
+        "easePositions": 6,
+        "easePairs": 4,
+        "identicalPositionPairs": 2,
+        "openingBoundaries": 4
+      },
+      "shortened": {
+        "score": 36.2284418654736,
+        "delta": -33.59275835337111
+      },
+      "holes": {
+        "removed_nodes": 133,
+        "score": 22.963966338592293,
+        "delta": -46.857233880252416
+      },
+      "horizon_sensitivity": {
+        "h16": 75.9317127424372,
+        "h24": 72.4568837309472,
+        "h32": 69.82120021884471
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 78.06247497997998
+        },
+        {
+          "scale": 4,
+          "score": 69.82120021884471
+        },
+        {
+          "scale": 8,
+          "score": 59.009684435208236
+        }
+      ]
+    },
+    {
+      "id": "oBsew7N6",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 66.10576923076923,
+      "final": 64.04344228724749,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 98.24561403508773
+        },
+        {
+          "key": "reach",
+          "value": 50
+        },
+        {
+          "key": "depth",
+          "value": 82.03125
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 47.02380952380952
+        }
+      ],
+      "counts": {
+        "positions": 162,
+        "occurrences": 186,
+        "moves": 162,
+        "ownPositions": 57,
+        "answeredPositions": 56,
+        "repeatedGroups": 3,
+        "commonGroups": 0,
+        "answeredAlternatives": 3,
+        "easePositions": 7,
+        "easePairs": 10,
+        "identicalPositionPairs": 8,
+        "openingBoundaries": 4
+      },
+      "shortened": {
+        "score": 35.35533905932738,
+        "delta": -28.68810322792011
+      },
+      "holes": {
+        "removed_nodes": 134,
+        "score": 26.352313834736496,
+        "delta": -37.691128452510995
+      },
+      "horizon_sensitivity": {
+        "h16": 69.59705453537528,
+        "h24": 66.53633092779714,
+        "h32": 64.04344228724749
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 73.9509972887452
+        },
+        {
+          "scale": 4,
+          "score": 64.04344228724749
+        },
+        {
+          "scale": 8,
+          "score": 52.29125165837972
+        }
+      ]
+    },
+    {
+      "id": "tU7Nq5nE",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 100,
+      "final": 71.00469468046929,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 66.66666666666667
+        },
+        {
+          "key": "depth",
+          "value": 75.62499999999993
+        },
+        {
+          "key": "moveOrders",
+          "value": 100
+        },
+        {
+          "key": "ease",
+          "value": 42.938596491228076
+        }
+      ],
+      "counts": {
+        "positions": 100,
+        "occurrences": 109,
+        "moves": 100,
+        "ownPositions": 50,
+        "answeredPositions": 50,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 7,
+        "easePositions": 19,
+        "easePairs": 18,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 20.91650066335189,
+        "delta": -50.088194017117395
+      },
+      "holes": {
+        "removed_nodes": 77,
+        "score": 37.79644730092272,
+        "delta": -33.20824737954656
+      },
+      "horizon_sensitivity": {
+        "h16": 81.64965809277261,
+        "h24": 75.40016701032687,
+        "h32": 71.00469468046929
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 77.78174593052019
+        },
+        {
+          "scale": 4,
+          "score": 71.00469468046929
+        },
+        {
+          "scale": 8,
+          "score": 61.491869381244186
+        }
+      ]
+    },
+    {
+      "id": "rZyGzD67",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 47.523148148148145,
+      "final": 54.159381794511255,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 95.83333333333333
+        },
+        {
+          "key": "reach",
+          "value": 63.63636363636363
+        },
+        {
+          "key": "depth",
+          "value": 46.093750000000014
+        },
+        {
+          "key": "moveOrders",
+          "value": 100
+        },
+        {
+          "key": "ease",
+          "value": 58.333333333333336
+        }
+      ],
+      "counts": {
+        "positions": 48,
+        "occurrences": 59,
+        "moves": 48,
+        "ownPositions": 24,
+        "answeredPositions": 23,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 6,
+        "easePositions": 12,
+        "easePairs": 21,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 20.91650066335189,
+        "delta": -33.242881131159365
+      },
+      "holes": {
+        "removed_nodes": 26,
+        "score": 42.08127057650866,
+        "delta": -12.078111218002597
+      },
+      "horizon_sensitivity": {
+        "h16": 70.22690497108769,
+        "h24": 59.93999524777284,
+        "h32": 54.159381794511255
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 59.87544942999965
+        },
+        {
+          "scale": 4,
+          "score": 54.159381794511255
+        },
+        {
+          "scale": 8,
+          "score": 46.379323697814606
+        }
+      ]
+    },
+    {
+      "id": "ztgulNGx",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 74.14641203703704,
+      "final": 59.89098065228239,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 98.14814814814815
+        },
+        {
+          "key": "reach",
+          "value": 71.42857142857143
+        },
+        {
+          "key": "depth",
+          "value": 50.217013888888886
+        },
+        {
+          "key": "moveOrders",
+          "value": null
+        },
+        {
+          "key": "ease",
+          "value": 54.76190476190476
+        }
+      ],
+      "counts": {
+        "positions": 108,
+        "occurrences": 171,
+        "moves": 107,
+        "ownPositions": 54,
+        "answeredPositions": 53,
+        "repeatedGroups": 0,
+        "commonGroups": 0,
+        "answeredAlternatives": 9,
+        "easePositions": 14,
+        "easePairs": 15,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 39.88620176087328,
+        "delta": -20.00477889140911
+      },
+      "holes": {
+        "removed_nodes": 111,
+        "score": 27.003086243366084,
+        "delta": -32.8878944089163
+      },
+      "horizon_sensitivity": {
+        "h16": 82.0587043060086,
+        "h24": 69.15614760325181,
+        "h32": 59.89098065228239
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 64.68965263013403
+        },
+        {
+          "scale": 4,
+          "score": 59.89098065228239
+        },
+        {
+          "scale": 8,
+          "score": 52.81888019390672
+        }
+      ]
+    },
+    {
+      "id": "AKbQXhWw",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 76.29365193917252,
+      "final": 91.7444276461496,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 99.48186528497409
+        },
+        {
+          "key": "reach",
+          "value": 97.74011299435028
+        },
+        {
+          "key": "depth",
+          "value": 86.11653645833329
+        },
+        {
+          "key": "moveOrders",
+          "value": 61.904761904761905
+        },
+        {
+          "key": "ease",
+          "value": 41.406981694338015
+        }
+      ],
+      "counts": {
+        "positions": 2006,
+        "occurrences": 3385,
+        "moves": 2029,
+        "ownPositions": 193,
+        "answeredPositions": 192,
+        "repeatedGroups": 21,
+        "commonGroups": 13,
+        "answeredAlternatives": 172,
+        "easePositions": 261,
+        "easePairs": 245,
+        "identicalPositionPairs": 8,
+        "openingBoundaries": 67
+      },
+      "shortened": {
+        "score": 44.77955262542641,
+        "delta": -46.96487502072319
+      },
+      "holes": {
+        "removed_nodes": 3135,
+        "score": 37.43483922097169,
+        "delta": -54.309588425177914
+      },
+      "horizon_sensitivity": {
+        "h16": 97.4018677572078,
+        "h24": 95.78478884122774,
+        "h32": 91.7444276461496
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 92.26719214880121
+        },
+        {
+          "scale": 4,
+          "score": 91.7444276461496
+        },
+        {
+          "scale": 8,
+          "score": 90.72501347658695
+        }
+      ]
+    },
+    {
+      "id": "2MMWpcNI",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 72.5,
+      "final": 29.85303508361761,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 90
+        },
+        {
+          "key": "reach",
+          "value": 33.333333333333336
+        },
+        {
+          "key": "depth",
+          "value": 26.73611111111111
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 16.666666666666668
+        }
+      ],
+      "counts": {
+        "positions": 43,
+        "occurrences": 54,
+        "moves": 42,
+        "ownPositions": 20,
+        "answeredPositions": 18,
+        "repeatedGroups": 2,
+        "commonGroups": 0,
+        "answeredAlternatives": 1,
+        "easePositions": 3,
+        "easePairs": 7,
+        "identicalPositionPairs": 7,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 22.566773346211,
+        "delta": -7.286261737406608
+      },
+      "holes": {
+        "removed_nodes": 23,
+        "score": 22.821773229381918,
+        "delta": -7.031261854235691
+      },
+      "horizon_sensitivity": {
+        "h16": 41.38795673819817,
+        "h24": 34.471315683307935,
+        "h32": 29.85303508361761
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 36.56235161413384
+        },
+        {
+          "scale": 4,
+          "score": 29.85303508361761
+        },
+        {
+          "scale": 8,
+          "score": 23.124061542519346
+        }
+      ]
+    },
+    {
+      "id": "2MMWpcNI",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 41.96105072463768,
+      "final": 35.96390937840014,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 78.26086956521739
+        },
+        {
+          "key": "reach",
+          "value": 50
+        },
+        {
+          "key": "depth",
+          "value": 25.868055555555554
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 33.333333333333336
+        }
+      ],
+      "counts": {
+        "positions": 43,
+        "occurrences": 54,
+        "moves": 42,
+        "ownPositions": 23,
+        "answeredPositions": 18,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 3,
+        "easePositions": 3,
+        "easePairs": 2,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 29.609730007399783,
+        "delta": -6.354179371000356
+      },
+      "holes": {
+        "removed_nodes": 19,
+        "score": 22.438186696393768,
+        "delta": -13.525722682006371
+      },
+      "horizon_sensitivity": {
+        "h16": 50.860648398890426,
+        "h24": 41.527545521461256,
+        "h32": 35.96390937840014
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 41.527545521461256
+        },
+        {
+          "scale": 4,
+          "score": 35.96390937840014
+        },
+        {
+          "scale": 8,
+          "score": 29.3644090442583
+        }
+      ]
+    },
+    {
+      "id": "sEo8o4Rm",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 70.96997377935281,
+      "final": 93.87851274024842,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 92.5925925925926
+        },
+        {
+          "key": "depth",
+          "value": 95.18229166666666
+        },
+        {
+          "key": "moveOrders",
+          "value": 25
+        },
+        {
+          "key": "ease",
+          "value": 19.236111111111107
+        }
+      ],
+      "counts": {
+        "positions": 553,
+        "occurrences": 1063,
+        "moves": 554,
+        "ownPositions": 102,
+        "answeredPositions": 102,
+        "repeatedGroups": 4,
+        "commonGroups": 1,
+        "answeredAlternatives": 49,
+        "easePositions": 60,
+        "easePairs": 48,
+        "identicalPositionPairs": 3,
+        "openingBoundaries": 24
+      },
+      "shortened": {
+        "score": 44.426165831931925,
+        "delta": -49.4523469083165
+      },
+      "holes": {
+        "removed_nodes": 997,
+        "score": 27.95084971874737,
+        "delta": -65.92766302150105
+      },
+      "horizon_sensitivity": {
+        "h16": 95.09763722648741,
+        "h24": 94.72285238052498,
+        "h32": 93.87851274024842
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 95.66683557789074
+        },
+        {
+          "scale": 4,
+          "score": 93.87851274024842
+        },
+        {
+          "scale": 8,
+          "score": 90.58349723467497
+        }
+      ]
+    },
+    {
+      "id": "GNlZ2WKx",
+      "color": "white",
+      "role": "repertoire-and-model-games",
+      "baseline": 82.336309101713,
+      "final": 96.4274111134126,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 92.98245614035088
+        },
+        {
+          "key": "depth",
+          "value": 100
+        },
+        {
+          "key": "moveOrders",
+          "value": 37.5
+        },
+        {
+          "key": "ease",
+          "value": 29.129289215686278
+        }
+      ],
+      "counts": {
+        "positions": 558,
+        "occurrences": 2178,
+        "moves": 575,
+        "ownPositions": 218,
+        "answeredPositions": 218,
+        "repeatedGroups": 16,
+        "commonGroups": 6,
+        "answeredAlternatives": 52,
+        "easePositions": 85,
+        "easePairs": 109,
+        "identicalPositionPairs": 12,
+        "openingBoundaries": 32
+      },
+      "shortened": {
+        "score": 40.89980583874524,
+        "delta": -55.527605274667366
+      },
+      "holes": {
+        "removed_nodes": 1984,
+        "score": 40.04298321563582,
+        "delta": -56.38442789777678
+      },
+      "horizon_sensitivity": {
+        "h16": 94.9967907031729,
+        "h24": 96.15239476408232,
+        "h32": 96.4274111134126
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 98.16498172140427
+        },
+        {
+          "scale": 4,
+          "score": 96.4274111134126
+        },
+        {
+          "scale": 8,
+          "score": 93.21225557920984
+        }
+      ]
+    },
+    {
+      "id": "KjivNw7F",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 71.5556669702606,
+      "final": 74.76942524233472,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 96.89922480620154
+        },
+        {
+          "key": "reach",
+          "value": 89.47368421052632
+        },
+        {
+          "key": "depth",
+          "value": 62.481689453125014
+        },
+        {
+          "key": "moveOrders",
+          "value": 62.5
+        },
+        {
+          "key": "ease",
+          "value": 35.14351851851852
+        }
+      ],
+      "counts": {
+        "positions": 375,
+        "occurrences": 878,
+        "moves": 380,
+        "ownPositions": 129,
+        "answeredPositions": 125,
+        "repeatedGroups": 8,
+        "commonGroups": 5,
+        "answeredAlternatives": 33,
+        "easePositions": 60,
+        "easePairs": 50,
+        "identicalPositionPairs": 3,
+        "openingBoundaries": 6
+      },
+      "shortened": {
+        "score": 41.83300132670378,
+        "delta": -32.93642391563094
+      },
+      "holes": {
+        "removed_nodes": 755,
+        "score": 39.763063142521986,
+        "delta": -35.00636209981273
+      },
+      "horizon_sensitivity": {
+        "h16": 86.09990966571594,
+        "h24": 79.94901047168781,
+        "h32": 74.76942524233472
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 76.81828199296503
+        },
+        {
+          "scale": 4,
+          "score": 74.76942524233472
+        },
+        {
+          "scale": 8,
+          "score": 71.11990949908288
+        }
+      ]
+    },
+    {
+      "id": "1gqDv9cx",
+      "color": "black",
+      "role": "repertoire-and-traps",
+      "baseline": 47.01122838823337,
+      "final": 70.76303508495069,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 95.7983193277311
+        },
+        {
+          "key": "reach",
+          "value": 96.22641509433963
+        },
+        {
+          "key": "depth",
+          "value": 52.037760416666664
+        },
+        {
+          "key": "moveOrders",
+          "value": 33.333333333333336
+        },
+        {
+          "key": "ease",
+          "value": 22.925234487734485
+        }
+      ],
+      "counts": {
+        "positions": 679,
+        "occurrences": 1698,
+        "moves": 681,
+        "ownPositions": 119,
+        "answeredPositions": 114,
+        "repeatedGroups": 6,
+        "commonGroups": 2,
+        "answeredAlternatives": 101,
+        "easePositions": 88,
+        "easePairs": 107,
+        "identicalPositionPairs": 6,
+        "openingBoundaries": 29
+      },
+      "shortened": {
+        "score": 38.72983346207417,
+        "delta": -32.03320162287652
+      },
+      "holes": {
+        "removed_nodes": 1560,
+        "score": 30.618621784789728,
+        "delta": -40.14441330016096
+      },
+      "horizon_sensitivity": {
+        "h16": 88.12754991353974,
+        "h24": 78.48104720825866,
+        "h32": 70.76303508495069
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 71.44020874466122
+        },
+        {
+          "scale": 4,
+          "score": 70.76303508495069
+        },
+        {
+          "scale": 8,
+          "score": 69.46452045665274
+        }
+      ]
+    },
+    {
+      "id": "8eyxyvBh",
+      "color": "white",
+      "role": "repertoire-and-exercises",
+      "baseline": 80.26785714285715,
+      "final": 59.38674695827104,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 95.83333333333333
+        },
+        {
+          "key": "reach",
+          "value": 71.42857142857143
+        },
+        {
+          "key": "depth",
+          "value": 49.375
+        },
+        {
+          "key": "moveOrders",
+          "value": null
+        },
+        {
+          "key": "ease",
+          "value": 12.5
+        }
+      ],
+      "counts": {
+        "positions": 55,
+        "occurrences": 107,
+        "moves": 54,
+        "ownPositions": 24,
+        "answeredPositions": 23,
+        "repeatedGroups": 0,
+        "commonGroups": 0,
+        "answeredAlternatives": 9,
+        "easePositions": 10,
+        "easePairs": 8,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 20.91650066335189,
+        "delta": -38.47024629491915
+      },
+      "holes": {
+        "removed_nodes": 91,
+        "score": 20.91650066335189,
+        "delta": -38.47024629491915
+      },
+      "horizon_sensitivity": {
+        "h16": 80.83102032112329,
+        "h24": 68.57390868530794,
+        "h32": 59.38674695827104
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 64.14501799308604
+        },
+        {
+          "scale": 4,
+          "score": 59.38674695827104
+        },
+        {
+          "scale": 8,
+          "score": 52.374187874902226
+        }
+      ]
+    },
+    {
+      "id": "dgUQNQ2B",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 73.52326033690277,
+      "final": 75.40502011889755,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 98.51851851851852
+        },
+        {
+          "key": "reach",
+          "value": 97.8021978021978
+        },
+        {
+          "key": "depth",
+          "value": 58.13690476190476
+        },
+        {
+          "key": "moveOrders",
+          "value": 71.42857142857143
+        },
+        {
+          "key": "ease",
+          "value": 34.85082574696545
+        }
+      ],
+      "counts": {
+        "positions": 1254,
+        "occurrences": 1738,
+        "moves": 1265,
+        "ownPositions": 135,
+        "answeredPositions": 133,
+        "repeatedGroups": 14,
+        "commonGroups": 10,
+        "answeredAlternatives": 177,
+        "easePositions": 272,
+        "easePairs": 270,
+        "identicalPositionPairs": 4,
+        "openingBoundaries": 15
+      },
+      "shortened": {
+        "score": 47.67312946227961,
+        "delta": -27.731890656617942
+      },
+      "holes": {
+        "removed_nodes": 1499,
+        "score": 34.112907765103756,
+        "delta": -41.2921123537938
+      },
+      "horizon_sensitivity": {
+        "h16": 97.57090474949018,
+        "h24": 84.5096980429917,
+        "h32": 75.40502011889755
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 75.82277965983518
+        },
+        {
+          "scale": 4,
+          "score": 75.40502011889755
+        },
+        {
+          "scale": 8,
+          "score": 74.58980676281088
+        }
+      ]
+    },
+    {
+      "id": "whCVdUeM",
+      "color": "black",
+      "role": "repertoire-and-traps",
+      "baseline": 74.36708860759492,
+      "final": 76.67353792296608,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 97.72727272727273
+        },
+        {
+          "key": "reach",
+          "value": 86.20689655172414
+        },
+        {
+          "key": "depth",
+          "value": 68.19444444444439
+        },
+        {
+          "key": "moveOrders",
+          "value": 100
+        },
+        {
+          "key": "ease",
+          "value": 31.28472222222222
+        }
+      ],
+      "counts": {
+        "positions": 145,
+        "occurrences": 250,
+        "moves": 146,
+        "ownPositions": 44,
+        "answeredPositions": 43,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 24,
+        "easePositions": 16,
+        "easePairs": 24,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 5
+      },
+      "shortened": {
+        "score": 22.360679774997898,
+        "delta": -54.31285814796818
+      },
+      "holes": {
+        "removed_nodes": 193,
+        "score": 22.360679774997898,
+        "delta": -54.31285814796818
+      },
+      "horizon_sensitivity": {
+        "h16": 89.97354108424373,
+        "h24": 82.56349389183498,
+        "h32": 76.67353792296608
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 79.46257239432052
+        },
+        {
+          "scale": 4,
+          "score": 76.67353792296608
+        },
+        {
+          "scale": 8,
+          "score": 71.87660113865837
+        }
+      ]
+    },
+    {
+      "id": "OnPMlzHT",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 77.86458333333333,
+      "final": 53.32682251925387,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 60
+        },
+        {
+          "key": "depth",
+          "value": 47.39583333333336
+        },
+        {
+          "key": "moveOrders",
+          "value": 100
+        },
+        {
+          "key": "ease",
+          "value": 26.666666666666664
+        }
+      ],
+      "counts": {
+        "positions": 55,
+        "occurrences": 65,
+        "moves": 55,
+        "ownPositions": 27,
+        "answeredPositions": 27,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 5,
+        "easePositions": 10,
+        "easePairs": 9,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 32.732683535398856,
+        "delta": -20.59413898385501
+      },
+      "holes": {
+        "removed_nodes": 50,
+        "score": 25,
+        "delta": -28.326822519253867
+      },
+      "horizon_sensitivity": {
+        "h16": 72.02430145443967,
+        "h24": 60.20797289396148,
+        "h32": 53.32682251925387
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 59.62120008855912
+        },
+        {
+          "scale": 4,
+          "score": 53.32682251925387
+        },
+        {
+          "scale": 8,
+          "score": 45.06939094329988
+        }
+      ]
+    },
+    {
+      "id": "PDVt7Kbh",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 70.18994836182337,
+      "final": 80.65611355530436,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 92.3076923076923
+        },
+        {
+          "key": "depth",
+          "value": 70.47526041666663
+        },
+        {
+          "key": "moveOrders",
+          "value": 25
+        },
+        {
+          "key": "ease",
+          "value": 34.91580018083182
+        }
+      ],
+      "counts": {
+        "positions": 599,
+        "occurrences": 1666,
+        "moves": 605,
+        "ownPositions": 203,
+        "answeredPositions": 203,
+        "repeatedGroups": 8,
+        "commonGroups": 2,
+        "answeredAlternatives": 47,
+        "easePositions": 79,
+        "easePairs": 130,
+        "identicalPositionPairs": 12,
+        "openingBoundaries": 15
+      },
+      "shortened": {
+        "score": 45.99331055038999,
+        "delta": -34.662803004914366
+      },
+      "holes": {
+        "removed_nodes": 1534,
+        "score": 29.107081994288304,
+        "delta": -51.54903156101605
+      },
+      "horizon_sensitivity": {
+        "h16": 94.22092371271773,
+        "h24": 88.74571134455614,
+        "h32": 80.65611355530436
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 82.25341938181049
+        },
+        {
+          "scale": 4,
+          "score": 80.65611355530436
+        },
+        {
+          "scale": 8,
+          "score": 77.72217577463239
+        }
+      ]
+    },
+    {
+      "id": "jtlLwUvh",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 84.765625,
+      "final": 51.69018282033833,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 60
+        },
+        {
+          "key": "depth",
+          "value": 44.53125
+        },
+        {
+          "key": "moveOrders",
+          "value": 100
+        },
+        {
+          "key": "ease",
+          "value": 27.272727272727273
+        }
+      ],
+      "counts": {
+        "positions": 51,
+        "occurrences": 61,
+        "moves": 51,
+        "ownPositions": 25,
+        "answeredPositions": 25,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 5,
+        "easePositions": 11,
+        "easePairs": 7,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 37.26779962499649,
+        "delta": -14.422383195341837
+      },
+      "holes": {
+        "removed_nodes": 34,
+        "score": 34.06925719346235,
+        "delta": -17.62092562687598
+      },
+      "horizon_sensitivity": {
+        "h16": 73.10095758606722,
+        "h24": 59.68668193156661,
+        "h32": 51.69018282033833
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 57.791381277834155
+        },
+        {
+          "scale": 4,
+          "score": 51.69018282033833
+        },
+        {
+          "scale": 8,
+          "score": 43.686177938303814
+        }
+      ]
+    },
+    {
+      "id": "A4EBp7Ds",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 63.18840440270935,
+      "final": 73.92706725903244,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 93.54838709677419
+        },
+        {
+          "key": "depth",
+          "value": 58.42122395833334
+        },
+        {
+          "key": "moveOrders",
+          "value": 12.5
+        },
+        {
+          "key": "ease",
+          "value": 32.639735772357724
+        }
+      ],
+      "counts": {
+        "positions": 594,
+        "occurrences": 1510,
+        "moves": 597,
+        "ownPositions": 207,
+        "answeredPositions": 207,
+        "repeatedGroups": 8,
+        "commonGroups": 1,
+        "answeredAlternatives": 57,
+        "easePositions": 82,
+        "easePairs": 92,
+        "identicalPositionPairs": 7,
+        "openingBoundaries": 24
+      },
+      "shortened": {
+        "score": 44.426165831931925,
+        "delta": -29.500901427100516
+      },
+      "holes": {
+        "removed_nodes": 1359,
+        "score": 32.29502670690953,
+        "delta": -41.63204055212291
+      },
+      "horizon_sensitivity": {
+        "h16": 90.2962296605406,
+        "h24": 81.57240352928103,
+        "h32": 73.92706725903244
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 75.14908504192776
+        },
+        {
+          "scale": 4,
+          "score": 73.92706725903244
+        },
+        {
+          "scale": 8,
+          "score": 71.65184120351365
+        }
+      ]
+    },
+    {
+      "id": "UzKIIAtz",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 100,
+      "final": 55.09731650193396,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 42.857142857142854
+        },
+        {
+          "key": "depth",
+          "value": 70.8333333333333
+        },
+        {
+          "key": "moveOrders",
+          "value": null
+        },
+        {
+          "key": "ease",
+          "value": 0
+        }
+      ],
+      "counts": {
+        "positions": 51,
+        "occurrences": 65,
+        "moves": 50,
+        "ownPositions": 25,
+        "answeredPositions": 25,
+        "repeatedGroups": 0,
+        "commonGroups": 0,
+        "answeredAlternatives": 2,
+        "easePositions": 2,
+        "easePairs": 1,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 32.732683535398856,
+        "delta": -22.364632966535105
+      },
+      "holes": {
+        "removed_nodes": 44,
+        "score": 20.91650066335189,
+        "delta": -34.18081583858207
+      },
+      "horizon_sensitivity": {
+        "h16": 65.46536707079771,
+        "h24": 59.76143046671968,
+        "h32": 55.09731650193396
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 65.19202405202647
+        },
+        {
+          "scale": 4,
+          "score": 55.09731650193396
+        },
+        {
+          "scale": 8,
+          "score": 43.95245364957662
+        }
+      ]
+    },
+    {
+      "id": "bbxmDYZV",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 26.23355263157895,
+      "final": 26.59821944750772,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 73.6842105263158
+        },
+        {
+          "key": "reach",
+          "value": 50
+        },
+        {
+          "key": "depth",
+          "value": 14.149305555555557
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 4.166666666666667
+        }
+      ],
+      "counts": {
+        "positions": 38,
+        "occurrences": 48,
+        "moves": 37,
+        "ownPositions": 19,
+        "answeredPositions": 14,
+        "repeatedGroups": 2,
+        "commonGroups": 0,
+        "answeredAlternatives": 3,
+        "easePositions": 6,
+        "easePairs": 10,
+        "identicalPositionPairs": 7,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 26.434536542603166,
+        "delta": -0.1636829049045545
+      },
+      "holes": {
+        "removed_nodes": 15,
+        "score": 20.623947784607637,
+        "delta": -5.974271662900083
+      },
+      "horizon_sensitivity": {
+        "h16": 37.61556267764123,
+        "h24": 30.71297831596664,
+        "h32": 26.59821944750772
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 30.71297831596664
+        },
+        {
+          "scale": 4,
+          "score": 26.59821944750772
+        },
+        {
+          "scale": 8,
+          "score": 21.717355237655404
+        }
+      ]
+    },
+    {
+      "id": "bbxmDYZV",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 52.02850877192982,
+      "final": 29.492230615310653,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 78.94736842105263
+        },
+        {
+          "key": "reach",
+          "value": 60
+        },
+        {
+          "key": "depth",
+          "value": 14.496527777777782
+        },
+        {
+          "key": "moveOrders",
+          "value": 100
+        },
+        {
+          "key": "ease",
+          "value": 1.3888888888888886
+        }
+      ],
+      "counts": {
+        "positions": 38,
+        "occurrences": 48,
+        "moves": 37,
+        "ownPositions": 19,
+        "answeredPositions": 15,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 5,
+        "easePositions": 6,
+        "easePairs": 10,
+        "identicalPositionPairs": 6,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 29.403797940628916,
+        "delta": -0.08843267468173721
+      },
+      "holes": {
+        "removed_nodes": 6,
+        "score": 25.983731852596815,
+        "delta": -3.508498762713838
+      },
+      "horizon_sensitivity": {
+        "h16": 41.70831252080733,
+        "h24": 34.05469456950426,
+        "h32": 29.492230615310653
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 32.97331623196754
+        },
+        {
+          "scale": 4,
+          "score": 29.492230615310653
+        },
+        {
+          "scale": 8,
+          "score": 24.925484185964415
+        }
+      ]
+    },
+    {
+      "id": "nRiq9SZx",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 54.4248583105491,
+      "final": 69.13962213265793,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 98.76543209876543
+        },
+        {
+          "key": "reach",
+          "value": 89.74358974358974
+        },
+        {
+          "key": "depth",
+          "value": 53.26605902777777
+        },
+        {
+          "key": "moveOrders",
+          "value": 20
+        },
+        {
+          "key": "ease",
+          "value": 46.82484567901234
+        }
+      ],
+      "counts": {
+        "positions": 316,
+        "occurrences": 495,
+        "moves": 316,
+        "ownPositions": 81,
+        "answeredPositions": 80,
+        "repeatedGroups": 5,
+        "commonGroups": 1,
+        "answeredAlternatives": 34,
+        "easePositions": 54,
+        "easePairs": 60,
+        "identicalPositionPairs": 4,
+        "openingBoundaries": 2
+      },
+      "shortened": {
+        "score": 45.22670168666454,
+        "delta": -23.912920445993393
+      },
+      "holes": {
+        "removed_nodes": 366,
+        "score": 35.86164653648369,
+        "delta": -33.277975596174244
+      },
+      "horizon_sensitivity": {
+        "h16": 88.39531492364542,
+        "h24": 77.72601108474112,
+        "h32": 69.13962213265793
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 70.98366896254647
+        },
+        {
+          "scale": 4,
+          "score": 69.13962213265793
+        },
+        {
+          "scale": 8,
+          "score": 65.8453449816261
+        }
+      ]
+    },
+    {
+      "id": "HHZpRszr",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 42.849445812807886,
+      "final": 73.06619821706495,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 96.47058823529412
+        },
+        {
+          "key": "reach",
+          "value": 76.47058823529412
+        },
+        {
+          "key": "depth",
+          "value": 69.81336805555556
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 19.01851851851852
+        }
+      ],
+      "counts": {
+        "positions": 354,
+        "occurrences": 472,
+        "moves": 353,
+        "ownPositions": 170,
+        "answeredPositions": 164,
+        "repeatedGroups": 4,
+        "commonGroups": 0,
+        "answeredAlternatives": 12,
+        "easePositions": 15,
+        "easePairs": 27,
+        "identicalPositionPairs": 16,
+        "openingBoundaries": 7
+      },
+      "shortened": {
+        "score": 40.05204946899305,
+        "delta": -33.014148748071904
+      },
+      "holes": {
+        "removed_nodes": 330,
+        "score": 35.673091321673326,
+        "delta": -37.393106895391625
+      },
+      "horizon_sensitivity": {
+        "h16": 80.83225944303838,
+        "h24": 76.24712037849739,
+        "h32": 73.06619821706495
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 77.78490790730648
+        },
+        {
+          "scale": 4,
+          "score": 73.06619821706495
+        },
+        {
+          "scale": 8,
+          "score": 65.7402458715259
+        }
+      ]
+    },
+    {
+      "id": "HHZpRszr",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 57.73358585858586,
+      "final": 72.73159470560955,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 95.32163742690058
+        },
+        {
+          "key": "reach",
+          "value": 78.94736842105263
+        },
+        {
+          "key": "depth",
+          "value": 67.00520833333331
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 49.79040404040405
+        }
+      ],
+      "counts": {
+        "positions": 371,
+        "occurrences": 472,
+        "moves": 370,
+        "ownPositions": 171,
+        "answeredPositions": 163,
+        "repeatedGroups": 5,
+        "commonGroups": 0,
+        "answeredAlternatives": 14,
+        "easePositions": 25,
+        "easePairs": 49,
+        "identicalPositionPairs": 23,
+        "openingBoundaries": 7
+      },
+      "shortened": {
+        "score": 41.73328008516305,
+        "delta": -30.9983146204465
+      },
+      "holes": {
+        "removed_nodes": 330,
+        "score": 33.47645556093232,
+        "delta": -39.25513914467723
+      },
+      "horizon_sensitivity": {
+        "h16": 79.02593270070078,
+        "h24": 75.60066485366242,
+        "h32": 72.73159470560955
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 76.89098948970472
+        },
+        {
+          "scale": 4,
+          "score": 72.73159470560955
+        },
+        {
+          "scale": 8,
+          "score": 66.10525615489549
+        }
+      ]
+    },
+    {
+      "id": "bmWAylqe",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 76.22954651706404,
+      "final": 73.60602527300964,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 95.88377723970945
+        },
+        {
+          "key": "reach",
+          "value": 92.85714285714286
+        },
+        {
+          "key": "depth",
+          "value": 58.346044146825434
+        },
+        {
+          "key": "moveOrders",
+          "value": 28.571428571428573
+        },
+        {
+          "key": "ease",
+          "value": 29.74800444968269
+        }
+      ],
+      "counts": {
+        "positions": 991,
+        "occurrences": 1577,
+        "moves": 996,
+        "ownPositions": 413,
+        "answeredPositions": 396,
+        "repeatedGroups": 14,
+        "commonGroups": 4,
+        "answeredAlternatives": 51,
+        "easePositions": 72,
+        "easePairs": 174,
+        "identicalPositionPairs": 60,
+        "openingBoundaries": 19
+      },
+      "shortened": {
+        "score": 43.64907714355334,
+        "delta": -29.956948129456293
+      },
+      "holes": {
+        "removed_nodes": 1230,
+        "score": 43.79997146117791,
+        "delta": -29.806053811831724
+      },
+      "horizon_sensitivity": {
+        "h16": 93.7088626368526,
+        "h24": 82.28091305415526,
+        "h32": 73.60602527300964
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 74.95670720408872
+        },
+        {
+          "scale": 4,
+          "score": 73.60602527300964
+        },
+        {
+          "scale": 8,
+          "score": 71.11017620138159
+        }
+      ]
+    },
+    {
+      "id": "bmWAylqe",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 68.0422891619519,
+      "final": 74.34053630629248,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 96.75810473815461
+        },
+        {
+          "key": "reach",
+          "value": 92.98245614035088
+        },
+        {
+          "key": "depth",
+          "value": 59.436108355379204
+        },
+        {
+          "key": "moveOrders",
+          "value": 18.181818181818183
+        },
+        {
+          "key": "ease",
+          "value": 23.975171467764063
+        }
+      ],
+      "counts": {
+        "positions": 991,
+        "occurrences": 1577,
+        "moves": 995,
+        "ownPositions": 401,
+        "answeredPositions": 388,
+        "repeatedGroups": 11,
+        "commonGroups": 2,
+        "answeredAlternatives": 52,
+        "easePositions": 90,
+        "easePairs": 162,
+        "identicalPositionPairs": 65,
+        "openingBoundaries": 16
+      },
+      "shortened": {
+        "score": 47.72607021092118,
+        "delta": -26.6144660953713
+      },
+      "holes": {
+        "removed_nodes": 1273,
+        "score": 30.7803724028802,
+        "delta": -43.560163903412274
+      },
+      "horizon_sensitivity": {
+        "h16": 94.18500096710977,
+        "h24": 83.22564454699568,
+        "h32": 74.34053630629248
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 75.68011318984301
+        },
+        {
+          "scale": 4,
+          "score": 74.34053630629248
+        },
+        {
+          "scale": 8,
+          "score": 71.86181802524622
+        }
+      ]
+    },
+    {
+      "id": "nYAJ7Km3",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 57.116168478260875,
+      "final": 51.53882032022076,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 95.45454545454545
+        },
+        {
+          "key": "reach",
+          "value": 50
+        },
+        {
+          "key": "depth",
+          "value": 53.125
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 13.541666666666666
+        }
+      ],
+      "counts": {
+        "positions": 45,
+        "occurrences": 48,
+        "moves": 44,
+        "ownPositions": 22,
+        "answeredPositions": 21,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 3,
+        "easePositions": 6,
+        "easePairs": 11,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 35.35533905932738,
+        "delta": -16.18348126089338
+      },
+      "holes": {
+        "removed_nodes": 42,
+        "score": 15.811388300841896,
+        "delta": -35.72743201937886
+      },
+      "horizon_sensitivity": {
+        "h16": 61.87184335382291,
+        "h24": 55.90169943749474,
+        "h32": 51.53882032022076
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 59.511903571190416
+        },
+        {
+          "scale": 4,
+          "score": 51.53882032022076
+        },
+        {
+          "scale": 8,
+          "score": 42.08127057650866
+        }
+      ]
+    },
+    {
+      "id": "FwXo3Qhq",
+      "color": "black",
+      "role": "repertoire-and-traps",
+      "baseline": 76.64554876682561,
+      "final": 92.67079334854981,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 100
+        },
+        {
+          "key": "reach",
+          "value": 89.47368421052632
+        },
+        {
+          "key": "depth",
+          "value": 95.98214285714286
+        },
+        {
+          "key": "moveOrders",
+          "value": 50
+        },
+        {
+          "key": "ease",
+          "value": 24.111201298701303
+        }
+      ],
+      "counts": {
+        "positions": 323,
+        "occurrences": 674,
+        "moves": 323,
+        "ownPositions": 79,
+        "answeredPositions": 79,
+        "repeatedGroups": 2,
+        "commonGroups": 1,
+        "answeredAlternatives": 33,
+        "easePositions": 44,
+        "easePairs": 72,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 14
+      },
+      "shortened": {
+        "score": 41.60251471689218,
+        "delta": -51.06827863165763
+      },
+      "holes": {
+        "removed_nodes": 599,
+        "score": 31.36552719621171,
+        "delta": -61.3052661523381
+      },
+      "horizon_sensitivity": {
+        "h16": 93.54143466934853,
+        "h24": 94.15853713726713,
+        "h32": 92.67079334854981
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 95.21018936400746
+        },
+        {
+          "scale": 4,
+          "score": 92.67079334854981
+        },
+        {
+          "scale": 8,
+          "score": 88.1475070163489
+        }
+      ]
+    },
+    {
+      "id": "LLNDy032",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 60.760002367424235,
+      "final": 77.14931061929367,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 95.1219512195122
+        },
+        {
+          "key": "reach",
+          "value": 93.54838709677419
+        },
+        {
+          "key": "depth",
+          "value": 63.62500000000002
+        },
+        {
+          "key": "moveOrders",
+          "value": 50
+        },
+        {
+          "key": "ease",
+          "value": 35.21367521367521
+        }
+      ],
+      "counts": {
+        "positions": 497,
+        "occurrences": 704,
+        "moves": 502,
+        "ownPositions": 82,
+        "answeredPositions": 78,
+        "repeatedGroups": 4,
+        "commonGroups": 2,
+        "answeredAlternatives": 57,
+        "easePositions": 78,
+        "easePairs": 85,
+        "identicalPositionPairs": 2,
+        "openingBoundaries": 6
+      },
+      "shortened": {
+        "score": 43.14886237578373,
+        "delta": -34.00044824350994
+      },
+      "holes": {
+        "removed_nodes": 518,
+        "score": 36.7083096859553,
+        "delta": -40.44100093333837
+      },
+      "horizon_sensitivity": {
+        "h16": 86.18916073713346,
+        "h24": 80.8739228543383,
+        "h32": 77.14931061929367
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 78.42459223143382
+        },
+        {
+          "scale": 4,
+          "score": 77.14931061929367
+        },
+        {
+          "scale": 8,
+          "score": 74.77491476951265
+        }
+      ]
+    },
+    {
+      "id": "e01yoGqe",
+      "color": "white",
+      "role": "repertoire-and-traps",
+      "baseline": 46.74252717391305,
+      "final": 46.980714128246284,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 96
+        },
+        {
+          "key": "reach",
+          "value": 84
+        },
+        {
+          "key": "depth",
+          "value": 26.276041666666668
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 20.08125
+        }
+      ],
+      "counts": {
+        "positions": 218,
+        "occurrences": 251,
+        "moves": 217,
+        "ownPositions": 75,
+        "answeredPositions": 72,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 20,
+        "easePositions": 25,
+        "easePairs": 33,
+        "identicalPositionPairs": 9,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 38.74263882974498,
+        "delta": -8.2380752985013
+      },
+      "holes": {
+        "removed_nodes": 127,
+        "score": 34.26117518416436,
+        "delta": -12.719538944081926
+      },
+      "horizon_sensitivity": {
+        "h16": 64.63841736923948,
+        "h24": 54.248655897327694,
+        "h32": 46.980714128246284
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 48.98078039217104
+        },
+        {
+          "scale": 4,
+          "score": 46.980714128246284
+        },
+        {
+          "scale": 8,
+          "score": 43.62049798922046
+        }
+      ]
+    },
+    {
+      "id": "e01yoGqe",
+      "color": "black",
+      "role": "repertoire-and-traps",
+      "baseline": 48.06547619047619,
+      "final": 54.5658368904533,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 88.31168831168831
+        },
+        {
+          "key": "reach",
+          "value": 55.55555555555556
+        },
+        {
+          "key": "depth",
+          "value": 53.59374999999997
+        },
+        {
+          "key": "moveOrders",
+          "value": 0
+        },
+        {
+          "key": "ease",
+          "value": 6.064814814814814
+        }
+      ],
+      "counts": {
+        "positions": 153,
+        "occurrences": 251,
+        "moves": 152,
+        "ownPositions": 77,
+        "answeredPositions": 68,
+        "repeatedGroups": 2,
+        "commonGroups": 0,
+        "answeredAlternatives": 4,
+        "easePositions": 9,
+        "easePairs": 29,
+        "identicalPositionPairs": 16,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 51.200857197685465,
+        "delta": -3.3649796927678324
+      },
+      "holes": {
+        "removed_nodes": 157,
+        "score": 42.739172953648804,
+        "delta": -11.826663936804493
+      },
+      "horizon_sensitivity": {
+        "h16": 63.09898162000302,
+        "h24": 57.90184329354397,
+        "h32": 54.5658368904533
+      },
+      "breadth_sensitivity": [
+        {
+          "scale": 2,
+          "score": 61.8718433538229
+        },
+        {
+          "scale": 4,
+          "score": 54.5658368904533
+        },
+        {
+          "scale": 8,
+          "score": 45.40152064549243
+        }
+      ]
+    }
+  ]
+}

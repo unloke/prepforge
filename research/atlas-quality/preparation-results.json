@@ -1,12 +1,12 @@
 {
-  "algorithm_version": "stored-route-preparation-v1",
-  "scorer_sha256": "57ecc3073fbbabb74c0f77e9bd0816ce0ebb64b02c1ddc7a4ae78398032ab4b6",
+  "algorithm_version": "stored-plan-preparation-v2",
+  "scorer_sha256": "0ba3060b6c20e2fc59c0d4aae7e6b7095054621d84e389df4748d0dda6476c43",
   "method": {
-    "horizon_plies": 16,
+    "horizon_plies": 32,
     "root": "single standard initial position",
     "scope": "Exact structural chapter duplicates removed and canonical signatures sorted by canonical start position and ordered UCI tree including mainline flags before attachment. All non-diagram chapter trees rooted at standard or directed-reachable custom starts; disconnected starts excluded and reported. Standard chapter roots collapse into one root; connected custom roots attach to their first existing occurrence in that canonical order.",
-    "own_policy": "PGN first variation sets is_mainline/is_prepared=true; alternatives false. This is structural selection, not a declared recommendation. All moves enabled.",
-    "interpretation": "Descriptive stored-route preparation diagnostics, not validated holistic quality. No annotations, engines, network, likes or manual labels enter scorer. Uniform opponent stored branches are not empirical opponent probabilities.",
+    "own_policy": "PGN first variation sets is_mainline/is_prepared=true; alternatives false. Select the best own tier within each occurrence; union tied chapter plans. Core Depth follows preferred tiers for both sides. This is structural selection, not recovered author intent. All moves legally validated.",
+    "interpretation": "Opening completion uses existing gamePhase plus consecutive non-opening positions and two quiet plies; bound at 32 relative plies. Replies describes core availability; Reach counts answered opponent alternatives; Depth follows core plans and stops before unanswered opponent moves. Total sqrt(Reach * Depth) avoids double-counting missing replies. Consistency/Ease describe learning load. No annotations, engines, network, likes or manual labels enter scorer. Not empirical coverage or validated holistic quality.",
     "likes": "Observed source likes shown only as external positive-unlabeled context: high may support usefulness; low/missing unknown. No threshold, fitting, negative label or validation claim.",
     "invariance": "Original versus empty/1 annotation fields and PGN mutation conversion; exact assembled tree copied under the same root, excluding occurrence count only.",
     "custom_attachment_limitation": "First-occurrence custom attachment is an explicit import convention, not author intent. Structural chapter deduplication and sorting make exact raw copies and raw chapter reordering inert. Different scope composition may affect occurrence reply sets; study indices are not scope-equivalent quality comparisons."
@@ -17,48 +17,56 @@
     "index": {
       "applicable": 45,
       "unavailable": 0,
-      "min": 26.23355263157895,
-      "median": 70.18994836182337,
-      "mean": 67.66781492051493,
-      "max": 100
+      "min": 26.59821944750772,
+      "median": 73.92706725903244,
+      "mean": 70.79839325933418,
+      "max": 97.70818484635798
     },
     "facets": {
       "replies": {
         "applicable": 45,
         "unavailable": 0,
-        "min": 64.42307692307692,
-        "median": 94.33962264150944,
-        "mean": 92.47890277475942,
+        "min": 73.6842105263158,
+        "median": 98.14814814814815,
+        "mean": 96.33225347177937,
         "max": 100
       },
       "reach": {
         "applicable": 45,
         "unavailable": 0,
-        "min": 0,
-        "median": 54.16666666666667,
-        "mean": 56.553500279655765,
-        "max": 100
+        "min": 33.333333333333336,
+        "median": 89.47368421052632,
+        "mean": 78.76611115358234,
+        "max": 99.4358251057828
       },
       "depth": {
         "applicable": 45,
         "unavailable": 0,
-        "min": 29.166666666666664,
-        "median": 87.14409722222224,
-        "mean": 82.9388221548854,
+        "min": 14.149305555555557,
+        "median": 67.00520833333331,
+        "mean": 65.60574300273736,
         "max": 100
       },
       "moveOrders": {
-        "applicable": 43,
-        "unavailable": 2,
+        "applicable": 42,
+        "unavailable": 3,
         "min": 0,
-        "median": 28.571428571428573,
-        "mean": 36.307760328634984,
+        "median": 30.952380952380956,
+        "mean": 40.34286487587212,
         "max": 100
+      },
+      "ease": {
+        "applicable": 45,
+        "unavailable": 0,
+        "min": 0,
+        "median": 29.74800444968269,
+        "mean": 29.74683787670433,
+        "max": 58.333333333333336
       }
     },
-    "original_scoring_ms": 15901.439099999996,
-    "invariance_scoring_ms": 73934.34050000002,
-    "wall_seconds": 115.33246279999999,
+    "original_scoring_ms": 14442.838599999966,
+    "invariance_scoring_ms": 68938.68410000001,
+    "wall_seconds": 109.4748495,
     "all_annotation_invariant": true,
     "all_duplicate_graph_invariant": true,
     "all_reversed_chapter_inputs_exact": true,
@@ -70,43 +78,51 @@
       "index": {
         "applicable": 11,
         "unavailable": 0,
-        "min": 26.23355263157895,
-        "median": 59.553664017096786,
-        "mean": 59.94876575240652,
-        "max": 97.94520547945206
+        "min": 26.59821944750772,
+        "median": 69.82120021884471,
+        "mean": 60.02925957968844,
+        "max": 93.87851274024842
       },
       "facets": {
         "replies": {
           "applicable": 11,
           "unavailable": 0,
-          "min": 64.42307692307692,
-          "median": 90,
-          "mean": 85.28628238178973,
-          "max": 97.11340206185567
+          "min": 73.6842105263158,
+          "median": 96.47058823529412,
+          "mean": 91.07346396002062,
+          "max": 100
         },
         "reach": {
           "applicable": 11,
           "unavailable": 0,
-          "min": 0,
-          "median": 47.398148148148145,
-          "mean": 49.29719650205761,
-          "max": 100
+          "min": 33.333333333333336,
+          "median": 60,
+          "mean": 67.22743430173772,
+          "max": 98.6842105263158
         },
         "depth": {
           "applicable": 11,
           "unavailable": 0,
-          "min": 29.166666666666664,
-          "median": 79.26750578703702,
-          "mean": 74.21959905770669,
-          "max": 100
+          "min": 14.149305555555557,
+          "median": 67.00520833333331,
+          "mean": 56.48034298058712,
+          "max": 95.18229166666666
         },
         "moveOrders": {
           "applicable": 11,
           "unavailable": 0,
           "min": 0,
           "median": 0,
-          "mean": 30.991985068072026,
+          "mean": 17.63196480938416,
           "max": 100
+        },
+        "ease": {
+          "applicable": 11,
+          "unavailable": 0,
+          "min": 1.3888888888888886,
+          "median": 27.396114248040117,
+          "mean": 26.613396804480978,
+          "max": 49.79040404040405
         }
       }
     },
@@ -115,43 +131,51 @@
       "index": {
         "applicable": 20,
         "unavailable": 0,
-        "min": 47.523148148148145,
-        "median": 72.84762931954108,
-        "mean": 72.04198683934248,
-        "max": 100
+        "min": 51.53882032022076,
+        "median": 74.87277821259502,
+        "mean": 73.6211522976929,
+        "max": 97.70818484635798
       },
       "facets": {
         "replies": {
           "applicable": 20,
           "unavailable": 0,
-          "min": 86.5625,
-          "median": 96.04037267080746,
-          "mean": 95.08233022533051,
+          "min": 95.1219512195122,
+          "median": 98.95331523167206,
+          "mean": 98.30750152358613,
           "max": 100
         },
         "reach": {
           "applicable": 20,
           "unavailable": 0,
-          "min": 20,
-          "median": 58.110119047619044,
-          "mean": 60.26398738334067,
-          "max": 100
+          "min": 42.857142857142854,
+          "median": 92.72486772486772,
+          "mean": 82.56814292942607,
+          "max": 99.4358251057828
         },
         "depth": {
           "applicable": 20,
           "unavailable": 0,
-          "min": 59.11458333333333,
-          "median": 90.01553005642361,
-          "mean": 87.89164438399058,
-          "max": 100
+          "min": 44.53125,
+          "median": 62.58506944444446,
+          "mean": 66.5255103055762,
+          "max": 96.01056134259252
         },
         "moveOrders": {
-          "applicable": 19,
-          "unavailable": 1,
+          "applicable": 18,
+          "unavailable": 2,
           "min": 0,
-          "median": 48.56115107913669,
-          "mean": 42.03156354179808,
+          "median": 58.730158730158735,
+          "mean": 60.232043447713444,
           "max": 100
+        },
+        "ease": {
+          "applicable": 20,
+          "unavailable": 0,
+          "min": 0,
+          "median": 31.193870111020207,
+          "mean": 31.86193166991531,
+          "max": 58.333333333333336
         }
       }
     },
@@ -160,35 +184,35 @@
       "index": {
         "applicable": 2,
         "unavailable": 0,
-        "min": 80.26785714285715,
-        "median": 87.15952305796057,
-        "mean": 87.15952305796057,
-        "max": 94.05118897306397
+        "min": 59.38674695827104,
+        "median": 67.58198489470472,
+        "mean": 67.58198489470472,
+        "max": 75.77722283113839
       },
       "facets": {
         "replies": {
           "applicable": 2,
           "unavailable": 0,
-          "min": 92.92929292929293,
-          "median": 94.67893217893217,
-          "mean": 94.67893217893217,
+          "min": 95.83333333333333,
+          "median": 96.13095238095238,
+          "mean": 96.13095238095238,
           "max": 96.42857142857143
         },
         "reach": {
           "applicable": 2,
           "unavailable": 0,
-          "min": 50,
-          "median": 68.05555555555556,
-          "mean": 68.05555555555556,
-          "max": 86.11111111111111
+          "min": 71.42857142857143,
+          "median": 73.21428571428572,
+          "mean": 73.21428571428572,
+          "max": 75
         },
         "depth": {
           "applicable": 2,
           "unavailable": 0,
-          "min": 94.37500000000001,
-          "median": 95.76967592592594,
-          "mean": 95.76967592592594,
-          "max": 97.16435185185186
+          "min": 49.375,
+          "median": 62.96875000000001,
+          "mean": 62.96875000000001,
+          "max": 76.56250000000001
         },
         "moveOrders": {
           "applicable": 1,
@@ -197,6 +221,14 @@
           "median": 100,
           "mean": 100,
           "max": 100
+        },
+        "ease": {
+          "applicable": 2,
+          "unavailable": 0,
+          "min": 12.5,
+          "median": 26.902173913043484,
+          "mean": 26.902173913043484,
+          "max": 41.30434782608697
         }
       }
     },
@@ -205,43 +237,51 @@
       "index": {
         "applicable": 7,
         "unavailable": 0,
-        "min": 54.4248583105491,
-        "median": 68.58192695948136,
-        "mean": 68.23208515955518,
-        "max": 82.336309101713
+        "min": 67.68079797244198,
+        "median": 77.45966692414834,
+        "mean": 82.33784402500434,
+        "max": 96.4274111134126
       },
       "facets": {
         "replies": {
           "applicable": 7,
           "unavailable": 0,
-          "min": 93.30143540669856,
-          "median": 96.73405909797823,
-          "mean": 96.58192435708497,
-          "max": 99.12739965095986
+          "min": 98.12865497076024,
+          "median": 100,
+          "mean": 99.55629815278938,
+          "max": 100
         },
         "reach": {
           "applicable": 7,
           "unavailable": 0,
-          "min": 19.64285714285714,
-          "median": 54.71677965167551,
-          "mean": 58.71328676146385,
-          "max": 100
+          "min": 60,
+          "median": 92.72727272727273,
+          "mean": 85.1027490232646,
+          "max": 99.35064935064935
         },
         "depth": {
           "applicable": 7,
           "unavailable": 0,
-          "min": 43.02269345238095,
-          "median": 79.37877190806879,
-          "mean": 80.00615555466979,
+          "min": 47.08821614583332,
+          "median": 89.74218749999999,
+          "mean": 82.63468812003967,
           "max": 100
         },
         "moveOrders": {
           "applicable": 7,
           "unavailable": 0,
-          "min": 20,
-          "median": 38.095238095238095,
-          "mean": 37.626973965002136,
-          "max": 66.66666666666667
+          "min": 0,
+          "median": 20,
+          "mean": 18.991228070175442,
+          "max": 37.5
+        },
+        "ease": {
+          "applicable": 7,
+          "unavailable": 0,
+          "min": 23.52580202263746,
+          "median": 34.09909909909911,
+          "mean": 35.76430507921969,
+          "max": 49.166666666666664
         }
       }
     },
@@ -250,43 +290,51 @@
       "index": {
         "applicable": 5,
         "unavailable": 0,
-        "min": 46.74252717391305,
-        "median": 48.06547619047619,
-        "mean": 58.56637382540863,
-        "max": 76.64554876682561
+        "min": 46.980714128246284,
+        "median": 70.76303508495069,
+        "mean": 68.33078347503323,
+        "max": 92.67079334854981
       },
       "facets": {
         "replies": {
           "applicable": 5,
           "unavailable": 0,
-          "min": 83.92857142857143,
-          "median": 94.15584415584415,
-          "mean": 91.26471586008361,
-          "max": 97.46835443037975
+          "min": 88.31168831168831,
+          "median": 96,
+          "mean": 95.56745607333843,
+          "max": 100
         },
         "reach": {
           "applicable": 5,
           "unavailable": 0,
-          "min": 8.620370370370367,
-          "median": 33.33333333333333,
-          "mean": 50.050896990740725,
-          "max": 99.99999999999997
+          "min": 55.55555555555556,
+          "median": 86.20689655172414,
+          "mean": 82.29251028242912,
+          "max": 96.22641509433963
         },
         "depth": {
           "applicable": 5,
           "unavailable": 0,
-          "min": 67.1875,
-          "median": 75,
-          "mean": 81.28321578414352,
-          "max": 100
+          "min": 26.276041666666668,
+          "median": 53.59374999999997,
+          "mean": 59.21682787698412,
+          "max": 95.98214285714286
         },
         "moveOrders": {
           "applicable": 5,
           "unavailable": 0,
           "min": 0,
-          "median": 0,
-          "mean": 11.666666666666668,
-          "max": 33.333333333333336
+          "median": 33.333333333333336,
+          "mean": 36.66666666666667,
+          "max": 100
+        },
+        "ease": {
+          "applicable": 5,
+          "unavailable": 0,
+          "min": 6.064814814814814,
+          "median": 22.925234487734485,
+          "mean": 20.89344456469457,
+          "max": 31.28472222222222
         }
       }
     }
@@ -304,43 +352,51 @@
     "index": {
       "applicable": 5,
       "unavailable": 0,
-      "min": 59.553664017096786,
-      "median": 74.36708860759492,
-      "mean": 78.04840891899046,
-      "max": 100
+      "min": 51.69018282033833,
+      "median": 74.76942524233472,
+      "mean": 69.66690998559203,
+      "max": 90.10408744038703
     },
     "facets": {
       "replies": {
         "applicable": 5,
         "unavailable": 0,
-        "min": 86.01760745727603,
-        "median": 97.46835443037975,
-        "mean": 95.56511690583304,
+        "min": 96.89922480620154,
+        "median": 97.72727272727273,
+        "mean": 98.39898371722117,
         "max": 100
       },
       "reach": {
         "applicable": 5,
         "unavailable": 0,
-        "min": 42.718235596707814,
-        "median": 50,
-        "mean": 68.0232767489712,
-        "max": 100
+        "min": 42.857142857142854,
+        "median": 86.20689655172414,
+        "mean": 75.44438682914182,
+        "max": 98.6842105263158
       },
       "depth": {
         "applicable": 5,
         "unavailable": 0,
-        "min": 78.2288130144033,
-        "median": 89.0625,
-        "mean": 89.31176376028807,
-        "max": 100
+        "min": 44.53125,
+        "median": 68.19444444444439,
+        "mean": 65.6621365017361,
+        "max": 82.26996527777779
       },
       "moveOrders": {
         "applicable": 4,
         "unavailable": 1,
-        "min": 0,
-        "median": 48.233695652173914,
-        "mean": 49.11684782608695,
+        "min": 6.451612903225806,
+        "median": 81.25,
+        "mean": 67.23790322580645,
         "max": 100
+      },
+      "ease": {
+        "applicable": 5,
+        "unavailable": 0,
+        "min": 0,
+        "median": 27.396114248040117,
+        "mean": 24.219416452301626,
+        "max": 35.14351851851852
       }
     }
   },
@@ -374,49 +430,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.33617829997092485,
+      "conversion_seconds": 0.2960602999664843,
       "reports": [
         {
           "color": "white",
-          "score": 72.17199830217942,
+          "score": 79.23395235458827,
           "facets": [
             {
               "key": "replies",
-              "value": 90.06622516556291,
-              "numerator": 272,
-              "denominator": 302
+              "value": 98.98989898989899,
+              "numerator": 98,
+              "denominator": 99
             },
             {
               "key": "reach",
-              "value": 41.08072916666666,
-              "numerator": 0.4108072916666666,
-              "denominator": 1
+              "value": 92,
+              "numerator": 46,
+              "denominator": 50
             },
             {
               "key": "depth",
-              "value": 86.11246744791667,
-              "numerator": 13.777994791666668,
-              "denominator": 16
+              "value": 68.2393391927083,
+              "numerator": 21.836588541666657,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 71.42857142857143,
-              "numerator": 10,
-              "denominator": 14
+              "value": 55.55555555555556,
+              "numerator": 5,
+              "denominator": 9
+            },
+            {
+              "key": "ease",
+              "value": 27.246315192743765,
+              "numerator": 13.350694444444445,
+              "denominator": 49
             }
           ],
           "counts": {
-            "positions": 600,
+            "positions": 360,
             "occurrences": 706,
-            "moves": 610,
-            "ownPositions": 302,
-            "answeredPositions": 272,
-            "repeatedGroups": 14,
-            "commonGroups": 10
+            "moves": 368,
+            "ownPositions": 99,
+            "answeredPositions": 98,
+            "repeatedGroups": 9,
+            "commonGroups": 5,
+            "answeredAlternatives": 45,
+            "easePositions": 49,
+            "easePairs": 48,
+            "identicalPositionPairs": 4,
+            "openingBoundaries": 14
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -428,8 +496,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 108.0265,
-            "invariance": 378.24670000000003
+            "original": 110.56260000000003,
+            "invariance": 352.8728
           }
         }
       ]
@@ -473,49 +541,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.1663227000972256,
+      "conversion_seconds": 0.15813699993304908,
       "reports": [
         {
           "color": "white",
-          "score": 94.05118897306397,
+          "score": 75.77722283113839,
           "facets": [
             {
               "key": "replies",
-              "value": 92.92929292929293,
-              "numerator": 92,
-              "denominator": 99
+              "value": 96.42857142857143,
+              "numerator": 54,
+              "denominator": 56
             },
             {
               "key": "reach",
-              "value": 86.11111111111111,
-              "numerator": 0.8611111111111112,
-              "denominator": 1
+              "value": 75,
+              "numerator": 12,
+              "denominator": 16
             },
             {
               "key": "depth",
-              "value": 97.16435185185186,
-              "numerator": 15.546296296296298,
-              "denominator": 16
+              "value": 76.56250000000001,
+              "numerator": 24.500000000000004,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 100,
-              "numerator": 7,
-              "denominator": 7
+              "numerator": 2,
+              "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 41.30434782608697,
+              "numerator": 9.500000000000002,
+              "denominator": 23
             }
           ],
           "counts": {
-            "positions": 207,
+            "positions": 111,
             "occurrences": 254,
-            "moves": 208,
-            "ownPositions": 99,
-            "answeredPositions": 92,
-            "repeatedGroups": 7,
-            "commonGroups": 7
+            "moves": 112,
+            "ownPositions": 56,
+            "answeredPositions": 54,
+            "repeatedGroups": 2,
+            "commonGroups": 2,
+            "answeredAlternatives": 11,
+            "easePositions": 23,
+            "easePairs": 29,
+            "identicalPositionPairs": 1,
+            "openingBoundaries": 2
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -527,8 +607,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 30.894999999999982,
-            "invariance": 149.9462000000001
+            "original": 27.34179999999992,
+            "invariance": 123.30989999999997
           }
         }
       ]
@@ -562,50 +642,60 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.36355409992393106,
+      "conversion_seconds": 0.3221421999623999,
       "reports": [
         {
           "color": "white",
-          "score": 66.22990038029101,
+          "score": 84.19691425682043,
           "facets": [
             {
               "key": "replies",
-              "value": 96.42857142857143,
-              "numerator": 297,
-              "denominator": 308
+              "value": 95.16129032258064,
+              "numerator": 59,
+              "denominator": 62
             },
             {
               "key": "reach",
-              "value": 53.17129629629629,
-              "numerator": 0.5317129629629629,
-              "denominator": 1
+              "value": 92.5925925925926,
+              "numerator": 50,
+              "denominator": 54
             },
             {
               "key": "depth",
-              "value": 90.3197337962963,
-              "numerator": 14.451157407407408,
-              "denominator": 16
+              "value": 76.56250000000001,
+              "numerator": 24.500000000000004,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 25,
-              "numerator": 1,
-              "denominator": 4
+              "value": 100,
+              "numerator": 3,
+              "denominator": 3
+            },
+            {
+              "key": "ease",
+              "value": 28.71082621082621,
+              "numerator": 22.394444444444446,
+              "denominator": 78
             }
           ],
           "counts": {
-            "positions": 615,
+            "positions": 502,
             "occurrences": 808,
-            "moves": 620,
-            "ownPositions": 308,
-            "answeredPositions": 297,
-            "repeatedGroups": 4,
-            "commonGroups": 1
+            "moves": 506,
+            "ownPositions": 62,
+            "answeredPositions": 59,
+            "repeatedGroups": 3,
+            "commonGroups": 3,
+            "answeredAlternatives": 49,
+            "easePositions": 78,
+            "easePairs": 69,
+            "identicalPositionPairs": 0,
+            "openingBoundaries": 10
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation",
-            "repetition"
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -617,8 +707,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 80.5625,
-            "invariance": 375.39920000000006
+            "original": 86.80130000000008,
+            "invariance": 387.52469999999994
           }
         }
       ]
@@ -652,49 +742,62 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.5594334000488743,
+      "conversion_seconds": 0.5281812000321224,
       "reports": [
         {
           "color": "white",
-          "score": 57.22881585189341,
+          "score": 67.68079797244198,
           "facets": [
             {
               "key": "replies",
-              "value": 99.12739965095986,
-              "numerator": 568,
-              "denominator": 573
+              "value": 100,
+              "numerator": 195,
+              "denominator": 195
             },
             {
               "key": "reach",
-              "value": 22.458333333333336,
-              "numerator": 0.22458333333333336,
-              "denominator": 1
+              "value": 97.27891156462584,
+              "numerator": 143,
+              "denominator": 147
             },
             {
               "key": "depth",
-              "value": 78.75810185185186,
-              "numerator": 12.601296296296297,
-              "denominator": 16
+              "value": 47.08821614583332,
+              "numerator": 15.068229166666663,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 28.571428571428573,
-              "numerator": 2,
-              "denominator": 7
+              "value": 16.666666666666668,
+              "numerator": 1,
+              "denominator": 6
+            },
+            {
+              "key": "ease",
+              "value": 23.52580202263746,
+              "numerator": 37.17076719576719,
+              "denominator": 158
             }
           ],
           "counts": {
-            "positions": 1144,
+            "positions": 991,
             "occurrences": 1242,
-            "moves": 1152,
-            "ownPositions": 573,
-            "answeredPositions": 568,
-            "repeatedGroups": 7,
-            "commonGroups": 2
+            "moves": 995,
+            "ownPositions": 195,
+            "answeredPositions": 195,
+            "repeatedGroups": 6,
+            "commonGroups": 1,
+            "answeredAlternatives": 142,
+            "easePositions": 158,
+            "easePairs": 235,
+            "identicalPositionPairs": 5,
+            "openingBoundaries": 17
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "opening-complete",
+            "terminal"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -706,8 +809,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 121.6715999999999,
-            "invariance": 583.9668000000001
+            "original": 130.59299999999985,
+            "invariance": 624.2627000000002
           }
         }
       ]
@@ -741,48 +844,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.17361509997863322,
+      "conversion_seconds": 0.16431709995958954,
       "reports": [
         {
           "color": "black",
-          "score": 79.46428571428571,
+          "score": 75.28355488659948,
           "facets": [
             {
               "key": "replies",
-              "value": 97.85714285714286,
-              "numerator": 137,
-              "denominator": 140
+              "value": 100,
+              "numerator": 31,
+              "denominator": 31
             },
             {
               "key": "reach",
-              "value": 99.99999999999999,
-              "numerator": 0.9999999999999999,
-              "denominator": 1
+              "value": 63.63636363636363,
+              "numerator": 7,
+              "denominator": 11
             },
             {
               "key": "depth",
-              "value": 100,
-              "numerator": 16,
-              "denominator": 16
+              "value": 89.0625,
+              "numerator": 28.5,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 20,
-              "numerator": 1,
-              "denominator": 5
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 37.5,
+              "numerator": 3,
+              "denominator": 8
             }
           ],
           "counts": {
-            "positions": 285,
+            "positions": 99,
             "occurrences": 382,
-            "moves": 285,
-            "ownPositions": 140,
-            "answeredPositions": 137,
-            "repeatedGroups": 5,
-            "commonGroups": 1
+            "moves": 99,
+            "ownPositions": 31,
+            "answeredPositions": 31,
+            "repeatedGroups": 1,
+            "commonGroups": 0,
+            "answeredAlternatives": 6,
+            "easePositions": 8,
+            "easePairs": 6,
+            "identicalPositionPairs": 1,
+            "openingBoundaries": 3
           },
           "stop_reasons": [
-            "horizon"
+            "horizon",
+            "missing-continuation",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -794,8 +910,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 37.601700000000164,
-            "invariance": 171.72360000000026
+            "original": 33.52500000000009,
+            "invariance": 154.59050000000025
           }
         }
       ]
@@ -829,49 +945,62 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 9.156388400006108,
+      "conversion_seconds": 9.252343800035305,
       "reports": [
         {
           "color": "black",
-          "score": 68.58192695948136,
+          "score": 94.42427972864144,
           "facets": [
             {
               "key": "replies",
-              "value": 95.63121731104502,
-              "numerator": 9325,
-              "denominator": 9751
+              "value": 98.12865497076024,
+              "numerator": 839,
+              "denominator": 855
             },
             {
               "key": "reach",
-              "value": 54.71677965167551,
-              "numerator": 0.5471677965167551,
-              "denominator": 1
+              "value": 99.35064935064935,
+              "numerator": 612,
+              "denominator": 616
             },
             {
               "key": "depth",
-              "value": 79.37877190806879,
-              "numerator": 12.700603505291006,
-              "denominator": 16
+              "value": 89.74218749999999,
+              "numerator": 28.717499999999998,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 44.60093896713615,
-              "numerator": 95,
-              "denominator": 213
+              "value": 25.43859649122807,
+              "numerator": 29,
+              "denominator": 114
+            },
+            {
+              "key": "ease",
+              "value": 30.104432871436003,
+              "numerator": 323.32160903922266,
+              "denominator": 1074
             }
           ],
           "counts": {
-            "positions": 19539,
+            "positions": 7331,
             "occurrences": 22200,
-            "moves": 19672,
-            "ownPositions": 9751,
-            "answeredPositions": 9325,
-            "repeatedGroups": 213,
-            "commonGroups": 95
+            "moves": 7401,
+            "ownPositions": 855,
+            "answeredPositions": 839,
+            "repeatedGroups": 114,
+            "commonGroups": 29,
+            "answeredAlternatives": 611,
+            "easePositions": 1074,
+            "easePairs": 2726,
+            "identicalPositionPairs": 104,
+            "openingBoundaries": 365
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -883,8 +1012,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 2486.111499999999,
-            "invariance": 11385.210899999998
+            "original": 2315.449700000001,
+            "invariance": 11427.932900000002
           }
         }
       ]
@@ -918,49 +1047,62 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 1.8064568999689072,
+      "conversion_seconds": 1.9029354000231251,
       "reports": [
         {
           "color": "black",
-          "score": 59.553664017096786,
+          "score": 90.10408744038703,
           "facets": [
             {
               "key": "replies",
-              "value": 86.01760745727603,
-              "numerator": 1661,
-              "denominator": 1931
+              "value": 97.36842105263158,
+              "numerator": 148,
+              "denominator": 152
             },
             {
               "key": "reach",
-              "value": 42.718235596707814,
-              "numerator": 0.42718235596707815,
-              "denominator": 1
+              "value": 98.6842105263158,
+              "numerator": 300,
+              "denominator": 304
             },
             {
               "key": "depth",
-              "value": 78.2288130144033,
-              "numerator": 12.516610082304528,
-              "denominator": 16
+              "value": 82.26996527777779,
+              "numerator": 26.32638888888889,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 31.25,
-              "numerator": 15,
-              "denominator": 48
+              "value": 6.451612903225806,
+              "numerator": 2,
+              "denominator": 31
+            },
+            {
+              "key": "ease",
+              "value": 27.396114248040117,
+              "numerator": 113.41991298688608,
+              "denominator": 414
             }
           ],
           "counts": {
-            "positions": 3887,
+            "positions": 1696,
             "occurrences": 4161,
-            "moves": 3899,
-            "ownPositions": 1931,
-            "answeredPositions": 1661,
-            "repeatedGroups": 48,
-            "commonGroups": 15
+            "moves": 1706,
+            "ownPositions": 152,
+            "answeredPositions": 148,
+            "repeatedGroups": 31,
+            "commonGroups": 2,
+            "answeredAlternatives": 299,
+            "easePositions": 414,
+            "easePairs": 912,
+            "identicalPositionPairs": 39,
+            "openingBoundaries": 61
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -972,8 +1114,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 549.2016999999978,
-            "invariance": 2584.2605000000003
+            "original": 541.4919000000009,
+            "invariance": 2607.021399999998
           }
         }
       ]
@@ -1007,49 +1149,62 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 4.598432099912316,
+      "conversion_seconds": 4.951202599913813,
       "reports": [
         {
           "color": "white",
-          "score": 74.7646231130513,
+          "score": 96.23877074083913,
           "facets": [
             {
               "key": "replies",
-              "value": 87.80725237284011,
-              "numerator": 3608,
-              "denominator": 4109
+              "value": 98.9795918367347,
+              "numerator": 291,
+              "denominator": 294
             },
             {
               "key": "reach",
-              "value": 70.13888888888886,
-              "numerator": 0.7013888888888885,
-              "denominator": 1
+              "value": 97.79005524861878,
+              "numerator": 177,
+              "denominator": 181
             },
             {
               "key": "depth",
-              "value": 87.14409722222224,
-              "numerator": 13.943055555555558,
-              "denominator": 16
+              "value": 94.71209490740738,
+              "numerator": 30.30787037037036,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 53.96825396825397,
-              "numerator": 68,
-              "denominator": 126
+              "value": 42.857142857142854,
+              "numerator": 9,
+              "denominator": 21
+            },
+            {
+              "key": "ease",
+              "value": 37.914397994339865,
+              "numerator": 97.81914682539686,
+              "denominator": 258
             }
           ],
           "counts": {
-            "positions": 8227,
+            "positions": 1671,
             "occurrences": 11394,
-            "moves": 8309,
-            "ownPositions": 4109,
-            "answeredPositions": 3608,
-            "repeatedGroups": 126,
-            "commonGroups": 68
+            "moves": 1689,
+            "ownPositions": 294,
+            "answeredPositions": 291,
+            "repeatedGroups": 21,
+            "commonGroups": 9,
+            "answeredAlternatives": 176,
+            "easePositions": 258,
+            "easePairs": 331,
+            "identicalPositionPairs": 13,
+            "openingBoundaries": 40
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1061,8 +1216,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 1322.5986999999986,
-            "invariance": 6486.998099999997
+            "original": 1203.9549000000006,
+            "invariance": 6000.013599999998
           }
         }
       ]
@@ -1096,49 +1251,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.26777169993147254,
+      "conversion_seconds": 0.28815070004202425,
       "reports": [
         {
           "color": "white",
-          "score": 67.03504404797157,
+          "score": 76.38585524607211,
           "facets": [
             {
               "key": "replies",
-              "value": 99.6742671009772,
-              "numerator": 306,
-              "denominator": 307
+              "value": 100,
+              "numerator": 60,
+              "denominator": 60
             },
             {
               "key": "reach",
-              "value": 66.66666666666666,
-              "numerator": 0.6666666666666666,
-              "denominator": 1
+              "value": 94.8051948051948,
+              "numerator": 73,
+              "denominator": 77
             },
             {
               "key": "depth",
-              "value": 92.70833333333334,
-              "numerator": 14.833333333333334,
-              "denominator": 16
+              "value": 61.54513888888889,
+              "numerator": 19.694444444444446,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 9.090909090909092,
-              "numerator": 1,
-              "denominator": 11
+              "value": 100,
+              "numerator": 2,
+              "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 25.00000000000001,
+              "numerator": 25.250000000000007,
+              "denominator": 101
             }
           ],
           "counts": {
-            "positions": 612,
+            "positions": 449,
             "occurrences": 637,
-            "moves": 617,
-            "ownPositions": 307,
-            "answeredPositions": 306,
-            "repeatedGroups": 11,
-            "commonGroups": 1
+            "moves": 454,
+            "ownPositions": 60,
+            "answeredPositions": 60,
+            "repeatedGroups": 2,
+            "commonGroups": 2,
+            "answeredAlternatives": 72,
+            "easePositions": 101,
+            "easePairs": 131,
+            "identicalPositionPairs": 3,
+            "openingBoundaries": 8
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "opening-complete",
+            "terminal"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1150,8 +1317,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 79.25920000000042,
-            "invariance": 376.6759999999995
+            "original": 105.40830000000278,
+            "invariance": 424.92869999999675
           }
         }
       ]
@@ -1185,49 +1352,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.5748568999115378,
+      "conversion_seconds": 0.5927174999378622,
       "reports": [
         {
           "color": "black",
-          "score": 56.817908375685036,
+          "score": 95.94957541712871,
           "facets": [
             {
               "key": "replies",
-              "value": 96.73405909797823,
-              "numerator": 622,
-              "denominator": 643
+              "value": 100,
+              "numerator": 118,
+              "denominator": 118
             },
             {
               "key": "reach",
-              "value": 20.84821428571429,
-              "numerator": 0.2084821428571429,
-              "denominator": 1
+              "value": 92.72727272727273,
+              "numerator": 51,
+              "denominator": 55
             },
             {
               "key": "depth",
-              "value": 43.02269345238095,
-              "numerator": 6.883630952380952,
-              "denominator": 16
+              "value": 99.28385416666663,
+              "numerator": 31.77083333333332,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 66.66666666666667,
-              "numerator": 4,
-              "denominator": 6
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 34.09909909909911,
+              "numerator": 25.233333333333338,
+              "denominator": 74
             }
           ],
           "counts": {
-            "positions": 1286,
+            "positions": 529,
             "occurrences": 1344,
-            "moves": 1289,
-            "ownPositions": 643,
-            "answeredPositions": 622,
-            "repeatedGroups": 6,
-            "commonGroups": 4
+            "moves": 528,
+            "ownPositions": 118,
+            "answeredPositions": 118,
+            "repeatedGroups": 1,
+            "commonGroups": 0,
+            "answeredAlternatives": 50,
+            "easePositions": 74,
+            "easePairs": 77,
+            "identicalPositionPairs": 1,
+            "openingBoundaries": 20
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1239,8 +1418,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 163.35929999999644,
-            "invariance": 819.3372999999992
+            "original": 152.92979999999807,
+            "invariance": 757.674199999994
           }
         }
       ]
@@ -1274,48 +1453,59 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.27815420005936176,
+      "conversion_seconds": 0.2957242999691516,
       "reports": [
         {
           "color": "black",
-          "score": 78.77049180327869,
+          "score": 77.45966692414834,
           "facets": [
             {
               "key": "replies",
-              "value": 95.08196721311475,
-              "numerator": 290,
-              "denominator": 305
+              "value": 100,
+              "numerator": 71,
+              "denominator": 71
             },
             {
               "key": "reach",
-              "value": 100,
-              "numerator": 1,
-              "denominator": 1
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
             },
             {
               "key": "depth",
               "value": 100,
-              "numerator": 16,
-              "denominator": 16
+              "numerator": 32,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 20,
+              "value": 33.333333333333336,
               "numerator": 1,
-              "denominator": 5
+              "denominator": 3
+            },
+            {
+              "key": "ease",
+              "value": 49.166666666666664,
+              "numerator": 5.9,
+              "denominator": 12
             }
           ],
           "counts": {
-            "positions": 611,
+            "positions": 147,
             "occurrences": 628,
-            "moves": 614,
-            "ownPositions": 305,
-            "answeredPositions": 290,
-            "repeatedGroups": 5,
-            "commonGroups": 1
+            "moves": 147,
+            "ownPositions": 71,
+            "answeredPositions": 71,
+            "repeatedGroups": 3,
+            "commonGroups": 1,
+            "answeredAlternatives": 5,
+            "easePositions": 12,
+            "easePairs": 11,
+            "identicalPositionPairs": 2,
+            "openingBoundaries": 7
           },
           "stop_reasons": [
-            "horizon"
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1327,8 +1517,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 79.46180000000459,
-            "invariance": 379.03020000000106
+            "original": 67.31390000000101,
+            "invariance": 331.20550000000367
           }
         }
       ]
@@ -1362,49 +1552,63 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 12.370717599987984,
+      "conversion_seconds": 12.714374999981374,
       "reports": [
         {
           "color": "white",
-          "score": 57.24270741315153,
+          "score": 97.70818484635798,
           "facets": [
             {
               "key": "replies",
-              "value": 89.70918749574338,
-              "numerator": 13172,
-              "denominator": 14683
+              "value": 98.89196675900277,
+              "numerator": 357,
+              "denominator": 361
             },
             {
               "key": "reach",
-              "value": 29.166666666666664,
-              "numerator": 0.29166666666666663,
-              "denominator": 1
+              "value": 99.4358251057828,
+              "numerator": 705,
+              "denominator": 709
             },
             {
               "key": "depth",
-              "value": 59.11458333333333,
-              "numerator": 9.458333333333332,
-              "denominator": 16
+              "value": 96.01056134259252,
+              "numerator": 30.72337962962961,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 50.98039215686274,
-              "numerator": 130,
-              "denominator": 255
+              "value": 65.11627906976744,
+              "numerator": 28,
+              "denominator": 43
+            },
+            {
+              "key": "ease",
+              "value": 28.684066617184428,
+              "numerator": 249.55137956950455,
+              "denominator": 870
             }
           ],
           "counts": {
-            "positions": 29375,
+            "positions": 6571,
             "occurrences": 30746,
-            "moves": 29569,
-            "ownPositions": 14683,
-            "answeredPositions": 13172,
-            "repeatedGroups": 255,
-            "commonGroups": 130
+            "moves": 6623,
+            "ownPositions": 361,
+            "answeredPositions": 357,
+            "repeatedGroups": 43,
+            "commonGroups": 28,
+            "answeredAlternatives": 704,
+            "easePositions": 870,
+            "easePairs": 874,
+            "identicalPositionPairs": 45,
+            "openingBoundaries": 323
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete",
+            "repetition"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1416,51 +1620,64 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 3880.8377000000037,
-            "invariance": 18939.3205
+            "original": 3452.801999999996,
+            "invariance": 16784.44189999999
           }
         },
         {
           "color": "black",
-          "score": 73.75242344637729,
+          "score": 95.12266844219047,
           "facets": [
             {
               "key": "replies",
-              "value": 88.68608148755811,
-              "numerator": 12973,
-              "denominator": 14628
+              "value": 98.92703862660944,
+              "numerator": 461,
+              "denominator": 466
             },
             {
               "key": "reach",
-              "value": 68.05113490226339,
-              "numerator": 0.6805113490226339,
-              "denominator": 1
+              "value": 99.36406995230524,
+              "numerator": 625,
+              "denominator": 629
             },
             {
               "key": "depth",
-              "value": 89.71132631655094,
-              "numerator": 14.35381221064815,
-              "denominator": 16
+              "value": 91.06231312692901,
+              "numerator": 29.139940200617282,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 48.56115107913669,
-              "numerator": 135,
-              "denominator": 278
+              "value": 53.06122448979592,
+              "numerator": 26,
+              "denominator": 49
+            },
+            {
+              "key": "ease",
+              "value": 33.4179376650702,
+              "numerator": 274.36126823022636,
+              "denominator": 821
             }
           ],
           "counts": {
-            "positions": 29375,
+            "positions": 5658,
             "occurrences": 30746,
-            "moves": 29569,
-            "ownPositions": 14628,
-            "answeredPositions": 12973,
-            "repeatedGroups": 278,
-            "commonGroups": 135
+            "moves": 5697,
+            "ownPositions": 466,
+            "answeredPositions": 461,
+            "repeatedGroups": 49,
+            "commonGroups": 26,
+            "answeredAlternatives": 624,
+            "easePositions": 821,
+            "easePairs": 860,
+            "identicalPositionPairs": 62,
+            "openingBoundaries": 252
           },
           "stop_reasons": [
             "horizon",
             "missing-continuation",
+            "missing-reply",
+            "opening-complete",
             "terminal"
           ],
           "invariance": {
@@ -1473,8 +1690,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 4206.761200000008,
-            "invariance": 18400.21250000001
+            "original": 3379.3852999999945,
+            "invariance": 15791.844299999997
           }
         }
       ]
@@ -1508,103 +1725,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.08867309999186546,
+      "conversion_seconds": 0.1059733999427408,
       "reports": [
         {
           "color": "white",
-          "score": 97.94520547945206,
+          "score": 69.82120021884471,
           "facets": [
             {
               "key": "replies",
-              "value": 91.78082191780823,
-              "numerator": 67,
-              "denominator": 73
+              "value": 96.61016949152543,
+              "numerator": 57,
+              "denominator": 59
             },
             {
               "key": "reach",
-              "value": 100,
-              "numerator": 1,
-              "denominator": 1
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
             },
             {
               "key": "depth",
-              "value": 100,
-              "numerator": 16,
-              "denominator": 16
-            },
-            {
-              "key": "moveOrders",
-              "value": 100,
-              "numerator": 1,
-              "denominator": 1
-            }
-          ],
-          "counts": {
-            "positions": 177,
-            "occurrences": 186,
-            "moves": 177,
-            "ownPositions": 73,
-            "answeredPositions": 67,
-            "repeatedGroups": 1,
-            "commonGroups": 1
-          },
-          "stop_reasons": [
-            "horizon"
-          ],
-          "invariance": {
-            "reversed_chapters_exact_input": true,
-            "empty": true,
-            "ones": true,
-            "duplicate_same_graph": true
-          },
-          "raw_chapter_reimport": {
-            "invariant": true
-          },
-          "milliseconds": {
-            "original": 31.350699999995413,
-            "invariance": 112.22030000000086
-          }
-        },
-        {
-          "color": "black",
-          "score": 66.10576923076923,
-          "facets": [
-            {
-              "key": "replies",
-              "value": 64.42307692307692,
-              "numerator": 67,
-              "denominator": 104
-            },
-            {
-              "key": "reach",
-              "value": 100,
-              "numerator": 1,
-              "denominator": 1
-            },
-            {
-              "key": "depth",
-              "value": 100,
-              "numerator": 16,
-              "denominator": 16
+              "value": 81.25,
+              "numerator": 26,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 0,
               "numerator": 0,
-              "denominator": 4
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 39.583333333333336,
+              "numerator": 2.375,
+              "denominator": 6
             }
           ],
           "counts": {
-            "positions": 177,
+            "positions": 120,
             "occurrences": 186,
-            "moves": 177,
-            "ownPositions": 104,
-            "answeredPositions": 67,
-            "repeatedGroups": 4,
-            "commonGroups": 0
+            "moves": 120,
+            "ownPositions": 59,
+            "answeredPositions": 57,
+            "repeatedGroups": 1,
+            "commonGroups": 0,
+            "answeredAlternatives": 5,
+            "easePositions": 6,
+            "easePairs": 4,
+            "identicalPositionPairs": 2,
+            "openingBoundaries": 4
           },
           "stop_reasons": [
-            "horizon"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1616,8 +1791,76 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 21.609400000001187,
-            "invariance": 106.06029999999737
+            "original": 23.347899999993388,
+            "invariance": 112.60970000000088
+          }
+        },
+        {
+          "color": "black",
+          "score": 64.04344228724749,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.24561403508773,
+              "numerator": 56,
+              "denominator": 57
+            },
+            {
+              "key": "reach",
+              "value": 50,
+              "numerator": 4,
+              "denominator": 8
+            },
+            {
+              "key": "depth",
+              "value": 82.03125,
+              "numerator": 26.25,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 3
+            },
+            {
+              "key": "ease",
+              "value": 47.02380952380952,
+              "numerator": 3.2916666666666665,
+              "denominator": 7
+            }
+          ],
+          "counts": {
+            "positions": 162,
+            "occurrences": 186,
+            "moves": 162,
+            "ownPositions": 57,
+            "answeredPositions": 56,
+            "repeatedGroups": 3,
+            "commonGroups": 0,
+            "answeredAlternatives": 3,
+            "easePositions": 7,
+            "easePairs": 10,
+            "identicalPositionPairs": 8,
+            "openingBoundaries": 4
+          },
+          "stop_reasons": [
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 25.214299999992363,
+            "invariance": 172.13000000000466
           }
         }
       ]
@@ -1651,11 +1894,11 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.05108379991725087,
+      "conversion_seconds": 0.05126019997987896,
       "reports": [
         {
           "color": "white",
-          "score": 100,
+          "score": 71.00469468046929,
           "facets": [
             {
               "key": "replies",
@@ -1665,21 +1908,27 @@
             },
             {
               "key": "reach",
-              "value": 99.99999999999999,
-              "numerator": 0.9999999999999999,
-              "denominator": 1
+              "value": 66.66666666666667,
+              "numerator": 8,
+              "denominator": 12
             },
             {
               "key": "depth",
-              "value": 100,
-              "numerator": 16,
-              "denominator": 16
+              "value": 75.62499999999993,
+              "numerator": 24.199999999999978,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 100,
               "numerator": 1,
               "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 42.938596491228076,
+              "numerator": 8.158333333333333,
+              "denominator": 19
             }
           ],
           "counts": {
@@ -1689,10 +1938,17 @@
             "ownPositions": 50,
             "answeredPositions": 50,
             "repeatedGroups": 1,
-            "commonGroups": 1
+            "commonGroups": 1,
+            "answeredAlternatives": 7,
+            "easePositions": 19,
+            "easePairs": 18,
+            "identicalPositionPairs": 0,
+            "openingBoundaries": 1
           },
           "stop_reasons": [
-            "horizon"
+            "missing-continuation",
+            "opening-complete",
+            "terminal"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1704,8 +1960,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 14.129200000010314,
-            "invariance": 66.58070000000589
+            "original": 15.653800000000047,
+            "invariance": 74.99520000000484
           }
         }
       ]
@@ -1739,49 +1995,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.03158319997601211,
+      "conversion_seconds": 0.03071690001524985,
       "reports": [
         {
           "color": "white",
-          "score": 47.523148148148145,
+          "score": 54.159381794511255,
           "facets": [
             {
               "key": "replies",
-              "value": 92.5925925925926,
-              "numerator": 25,
-              "denominator": 27
+              "value": 95.83333333333333,
+              "numerator": 23,
+              "denominator": 24
             },
             {
               "key": "reach",
-              "value": 20,
-              "numerator": 0.2,
-              "denominator": 1
+              "value": 63.63636363636363,
+              "numerator": 7,
+              "denominator": 11
             },
             {
               "key": "depth",
-              "value": 77.49999999999999,
-              "numerator": 12.399999999999999,
-              "denominator": 16
+              "value": 46.093750000000014,
+              "numerator": 14.750000000000005,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 0,
-              "numerator": 0,
+              "value": 100,
+              "numerator": 1,
               "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 58.333333333333336,
+              "numerator": 7,
+              "denominator": 12
             }
           ],
           "counts": {
-            "positions": 52,
+            "positions": 48,
             "occurrences": 59,
-            "moves": 52,
-            "ownPositions": 27,
-            "answeredPositions": 25,
+            "moves": 48,
+            "ownPositions": 24,
+            "answeredPositions": 23,
             "repeatedGroups": 1,
-            "commonGroups": 0
+            "commonGroups": 1,
+            "answeredAlternatives": 6,
+            "easePositions": 12,
+            "easePairs": 21,
+            "identicalPositionPairs": 0,
+            "openingBoundaries": 1
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1793,8 +2061,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 7.509099999995669,
-            "invariance": 35.34420000000682
+            "original": 8.173999999999069,
+            "invariance": 38.833499999993364
           }
         }
       ]
@@ -1828,11 +2096,11 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.07724439993035048,
+      "conversion_seconds": 0.07605519995559007,
       "reports": [
         {
           "color": "black",
-          "score": 74.14641203703704,
+          "score": 59.89098065228239,
           "facets": [
             {
               "key": "replies",
@@ -1842,35 +2110,46 @@
             },
             {
               "key": "reach",
-              "value": 54.16666666666667,
-              "numerator": 0.5416666666666667,
-              "denominator": 1
+              "value": 71.42857142857143,
+              "numerator": 10,
+              "denominator": 14
             },
             {
               "key": "depth",
-              "value": 94.27083333333333,
-              "numerator": 15.083333333333332,
-              "denominator": 16
+              "value": 50.217013888888886,
+              "numerator": 16.069444444444443,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 50,
-              "numerator": 1,
-              "denominator": 2
+              "value": null,
+              "numerator": 0,
+              "denominator": 0
+            },
+            {
+              "key": "ease",
+              "value": 54.76190476190476,
+              "numerator": 7.666666666666666,
+              "denominator": 14
             }
           ],
           "counts": {
-            "positions": 112,
+            "positions": 108,
             "occurrences": 171,
-            "moves": 111,
+            "moves": 107,
             "ownPositions": 54,
             "answeredPositions": 53,
-            "repeatedGroups": 2,
-            "commonGroups": 1
+            "repeatedGroups": 0,
+            "commonGroups": 0,
+            "answeredAlternatives": 9,
+            "easePositions": 14,
+            "easePairs": 15,
+            "identicalPositionPairs": 0,
+            "openingBoundaries": 0
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1882,8 +2161,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 19.596799999999348,
-            "invariance": 92.58110000001034
+            "original": 22.75109999999404,
+            "invariance": 110.81780000000435
           }
         }
       ]
@@ -1917,49 +2196,62 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 1.340019700000994,
+      "conversion_seconds": 1.3448815000010654,
       "reports": [
         {
           "color": "white",
-          "score": 76.29365193917252,
+          "score": 91.7444276461496,
           "facets": [
             {
               "key": "replies",
-              "value": 95.12372634643377,
-              "numerator": 1307,
-              "denominator": 1374
+              "value": 99.48186528497409,
+              "numerator": 192,
+              "denominator": 193
             },
             {
               "key": "reach",
-              "value": 89.91666666666659,
-              "numerator": 0.8991666666666659,
-              "denominator": 1
+              "value": 97.74011299435028,
+              "numerator": 173,
+              "denominator": 177
             },
             {
               "key": "depth",
-              "value": 97.05729166666664,
-              "numerator": 15.529166666666663,
-              "denominator": 16
+              "value": 86.11653645833329,
+              "numerator": 27.557291666666654,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 23.076923076923077,
-              "numerator": 12,
-              "denominator": 52
+              "value": 61.904761904761905,
+              "numerator": 13,
+              "denominator": 21
+            },
+            {
+              "key": "ease",
+              "value": 41.406981694338015,
+              "numerator": 108.07222222222222,
+              "denominator": 261
             }
           ],
           "counts": {
-            "positions": 2684,
+            "positions": 2006,
             "occurrences": 3385,
-            "moves": 2713,
-            "ownPositions": 1374,
-            "answeredPositions": 1307,
-            "repeatedGroups": 52,
-            "commonGroups": 12
+            "moves": 2029,
+            "ownPositions": 193,
+            "answeredPositions": 192,
+            "repeatedGroups": 21,
+            "commonGroups": 13,
+            "answeredAlternatives": 172,
+            "easePositions": 261,
+            "easePairs": 245,
+            "identicalPositionPairs": 8,
+            "openingBoundaries": 67
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -1971,8 +2263,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 413.2267000000138,
-            "invariance": 1981.4017999999924
+            "original": 457.90170000000217,
+            "invariance": 2041.5555999999924
           }
         }
       ]
@@ -2006,11 +2298,11 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.02854289999231696,
+      "conversion_seconds": 0.025882599991746247,
       "reports": [
         {
           "color": "white",
-          "score": 72.5,
+          "score": 29.85303508361761,
           "facets": [
             {
               "key": "replies",
@@ -2020,21 +2312,27 @@
             },
             {
               "key": "reach",
-              "value": 100,
-              "numerator": 1,
-              "denominator": 1
+              "value": 33.333333333333336,
+              "numerator": 2,
+              "denominator": 6
             },
             {
               "key": "depth",
-              "value": 100,
-              "numerator": 16,
-              "denominator": 16
+              "value": 26.73611111111111,
+              "numerator": 8.555555555555555,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 0,
               "numerator": 0,
               "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 16.666666666666668,
+              "numerator": 0.5,
+              "denominator": 3
             }
           ],
           "counts": {
@@ -2044,10 +2342,16 @@
             "ownPositions": 20,
             "answeredPositions": 18,
             "repeatedGroups": 2,
-            "commonGroups": 0
+            "commonGroups": 0,
+            "answeredAlternatives": 1,
+            "easePositions": 3,
+            "easePairs": 7,
+            "identicalPositionPairs": 7,
+            "openingBoundaries": 0
           },
           "stop_reasons": [
-            "horizon"
+            "missing-continuation",
+            "missing-reply"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -2059,13 +2363,13 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 10.46459999999206,
-            "invariance": 31.637199999997392
+            "original": 12.735500000009779,
+            "invariance": 33.5627999999997
           }
         },
         {
           "color": "black",
-          "score": 41.96105072463768,
+          "score": 35.96390937840014,
           "facets": [
             {
               "key": "replies",
@@ -2075,21 +2379,27 @@
             },
             {
               "key": "reach",
-              "value": 33.33333333333333,
-              "numerator": 0.3333333333333333,
-              "denominator": 1
+              "value": 50,
+              "numerator": 4,
+              "denominator": 8
             },
             {
               "key": "depth",
-              "value": 56.25,
-              "numerator": 9,
-              "denominator": 16
+              "value": 25.868055555555554,
+              "numerator": 8.277777777777777,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 0,
               "numerator": 0,
               "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 33.333333333333336,
+              "numerator": 1,
+              "denominator": 3
             }
           ],
           "counts": {
@@ -2099,11 +2409,16 @@
             "ownPositions": 23,
             "answeredPositions": 18,
             "repeatedGroups": 1,
-            "commonGroups": 0
+            "commonGroups": 0,
+            "answeredAlternatives": 3,
+            "easePositions": 3,
+            "easePairs": 2,
+            "identicalPositionPairs": 1,
+            "openingBoundaries": 0
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -2115,8 +2430,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 6.062999999994645,
-            "invariance": 28.229800000000978
+            "original": 7.066500000000815,
+            "invariance": 31.1475999999966
           }
         }
       ]
@@ -2156,49 +2471,60 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.47029760002624243,
+      "conversion_seconds": 0.49848349997773767,
       "reports": [
         {
           "color": "black",
-          "score": 70.96997377935281,
+          "score": 93.87851274024842,
           "facets": [
             {
               "key": "replies",
-              "value": 97.11340206185567,
-              "numerator": 471,
-              "denominator": 485
+              "value": 100,
+              "numerator": 102,
+              "denominator": 102
             },
             {
               "key": "reach",
-              "value": 63.81944444444443,
-              "numerator": 0.6381944444444443,
-              "denominator": 1
+              "value": 92.5925925925926,
+              "numerator": 50,
+              "denominator": 54
             },
             {
               "key": "depth",
-              "value": 78.50260416666667,
-              "numerator": 12.560416666666667,
-              "denominator": 16
+              "value": 95.18229166666666,
+              "numerator": 30.45833333333333,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 44.44444444444444,
-              "numerator": 4,
-              "denominator": 9
+              "value": 25,
+              "numerator": 1,
+              "denominator": 4
+            },
+            {
+              "key": "ease",
+              "value": 19.236111111111107,
+              "numerator": 11.541666666666666,
+              "denominator": 60
             }
           ],
           "counts": {
-            "positions": 965,
+            "positions": 553,
             "occurrences": 1063,
-            "moves": 967,
-            "ownPositions": 485,
-            "answeredPositions": 471,
-            "repeatedGroups": 9,
-            "commonGroups": 4
+            "moves": 554,
+            "ownPositions": 102,
+            "answeredPositions": 102,
+            "repeatedGroups": 4,
+            "commonGroups": 1,
+            "answeredAlternatives": 49,
+            "easePositions": 60,
+            "easePairs": 48,
+            "identicalPositionPairs": 3,
+            "openingBoundaries": 24
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -2210,8 +2536,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 131.9667000000045,
-            "invariance": 636.0195999999996
+            "original": 130.84829999999783,
+            "invariance": 640.5048999999999
           }
         }
       ]
@@ -2245,49 +2571,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.9774477999890223,
+      "conversion_seconds": 0.9916799000930041,
       "reports": [
         {
           "color": "white",
-          "score": 82.336309101713,
+          "score": 96.4274111134126,
           "facets": [
             {
               "key": "replies",
-              "value": 98.34024896265561,
-              "numerator": 948,
-              "denominator": 964
+              "value": 100,
+              "numerator": 218,
+              "denominator": 218
             },
             {
               "key": "reach",
-              "value": 93.32682291666669,
-              "numerator": 0.9332682291666669,
-              "denominator": 1
+              "value": 92.98245614035088,
+              "numerator": 53,
+              "denominator": 57
             },
             {
               "key": "depth",
-              "value": 99.58292643229166,
-              "numerator": 15.933268229166666,
-              "denominator": 16
+              "value": 100,
+              "numerator": 32,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 38.095238095238095,
-              "numerator": 8,
-              "denominator": 21
+              "value": 37.5,
+              "numerator": 6,
+              "denominator": 16
+            },
+            {
+              "key": "ease",
+              "value": 29.129289215686278,
+              "numerator": 24.759895833333335,
+              "denominator": 85
             }
           ],
           "counts": {
-            "positions": 1929,
+            "positions": 558,
             "occurrences": 2178,
-            "moves": 1952,
-            "ownPositions": 964,
-            "answeredPositions": 948,
-            "repeatedGroups": 21,
-            "commonGroups": 8
+            "moves": 575,
+            "ownPositions": 218,
+            "answeredPositions": 218,
+            "repeatedGroups": 16,
+            "commonGroups": 6,
+            "answeredAlternatives": 52,
+            "easePositions": 85,
+            "easePairs": 109,
+            "identicalPositionPairs": 12,
+            "openingBoundaries": 32
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "opening-complete",
+            "terminal"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -2299,8 +2637,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 268.7644999999902,
-            "invariance": 1270.4979000000021
+            "original": 248.57219999999506,
+            "invariance": 1169.5562999999966
           }
         }
       ]
@@ -2334,49 +2672,62 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.3739834000589326,
+      "conversion_seconds": 0.36938380007632077,
       "reports": [
         {
           "color": "white",
-          "score": 71.5556669702606,
+          "score": 74.76942524233472,
           "facets": [
             {
               "key": "replies",
-              "value": 94.33962264150944,
-              "numerator": 350,
-              "denominator": 371
+              "value": 96.89922480620154,
+              "numerator": 125,
+              "denominator": 129
             },
             {
               "key": "reach",
-              "value": 47.398148148148145,
-              "numerator": 0.47398148148148145,
-              "denominator": 1
+              "value": 89.47368421052632,
+              "numerator": 34,
+              "denominator": 38
             },
             {
               "key": "depth",
-              "value": 79.26750578703702,
-              "numerator": 12.682800925925925,
-              "denominator": 16
+              "value": 62.481689453125014,
+              "numerator": 19.994140625000004,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 65.21739130434783,
-              "numerator": 15,
-              "denominator": 23
+              "value": 62.5,
+              "numerator": 5,
+              "denominator": 8
+            },
+            {
+              "key": "ease",
+              "value": 35.14351851851852,
+              "numerator": 21.086111111111112,
+              "denominator": 60
             }
           ],
           "counts": {
-            "positions": 745,
+            "positions": 375,
             "occurrences": 878,
-            "moves": 754,
-            "ownPositions": 371,
-            "answeredPositions": 350,
-            "repeatedGroups": 23,
-            "commonGroups": 15
+            "moves": 380,
+            "ownPositions": 129,
+            "answeredPositions": 125,
+            "repeatedGroups": 8,
+            "commonGroups": 5,
+            "answeredAlternatives": 33,
+            "easePositions": 60,
+            "easePairs": 50,
+            "identicalPositionPairs": 3,
+            "openingBoundaries": 6
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -2388,8 +2739,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 107.71549999999115,
-            "invariance": 510.5289000000048
+            "original": 105.72810000000754,
+            "invariance": 525.5531000000046
           }
         }
       ]
@@ -2423,49 +2774,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.6982647000113502,
+      "conversion_seconds": 0.6918945999350399,
       "reports": [
         {
           "color": "black",
-          "score": 47.01122838823337,
+          "score": 70.76303508495069,
           "facets": [
             {
               "key": "replies",
-              "value": 85.9882005899705,
-              "numerator": 583,
-              "denominator": 678
+              "value": 95.7983193277311,
+              "numerator": 114,
+              "denominator": 119
             },
             {
               "key": "reach",
-              "value": 8.620370370370367,
-              "numerator": 0.08620370370370367,
-              "denominator": 1
+              "value": 96.22641509433963,
+              "numerator": 102,
+              "denominator": 106
             },
             {
               "key": "depth",
-              "value": 68.43634259259261,
-              "numerator": 10.949814814814816,
-              "denominator": 16
+              "value": 52.037760416666664,
+              "numerator": 16.652083333333334,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 25,
-              "numerator": 5,
-              "denominator": 20
+              "value": 33.333333333333336,
+              "numerator": 2,
+              "denominator": 6
+            },
+            {
+              "key": "ease",
+              "value": 22.925234487734485,
+              "numerator": 20.174206349206347,
+              "denominator": 88
             }
           ],
           "counts": {
-            "positions": 1333,
+            "positions": 679,
             "occurrences": 1698,
-            "moves": 1336,
-            "ownPositions": 678,
-            "answeredPositions": 583,
-            "repeatedGroups": 20,
-            "commonGroups": 5
+            "moves": 681,
+            "ownPositions": 119,
+            "answeredPositions": 114,
+            "repeatedGroups": 6,
+            "commonGroups": 2,
+            "answeredAlternatives": 101,
+            "easePositions": 88,
+            "easePairs": 107,
+            "identicalPositionPairs": 6,
+            "openingBoundaries": 29
           },
           "stop_reasons": [
-            "horizon",
             "missing-continuation",
+            "missing-reply",
+            "opening-complete",
             "terminal"
           ],
           "invariance": {
@@ -2478,8 +2841,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 210.9759999999951,
-            "invariance": 1004.7370999999985
+            "original": 208.5121000000072,
+            "invariance": 1000.8833000000013
           }
         }
       ]
@@ -2513,49 +2876,60 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.050615500076673925,
+      "conversion_seconds": 0.05175639991648495,
       "reports": [
         {
           "color": "white",
-          "score": 80.26785714285715,
+          "score": 59.38674695827104,
           "facets": [
             {
               "key": "replies",
-              "value": 96.42857142857143,
-              "numerator": 27,
-              "denominator": 28
+              "value": 95.83333333333333,
+              "numerator": 23,
+              "denominator": 24
             },
             {
               "key": "reach",
-              "value": 50,
-              "numerator": 0.5,
-              "denominator": 1
+              "value": 71.42857142857143,
+              "numerator": 10,
+              "denominator": 14
             },
             {
               "key": "depth",
-              "value": 94.37500000000001,
-              "numerator": 15.100000000000001,
-              "denominator": 16
+              "value": 49.375,
+              "numerator": 15.8,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": null,
               "numerator": 0,
               "denominator": 0
+            },
+            {
+              "key": "ease",
+              "value": 12.5,
+              "numerator": 1.25,
+              "denominator": 10
             }
           ],
           "counts": {
             "positions": 55,
             "occurrences": 107,
             "moves": 54,
-            "ownPositions": 28,
-            "answeredPositions": 27,
+            "ownPositions": 24,
+            "answeredPositions": 23,
             "repeatedGroups": 0,
-            "commonGroups": 0
+            "commonGroups": 0,
+            "answeredAlternatives": 9,
+            "easePositions": 10,
+            "easePairs": 8,
+            "identicalPositionPairs": 0,
+            "openingBoundaries": 0
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -2567,8 +2941,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 13.95910000000731,
-            "invariance": 57.43340000000899
+            "original": 14.265399999989313,
+            "invariance": 73.72360000001208
           }
         }
       ]
@@ -2602,49 +2976,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.7133832999970764,
+      "conversion_seconds": 0.7501946000847965,
       "reports": [
         {
           "color": "black",
-          "score": 73.52326033690277,
+          "score": 75.40502011889755,
           "facets": [
             {
               "key": "replies",
-              "value": 98.24120603015075,
-              "numerator": 782,
-              "denominator": 796
+              "value": 98.51851851851852,
+              "numerator": 133,
+              "denominator": 135
             },
             {
               "key": "reach",
-              "value": 51.34960317460314,
-              "numerator": 0.5134960317460314,
-              "denominator": 1
+              "value": 97.8021978021978,
+              "numerator": 178,
+              "denominator": 182
             },
             {
               "key": "depth",
-              "value": 82.59747023809526,
-              "numerator": 13.215595238095242,
-              "denominator": 16
+              "value": 58.13690476190476,
+              "numerator": 18.603809523809524,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 61.904761904761905,
-              "numerator": 13,
-              "denominator": 21
+              "value": 71.42857142857143,
+              "numerator": 10,
+              "denominator": 14
+            },
+            {
+              "key": "ease",
+              "value": 34.85082574696545,
+              "numerator": 94.79424603174603,
+              "denominator": 272
             }
           ],
           "counts": {
-            "positions": 1588,
+            "positions": 1254,
             "occurrences": 1738,
-            "moves": 1603,
-            "ownPositions": 796,
-            "answeredPositions": 782,
-            "repeatedGroups": 21,
-            "commonGroups": 13
+            "moves": 1265,
+            "ownPositions": 135,
+            "answeredPositions": 133,
+            "repeatedGroups": 14,
+            "commonGroups": 10,
+            "answeredAlternatives": 177,
+            "easePositions": 272,
+            "easePairs": 270,
+            "identicalPositionPairs": 4,
+            "openingBoundaries": 15
           },
           "stop_reasons": [
-            "horizon",
             "missing-continuation",
+            "missing-reply",
+            "opening-complete",
             "repetition"
           ],
           "invariance": {
@@ -2657,8 +3043,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 219.84649999999965,
-            "invariance": 1024.6863999999914
+            "original": 229.53650000000198,
+            "invariance": 1085.4956999999995
           }
         }
       ]
@@ -2692,48 +3078,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.10864900005981326,
+      "conversion_seconds": 0.10710769996512681,
       "reports": [
         {
           "color": "black",
-          "score": 74.36708860759492,
+          "score": 76.67353792296608,
           "facets": [
             {
               "key": "replies",
-              "value": 97.46835443037975,
-              "numerator": 77,
-              "denominator": 79
+              "value": 97.72727272727273,
+              "numerator": 43,
+              "denominator": 44
             },
             {
               "key": "reach",
-              "value": 99.99999999999997,
-              "numerator": 0.9999999999999998,
-              "denominator": 1
+              "value": 86.20689655172414,
+              "numerator": 25,
+              "denominator": 29
             },
             {
               "key": "depth",
-              "value": 100,
-              "numerator": 16,
-              "denominator": 16
+              "value": 68.19444444444439,
+              "numerator": 21.8222222222222,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 0,
-              "numerator": 0,
+              "value": 100,
+              "numerator": 1,
               "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 31.28472222222222,
+              "numerator": 5.0055555555555555,
+              "denominator": 16
             }
           ],
           "counts": {
-            "positions": 156,
+            "positions": 145,
             "occurrences": 250,
-            "moves": 157,
-            "ownPositions": 79,
-            "answeredPositions": 77,
+            "moves": 146,
+            "ownPositions": 44,
+            "answeredPositions": 43,
             "repeatedGroups": 1,
-            "commonGroups": 0
+            "commonGroups": 1,
+            "answeredAlternatives": 24,
+            "easePositions": 16,
+            "easePairs": 24,
+            "identicalPositionPairs": 0,
+            "openingBoundaries": 5
           },
           "stop_reasons": [
-            "horizon",
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete",
             "terminal"
           ],
           "invariance": {
@@ -2746,8 +3145,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 30.89560000000347,
-            "invariance": 141.69510000001173
+            "original": 47.690300000002026,
+            "invariance": 175.23880000000645
           }
         }
       ]
@@ -2781,11 +3180,11 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.03356059989891946,
+      "conversion_seconds": 0.03422299993690103,
       "reports": [
         {
           "color": "black",
-          "score": 77.86458333333333,
+          "score": 53.32682251925387,
           "facets": [
             {
               "key": "replies",
@@ -2795,35 +3194,46 @@
             },
             {
               "key": "reach",
-              "value": 25,
-              "numerator": 0.25,
-              "denominator": 1
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
             },
             {
               "key": "depth",
-              "value": 86.45833333333333,
-              "numerator": 13.833333333333332,
-              "denominator": 16
+              "value": 47.39583333333336,
+              "numerator": 15.166666666666675,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 100,
               "numerator": 1,
               "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 26.666666666666664,
+              "numerator": 2.6666666666666665,
+              "denominator": 10
             }
           ],
           "counts": {
-            "positions": 56,
+            "positions": 55,
             "occurrences": 65,
-            "moves": 56,
+            "moves": 55,
             "ownPositions": 27,
             "answeredPositions": 27,
             "repeatedGroups": 1,
-            "commonGroups": 1
+            "commonGroups": 1,
+            "answeredAlternatives": 5,
+            "easePositions": 10,
+            "easePairs": 9,
+            "identicalPositionPairs": 0,
+            "openingBoundaries": 1
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -2835,8 +3245,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 8.144700000004377,
-            "invariance": 37.505099999994854
+            "original": 8.99659999999858,
+            "invariance": 40.99680000000808
           }
         }
       ]
@@ -2870,49 +3280,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.7112896000035107,
+      "conversion_seconds": 0.7231699000112712,
       "reports": [
         {
           "color": "black",
-          "score": 70.18994836182337,
+          "score": 80.65611355530436,
           "facets": [
             {
               "key": "replies",
-              "value": 99.002849002849,
-              "numerator": 695,
-              "denominator": 702
+              "value": 100,
+              "numerator": 203,
+              "denominator": 203
             },
             {
               "key": "reach",
-              "value": 75.6388888888889,
-              "numerator": 0.756388888888889,
-              "denominator": 1
+              "value": 92.3076923076923,
+              "numerator": 48,
+              "denominator": 52
             },
             {
               "key": "depth",
-              "value": 92.78472222222223,
-              "numerator": 14.845555555555556,
-              "denominator": 16
+              "value": 70.47526041666663,
+              "numerator": 22.55208333333332,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 13.333333333333334,
+              "value": 25,
               "numerator": 2,
-              "denominator": 15
+              "denominator": 8
+            },
+            {
+              "key": "ease",
+              "value": 34.91580018083182,
+              "numerator": 27.58348214285714,
+              "denominator": 79
             }
           ],
           "counts": {
-            "positions": 1411,
+            "positions": 599,
             "occurrences": 1666,
-            "moves": 1420,
-            "ownPositions": 702,
-            "answeredPositions": 695,
-            "repeatedGroups": 15,
-            "commonGroups": 2
+            "moves": 605,
+            "ownPositions": 203,
+            "answeredPositions": 203,
+            "repeatedGroups": 8,
+            "commonGroups": 2,
+            "answeredAlternatives": 47,
+            "easePositions": 79,
+            "easePairs": 130,
+            "identicalPositionPairs": 12,
+            "openingBoundaries": 15
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -2924,8 +3346,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 201.03340000000026,
-            "invariance": 963.6823000000004
+            "original": 186.4994999999908,
+            "invariance": 935.918399999995
           }
         }
       ]
@@ -2959,11 +3381,11 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.034646299900487065,
+      "conversion_seconds": 0.030998000060208142,
       "reports": [
         {
           "color": "black",
-          "score": 84.765625,
+          "score": 51.69018282033833,
           "facets": [
             {
               "key": "replies",
@@ -2973,21 +3395,27 @@
             },
             {
               "key": "reach",
-              "value": 50,
-              "numerator": 0.5,
-              "denominator": 1
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
             },
             {
               "key": "depth",
-              "value": 89.0625,
+              "value": 44.53125,
               "numerator": 14.25,
-              "denominator": 16
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 100,
               "numerator": 1,
               "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 27.272727272727273,
+              "numerator": 3,
+              "denominator": 11
             }
           ],
           "counts": {
@@ -2997,10 +3425,14 @@
             "ownPositions": 25,
             "answeredPositions": 25,
             "repeatedGroups": 1,
-            "commonGroups": 1
+            "commonGroups": 1,
+            "answeredAlternatives": 5,
+            "easePositions": 11,
+            "easePairs": 7,
+            "identicalPositionPairs": 0,
+            "openingBoundaries": 0
           },
           "stop_reasons": [
-            "horizon",
             "missing-continuation"
           ],
           "invariance": {
@@ -3013,8 +3445,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 10.45339999999851,
-            "invariance": 39.736900000003516
+            "original": 9.952899999989313,
+            "invariance": 38.74090000000433
           }
         }
       ]
@@ -3052,49 +3484,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.669752600020729,
+      "conversion_seconds": 0.6697165000950918,
       "reports": [
         {
           "color": "black",
-          "score": 63.18840440270935,
+          "score": 73.92706725903244,
           "facets": [
             {
               "key": "replies",
-              "value": 99.01477832512315,
-              "numerator": 603,
-              "denominator": 609
+              "value": 100,
+              "numerator": 207,
+              "denominator": 207
             },
             {
               "key": "reach",
-              "value": 62.053571428571416,
-              "numerator": 0.6205357142857142,
-              "denominator": 1
+              "value": 93.54838709677419,
+              "numerator": 58,
+              "denominator": 62
             },
             {
               "key": "depth",
-              "value": 91.68526785714285,
-              "numerator": 14.669642857142856,
-              "denominator": 16
+              "value": 58.42122395833334,
+              "numerator": 18.69479166666667,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 0,
-              "numerator": 0,
+              "value": 12.5,
+              "numerator": 1,
               "denominator": 8
+            },
+            {
+              "key": "ease",
+              "value": 32.639735772357724,
+              "numerator": 26.764583333333334,
+              "denominator": 82
             }
           ],
           "counts": {
-            "positions": 1220,
+            "positions": 594,
             "occurrences": 1510,
-            "moves": 1223,
-            "ownPositions": 609,
-            "answeredPositions": 603,
+            "moves": 597,
+            "ownPositions": 207,
+            "answeredPositions": 207,
             "repeatedGroups": 8,
-            "commonGroups": 0
+            "commonGroups": 1,
+            "answeredAlternatives": 57,
+            "easePositions": 82,
+            "easePairs": 92,
+            "identicalPositionPairs": 7,
+            "openingBoundaries": 24
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3106,8 +3550,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 189.28979999999865,
-            "invariance": 870.9927000000025
+            "original": 187.92939999999362,
+            "invariance": 836.2537000000011
           }
         }
       ]
@@ -3145,11 +3589,11 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.04165220004506409,
+      "conversion_seconds": 0.036858699982985854,
       "reports": [
         {
           "color": "black",
-          "score": 100,
+          "score": 55.09731650193396,
           "facets": [
             {
               "key": "replies",
@@ -3159,34 +3603,46 @@
             },
             {
               "key": "reach",
-              "value": 100,
-              "numerator": 1,
-              "denominator": 1
+              "value": 42.857142857142854,
+              "numerator": 3,
+              "denominator": 7
             },
             {
               "key": "depth",
-              "value": 100,
-              "numerator": 16,
-              "denominator": 16
+              "value": 70.8333333333333,
+              "numerator": 22.666666666666657,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": null,
               "numerator": 0,
               "denominator": 0
+            },
+            {
+              "key": "ease",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 2
             }
           ],
           "counts": {
-            "positions": 54,
+            "positions": 51,
             "occurrences": 65,
-            "moves": 53,
+            "moves": 50,
             "ownPositions": 25,
             "answeredPositions": 25,
             "repeatedGroups": 0,
-            "commonGroups": 0
+            "commonGroups": 0,
+            "answeredAlternatives": 2,
+            "easePositions": 2,
+            "easePairs": 1,
+            "identicalPositionPairs": 0,
+            "openingBoundaries": 1
           },
           "stop_reasons": [
-            "horizon"
+            "missing-continuation",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3198,8 +3654,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 9.39890000000014,
-            "invariance": 37.82369999999355
+            "original": 10.31019999999262,
+            "invariance": 41.11290000000736
           }
         }
       ]
@@ -3239,11 +3695,11 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.03933050006162375,
+      "conversion_seconds": 0.03711320005822927,
       "reports": [
         {
           "color": "white",
-          "score": 26.23355263157895,
+          "score": 26.59821944750772,
           "facets": [
             {
               "key": "replies",
@@ -3253,21 +3709,27 @@
             },
             {
               "key": "reach",
-              "value": 0,
-              "numerator": 0,
-              "denominator": 1
+              "value": 50,
+              "numerator": 4,
+              "denominator": 8
             },
             {
               "key": "depth",
-              "value": 31.25,
-              "numerator": 5,
-              "denominator": 16
+              "value": 14.149305555555557,
+              "numerator": 4.527777777777779,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 0,
               "numerator": 0,
               "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 4.166666666666667,
+              "numerator": 0.25,
+              "denominator": 6
             }
           ],
           "counts": {
@@ -3277,10 +3739,16 @@
             "ownPositions": 19,
             "answeredPositions": 14,
             "repeatedGroups": 2,
-            "commonGroups": 0
+            "commonGroups": 0,
+            "answeredAlternatives": 3,
+            "easePositions": 6,
+            "easePairs": 10,
+            "identicalPositionPairs": 7,
+            "openingBoundaries": 0
           },
           "stop_reasons": [
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3292,13 +3760,13 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 4.885699999998906,
-            "invariance": 23.7216999999946
+            "original": 5.852700000003097,
+            "invariance": 27.692399999999907
           }
         },
         {
           "color": "black",
-          "score": 52.02850877192982,
+          "score": 29.492230615310653,
           "facets": [
             {
               "key": "replies",
@@ -3308,21 +3776,27 @@
             },
             {
               "key": "reach",
-              "value": 0,
-              "numerator": 0,
-              "denominator": 1
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
             },
             {
               "key": "depth",
-              "value": 29.166666666666664,
-              "numerator": 4.666666666666666,
-              "denominator": 16
+              "value": 14.496527777777782,
+              "numerator": 4.63888888888889,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 100,
               "numerator": 1,
               "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 1.3888888888888886,
+              "numerator": 0.08333333333333333,
+              "denominator": 6
             }
           ],
           "counts": {
@@ -3332,10 +3806,16 @@
             "ownPositions": 19,
             "answeredPositions": 15,
             "repeatedGroups": 1,
-            "commonGroups": 1
+            "commonGroups": 1,
+            "answeredAlternatives": 5,
+            "easePositions": 6,
+            "easePairs": 10,
+            "identicalPositionPairs": 6,
+            "openingBoundaries": 0
           },
           "stop_reasons": [
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3347,8 +3827,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 5.123699999996461,
-            "invariance": 23.531600000002072
+            "original": 5.526100000002771,
+            "invariance": 27.244699999995646
           }
         }
       ]
@@ -3382,49 +3862,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.22792320000007749,
+      "conversion_seconds": 0.2255294999340549,
       "reports": [
         {
           "color": "black",
-          "score": 54.4248583105491,
+          "score": 69.13962213265793,
           "facets": [
             {
               "key": "replies",
-              "value": 93.30143540669856,
-              "numerator": 195,
-              "denominator": 209
+              "value": 98.76543209876543,
+              "numerator": 80,
+              "denominator": 81
             },
             {
               "key": "reach",
-              "value": 19.64285714285714,
-              "numerator": 0.1964285714285714,
-              "denominator": 1
+              "value": 89.74358974358974,
+              "numerator": 35,
+              "denominator": 39
             },
             {
               "key": "depth",
-              "value": 59.300595238095234,
-              "numerator": 9.488095238095237,
-              "denominator": 16
+              "value": 53.26605902777777,
+              "numerator": 17.045138888888886,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 45.45454545454545,
-              "numerator": 5,
-              "denominator": 11
+              "value": 20,
+              "numerator": 1,
+              "denominator": 5
+            },
+            {
+              "key": "ease",
+              "value": 46.82484567901234,
+              "numerator": 25.285416666666666,
+              "denominator": 54
             }
           ],
           "counts": {
-            "positions": 427,
+            "positions": 316,
             "occurrences": 495,
-            "moves": 431,
-            "ownPositions": 209,
-            "answeredPositions": 195,
-            "repeatedGroups": 11,
-            "commonGroups": 5
+            "moves": 316,
+            "ownPositions": 81,
+            "answeredPositions": 80,
+            "repeatedGroups": 5,
+            "commonGroups": 1,
+            "answeredAlternatives": 34,
+            "easePositions": 54,
+            "easePairs": 60,
+            "identicalPositionPairs": 4,
+            "openingBoundaries": 2
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3436,8 +3928,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 63.0283999999956,
-            "invariance": 279.97110000000976
+            "original": 65.22409999999218,
+            "invariance": 294.27390000000014
           }
         }
       ]
@@ -3471,48 +3963,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.20715359994210303,
+      "conversion_seconds": 0.21142159996088594,
       "reports": [
         {
           "color": "white",
-          "score": 42.849445812807886,
+          "score": 73.06619821706495,
           "facets": [
             {
               "key": "replies",
-              "value": 90.14778325123153,
-              "numerator": 183,
-              "denominator": 203
+              "value": 96.47058823529412,
+              "numerator": 164,
+              "denominator": 170
             },
             {
               "key": "reach",
-              "value": 0,
-              "numerator": 0,
-              "denominator": 1
+              "value": 76.47058823529412,
+              "numerator": 13,
+              "denominator": 17
             },
             {
               "key": "depth",
-              "value": 81.25,
-              "numerator": 13,
-              "denominator": 16
+              "value": 69.81336805555556,
+              "numerator": 22.34027777777778,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 0,
               "numerator": 0,
-              "denominator": 7
+              "denominator": 4
+            },
+            {
+              "key": "ease",
+              "value": 19.01851851851852,
+              "numerator": 2.852777777777778,
+              "denominator": 15
             }
           ],
           "counts": {
-            "positions": 401,
+            "positions": 354,
             "occurrences": 472,
-            "moves": 400,
-            "ownPositions": 203,
-            "answeredPositions": 183,
-            "repeatedGroups": 7,
-            "commonGroups": 0
+            "moves": 353,
+            "ownPositions": 170,
+            "answeredPositions": 164,
+            "repeatedGroups": 4,
+            "commonGroups": 0,
+            "answeredAlternatives": 12,
+            "easePositions": 15,
+            "easePairs": 27,
+            "identicalPositionPairs": 16,
+            "openingBoundaries": 7
           },
           "stop_reasons": [
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3524,51 +4029,63 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 56.0170999999973,
-            "invariance": 268.2884999999951
+            "original": 61.36469999999099,
+            "invariance": 300.5598999999929
           }
         },
         {
           "color": "black",
-          "score": 57.73358585858586,
+          "score": 72.73159470560955,
           "facets": [
             {
               "key": "replies",
-              "value": 93.43434343434343,
-              "numerator": 185,
-              "denominator": 198
+              "value": 95.32163742690058,
+              "numerator": 163,
+              "denominator": 171
             },
             {
               "key": "reach",
-              "value": 55.00000000000001,
-              "numerator": 0.55,
-              "denominator": 1
+              "value": 78.94736842105263,
+              "numerator": 15,
+              "denominator": 19
             },
             {
               "key": "depth",
-              "value": 82.5,
-              "numerator": 13.200000000000001,
-              "denominator": 16
+              "value": 67.00520833333331,
+              "numerator": 21.441666666666663,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 0,
               "numerator": 0,
-              "denominator": 7
+              "denominator": 5
+            },
+            {
+              "key": "ease",
+              "value": 49.79040404040405,
+              "numerator": 12.44760101010101,
+              "denominator": 25
             }
           ],
           "counts": {
-            "positions": 401,
+            "positions": 371,
             "occurrences": 472,
-            "moves": 400,
-            "ownPositions": 198,
-            "answeredPositions": 185,
-            "repeatedGroups": 7,
-            "commonGroups": 0
+            "moves": 370,
+            "ownPositions": 171,
+            "answeredPositions": 163,
+            "repeatedGroups": 5,
+            "commonGroups": 0,
+            "answeredAlternatives": 14,
+            "easePositions": 25,
+            "easePairs": 49,
+            "identicalPositionPairs": 23,
+            "openingBoundaries": 7
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3580,8 +4097,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 55.42029999999795,
-            "invariance": 261.1637999999948
+            "original": 61.79989999999816,
+            "invariance": 298.0957000000053
           }
         }
       ]
@@ -3619,48 +4136,62 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.6715357000939548,
+      "conversion_seconds": 0.6910416999598965,
       "reports": [
         {
           "color": "white",
-          "score": 76.22954651706404,
+          "score": 73.60602527300964,
           "facets": [
             {
               "key": "replies",
-              "value": 91.58485273492286,
-              "numerator": 653,
-              "denominator": 713
+              "value": 95.88377723970945,
+              "numerator": 396,
+              "denominator": 413
             },
             {
               "key": "reach",
-              "value": 100,
-              "numerator": 1,
-              "denominator": 1
+              "value": 92.85714285714286,
+              "numerator": 52,
+              "denominator": 56
             },
             {
               "key": "depth",
-              "value": 100,
-              "numerator": 16,
-              "denominator": 16
+              "value": 58.346044146825434,
+              "numerator": 18.67073412698414,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 13.333333333333334,
-              "numerator": 2,
-              "denominator": 15
+              "value": 28.571428571428573,
+              "numerator": 4,
+              "denominator": 14
+            },
+            {
+              "key": "ease",
+              "value": 29.74800444968269,
+              "numerator": 21.418563203771537,
+              "denominator": 72
             }
           ],
           "counts": {
-            "positions": 1422,
+            "positions": 991,
             "occurrences": 1577,
-            "moves": 1428,
-            "ownPositions": 713,
-            "answeredPositions": 653,
-            "repeatedGroups": 15,
-            "commonGroups": 2
+            "moves": 996,
+            "ownPositions": 413,
+            "answeredPositions": 396,
+            "repeatedGroups": 14,
+            "commonGroups": 4,
+            "answeredAlternatives": 51,
+            "easePositions": 72,
+            "easePairs": 174,
+            "identicalPositionPairs": 60,
+            "openingBoundaries": 19
           },
           "stop_reasons": [
-            "horizon"
+            "horizon",
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3672,51 +4203,64 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 193.16709999999148,
-            "invariance": 902.1263999999937
+            "original": 227.09350000000268,
+            "invariance": 942.6938999999984
           }
         },
         {
           "color": "black",
-          "score": 68.0422891619519,
+          "score": 74.34053630629248,
           "facets": [
             {
               "key": "replies",
-              "value": 93.35219236209335,
-              "numerator": 660,
-              "denominator": 707
+              "value": 96.75810473815461,
+              "numerator": 388,
+              "denominator": 401
             },
             {
               "key": "reach",
-              "value": 70.9047619047619,
-              "numerator": 0.7090476190476189,
-              "denominator": 1
+              "value": 92.98245614035088,
+              "numerator": 53,
+              "denominator": 57
             },
             {
               "key": "depth",
-              "value": 93.62648809523807,
-              "numerator": 14.980238095238093,
-              "denominator": 16
+              "value": 59.436108355379204,
+              "numerator": 19.019554673721345,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 14.285714285714286,
+              "value": 18.181818181818183,
               "numerator": 2,
-              "denominator": 14
+              "denominator": 11
+            },
+            {
+              "key": "ease",
+              "value": 23.975171467764063,
+              "numerator": 21.57765432098766,
+              "denominator": 90
             }
           ],
           "counts": {
-            "positions": 1422,
+            "positions": 991,
             "occurrences": 1577,
-            "moves": 1428,
-            "ownPositions": 707,
-            "answeredPositions": 660,
-            "repeatedGroups": 14,
-            "commonGroups": 2
+            "moves": 995,
+            "ownPositions": 401,
+            "answeredPositions": 388,
+            "repeatedGroups": 11,
+            "commonGroups": 2,
+            "answeredAlternatives": 52,
+            "easePositions": 90,
+            "easePairs": 162,
+            "identicalPositionPairs": 65,
+            "openingBoundaries": 16
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3728,8 +4272,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 188.99520000000484,
-            "invariance": 935.5984000000026
+            "original": 193.6524000000063,
+            "invariance": 923.7582000000111
           }
         }
       ]
@@ -3763,49 +4307,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.02396919997408986,
+      "conversion_seconds": 0.02474300004541874,
       "reports": [
         {
           "color": "black",
-          "score": 57.116168478260875,
+          "score": 51.53882032022076,
           "facets": [
             {
               "key": "replies",
-              "value": 95.65217391304348,
-              "numerator": 22,
-              "denominator": 23
+              "value": 95.45454545454545,
+              "numerator": 21,
+              "denominator": 22
             },
             {
               "key": "reach",
               "value": 50,
-              "numerator": 0.5,
-              "denominator": 1
+              "numerator": 4,
+              "denominator": 8
             },
             {
               "key": "depth",
-              "value": 82.8125,
-              "numerator": 13.25,
-              "denominator": 16
+              "value": 53.125,
+              "numerator": 17,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 0,
               "numerator": 0,
               "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 13.541666666666666,
+              "numerator": 0.8125,
+              "denominator": 6
             }
           ],
           "counts": {
-            "positions": 47,
+            "positions": 45,
             "occurrences": 48,
-            "moves": 46,
-            "ownPositions": 23,
-            "answeredPositions": 22,
+            "moves": 44,
+            "ownPositions": 22,
+            "answeredPositions": 21,
             "repeatedGroups": 1,
-            "commonGroups": 0
+            "commonGroups": 0,
+            "answeredAlternatives": 3,
+            "easePositions": 6,
+            "easePairs": 11,
+            "identicalPositionPairs": 1,
+            "openingBoundaries": 1
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3817,8 +4373,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 7.439100000003236,
-            "invariance": 28.823000000003958
+            "original": 8.684800000002724,
+            "invariance": 31.673199999990175
           }
         }
       ]
@@ -3852,49 +4408,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.27588949992787093,
+      "conversion_seconds": 0.2898967999499291,
       "reports": [
         {
           "color": "black",
-          "score": 76.64554876682561,
+          "score": 92.67079334854981,
           "facets": [
             {
               "key": "replies",
-              "value": 94.15584415584415,
-              "numerator": 290,
-              "denominator": 308
+              "value": 100,
+              "numerator": 79,
+              "denominator": 79
             },
             {
               "key": "reach",
-              "value": 83.30078124999997,
-              "numerator": 0.8330078124999998,
-              "denominator": 1
+              "value": 89.47368421052632,
+              "numerator": 34,
+              "denominator": 38
             },
             {
               "key": "depth",
-              "value": 95.79223632812501,
-              "numerator": 15.326757812500002,
-              "denominator": 16
+              "value": 95.98214285714286,
+              "numerator": 30.714285714285715,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 33.333333333333336,
+              "value": 50,
               "numerator": 1,
-              "denominator": 3
+              "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 24.111201298701303,
+              "numerator": 10.608928571428573,
+              "denominator": 44
             }
           ],
           "counts": {
-            "positions": 612,
+            "positions": 323,
             "occurrences": 674,
-            "moves": 612,
-            "ownPositions": 308,
-            "answeredPositions": 290,
-            "repeatedGroups": 3,
-            "commonGroups": 1
+            "moves": 323,
+            "ownPositions": 79,
+            "answeredPositions": 79,
+            "repeatedGroups": 2,
+            "commonGroups": 1,
+            "answeredAlternatives": 33,
+            "easePositions": 44,
+            "easePairs": 72,
+            "identicalPositionPairs": 1,
+            "openingBoundaries": 14
           },
           "stop_reasons": [
             "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3906,8 +4474,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 88.81909999999334,
-            "invariance": 422.40009999999893
+            "original": 84.818299999999,
+            "invariance": 415.8118000000104
           }
         }
       ]
@@ -3941,49 +4509,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.2965673999860883,
+      "conversion_seconds": 0.3058001999743283,
       "reports": [
         {
           "color": "white",
-          "score": 60.760002367424235,
+          "score": 77.14931061929367,
           "facets": [
             {
               "key": "replies",
-              "value": 86.5625,
-              "numerator": 277,
-              "denominator": 320
+              "value": 95.1219512195122,
+              "numerator": 78,
+              "denominator": 82
             },
             {
               "key": "reach",
-              "value": 27.974206349206337,
-              "numerator": 0.2797420634920634,
-              "denominator": 1
+              "value": 93.54838709677419,
+              "numerator": 58,
+              "denominator": 62
             },
             {
               "key": "depth",
-              "value": 64.86693948412699,
-              "numerator": 10.378710317460317,
-              "denominator": 16
+              "value": 63.62500000000002,
+              "numerator": 20.360000000000007,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
-              "value": 63.63636363636363,
-              "numerator": 7,
-              "denominator": 11
+              "value": 50,
+              "numerator": 2,
+              "denominator": 4
+            },
+            {
+              "key": "ease",
+              "value": 35.21367521367521,
+              "numerator": 27.466666666666665,
+              "denominator": 78
             }
           ],
           "counts": {
-            "positions": 625,
+            "positions": 497,
             "occurrences": 704,
-            "moves": 631,
-            "ownPositions": 320,
-            "answeredPositions": 277,
-            "repeatedGroups": 11,
-            "commonGroups": 7
+            "moves": 502,
+            "ownPositions": 82,
+            "answeredPositions": 78,
+            "repeatedGroups": 4,
+            "commonGroups": 2,
+            "answeredAlternatives": 57,
+            "easePositions": 78,
+            "easePairs": 85,
+            "identicalPositionPairs": 2,
+            "openingBoundaries": 6
           },
           "stop_reasons": [
-            "horizon",
-            "missing-continuation"
+            "missing-continuation",
+            "missing-reply",
+            "opening-complete"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -3995,8 +4575,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 87.80070000000705,
-            "invariance": 407.4875999999931
+            "original": 94.14220000000205,
+            "invariance": 428.1975999999995
           }
         }
       ]
@@ -4030,49 +4610,61 @@
         "empty": true,
         "ones": true
       },
-      "conversion_seconds": 0.1118590000551194,
+      "conversion_seconds": 0.11263750004582107,
       "reports": [
         {
           "color": "white",
-          "score": 46.74252717391305,
+          "score": 46.980714128246284,
           "facets": [
             {
               "key": "replies",
-              "value": 94.78260869565217,
-              "numerator": 109,
-              "denominator": 115
+              "value": 96,
+              "numerator": 72,
+              "denominator": 75
             },
             {
               "key": "reach",
-              "value": 25,
-              "numerator": 0.25,
-              "denominator": 1
+              "value": 84,
+              "numerator": 21,
+              "denominator": 25
             },
             {
               "key": "depth",
-              "value": 67.1875,
-              "numerator": 10.75,
-              "denominator": 16
+              "value": 26.276041666666668,
+              "numerator": 8.408333333333333,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 0,
               "numerator": 0,
               "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 20.08125,
+              "numerator": 5.0203125,
+              "denominator": 25
             }
           ],
           "counts": {
-            "positions": 232,
+            "positions": 218,
             "occurrences": 251,
-            "moves": 231,
-            "ownPositions": 115,
-            "answeredPositions": 109,
+            "moves": 217,
+            "ownPositions": 75,
+            "answeredPositions": 72,
             "repeatedGroups": 1,
-            "commonGroups": 0
+            "commonGroups": 0,
+            "answeredAlternatives": 20,
+            "easePositions": 25,
+            "easePairs": 33,
+            "identicalPositionPairs": 9,
+            "openingBoundaries": 0
           },
           "stop_reasons": [
             "missing-continuation",
-            "terminal"
+            "missing-reply",
+            "terminal-loss"
           ],
           "invariance": {
             "reversed_chapters_exact_input": true,
@@ -4084,50 +4676,62 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 46.9829000000027,
-            "invariance": 154.6935000000085
+            "original": 35.867800000007264,
+            "invariance": 157.97179999999935
           }
         },
         {
           "color": "black",
-          "score": 48.06547619047619,
+          "score": 54.5658368904533,
           "facets": [
             {
               "key": "replies",
-              "value": 83.92857142857143,
-              "numerator": 94,
-              "denominator": 112
+              "value": 88.31168831168831,
+              "numerator": 68,
+              "denominator": 77
             },
             {
               "key": "reach",
-              "value": 33.33333333333333,
-              "numerator": 0.3333333333333333,
-              "denominator": 1
+              "value": 55.55555555555556,
+              "numerator": 5,
+              "denominator": 9
             },
             {
               "key": "depth",
-              "value": 75,
-              "numerator": 12,
-              "denominator": 16
+              "value": 53.59374999999997,
+              "numerator": 17.14999999999999,
+              "denominator": 32
             },
             {
               "key": "moveOrders",
               "value": 0,
               "numerator": 0,
               "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 6.064814814814814,
+              "numerator": 0.5458333333333333,
+              "denominator": 9
             }
           ],
           "counts": {
-            "positions": 232,
+            "positions": 153,
             "occurrences": 251,
-            "moves": 231,
-            "ownPositions": 112,
-            "answeredPositions": 94,
+            "moves": 152,
+            "ownPositions": 77,
+            "answeredPositions": 68,
             "repeatedGroups": 2,
-            "commonGroups": 0
+            "commonGroups": 0,
+            "answeredAlternatives": 4,
+            "easePositions": 9,
+            "easePairs": 29,
+            "identicalPositionPairs": 16,
+            "openingBoundaries": 0
           },
           "stop_reasons": [
             "missing-continuation",
+            "missing-reply",
             "terminal"
           ],
           "invariance": {
@@ -4140,8 +4744,8 @@
             "invariant": true
           },
           "milliseconds": {
-            "original": 31.017800000001444,
-            "invariance": 146.81179999999586
+            "original": 29.566300000005867,
+            "invariance": 143.45729999999458
           }
         }
       ]

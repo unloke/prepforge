@@ -27,7 +27,13 @@ function tree(lines, fen) {
 }
 
 const line16 = "e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O".split(" ");
-const assess = (nodes, options = {}) => atlasPreparation({ nodes, myColor: "white", ...options });
+const assess = (nodes, options = {}) => atlasPreparation({ nodes, myColor: "white", horizon: 16, ...options });
+const tiedRoots = (nodes) => nodes.map((n) => n.parent_id === "root" ? { ...n, is_mainline: true, is_prepared: true } : n);
+function chapters(lines) {
+  return [tree([])[0], ...lines.flatMap((line, i) => tree([line]).slice(1).map((n) => ({
+    ...n, id: `${i}-${n.id}`, parent_id: n.parent_id === "root" ? "root" : `${i}-${n.parent_id}`,
+  })))];
+}
 const facet = (result, label) => result.facets.find((f) => f.label === label).value;
 const values = (result) => ({ score: result.score, facets: result.facets.map((f) => f.value) });
 
@@ -36,29 +42,29 @@ describe("Atlas move preparation", () => {
     for (const nodes of [[], tree([])]) {
       const result = assess(nodes);
       expect(result.score).toBeNull();
-      expect(result.facets.map((f) => f.label)).toEqual(["Replies", "Reach", "Depth", "Move orders"]);
+      expect(result.facets.map((f) => f.label)).toEqual(["Replies", "Reach", "Depth", "Consistency", "Ease"]);
       expect(result.facets.every((f) => f.value === null)).toBe(true);
     }
   });
 
-  it("loses Replies and Reach when an own response is deleted", () => {
+  it("loses Replies and Depth when a core own response is deleted", () => {
     const nodes = tree([line16]);
     const complete = assess(nodes);
     const removed = new Set(nodes.filter((n) => n.depth >= 3).map((n) => n.id));
     const incomplete = assess(nodes.filter((n) => !removed.has(n.id)));
-    expect(facet(complete, "Reach")).toBe(100);
+    expect(facet(complete, "Depth")).toBe(100);
     expect(facet(incomplete, "Replies")).toBeLessThan(facet(complete, "Replies"));
-    expect(facet(incomplete, "Reach")).toBeLessThan(facet(complete, "Reach"));
+    expect(facet(incomplete, "Depth")).toBeLessThan(facet(complete, "Depth"));
   });
 
   it("joins continuations across different legal move orders", () => {
     const first = ["d4", "Nf6", "Nf3", "d5"];
     const second = ["Nf3", "d5", "d4", "Nf6", "c4"];
     const isolated = assess(tree([first]));
-    const joined = assess(tree([first, second]));
+    const joined = assess(tiedRoots(tree([first, second])));
     expect(facet(joined, "Depth")).toBeGreaterThan(facet(isolated, "Depth"));
-    // One occurrence has no response; union traversal must not pretend both do.
-    expect(facet(joined, "Move orders")).toBe(0);
+    // A chapter endpoint is not a conflicting recommendation.
+    expect(facet(joined, "Consistency")).toBe(100);
   });
 
   it("credits a coherent real transposition even when its reply sets are identical", () => {
@@ -66,10 +72,10 @@ describe("Atlas move preparation", () => {
       ["d4", "Nf6", "Nf3", "d5", "c4"],
       ["Nf3", "d5", "d4", "Nf6", "c4"],
     ]);
-    expect(facet(assess(nodes), "Move orders")).toBe(100);
+    expect(facet(assess(tiedRoots(nodes)), "Consistency")).toBe(100);
     const copies = nodes.slice(1).map((n) => ({ ...n, id: `copy-${n.id}`,
       parent_id: n.parent_id === "root" ? "root" : `copy-${n.parent_id}` }));
-    expect(values(assess([...nodes, ...copies]))).toEqual(values(assess(nodes)));
+    expect(values(assess([...tiedRoots(nodes), ...tiedRoots(copies)]))).toEqual(values(assess(tiedRoots(nodes))));
   });
 
   it("intersects reply sets rather than requiring identical alternatives", () => {
@@ -78,7 +84,8 @@ describe("Atlas move preparation", () => {
       ["Nf3", "d5", "d4", "Nf6", "c4"],
       ["Nf3", "d5", "d4", "Nf6", "e3"],
     ]);
-    expect(facet(assess(nodes), "Move orders")).toBe(100);
+    nodes.find((n) => n.san === "e3").is_mainline = true;
+    expect(facet(assess(tiedRoots(nodes)), "Consistency")).toBe(100);
   });
 
   it("gives no graph-score bonus for duplicating an identical stored branch", () => {
@@ -113,12 +120,13 @@ describe("Atlas move preparation", () => {
     expect(values(assess(nodes))).toEqual(values(assess(nodes.slice(0, 2))));
   });
 
-  it("averages opponent alternatives but chooses one own continuation", () => {
+  it("keeps a short unselected opponent illustration from diluting core preparation", () => {
     const nodes = tree([line16, ["e4", "c5"], ["d4"]]);
     const result = assess(nodes);
-    expect(facet(result, "Reach")).toBe(50);
-    // An unused alternative at our turn cannot dilute survival as an opponent fork does.
-    expect(facet(assess(tree([line16, ["d4"]])), "Reach")).toBe(100);
+    expect(facet(result, "Depth")).toBe(100);
+    expect(facet(result, "Replies")).toBe(100);
+    expect(facet(result, "Reach")).toBe(20);
+    expect(facet(assess(tree([line16, ["d4"]])), "Depth")).toBe(100);
     expect(values(assess([...nodes].reverse()))).toEqual(values(result));
   });
 
@@ -128,14 +136,14 @@ describe("Atlas move preparation", () => {
     const e4 = nodes.find((n) => n.san === "e4");
     e4.is_prepared = true;
     e4.is_mainline = true;
-    expect(facet(assess(nodes), "Reach")).toBe(100);
+    expect(facet(assess(nodes), "Depth")).toBe(100);
   });
 
   it("does not pad a repeating knight shuffle to the horizon", () => {
     const cycle = ["Nf3", "Nf6", "Ng1", "Ng8"];
     const once = assess(tree([cycle]));
     const repeated = assess(tree([[...cycle, ...cycle, ...cycle, ...cycle]]));
-    expect(facet(once, "Reach")).toBe(0);
+    expect(facet(once, "Reach")).toBe(20);
     expect(facet(once, "Depth")).toBeLessThan(100);
     expect(facet(repeated, "Depth")).toBe(facet(once, "Depth"));
   });
@@ -143,37 +151,101 @@ describe("Atlas move preparation", () => {
   it("credits the 16th ply without demanding a 17th-ply reply", () => {
     const short = assess(tree([line16.slice(0, 15)]));
     const exact = assess(tree([line16]));
-    expect(facet(short, "Reach")).toBe(0);
-    expect(facet(exact, "Reach")).toBe(100);
+    expect(facet(short, "Depth")).toBe(93.75);
     expect(facet(exact, "Depth")).toBe(100);
   });
 
-  it("measures depth as survival area rather than the longest stored line", () => {
+  it("averages distinct chapter core plans instead of selecting an arbitrary first plan", () => {
+    const result = assess(chapters([["e4", "e5", "Nf3", "Nc6"], ["d4", "d5"]]));
+    expect(facet(result, "Depth")).toBeCloseTo(100 * 2 / 16);
+    expect(facet(result, "Reach")).toBe(20);
+  });
+
+  it("does not interpret a short nonpreferred opponent variation as the core target", () => {
     const result = assess(tree([["e4", "e5", "Nf3", "Nc6"], ["e4", "c5"]]));
-    // Survival is 1, 1, 1/2, 1/2, then zero: area 3 over 16 plies.
     expect(facet(result, "Depth")).toBeCloseTo(100 * 3 / 16);
-    expect(facet(result, "Reach")).toBe(0);
+    expect(facet(result, "Reach")).toBe(20);
   });
 
   it("keeps a current-position scope local and measures its horizon relatively", () => {
     const nodes = tree([line16]);
     const result = assess(nodes, { rootNodeId: nodes[14].id });
-    expect(facet(result, "Depth")).toBeCloseTo(100 * 2 / 16);
-    expect(facet(result, "Reach")).toBe(0);
+    expect(facet(result, "Depth")).toBeCloseTo(100 * 1 / 16);
+    expect(facet(result, "Reach")).toBe(20);
     nodes[1].is_enabled = false;
     expect(() => assess(nodes, { rootNodeId: nodes[14].id })).toThrow(/disabled/i);
   });
 
-  it("credits checkmate and stalemate as actual terminal success", () => {
-    expect(facet(assess(tree([["f3", "e5", "g4", "Qh4#"]])), "Reach")).toBe(100);
+  it("does not reward a stored loss as terminal success", () => {
+    expect(facet(assess(tree([["f3", "e5", "g4", "Qh4#"]])), "Depth")).toBe(25);
+    expect(facet(assess(tree([["e4", "e5", "Bc4", "Nc6", "Qh5", "Nf6", "Qxf7#"]])), "Depth")).toBe(100);
     const fen = "7k/5K2/8/6Q1/8/8/8/8 w - - 0 1";
-    expect(facet(assess(tree([["Qg6"]], fen)), "Reach")).toBe(100);
+    expect(facet(assess(tree([["Qg6"]], fen)), "Depth")).toBe(100);
   });
 
   it("rejects an illegal edge rather than scoring an invented route", () => {
     const nodes = tree([["e4"]]);
     nodes[1].uci = "e2e5";
     expect(() => assess(nodes)).toThrow();
+  });
+
+  it("prefers answered breadth to a single equally long route", () => {
+    const narrow = assess(tree([line16]));
+    const broad = assess(tree([line16, "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6 Be2 e5 Nb3 Be7 O-O O-O".split(" ")]));
+    expect(broad.score).toBeGreaterThan(narrow.score);
+    expect(facet(broad, "Reach")).toBeGreaterThan(facet(narrow, "Reach"));
+  });
+
+  it("ignores an unpreferred own demonstration even when it is a stored loss", () => {
+    const nodes = tree([line16, ["f3", "e5", "g4", "Qh4#"]]);
+    expect(values(assess(nodes))).toEqual(values(assess(tree([line16]))));
+  });
+
+  it("shows divergent chapter choices without calling intentional alternatives poor preparation", () => {
+    const second = "e4 e5 Nf3 Nc6 Bc4 Bc5 d3 Nf6 O-O d6 c3 O-O Re1 a6 Bb3 Ba7".split(" ");
+    const alternatives = assess(chapters([line16, second]));
+    expect(facet(alternatives, "Consistency")).toBe(0);
+    expect(alternatives.score).toBeGreaterThanOrEqual(assess(tree([line16])).score);
+  });
+
+  it("measures reused plans only in comparable setups and leaves no-pair Ease unknown", () => {
+    const same = assess(tree(["d4 d5 Bf4 Nf6 e3".split(" "), "d4 d6 Bf4 Nf6 e3".split(" ")]));
+    const different = assess(tree(["d4 d5 Bf4 Nf6 e3".split(" "), "d4 d6 Nf3 Nf6 e3".split(" ")]));
+    expect(facet(same, "Ease")).toBe(100);
+    expect(facet(different, "Ease")).toBeLessThan(100);
+    expect(facet(assess(tree([["e4", "e5", "Nf3"]])), "Ease")).toBeNull();
+  });
+
+  it("finishes an opening at a stable phase transition and ignores later model-game length", () => {
+    const setup = "d4 d5 Bf4 Nf6 e3 e6 Nf3 Bd6 Bd3 O-O O-O Nbd7 Nbd2 c5 c3 Qc7 Qe2 b6".split(" ");
+    const done = assess(tree([setup]), { horizon: 32 });
+    const extended = assess(tree([[...setup, "Rac1", "Bb7"]]), { horizon: 32 });
+    expect(done.stopReasons).toContain("opening-complete");
+    expect(facet(done, "Depth")).toBe(100);
+    expect(values(extended)).toEqual(values(done));
+  });
+
+  it("does not improve the total by hiding a newly exposed unanswered opponent move", () => {
+    const complete = "e4 e5 Nf3 Nc6 Bc4 Bc5".split(" ");
+    const before = assess(tree([complete]), { myColor: "black", horizon: 32 });
+    const exposed = assess(tree([[...complete, "d3"]]), { myColor: "black", horizon: 32 });
+    expect(facet(exposed, "Replies")).toBeLessThan(facet(before, "Replies"));
+    expect(exposed.stopReasons).toContain("missing-reply");
+    expect(exposed.score).toBe(before.score);
+  });
+
+  it("does not stop at a phase transition while an exchange is still happening", () => {
+    const line = "e4 d5 exd5 Qxd5 Nc3 Qe5+ Be2 Bg4 Nf3 Bxf3 gxf3".split(" ");
+    const result = assess(tree([line]), { horizon: 32 });
+    expect(result.stopReasons).not.toContain("opening-complete");
+    expect(facet(result, "Depth")).toBeLessThan(100);
+  });
+
+  it("recognizes the same two-action plan played in a different order", () => {
+    const nodes = tiedRoots(tree([["d4", "d5", "Nf3"], ["Nf3", "d5", "d4"]]));
+    const result = assess(nodes);
+    expect(result.counts.identicalPositionPairs).toBeGreaterThan(0);
+    expect(facet(result, "Ease")).toBe(100);
   });
 
   it("rejects a legal move paired with the wrong resulting position", () => {
@@ -186,10 +258,10 @@ describe("Atlas move preparation", () => {
     // A rook returns to h1, but white has lost kingside castling rights.
     const fen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
     const nodes = tree([["Rh2", "Rh7", "Rh1", "Rh8", "O-O-O"]], fen);
-    expect(facet(assess(nodes), "Move orders")).toBeNull();
+    expect(facet(assess(nodes), "Consistency")).toBeNull();
     // Same pieces and turn after a reversible king shuffle; e.p. has expired.
     const epFen = "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 2";
     const epNodes = tree([["Kf1", "Kf8", "Ke1", "Ke8", "Kd1"]], epFen);
-    expect(facet(assess(epNodes), "Move orders")).toBeNull();
+    expect(facet(assess(epNodes), "Consistency")).toBeNull();
   });
 });

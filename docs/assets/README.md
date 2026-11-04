@@ -21,24 +21,24 @@ in-app browser against an isolated FastAPI/SQLite server, with a completed
 training run and a saved analysis in the account. They do not verify Stockfish
 inside that browser. Do not hide banners or alter the app DOM to prepare screenshots.
 
-The November 3 Atlas refresh uses headless Chromium and an isolated FastAPI/SQLite
-account with a branched repertoire, saved analyzed game and completed training run.
-The same account and tree were captured before and after at 1440 × 900,
-1000 × 650 and 390 × 844. Desktop header height changed from 78 to 47 CSS pixels;
-phone header height changed from 77 to 61. No horizontal overflow was measured.
-The final documentation image is a separate move-only example derived from saved
-Lichess study `2EaSmZtz`: its 16 nonempty standard-start chapters are merged by
-move prefix, all annotations omitted, then imported through the real API. The
-raw source corpus remains unchanged. It has 643 moves / 79 routes and a displayed
-Preparation index of 73, with Replies / Reach / Depth / Move orders rounded to
-90 / 41 / 86 / 75. These are stored-route structure measures, not note rates or a
-validated overall quality grade. Imprint is personal training data.
+The November 3 five-axis Atlas capture uses headless Chromium and an isolated
+FastAPI/SQLite account with a branched repertoire, saved analyzed game and completed
+training run. Before and after use the same London System Repertoire · White,
+643 moves / 79 routes, at 1440 × 900, 1000 × 650 and 390 × 844. The before image is
+also retained by Git in commit `11d8952f`; the current documentation image is the
+five-axis after. Desktop header height stays 47 CSS pixels and phone header 61;
+there are no console errors or horizontal overflow. The large index, compact
+metric rows, route map and type/layout styling remain; only radar axes and data
+change. Mobile body scrolling accommodates the fifth metric.
 
-This full-tree image is not a before/after pair with the Anti-Sicilian or London
-Basics trees. The London Basics refresh was separately checked on the same
-24-move / 5-route data at all three viewports. Both London captures have no console
-errors or horizontal overflow. Desktop header height is 47 CSS pixels and phone
-header height is 61; the original four-facet/radar/index arrangement is retained.
+The fixture derives from saved Lichess study `2EaSmZtz`: its sixteen nonempty
+standard-start chapters are merged by move prefix, all annotations omitted, then
+imported through the real API. The raw corpus remains unchanged. The displayed
+Preparation index is 85; Replies / Reach / Depth / Consistency / Ease round to
+97 / 92 / 78 / 56 / 27. Prefix merging produces one selected plan per occurrence,
+so this fixture is not identical to the research converter's separate chapter
+occurrences; its index is not the raw study's report value. Imprint is personal
+training data. Neither annotation quantity nor an engine contributes to scoring.
 
 ## Refresh
 

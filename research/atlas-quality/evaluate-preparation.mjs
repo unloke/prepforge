@@ -31,7 +31,7 @@ for await (const line of createInterface({ input: child.stdout, crlfDelay: Infin
   const sides = item.color === 'both' ? ['white', 'black'] : [item.color];
   const reports = [];
   for (const color of sides) {
-    const evaluate = (nodes) => atlasPreparation({ nodes, myColor: color, rootNodeId: 'root', horizon: 16 });
+    const evaluate = (nodes) => atlasPreparation({ nodes, myColor: color, rootNodeId: 'root', horizon: 32 });
     const t0 = performance.now();
     const original = evaluate(item.nodes);
     const originalMs = performance.now() - t0;
@@ -73,17 +73,17 @@ const distribution = (values) => {
     mean: sorted.length ? sorted.reduce((a, b) => a + b, 0) / sorted.length : null, max: sorted.at(-1) ?? null };
 };
 const summarize = (rs) => ({ side_reports: rs.length, index: distribution(rs.map((r) => r.score)),
-  facets: Object.fromEntries(['replies', 'reach', 'depth', 'moveOrders'].map((key) => [key,
+  facets: Object.fromEntries(['replies', 'reach', 'depth', 'moveOrders', 'ease'].map((key) => [key,
     distribution(rs.map((r) => r.facets.find((f) => f.key === key).value))])) });
 const roles = [...new Set(rows.map((r) => r.role))].sort();
 const source = await readFile(new URL('../../web-src/atlas-quality.js', base));
 assert(source.equals(sourceAtStart), 'Scorer changed during run: rerun final implementation');
 const highLikes = [...rows].filter((r) => r.likes !== null).sort((a, b) => b.likes - a.likes).slice(0, 5);
 const output = { algorithm_version: ATLAS_QUALITY_VERSION, scorer_sha256: createHash('sha256').update(source).digest('hex'),
-  method: { horizon_plies: 16, root: 'single standard initial position',
+  method: { horizon_plies: 32, root: 'single standard initial position',
     scope: 'Exact structural chapter duplicates removed and canonical signatures sorted by canonical start position and ordered UCI tree including mainline flags before attachment. All non-diagram chapter trees rooted at standard or directed-reachable custom starts; disconnected starts excluded and reported. Standard chapter roots collapse into one root; connected custom roots attach to their first existing occurrence in that canonical order.',
-    own_policy: 'PGN first variation sets is_mainline/is_prepared=true; alternatives false. This is structural selection, not a declared recommendation. All moves enabled.',
-    interpretation: 'Descriptive stored-route preparation diagnostics, not validated holistic quality. No annotations, engines, network, likes or manual labels enter scorer. Uniform opponent stored branches are not empirical opponent probabilities.',
+    own_policy: 'PGN first variation sets is_mainline/is_prepared=true; alternatives false. Select the best own tier within each occurrence; union tied chapter plans. Core Depth follows preferred tiers for both sides. This is structural selection, not recovered author intent. All moves legally validated.',
+    interpretation: 'Opening completion uses existing gamePhase plus consecutive non-opening positions and two quiet plies; bound at 32 relative plies. Replies describes core availability; Reach counts answered opponent alternatives; Depth follows core plans and stops before unanswered opponent moves. Total sqrt(Reach * Depth) avoids double-counting missing replies. Consistency/Ease describe learning load. No annotations, engines, network, likes or manual labels enter scorer. Not empirical coverage or validated holistic quality.',
     likes: 'Observed source likes shown only as external positive-unlabeled context: high may support usefulness; low/missing unknown. No threshold, fitting, negative label or validation claim.',
     invariance: 'Original versus empty/1 annotation fields and PGN mutation conversion; exact assembled tree copied under the same root, excluding occurrence count only.',
     custom_attachment_limitation: 'First-occurrence custom attachment is an explicit import convention, not author intent. Structural chapter deduplication and sorting make exact raw copies and raw chapter reordering inert. Different scope composition may affect occurrence reply sets; study indices are not scope-equivalent quality comparisons.' },

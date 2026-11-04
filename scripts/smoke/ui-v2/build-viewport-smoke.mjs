@@ -190,8 +190,8 @@ async function checkAtlas(atlas, check, empty = false) {
     check(await atlas.locator(".atlas-index").count() === 1, "Atlas retains its total score layout");
     check(await atlas.locator(".atlas-fingerprint").count() === 1, "Atlas retains its radar");
     const labels = await atlas.locator(".atlas-facet > span:nth-child(2)").allTextContents();
-    check(JSON.stringify(labels) === JSON.stringify(["Replies", "Reach", "Depth", "Move orders"]),
-      `four move-graph facets render: ${labels.join(", ")}`);
+    check(JSON.stringify(labels) === JSON.stringify(["Replies", "Reach", "Depth", "Consistency", "Ease"]),
+      `five move-graph facets render: ${labels.join(", ")}`);
     const score = (await atlas.locator(".atlas-index-number strong").textContent()).trim();
     const inRange = (value) => /^\d+$/.test(value) && Number(value) >= 0 && Number(value) <= 100;
     check(empty ? score === "—" : inRange(score), `Atlas total is ${empty ? "unknown" : "within 0–100"}, got ${score}`);

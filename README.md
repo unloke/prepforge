@@ -28,8 +28,8 @@ Branch choices float over the move tree. Deleted moves disappear immediately;
 the compact Undo control restores the branch without shifting the workspace.
 Click the route map beside the repertoire color to open Atlas. Choose the whole
 repertoire or current position to explore its branching route map, Preparation
-index and four-part radar: Replies, Reach, Depth and Move orders. The index
-summarizes stored-route preparation; personal training appears separately as Imprint.
+index and five-part radar: Replies, Reach, Depth, Consistency and Ease. Opening
+completion bounds the preparation score; personal training appears separately as Imprint.
 
 ![Repertoire atlas with the current tree's branching routes](docs/assets/repertoire-atlas.png)
 

@@ -6,43 +6,76 @@ The primary evidence is a deterministic audit of **38 saved public Lichess studi
 
 ## Production Preparation profile
 
-Atlas retains the **Preparation index**, four-facet radar and route map. It runs locally on the selected repertoire root or current-position subtree, using a **16-ply horizon relative to that root**. Every annotation is ignored. Only enabled, reachable legal moves and canonical positions enter the graph; equivalent positions merge their continuations within that scope. Position identity includes side, castling rights and legal en passant, excluding move counters.
+Atlas keeps the large index, radar, compact metric rows and route map. The radar
+now has five axes. The calculation uses only enabled legal moves, positions and
+prepared/mainline flags. It runs locally in a cancellable worker; no annotations,
+engine, LLM, popularity or network enter the score.
 
-Own policy prefers prepared mainline, then prepared, then mainline, then other moves; ties use lexicographic UCI. Opponent choices split equally over distinct stored moves. This is a **stored-route reference, not empirical encounter probability**. Missing opponent alternatives are not assessed. Traversal stops before a repeated-position edge earns depth; it does not infer a draw from position identity alone. Checkmate/stalemate absorb survival regardless of winner, so survival does not certify a favorable result.
+The [38-study re-review](content-review.md) records sampled paths and the failure →
+revision cycle. [Calibration](ranking-calibration.json) applies controlled damage
+to all 45 side reports. [Rankings](ranking-review.md) compare before/after results,
+matched opening families and parameter sensitivity. All data informed development;
+these are development checks, not independent good/bad quality validation.
 
-Let S(h) be the reference route mass surviving through ply h. Missing continuations and repetitions stop their mass. Let H=16.
+At each occurrence, select the best own tier: prepared mainline, prepared,
+mainline, then other moves. All tied plans coexist; chapter merging never chooses
+one by UCI alphabet. Core traversal uses preferred tiers on both sides. Other
+opponent moves can establish answered breadth but do not dilute core completion.
+This separates core plans from short side illustrations structurally; it cannot
+infer author intent when a demonstration is itself a preferred chapter line.
+
+Opening completion reuses `coach/material.js`'s `gamePhase`. It requires consecutive
+non-opening positions, two quiet plies (no captures, promotions or checks), and no
+current check. This avoids ending at the first phase switch during an exchange.
+After completion, later model-game moves earn nothing. A **32-ply relative bound**
+applies when no completion is found; a scope starting outside opening uses that
+relative bound without immediate completion. Winning mate/stalemate complete the
+route; a stored loss stops it. Repetition stops before its edge earns depth.
+This is a stage heuristic, not a proof that tactics are resolved.
 
 | Facet | Definition |
 | --- | --- |
-| Replies | 100 × unique nonterminal own positions with a stored legal reply / all unique nonterminal own positions, including frontiers |
-| Reach | 100 × S(H), including earlier checkmate/stalemate |
-| Depth | 100 × sum of S(1)…S(H) / H |
-| Move orders | 100 × eligible own-position groups sharing a reply across all distinct occurrence reply sets / eligible groups |
+| Replies | Stored own replies / unique core own positions requiring a reply before completion or the bound |
+| Reach | `100 × (1+B)/(5+B)`, where B counts answered opponent choices beyond the first at each distinct in-scope position; no bonus for own alternatives or copies |
+| Depth | Mean core-plan survival through the bound; opening completion or winning mate/stalemate absorb survival; an opponent move without the required own answer earns nothing |
+| Consistency | Repeated own positions whose nonempty preferred reply sets share a move / eligible repeated groups; ignore local empty endpoints |
+| Ease | Mean overlap of next-two-own-action plans in comparable positions; same complete own setup, material, opponent king/castling phase, opponent pawns differing by at most one relocation; checks excluded |
 
-Move orders requires at least two canonical incoming edges or two distinct reply sets for the same position; empty sets participate. Identical copies add neither incoming edges nor reply sets, while a coherent transposition with the same response can qualify. It displays a dash when none qualify. Different own alternatives are not called mistakes. An empty graph has no index. The index is the equal mean of applicable facets: a **product convention, not a validated holistic quality measure**. Reach and Depth are related, not independent supporting evidence. Legal but poor moves can score well; unrecorded opponent choices can expose gaps this reference never visits.
+No comparison data means a dash, not an invented 100. Plans with exchanged action
+order can match. Exact position+choice contexts collapse duplicates. Ease weights
+comparable positions equally, rather than letting prolific copies dominate.
 
-The exact implementation is [atlas-quality.js](../../web-src/atlas-quality.js), export atlasPreparation. The separate [profile evaluator](evaluate-preparation.mjs) runs this exact export and writes preparation-results.json. It checks annotation and duplicated-chapter invariance and records per-study/side distributions, not quality separation. Its PGN converter selects first variations as prepared mainlines for deterministic traversal; this convention does not establish author intent. Connected custom-position chapters join the standard-root scope; disconnected starts are excluded and reported. The structural audit above is a separate result, not a substitute for profile evaluation.
+The total is **sqrt(Reach × Depth)**. Missing replies already stop Depth;
+including their availability ratio again rewarded hiding unanswered frontier
+positions in the first phase trial. Replies stays visible as a diagnostic.
+Consistency and Ease describe choice/learning load; intentional alternatives do
+not lower the total. Reach's scale of four additional alternatives is a product
+convention checked at scales two/four/eight, not fitted against likes. Stored
+branch weights are equal, not empirical encounter probabilities. Unrecorded
+opponent moves are unknown. No structural score certifies chess strength or
+holistic teaching quality.
 
-The completed [profile results](preparation-results.json) cover all 38 studies and
-45 color reports. Every annotation, duplicated raw chapter, copied scope and
-reversed-chapter check passes. The converter canonicalizes chapter order and
-removes 24 exact structural duplicates from 724 chapters before custom-root
-attachment. This fixes the two initial duplicate-import failures rather than
-discarding those checks. Original scoring took 15.90 seconds in aggregate; the
-full conversion/evaluation/invariance run took 115.33 seconds. These checks
-establish structural invariance, not separation of good and poor repertoires.
+Position identity includes pieces, turn, castling and legal en passant, excluding
+clocks. Equivalent continuations merge only within scope. Every enabled tree edge
+is legally validated, including excluded illustrative descendants. The converter
+canonicalizes chapter order, removes exact duplicate chapters and attaches
+connected custom starts; disconnected starts are reported, not invented.
 
-The application runs the scorer in a dedicated worker. Closing Atlas or changing
-scope terminates that request; only move/position fields enter the worker.
-A Chromium check on 2,000 real converted nodes completed in 178.7 ms while the
-UI's 10-ms heartbeat fired 17 times. This establishes responsiveness for that
-sample, not a universal runtime bound.
+`atlas-quality.js` and `atlas-ease.js` implement the production calculation.
+`evaluate-preparation.mjs` executes it on the corpus with annotation, raw chapter
+copy, assembled tree copy and reverse chapter checks. `calibrate-preparation.mjs`
+replays the same corpus and controlled mutations. See their JSON reports for
+per-study values and recorded timings. The UI's five-axis capture uses the same
+populated London fixture before and after, at 1440/1000/390 pixels. A 2,000-node
+Chromium worker check completed in 177 ms while 17 UI heartbeat ticks fired.
+These are measured samples, not universal runtime guarantees.
 
-Run the offline checks from the repository root in this Windows checkout:
+Run from the repository root:
 
 ```powershell
-.venv313/Scripts/python.exe research/atlas-quality/move_graph_audit.test.py
-.venv313/Scripts/python.exe research/atlas-quality/move_graph_audit.py
+.venv313/Scripts/python.exe -X utf8 research/atlas-quality/review-content.py
+node research/atlas-quality/calibrate-preparation.mjs
+node research/atlas-quality/write-ranking-report.mjs
 node research/atlas-quality/evaluate-preparation.mjs
 ```
 
