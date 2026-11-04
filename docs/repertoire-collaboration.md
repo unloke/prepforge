@@ -60,16 +60,23 @@ earn nothing. A 32-ply relative limit applies when no completion is detected;
 a scope already outside opening uses the limit. Repetition and stored losses stop
 progress; winning mate/stalemate complete it. This does not prove tactical safety.
 
-Replies displays core own-response availability; Reach measures distinct answered
-opponent alternatives; Depth measures core completion. Preparation is the
-geometric mean of Reach and Depth, avoiding duplicate penalties for missing
-replies. Consistency compares nonempty preferred reply sets at repeated positions,
-ignoring chapter endpoints. Ease compares two-action plans under matched own
-setups and similar opponent pawn structures. Both describe learning load and do
-not reduce the total; intentional alternatives are not quality errors. Missing
-comparison data displays a dash. Equal stored weights are not empirical opponent
-frequencies, and unrecorded moves remain unknown. See [Atlas research](../research/atlas-quality/README.md)
-for the 38-study re-review, controlled-damage checks and remaining ambiguities.
+Replies estimates response preparation; Reach measures supported opponent plans;
+Depth estimates opening handover from core survival and endpoint development.
+The five facets were calibrated against 225 frozen move-content judgments across
+38 studies / 45 sides, with opening-family development validation. Preparation
+combines supported breadth and route/deployment adequacy. Consistency describes
+alternative-choice burden and repeated-position agreement; Ease describes
+reusable two-action plans under matched pawn structures and development stage,
+quiet-action share and choice burden. These learning-load profiles do not reduce
+the total. Intentional systems are legitimate alternatives.
+
+The fits approximate one qualitative reviewer, not independent chess quality.
+Author intent and short instructional demonstrations remain ambiguous. Missing
+Ease comparisons display a dash; unrecorded opponent moves remain unknown.
+[Atlas research](../research/atlas-quality/facet-calibration-review.md) records
+per-facet rationales, frozen targets, fitted/held-out results, failed trials and
+remaining errors. No fitting, annotation processing, engine or LLM runs when
+opening Atlas.
 
 Tree PGN import/export preserves starting-position prose and drawings. Variation
 introductions are retained with the corresponding branch's move note, using the

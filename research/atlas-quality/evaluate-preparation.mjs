@@ -4,12 +4,12 @@ import { createInterface } from 'node:readline';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
-import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { atlasPreparation, ATLAS_QUALITY_VERSION } from '../../web-src/atlas-quality.js';
+import { scorerFingerprint } from './scorer-fingerprint.mjs';
 
 const base = new URL('./', import.meta.url);
-const sourceAtStart = await readFile(new URL('../../web-src/atlas-quality.js', base));
+const sourceAtStart = await scorerFingerprint();
 const readJson = async (name) => JSON.parse(await readFile(new URL(name, base), 'utf8'));
 const stars = new Map((await readJson('corpus/stars.json')).map((r) => [r.study_id, r.likes]));
 const started = performance.now();
@@ -76,14 +76,14 @@ const summarize = (rs) => ({ side_reports: rs.length, index: distribution(rs.map
   facets: Object.fromEntries(['replies', 'reach', 'depth', 'moveOrders', 'ease'].map((key) => [key,
     distribution(rs.map((r) => r.facets.find((f) => f.key === key).value))])) });
 const roles = [...new Set(rows.map((r) => r.role))].sort();
-const source = await readFile(new URL('../../web-src/atlas-quality.js', base));
-assert(source.equals(sourceAtStart), 'Scorer changed during run: rerun final implementation');
+const source = await scorerFingerprint();
+assert.equal(source, sourceAtStart, 'Scorer changed during run: rerun final implementation');
 const highLikes = [...rows].filter((r) => r.likes !== null).sort((a, b) => b.likes - a.likes).slice(0, 5);
-const output = { algorithm_version: ATLAS_QUALITY_VERSION, scorer_sha256: createHash('sha256').update(source).digest('hex'),
+const output = { algorithm_version: ATLAS_QUALITY_VERSION, scorer_sha256: source,
   method: { horizon_plies: 32, root: 'single standard initial position',
     scope: 'Exact structural chapter duplicates removed and canonical signatures sorted by canonical start position and ordered UCI tree including mainline flags before attachment. All non-diagram chapter trees rooted at standard or directed-reachable custom starts; disconnected starts excluded and reported. Standard chapter roots collapse into one root; connected custom roots attach to their first existing occurrence in that canonical order.',
     own_policy: 'PGN first variation sets is_mainline/is_prepared=true; alternatives false. Select the best own tier within each occurrence; union tied chapter plans. Core Depth follows preferred tiers for both sides. This is structural selection, not recovered author intent. All moves legally validated.',
-    interpretation: 'Opening completion uses existing gamePhase plus consecutive non-opening positions and two quiet plies; bound at 32 relative plies. Replies describes core availability; Reach counts answered opponent alternatives; Depth follows core plans and stops before unanswered opponent moves. Total sqrt(Reach * Depth) avoids double-counting missing replies. Consistency/Ease describe learning load. No annotations, engines, network, likes or manual labels enter scorer. Not empirical coverage or validated holistic quality.',
+    interpretation: 'Opening completion uses existing gamePhase plus consecutive non-opening positions and two quiet plies; bound at 32 relative plies. Move-only features use response availability, supported alternatives with up to six-ply follow-up, core survival, endpoint development, choice/repeated-position agreement and two-action pawn-structure reuse. Frozen qualitative judgments fit coefficients offline; there is no runtime label lookup, annotation scoring, engine, LLM, network or likes input. Preparation combines supported breadth and route/deployment adequacy. Consistency/Ease describe learning load. Not empirical coverage or independent quality certification.',
     likes: 'Observed source likes shown only as external positive-unlabeled context: high may support usefulness; low/missing unknown. No threshold, fitting, negative label or validation claim.',
     invariance: 'Original versus empty/1 annotation fields and PGN mutation conversion; exact assembled tree copied under the same root, excluding occurrence count only.',
     custom_attachment_limitation: 'First-occurrence custom attachment is an explicit import convention, not author intent. Structural chapter deduplication and sorting make exact raw copies and raw chapter reordering inert. Different scope composition may affect occurrence reply sets; study indices are not scope-equivalent quality comparisons.' },

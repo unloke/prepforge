@@ -1,22 +1,24 @@
 import { Chess } from "chess.js";
 import { atlasEase } from "./atlas-ease.js";
 import { gamePhase } from "./coach/material.js";
+import { atlasContentFeatures } from "./atlas-content-features.js";
+import { calibratedAtlasValue } from "./atlas-calibration.js";
 
-export const ATLAS_QUALITY_VERSION = "stored-plan-preparation-v2";
+export const ATLAS_QUALITY_VERSION = "content-calibration-v3";
 
 // Opening identity: legal en passant and castling rights matter; clocks do not.
 const boardKey = (board) => board.fen().split(" ").slice(0, 4).join(" ");
 const priority = (node) => node.is_prepared === true
   ? (node.is_mainline ? 0 : 1) : (node.is_mainline ? 2 : 3);
 
-/** Move-only preparation index, not validated strategic quality.
+/** Move-content estimates fitted to frozen qualitative facet judgments.
  * Each occurrence selects its best priority tier; tied chapter plans coexist.
  * Same-position outgoing edges are unioned ONLY inside the enabled scope.
  * Core choices split equally over distinct preferred moves, not real players.
  * Survival credits a stored move unless it repeats a position on that route;
  * repetition stops before that edge earns depth. A stored loss stops depth;
  * winning mate/stalemate absorb survival. No repetition adjudication is inferred.
- * Consistency intersects nonempty preferred reply sets, ignoring local endpoints.
+ * Repeated-choice evidence intersects nonempty reply sets, ignoring endpoints.
  * Groups need two canonical incoming edges OR two reply sets; identical copies
  * add neither arrivals nor sets. The scoped root has its own arrival token.
  */
@@ -115,7 +117,7 @@ export function atlasPreparation({ nodes = [], myColor, rootNodeId = null, horiz
   const survival = Array(horizon + 1).fill(0), reasons = new Set(), corePositions = new Set();
   const visit = (key, depth, mass, path) => {
     const position = graph.get(key);
-    if (depth < horizon) corePositions.add(key);
+    corePositions.add(key);
     if (position.boundary) {
       for (let h = depth + 1; h <= horizon; h++) survival[h] += mass;
       reasons.add("opening-complete");
@@ -186,30 +188,31 @@ export function atlasPreparation({ nodes = [], myColor, rootNodeId = null, horiz
     if ([...first].some((uci) => rest.every((set) => set.has(uci)))) commonGroups++;
   }
   const ease = atlasEase(graph, distances, ownTurn, horizon);
-  const reference = "Preferred-tier core plans receive equal weights. Replies measures core own-response availability; all eligible stored opponent branches can establish Reach, not core Depth. Opening completion uses the existing phase detector after two quiet plies; scope-relative horizon is a safety limit. Total is sqrt(Reach * Depth), with missing core replies already stopping Depth. Consistency and Ease describe learning load.";
+  const features = atlasContentFeatures(graph, distances, ownTurn, horizon,
+    { depth, corePositions, repeatedGroups, commonGroups, ease });
+  const reference = "Move-only estimates calibrated against 225 frozen qualitative facet judgments from 38 studies (45 sides), using opening-family validation. Single reviewer, previously exposed to scores; exploratory development, not independent quality certification. Preferred-tier core routes and stable phase boundaries delimit opening content. Supported opponent alternatives require follow-up beyond one own move. Preparation combines supported breadth and route/deployment adequacy; Consistency and Ease remain learning-load profiles. Missing or illustrative author intent is not inferred.";
   const facet = (key, label, numerator, denominator, definition) => ({
     key, label, numerator: edges ? numerator : 0, denominator: edges ? denominator : 0,
-    value: edges && denominator ? 100 * numerator / denominator : null,
+    value: edges && (key === "moveOrders" ? ownPositions > 1 : denominator > 0)
+      ? calibratedAtlasValue(key, features) : null,
     definition,
   });
   const facets = [
     facet("replies", "Replies", answeredPositions, ownPositions,
-      "Unique core-plan own positions with a stored reply / core-plan own positions requiring a reply before the horizon or opening completion. Short nonpreferred side lines are assessed as answered breadth, not required core replies."),
+      "Calibrated response preparation: supported opponent alternatives and route/deployment adequacy. A one-move answer supplies less evidence than continued preparation. Unrecorded opponent moves are unknown."),
     facet("reach", "Reach", 1 + answeredAlternatives, 5 + answeredAlternatives,
-      `Answered opponent alternatives beyond the first at each unique position within ${horizon} plies or opening completion. Score = 100 × (1 + alternatives) / (5 + alternatives); a single route scores 20. Not empirical coverage.`),
+      `Calibrated breadth of supported opponent plans within ${horizon} plies or opening completion, both across positions and per route. Follow-up support looks ahead at most six plies; a lone own answer adds no support. Not empirical coverage.`),
     facet("depth", "Depth", depth, horizon,
-      `Core-plan completion through ${horizon} plies or opening end. The existing phase detector must leave opening across consecutive positions, with two quiet plies and no check. Winning mate/stalemate also complete; a stored loss or repetition stops. Short nonpreferred opponent side lines do not dilute core Depth.`),
+      `Calibrated handover depth: core route completion through ${horizon} plies or stable opening end, plus own development at distinct core endpoints. Short nonpreferred opponent illustrations do not dilute the core. Development is structural, not a safety evaluation.`),
     facet("moveOrders", "Consistency", commonGroups, repeatedGroups,
-      "Repeated own positions sharing a preferred reply across nonempty occurrences. Local chapter endpoints ignored. Alternatives can be intentional; excluded from Preparation."),
+      "Calibrated plan coherence: early alternative-choice burden, common preferred replies at repeated positions, and pawn-setup reuse. Reconverging move orders receive no choice burden. Intentional systems are legitimate; excluded from Preparation."),
     facet("ease", "Ease", ease.numerator, ease.denominator,
-      "Reuse of the next two own actions in comparable positions: identical own setup, material and king/castling phase; opponent pawn structure differs by at most one relocation; checks excluded. No comparable positions = unmeasured. Excluded from Preparation."),
+      "Calibrated learning ease: two-action reuse under the same own pawn structure, development stage, material and king/castling phase, similar opponent pawns, quiet-move share and choice burden. No comparable positions = unmeasured. Excluded from Preparation."),
   ];
-  // Missing core replies already stop Depth. Multiplying their availability
-  // ratio into the total again rewards hiding newly exposed unanswered leaves.
-  const applicable = facets.filter((f) => ["reach", "depth"].includes(f.key) && f.value !== null);
   return {
-    score: applicable.length ? Math.pow(applicable.reduce((product, f) => product * f.value, 1), 1 / applicable.length) : null,
+    score: edges ? calibratedAtlasValue("overall", features) : null,
     facets,
+    features,
     counts: { positions: graph.size, occurrences: occurrenceCount, moves: edges,
       ownPositions, answeredPositions, repeatedGroups, commonGroups, answeredAlternatives,
       easePositions: ease.denominator, easePairs: ease.pairs, identicalPositionPairs: ease.identicalPositionPairs,

@@ -1,0 +1,2951 @@
+{
+  "judgments_sha256": "187b56f83b62f52062a29a8a280e33db33089bf710145e62cdcdb965d0a4907a",
+  "method": "Nonnegative slopes, fixed ridge 0.05, leave-one-opening-family-out. Single rater, previously exposed to outputs; exploratory model selection is not nested validation. Mixed-family overlap remains.",
+  "models": {
+    "replies": {
+      "intercept": 9.999999999999986e-14,
+      "supportedBreadth": 55.15115043526742,
+      "adequacy": 43.51003877730877
+    },
+    "reach": {
+      "intercept": 9.999999999993356e-14,
+      "supportedBreadth": 65.64592906870001,
+      "routeBreadth": 21.338336888722697,
+      "adequacy": 5.3201148365566215
+    },
+    "depth": {
+      "intercept": 9.999999999999999e-14,
+      "completion": 21.752340477917002,
+      "handover": 82.00384539562927
+    },
+    "moveOrders": {
+      "intercept": 35.855250422419616,
+      "coherence": 31.557052604375002,
+      "repeatedAgreement": 21.957983098906304,
+      "pawnReuse": 4.596562296782788
+    },
+    "ease": {
+      "intercept": -13.227067291032036,
+      "quiet": 66.2091694643668,
+      "planReuse": 29.66533757993226,
+      "coherence": 16.86605115570041
+    },
+    "overall": {
+      "intercept": 9.999999999999999e-14,
+      "supportedBreadth": 59.06980254833074,
+      "adequacy": 34.35036059408776
+    }
+  },
+  "metrics": {
+    "replies": {
+      "features": [
+        "supportedBreadth",
+        "adequacy"
+      ],
+      "baseline": {
+        "n": 45,
+        "mae": 26.110031249557146,
+        "ranking": 0.7251461988304093
+      },
+      "training": {
+        "n": 45,
+        "mae": 10.232510685798859,
+        "ranking": 0.8669590643274854
+      },
+      "family_holdout": {
+        "n": 45,
+        "mae": 11.183792374773374,
+        "ranking": 0.8464912280701754
+      },
+      "family_holdout_same_available": {
+        "n": 45,
+        "mae": 11.183792374773374,
+        "ranking": 0.8464912280701754
+      },
+      "fold_coefficients": {
+        "caro": [
+          9.999999999999995e-16,
+          0.5343829726886077,
+          0.44528295786937183
+        ],
+        "d4-english": [
+          9.999999999999999e-16,
+          0.5427818852062042,
+          0.4379872515737426
+        ],
+        "french": [
+          9.999999999999999e-16,
+          0.5845495689742125,
+          0.39239250165389683
+        ],
+        "kings-gambit": [
+          9.99999999999998e-16,
+          0.5388119812129176,
+          0.44609402562164463
+        ],
+        "london": [
+          9.999999999999995e-16,
+          0.5423820096604025,
+          0.4483748453280518
+        ],
+        "mixed": [
+          9.999999999999551e-16,
+          0.5816833668402595,
+          0.45114094285516776
+        ],
+        "open-e4": [
+          9.999999999999999e-16,
+          0.5296907732348242,
+          0.4409824755103407
+        ],
+        "pirc-systems": [
+          9.99999999999999e-16,
+          0.5567348666774482,
+          0.4276947361605557
+        ],
+        "sicilian": [
+          9.999999999999981e-16,
+          0.5587884964102804,
+          0.4274907921947584
+        ]
+      },
+      "rows": [
+        {
+          "id": "2EaSmZtz",
+          "color": "white",
+          "family": "london",
+          "judgment": 85.0,
+          "baseline": 98.98989898989899,
+          "fitted": 81.36703278790874,
+          "held_out": 81.52269762776704
+        },
+        {
+          "id": "artuehhC",
+          "color": "white",
+          "family": "london",
+          "judgment": 80.0,
+          "baseline": 96.42857142857143,
+          "fitted": 65.60787325863079,
+          "held_out": 65.87913191464267
+        },
+        {
+          "id": "D8QPC8Zr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 80.0,
+          "baseline": 95.16129032258064,
+          "fitted": 86.0347371234669,
+          "held_out": 90.09860006970098
+        },
+        {
+          "id": "ACmyH8gC",
+          "color": "white",
+          "family": "kings-gambit",
+          "judgment": 85.0,
+          "baseline": 100.0,
+          "fitted": 77.52288245675965,
+          "held_out": 76.93004540783627
+        },
+        {
+          "id": "NGpnogsw",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 70.0,
+          "baseline": 100.0,
+          "fitted": 67.74773916330544,
+          "held_out": 67.38171184802493
+        },
+        {
+          "id": "8Uztu7Xx",
+          "color": "black",
+          "family": "caro",
+          "judgment": 90.0,
+          "baseline": 98.12865497076024,
+          "fitted": 93.86897041123065,
+          "held_out": 93.08283702774322
+        },
+        {
+          "id": "8c8bmUfy",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 85.0,
+          "baseline": 97.36842105263158,
+          "fitted": 87.66147648831625,
+          "held_out": 87.77256250092054
+        },
+        {
+          "id": "fTpa2qZW",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 90.0,
+          "baseline": 98.9795918367347,
+          "fitted": 92.92787604477746,
+          "held_out": 92.34261460616587
+        },
+        {
+          "id": "CfSYkcMp",
+          "color": "white",
+          "family": "caro",
+          "judgment": 90.0,
+          "baseline": 100.0,
+          "fitted": 77.62837671055975,
+          "held_out": 76.73310104373957
+        },
+        {
+          "id": "yteYURRC",
+          "color": "black",
+          "family": "caro",
+          "judgment": 80.0,
+          "baseline": 100.0,
+          "fitted": 90.52074967404545,
+          "held_out": 89.92514268704443
+        },
+        {
+          "id": "vPqdbuqZ",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 65.0,
+          "baseline": 100.0,
+          "fitted": 74.14956679690188,
+          "held_out": 73.69918843146945
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 90.0,
+          "baseline": 98.89196675900277,
+          "fitted": 94.92612361126041,
+          "held_out": 99.40208191464393
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 90.0,
+          "baseline": 98.92703862660944,
+          "fitted": 92.56092681305758,
+          "held_out": 96.94815792236713
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 60.0,
+          "baseline": 96.61016949152543,
+          "fitted": 68.06714959266844,
+          "held_out": 71.12318327523725
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 98.24561403508773,
+          "fitted": 52.74234566179562,
+          "held_out": 54.98022589766317
+        },
+        {
+          "id": "tU7Nq5nE",
+          "color": "white",
+          "family": "caro",
+          "judgment": 80.0,
+          "baseline": 100.0,
+          "fitted": 67.10387605565545,
+          "held_out": 66.81495777638563
+        },
+        {
+          "id": "rZyGzD67",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 75.0,
+          "baseline": 95.83333333333333,
+          "fitted": 48.02371431088814,
+          "held_out": 47.72290547475304
+        },
+        {
+          "id": "ztgulNGx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 85.0,
+          "baseline": 98.14814814814815,
+          "fitted": 59.847053242189986,
+          "held_out": 58.629281254823255
+        },
+        {
+          "id": "AKbQXhWw",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 90.0,
+          "baseline": 99.48186528497409,
+          "fitted": 91.18795447351704,
+          "held_out": 90.58430611774342
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 35.0,
+          "baseline": 90.0,
+          "fitted": 22.9537808636364,
+          "held_out": 23.969651807333992
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 25.0,
+          "baseline": 78.26086956521739,
+          "fitted": 24.19597021448534,
+          "held_out": 25.32226440883753
+        },
+        {
+          "id": "sEo8o4Rm",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 85.0,
+          "baseline": 100.0,
+          "fitted": 90.39355073676646,
+          "held_out": 88.9650914896582
+        },
+        {
+          "id": "GNlZ2WKx",
+          "color": "white",
+          "family": "london",
+          "judgment": 75.0,
+          "baseline": 100.0,
+          "fitted": 94.31430050831875,
+          "held_out": 94.80075340299999
+        },
+        {
+          "id": "KjivNw7F",
+          "color": "white",
+          "family": "london",
+          "judgment": 75.0,
+          "baseline": 96.89922480620154,
+          "fitted": 76.12401324950847,
+          "held_out": 76.21735494202785
+        },
+        {
+          "id": "1gqDv9cx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 80.0,
+          "baseline": 95.7983193277311,
+          "fitted": 79.25680047768928,
+          "held_out": 77.56835542011036
+        },
+        {
+          "id": "8eyxyvBh",
+          "color": "white",
+          "family": "open-e4",
+          "judgment": 75.0,
+          "baseline": 95.83333333333333,
+          "fitted": 44.209692882597636,
+          "held_out": 43.49496219051728
+        },
+        {
+          "id": "dgUQNQ2B",
+          "color": "black",
+          "family": "d4-english",
+          "judgment": 85.0,
+          "baseline": 98.51851851851852,
+          "fitted": 80.24205348052644,
+          "held_out": 79.580419853515
+        },
+        {
+          "id": "whCVdUeM",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 70.0,
+          "baseline": 97.72727272727273,
+          "fitted": 74.94395500770086,
+          "held_out": 73.64580813026039
+        },
+        {
+          "id": "OnPMlzHT",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 80.0,
+          "baseline": 100.0,
+          "fitted": 54.08249623220127,
+          "held_out": 53.18715702586182
+        },
+        {
+          "id": "PDVt7Kbh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 85.0,
+          "baseline": 100.0,
+          "fitted": 81.44932161370443,
+          "held_out": 80.6371225259437
+        },
+        {
+          "id": "jtlLwUvh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 65.0,
+          "baseline": 100.0,
+          "fitted": 49.28759797918831,
+          "held_out": 48.77243005588095
+        },
+        {
+          "id": "A4EBp7Ds",
+          "color": "black",
+          "family": "french",
+          "judgment": 85.0,
+          "baseline": 100.0,
+          "fitted": 79.61350687495269,
+          "held_out": 79.75401311633541
+        },
+        {
+          "id": "UzKIIAtz",
+          "color": "black",
+          "family": "french",
+          "judgment": 70.0,
+          "baseline": 100.0,
+          "fitted": 49.65327273822071,
+          "held_out": 47.68523463338014
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 25.0,
+          "baseline": 73.6842105263158,
+          "fitted": 7.086922263982423,
+          "held_out": 7.348191088677456
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 20.0,
+          "baseline": 78.94736842105263,
+          "fitted": 16.798038661352596,
+          "held_out": 17.604149644159026
+        },
+        {
+          "id": "nRiq9SZx",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 70.0,
+          "baseline": 98.76543209876543,
+          "fitted": 68.36878211380554,
+          "held_out": 68.42431962601312
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 50.0,
+          "baseline": 96.47058823529412,
+          "fitted": 72.97111295435866,
+          "held_out": 76.38716649307953
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 95.32163742690058,
+          "fitted": 69.60375612375014,
+          "held_out": 72.88691877801067
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 80.0,
+          "baseline": 95.88377723970945,
+          "fitted": 79.36373080405357,
+          "held_out": 83.18254345997681
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 75.0,
+          "baseline": 96.75810473815461,
+          "fitted": 79.74521528151803,
+          "held_out": 83.58306469052084
+        },
+        {
+          "id": "nYAJ7Km3",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 65.0,
+          "baseline": 95.45454545454545,
+          "fitted": 39.48827010058378,
+          "held_out": 39.260821919392136
+        },
+        {
+          "id": "FwXo3Qhq",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 85.0,
+          "baseline": 100.0,
+          "fitted": 86.31750658912779,
+          "held_out": 86.06371363674535
+        },
+        {
+          "id": "LLNDy032",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 75.0,
+          "baseline": 95.1219512195122,
+          "fitted": 76.80350364590738,
+          "held_out": 80.51747117304863
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 96.0,
+          "fitted": 57.14231786216018,
+          "held_out": 60.01406214036912
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 30.0,
+          "baseline": 88.31168831168831,
+          "fitted": 48.35465749767253,
+          "held_out": 50.626204923660424
+        }
+      ]
+    },
+    "reach": {
+      "features": [
+        "supportedBreadth",
+        "routeBreadth",
+        "adequacy"
+      ],
+      "baseline": {
+        "n": 45,
+        "mae": 13.464523851995041,
+        "ranking": 0.9037037037037037
+      },
+      "training": {
+        "n": 45,
+        "mae": 8.843158742464857,
+        "ranking": 0.9111111111111111
+      },
+      "family_holdout": {
+        "n": 45,
+        "mae": 9.80917215023043,
+        "ranking": 0.8876543209876543
+      },
+      "family_holdout_same_available": {
+        "n": 45,
+        "mae": 9.80917215023043,
+        "ranking": 0.8876543209876543
+      },
+      "fold_coefficients": {
+        "caro": [
+          9.999999999869103e-16,
+          0.641784233879825,
+          0.21026900320528996,
+          0.06727654678273087
+        ],
+        "d4-english": [
+          9.999999999999999e-16,
+          0.6512367474328795,
+          0.20093255680233568,
+          0.06118609719393089
+        ],
+        "french": [
+          9.99999999999998e-16,
+          0.6829613585896055,
+          0.19001378459765214,
+          0.0442038733813456
+        ],
+        "kings-gambit": [
+          9.999999999871414e-16,
+          0.6521829824931893,
+          0.20841385538680635,
+          0.06157272637990789
+        ],
+        "london": [
+          9.999999999974895e-16,
+          0.6575733427482715,
+          0.2051674150818215,
+          0.06591161589519544
+        ],
+        "mixed": [
+          9.999999999995307e-16,
+          0.6098690916207326,
+          0.3399251406736776,
+          5.092463048443909e-22
+        ],
+        "open-e4": [
+          9.999999999986813e-16,
+          0.6755012434950445,
+          0.15074599249175472,
+          0.09082761582694268
+        ],
+        "pirc-systems": [
+          9.999999999999999e-16,
+          0.6804660695843526,
+          0.18295309871532914,
+          0.05942235847566601
+        ],
+        "sicilian": [
+          9.999999999551172e-16,
+          0.6141458508339482,
+          0.22537450944066012,
+          0.08659432397826534
+        ]
+      },
+      "rows": [
+        {
+          "id": "2EaSmZtz",
+          "color": "white",
+          "family": "london",
+          "judgment": 85.0,
+          "baseline": 92.0,
+          "fitted": 81.38535334757448,
+          "held_out": 81.70044186550238
+        },
+        {
+          "id": "artuehhC",
+          "color": "white",
+          "family": "london",
+          "judgment": 60.0,
+          "baseline": 75.0,
+          "fitted": 63.735837484163184,
+          "held_out": 64.01941134088105
+        },
+        {
+          "id": "D8QPC8Zr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 75.0,
+          "baseline": 92.5925925925926,
+          "fitted": 82.89712047484652,
+          "held_out": 85.52019831969724
+        },
+        {
+          "id": "ACmyH8gC",
+          "color": "white",
+          "family": "kings-gambit",
+          "judgment": 90.0,
+          "baseline": 97.27891156462584,
+          "fitted": 85.70337321210374,
+          "held_out": 85.3076860426865
+        },
+        {
+          "id": "NGpnogsw",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 40.0,
+          "baseline": 63.63636363636363,
+          "fitted": 51.800774200340705,
+          "held_out": 53.74858253252782
+        },
+        {
+          "id": "8Uztu7Xx",
+          "color": "black",
+          "family": "caro",
+          "judgment": 95.0,
+          "baseline": 99.35064935064935,
+          "fitted": 90.50297871843684,
+          "held_out": 90.01070524710215
+        },
+        {
+          "id": "8c8bmUfy",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 95.0,
+          "baseline": 98.6842105263158,
+          "fitted": 85.78134861882614,
+          "held_out": 85.28742737455401
+        },
+        {
+          "id": "fTpa2qZW",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 95.0,
+          "baseline": 97.79005524861878,
+          "fitted": 86.92486232868161,
+          "held_out": 86.06688777470929
+        },
+        {
+          "id": "CfSYkcMp",
+          "color": "white",
+          "family": "caro",
+          "judgment": 85.0,
+          "baseline": 94.8051948051948,
+          "fitted": 78.8739107434424,
+          "held_out": 78.2127668961957
+        },
+        {
+          "id": "yteYURRC",
+          "color": "black",
+          "family": "caro",
+          "judgment": 75.0,
+          "baseline": 92.72727272727273,
+          "fitted": 80.3155146595045,
+          "held_out": 80.0717716138654
+        },
+        {
+          "id": "vPqdbuqZ",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 45.0,
+          "baseline": 60.0,
+          "fitted": 58.2510781730079,
+          "held_out": 57.85943113807042
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 95.0,
+          "baseline": 99.4358251057828,
+          "fitted": 85.54746622628528,
+          "held_out": 85.19622634083946
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 95.0,
+          "baseline": 99.36406995230524,
+          "fitted": 88.72489617973659,
+          "held_out": 90.7697657829193
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 60.0,
+          "fitted": 56.0622250722689,
+          "held_out": 57.80227424855885
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 35.0,
+          "baseline": 50.0,
+          "fitted": 32.863969963240116,
+          "held_out": 32.28353522346797
+        },
+        {
+          "id": "tU7Nq5nE",
+          "color": "white",
+          "family": "caro",
+          "judgment": 60.0,
+          "baseline": 66.66666666666667,
+          "fitted": 61.51446722953845,
+          "held_out": 61.42647579409849
+        },
+        {
+          "id": "rZyGzD67",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 60.0,
+          "baseline": 63.63636363636363,
+          "fitted": 50.971339140280826,
+          "held_out": 50.17241603943291
+        },
+        {
+          "id": "ztgulNGx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 75.0,
+          "baseline": 71.42857142857143,
+          "fitted": 65.13109849096867,
+          "held_out": 63.32250557890824
+        },
+        {
+          "id": "AKbQXhWw",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 95.0,
+          "baseline": 97.74011299435028,
+          "fitted": 88.02243491113234,
+          "held_out": 87.06658110027587
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 25.0,
+          "baseline": 33.333333333333336,
+          "fitted": 17.600992004805942,
+          "held_out": 17.904661309455495
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 20.0,
+          "baseline": 50.0,
+          "fitted": 27.501804028586225,
+          "held_out": 31.27756578943759
+        },
+        {
+          "id": "sEo8o4Rm",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 80.0,
+          "baseline": 92.5925925925926,
+          "fitted": 81.95966608142786,
+          "held_out": 82.02197661510895
+        },
+        {
+          "id": "GNlZ2WKx",
+          "color": "white",
+          "family": "london",
+          "judgment": 75.0,
+          "baseline": 92.98245614035088,
+          "fitted": 83.8015805234363,
+          "held_out": 84.48182359443611
+        },
+        {
+          "id": "KjivNw7F",
+          "color": "white",
+          "family": "london",
+          "judgment": 75.0,
+          "baseline": 89.47368421052632,
+          "fitted": 77.95378392574081,
+          "held_out": 78.19425444093976
+        },
+        {
+          "id": "1gqDv9cx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 90.0,
+          "baseline": 96.22641509433963,
+          "fitted": 79.76653891736609,
+          "held_out": 79.64900540467788
+        },
+        {
+          "id": "8eyxyvBh",
+          "color": "white",
+          "family": "open-e4",
+          "judgment": 60.0,
+          "baseline": 71.42857142857143,
+          "fitted": 46.96350748060611,
+          "held_out": 45.05412062925146
+        },
+        {
+          "id": "dgUQNQ2B",
+          "color": "black",
+          "family": "d4-english",
+          "judgment": 90.0,
+          "baseline": 97.8021978021978,
+          "fitted": 85.42182621388285,
+          "held_out": 84.31626074257679
+        },
+        {
+          "id": "whCVdUeM",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 65.0,
+          "baseline": 86.20689655172414,
+          "fitted": 73.37068545929405,
+          "held_out": 72.39247197315389
+        },
+        {
+          "id": "OnPMlzHT",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 65.0,
+          "baseline": 60.0,
+          "fitted": 55.340161705395715,
+          "held_out": 53.72753799616999
+        },
+        {
+          "id": "PDVt7Kbh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 90.0,
+          "baseline": 92.3076923076923,
+          "fitted": 81.57803807405185,
+          "held_out": 81.00280019665537
+        },
+        {
+          "id": "jtlLwUvh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 55.00000000000001,
+          "baseline": 60.0,
+          "fitted": 55.596176575664956,
+          "held_out": 55.138285481716075
+        },
+        {
+          "id": "A4EBp7Ds",
+          "color": "black",
+          "family": "french",
+          "judgment": 90.0,
+          "baseline": 93.54838709677419,
+          "fitted": 82.19415141446618,
+          "held_out": 81.95830308276419
+        },
+        {
+          "id": "UzKIIAtz",
+          "color": "black",
+          "family": "french",
+          "judgment": 50.0,
+          "baseline": 42.857142857142854,
+          "fitted": 39.930965221018006,
+          "held_out": 38.609783976755566
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 20.0,
+          "baseline": 50.0,
+          "fitted": 0.8665411785797588,
+          "held_out": 1.0000000829456525e-13
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 20.0,
+          "baseline": 60.0,
+          "fitted": 23.56295618844723,
+          "held_out": 28.027783556633363
+        },
+        {
+          "id": "nRiq9SZx",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 70.0,
+          "baseline": 89.74358974358974,
+          "fitted": 76.02575884363112,
+          "held_out": 75.70848036397302
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 76.47058823529412,
+          "fitted": 64.93916904961007,
+          "held_out": 65.00535253519206
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 78.94736842105263,
+          "fitted": 68.486387333788,
+          "held_out": 71.60411712970937
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 85.0,
+          "baseline": 92.85714285714286,
+          "fitted": 75.82088938627447,
+          "held_out": 75.51743968342812
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 80.0,
+          "baseline": 92.98245614035088,
+          "fitted": 82.11784495495904,
+          "held_out": 85.3083433811814
+        },
+        {
+          "id": "nYAJ7Km3",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 55.00000000000001,
+          "baseline": 50.0,
+          "fitted": 36.33412436544526,
+          "held_out": 35.45291073581635
+        },
+        {
+          "id": "FwXo3Qhq",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 85.0,
+          "baseline": 89.47368421052632,
+          "fitted": 77.0080786755342,
+          "held_out": 77.09405796075987
+        },
+        {
+          "id": "LLNDy032",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 80.0,
+          "baseline": 93.54838709677419,
+          "fitted": 81.40359432903631,
+          "held_out": 85.25865739007324
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 35.0,
+          "baseline": 84.0,
+          "fitted": 66.30830694597958,
+          "held_out": 68.95972974781397
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 30.0,
+          "baseline": 55.55555555555556,
+          "fitted": 49.596258395782314,
+          "held_out": 53.26958675820628
+        }
+      ]
+    },
+    "depth": {
+      "features": [
+        "completion",
+        "handover"
+      ],
+      "baseline": {
+        "n": 45,
+        "mae": 14.101648788855819,
+        "ranking": 0.8166189111747851
+      },
+      "training": {
+        "n": 45,
+        "mae": 11.332659795778833,
+        "ranking": 0.830945558739255
+      },
+      "family_holdout": {
+        "n": 45,
+        "mae": 11.726383245359605,
+        "ranking": 0.8180515759312321
+      },
+      "family_holdout_same_available": {
+        "n": 45,
+        "mae": 11.726383245359605,
+        "ranking": 0.8180515759312321
+      },
+      "fold_coefficients": {
+        "caro": [
+          9.999999999999999e-16,
+          0.21257816542792085,
+          0.8109910104360138
+        ],
+        "d4-english": [
+          9.999999999999999e-16,
+          0.21979624875114487,
+          0.8085835683885793
+        ],
+        "french": [
+          9.999999999999999e-16,
+          0.2655490970459373,
+          0.7708718135340558
+        ],
+        "kings-gambit": [
+          9.999999999999999e-16,
+          0.29339621756897083,
+          0.7416084761627026
+        ],
+        "london": [
+          9.999999999999999e-16,
+          0.16739459772994555,
+          0.8647022084191934
+        ],
+        "mixed": [
+          9.999999999999598e-16,
+          0.17561772128253067,
+          0.9026671059189002
+        ],
+        "open-e4": [
+          9.999999999999999e-16,
+          0.2601887724674455,
+          0.7648555850700709
+        ],
+        "pirc-systems": [
+          9.999999999999999e-16,
+          0.2258721266547031,
+          0.8182376322681431
+        ],
+        "sicilian": [
+          9.999999999999999e-16,
+          0.17503146204839176,
+          0.8683402230781248
+        ]
+      },
+      "rows": [
+        {
+          "id": "2EaSmZtz",
+          "color": "white",
+          "family": "london",
+          "judgment": 85.0,
+          "baseline": 68.2393391927083,
+          "fitted": 79.5498126585674,
+          "held_out": 79.65330536659779
+        },
+        {
+          "id": "artuehhC",
+          "color": "white",
+          "family": "london",
+          "judgment": 80.0,
+          "baseline": 76.56250000000001,
+          "fitted": 63.713160592942565,
+          "held_out": 62.438264258209585
+        },
+        {
+          "id": "D8QPC8Zr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 85.0,
+          "baseline": 76.56250000000001,
+          "fitted": 90.1159138453232,
+          "held_out": 94.309660024262
+        },
+        {
+          "id": "ACmyH8gC",
+          "color": "white",
+          "family": "kings-gambit",
+          "judgment": 85.0,
+          "baseline": 47.08821614583332,
+          "fitted": 66.30981218401578,
+          "held_out": 64.52017494386676
+        },
+        {
+          "id": "NGpnogsw",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 80.0,
+          "baseline": 89.0625,
+          "fitted": 100.0,
+          "held_out": 100.0
+        },
+        {
+          "id": "8Uztu7Xx",
+          "color": "black",
+          "family": "caro",
+          "judgment": 95.0,
+          "baseline": 89.74218749999999,
+          "fitted": 93.29968748337826,
+          "held_out": 92.04189458166422
+        },
+        {
+          "id": "8c8bmUfy",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 85.0,
+          "baseline": 82.26996527777779,
+          "fitted": 79.03243840949217,
+          "held_out": 79.1376971507966
+        },
+        {
+          "id": "fTpa2qZW",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 95.0,
+          "baseline": 94.71209490740738,
+          "fitted": 91.69414074536714,
+          "held_out": 90.91634188311733
+        },
+        {
+          "id": "CfSYkcMp",
+          "color": "white",
+          "family": "caro",
+          "judgment": 85.0,
+          "baseline": 61.54513888888889,
+          "fitted": 67.90142810922167,
+          "held_out": 66.99562329612806
+        },
+        {
+          "id": "yteYURRC",
+          "color": "black",
+          "family": "caro",
+          "judgment": 90.0,
+          "baseline": 99.28385416666663,
+          "fitted": 93.81585765885552,
+          "held_out": 92.52808333535319
+        },
+        {
+          "id": "vPqdbuqZ",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 85.0,
+          "baseline": 100.0,
+          "fitted": 100.0,
+          "held_out": 100.0
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 95.0,
+          "baseline": 96.01056134259252,
+          "fitted": 93.79522125338832,
+          "held_out": 97.11845312104182
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 95.0,
+          "baseline": 91.06231312692901,
+          "fitted": 88.21043043757929,
+          "held_out": 91.28674384766823
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 65.0,
+          "baseline": 81.25,
+          "fitted": 92.3558501236129,
+          "held_out": 96.47612271467698
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 60.0,
+          "baseline": 82.03125,
+          "fitted": 87.4005499463698,
+          "held_out": 90.97165464743584
+        },
+        {
+          "id": "tU7Nq5nE",
+          "color": "white",
+          "family": "caro",
+          "judgment": 80.0,
+          "baseline": 75.62499999999993,
+          "fitted": 78.68526872417918,
+          "held_out": 77.62464865964837
+        },
+        {
+          "id": "rZyGzD67",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 65.0,
+          "baseline": 46.093750000000014,
+          "fitted": 49.31997869111233,
+          "held_out": 48.87586265949261
+        },
+        {
+          "id": "ztgulNGx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 80.0,
+          "baseline": 50.217013888888886,
+          "fitted": 51.41277450304603,
+          "held_out": 50.83064771356551
+        },
+        {
+          "id": "AKbQXhWw",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 90.0,
+          "baseline": 86.11653645833329,
+          "fitted": 89.0213725573171,
+          "held_out": 88.23525467371832
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 30.0,
+          "baseline": 26.73611111111111,
+          "fitted": 35.10281756073936,
+          "held_out": 36.93344583496499
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 25.0,
+          "baseline": 25.868055555555554,
+          "fitted": 26.127868868368587,
+          "held_out": 27.10956661864918
+        },
+        {
+          "id": "sEo8o4Rm",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 85.0,
+          "baseline": 95.18229166666666,
+          "fitted": 95.21748567616136,
+          "held_out": 94.26426054200549
+        },
+        {
+          "id": "GNlZ2WKx",
+          "color": "white",
+          "family": "london",
+          "judgment": 90.0,
+          "baseline": 100.0,
+          "fitted": 100.0,
+          "held_out": 100.0
+        },
+        {
+          "id": "KjivNw7F",
+          "color": "white",
+          "family": "london",
+          "judgment": 80.0,
+          "baseline": 62.481689453125014,
+          "fitted": 70.92985609892378,
+          "held_out": 70.92069700080414
+        },
+        {
+          "id": "1gqDv9cx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 85.0,
+          "baseline": 52.037760416666664,
+          "fitted": 73.20196230202528,
+          "held_out": 71.25790969292576
+        },
+        {
+          "id": "8eyxyvBh",
+          "color": "white",
+          "family": "open-e4",
+          "judgment": 65.0,
+          "baseline": 49.375,
+          "fitted": 44.05428030294601,
+          "held_out": 43.91907878405185
+        },
+        {
+          "id": "dgUQNQ2B",
+          "color": "black",
+          "family": "d4-english",
+          "judgment": 80.0,
+          "baseline": 58.13690476190476,
+          "fitted": 67.31536773088482,
+          "held_out": 66.68384480657463
+        },
+        {
+          "id": "whCVdUeM",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 75.0,
+          "baseline": 68.19444444444439,
+          "fitted": 77.47571408646307,
+          "held_out": 76.16989709306323
+        },
+        {
+          "id": "OnPMlzHT",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 75.0,
+          "baseline": 47.39583333333336,
+          "fitted": 60.53705834383578,
+          "held_out": 59.179268280613584
+        },
+        {
+          "id": "PDVt7Kbh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 90.0,
+          "baseline": 70.47526041666663,
+          "fitted": 76.45325521286688,
+          "held_out": 75.43036854900332
+        },
+        {
+          "id": "jtlLwUvh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 60.0,
+          "baseline": 44.53125,
+          "fitted": 43.513175344769586,
+          "held_out": 42.91975060969777
+        },
+        {
+          "id": "A4EBp7Ds",
+          "color": "black",
+          "family": "french",
+          "judgment": 90.0,
+          "baseline": 58.42122395833334,
+          "fitted": 76.29299648050353,
+          "held_out": 75.2863809995595
+        },
+        {
+          "id": "UzKIIAtz",
+          "color": "black",
+          "family": "french",
+          "judgment": 70.0,
+          "baseline": 70.8333333333333,
+          "fitted": 75.20237843950432,
+          "held_out": 75.01913077761222
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 20.0,
+          "baseline": 14.149305555555557,
+          "fitted": 18.453526131385857,
+          "held_out": 19.409877035376397
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 20.0,
+          "baseline": 14.496527777777782,
+          "fitted": 15.112228199894073,
+          "held_out": 15.709742469492971
+        },
+        {
+          "id": "nRiq9SZx",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 70.0,
+          "baseline": 53.26605902777777,
+          "fitted": 52.19428795999544,
+          "held_out": 52.549816167474376
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 50.0,
+          "baseline": 69.81336805555556,
+          "fitted": 79.86169339307493,
+          "held_out": 83.45295957384103
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 50.0,
+          "baseline": 67.00520833333331,
+          "fitted": 70.4869138243516,
+          "held_out": 73.3127864960318
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 85.0,
+          "baseline": 58.346044146825434,
+          "fitted": 76.48451522667494,
+          "held_out": 80.46737817031932
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 80.0,
+          "baseline": 59.436108355379204,
+          "fitted": 75.99148445781599,
+          "held_out": 79.85509667623228
+        },
+        {
+          "id": "nYAJ7Km3",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 65.0,
+          "baseline": 53.125,
+          "fitted": 53.5829016441535,
+          "held_out": 53.93413538227353
+        },
+        {
+          "id": "FwXo3Qhq",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 85.0,
+          "baseline": 95.98214285714286,
+          "fitted": 94.68182336835285,
+          "held_out": 95.32107763215136
+        },
+        {
+          "id": "LLNDy032",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 80.0,
+          "baseline": 63.62500000000002,
+          "fitted": 64.72624140582688,
+          "held_out": 67.18739524996144
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 26.276041666666668,
+          "fitted": 39.22684086778204,
+          "held_out": 41.502377024856905
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 35.0,
+          "baseline": 53.59374999999997,
+          "fitted": 47.14032807876179,
+          "held_out": 48.46972356378429
+        }
+      ]
+    },
+    "moveOrders": {
+      "features": [
+        "coherence",
+        "repeatedAgreement",
+        "pawnReuse"
+      ],
+      "baseline": {
+        "n": 42,
+        "mae": 34.42457698459299,
+        "ranking": 0.757396449704142
+      },
+      "training": {
+        "n": 45,
+        "mae": 6.1091310498298865,
+        "ranking": 0.903598971722365
+      },
+      "family_holdout": {
+        "n": 45,
+        "mae": 9.73859087575165,
+        "ranking": 0.8419023136246787
+      },
+      "family_holdout_same_available": {
+        "n": 42,
+        "mae": 10.134798548178418,
+        "ranking": 0.8180473372781065
+      },
+      "fold_coefficients": {
+        "caro": [
+          0.33812746906376295,
+          0.33292797153031867,
+          0.1919774463375919,
+          0.07225819991227905
+        ],
+        "d4-english": [
+          0.35775520971287844,
+          0.3129188173810756,
+          0.21590251010707134,
+          0.05199459945220267
+        ],
+        "french": [
+          0.3591010661987588,
+          0.3138731409238626,
+          0.21678857474373453,
+          0.048406213204888665
+        ],
+        "kings-gambit": [
+          0.3588308210926091,
+          0.3176302216705974,
+          0.21857277185262333,
+          0.0435678959748758
+        ],
+        "london": [
+          0.3569159049440395,
+          0.32399286144044387,
+          0.22180700005809284,
+          0.04743160530724258
+        ],
+        "mixed": [
+          0.53648490044676,
+          0.1012432720624962,
+          0.1986360320966719,
+          0.1637233499653209
+        ],
+        "open-e4": [
+          0.3641984367365819,
+          0.31243121910280597,
+          0.20899673781984973,
+          0.03953767442078654
+        ],
+        "pirc-systems": [
+          0.3620213592261465,
+          0.31030801132112457,
+          0.24319764875118752,
+          2.047542356981214e-09
+        ],
+        "sicilian": [
+          0.37002729768723813,
+          0.3063239080052588,
+          0.2369694289284956,
+          0.007785948005596122
+        ]
+      },
+      "rows": [
+        {
+          "id": "2EaSmZtz",
+          "color": "white",
+          "family": "london",
+          "judgment": 75.0,
+          "baseline": 55.55555555555556,
+          "fitted": 79.42838960968584,
+          "held_out": 80.23526141351076
+        },
+        {
+          "id": "artuehhC",
+          "color": "white",
+          "family": "london",
+          "judgment": 90.0,
+          "baseline": 100.0,
+          "fitted": 92.82165341475394,
+          "held_out": 93.83301844478036
+        },
+        {
+          "id": "D8QPC8Zr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 90.0,
+          "baseline": 100.0,
+          "fitted": 90.75576058123822,
+          "held_out": 88.57129362244922
+        },
+        {
+          "id": "ACmyH8gC",
+          "color": "white",
+          "family": "kings-gambit",
+          "judgment": 70.0,
+          "baseline": 16.666666666666668,
+          "fitted": 71.66727138516991,
+          "held_out": 71.82183963690412
+        },
+        {
+          "id": "NGpnogsw",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 85.0,
+          "baseline": 0.0,
+          "fitted": 70.60926429636271,
+          "held_out": 68.1766420936764
+        },
+        {
+          "id": "8Uztu7Xx",
+          "color": "black",
+          "family": "caro",
+          "judgment": 65.0,
+          "baseline": 25.438596491228065,
+          "fitted": 69.73697595331161,
+          "held_out": 69.1076801904147
+        },
+        {
+          "id": "8c8bmUfy",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 55.00000000000001,
+          "baseline": 6.451612903225806,
+          "fitted": 59.50665414006039,
+          "held_out": 59.10567444549278
+        },
+        {
+          "id": "fTpa2qZW",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 70.0,
+          "baseline": 42.857142857142854,
+          "fitted": 69.1830716557877,
+          "held_out": 68.8823284076898
+        },
+        {
+          "id": "CfSYkcMp",
+          "color": "white",
+          "family": "caro",
+          "judgment": 90.0,
+          "baseline": 100.0,
+          "fitted": 69.28192202604086,
+          "held_out": 65.65972714840849
+        },
+        {
+          "id": "yteYURRC",
+          "color": "black",
+          "family": "caro",
+          "judgment": 85.0,
+          "baseline": 0.0,
+          "fitted": 68.60606713077621,
+          "held_out": 69.07365713738469
+        },
+        {
+          "id": "vPqdbuqZ",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 75.0,
+          "baseline": 33.333333333333336,
+          "fitted": 65.733591235329,
+          "held_out": 64.73149078107548
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 55.00000000000001,
+          "baseline": 65.11627906976744,
+          "fitted": 52.57340587150977,
+          "held_out": 68.78271214664235
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 55.00000000000001,
+          "baseline": 53.06122448979592,
+          "fitted": 66.92578928944414,
+          "held_out": 73.24838558660221
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 50.0,
+          "baseline": 0.0,
+          "fitted": 65.29851586312645,
+          "held_out": 67.50642484229847
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 0.0,
+          "fitted": 45.64469622866459,
+          "held_out": 61.700202528006066
+        },
+        {
+          "id": "tU7Nq5nE",
+          "color": "white",
+          "family": "caro",
+          "judgment": 95.0,
+          "baseline": 100.0,
+          "fitted": 92.9767721350597,
+          "held_out": 91.97270357801469
+        },
+        {
+          "id": "rZyGzD67",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 95.0,
+          "baseline": 100.0,
+          "fitted": 92.66433316856838,
+          "held_out": 92.38375695796101
+        },
+        {
+          "id": "ztgulNGx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 95.0,
+          "baseline": null,
+          "fitted": 91.4912197543967,
+          "held_out": 90.38697629132915
+        },
+        {
+          "id": "AKbQXhWw",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 80.0,
+          "baseline": 61.904761904761905,
+          "fitted": 76.46274528165968,
+          "held_out": 76.06221238286135
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 0.0,
+          "fitted": 42.02468376458619,
+          "held_out": 61.952719326922534
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 60.0,
+          "baseline": 0.0,
+          "fitted": 62.11528078100783,
+          "held_out": 69.7972928831893
+        },
+        {
+          "id": "sEo8o4Rm",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 75.0,
+          "baseline": 25.0,
+          "fitted": 72.69591111449745,
+          "held_out": 72.53817345299998
+        },
+        {
+          "id": "GNlZ2WKx",
+          "color": "white",
+          "family": "london",
+          "judgment": 65.0,
+          "baseline": 37.5,
+          "fitted": 74.4644643907988,
+          "held_out": 75.20609237666658
+        },
+        {
+          "id": "KjivNw7F",
+          "color": "white",
+          "family": "london",
+          "judgment": 70.0,
+          "baseline": 62.5,
+          "fitted": 77.74947523422853,
+          "held_out": 78.48472017616454
+        },
+        {
+          "id": "1gqDv9cx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 75.0,
+          "baseline": 33.333333333333336,
+          "fitted": 76.56896719185188,
+          "held_out": 76.14569043860749
+        },
+        {
+          "id": "8eyxyvBh",
+          "color": "white",
+          "family": "open-e4",
+          "judgment": 95.0,
+          "baseline": null,
+          "fitted": 92.17898083241856,
+          "held_out": 90.97855912707469
+        },
+        {
+          "id": "dgUQNQ2B",
+          "color": "black",
+          "family": "d4-english",
+          "judgment": 85.0,
+          "baseline": 71.42857142857143,
+          "fitted": 84.14591485807827,
+          "held_out": 83.68849851156854
+        },
+        {
+          "id": "whCVdUeM",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 95.0,
+          "baseline": 100.0,
+          "fitted": 92.79934459233878,
+          "held_out": 91.51216965552
+        },
+        {
+          "id": "OnPMlzHT",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 95.0,
+          "baseline": 100.0,
+          "fitted": 91.96163166388882,
+          "held_out": 90.7916046139819
+        },
+        {
+          "id": "PDVt7Kbh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 70.0,
+          "baseline": 25.0,
+          "fitted": 72.72079369985842,
+          "held_out": 72.51685677510893
+        },
+        {
+          "id": "jtlLwUvh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 95.0,
+          "baseline": 100.0,
+          "fitted": 91.41940316503458,
+          "held_out": 89.52451140509409
+        },
+        {
+          "id": "A4EBp7Ds",
+          "color": "black",
+          "family": "french",
+          "judgment": 70.0,
+          "baseline": 12.5,
+          "fitted": 69.61394020475954,
+          "held_out": 69.54811112271
+        },
+        {
+          "id": "UzKIIAtz",
+          "color": "black",
+          "family": "french",
+          "judgment": 95.0,
+          "baseline": null,
+          "fitted": 91.34839261389216,
+          "held_out": 91.0594141962656
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 0.0,
+          "fitted": 43.028875714487356,
+          "held_out": 64.80060259517548
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 100.0,
+          "fitted": 78.94275770145923,
+          "held_out": 90.22046474312815
+        },
+        {
+          "id": "nRiq9SZx",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 75.0,
+          "baseline": 20.0,
+          "fitted": 65.77837874721757,
+          "held_out": 64.34430714647065
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 0.0,
+          "fitted": 39.0496006984464,
+          "held_out": 56.855843634199864
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 0.0,
+          "fitted": 51.17569010202247,
+          "held_out": 62.15486323991156
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 60.0,
+          "baseline": 28.571428571428577,
+          "fitted": 44.0133981937269,
+          "held_out": 61.58127918788495
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 55.00000000000001,
+          "baseline": 18.181818181818183,
+          "fitted": 57.42516043617785,
+          "held_out": 66.06743920062829
+        },
+        {
+          "id": "nYAJ7Km3",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 80.0,
+          "baseline": 0.0,
+          "fitted": 68.97103399786002,
+          "held_out": 65.08465987304348
+        },
+        {
+          "id": "FwXo3Qhq",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 80.0,
+          "baseline": 50.0,
+          "fitted": 80.10010658061485,
+          "held_out": 78.87768239449893
+        },
+        {
+          "id": "LLNDy032",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 80.0,
+          "baseline": 50.0,
+          "fitted": 78.93266866210327,
+          "held_out": 78.0239242092459
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 0.0,
+          "fitted": 42.6105719349982,
+          "held_out": 60.547503548202876
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 35.0,
+          "baseline": 0.0,
+          "fitted": 51.79647410269832,
+          "held_out": 63.436426157705974
+        }
+      ]
+    },
+    "ease": {
+      "features": [
+        "quiet",
+        "planReuse",
+        "coherence"
+      ],
+      "baseline": {
+        "n": 45,
+        "mae": 26.58609124745287,
+        "ranking": 0.6054794520547945
+      },
+      "training": {
+        "n": 45,
+        "mae": 7.99853479767304,
+        "ranking": 0.8808219178082192
+      },
+      "family_holdout": {
+        "n": 45,
+        "mae": 9.422978023793606,
+        "ranking": 0.8342465753424657
+      },
+      "family_holdout_same_available": {
+        "n": 45,
+        "mae": 9.422978023793606,
+        "ranking": 0.8342465753424657
+      },
+      "fold_coefficients": {
+        "caro": [
+          -0.13628710016882126,
+          0.648026764063881,
+          0.32721340970663015,
+          0.18179224918656955
+        ],
+        "d4-english": [
+          -0.11811550108617846,
+          0.6719029324151214,
+          0.21035939191090036,
+          0.1715678686834387
+        ],
+        "french": [
+          -0.13188044721843054,
+          0.6649849263726735,
+          0.28277308021233843,
+          0.17300537582070435
+        ],
+        "kings-gambit": [
+          -0.11081393454526968,
+          0.6374151680801105,
+          0.2767711492820373,
+          0.17690601552351404
+        ],
+        "london": [
+          -0.09263869031631776,
+          0.6183383332616744,
+          0.3072987445669767,
+          0.13419051420765937
+        ],
+        "mixed": [
+          -0.08462987252056348,
+          0.6592898171118349,
+          0.3248026577041778,
+          0.12401130459828258
+        ],
+        "open-e4": [
+          -0.26049275053444493,
+          0.8100424689543119,
+          0.37536026728402644,
+          0.1511917446420878
+        ],
+        "pirc-systems": [
+          -0.07822946541680756,
+          0.5993838641664115,
+          0.25287026088677156,
+          0.16090576754698027
+        ],
+        "sicilian": [
+          -0.1571111712843694,
+          0.6933012212269568,
+          0.30362495505383863,
+          0.18147438856728815
+        ]
+      },
+      "rows": [
+        {
+          "id": "2EaSmZtz",
+          "color": "white",
+          "family": "london",
+          "judgment": 80.0,
+          "baseline": 27.246315192743765,
+          "fitted": 60.226036612064995,
+          "held_out": 58.07328298860687
+        },
+        {
+          "id": "artuehhC",
+          "color": "white",
+          "family": "london",
+          "judgment": 85.0,
+          "baseline": 41.30434782608697,
+          "fitted": 66.77575273323801,
+          "held_out": 64.18161577789729
+        },
+        {
+          "id": "D8QPC8Zr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 28.710826210826205,
+          "fitted": 55.49118871129296,
+          "held_out": 56.49948431710173
+        },
+        {
+          "id": "ACmyH8gC",
+          "color": "white",
+          "family": "kings-gambit",
+          "judgment": 30.0,
+          "baseline": 23.52580202263746,
+          "fitted": 46.931414038883965,
+          "held_out": 48.04028073843957
+        },
+        {
+          "id": "NGpnogsw",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 45.0,
+          "baseline": 37.5,
+          "fitted": 65.49381058437966,
+          "held_out": 66.93715480369849
+        },
+        {
+          "id": "8Uztu7Xx",
+          "color": "black",
+          "family": "caro",
+          "judgment": 50.0,
+          "baseline": 30.104432871436003,
+          "fitted": 56.10251487046808,
+          "held_out": 56.59674137598214
+        },
+        {
+          "id": "8c8bmUfy",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 40.0,
+          "baseline": 27.396114248040114,
+          "fitted": 58.15593413907458,
+          "held_out": 59.1933715766667
+        },
+        {
+          "id": "fTpa2qZW",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 55.00000000000001,
+          "baseline": 37.914397994339865,
+          "fitted": 58.066508503782046,
+          "held_out": 57.64928354818878
+        },
+        {
+          "id": "CfSYkcMp",
+          "color": "white",
+          "family": "caro",
+          "judgment": 45.0,
+          "baseline": 25.00000000000001,
+          "fitted": 38.58073074066268,
+          "held_out": 38.41791967234567
+        },
+        {
+          "id": "yteYURRC",
+          "color": "black",
+          "family": "caro",
+          "judgment": 55.00000000000001,
+          "baseline": 34.09909909909911,
+          "fitted": 58.987922948379975,
+          "held_out": 59.79532946712356
+        },
+        {
+          "id": "vPqdbuqZ",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 90.0,
+          "baseline": 49.166666666666664,
+          "fitted": 76.90170441866877,
+          "held_out": 73.53404511156828
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 35.0,
+          "baseline": 28.684066617184428,
+          "fitted": 37.76185357489052,
+          "held_out": 42.75871869114769
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 33.4179376650702,
+          "fitted": 49.96777823577033,
+          "held_out": 52.755554750537904
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 65.0,
+          "baseline": 39.583333333333336,
+          "fitted": 70.5264479568608,
+          "held_out": 71.8533651331497
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 65.0,
+          "baseline": 47.02380952380952,
+          "fitted": 61.87104987433686,
+          "held_out": 66.2536085661664
+        },
+        {
+          "id": "tU7Nq5nE",
+          "color": "white",
+          "family": "caro",
+          "judgment": 35.0,
+          "baseline": 42.938596491228076,
+          "fitted": 49.8514833026122,
+          "held_out": 51.245550407554454
+        },
+        {
+          "id": "rZyGzD67",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 80.0,
+          "baseline": 58.333333333333336,
+          "fitted": 65.83091628092616,
+          "held_out": 63.5266249406547
+        },
+        {
+          "id": "ztgulNGx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 50.0,
+          "baseline": 54.76190476190476,
+          "fitted": 55.27432881296544,
+          "held_out": 52.83628176525884
+        },
+        {
+          "id": "AKbQXhWw",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 60.0,
+          "baseline": 41.406981694338015,
+          "fitted": 61.59683677834664,
+          "held_out": 61.13770092745896
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 60.0,
+          "baseline": 16.666666666666668,
+          "fitted": 54.88416513533155,
+          "held_out": 59.46704255766511
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 60.0,
+          "baseline": 33.333333333333336,
+          "fitted": 64.59697324923168,
+          "held_out": 66.68759940017446
+        },
+        {
+          "id": "sEo8o4Rm",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 55.00000000000001,
+          "baseline": 19.236111111111107,
+          "fitted": 53.8653458850726,
+          "held_out": 51.03135351038084
+        },
+        {
+          "id": "GNlZ2WKx",
+          "color": "white",
+          "family": "london",
+          "judgment": 70.0,
+          "baseline": 29.129289215686278,
+          "fitted": 60.072605664705215,
+          "held_out": 57.85198097565011
+        },
+        {
+          "id": "KjivNw7F",
+          "color": "white",
+          "family": "london",
+          "judgment": 65.0,
+          "baseline": 35.14351851851852,
+          "fitted": 57.38505563522066,
+          "held_out": 55.64180457982961
+        },
+        {
+          "id": "1gqDv9cx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 35.0,
+          "baseline": 22.925234487734485,
+          "fitted": 36.59141129865328,
+          "held_out": 29.77706302207285
+        },
+        {
+          "id": "8eyxyvBh",
+          "color": "white",
+          "family": "open-e4",
+          "judgment": 35.0,
+          "baseline": 12.5,
+          "fitted": 20.040727876749997,
+          "held_out": 9.310089603720705
+        },
+        {
+          "id": "dgUQNQ2B",
+          "color": "black",
+          "family": "d4-english",
+          "judgment": 55.00000000000001,
+          "baseline": 34.85082574696545,
+          "fitted": 59.92666675139448,
+          "held_out": 59.702262090303606
+        },
+        {
+          "id": "whCVdUeM",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 40.0,
+          "baseline": 31.28472222222222,
+          "fitted": 38.88457725286916,
+          "held_out": 32.55820295540898
+        },
+        {
+          "id": "OnPMlzHT",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 80.0,
+          "baseline": 26.666666666666668,
+          "fitted": 66.65213561962018,
+          "held_out": 66.64601292856446
+        },
+        {
+          "id": "PDVt7Kbh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 55.00000000000001,
+          "baseline": 34.91580018083182,
+          "fitted": 64.89733403801735,
+          "held_out": 65.52408256482263
+        },
+        {
+          "id": "jtlLwUvh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 75.0,
+          "baseline": 27.27272727272727,
+          "fitted": 62.85755393156683,
+          "held_out": 63.61695126182869
+        },
+        {
+          "id": "A4EBp7Ds",
+          "color": "black",
+          "family": "french",
+          "judgment": 50.0,
+          "baseline": 32.639735772357724,
+          "fitted": 61.55385562138175,
+          "held_out": 61.8283849752502
+        },
+        {
+          "id": "UzKIIAtz",
+          "color": "black",
+          "family": "french",
+          "judgment": 75.0,
+          "baseline": 0.0,
+          "fitted": 70.37918780721108,
+          "held_out": 70.57521718349466
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 55.00000000000001,
+          "baseline": 4.166666666666667,
+          "fitted": 56.28366660030076,
+          "held_out": 60.22692210341094
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 55.00000000000001,
+          "baseline": 1.3888888888888886,
+          "fitted": 54.22174830893981,
+          "held_out": 56.22600683612988
+        },
+        {
+          "id": "nRiq9SZx",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 75.0,
+          "baseline": 46.82484567901234,
+          "fitted": 64.16071882342072,
+          "held_out": 62.3038134957552
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 19.01851851851852,
+          "fitted": 45.476192629550006,
+          "held_out": 50.44354142100897
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 49.79040404040405,
+          "fitted": 56.301410930225515,
+          "held_out": 59.92758155283029
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 50.0,
+          "baseline": 29.748004449682693,
+          "fitted": 47.46783178973518,
+          "held_out": 52.68005397530576
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 50.0,
+          "baseline": 23.975171467764063,
+          "fitted": 54.2166543954695,
+          "held_out": 57.15187264707811
+        },
+        {
+          "id": "nYAJ7Km3",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 70.0,
+          "baseline": 13.541666666666666,
+          "fitted": 60.9572766665577,
+          "held_out": 59.84183497544089
+        },
+        {
+          "id": "FwXo3Qhq",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 60.0,
+          "baseline": 24.111201298701303,
+          "fitted": 57.01981861190014,
+          "held_out": 56.1708210813527
+        },
+        {
+          "id": "LLNDy032",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 60.0,
+          "baseline": 35.21367521367521,
+          "fitted": 56.90845350955887,
+          "held_out": 57.952867134322496
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 20.08125,
+          "fitted": 34.0895738739996,
+          "held_out": 38.50276620288674
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 6.064814814814814,
+          "fitted": 45.9148449757121,
+          "held_out": 49.064587395369244
+        }
+      ]
+    },
+    "overall": {
+      "features": [
+        "supportedBreadth",
+        "adequacy"
+      ],
+      "baseline": {
+        "n": 45,
+        "mae": 10.581923092353671,
+        "ranking": 0.8519021739130435
+      },
+      "training": {
+        "n": 45,
+        "mae": 9.109555690834346,
+        "ranking": 0.9021739130434783
+      },
+      "family_holdout": {
+        "n": 45,
+        "mae": 10.226680950926852,
+        "ranking": 0.8682065217391305
+      },
+      "family_holdout_same_available": {
+        "n": 45,
+        "mae": 10.226680950926852,
+        "ranking": 0.8682065217391305
+      },
+      "fold_coefficients": {
+        "caro": [
+          9.999999916490418e-16,
+          0.5718165399785706,
+          0.35358038853443374
+        ],
+        "d4-english": [
+          9.999999939930412e-16,
+          0.5769796627372386,
+          0.34887618762545425
+        ],
+        "french": [
+          9.999999972049866e-16,
+          0.6122325447564566,
+          0.31346347162883803
+        ],
+        "kings-gambit": [
+          9.999999999999999e-16,
+          0.5755473764438012,
+          0.3566191179863252
+        ],
+        "london": [
+          9.999999931686433e-16,
+          0.5797510449864838,
+          0.35428329270837244
+        ],
+        "mixed": [
+          9.999999999999877e-16,
+          0.645521327018122,
+          0.3350078206517266
+        ],
+        "open-e4": [
+          9.999999987865206e-16,
+          0.5690473312265212,
+          0.3547465644510236
+        ],
+        "pirc-systems": [
+          9.999999940098919e-16,
+          0.6046126786570054,
+          0.3271060565451623
+        ],
+        "sicilian": [
+          9.999999999999999e-16,
+          0.5914763359165448,
+          0.34476166551950904
+        ]
+      },
+      "rows": [
+        {
+          "id": "2EaSmZtz",
+          "color": "white",
+          "family": "london",
+          "judgment": 85.0,
+          "baseline": 79.23395235458827,
+          "fitted": 78.15856912144861,
+          "held_out": 77.96824289853717
+        },
+        {
+          "id": "artuehhC",
+          "color": "white",
+          "family": "london",
+          "judgment": 75.0,
+          "baseline": 75.77722283113839,
+          "fitted": 62.14885522462833,
+          "held_out": 62.13358336563335
+        },
+        {
+          "id": "D8QPC8Zr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 80.0,
+          "baseline": 84.19691425682043,
+          "fitted": 82.00163652539707,
+          "held_out": 86.26839914198683
+        },
+        {
+          "id": "ACmyH8gC",
+          "color": "white",
+          "family": "kings-gambit",
+          "judgment": 85.0,
+          "baseline": 67.68079797244198,
+          "fitted": 76.07972933486523,
+          "held_out": 75.3724692301345
+        },
+        {
+          "id": "NGpnogsw",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 60.0,
+          "baseline": 75.28355488659948,
+          "fitted": 60.99960443303735,
+          "held_out": 61.155991384395435
+        },
+        {
+          "id": "8Uztu7Xx",
+          "color": "black",
+          "family": "caro",
+          "judgment": 90.0,
+          "baseline": 94.42427972864144,
+          "fitted": 89.53021641746373,
+          "held_out": 88.56048511825168
+        },
+        {
+          "id": "8c8bmUfy",
+          "color": "black",
+          "family": "sicilian",
+          "judgment": 80.0,
+          "baseline": 90.10408744038703,
+          "fitted": 84.29534056229642,
+          "held_out": 84.4694897373218
+        },
+        {
+          "id": "fTpa2qZW",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 90.0,
+          "baseline": 96.23877074083913,
+          "fitted": 88.42935762179907,
+          "held_out": 87.5853840846001
+        },
+        {
+          "id": "CfSYkcMp",
+          "color": "white",
+          "family": "caro",
+          "judgment": 85.0,
+          "baseline": 76.38585524607211,
+          "fitted": 75.30778640999726,
+          "held_out": 74.24746432829656
+        },
+        {
+          "id": "yteYURRC",
+          "color": "black",
+          "family": "caro",
+          "judgment": 80.0,
+          "baseline": 95.94957541712871,
+          "fitted": 85.49666729997747,
+          "held_out": 84.73276889034786
+        },
+        {
+          "id": "vPqdbuqZ",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 60.0,
+          "baseline": 77.45966692414834,
+          "fitted": 67.1669175653827,
+          "held_out": 66.30019891323884
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 85.0,
+          "baseline": 97.70818484635798,
+          "fitted": 90.35168737522281,
+          "held_out": 95.0068057367618
+        },
+        {
+          "id": "2XxhfIAJ",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 85.0,
+          "baseline": 95.12266844219047,
+          "fitted": 88.46024545010701,
+          "held_out": 93.15134049341759
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 50.0,
+          "baseline": 69.82120021884471,
+          "fitted": 62.3649631171586,
+          "held_out": 64.67988905206235
+        },
+        {
+          "id": "oBsew7N6",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 64.04344228724749,
+          "fitted": 46.27055078575275,
+          "held_out": 47.19695854977776
+        },
+        {
+          "id": "tU7Nq5nE",
+          "color": "white",
+          "family": "caro",
+          "judgment": 70.0,
+          "baseline": 71.00469468046929,
+          "fitted": 62.5904451072674,
+          "held_out": 62.18499630252118
+        },
+        {
+          "id": "rZyGzD67",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 65.0,
+          "baseline": 54.159381794511255,
+          "fitted": 45.67832405818889,
+          "held_out": 45.24489776107518
+        },
+        {
+          "id": "ztgulNGx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 80.0,
+          "baseline": 59.89098065228239,
+          "fitted": 57.99897527974602,
+          "held_out": 57.059915492233095
+        },
+        {
+          "id": "AKbQXhWw",
+          "color": "white",
+          "family": "d4-english",
+          "judgment": 90.0,
+          "baseline": 91.7444276461496,
+          "fitted": 87.1414922894437,
+          "held_out": 86.2646960691237
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 30.0,
+          "baseline": 29.853035083617605,
+          "fitted": 20.79899422644054,
+          "held_out": 21.48169677154731
+        },
+        {
+          "id": "2MMWpcNI",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 25.0,
+          "baseline": 35.96390937840014,
+          "fitted": 22.7996467647386,
+          "held_out": 23.888912893716487
+        },
+        {
+          "id": "sEo8o4Rm",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 80.0,
+          "baseline": 93.87851274024842,
+          "fitted": 85.42281602660029,
+          "held_out": 84.50830516166384
+        },
+        {
+          "id": "GNlZ2WKx",
+          "color": "white",
+          "family": "london",
+          "judgment": 75.0,
+          "baseline": 96.4274111134126,
+          "fitted": 88.76441515831371,
+          "held_out": 88.83396740506024
+        },
+        {
+          "id": "KjivNw7F",
+          "color": "white",
+          "family": "london",
+          "judgment": 75.0,
+          "baseline": 74.76942524233472,
+          "fitted": 73.43515513625391,
+          "held_out": 73.2075095637618
+        },
+        {
+          "id": "1gqDv9cx",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 80.0,
+          "baseline": 70.76303508495069,
+          "fitted": 77.21099802903812,
+          "held_out": 75.8745222797944
+        },
+        {
+          "id": "8eyxyvBh",
+          "color": "white",
+          "family": "open-e4",
+          "judgment": 60.0,
+          "baseline": 59.38674695827104,
+          "fitted": 41.86400132402328,
+          "held_out": 41.39698933607712
+        },
+        {
+          "id": "dgUQNQ2B",
+          "color": "black",
+          "family": "d4-english",
+          "judgment": 85.0,
+          "baseline": 75.40502011889755,
+          "fitted": 78.31640006639738,
+          "held_out": 77.32870349075596
+        },
+        {
+          "id": "whCVdUeM",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 65.0,
+          "baseline": 76.67353792296608,
+          "fitted": 71.42658734921105,
+          "held_out": 70.52878777872418
+        },
+        {
+          "id": "OnPMlzHT",
+          "color": "black",
+          "family": "open-e4",
+          "judgment": 70.0,
+          "baseline": 53.32682251925387,
+          "fitted": 51.324341246559534,
+          "held_out": 50.72728928431975
+        },
+        {
+          "id": "PDVt7Kbh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 85.0,
+          "baseline": 80.65611355530436,
+          "fitted": 78.35715205985002,
+          "held_out": 77.37863561208503
+        },
+        {
+          "id": "jtlLwUvh",
+          "color": "black",
+          "family": "caro",
+          "judgment": 60.0,
+          "baseline": 51.69018282033833,
+          "fitted": 47.538858892798594,
+          "held_out": 46.92177067352353
+        },
+        {
+          "id": "A4EBp7Ds",
+          "color": "black",
+          "family": "french",
+          "judgment": 85.0,
+          "baseline": 73.92706725903244,
+          "fitted": 77.02464775170091,
+          "held_out": 76.96797654304162
+        },
+        {
+          "id": "UzKIIAtz",
+          "color": "black",
+          "family": "french",
+          "judgment": 60.0,
+          "baseline": 55.09731650193396,
+          "fitted": 44.376662852190016,
+          "held_out": 42.9355722717467
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 20.0,
+          "baseline": 26.59821944750772,
+          "fitted": 5.594992376725327,
+          "held_out": 5.456612886364822
+        },
+        {
+          "id": "bbxmDYZV",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 20.0,
+          "baseline": 29.492230615310653,
+          "fitted": 16.210281617645922,
+          "held_out": 17.127702803206475
+        },
+        {
+          "id": "nRiq9SZx",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 65.0,
+          "baseline": 69.13962213265793,
+          "fitted": 66.93455753688596,
+          "held_out": 67.2535580128502
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 45.0,
+          "baseline": 73.06619821706495,
+          "fitted": 69.06514821084653,
+          "held_out": 72.47907573195346
+        },
+        {
+          "id": "HHZpRszr",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 40.0,
+          "baseline": 72.73159470560955,
+          "fitted": 66.26860913928346,
+          "held_out": 69.68996746736906
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 75.0,
+          "baseline": 73.60602527300964,
+          "fitted": 76.74897289402557,
+          "held_out": 81.15189490572354
+        },
+        {
+          "id": "bmWAylqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 70.0,
+          "baseline": 74.34053630629248,
+          "fitted": 77.12862907155098,
+          "held_out": 81.55725151863602
+        },
+        {
+          "id": "nYAJ7Km3",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 60.0,
+          "baseline": 51.53882032022076,
+          "fitted": 35.90146766799005,
+          "held_out": 35.46934809262627
+        },
+        {
+          "id": "FwXo3Qhq",
+          "color": "black",
+          "family": "pirc-systems",
+          "judgment": 80.0,
+          "baseline": 92.67079334854981,
+          "fitted": 81.06399777202105,
+          "held_out": 80.69746427958464
+        },
+        {
+          "id": "LLNDy032",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 75.0,
+          "baseline": 77.14931061929367,
+          "fitted": 74.56265782689289,
+          "held_out": 78.94585054406913
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "white",
+          "family": "mixed",
+          "judgment": 35.0,
+          "baseline": 46.980714128246284,
+          "fitted": 57.18790435432071,
+          "held_out": 61.17248553865194
+        },
+        {
+          "id": "e01yoGqe",
+          "color": "black",
+          "family": "mixed",
+          "judgment": 30.0,
+          "baseline": 54.5658368904533,
+          "fitted": 45.8907641642475,
+          "held_out": 48.2055697010855
+        }
+      ]
+    }
+  }
+}

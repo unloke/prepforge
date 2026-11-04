@@ -1,29 +1,35 @@
-// Compare plans only when our complete setup, material and king safety phase
-// match. The opponent may have advanced one pawn; checks are excluded.
+// Compare plans at the same own pawn structure and development stage.
+// Exact piece placement may differ: the point is whether actions are reusable.
 function context(board, own) {
-  const ownPieces = [], material = [], pawns = [];
-  let opponentKing = "";
+  const ownPawns = [], material = [], pawns = [];
+  let opponentKing = "", ownKing = "", developed = 0;
+  const home = own === "w" ? "1" : "8";
   for (const row of board.board()) for (const piece of row) {
     if (!piece) continue;
     material.push(piece.color + piece.type);
-    if (piece.color === own) ownPieces.push(piece.type + piece.square);
+    if (piece.color === own) {
+      if (piece.type === "p") ownPawns.push(piece.square);
+      if (piece.type === "k") ownKing = piece.square;
+      if (["n", "b"].includes(piece.type) && piece.square[1] !== home) developed++;
+    }
     else if (piece.type === "p") pawns.push(piece.square);
     else if (piece.type === "k") opponentKing = piece.square;
   }
   return {
-    group: [ownPieces.sort().join(""), material.sort().join(""), opponentKing, board.fen().split(" ")[2]].join("|"),
+    group: [ownPawns.sort().join(""), developed, ownKing, material.sort().join(""), opponentKing, board.fen().split(" ")[2]].join("|"),
     pawns: new Set(pawns),
   };
 }
 
 const action = (position, edge) => position.board.get(edge.uci.slice(0, 2)).type + edge.uci.slice(2);
 
-function plan(position, first, graph) {
+function plan(position, first, graph, distances, horizon) {
   const initial = action(position, first), next = graph.get(first.target);
   const second = new Map();
   // Each stored opponent response and each preferred own option has equal
   // reference weight. Missing continuations supply no invented second move.
   for (const reply of next.ordered) {
+    if (distances.get(reply.target) >= horizon) continue;
     const after = graph.get(reply.target);
     for (const choice of after.ordered) {
       const token = action(after, choice);
@@ -45,7 +51,7 @@ export function atlasEase(graph, distances, ownTurn, horizon) {
     if (!groups.has(details.group)) groups.set(details.group, []);
     for (const edge of position.ordered) groups.get(details.group).push({
       key, first: edge.uci, pawns: details.pawns,
-      plan: plan(position, edge, graph), sum: 0, comparisons: 0,
+      plan: plan(position, edge, graph, distances, horizon), sum: 0, comparisons: 0,
     });
   }
   let pairs = 0, identicalPositionPairs = 0;

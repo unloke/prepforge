@@ -11,49 +11,43 @@ now has five axes. The calculation uses only enabled legal moves, positions and
 prepared/mainline flags. It runs locally in a cancellable worker; no annotations,
 engine, LLM, popularity or network enter the score.
 
-The [38-study re-review](content-review.md) records sampled paths and the failure →
-revision cycle. [Calibration](ranking-calibration.json) applies controlled damage
-to all 45 side reports. [Rankings](ranking-review.md) compare before/after results,
-matched opening families and parameter sensitivity. All data informed development;
-these are development checks, not independent good/bad quality validation.
+[Qualitative facet calibration](facet-calibration-review.md) records the current
+failure → revision cycle. [Frozen judgments](facet-judgments.json), committed before
+fitting, give every reviewed side five subjective scores with separate move-based
+rationales. [Validation](facet-validation.md) lists all targets, shipped fits,
+family-held-out predictions and worst remaining errors. These are single-reviewer
+development judgments, not independent expert quality certification.
 
-At each occurrence, select the best own tier: prepared mainline, prepared,
-mainline, then other moves. All tied plans coexist; chapter merging never chooses
-one by UCI alphabet. Core traversal uses preferred tiers on both sides. Other
-opponent moves can establish answered breadth but do not dilute core completion.
-This separates core plans from short side illustrations structurally; it cannot
-infer author intent when a demonstration is itself a preferred chapter line.
+Each occurrence selects the best own tier: prepared mainline, prepared, mainline,
+then other. Tied plans coexist. Core traversal follows preferred tiers on both
+sides; other opponent moves can establish supported breadth without diluting core
+depth. Short illustrative author intent cannot always be recovered from this.
+Opening completion reuses `gamePhase`, consecutive non-opening positions and two
+quiet plies without check. Subsequent model-game moves earn nothing. A 32-ply
+scope-relative bound limits unresolved openings; winning mate/stalemate complete,
+while losses and repetition stop progress.
 
-Opening completion reuses `coach/material.js`'s `gamePhase`. It requires consecutive
-non-opening positions, two quiet plies (no captures, promotions or checks), and no
-current check. This avoids ending at the first phase switch during an exchange.
-After completion, later model-game moves earn nothing. A **32-ply relative bound**
-applies when no completion is found; a scope starting outside opening uses that
-relative bound without immediate completion. Winning mate/stalemate complete the
-route; a stored loss stops it. Repetition stops before its edge earns depth.
-This is a stage heuristic, not a proof that tactics are resolved.
-
-| Facet | Definition |
+| Facet | Content observations fitted to qualitative judgments |
 | --- | --- |
-| Replies | Stored own replies / unique core own positions requiring a reply before completion or the bound |
-| Reach | `100 × (1+B)/(5+B)`, where B counts answered opponent choices beyond the first at each distinct in-scope position; no bonus for own alternatives or copies |
-| Depth | Mean core-plan survival through the bound; opening completion or winning mate/stalemate absorb survival; an opponent move without the required own answer earns nothing |
-| Consistency | Repeated own positions whose nonempty preferred reply sets share a move / eligible repeated groups; ignore local empty endpoints |
-| Ease | Mean overlap of next-two-own-action plans in comparable positions; same complete own setup, material, opponent king/castling phase, opponent pawns differing by at most one relocation; checks excluded |
+| Replies | Supported response continuations and route/deployment adequacy |
+| Reach | Supported opponent alternatives across positions and per route, plus adequacy |
+| Depth | Core completion and own deployment at distinct core endpoints |
+| Consistency | Early choice burden, shared repeated replies and staged pawn-setup reuse |
+| Ease | Two-action reuse in matching pawn structures/development stages, quiet actions and choice burden |
 
-No comparison data means a dash, not an invented 100. Plans with exchanged action
-order can match. Exact position+choice contexts collapse duplicates. Ease weights
-comparable positions equally, rather than letting prolific copies dominate.
+Preparation fits supported breadth and geometric route/deployment adequacy to
+separate overall judgments. Difficulty does not reduce the total. Follow-up
+support examines at most six plies: a single own answer supplies no support,
+two supply half, three supply full support. Stable opening end or a winning
+terminal position also supplies support. See the calibration review for precise
+feature conventions, rejected candidates and limitations.
 
-The total is **sqrt(Reach × Depth)**. Missing replies already stop Depth;
-including their availability ratio again rewarded hiding unanswered frontier
-positions in the first phase trial. Replies stays visible as a diagnostic.
-Consistency and Ease describe choice/learning load; intentional alternatives do
-not lower the total. Reach's scale of four additional alternatives is a product
-convention checked at scales two/four/eight, not fitted against likes. Stored
-branch weights are equal, not empirical encounter probabilities. Unrecorded
-opponent moves are unknown. No structural score certifies chess strength or
-holistic teaching quality.
+Ease comparisons match own pawn structure, developed-minor count, material, king
+positions and castling phase; opponent pawns may differ by one relocation. Checks
+are excluded. No comparisons means a dash. Consistency can estimate single-plan
+coherence without repeated positions, but absence of observed contradictions is
+not proof. Equal stored weights are not empirical encounter probabilities.
+Unrecorded opponent moves are unknown. No score certifies tactical soundness.
 
 Position identity includes pieces, turn, castling and legal en passant, excluding
 clocks. Equivalent continuations merge only within scope. Every enabled tree edge
@@ -61,14 +55,14 @@ is legally validated, including excluded illustrative descendants. The converter
 canonicalizes chapter order, removes exact duplicate chapters and attaches
 connected custom starts; disconnected starts are reported, not invented.
 
-`atlas-quality.js` and `atlas-ease.js` implement the production calculation.
+`atlas-quality.js`, `atlas-content-features.js`, `atlas-ease.js` and the small
+`atlas-calibration.js` coefficient tables implement the local calculation.
 `evaluate-preparation.mjs` executes it on the corpus with annotation, raw chapter
 copy, assembled tree copy and reverse chapter checks. `calibrate-preparation.mjs`
 replays the same corpus and controlled mutations. See their JSON reports for
 per-study values and recorded timings. The UI's five-axis capture uses the same
-populated London fixture before and after, at 1440/1000/390 pixels. A 2,000-node
-Chromium worker check completed in 177 ms while 17 UI heartbeat ticks fired.
-These are measured samples, not universal runtime guarantees.
+populated London fixture before and after, at 1440/1000/390 pixels. Recorded worker/browser checks use the same populated fixture; their timings
+are measured samples, not universal runtime guarantees.
 
 Run from the repository root:
 
@@ -83,7 +77,8 @@ node research/atlas-quality/evaluate-preparation.mjs
 
 The [all-38 catalog](catalog.md) retains source/title, corpus role, saved likes and earlier manual instructional judgments with [review A](review-a.md), [B](review-b.md) and [C](review-c.md). [Manual classifications](manual-review-labels.json) explicitly mark their target limitation. These are **wrong-target labels for move-content quality validation**: a low standalone-course-clarity judgment does not establish a poor repertoire. In particular LLNDy032 has developed Alapin/French branches despite its earlier instructional label. Do not train or validate a move-content grader against these labels as-is.
 
-High likes are positive-unlabeled reception evidence; low/missing likes are unknown. Neither likes nor manual labels determine the profile or its weights. The corpus informed method design and is not an untouched holdout. No empirical Lichess frequency snapshot was acquired; the anonymous acquisition attempt returned 401, as recorded in the [content examples](content-review-examples.md). Uniform stored-move weights must not be presented as Lichess frequencies or Maia probabilities.
+High likes are positive-unlabeled reception evidence; low/missing likes are unknown. Likes and the earlier course-clarity labels do not determine the profile. The
+new frozen facet judgments explicitly rate move content and fit its coefficients. The corpus informed method design and is not an untouched holdout. No empirical Lichess frequency snapshot was acquired; the anonymous acquisition attempt returned 401, as recorded in the [content examples](content-review-examples.md). Uniform stored-move weights must not be presented as Lichess frequencies or Maia probabilities.
 
 The rejected [annotation-rate findings](rejected-documentation-findings.md) and [engine path-score findings](rejected-engine-findings.md), with their frozen [historical aggregate](evaluate-summary.json), document failed quality-grading approaches. They do not validate the current preparation index. Original PGNs, hashes and attribution remain in [corpus/manifest.json](corpus/manifest.json); reception snapshots remain in [corpus/stars.json](corpus/stars.json).
 
@@ -95,4 +90,5 @@ The rejected [annotation-rate findings](rejected-documentation-findings.md) and 
 node research/atlas-quality/evaluate-preparation.mjs
 ```
 
-These commands perform no source acquisition or quality grading. Raw graph counts, source examples and invariance results establish what was inspected; they do not establish tactical soundness, real-world coverage or an overall good/bad ranking.
+These commands perform no source acquisition or fitting; they execute the shipped
+move-content estimates and invariance checks. Raw graph counts, source examples and invariance results establish what was inspected; they do not establish tactical soundness, real-world coverage or an overall good/bad ranking.

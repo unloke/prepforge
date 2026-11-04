@@ -24,18 +24,16 @@ inside that browser. Do not hide banners or alter the app DOM to prepare screens
 The November 3 five-axis Atlas capture uses headless Chromium and an isolated
 FastAPI/SQLite account with a branched repertoire, saved analyzed game and completed
 training run. Before and after use the same London System Repertoire · White,
-643 moves / 79 routes, at 1440 × 900, 1000 × 650 and 390 × 844. The before image is
-also retained by Git in commit `11d8952f`; the current documentation image is the
-five-axis after. Desktop header height stays 47 CSS pixels and phone header 61;
+643 moves / 79 routes, at 1440 × 900, 1000 × 650 and 390 × 844. The previous five-axis image is retained in Git at `bab295f5`; the current
+documentation image uses the calibrated move-content formulas on the same data. Desktop header height stays 47 CSS pixels and phone header 61;
 there are no console errors or horizontal overflow. The large index, compact
-metric rows, route map and type/layout styling remain; only radar axes and data
-change. Mobile body scrolling accommodates the fifth metric.
+metric rows, route map and type/layout styling remain; only metric data and on-demand tooltips change. Mobile body scrolling accommodates the fifth metric.
 
 The fixture derives from saved Lichess study `2EaSmZtz`: its sixteen nonempty
 standard-start chapters are merged by move prefix, all annotations omitted, then
 imported through the real API. The raw corpus remains unchanged. The displayed
-Preparation index is 85; Replies / Reach / Depth / Consistency / Ease round to
-97 / 92 / 78 / 56 / 27. Prefix merging produces one selected plan per occurrence,
+Preparation index is 81; Replies / Reach / Depth / Consistency / Ease round to
+85 / 82 / 86 / 79 / 60. Prefix merging produces one selected plan per occurrence,
 so this fixture is not identical to the research converter's separate chapter
 occurrences; its index is not the raw study's report value. Imprint is personal
 training data. Neither annotation quantity nor an engine contributes to scoring.

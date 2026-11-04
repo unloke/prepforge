@@ -1,0 +1,1816 @@
+{
+  "algorithm_version": "stored-plan-preparation-v2",
+  "scorer_sha256": "0ba3060b6c20e2fc59c0d4aae7e6b7095054621d84e389df4748d0dda6476c43",
+  "studies": [
+    {
+      "study_id": "2EaSmZtz",
+      "reports": [
+        {
+          "color": "white",
+          "score": 79.23395235458827,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.98989898989899,
+              "numerator": 98,
+              "denominator": 99
+            },
+            {
+              "key": "reach",
+              "value": 92,
+              "numerator": 46,
+              "denominator": 50
+            },
+            {
+              "key": "depth",
+              "value": 68.2393391927083,
+              "numerator": 21.836588541666657,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 55.55555555555556,
+              "numerator": 5,
+              "denominator": 9
+            },
+            {
+              "key": "ease",
+              "value": 27.246315192743765,
+              "numerator": 13.350694444444445,
+              "denominator": 49
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "artuehhC",
+      "reports": [
+        {
+          "color": "white",
+          "score": 75.77722283113839,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 96.42857142857143,
+              "numerator": 54,
+              "denominator": 56
+            },
+            {
+              "key": "reach",
+              "value": 75,
+              "numerator": 12,
+              "denominator": 16
+            },
+            {
+              "key": "depth",
+              "value": 76.56250000000001,
+              "numerator": 24.500000000000004,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 2,
+              "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 41.30434782608697,
+              "numerator": 9.500000000000002,
+              "denominator": 23
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "D8QPC8Zr",
+      "reports": [
+        {
+          "color": "white",
+          "score": 84.19691425682043,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.16129032258064,
+              "numerator": 59,
+              "denominator": 62
+            },
+            {
+              "key": "reach",
+              "value": 92.5925925925926,
+              "numerator": 50,
+              "denominator": 54
+            },
+            {
+              "key": "depth",
+              "value": 76.56250000000001,
+              "numerator": 24.500000000000004,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 3,
+              "denominator": 3
+            },
+            {
+              "key": "ease",
+              "value": 28.71082621082621,
+              "numerator": 22.394444444444446,
+              "denominator": 78
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "ACmyH8gC",
+      "reports": [
+        {
+          "color": "white",
+          "score": 67.68079797244198,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 195,
+              "denominator": 195
+            },
+            {
+              "key": "reach",
+              "value": 97.27891156462584,
+              "numerator": 143,
+              "denominator": 147
+            },
+            {
+              "key": "depth",
+              "value": 47.08821614583332,
+              "numerator": 15.068229166666663,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 16.666666666666668,
+              "numerator": 1,
+              "denominator": 6
+            },
+            {
+              "key": "ease",
+              "value": 23.52580202263746,
+              "numerator": 37.17076719576719,
+              "denominator": 158
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "NGpnogsw",
+      "reports": [
+        {
+          "color": "black",
+          "score": 75.28355488659948,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 31,
+              "denominator": 31
+            },
+            {
+              "key": "reach",
+              "value": 63.63636363636363,
+              "numerator": 7,
+              "denominator": 11
+            },
+            {
+              "key": "depth",
+              "value": 89.0625,
+              "numerator": 28.5,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 37.5,
+              "numerator": 3,
+              "denominator": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "8Uztu7Xx",
+      "reports": [
+        {
+          "color": "black",
+          "score": 94.42427972864144,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.12865497076024,
+              "numerator": 839,
+              "denominator": 855
+            },
+            {
+              "key": "reach",
+              "value": 99.35064935064935,
+              "numerator": 612,
+              "denominator": 616
+            },
+            {
+              "key": "depth",
+              "value": 89.74218749999999,
+              "numerator": 28.717499999999998,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 25.43859649122807,
+              "numerator": 29,
+              "denominator": 114
+            },
+            {
+              "key": "ease",
+              "value": 30.104432871436003,
+              "numerator": 323.32160903922266,
+              "denominator": 1074
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "8c8bmUfy",
+      "reports": [
+        {
+          "color": "black",
+          "score": 90.10408744038703,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 97.36842105263158,
+              "numerator": 148,
+              "denominator": 152
+            },
+            {
+              "key": "reach",
+              "value": 98.6842105263158,
+              "numerator": 300,
+              "denominator": 304
+            },
+            {
+              "key": "depth",
+              "value": 82.26996527777779,
+              "numerator": 26.32638888888889,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 6.451612903225806,
+              "numerator": 2,
+              "denominator": 31
+            },
+            {
+              "key": "ease",
+              "value": 27.396114248040117,
+              "numerator": 113.41991298688608,
+              "denominator": 414
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "fTpa2qZW",
+      "reports": [
+        {
+          "color": "white",
+          "score": 96.23877074083913,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.9795918367347,
+              "numerator": 291,
+              "denominator": 294
+            },
+            {
+              "key": "reach",
+              "value": 97.79005524861878,
+              "numerator": 177,
+              "denominator": 181
+            },
+            {
+              "key": "depth",
+              "value": 94.71209490740738,
+              "numerator": 30.30787037037036,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 42.857142857142854,
+              "numerator": 9,
+              "denominator": 21
+            },
+            {
+              "key": "ease",
+              "value": 37.914397994339865,
+              "numerator": 97.81914682539686,
+              "denominator": 258
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "CfSYkcMp",
+      "reports": [
+        {
+          "color": "white",
+          "score": 76.38585524607211,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 60,
+              "denominator": 60
+            },
+            {
+              "key": "reach",
+              "value": 94.8051948051948,
+              "numerator": 73,
+              "denominator": 77
+            },
+            {
+              "key": "depth",
+              "value": 61.54513888888889,
+              "numerator": 19.694444444444446,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 2,
+              "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 25.00000000000001,
+              "numerator": 25.250000000000007,
+              "denominator": 101
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "yteYURRC",
+      "reports": [
+        {
+          "color": "black",
+          "score": 95.94957541712871,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 118,
+              "denominator": 118
+            },
+            {
+              "key": "reach",
+              "value": 92.72727272727273,
+              "numerator": 51,
+              "denominator": 55
+            },
+            {
+              "key": "depth",
+              "value": 99.28385416666663,
+              "numerator": 31.77083333333332,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 34.09909909909911,
+              "numerator": 25.233333333333338,
+              "denominator": 74
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "vPqdbuqZ",
+      "reports": [
+        {
+          "color": "black",
+          "score": 77.45966692414834,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 71,
+              "denominator": 71
+            },
+            {
+              "key": "reach",
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 32,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 33.333333333333336,
+              "numerator": 1,
+              "denominator": 3
+            },
+            {
+              "key": "ease",
+              "value": 49.166666666666664,
+              "numerator": 5.9,
+              "denominator": 12
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "2XxhfIAJ",
+      "reports": [
+        {
+          "color": "white",
+          "score": 97.70818484635798,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.89196675900277,
+              "numerator": 357,
+              "denominator": 361
+            },
+            {
+              "key": "reach",
+              "value": 99.4358251057828,
+              "numerator": 705,
+              "denominator": 709
+            },
+            {
+              "key": "depth",
+              "value": 96.01056134259252,
+              "numerator": 30.72337962962961,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 65.11627906976744,
+              "numerator": 28,
+              "denominator": 43
+            },
+            {
+              "key": "ease",
+              "value": 28.684066617184428,
+              "numerator": 249.55137956950455,
+              "denominator": 870
+            }
+          ]
+        },
+        {
+          "color": "black",
+          "score": 95.12266844219047,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.92703862660944,
+              "numerator": 461,
+              "denominator": 466
+            },
+            {
+              "key": "reach",
+              "value": 99.36406995230524,
+              "numerator": 625,
+              "denominator": 629
+            },
+            {
+              "key": "depth",
+              "value": 91.06231312692901,
+              "numerator": 29.139940200617282,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 53.06122448979592,
+              "numerator": 26,
+              "denominator": 49
+            },
+            {
+              "key": "ease",
+              "value": 33.4179376650702,
+              "numerator": 274.36126823022636,
+              "denominator": 821
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "oBsew7N6",
+      "reports": [
+        {
+          "color": "white",
+          "score": 69.82120021884471,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 96.61016949152543,
+              "numerator": 57,
+              "denominator": 59
+            },
+            {
+              "key": "reach",
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
+            },
+            {
+              "key": "depth",
+              "value": 81.25,
+              "numerator": 26,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 39.583333333333336,
+              "numerator": 2.375,
+              "denominator": 6
+            }
+          ]
+        },
+        {
+          "color": "black",
+          "score": 64.04344228724749,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.24561403508773,
+              "numerator": 56,
+              "denominator": 57
+            },
+            {
+              "key": "reach",
+              "value": 50,
+              "numerator": 4,
+              "denominator": 8
+            },
+            {
+              "key": "depth",
+              "value": 82.03125,
+              "numerator": 26.25,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 3
+            },
+            {
+              "key": "ease",
+              "value": 47.02380952380952,
+              "numerator": 3.2916666666666665,
+              "denominator": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "tU7Nq5nE",
+      "reports": [
+        {
+          "color": "white",
+          "score": 71.00469468046929,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 50,
+              "denominator": 50
+            },
+            {
+              "key": "reach",
+              "value": 66.66666666666667,
+              "numerator": 8,
+              "denominator": 12
+            },
+            {
+              "key": "depth",
+              "value": 75.62499999999993,
+              "numerator": 24.199999999999978,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 42.938596491228076,
+              "numerator": 8.158333333333333,
+              "denominator": 19
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "rZyGzD67",
+      "reports": [
+        {
+          "color": "white",
+          "score": 54.159381794511255,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.83333333333333,
+              "numerator": 23,
+              "denominator": 24
+            },
+            {
+              "key": "reach",
+              "value": 63.63636363636363,
+              "numerator": 7,
+              "denominator": 11
+            },
+            {
+              "key": "depth",
+              "value": 46.093750000000014,
+              "numerator": 14.750000000000005,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 58.333333333333336,
+              "numerator": 7,
+              "denominator": 12
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "ztgulNGx",
+      "reports": [
+        {
+          "color": "black",
+          "score": 59.89098065228239,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.14814814814815,
+              "numerator": 53,
+              "denominator": 54
+            },
+            {
+              "key": "reach",
+              "value": 71.42857142857143,
+              "numerator": 10,
+              "denominator": 14
+            },
+            {
+              "key": "depth",
+              "value": 50.217013888888886,
+              "numerator": 16.069444444444443,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": null,
+              "numerator": 0,
+              "denominator": 0
+            },
+            {
+              "key": "ease",
+              "value": 54.76190476190476,
+              "numerator": 7.666666666666666,
+              "denominator": 14
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "AKbQXhWw",
+      "reports": [
+        {
+          "color": "white",
+          "score": 91.7444276461496,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 99.48186528497409,
+              "numerator": 192,
+              "denominator": 193
+            },
+            {
+              "key": "reach",
+              "value": 97.74011299435028,
+              "numerator": 173,
+              "denominator": 177
+            },
+            {
+              "key": "depth",
+              "value": 86.11653645833329,
+              "numerator": 27.557291666666654,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 61.904761904761905,
+              "numerator": 13,
+              "denominator": 21
+            },
+            {
+              "key": "ease",
+              "value": 41.406981694338015,
+              "numerator": 108.07222222222222,
+              "denominator": 261
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "2MMWpcNI",
+      "reports": [
+        {
+          "color": "white",
+          "score": 29.85303508361761,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 90,
+              "numerator": 18,
+              "denominator": 20
+            },
+            {
+              "key": "reach",
+              "value": 33.333333333333336,
+              "numerator": 2,
+              "denominator": 6
+            },
+            {
+              "key": "depth",
+              "value": 26.73611111111111,
+              "numerator": 8.555555555555555,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 16.666666666666668,
+              "numerator": 0.5,
+              "denominator": 3
+            }
+          ]
+        },
+        {
+          "color": "black",
+          "score": 35.96390937840014,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 78.26086956521739,
+              "numerator": 18,
+              "denominator": 23
+            },
+            {
+              "key": "reach",
+              "value": 50,
+              "numerator": 4,
+              "denominator": 8
+            },
+            {
+              "key": "depth",
+              "value": 25.868055555555554,
+              "numerator": 8.277777777777777,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 33.333333333333336,
+              "numerator": 1,
+              "denominator": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "sEo8o4Rm",
+      "reports": [
+        {
+          "color": "black",
+          "score": 93.87851274024842,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 102,
+              "denominator": 102
+            },
+            {
+              "key": "reach",
+              "value": 92.5925925925926,
+              "numerator": 50,
+              "denominator": 54
+            },
+            {
+              "key": "depth",
+              "value": 95.18229166666666,
+              "numerator": 30.45833333333333,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 25,
+              "numerator": 1,
+              "denominator": 4
+            },
+            {
+              "key": "ease",
+              "value": 19.236111111111107,
+              "numerator": 11.541666666666666,
+              "denominator": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "GNlZ2WKx",
+      "reports": [
+        {
+          "color": "white",
+          "score": 96.4274111134126,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 218,
+              "denominator": 218
+            },
+            {
+              "key": "reach",
+              "value": 92.98245614035088,
+              "numerator": 53,
+              "denominator": 57
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 32,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 37.5,
+              "numerator": 6,
+              "denominator": 16
+            },
+            {
+              "key": "ease",
+              "value": 29.129289215686278,
+              "numerator": 24.759895833333335,
+              "denominator": 85
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "KjivNw7F",
+      "reports": [
+        {
+          "color": "white",
+          "score": 74.76942524233472,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 96.89922480620154,
+              "numerator": 125,
+              "denominator": 129
+            },
+            {
+              "key": "reach",
+              "value": 89.47368421052632,
+              "numerator": 34,
+              "denominator": 38
+            },
+            {
+              "key": "depth",
+              "value": 62.481689453125014,
+              "numerator": 19.994140625000004,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 62.5,
+              "numerator": 5,
+              "denominator": 8
+            },
+            {
+              "key": "ease",
+              "value": 35.14351851851852,
+              "numerator": 21.086111111111112,
+              "denominator": 60
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "1gqDv9cx",
+      "reports": [
+        {
+          "color": "black",
+          "score": 70.76303508495069,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.7983193277311,
+              "numerator": 114,
+              "denominator": 119
+            },
+            {
+              "key": "reach",
+              "value": 96.22641509433963,
+              "numerator": 102,
+              "denominator": 106
+            },
+            {
+              "key": "depth",
+              "value": 52.037760416666664,
+              "numerator": 16.652083333333334,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 33.333333333333336,
+              "numerator": 2,
+              "denominator": 6
+            },
+            {
+              "key": "ease",
+              "value": 22.925234487734485,
+              "numerator": 20.174206349206347,
+              "denominator": 88
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "8eyxyvBh",
+      "reports": [
+        {
+          "color": "white",
+          "score": 59.38674695827104,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.83333333333333,
+              "numerator": 23,
+              "denominator": 24
+            },
+            {
+              "key": "reach",
+              "value": 71.42857142857143,
+              "numerator": 10,
+              "denominator": 14
+            },
+            {
+              "key": "depth",
+              "value": 49.375,
+              "numerator": 15.8,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": null,
+              "numerator": 0,
+              "denominator": 0
+            },
+            {
+              "key": "ease",
+              "value": 12.5,
+              "numerator": 1.25,
+              "denominator": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "dgUQNQ2B",
+      "reports": [
+        {
+          "color": "black",
+          "score": 75.40502011889755,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.51851851851852,
+              "numerator": 133,
+              "denominator": 135
+            },
+            {
+              "key": "reach",
+              "value": 97.8021978021978,
+              "numerator": 178,
+              "denominator": 182
+            },
+            {
+              "key": "depth",
+              "value": 58.13690476190476,
+              "numerator": 18.603809523809524,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 71.42857142857143,
+              "numerator": 10,
+              "denominator": 14
+            },
+            {
+              "key": "ease",
+              "value": 34.85082574696545,
+              "numerator": 94.79424603174603,
+              "denominator": 272
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "whCVdUeM",
+      "reports": [
+        {
+          "color": "black",
+          "score": 76.67353792296608,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 97.72727272727273,
+              "numerator": 43,
+              "denominator": 44
+            },
+            {
+              "key": "reach",
+              "value": 86.20689655172414,
+              "numerator": 25,
+              "denominator": 29
+            },
+            {
+              "key": "depth",
+              "value": 68.19444444444439,
+              "numerator": 21.8222222222222,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 31.28472222222222,
+              "numerator": 5.0055555555555555,
+              "denominator": 16
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "OnPMlzHT",
+      "reports": [
+        {
+          "color": "black",
+          "score": 53.32682251925387,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 27,
+              "denominator": 27
+            },
+            {
+              "key": "reach",
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
+            },
+            {
+              "key": "depth",
+              "value": 47.39583333333336,
+              "numerator": 15.166666666666675,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 26.666666666666664,
+              "numerator": 2.6666666666666665,
+              "denominator": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "PDVt7Kbh",
+      "reports": [
+        {
+          "color": "black",
+          "score": 80.65611355530436,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 203,
+              "denominator": 203
+            },
+            {
+              "key": "reach",
+              "value": 92.3076923076923,
+              "numerator": 48,
+              "denominator": 52
+            },
+            {
+              "key": "depth",
+              "value": 70.47526041666663,
+              "numerator": 22.55208333333332,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 25,
+              "numerator": 2,
+              "denominator": 8
+            },
+            {
+              "key": "ease",
+              "value": 34.91580018083182,
+              "numerator": 27.58348214285714,
+              "denominator": 79
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "jtlLwUvh",
+      "reports": [
+        {
+          "color": "black",
+          "score": 51.69018282033833,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 25,
+              "denominator": 25
+            },
+            {
+              "key": "reach",
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
+            },
+            {
+              "key": "depth",
+              "value": 44.53125,
+              "numerator": 14.25,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 27.272727272727273,
+              "numerator": 3,
+              "denominator": 11
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "A4EBp7Ds",
+      "reports": [
+        {
+          "color": "black",
+          "score": 73.92706725903244,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 207,
+              "denominator": 207
+            },
+            {
+              "key": "reach",
+              "value": 93.54838709677419,
+              "numerator": 58,
+              "denominator": 62
+            },
+            {
+              "key": "depth",
+              "value": 58.42122395833334,
+              "numerator": 18.69479166666667,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 12.5,
+              "numerator": 1,
+              "denominator": 8
+            },
+            {
+              "key": "ease",
+              "value": 32.639735772357724,
+              "numerator": 26.764583333333334,
+              "denominator": 82
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "UzKIIAtz",
+      "reports": [
+        {
+          "color": "black",
+          "score": 55.09731650193396,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 25,
+              "denominator": 25
+            },
+            {
+              "key": "reach",
+              "value": 42.857142857142854,
+              "numerator": 3,
+              "denominator": 7
+            },
+            {
+              "key": "depth",
+              "value": 70.8333333333333,
+              "numerator": 22.666666666666657,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": null,
+              "numerator": 0,
+              "denominator": 0
+            },
+            {
+              "key": "ease",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "bbxmDYZV",
+      "reports": [
+        {
+          "color": "white",
+          "score": 26.59821944750772,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 73.6842105263158,
+              "numerator": 14,
+              "denominator": 19
+            },
+            {
+              "key": "reach",
+              "value": 50,
+              "numerator": 4,
+              "denominator": 8
+            },
+            {
+              "key": "depth",
+              "value": 14.149305555555557,
+              "numerator": 4.527777777777779,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 4.166666666666667,
+              "numerator": 0.25,
+              "denominator": 6
+            }
+          ]
+        },
+        {
+          "color": "black",
+          "score": 29.492230615310653,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 78.94736842105263,
+              "numerator": 15,
+              "denominator": 19
+            },
+            {
+              "key": "reach",
+              "value": 60,
+              "numerator": 6,
+              "denominator": 10
+            },
+            {
+              "key": "depth",
+              "value": 14.496527777777782,
+              "numerator": 4.63888888888889,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 1.3888888888888886,
+              "numerator": 0.08333333333333333,
+              "denominator": 6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "nRiq9SZx",
+      "reports": [
+        {
+          "color": "black",
+          "score": 69.13962213265793,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.76543209876543,
+              "numerator": 80,
+              "denominator": 81
+            },
+            {
+              "key": "reach",
+              "value": 89.74358974358974,
+              "numerator": 35,
+              "denominator": 39
+            },
+            {
+              "key": "depth",
+              "value": 53.26605902777777,
+              "numerator": 17.045138888888886,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 20,
+              "numerator": 1,
+              "denominator": 5
+            },
+            {
+              "key": "ease",
+              "value": 46.82484567901234,
+              "numerator": 25.285416666666666,
+              "denominator": 54
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "HHZpRszr",
+      "reports": [
+        {
+          "color": "white",
+          "score": 73.06619821706495,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 96.47058823529412,
+              "numerator": 164,
+              "denominator": 170
+            },
+            {
+              "key": "reach",
+              "value": 76.47058823529412,
+              "numerator": 13,
+              "denominator": 17
+            },
+            {
+              "key": "depth",
+              "value": 69.81336805555556,
+              "numerator": 22.34027777777778,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 4
+            },
+            {
+              "key": "ease",
+              "value": 19.01851851851852,
+              "numerator": 2.852777777777778,
+              "denominator": 15
+            }
+          ]
+        },
+        {
+          "color": "black",
+          "score": 72.73159470560955,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.32163742690058,
+              "numerator": 163,
+              "denominator": 171
+            },
+            {
+              "key": "reach",
+              "value": 78.94736842105263,
+              "numerator": 15,
+              "denominator": 19
+            },
+            {
+              "key": "depth",
+              "value": 67.00520833333331,
+              "numerator": 21.441666666666663,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 5
+            },
+            {
+              "key": "ease",
+              "value": 49.79040404040405,
+              "numerator": 12.44760101010101,
+              "denominator": 25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "bmWAylqe",
+      "reports": [
+        {
+          "color": "white",
+          "score": 73.60602527300964,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.88377723970945,
+              "numerator": 396,
+              "denominator": 413
+            },
+            {
+              "key": "reach",
+              "value": 92.85714285714286,
+              "numerator": 52,
+              "denominator": 56
+            },
+            {
+              "key": "depth",
+              "value": 58.346044146825434,
+              "numerator": 18.67073412698414,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 28.571428571428573,
+              "numerator": 4,
+              "denominator": 14
+            },
+            {
+              "key": "ease",
+              "value": 29.74800444968269,
+              "numerator": 21.418563203771537,
+              "denominator": 72
+            }
+          ]
+        },
+        {
+          "color": "black",
+          "score": 74.34053630629248,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 96.75810473815461,
+              "numerator": 388,
+              "denominator": 401
+            },
+            {
+              "key": "reach",
+              "value": 92.98245614035088,
+              "numerator": 53,
+              "denominator": 57
+            },
+            {
+              "key": "depth",
+              "value": 59.436108355379204,
+              "numerator": 19.019554673721345,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 18.181818181818183,
+              "numerator": 2,
+              "denominator": 11
+            },
+            {
+              "key": "ease",
+              "value": 23.975171467764063,
+              "numerator": 21.57765432098766,
+              "denominator": 90
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "nYAJ7Km3",
+      "reports": [
+        {
+          "color": "black",
+          "score": 51.53882032022076,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.45454545454545,
+              "numerator": 21,
+              "denominator": 22
+            },
+            {
+              "key": "reach",
+              "value": 50,
+              "numerator": 4,
+              "denominator": 8
+            },
+            {
+              "key": "depth",
+              "value": 53.125,
+              "numerator": 17,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 13.541666666666666,
+              "numerator": 0.8125,
+              "denominator": 6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "FwXo3Qhq",
+      "reports": [
+        {
+          "color": "black",
+          "score": 92.67079334854981,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 79,
+              "denominator": 79
+            },
+            {
+              "key": "reach",
+              "value": 89.47368421052632,
+              "numerator": 34,
+              "denominator": 38
+            },
+            {
+              "key": "depth",
+              "value": 95.98214285714286,
+              "numerator": 30.714285714285715,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 50,
+              "numerator": 1,
+              "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 24.111201298701303,
+              "numerator": 10.608928571428573,
+              "denominator": 44
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "LLNDy032",
+      "reports": [
+        {
+          "color": "white",
+          "score": 77.14931061929367,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.1219512195122,
+              "numerator": 78,
+              "denominator": 82
+            },
+            {
+              "key": "reach",
+              "value": 93.54838709677419,
+              "numerator": 58,
+              "denominator": 62
+            },
+            {
+              "key": "depth",
+              "value": 63.62500000000002,
+              "numerator": 20.360000000000007,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 50,
+              "numerator": 2,
+              "denominator": 4
+            },
+            {
+              "key": "ease",
+              "value": 35.21367521367521,
+              "numerator": 27.466666666666665,
+              "denominator": 78
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "study_id": "e01yoGqe",
+      "reports": [
+        {
+          "color": "white",
+          "score": 46.980714128246284,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 96,
+              "numerator": 72,
+              "denominator": 75
+            },
+            {
+              "key": "reach",
+              "value": 84,
+              "numerator": 21,
+              "denominator": 25
+            },
+            {
+              "key": "depth",
+              "value": 26.276041666666668,
+              "numerator": 8.408333333333333,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "ease",
+              "value": 20.08125,
+              "numerator": 5.0203125,
+              "denominator": 25
+            }
+          ]
+        },
+        {
+          "color": "black",
+          "score": 54.5658368904533,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 88.31168831168831,
+              "numerator": 68,
+              "denominator": 77
+            },
+            {
+              "key": "reach",
+              "value": 55.55555555555556,
+              "numerator": 5,
+              "denominator": 9
+            },
+            {
+              "key": "depth",
+              "value": 53.59374999999997,
+              "numerator": 17.14999999999999,
+              "denominator": 32
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 2
+            },
+            {
+              "key": "ease",
+              "value": 6.064814814814814,
+              "numerator": 0.5458333333333333,
+              "denominator": 9
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
