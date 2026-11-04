@@ -120,8 +120,25 @@ export function loadCues(ctx) {
 let audio = null;
 let master = null; // the volume: every cue plays into this gain
 let active = null; // the sounding cue bus; a replacement stops its source
+const playable = new Set(); // includes replacements still fading on the audio clock
+let generation = 0; // newer cues and hiding invalidate pending resume/decode work
 let lastCue = null;
 let lastAt = -1e9; // the audio clock, in seconds
+
+function onVisibilityChange() {
+  if (!globalThis.document?.hidden) return;
+  generation++;
+  for (const bus of playable) {
+    const source = sources.get(bus);
+    try { source.stop(); } catch { /* already ended */ }
+    source.disconnect();
+    bus.disconnect();
+  }
+  playable.clear();
+  active = null;
+  lastCue = null;
+  lastAt = -1e9;
+}
 
 // One AudioContext for the app, made on the first cue or the first user gesture.
 // Browsers that keep it suspended (iOS) can then be resumed from a real gesture.
@@ -134,6 +151,7 @@ function context() {
   } catch {
     return null;
   }
+  globalThis.document?.addEventListener("visibilitychange", onVisibilityChange);
   return audio;
 }
 
@@ -157,7 +175,11 @@ function output(ctx) {
 // to the background, the screen locks, a call comes in) and reports
 // "interrupted", not "suspended": anything but running is asked to resume.
 function resume(ctx) {
-  if (ctx.state !== "running") Promise.resolve(ctx.resume()).catch(() => {});
+  try {
+    return ctx.state === "running" ? Promise.resolve() : Promise.resolve(ctx.resume()).catch(() => {});
+  } catch {
+    return Promise.resolve();
+  }
 }
 
 // Play a decoded cue into any context at `when` seconds, returning its bus (null
@@ -172,6 +194,8 @@ export function renderCue(ctx, cue, destination = ctx.destination, when = 0) {
   sources.set(bus, source);
   source.connect(bus).connect(destination);
   source.onended = () => {
+    playable.delete(bus);
+    if (active === bus) active = null;
     source.disconnect();
     bus.disconnect();
   };
@@ -185,17 +209,23 @@ export function cueAllowed(cue, previous, sinceMs) {
 }
 
 export function playSound(cue) {
-  if (!FILES[cue] || !pref("sounds")) return;
+  if (!FILES[cue] || !pref("sounds") || globalThis.document?.hidden) return;
   const ctx = context();
   if (!ctx) return;
-  resume(ctx);
-  if (!decoded.has(ctx)) {
-    const asked = Date.now();
-    loadCues(ctx).then(() => {
-      if (Date.now() - asked < LATE_MS) playSound(cue);
-    }, () => {});
-    return;
-  }
+  const asked = Date.now(), request = ++generation;
+  const play = () => {
+    if (request !== generation || Date.now() - asked >= LATE_MS ||
+        globalThis.document?.hidden || !pref("sounds") || ctx.state !== "running") return;
+    playDecoded(ctx, cue);
+  };
+  const pending = [];
+  if (ctx.state !== "running") pending.push(resume(ctx));
+  if (!decoded.has(ctx)) pending.push(loadCues(ctx));
+  if (pending.length) Promise.all(pending).then(play, () => {});
+  else play();
+}
+
+function playDecoded(ctx, cue) {
   const now = ctx.currentTime;
   if (!cueAllowed(cue, lastCue, (now - lastAt) * 1000)) return;
   lastCue = cue;
@@ -209,6 +239,7 @@ export function playSound(cue) {
     try { sources.get(active).stop(now + CUT_MS / 1000); } catch { /* already ended */ }
   }
   active = renderCue(ctx, cue, output(ctx), now + LEAD_S);
+  if (active) playable.add(active);
 }
 
 const GESTURES = ["pointerdown", "keydown", "touchstart"];
@@ -221,7 +252,7 @@ const GESTURES = ["pointerdown", "keydown", "touchstart"];
 export function installSoundUnlock() {
   if (typeof window === "undefined") return;
   const onGesture = () => {
-    if (!pref("sounds")) return;
+    if (!pref("sounds") || globalThis.document?.hidden) return;
     const ctx = context();
     if (!ctx) return;
     loadCues(ctx).catch(() => {});

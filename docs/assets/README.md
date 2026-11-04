@@ -9,7 +9,7 @@ do not establish live engine output or production service availability.
 | --- | --- | --- | --- |
 | `repertoire-desktop.png` | 1440 × 900 | 2026-11-02 | Isolated real API account, Open games · White, 21 moves / 5 lines, selected Bb5 |
 | `repertoire-mobile.png` | 390 × 844 | 2026-11-02 | Same account and tree at Bb5; occasional actions in More |
-| `repertoire-atlas.png` | 1440 × 900 | 2026-11-02 | Same tree, Atlas overview; route paths derive from actual nodes |
+| `repertoire-atlas.png` | 1440 × 900 | 2026-11-03 | Isolated real API account, imported London System Basics · White, 24 moves / 5 routes; actual documentation ratios |
 | `repertoire-discussion.png` | 1440 × 900 | 2026-11-02 | Same tree, Morgan/Alex discussion at Bb5 |
 | `repertoire-undo.png` | 1440 × 900 | 2026-10-30 | Same fixture, deleted branch and compact Undo |
 | `train-session.png` | 1440 × 900 | 2026-10-30 | Same fixture, live Due queue session |
@@ -20,6 +20,17 @@ and `Cross-Origin-Embedder-Policy: require-corp`. The November captures use the
 in-app browser against an isolated FastAPI/SQLite server, with a completed
 training run and a saved analysis in the account. They do not verify Stockfish
 inside that browser. Do not hide banners or alter the app DOM to prepare screenshots.
+
+The November 3 Atlas refresh uses headless Chromium and an isolated FastAPI/SQLite
+account with a branched repertoire, saved analyzed game and completed training run.
+The same account and tree were captured before and after at 1440 × 900,
+1000 × 650 and 390 × 844. Desktop header height changed from 78 to 47 CSS pixels;
+phone header height changed from 77 to 61. No horizontal overflow was measured.
+The documentation image is a separate annotated example imported through the real
+API from chapter 2 of saved Lichess study `2EaSmZtz`. Its root introduction and
+variation comments survive import; the measured score is 73, with facets
+91 / 0 / 100 / 100. It is not a before/after comparison with the Anti-Sicilian tree.
+No engine or popularity value enters the documentation score.
 
 ## Refresh
 

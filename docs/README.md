@@ -28,6 +28,7 @@
 | [Backend consistency](backend-consistency.md) | Analysis snapshots, training transactions and sync versions |
 | [Training flow and I/O](training-flow.md) | Continuous practice, deletion feedback and measured SQL work |
 | [Repertoire collaboration](repertoire-collaboration.md) | Recent activity, inverse edits, position discussions and Atlas |
+| [Atlas research](../research/atlas-quality/README.md) | Reviewed Lichess corpus, documentation signals, popularity evidence and limitations |
 
 ## Keeping documentation current
 

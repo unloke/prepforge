@@ -1,0 +1,155 @@
+[Event "A Gambit Repertoire for White: Introduction"]
+[Date "2021.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "A Gambit Repertoire for White"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/D8QPC8Zr/OfE3zg87"]
+[Annotator "https://lichess.org/@/OnlyForStudies"]
+[UTCDate "2021.06.28"]
+[UTCTime "01:11:53"]
+
+{ Chess nowadays is getting real boring. Openings are being studied to the bone; up to move 30 and into the endgame like the Berlin and the Sicilian Najdorf. This can lead to lack of creativity and style, which is why nowadays anyone from 8-99 can become a grandmaster easily, unlike in the 60's or 70's. Chess needs to be spiced up now, and I have perfect solution: Gambits! Gambits are truly the way to go in Chess to win in style and have fun at the same time. But I am not going to recommend to you some boring King's gambit or Smith Morra, I am going to recommend unexplored gambits and openings that play in the gambit style. So, will all that being said, lets begin!
+
+(Note: This study is based on the white gambit repertoire by Eric Schiller, but also has my own analyse and lines in it as well.) }
+ *
+
+
+[Event "A Gambit Repertoire for White: Line overview"]
+[Date "2021.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B21"]
+[Opening "Sicilian Defense: Halasz Gambit"]
+[StudyName "A Gambit Repertoire for White"]
+[ChapterName "Line overview"]
+[ChapterURL "https://lichess.org/study/D8QPC8Zr/STftbCwJ"]
+[Annotator "https://lichess.org/@/OnlyForStudies"]
+[UTCDate "2021.06.28"]
+[UTCTime "01:18:13"]
+
+1. e4 { The starting move for this repertoire because almost all gambits come from e4. } 1... c5 (1... c5 2. d4 cxd4 3. f4 { This is the Halasz Gambit, and it's plan is to attack Black's kingside fast with h3, Qe1-g3/h4, and g4 followed up with f5; and also expand on the queenside with a3 and b4. In this gambit we really don't care about the d4 pawn, so we will develop around it. }) (1... e5 2. d4 exd4 3. f4 { Same as with the Sicilian, we're also playing the halasz gambit here too. The plan is also the same with the kingsie attack. } (3. c3 { White can also play the Danish gambit, a 19th century romantic two pawn gambit that aims for rapid development and quick, tactical attacks towards the king })) (1... e6 2. d4 d5 3. Be3 { In this line we're gambiting a pawn in exchange for rapid development, which is also seen in the Blackmar-Diemer Gambit }) (1... c6 2. d4 d5 3. Nf3 { This is a gambit that is a lot like the budapest and tennison gambit combined. White may not gain back the pawn, but he/she will have a lot of attacking prospects. }) (1... d5 2. Nf3 { A simple and easy gambit to play for a white; this is a pretty solid line. }) (1... Nf6 2. Bc4 { A nice gambit which stops Black from castling
+1...Nc6/g6/d6/b6 don't have gambits associated with them that are good }) 2. d4 cxd4 3. f4 { This is the Halasz Gambit, and it's plan is to attack Black's kingside fast with h3, Qe1-g3/h4, and g4 followed up with f5; and also expand on the queenside with a3 and b4. In this gambit we really don't care about the d4 pawn, so we will develop around it. } *
+
+
+[Event "A Gambit Repertoire for White: The Sicilian Halasz Gambit"]
+[Date "2021.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B21"]
+[Opening "Sicilian Defense: Halasz Gambit"]
+[StudyName "A Gambit Repertoire for White"]
+[ChapterName "The Sicilian Halasz Gambit"]
+[ChapterURL "https://lichess.org/study/D8QPC8Zr/nxtTSa79"]
+[Annotator "https://lichess.org/@/OnlyForStudies"]
+[UTCDate "2021.06.28"]
+[UTCTime "01:32:43"]
+
+1. e4 c5 { A move you're most likely going to see 50% of the time in all of your chess games as White. } 2. d4 cxd4 3. f4 { With this move we signal a Kingside attack( h3, Qe1-g3/h4, and g4 followed up with f5; and also expand on the queenside with a3 and b4) and control many important central squares, but our plan is to control f5. In the Halasz gambit, the d4 pawn is going to be kept there because we don't want to transpose to other Sicilians. } { [%csl Gf5][%cal Ge4f5,Ge4d5,Gf4e5,Gf4g5] } 3... d6 (3... d6 4. Nf3 Bg4 { stopping Qxd4 } (4... Nf6 5. Bd3 { protecting the pawn and not cring about the d4 pawn } { [%csl Ge4][%cal Gd3e4] } 5... Nc6 6. O-O e5 (6... Bg4 { transposition }) 7. h3 { preparing the advancement of g4 and stopping Black from coming to g4 } 7... Be7 8. Nbd2 O-O 9. Nc4 { followed by g4 and the queen moving to either g3 or h4 }) 5. Bd3! { A key idea that needs to be remembered: White doesn't need to care about the d4 pawn and should instead develop around it. This Bd3 move is also seen in the Elephant Gambit; Maroczy variation. } (5. Qxd4 Bxf3 6. gxf3 { ugly doubled, hanging pawns } 6... Nc6 { and this is good for Black }) 5... Nc6 6. O-O { we don't need to worry bout ...Nb4 ideas because they're useless. } 6... Nf6 7. h3 { Forcing the trade and also expanding on the kingside } 7... Bxf3 8. Qxf3 e6 (8... e5 9. Bc4 { White now has compensation because Black position is weird. }) 9. Nd2 Be7 10. a3 { And we start the queenside expansion } 10... O-O { Simply expanding on the Kingside and following the kingside and queenside expansion plan. I would say that both sides, with human play, have equal chances, although the computer would disagree }) (3... Nc6 4. Nf3 Qb6 { protecting the pawn } (4... g6 { not the best move to make because of the e4 and f5 pawns that can attack g6. } 5. Bd3 { again, not caring about the pawn on d4 } 5... Bg7 6. O-O Nf6 7. Qe1 { The arrows show the plan against this set-up. } { [%csl Gh4][%cal Ge1h4,Gf4f5,Gc1h6,Bh2h3,Bg2g4] } 7... d5 8. e5 Ne4 9. Nbd2 Nxd2 10. Bxd2 Qb6 11. Qg3 { I would just accept this perpetual line despite the irony towards this study. } 11... Qxb2 12. Rfb1 Qa3 13. Rb3 Qc5 14. Rb5 Qa3 15. Rb3 $10) (4... d5 { not that good of a move by Black since, in this line, we have to gin the pawn back an Black doesn't hve much compensation for the pawn give. } 5. exd5 (5. e5 { this move is recommended by Halasz Gambiteers, but I don't like White's position after this. }) 5... Qxd5 6. Nc3 { Black can't take c3 due to the line against the queen } { [%csl Gd5][%cal Gd1d5,Gc3d5,Rd4c3] } 6... Qe6+ (6... Qd8 7. Nb5 { gainign the pawn back } 7... a6 (7... Qa5+ 8. Qd2) 8. Nbxd4) 7. Ne2 Nf6 8. Nxd4 Nxd4 9. Qxd4 { and white is better }) 5. Bd3 { You should now understand why this is played } 5... d6 (5... Nf6 6. O-O d5 7. e5 Ne4 8. Nbd2 Nc5 9. Nb3 Nxd3 10. cxd3 Bf5 11. Nh4 Bd7 12. Qe2 e6 13. f5 Nb4 14. fxe6 Bxe6 15. Nf5 { Halasz-Nilsson, Postal 1976 }) 6. O-O g6 7. Nbd2 Bg7 8. a3 { This move isn't to stop Black's ...Nb4 ideas, but to control and expand on the queenside } 8... Nf6 9. h3 { Kingside expansion ideas } 9... e5 10. b4 a6 11. g4 { now that we control the queenside, let's control the kingside } 11... O-O 12. Qe1 Qc7 13. f5 { because of g6, we must attack with f5 } 13... d5 14. Qg3 dxe4 15. Nxe4 Nd5 16. fxg6 hxg6 17. g5 $13) 4. Nf3 Bg4 { stopping Qxd4 } (4... Nf6 5. Bd3 { protecting the pawn and not cring about the d4 pawn } { [%csl Ge4][%cal Gd3e4] } 5... Nc6 6. O-O e5 (6... Bg4 { transposition }) 7. h3 { preparing the advancement of g4 and stopping Black from coming to g4 } 7... Be7 8. Nbd2 O-O 9. Nc4 { followed by g4 and the queen moving to either g3 or h4 }) 5. Bd3! { A key idea that needs to be remembered: White doesn't need to care about the d4 pawn and should instead develop around it. This Bd3 move is also seen in the Elephant Gambit; Maroczy variation. } (5. Qxd4 Bxf3 6. gxf3 { ugly doubled, hanging pawns } 6... Nc6 { and this is good for Black }) 5... Nc6 6. O-O { we don't need to worry bout ...Nb4 ideas because they're useless. } 6... Nf6 7. h3 { Forcing the trade and also expanding on the kingside } 7... Bxf3 8. Qxf3 e6 (8... e5 9. Bc4 { White now has compensation because Black position is weird. }) 9. Nd2 Be7 10. a3 { And we start the queenside expansion } 10... O-O { Simply expanding on the Kingside and following the kingside and queenside expansion plan. I would say that both sides, with human play, have equal chances, although the computer would disagree } *
+
+
+[Event "A Gambit Repertoire for White: The Central Halasz Gambit"]
+[Date "2021.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C21"]
+[Opening "Center Game: Halasz-McDonnell Gambit"]
+[StudyName "A Gambit Repertoire for White"]
+[ChapterName "The Central Halasz Gambit"]
+[ChapterURL "https://lichess.org/study/D8QPC8Zr/BgVAEZoQ"]
+[Annotator "https://lichess.org/@/OnlyForStudies"]
+[UTCDate "2021.06.28"]
+[UTCTime "12:46:50"]
+
+1. e4 e5 2. d4 { Black does sometimes decline the center game with d6 and Nc6, but both are easy to play against. } 2... exd4 3. f4 { As also seen in the sicilian, White's kingside attack is very natural here, and there are now two line's we're going to look at:
+A( 1 e4 e5 2 d4 exd4 3 f4 Bc5 4 Nf3 Nc6 5 a3 a5 6 Bd3 Nf6 7 0-0)
+B( 3...Bb4+)
+This halasz version is a little harder to play with so be careful with this and be prepared.
+Note(This chapter is based on https://www.chesscafe.com/text/halasz.txt and also has my own lines and analysis in it as well) } 3... Bc5 (3... Nc6 4. Nf3 Bc5 { transposes to the mainline }) (3... Bb4+ 4. Nd2 Nf6 (4... Nc6 5. a3 Bc5 6. b4 Bb6 7. Ngf3 Nf6 8. Bd3) 5. Bd3 d5 6. e5 Ng4 7. Nf3 { and white gets normal play in the Halasz }) 4. Nf3 Nc6 5. a3 { With a3, also in the sicilian Halasz, White is trying to expand on the queenside with b4 and stop any pieces from going to b4 as well. } 5... a5 { Stopping b4 } 6. Bd3 { You should know why this move is played because of the Sicilian Halasz, White doesn't care about the d4 pawn and develops around it. This move is also seen in the Elephant Gambit. } 6... Nf6 7. O-O { Black now has two main moves: 7...d5 and 7...d6 or 7...Ne following up with 8...d5/d6. } 7... d5 (7... d5 8. e5 { White has to play this to start expanding on the kingside. Black cn now either play Ne4 or Ng4 } (8. exd5 Qxd5 { and Black is too good }) 8... Ng4 (8... Ne4 9. Nbd2 Nxd2 10. Bxd2 { White is threatening kingside assualts if Black castles } { [%cal Gd3h7,Gf3g5] } 10... O-O { he did it anyways } (10... Ne7 { tro prevent f5 } { [%csl Gf5][%cal Ge7f5,Gc8f5,Bd3f5,Bf4f5] }) 11. f5 { and now the attack begins } 11... Ne7 12. Ng5 { Leads to a messy position } 12... f6 13. Qh5 fxg5 14. f6 Ng6 { blocking the checkmate } 15. f7+ Rxf7 16. Rxf7 Kxf7 17. Qxh7 Nxe5 18. Rf1+ Ke6 19. Qxg7 Nxd3 20. cxd3 $10) 9. Qe2 Ne3 { [%csl Gf1][%cal Ge3f1] } 10. Bxe3 dxe3 11. Nc3 d4 12. Ne4 { [%csl Gc5][%cal Ge4c5] } 12... Ba7 13. Nfg5 h5 14. h3 Bf5 15. Nxf7! Kxf7 16. Ng5+ { [%csl Gf5,Gf6,Gd6,Ge6][%cal Gd3f5,Ge5d6,Ge5f6,Gg5e6] } 16... Ke8 (16... Kg6 17. Bxf5+ Kxf5 18. Qd3#) 17. Bxf5 { and White went on to win in Salminen - Lapine, 1994 corres. }) (7... d6 8. Qe1 { Getting ready for the Kingside expansion with h3 and g4 and Qg3/h4 seen in the Sicilian Halasz as well. } (8. e5 Nd5 { Not a good plan for white } { [%csl Ge3,Gg4][%cal Gd5e3,Gc8g4] }) 8... O-O { black has to be ready to meet e5 because of the kingsie attack of White } { [%cal Ge4e5] } 9. h3 { [%csl Gg3,Gh4,Gg4][%cal Gg2g4,Ge1g3,Gg3h4] } 9... Bd7 10. e5 Re8 11. Qg3 Nh5 12. Qh2 g6 13. g4 Ng7 14. Nbd2 f5 15. exf6 Qxf6 16. Ne4 Qd8 17. Qg3 Re7 18. Qh4 { A typical Halasz position in Both Halasz versions: Black has an extra pawn, but he is pinned down by a White attack. } 18... Ne8 19. f5! { White's advantage is obvious and he went on to win in 26 moves in Blank -
+Wothe, 1991 corres. }) (7... O-O?? 8. e5 { Greek gift sac and Black is dead lost. } { [%csl Gh7,Gg5,Gh5][%cal Gd3h7,Gf3g5,Gf4g5,Gd1h5] }) 8. e5 { White has to play this to start expanding on the kingside. Black cn now either play Ne4 or Ng4 } (8. exd5 Qxd5 { and Black is too good }) 8... Ng4 (8... Ne4 9. Nbd2 Nxd2 10. Bxd2 { White is threatening kingside assualts if Black castles } { [%cal Gd3h7,Gf3g5] } 10... O-O { he did it anyways } (10... Ne7 { tro prevent f5 } { [%csl Gf5][%cal Ge7f5,Gc8f5,Bd3f5,Bf4f5] }) 11. f5 { and now the attack begins } 11... Ne7 12. Ng5 { Leads to a messy position } 12... f6 13. Qh5 fxg5 14. f6 Ng6 { blocking the checkmate } 15. f7+ Rxf7 16. Rxf7 Kxf7 17. Qxh7 Nxe5 18. Rf1+ Ke6 19. Qxg7 Nxd3 20. cxd3 $10) 9. Qe2 Ne3 { [%csl Gf1][%cal Ge3f1] } 10. Bxe3 dxe3 11. Nc3 d4 12. Ne4 { [%csl Gc5][%cal Ge4c5] } 12... Ba7 13. Nfg5 h5 14. h3 Bf5 15. Nxf7! Kxf7 16. Ng5+ { [%csl Gf5,Gf6,Gd6,Ge6][%cal Gd3f5,Ge5d6,Ge5f6,Gg5e6] } 16... Ke8 (16... Kg6 17. Bxf5+ Kxf5 18. Qd3#) 17. Bxf5 { and White went on to win in Salminen - Lapine, 1994 corres. } *
+
+
+[Event "A Gambit Repertoire for White: The Alapin Gambit"]
+[Date "2021.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense: Alapin Gambit"]
+[StudyName "A Gambit Repertoire for White"]
+[ChapterName "The Alapin Gambit"]
+[ChapterURL "https://lichess.org/study/D8QPC8Zr/o1JvDM0T"]
+[Annotator "https://lichess.org/@/OnlyForStudies"]
+[UTCDate "2021.06.28"]
+[UTCTime "13:25:38"]
+
+1. e4 e6 2. d4 d5 3. Be3 { With this gambit, white wants rapid development and nice piece placement in exchange for a pawn. } 3... dxe4 (3... Nf6 { Black can always decline } 4. e5 Nfd7 5. f4 c5 6. Nf3 { and White id doing fine here }) 4. Nd2 { The correct Knight move, trying to attack the pawn. } (4. Nc3 Bb4 { [%csl Ge1][%cal Gb4e1] }) 4... Nf6 (4... f5 { following Keres vs Verbac } 5. f3 exf3 6. Ngxf3 Nf6 7. Bd3 c5 8. O-O cxd4 9. Nxd4 { already White has developed about everything } 9... f4 10. Rxf4! { not even caring about the fork because White has a major attack coming } 10... e5 11. Bb5+ Kf7 { The move played in the game } (11... Nc6 12. Nxc6 bxc6 13. Bxc6+ Bd7 14. Bxa8 Qxa8 15. Rf1) (11... Bd7 12. Rxf6 Qxf6 13. Qh5+ g6 14. Qe2 { [%csl Gg5][%cal Ge3g5,Ge2e8] } 14... Bxb5 15. Nxb5 { [%cal Gb5c7] }) 12. Qh5+ { [%csl Gf7,Gh5][%cal Gf4f7,Rf6h5] } 12... g6 (12... Kg8 13. Bc4+ Nd5 14. Qf7#) 13. Bc4+ Kg7 14. Qh6+ Kxh6 15. Rh4+ Kg7 16. Bh6#) 5. f3 { Black can decline the second gambit } 5... exf3 (5... Nd5 6. Qe2 exf3 7. Ngxf3 { This is also fine for white as well considdering how much he/she has deved. }) 6. Ngxf3 Be7 (6... c5 7. dxc5 Qc7 8. Nb3 (8. b4)) 7. Bd3 b6 8. O-O Bb7 { And this is where the theory ends. This is a very little know gambit, and it is up to you to decide how the game should progress. For more info. on this gambit, please go here:
+http://www.nic.funet.fi/pub/doc/games/chess/ddg/Gambits/alapin.html } *
+
+
+[Event "A Gambit Repertoire for White: The Ulysses Gambit"]
+[Date "2021.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Ulysses Gambit"]
+[StudyName "A Gambit Repertoire for White"]
+[ChapterName "The Ulysses Gambit"]
+[ChapterURL "https://lichess.org/study/D8QPC8Zr/WFuIovfk"]
+[Annotator "https://lichess.org/@/OnlyForStudies"]
+[UTCDate "2021.06.28"]
+[UTCTime "13:40:35"]
+
+1. e4 c6 2. d4 d5 3. Nf3 { A very new gambit with ideas from the tennison gambit. Black really can't decline this gambit unless he/she likes equality } 3... dxe4 4. Ng5 { White wants to gain back the pawn in this fashion in both this and the the Tennison Gambit. } 4... Nf6 (4... Bf5 { a sensible alternative } 5. c3 (5. f3 exf3 6. Nxf3 { a tempoless diemer gambit }) 5... e6 (5... h6 6. Nxf7 Kxf7 7. Qb3+ e6 8. Qxb7+ Nd7 9. Qxc6 { And White has full compensation for the piece }) 6. Qb3 { [%csl Gb7][%cal Gb3b7] } 6... Qd7 7. Nd2 Nf6 8. Nc4 { This gives white full compensation } { [%csl Ge5][%cal Gc4e5] }) 5. Bc4 { A key move to remember in this gambit because it immediatly attacks f7 and shuts down Black's light-squared bishop, unlike Nc3. } { [%csl Gf7][%cal Gc4f7,Gg5f7] } 5... e6 6. Nc3 { 2 v 1 on the pawn } { [%csl Ge4][%cal Gc3e4,Gg5e4,Bf6e4] } 6... Bb4 { 2 v 2 now because Black pins our knight and the pawn cannot be attacked anymore } (6... Bb4 { 2 v 2 now because Black pins our knight and the pawn cannot be attacked anymore } 7. O-O (7. Qe2?? Qxd4) 7... Bxc3 8. bxc3 h6 9. Nh3 { Because the e-pawn is safe, White now has to fight to justify the gambit } 9... Qa5 { [%csl Gc3][%cal Ga5c3] } (9... Nbd7 10. Bb3 e5 11. dxe5 Nxe5 12. Qxd8+ Kxd8 13. Bf4 Nf3+ 14. gxf3 Bxh3 15. Rfd1+ Kc8 16. fxe4 Nxe4 17. Bxf7 Rf8 18. Rd4 { and white is fine here }) (9... O-O 10. f3 exf3 (10... Qa5 11. Qe1 { transposition }) 11. Qxf3) 10. Qe1 { [%csl Gc3][%cal Ge1c3,Ga5c3] } (10. Bd2 e5 11. f3 Bxh3 12. gxh3 e3 13. Re1) 10... O-O 11. f3 c5 (11... exf3 12. Rxf3) 12. fxe4 (12. dxc5 { kills our pawn sturcture }) 12... Nxe4 13. Qxe4 Qxc3 14. Bxh6! gxh6 15. dxc5 $16 { protects the bishop and white is alot better here } { [%cal Gf1f8,Ge4h7,Gc4g8] } 15... Nc6 16. Rae1 Rd8 17. Rxf7 Kxf7 18. Qh7+ Ke8 19. Qg8+ Kd7 20. Qf7+ Ne7 21. Rd1+ Kc7 22. Qxe7+ Rd7 23. Rxd7+ Bxd7 24. Qd6+ Kd8 25. Qf8+ $10) (6... Be7 7. O-O O-O 8. Ngxe4 Nxe4 9. Nxe4 $14) (6... b5 7. Bb3 a5 8. a4! Bb4 9. O-O Bxc3 10. bxc3 h6 11. Nh3 $14 { The bishop pair and developmet make white better here, but black is up a pawn so white is slightly better } 11... O-O 12. f3 Ba6 13. axb5 cxb5 14. fxe4 Nxe4 15. Qg4 Nf6 $10 16. Qh4 { With the idea of Bxh6 sacrifice } { [%csl Gh6][%cal Gc1h6] } 16... Nbd7 17. Bxh6 gxh6 18. Rf3 Nh7 19. Qxh6 Kh8 20. Raf1 Qe7 21. Qh5 b4 22. Rxf7 Rxf7 23. Rxf7 Qxf7 24. Qxf7 Rf8 25. Qxf8+ Nhxf8 26. cxb4 axb4 27. Nf4 Nf6 28. Nxe6 Nxe6 29. Bxe6 $10) (6... Nbd7 7. O-O h6 (7... Bd6 8. Re1 Qc7 9. h3 O-O 10. Ngxe4) 8. Ngxe4 Nxe4 9. Nxe4 Nf6 10. Qd3! { just developing the queen } 10... Be7 11. Be3 Qc7 12. Rad1 $16 { And white stands better here }) 7. O-O (7. Qe2?? Qxd4) 7... Bxc3 8. bxc3 h6 9. Nh3 { Because the e-pawn is safe, White now has to fight to justify the gambit } 9... Qa5 { [%csl Gc3][%cal Ga5c3] } (9... Nbd7 10. Bb3 e5 11. dxe5 Nxe5 12. Qxd8+ Kxd8 13. Bf4 Nf3+ 14. gxf3 Bxh3 15. Rfd1+ Kc8 16. fxe4 Nxe4 17. Bxf7 Rf8 18. Rd4 { and white is fine here }) (9... O-O 10. f3 exf3 (10... Qa5 11. Qe1 { transposition }) 11. Qxf3) 10. Qe1 { [%csl Gc3][%cal Ge1c3,Ga5c3] } (10. Bd2 e5 11. f3 Bxh3 12. gxh3 e3 13. Re1) 10... O-O 11. f3 c5 (11... exf3 12. Rxf3) 12. fxe4 (12. dxc5 { kills our pawn sturcture }) 12... Nxe4 13. Qxe4 Qxc3 14. Bxh6! gxh6 15. dxc5 $16 { protects the bishop and white is alot better here } { [%cal Gf1f8,Ge4h7,Gc4g8] } 15... Nc6 16. Rae1 Rd8 17. Rxf7 Kxf7 18. Qh7+ Ke8 19. Qg8+ Kd7 20. Qf7+ Ne7 21. Rd1+ Kc7 22. Qxe7+ Rd7 23. Rxd7+ Bxd7 24. Qd6+ Kd8 25. Qf8+ $10 *
+
+
+[Event "A Gambit Repertoire for White: The Tennison Gambit"]
+[Date "2021.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A06"]
+[Opening "Zukertort Opening: Tennison Gambit"]
+[StudyName "A Gambit Repertoire for White"]
+[ChapterName "The Tennison Gambit"]
+[ChapterURL "https://lichess.org/study/D8QPC8Zr/WLMjNamp"]
+[Annotator "https://lichess.org/@/OnlyForStudies"]
+[UTCDate "2021.06.28"]
+[UTCTime "14:56:26"]
+
+1. e4 d5 2. Nf3 { Also known as the intercontinental Ballistic Missle Gambit, the Tennison gambit is meant for getting a nice, colid position out pof the opening. this opening can also be a system for white if he/she where to play 1. Nf3 on the first move. If Black defends, we can transpose to other openings } 2... dxe4 (2... c6 3. d4 { The Ulysses Gambit }) 3. Ng5 { [%csl Ge4][%cal Gg5e4] } 3... Nf6 (3... Bf5 4. Nc3 Nf6 5. Bc4 e6 6. Qe2 Qd4 7. Nb5 Qb6 8. Nc3 Qd4 { This is the line i recommend }) (3... f5 4. Bc4 { [%csl Gf7][%cal Gc4f7,Gg5f7] } 4... Nh6 (4... e6 5. Nxe6 Bxe6 6. Bxe6 { [%csl Gf5][%cal Ge6f5] } 6... Qf6 7. Bb3) 5. Nxh7 Rxh7 6. Qh5+ Kd7 7. Qg6 { [%csl Ge6,Gh7][%cal Gg6e6,Gg6h7,Gc4e6] } 7... Rh8 (7... c6 8. Qxh7) 8. Be6+ Kc6 9. Bxc8+ Qd6 10. Qe8+ Kb6 11. Na3 { and black is dead } { [%csl Gc4][%cal Ga3c4] }) (3... Qd5 4. d3 exd3 5. Bxd3 { here we don't even care about g2 } 5... Nf6 6. O-O h6 7. Nc3 Qa5 8. Nge4 Nxe4 9. Nxe4 { and white is developing fine here }) (3... e5 { The correct line against } 4. Nxe4 f5 (4... Nf6 5. Nxf6+ Qxf6 6. Nc3 { and play continues }) 5. Ng3 Nf6 6. Bc4 { and black will now find it hard to castle } { [%csl Gg8][%cal Gc4g8] } 6... Nc6 7. O-O) 4. Bc4 { The correct way to play this gambit, simply attacking f7 and dev. pieces } { [%csl Gf7][%cal Gc4f7,Gg5f7] } (4. d3 { This is what is recommended by IM Levy Rozman, but I don't like it because Black can easily refute this line even if Black were 800 } 4... exd3 5. Bxd3 e6 { and Black is fine } (5... h6 { Obviously we know that this is the trap } 6. Nxf7 Kxf7 7. Bg6+ { you'll never get this trap online })) 4... e6 5. Nc3 { And the pawn is now attacked 2 times. If black were to develop the bishops or knights, then take the pawn with the g-knight } { [%csl Ge4][%cal Gg5e4,Gc3e4] } 5... Qd4 { The last chance to hold onto the pawn } 6. Qe2 Nc6 7. Ngxe4 Nxe4 8. Qxe4 Qxe4+ 9. Nxe4 Nb4 10. Bb3 a5 11. a3 Nd5 12. O-O { and the game continues from here } *
+
+
+[Event "A Gambit Repertoire for White: The Krejcik Gambit"]
+[Date "2021.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B02"]
+[Opening "Alekhine Defense: Krejcik Variation, Krejcik Gambit"]
+[StudyName "A Gambit Repertoire for White"]
+[ChapterName "The Krejcik Gambit"]
+[ChapterURL "https://lichess.org/study/D8QPC8Zr/jS2vqY9f"]
+[Annotator "https://lichess.org/@/OnlyForStudies"]
+[UTCDate "2021.06.28"]
+[UTCTime "14:43:40"]
+
+1. e4 Nf6 2. Bc4! { White can just avoid the alekhine's defense with this move } 2... Nxe4 { Black can always decline the gambit with e5, but I would just transpose into the Frankenstein-Deacula Gambit } (2... e5 3. Nc3 Nxe4 { Black tries to fork } 4. Qh5! { An excellent intermiediate move } { [%csl Gf7][%cal Gh5f7,Gc4f7] } 4... Nd6 (4... g6 5. Qxe5+ Qe7 6. Qxe7+ (6. Qxh8 { too risky } { [%csl Ge1][%cal Ge7e1] }) 6... Bxe7 7. Nxe4) (4... Ng5 5. d4 { [%csl Gg5][%cal Gc1g5] } 5... Ne6 { blocks f7 } { [%csl Re6][%cal Gc4f7] } 6. dxe5 { And white is better }) 5. Qxe5+ Qe7 6. Qxe7+ Bxe7 7. Bb3 { and white is bettrer here due to the on d6 blocking the bishop }) 3. Bxf7+ { The only way to gain the pawn back } 3... Kxf7 4. Qh5+ g6 (4... Kg8 5. Qd5+ { is the same }) (4... Ke6 { This is too risky for Black }) 5. Qd5+ e6 6. Qxe4 Bg7 7. Nf3 Rf8 8. d4 Kg8 9. Bg5 Qe8 $14 { And this is the end of the chapter. This is a very simple gambit that can help you gain an advantege out of the poening } (9... Bf6 10. Bxf6 Qxf6 11. Nc3) *
+
+
+[Event "A Gambit Repertoire for White: Conclusion"]
+[Date "2021.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "A Gambit Repertoire for White"]
+[ChapterName "Conclusion"]
+[ChapterURL "https://lichess.org/study/D8QPC8Zr/GoSvbBIX"]
+[Annotator "https://lichess.org/@/OnlyForStudies"]
+[UTCDate "2021.06.28"]
+[UTCTime "15:19:23"]
+
+{ Now that you have seen the gambits I have presented to you, I thank you for reading this study and I hope you will win all of your games with this repertoire! good Luck! }
+ *
+
+

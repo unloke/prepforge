@@ -20,6 +20,8 @@ import { join, extname } from "node:path";
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
 const PORT = Number(process.env.BUILD_SMOKE_PORT || 8794);
+// Use a running local build while retaining fixture-backed API responses.
+const BASE_URL = process.env.BUILD_SMOKE_URL || "";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -158,7 +160,7 @@ const server = createServer(async (req, res) => {
     res.end("nope");
   }
 });
-await new Promise((r) => server.listen(PORT, r));
+if (!BASE_URL) await new Promise((r) => server.listen(PORT, r));
 
 const { chromium } = await import("playwright");
 let browser;
@@ -168,11 +170,56 @@ for (const channel of ["msedge", "chrome", undefined]) {
 }
 if (!browser) { console.error("[build-smoke] no chromium-based browser available"); server.close(); process.exit(2); }
 
-const base = `http://127.0.0.1:${PORT}`;
+const base = BASE_URL || `http://127.0.0.1:${PORT}`;
 const failures = [];
 
+async function fixturePage(options) {
+  const page = await browser.newPage(options);
+  if (BASE_URL) await page.route("**/api/**", (route) => {
+    const url = new URL(route.request().url());
+    return route.fulfill({ json: api(url.pathname + url.search) });
+  });
+  return page;
+}
+
+async function checkAtlas(atlas, check, empty = false) {
+  const expectedScore = empty ? "—" : "0";
+  check(await atlas.locator(".atlas-index-number strong").textContent() === expectedScore, "Atlas computes documentation immediately; empty repertoires have no score");
+  const facets = await atlas.locator(".atlas-facet > span:nth-child(2)").allTextContents();
+  check(JSON.stringify(facets) === JSON.stringify(["Decision notes", "Fork signposts", "Endpoint notes", "Starting notes"]), `four documentation facets render: ${facets.join(", ")}`);
+  const readFacets = () => atlas.locator(".atlas-facet").evaluateAll((rows) => rows.map((row) => ({
+    value: row.querySelector("b").textContent, title: row.title,
+  })));
+  const checkEvidence = async () => {
+    const rows = await readFacets();
+    check(rows.every((row) => row.value === "0" || row.value === "—"), "comment-free fixtures have zero or inapplicable documentation facets");
+    check(rows.every((row) => /\d+\s*\/\s*\d+/.test(row.title)), "each documentation facet exposes its numerator/denominator in a tooltip");
+    if (rows.some((row) => row.value === "—")) {
+      check(await atlas.locator(".atlas-envelope").count() === 0, "inapplicable evidence must not draw a fully measured envelope");
+    }
+    return rows;
+  };
+  const whole = await checkEvidence();
+  check(await atlas.locator("button, select").count() === 2, "Atlas has only close and scope controls");
+  check(await atlas.locator("[data-assess], [data-depth]").count() === 0, "Atlas has no engine assessment or horizon controls");
+  check(await atlas.getByRole("button", { name: "Close", exact: true }).isVisible(), "Atlas close is available");
+  const scope = atlas.getByRole("combobox", { name: "Atlas scope", exact: true });
+  check(await scope.isVisible() && await scope.isEnabled(), "documentation scope is available");
+  check(await scope.locator("option").count() === (empty ? 1 : 2), "scope offers the whole repertoire and an available current position");
+  if (!empty) {
+    await scope.selectOption("n5");
+    check(await scope.inputValue() === "n5", "current-position scope can be selected");
+    check(await atlas.locator(".atlas-index-number strong").textContent() === "0", "current-position documentation score computes immediately");
+    const current = await checkEvidence();
+    check(JSON.stringify(current) !== JSON.stringify(whole), "scope changes recompute documentation fractions");
+    await scope.selectOption("n0");
+    check(JSON.stringify(await readFacets()) === JSON.stringify(whole), "whole-repertoire scope restores its original fractions");
+  }
+  check(await atlas.locator(".atlas-index-number strong").textContent() === expectedScore, "scope changes preserve the comment-free fixture's documentation score");
+}
+
 async function runViewport(vp) {
-  const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  const page = await fixturePage({ viewport: { width: vp.width, height: vp.height } });
   const consoleErrors = [];
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
@@ -295,20 +342,19 @@ async function runViewport(vp) {
     await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `repertoire-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
   }
 
-  // Direct Atlas entry, structural profile, personal imprint and keyboard dismissal.
+  // Direct Atlas entry, synchronous documentation, scope and keyboard dismissal.
   const atlasEntry = page.getByRole("button", { name: "Open repertoire atlas", exact: true });
   await atlasEntry.click();
   const atlas = page.locator(".atlas-modal[open]");
   await atlas.waitFor();
   check(await atlas.locator(".atlas-imprint b").textContent() === "25", "personal imprint must be 1 / 4 = 25");
-  check(Number(await atlas.locator(".atlas-index-number strong").textContent()) > 0, "nonempty repertoire has a structural index");
-  check(await atlas.locator(".atlas-facet").count() === 4, "four structural facets render");
-  check(await atlas.locator("button, select").count() === 1, "Atlas has only a close control");
+  await checkAtlas(atlas, check);
   check(await atlas.locator(".position-thumbnail").count() === 0, "Atlas should analyze routes rather than repeat boards");
   await page.waitForTimeout(750);
   check(await atlas.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "Atlas must fit the viewport");
   if (process.env.UI_V2_SHOTS) await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `atlas-${vp.name}.png`) });
   await page.keyboard.press("Escape");
+  check(await atlas.count() === 0, "Escape dismisses Atlas");
   check(await atlasEntry.evaluate((el) => el === document.activeElement), "Atlas should restore keyboard focus");
 
   // Dock: the inspector starts open and its Explorer fills the column under
@@ -425,14 +471,14 @@ async function runViewport(vp) {
   // A root-only repertoire is a real first-run state (a new one is always
   // this). Its Explorer shows the start position's stats and raises no error:
   // the load payload's root carries its fen, as the server sends it.
-  const rootOnly = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  const rootOnly = await fixturePage({ viewport: { width: vp.width, height: vp.height } });
   const rootErrors = [];
   rootOnly.on("pageerror", (e) => rootErrors.push(e.message));
   await rootOnly.route("**/api/build/load**", async (route) => {
-    const response = await route.fetch();
-    const json = await response.json();
+    const json = api(new URL(route.request().url()).pathname);
     json.nodes = json.nodes.filter((node) => node.depth === 0);
-    await route.fulfill({ response, json });
+    json.selected_node_id = "n0";
+    await route.fulfill({ json });
   });
   await rootOnly.goto(base, { waitUntil: "domcontentloaded" });
   await rootOnly.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"]').waitFor({ state: "visible", timeout: 15000 });
@@ -446,9 +492,14 @@ async function runViewport(vp) {
   const rootText = await rootOnly.evaluate(() => document.body.innerText);
   check(!/Cannot read properties/.test(rootText), "a root-only repertoire should raise no error toast");
   check(rootErrors.length === 0, `a root-only repertoire threw: ${rootErrors.join(" | ")}`);
-  await rootOnly.getByRole("button", { name: "Open repertoire atlas", exact: true }).click();
-  check(await rootOnly.locator(".atlas-index-number strong").textContent() === "—", "empty repertoire must not invent a score");
+  const rootAtlasEntry = rootOnly.getByRole("button", { name: "Open repertoire atlas", exact: true });
+  await rootAtlasEntry.click();
+  const rootAtlas = rootOnly.locator(".atlas-modal[open]");
+  await rootAtlas.waitFor();
+  await checkAtlas(rootAtlas, check, true);
   await rootOnly.keyboard.press("Escape");
+  check(await rootAtlas.count() === 0, "Escape dismisses empty Atlas");
+  check(await rootAtlasEntry.evaluate((el) => el === document.activeElement), "empty Atlas restores keyboard focus");
   await rootOnly.close();
 
   await page.close();
@@ -458,7 +509,7 @@ async function runViewport(vp) {
   // writable:false. The banner must be the static Opus host: still a direct
   // child of the Build sidebar, revealed by flipping `hidden`, with its text
   // swapped in place. No element creation, no prepend, no re-render.
-  const sharedPage = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  const sharedPage = await fixturePage({ viewport: { width: vp.width, height: vp.height } });
   const sharedErrors = [];
   sharedPage.on("console", (m) => { if (m.type() === "error") sharedErrors.push(m.text()); });
   sharedPage.on("pageerror", (e) => sharedErrors.push(`pageerror: ${e.message}`));
@@ -494,8 +545,9 @@ async function runViewport(vp) {
 
   await sharedPage.getByRole("button", { name: "Open repertoire atlas", exact: true }).click();
   sharedCheck(await sharedPage.locator(".atlas-imprint").count() === 0, "public Atlas hides personal imprint");
-  sharedCheck(await sharedPage.locator(".atlas-facet").count() === 4, "public Atlas keeps structural scores");
+  await checkAtlas(sharedPage.locator(".atlas-modal[open]"), sharedCheck);
   await sharedPage.keyboard.press("Escape");
+  sharedCheck(await sharedPage.locator(".atlas-modal[open]").count() === 0, "Escape dismisses public Atlas");
 
   // Exactly one banner in the document — a leftover from the legacy
   // create/prepend path would show up as a second node.

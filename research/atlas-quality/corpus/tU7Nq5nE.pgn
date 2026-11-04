@@ -1,0 +1,220 @@
+[Event "The Alien and Martian Gambits: 🏄 Introduction 🏄"]
+[Date "2025.09.05"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "🏄 Introduction 🏄"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/AO8ANaHi"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.09.05"]
+[UTCTime "03:50:59"]
+[ChapterMode "gamebook"]
+
+{ Hello everyone! 😃
+
+This study is about.....🥁🥁🥁
+🛸 The Alien and Martian Gambits! 👽
+
+These are very risky but very rewarding gambits (invented (to my knowledge) by a guy with a username in some places as WittyAlien): so stockfish 🐟 does not like them.
+
+Thankfully, your opponents (hopefully) won't be using stockfish, so they will have to solve their problems with their human brain.
+
+This is mostly structured using our opponents most common moves, and the commoner ones first (usually).
+
+Before you begin the study, please like the study by clicking the heart button down there. ⬇ I worked hard on this study, and doing so helps support the study.
+
+Also, join these cool teams: https://lichess.org/team/study-resource-team https://lichess.org/team/study-creators--friends
+
+Thanks! }
+ *
+
+
+[Event "The Alien and Martian Gambits: 🛸 Alien Gambit 7. ...Bg4??"]
+[Date "2025.08.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B15"]
+[Opening "Caro-Kann Defense: Alien Gambit"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "🛸 Alien Gambit 7. ...Bg4??"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/fAdjmWvM"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.27"]
+[UTCTime "01:12:58"]
+[ChapterMode "gamebook"]
+
+{ [%csl Ge4][%cal Ge2e4] }
+1. e4 c6 { The Caro-Kann defense, known to be solid. 🪨 But let's rip it apart! Play d4! } { [%csl Gd4][%cal Gd2d4] } 2. d4 d5 { Black strikes in the center attacks our e-pawn. How can we defend our pawn? } { [%csl Re4][%cal Rd5e4] } 3. Nc3 { [%csl Re4][%cal Rc3e4] } 3... dxe4 { This is the mainline, played 76% of the time. I'll show you how to beat the side lines later. 😉 } 4. Nxe4 Nf6 { We will start we the Alien gambit. Black offers a trade of knights. He wants us to take a solidify his kingside, and simplify into a comfortable endgame.
+Can we target f7?🎯 } { [%csl Rf7] } 5. Ng5 { Attacking f7. You may ask, "How are we attacking f7?"🤔
+You will see. 😏 } { [%csl Rf7][%cal Rg5f7] } 5... h6 { Played 55% of the time. Playing exactly into our hand. We could move our knight back, or we could... } { [%csl Rf7] } 6. Nxf7 { SAC THE KNIGHT!!!
+We have LASTING POSTIONAL and TACTICAL COMPENSATION. We are not FULLY compensated, but that is the nature of a gambit. 😉 } { [%csl Be7,Be6,Bg6,Bf7,Re8][%cal Gg1f3,Gf1d3] } 6... Kxf7 { The only move. Now we may be tempted to go after the king immediately with Bc4+, but it is instead better to build up before going for the kill.
+Can you find a quiet developing move? } 7. Nf3 Bg4 { The most played move. Black develops, and seemingly stops the knight from moving. But, surprisingly, after this move its all over. 😀 How can you win. } 8. Ne5+ { [%csl Rg4,Rf7][%cal Re5g4,Re5f7] } 8... Kg8 { We could take the bishop, but its better to throw in a check first.😉 } 9. Bc4+ { We are still winning the bishop. } { [%csl Rg4][%cal Re5g4,Rd1g4] } 9... Kh7 { After this move played 42% of the time, its truly, very over. If e6, we can just take the bishop, and we have an extra pawn and an exceedingly safer king.👍How can you win on the spot? } 10. Qd3+ { All black can do is block and hope white mouse-slips. } 10... Ne4 { Just keep getting closer to the king. } { [%csl Ge4][%cal Gd3e4] } 11. Qxe4+ Bf5 { [%csl Gf5][%cal Ge4f5] } 12. Qxf5+ g6 { Get ready for it, and... } { [%csl Gg6][%cal Gf5g6] } 13. Qxg6# { Checkmate. And in 13 moves! Great job!😄 } *
+
+
+[Event "The Alien and Martian Gambits: 🛸 Alien Gambit 7. ...e6"]
+[Date "2025.08.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "🛸 Alien Gambit 7. ...e6"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/O3Tw1WYi"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[FEN "rnbq1b1r/pp2pkp1/2p2n1p/8/3P4/5N2/PPP2PPP/R1BQKB1R b KQ - 1 7"]
+[SetUp "1"]
+[UTCDate "2025.08.27"]
+[UTCTime "01:12:58"]
+[ChapterMode "gamebook"]
+
+{ Remember to like the study! Now what if black does not just blunder (straight away 😏)? Click the space bar to find out! }
+7... e6 { We simply develop for now. } { [%csl Gd3][%cal Gf1d3] } 8. Bd3 { We build up to launch a tactical DESTRUCTION on the black king. 🎯💥 } 8... Bd6 { Now we can just castle, develop our rook, and win. 😉 } 9. O-O Rf8 { Now how can we strike in the center with our lone steed? } 10. Ne5+ { CHARGE!!! } 10... Bxe5 { This is the most played move, and a losing blunder! Just take back for now! } { [%csl Ge5][%cal Gd4e5] } 11. dxe5 Nd5 { Mr. Check! } { [%csl Gh5][%cal Gd1h5] } 12. Qh5+ Kg8 { Black thinks he can hide behind his pawns, but he is mistaken. 😏 Blow up the kingside! 💥 } 13. Bxh6 gxh6 { *Sigh* Most popular, another losing mistake. How can we end the came RIGHT NOW!!! 😱😲🤯🎉🥳 } 14. Qg6+ { Yep. :) } 14... Kh8 { The king is still trying to hide from us. Has your opponent resigned yet? 🏳 } 15. Qh7# { Check and mate. In only 15 moves! 😃 } *
+
+
+[Event "The Alien and Martian Gambits: 🛸 Alien Gambit 7. ...Nbd7"]
+[Date "2025.08.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "🛸 Alien Gambit 7. ...Nbd7"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/tYeFSP08"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[FEN "rnbq1b1r/pp2pkp1/2p2n1p/8/3P4/5N2/PPP2PPP/R1BQKB1R b KQ - 1 7"]
+[SetUp "1"]
+[UTCDate "2025.08.27"]
+[UTCTime "01:12:58"]
+[ChapterMode "gamebook"]
+
+{ Now our opponent will play....... will play........ (click the space bar...... 😆😉) }
+7... Nbd7 { Nbd7! Can you remember our battle plan? } 8. Bd3 { Yes! Great job! } 8... e6 { Continue the plan. 😉😃👍 } 9. O-O Bd6 { Ok with the knight on d7 do not play Ne5 yet! We need to prepare it with our..... (Rook) } { [%csl Re5][%cal Rd7e5,Rd6e5,Rd4e5] } 10. Re1 { Rook! We are ready to blow up the battlefield! } { [%csl Re5][%cal Re1e5] } 10... Re8 { Big mistake! Now charge!!!! } 11. Ne5+ { If black takes we take back almost +2 and just win. However, if black is smart... } 11... Kg8 { They retreat! Develop our queen! } 12. Qf3 Qc7 { Now how can we prepare to take on h6? } { [%csl Rh6,Rg8][%cal Rc1h6] } 13. Qg3 { Pin the pawn! } 13... Nf8 { Under pressure, black makes a critical mistake, which is, of course, most played. } 14. Bxh6 { Yum yum! 😏🍴 I bet next move black will make a most played mistake. } 14... Bxe5 { Mistake. Most played. It happens again! (That wasn't exactly fair... but still. 😉) } 15. dxe5 { Yum yum! } 15... Nd5 { Most played mistake. How can you rook lift? } { [%csl Re1] } 16. Re4 { Nice. I'll stop here. White has an overwhelming attack, and is +2.5 ahead. Great job! 😃 (75% win rate 😉) } *
+
+
+[Event "The Alien and Martian Gambits: 🛸 Alien Gambit 7. ...Bf5"]
+[Date "2025.08.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "🛸 Alien Gambit 7. ...Bf5"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/rkUJ29D9"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[FEN "rnbq1b1r/pp2pkp1/2p2n1p/8/3P4/5N2/PPP2PPP/R1BQKB1R b KQ - 1 7"]
+[SetUp "1"]
+[UTCDate "2025.08.27"]
+[UTCTime "01:12:58"]
+[ChapterMode "gamebook"]
+
+{ But what if your opponent plays Bf5? 🤔 }
+7... Bf5 { Now we can either play boring or play for an AWESOME trap to which only 12% find the answer! 😱 } { [%csl Gg2] } 8. g4 { This is the trap! The best move for black is to take with the knight (12%) but we can still have a fun game. Most common is the blunder Bxg4?? which is like what we covered first. Lastly, we have the given move. } 8... Bg6 9. Ne5+ { Mr. Fork. 😃 We eat the bishop next turn. +3.6, Great job! 😃 } *
+
+
+[Event "The Alien and Martian Gambits: 🛸 Alien Gambit 7. ...c5!"]
+[Date "2025.08.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "🛸 Alien Gambit 7. ...c5!"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/Ab8Xyg7S"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[FEN "rnbq1b1r/pp2pkp1/2p2n1p/8/3P4/5N2/PPP2PPP/R1BQKB1R b KQ - 1 7"]
+[SetUp "1"]
+[UTCDate "2025.08.27"]
+[UTCTime "01:12:58"]
+[ChapterMode "gamebook"]
+
+{ Now a REALLY prepared opponent will play the given move, but we will still counter it efficiently. 😏 }
+7... c5 { c5!!!!! The best move!!!!! But now, instead of freaking out, realize what black has in mind. He is clearing the way for Nc6, so how can we stop this (and set a nasty trap 😏)? } 8. d5 { Brilliant!!! Most people will see Nxd5??, but dismiss it because of c4 (pin to queen). So they just take with the queen. } 8... Qxd5 { Oh no now we're REALLY losing...... wait........ are we? Can you see a creative pin? } 9. Bc4 { Yes! You found it! } 9... Qxc4 { Pretty much forced. Now in this position, every single one of the 499 games make the same move. What? } 10. Ne5+ { Mr. Fork returns. +3.8, Awesome job! 🥳 } { [%csl Rf7,Rc4][%cal Re5f7,Re5c4] } *
+
+
+[Event "The Alien and Martian Gambits: 👽 Martian Gambit 5. ...Bg6"]
+[Date "2025.08.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B18"]
+[Opening "Caro-Kann Defense: Martian Gambit"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "👽 Martian Gambit 5. ...Bg6"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/AzGeBiaz"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.27"]
+[UTCTime "01:12:58"]
+[ChapterMode "gamebook"]
+
+{ Please remember to like the study if you're enjoying it so far! Ok, now let's move on to the Martian gambit sections. Play e4! 😃 } { [%csl Ge4][%cal Ge2e4] }
+1. e4 c6 { You know what to do. 😉 } { [%csl Gd4][%cal Gd2d4] } 2. d4 d5 { Now defend our pawn. } { [%csl Gc3][%cal Gb1c3] } 3. Nc3 dxe4 { We recapture. } { [%csl Ge4][%cal Gc3e4] } 4. Nxe4 Bf5 { This move will lead to... 🥁 The Martian Gambit! 😃 How can we do pretty much the same thing as last time? } 5. Ng5 { We advance our horsey. } { [%csl Rf7,Re6][%cal Rg5f7,Rg5e6] } 5... Bg6 { Oh know! Black is defending f7? What do we do? Just develop for now... 😉😏 } 6. N1f3 { We develop the horsey and prepare an annoying move... } 6... h6 { Black kick our knight! We could bring it back but where could we plop it instead? 🤔 Think outside of the 📦. } 7. Ne6 { Brilliant!!!! THE MARTIAN GAMBIT!!!! This is probably the favorite of the two gambits. } 7... fxe6 { Black accepts our "free" knight. We have nothing yet, but soon we can get our revenge... How can we kick annoying Mr. Bishop? } { [%csl Rg6] } 8. Ne5 { Nice. Good kicking. } 8... Bf7 { Most common but an.... inaccuracy. How can we develop this bishop to an optimal diagonal? } { [%csl Rf1] } 9. Bc4 Nf6 { Black stops (for now) any Bxe6!! Bxe6 Qh5+! nonsense. Where is the best spot for our queen? } { [%csl Rd1] } 10. Qd3 { On d3, eyeing the weak light squares! 😃 } { [%csl Rg6,Rf5,Re6,Rf7,Re8,Rd7] } 10... Nbd7 { Fill in the blank: The most ________ move and a big _________. (Answer key: common, mistake.) Just munch on black's best defender. } 11. Nxf7 Kxf7 { Noooooo!!!! 😱 Our last kinght. 😢😭 How can we find the MOST BRILLIANT MOVE EVER!!! Hint: eye the light squares. } { [%csl Rd3] } 12. Qf5 { So awesome!!!!!! 🤯😱😲 The pin saves us!!! Here most people (almost all) die very, very quickly. } { [%csl Rf7][%cal Rc4f7] } 12... Ke8 { The most common move. Hint: Look for CHECKMATE!!!!!! } 13. Qg6# { Checkmate on the light squares. How did I see that coming? Great job! 😃 } *
+
+
+[Event "The Alien and Martian Gambits: 👽 Martian Gambit 5. ...h6"]
+[Date "2025.08.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "👽 Martian Gambit 5. ...h6"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/E3zg1Twf"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[FEN "rn1qkbnr/pp2pppp/2p5/5bN1/3P4/8/PPP2PPP/R1BQKBNR b KQkq - 2 5"]
+[SetUp "1"]
+[UTCDate "2025.08.27"]
+[UTCTime "01:12:58"]
+[ChapterMode "gamebook"]
+
+{ Now what happens if our horse gets kicked? }
+5... h6 { We could retreat, but you know better by now. 😉 } 6. Nxf7 { Yay!!!!! } 6... Kxf7 { Just develop. } { [%csl Gf3][%cal Gg1f3] } 7. Nf3 Nf6 { Do you recognize this position? (From previous chapters.) Kick that bishop! } 8. g4 { Refer to #4 for advice on this one. 😉 Great job! 😃 } *
+
+
+[Event "The Alien and Martian Gambits: 👽 Martian Gambit 5. ...e6"]
+[Date "2025.08.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "👽 Martian Gambit 5. ...e6"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/KeLhbtxN"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[FEN "rn1qkbnr/pp2pppp/2p5/5bN1/3P4/8/PPP2PPP/R1BQKBNR b KQkq - 2 5"]
+[SetUp "1"]
+[UTCDate "2025.08.27"]
+[UTCTime "01:12:58"]
+[ChapterMode "gamebook"]
+
+{ But what if black simply puts out e6? }
+5... e6 { Just stick to the plan. } { [%csl Gf3][%cal Gg1f3] } 6. N1f3 h6 { Black kicks our knight, should we move it back or munch a pawn or COUNTERATTACK!!!! } { [%csl Rg2] } 7. g4 { Nice!!!!! } 7... Bxg4 { Most common move, and a mistake. Now sac on f7! } 8. Nxf7 Kxf7 { Mr. ... 🍴 } 9. Ne5+ { The 3rd strike of Mr. Fork! 😃 +3.9, Awesome job! 👍 } { [%csl Rf7,Rg4][%cal Re5f7,Re5g4] } *
+
+
+[Event "The Alien and Martian Gambits: 👋 Outro 👋"]
+[Date "2025.08.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The Alien and Martian Gambits"]
+[ChapterName "👋 Outro 👋"]
+[ChapterURL "https://lichess.org/study/tU7Nq5nE/RYTfsLs2"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[FEN "rnbqkb1r/pp2pNp1/2p2n1p/8/3P4/8/PPP2PPP/R1BQKBNR b KQkq - 0 6"]
+[SetUp "1"]
+[UTCDate "2025.08.27"]
+[UTCTime "01:12:58"]
+[ChapterMode "gamebook"]
+
+{ Thanks for staying until the end!
+Make sure to:
+
+Like the study by click the heart button below
+
+Join these teams: The Study Resource Team -- https://lichess.org/team/study-resource-team Study Creators and Friends -- https://lichess.org/team/study-creators--friends
+
+Thanks everyone! }
+ *
+
+

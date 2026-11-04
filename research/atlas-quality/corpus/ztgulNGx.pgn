@@ -1,0 +1,220 @@
+[Event "CRUSH the Ruy Lopez and Italian!: 😃 Introduction 😁"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "😃 Introduction 😁"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/2FEKfCk5"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+{ Welcome to my study! 😃
+
+👉 This study is on how to... 🥁🥁🥁... CRUSH the Ruy Lopez and Italian games!
+
+🦕 Do you want to play an aggressive opening with a big win rate? 🤔
+
+🦕 Do you want to get a winning position out of the opening?😃
+
+Then you better click next chapter!
+
+By the way, please first click the ❤ button below and join these team for more AWESOME studies: https://lichess.org/team/study-resource-team https://lichess.org/team/study-creators--friends thanks }
+ *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🎱 Rousseau Gambit Accepted 5. Ng1?"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game: Rousseau Gambit"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🎱 Rousseau Gambit Accepted 5. Ng1?"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/yozanY3i"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+{ Let's get started! }
+1. e4 { White plays e4 and we could play the Aggressive French but instead follow the green 🟩 arrow ⬆. } { [%csl Ge5,Re6][%cal Ge7e5,Re7e6] } 1... e5 (1... e6 { The Aggressive French! https://lichess.org/study/9Ir9Jxlv }) 2. Nf3 { [%csl Gc6][%cal Gb8c6] } 2... Nc6 3. Bc4 { They play the SUPER popular Italian game. 😏 How can we crush it? (Hint: green arrow)😉 } { [%csl Gf5][%cal Gf7f5] } 3... f5 { The Rousseau Gambit! } 4. exf5 { Most played move (and a mistake). Kick the knight! } { [%csl Ge4][%cal Ge5e4] } 4... e4 5. Ng1 { We must stop Qh5+. } 5... Nf6 { Not the computer's favorite, but the simplest. Feel free to experiment with 5. ...d5 if you want! 😉 } { [%csl Rh5][%cal Rf6h5,Rd1h5] } 6. d3 { Played 50% of the time. "Get your pawn away so I can develop my knight!!!" } { [%csl Gd5][%cal Gd7d5] } 6... d5 { Nope. 😏 } 7. Bb5 { Take our pawn back. } { [%csl Gf5][%cal Gc8f5] } 7... Bxf5 8. dxe4 { [%csl Ge4][%cal Gf5e4] } 8... Bxe4 { Ok so now... what does black have? Better development, piece activity, center control, and the initiative. What does white have? The move. -1.2. Great job! 😀 } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🎱 Rousseau Gambit Accepted 5. Qe2?"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game: Rousseau Gambit"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🎱 Rousseau Gambit Accepted 5. Qe2?"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/I8XgnQdm"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+1. e4 { Do you remember the first moves? } 1... e5 2. Nf3 { [%csl Gc6][%cal Gb8c6] } 2... Nc6 3. Bc4 { Remember? 🤨🧐🤔 } { [%csl Gf5][%cal Gf7f5] } 3... f5 4. exf5 { [%csl Ge4][%cal Ge5e4] } 4... e4 5. Qe2 { Black tries to be smart and pins our pawn. 🫤 But instead of smart, this is a mistake! } { [%csl Re8,Ge7][%cal Re2e8,Gd8e7] } 5... Qe7 { Nice. } 6. Ng1 { [%csl Gf6,Rh5][%cal Gg8f6,Re2h5] } 6... Nf6 { Developing and stopping Qh5+. } 7. d3 { [%csl Gd4][%cal Gc6d4] } 7... Nd4 { Pouncing on the black queen. } { [%csl Re2][%cal Rd4e2] } 8. Qd1 { How can you take advantage of white's king? } { [%csl Re1][%cal Re7e1] } 8... Nxc2+!! (8... exd3+ { This is strong, but not as much as our main option. }) 9. Qxc2 { [%csl Gd3][%cal Ge4d3] } 9... exd3+ { -5.5. White's queen is gone. Great job! 😀 } { [%csl Rc2,Re1,Re2][%cal Rd3c2,Re7e1,Rd3e2] } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🎱 Rousseau Gambit Accepted 5. Nd4!"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game: Rousseau Gambit"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🎱 Rousseau Gambit Accepted 5. Nd4!"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/ChpYB8GI"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 { Remember? } 3... f5 4. exf5 e4 5. Nd4!! { DO NOT take the "free" knight. } { [%csl Gf6,Rd4,Rh5][%cal Gg8f6,Rc6d4,Rd1h5] } 5... Nf6 (5... Nxd4 { +2.2 because of Qh5+. 😒 }) 6. Nxc6 { Which pawn should we capture with? } 6... bxc6 { We keep the d-pawn. } { [%csl Rd5][%cal Rd7d5] } 7. O-O { [%csl Gd5][%cal Gd7d5] } 7... d5 8. Bb3 { [%csl Gf5][%cal Gc8f5] } 8... Bxf5 { And black has a great position. -0.2. Great job! 😁 } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🎱 Rousseau Gambit Declined 4. d3"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game: Rousseau Gambit"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🎱 Rousseau Gambit Declined 4. d3"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/Sv66yTNQ"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+{ Did you click the ❤ heart ❤ button below yet if you're enjoying the study? }
+1. e4 e5 2. Nf3 Nc6 3. Bc4 f5 4. d3 { White declines our gambit. } { [%csl Gf6][%cal Gg8f6] } 4... Nf6 5. Bg5 { [%csl Gb4][%cal Gf8b4] } 5... Bb4+ 6. c3 { Annoying the knight on b1. Do we have to move our bishop? } { [%csl Rb1] } 6... fxe4 { [%csl Rf3][%cal Re4f3] } 7. dxe4 { [%csl Gc5][%cal Gb4c5] } 7... Bc5 { Black has an active position and an open f-file. +0.1. Great job! 😁 } { [%csl Rf8,Rf2][%cal Rf8f2] } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🎱 Rousseau Gambit Declined 4. d4!!"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game: Rousseau Gambit"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🎱 Rousseau Gambit Declined 4. d4!!"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/AqmbfBuN"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 f5 4. d4 { A countergambit! } { [%csl Ge4][%cal Gf5e4] } 4... fxe4 5. Nxe5 { [%csl Gd5][%cal Gd7d5] } 5... d5 { [%csl Rc4][%cal Rd5c4] } 6. Qh5+ { Played 1/3 of the time. A losing blunder. } { [%csl Gg6][%cal Gg7g6] } 6... g6 7. Nxg6 { White tries to be smart (again) but they are losing. Can you find the winning move? } 7... Nf6 { -2.8. Great job! 😁 } { [%csl Rh5][%cal Rf6h5] } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🥳 Jaenish Gambit Accepted 5. Bxc6"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C63"]
+[Opening "Ruy Lopez: Schliemann Defense, Jaenisch Gambit Accepted"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🥳 Jaenish Gambit Accepted 5. Bxc6"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/76JcU7Kv"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+{ Before we begin our Ruy Lopez section, please hit the like button down there ⬇. It really helps me to reach more awesome viewers like you. :) }
+1. e4 e5 2. Nf3 Nc6 { Ok we learned how to fight the Italian but what to do if your opponent plays... } 3. Bb5 { The Ruy Lopez? 🤔🧐🤨 Guess what! Same battle plan! } { [%csl Gf5][%cal Gf7f5] } 3... f5 { [%csl Re4][%cal Rf5e4] } 4. exf5 { A lot of people like eating free stuff you know? Punish them! } 4... e4 5. Bxc6 { White tries to make an in-between move. How should you recapture? } 5... bxc6 { 👍 } (5... dxc6 { Stockfish likes this move but it will take the queen's off early. }) 6. Nd4 { How can we attack the knight? } 6... Qf6 { [%csl Rd4][%cal Rf6d4] } 7. c3 { Defending the knight, but we have a killer blow. What is it? } 7... Ba6 { [%csl Gf1][%cal Ga6f1] } 8. Qg4 { The most played move. White wants to get rid of e4 so they can play d3. } { [%csl Gd3,Re4][%cal Ga6d3,Rg4e4] } 8... Bd3 { [%csl Re4][%cal Rd3e4] } 9. f3 { Most played. "I MUST GET RID OF THAT ANNOYING PAWN." We have many options here, but its -3.2 for us and were completely winning. 😉 } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🥳 Jaenish Gambit Accepted 5. Qe2"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C63"]
+[Opening "Ruy Lopez: Schliemann Defense, Jaenisch Gambit Accepted"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🥳 Jaenish Gambit Accepted 5. Qe2"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/9cE4Ixho"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 { [%csl Gf5][%cal Gf7f5] } 3... f5 { !!! 🤯😲 } 4. exf5 e4 5. Qe2 { White plays an annoying line. 🫤 } { [%csl Ge7][%cal Gd8e7] } 5... Qe7 { Everything else loses. } 6. Bxc6 { [%csl Gc6][%cal Gd7c6] } 6... dxc6 7. Nd4 { We need to go after f5... } { [%csl Rf5][%cal Rd4f5] } 7... Nh6 { [%csl Rf5][%cal Rh6f5] } 8. O-O { [%csl Gf5][%cal Gh6f5] } 8... Nxf5 9. Nxf5 { [%csl Gf5][%cal Gc8f5] } 9... Bxf5 { -0.9. We are coming for the white king. 😏 Great job! } { [%csl Rg1][%cal Re8c8] } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🥳 Schilemann Defense 4. d3"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C63"]
+[Opening "Ruy Lopez: Schliemann Defense"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🥳 Schilemann Defense 4. d3"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/QTm73QyI"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 f5 4. d3 { We just capture the e-pawn. } { [%csl Ge4][%cal Gf5e4] } (4. exf5) 4... fxe4 5. dxe4 { Attack e4. } { [%csl Gf6][%cal Gg8f6] } 5... Nf6 6. Nc3 { [%csl Gb4][%cal Gf8b4] } 6... Bb4 { Pinning and again threatening e4. } { [%csl Re1,Re4][%cal Rb4e1,Rf6e4] } 7. O-O { How can you ruin white's position? } 7... Bxc3 8. bxc3 { [%csl Gd6][%cal Gd7d6] } 8... d6 { Castling is great too. } 9. Bg5 { [%csl Gg8][%cal Ge8g8] } 9... O-O 10. h3 { How can you effectively reposition the queen? } { [%csl Rg6,Rh5] } 10... Qe8 { -0.6. Great job! } { [%csl Rg6,Rh5][%cal Re8g6,Rg6h5] } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🥳 Schilemann Defense 4. Bxc6"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C63"]
+[Opening "Ruy Lopez: Schliemann Defense, Exchange Variation"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🥳 Schilemann Defense 4. Bxc6"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/wCfPf72F"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+1. e4 e5 2. Nf3 { [%csl Gc6][%cal Gb8c6] } 2... Nc6 3. Bb5 { [%csl Gf5][%cal Gf7f5] } 3... f5 { So brilliant!!!!! 🤯🤯🤯🤯 (sorry) } 4. Bxc6 { [%csl Gc6][%cal Gd7c6] } 4... dxc6 { Opening the position up. } 5. Nxe5 { How can you win back the pawn? } 5... Qd4 { Mr. Forky 🍴 } { [%csl Re5,Re4][%cal Rd4e5,Rd4e4] } 6. Qh5+ { Played 56% of the time, and a losing choice! 😲 } { [%csl Gg6][%cal Gg7g6] } 6... g6 { [%csl Gg6][%cal Ge5g6] } 7. Nxg6 { [%csl Gg6][%cal Gh7g6] } 7... hxg6 { Our rook's defended. 😏 -1.9. Great job! } { [%csl Rh8][%cal Rd4h8] } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🥳 Schilemann Defense 4. Nc3"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C63"]
+[Opening "Ruy Lopez: Schliemann Defense, Tartakower Variation"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🥳 Schilemann Defense 4. Nc3"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/13Rmy31P"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 { [%csl Gf5][%cal Gf7f5] } 3... f5 4. Nc3 fxe4 { Yum yum. 😋 } 5. Nxe4 { [%csl Gf6][%cal Gg8f6] } 5... Nf6 { We offer to trade horses. 😉🐴 } 6. Nxf6+ { [%csl Gf6][%cal Gd8f6] } 6... Qxf6 7. O-O { [%csl Gd4][%cal Gc6d4] } 7... Nd4 { The charge of the knight brigade. 😃 🏇🏇🏇 } 8. Nxd4 { [%csl Gd4][%cal Ge5d4] } 8... exd4 9. Re1+ { [%csl Ge7][%cal Gf8e7] } 9... Be7 { And black has equalized. Great job! 😁 } { [%csl Rf2][%cal Bc7c5,Rf8f2] } *
+
+
+[Event "CRUSH the Ruy Lopez and Italian!: 🪄 Bye :)"]
+[Date "2025.08.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "CRUSH the Ruy Lopez and Italian!"]
+[ChapterName "🪄 Bye :)"]
+[ChapterURL "https://lichess.org/study/ztgulNGx/qrh6JJd8"]
+[Annotator "https://lichess.org/@/FlamingHawk3000"]
+[UTCDate "2025.08.02"]
+[UTCTime "21:38:02"]
+[ChapterMode "gamebook"]
+
+{ Thank you for staying until the end! Please click the 👉 ❤ 👈 button below 👇 and join my teams ( https://lichess.org/team/study-resource-team lichess.org/team/study-creators--friends) if you have not done so already! 😃😉🥳🤩😏🎉🤪🫵👊😁😂😜
+Viva Cristo Rey! }
+ *
+
+

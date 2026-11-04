@@ -1,0 +1,162 @@
+[Event "Pirc Defense: Opening Repertoire for Black: Pirc Defense: Classical"]
+[Date "2023.06.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B08"]
+[Opening "Pirc Defense: Classical Variation"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Classical"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/aZUVLGwG"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+[UTCDate "2023.06.09"]
+[UTCTime "11:57:22"]
+
+1. e4 { https://www.youtube.com/watch?v=pEQdCWwH-YU&list=PLQKBpQZcRycrdFv_RC9rovYN1Wh6F_JPR&index=1 } 1... d6 2. d4 Nf6 3. Nc3 g6 4. Nf3 Bg7 5. Bc4 (5. Be2) (5. Bd3) 5... O-O 6. O-O Bg4 { [%csl Gd4,Ge5,Gf3][%cal Ge7e5] } (6... c6 { C6 is done when the bishop move is not possible. } { [%cal Gb8d7] } 7. Re1 Nbd7 { Make sure to claim the center yourself at some point by playing e5. You move your queen for protection of the center. You move your rook to e8 for the same reason (as well as attacking once e5xd4. You move your knight to f8 opening up the bishop again with the goal of getting it on f4. Get an attack going with the minor pieces on the king. } { [%cal Ge7e5,Gd8c7,Gf8e8,Gd7f8] }) (6... Nc6) 7. h3 Bxf3 8. Qxf3 Nc6 { [%csl Gd4] } 9. Be3 (9. d5 { [%csl Ge5,Gd4] } 9... Ne5 { [%cal Ge5c4,Ge5f3] } (9... Nd4 { [%cal Gd4f3,Gd4c2] } 10. Qd3 Nd7 (10... c5 11. dxc6 Nxc6) 11. Be3 Ne5 { [%cal Ge5d3,Ge5c4] } 12. Qxd4 Nf3+ 13. gxf3 Bxd4 14. Bxd4 { [%cal Gf7f5] })) 9... e5 10. dxe5 (10. d5 Ne7 11. Rfe1 Nd7 { Risking your king's safety is possible if the center is locked. You are aiming for a king's side attack here. Keep breaking on the most forward pawn. Can follow up with g5 et cetera. Get to the other side first before they get to our queen's side. Bring back the knights and lift the rook. } { [%csl Gg1][%cal Gf7f5,Gf5f4] }) (10. Rad1 exd4 11. Bxd4 Nxd4 12. Rxd4 Nd7 13. Rdd1 Ne5) 10... Nxe5 11. Qe2 Nxc4 12. Qxc4 Re8 { [%cal Ge8e4] } 13. Rfe1 Nxe4 14. Nxe4 d5 15. Qb3 Rxe4 16. Qxb7 Rb8 17. Qxa7 Rxb2 { [%cal Gb2c2] } 18. Rac1 d4 19. Bd2 Rxe1+ 20. Bxe1 Qg5 { [%cal Gg5c1,Gg5g2,Gb2c2,Gb2g2] } 21. Rd1 Rxc2 22. a4 Be5 { [%csl Gc2,Ge5,Gg5,Gg1] } 23. Bb4 { [%csl Gf8] } 23... c5 24. Bxc5 Rxc5 25. Qxc5 Bh2+ *
+
+
+[Event "Pirc Defense: Opening Repertoire for Black: Pirc Defense: Versus 150 Attack"]
+[Date "2023.06.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Versus 150 Attack"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/JoLsS4nt"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+[UTCDate "2023.06.09"]
+[UTCTime "12:43:23"]
+
+1. e4 { https://www.youtube.com/watch?v=LO1Tkje_qvk&list=PLQKBpQZcRycrdFv_RC9rovYN1Wh6F_JPR&index=4 } 1... d6 2. d4 Nf6 3. Nc3 g6 4. f3 (4. Be3 { They want to attack with the Queen and Bishop. Also possible after f3. Don't castle to remove the purpose of their attack. You are playing c6 to counter their attack (NM Robert Ramirez uses other variation for explanation). } { [%csl Ge3,Gd2,Gf4][%cal Gd1d2,Gf2f3] }) 4... c6 { [%cal Gg2g4,Gb7b5] } 5. Be3 b5 6. Qd2 Qa5 { Castling is prevented by the thread of pawn to b4. You also make room for castling to the queen's side. } { [%csl Ga5,Gb5][%cal Ga5a2,Gb5b4,Ge8c8] } 7. g4 { [%cal Gh2h4,Gh4h5,Gg4g5] } (7. Bd3 { [%cal Ge1g1] } 7... Nbd7 8. Nge2 { You can now take it easy and castle or go for the knight attack again. } { [%cal Gd7b6,Gf8g7,Ge8g8] } 8... Nb6 9. O-O-O Nc4 10. Bxc4 bxc4) 7... Nbd7 { If they move the bishop to h6, just take it! } 8. h4 { Move is possible with knight or bishop. Both prepare a potential castling move. } { [%cal Gc8b7,Gd7b6,Ge8c8,Gb6c4,Ge3h6,Gf8h6] } 8... Nb6 9. h5 Nc4 { [%csl Ge3,Gd2][%cal Ge3h6,Gf1c4] } 10. Bxc4 bxc4 { [%cal Ga8b8,Gb8b2] } 11. O-O-O (11. hxg6 fxg6 12. Bh6 Bxh6 13. Qxh6 Rb8 { [%cal Ge1c1] } 14. Rb1 (14. O-O-O Qb4 { You have a strong attack after they castle. }) 14... Rxb2 15. Rxb2 Qxc3+ { [%cal Gc3b2] }) 11... Rb8 { [%cal Gb8b2] } *
+
+
+[Event "Pirc Defense: Opening Repertoire for Black: Pirc Defense: Versus Austrian Attack"]
+[Date "2023.06.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B09"]
+[Opening "Pirc Defense: Austrian Attack, Dragon Formation"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Versus Austrian Attack"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/FCwyTjHM"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+[UTCDate "2023.06.09"]
+[UTCTime "13:39:49"]
+
+1. e4 { https://www.youtube.com/watch?v=Zjt_Hh5L5vg&list=PLQKBpQZcRycrdFv_RC9rovYN1Wh6F_JPR&index=6 } 1... d6 2. d4 Nf6 3. Nc3 g6 4. f4 Bg7 { [%csl Gf3][%cal Gg1f3,Gf1d3,Ge4e5] } 5. Nf3 (5. e5 dxe5 { [%cal Gf6d7] } 6. fxe5 (6. dxe5 Qxd1+ { [%cal Gc3d1,Gf6d5] } 7. Kxd1 (7. Nxd1 Nd5) 7... Nfd7 8. Nd5 Kd8 { [%csl Gc7] } 9. Nf3 c6 10. Nc3) 6... Nd5 { [%cal Gd8d5] } 7. Ne4 (7. Nxd5 Qxd5 8. c4 Qe4+ 9. Be2 c5) 7... Nb4 8. a3 (8. c3 Bf5 9. Ng3 Nc2+) 8... Qxd4 9. Qxd4 Nxc2+) 5... c5 6. dxc5 (6. Bb5+ Bd7 7. Bxd7+ (7. e5 Ng4 8. e6 (8. Ng5) (8. h3) (8. Bxd7+) 8... fxe6 (8... Bxb5 { This move prevents a forced draw by going into a (theoretically heavy) variation. } 9. exf7+ Kd7) 9. Ng5 Bxb5 10. Nxe6 { [%cal Ge6g7,Ge6d8] } (10. Nxb5) 10... Bxd4 11. Nxd8 Bf2+ 12. Kd2 Be3+ 13. Ke1 Bf2+ 14. Kd2 Be3+ 15. Ke1 Bf2+) 7... Nfxd7 8. d5 b5 9. Nxb5 Qa5+ { [%cal Gb5c3,Gg7c3] }) (6. d5) (6. e5 Nfd7 7. exd6 (7. e6) (7. dxc5) (7. Bc4) (7. Ng5) 7... O-O) 6... Qa5 7. Bd3 (7. cxd6 Nxe4 8. dxe7 Nxc3 9. bxc3 Qxc3+ 10. Kf2 Nc6 { [%cal Gc6d8,Gc6e7] }) 7... Qxc5 { [%cal Gc5g1] } 8. Qe2 { [%cal Ge8g8,Gc1e3,Gc5a5,Gc8g4,Gb8c6] } 8... Bg4 { [%csl Gg4][%cal Gh2h3,Gf3e5,Gf3d4] } 9. Be3 Qa5 10. O-O O-O { [%csl Gg4] } 11. h3 Bxf3 12. Qxf3 Nc6 { [%cal Ge7e6,Ga8c8] } *
+
+
+[Event "Pirc Defense: Opening Repertoire for Black: Pirc Defense: Versus Byrne Variation"]
+[Date "2023.06.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense: Byrne Variation"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Versus Byrne Variation"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/3karEKVo"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+[UTCDate "2023.06.09"]
+[UTCTime "13:41:57"]
+
+1. e4 { https://www.youtube.com/watch?v=Wk4VO6I3akk&list=PLQKBpQZcRycrdFv_RC9rovYN1Wh6F_JPR&index=11 } 1... d6 { [%csl Gd4] } 2. d4 Nf6 3. Nc3 g6 4. Bg5 Bg7 { Queen's side is going to be weaker. We are going to expand here. } 5. e5 (5. Qd2 { [%cal Gg5h6,Gf2f3,Gg2g4,Gh2h4,Ge1c1] } 5... c6 { [%cal Gf2f4,Ge1c1,Gg1f3] } 6. f4 O-O { Very similar to the variation which starts with f4 instead of Qd2. } 7. Bd3 b5 { [%cal Gb5b4] } 8. Nf3 (8. e5 b4 9. Nce2 (9. exf6 bxc3 10. Qxc3 exf6 { [%cal Gf8e8] }) 9... Nd5) (8. a3 h6 9. Bh4 e5 { When they do relatively nothing dangerous. You kick out the bishop and break on e5. } { [%cal Ga7a5,Gb5b4] }) 8... Bg4 9. O-O Qb6 10. Ne2 c5 { [%cal Gc5c4] } 11. e5 { [%cal Gd3e4,Ge5f6] } 11... d5 12. c3 { [%cal Gd3b1] } (12. exf6 exf6 13. Bh4 c4) 12... Ne4 13. Qe3 cxd4 14. cxd4 Nxg5 15. fxg5 Bxf3 16. Rxf3 Nc6 { [%cal Ga8e8,Gf7f6,Gc6b4] }) (5. f4 c6 { [%csl Gf3][%cal Gb7b5,Ga7a4,Gc8g4] } 6. Nf3 Bg4) 5... dxe5 (5... Nfd7 6. f4 (6. exd6 cxd6 { [%cal Ge8g8] } 7. Nf3 (7. Qd2 { [%cal Gd7f6,Ge1c1,Ga8c8,Gc8c1] } 7... Nf6 8. O-O-O O-O { [%cal Gd8a5,Gb8c6] }) 7... O-O 8. Be2 Nf6 9. O-O) 6... O-O 7. Bc4 Nc6 { [%csl Gc4][%cal Ge5e6] } 8. Nf3 (8. e6 Nb6 9. exf7+ { [%cal Gc4b3,Gc6a5] } (9. Bb3 Nxd4) 9... Kh8 { [%csl Gc4,Gf7] } 10. Bb3 Nxd4) 8... Nb6 9. Bb3 Na5 10. O-O Nxb3 11. axb3 f6 12. exf6 exf6 13. Bh4 { [%csl Gh4][%cal Gf6f5,Gg7a1] } 13... d5 14. Ne1 c6 15. Nd3 Qc7 16. Kh1 Bf5 { [%cal Gf5d3] } 17. Nc5 { [%cal Gh7h5,Gh5g4] }) 6. dxe5 { [%cal Gd8d1] } 6... Ng4 { Don't take the Queen instead! This runs unto a mistake. } { [%cal Gg4f2,Gg4e5] } 7. Qxd8+ Kxd8 { [%cal Gg4f2,Gg4e5] } 8. Nd5 { [%csl Gg5][%cal Gd5e7,Gg5e7,Gg4e5,Gg7e5] } (8. Rd1+ Bd7 { The right solution for problems on this file. } 9. e6 fxe6 { [%csl Ge7,Ge6] } 10. Bc4 { [%cal Gd1d8,Gc4e6] } 10... Ke8 11. Nf3 Nc6 12. O-O Nge5 13. Nxe5 Nxe5 14. Bb3 Nf7 15. Bf4 Nd6 16. Rfe1 Bxc3 17. bxc3 Rf8 18. Bg3 Rd8 19. Bxe6 Bxe6 20. Rxe6 Nf5 21. Rxd8+ Kxd8 { This is looking towards a draw. Another variation (moving the knight back) is promising. }) 8... Nc6 { [%csl Ge5][%cal Gc6e7,Gd8e7] } 9. Rd1 Bd7 10. f4 { Visualizing the options starting with f6. } { [%cal Gf7f6,Ge5f6,Ge7f6,Gh8e8,Ge8e1,Gg4e3,Ge3f1,Ge3d1,Ge3c2,Ge3g2,Gd8e8,Gd8c8] } 10... f6 (10... h6 11. Bh4 g5 12. fxg5 hxg5 13. Bxg5) *
+
+
+[Event "Pirc Defense: Opening Repertoire for Black: Pirc Defense: Versus Fianchetto Variation"]
+[Date "2023.06.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense: Sveshnikov System"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Versus Fianchetto Variation"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/3zDG52Sw"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+[UTCDate "2023.06.09"]
+[UTCTime "13:42:20"]
+
+1. e4 { https://www.youtube.com/watch?v=ZZknJgfOpS4&list=PLQKBpQZcRycrdFv_RC9rovYN1Wh6F_JPR&index=12 } 1... d6 2. d4 Nf6 3. Nc3 g6 4. g3 Bg7 5. Bg2 O-O 6. Nge2 (6. Nf3 Bg4 { [%cal Gb8c6,Ge7e5] }) 6... e5 { Strike in the center early to prevent complications. As always you want to break on e5. } 7. h3 (7. O-O Nc6) 7... Nc6 8. Be3 exd4 9. Nxd4 { [%cal Gc8d7,Gf8e8] } 9... Bd7 { Don't take the knight as the bishop's position will improve drastically. } 10. O-O Re8 { Development from the opening is completed. Some plans: } { [%csl Gf2] } 11. f4 (11. Re1 Nxd4 12. Bxd4 c5 (12... Qc8 { [%cal Gd7h3] }) 13. Be3 Bc6 { [%cal Gf6e4,Gc6e4,Ge8e4,Gb7b5,Ga7a4] }) 11... Nxe4 12. Nxe4 d5 *
+
+
+[Event "Hoogovens"]
+[Site "Wijk aan Zee NED"]
+[Date "1980.01.26"]
+[Round "9"]
+[White "Vladimir Kovacevic"]
+[Black "Yasser Seirawan"]
+[Result "0-1"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense: Chinese Variation"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Versus Spike Variation"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/AeJj1QB6"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+
+1. d4 g6 { Notice how he starts with g6 after d4. It's more of a modern defense style due to the start of the game. } 2. e4 d6 3. Nc3 Bg7 4. Be2 { Relatively strange move. } { [%csl Ge2] } 4... Nf6 5. g4 { This is the start of the Spike Variation. } 5... c6 { Do you see something aggressive on the king's side? Just use c6. } 6. g5 Nfd7 { [%cal Gd7c5,Gb7b4,Ga6a3] } 7. h4 { They continue the attack but the king is not there. } { [%csl Ge8][%cal Gh4h6,Gg5g7] } 7... b5 8. h5 Rg8 { This provides space to hide the bishop on h8 after another pawn push. } 9. hxg6 hxg6 { [%cal Gh1h8] } 10. Nf3 b4 11. Nb1 a5 { Another way to create an attack instead of Qa5. } 12. a4 c5 { [%csl Gd4][%cal Gg7a1] } 13. d5 { [%cal Gd1d3,Gd3h3] } 13... Nb6 { [%csl Ga4][%cal Gc5c4] } 14. c4 Kd7!! { Moving the King out of the center. Also connects the rook and the queen. } { [%cal Gd7c7,Gc7b7] } 15. Nbd2 Rh8 16. Rg1 Kc7 17. Rb1 { [%cal Gb2b3] } 17... Rh3 18. b3 Qh8 19. Nf1 N8d7 20. Bf4 { [%cal Gf4e5,Gf3e5] } 20... Ne5 21. Nxe5 Bxe5 22. Bxe5 Qxe5 { [%csl Ge5] } 23. f3 Bd7 { There is no counterplay for the opponent so why not finish your development. } { [%cal Ga8h8] } 24. Qc2 Qd4 25. Rg2 Rh1 26. Rf2 Qh8 { [%cal Gh8h4,Gd4h8,Gh4e1] } 27. f4 Qh4 { We were attacking from the beginning so they haven't had time to castle. } 28. Rd1 f6 29. gxf6 exf6 30. e5 fxe5 31. fxe5 Rf8 { [%csl Gf2][%cal Gf8f2,Gh4e1] } 32. exd6+ { Important, don't give your opponent chances by opening yourself to more checks by taking. } 32... Kb7 33. Bd3 Re8+ { 0-1 Black wins. } { [%cal Gd3e2] } 34. Be2 Rxf1+ 35. Kxf1 Qh1# 0-1
+
+
+[Event "Pirc Defense: Opening Repertoire for Black: Pirc Defense: Versus Bobby Fisher's Austrian Attack"]
+[Date "2023.06.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B09"]
+[Opening "Pirc Defense: Austrian Attack"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Versus Bobby Fisher's Austrian Attack"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/eSG0Ve1L"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+[UTCDate "2023.06.09"]
+[UTCTime "13:44:50"]
+
+1. e4 { https://www.youtube.com/watch?v=B56Da-80M28 } 1... d6 { Keep in mind that this is an older game and should be used mainly for study purposes. Refer to the Austrian attack chapter instead. } 2. d4 Nf6 3. Nc3 g6 4. f4 Bg7 5. Nf3 O-O { This is not recommended as the go to standard. } 6. Be2 c5 { Common theme in the Austrian variation. } 7. dxc5 { [%cal Gd8a5,Gf6e4,Ge4c3,Ga5c3,Gc5d6,Gd6e7,Gb8c6] } 7... Qa5 8. O-O Qxc5+ 9. Kh1 Nc6 { Normally we play Knight to d7 and later to c5. } { [%cal Gb8d7,Gd7c5] } 10. Nd2 { [%csl Gc5][%cal Gd2b3] } 10... a5 { [%csl Gb3][%cal Ga5a4] } 11. Nb3 Qb6 12. a4 { [%csl Gb4] } 12... Nb4 13. g4 { It is a blunder, we will see why. The queen is overloaded and leaves a weak Knight and some weak pawns. } { [%cal Gf6g4,Gc8g4,Ge2g4,Gd1g4,Gd1c2,Gb4c2,Gb6b3,Gc2a1] } 13... Bxg4 14. Bxg4 Nxg4 15. Qxg4 Nxc2 16. Nb5 Nxa1 17. Nxa1 Qc6 { The queen is replacing the light squared bishop. This is a common theme. } 18. f5 Qc4 19. Qf3 Qxa4 20. Nc7 { [%csl Gg8] } 20... Qxa1 21. Nd5 Rae8 { Equalizing the number of attackers and defenders. } { [%csl Gg7,Gf8,Ge8,Gd5,Gf3,Gf1] } 22. Bg5 Qxb2 23. Bxe7 { We'll have the same amount of pieces but extra pawns. } 23... Be5 24. Rf2 Qc1+ { [%cal Gc1h6] } 25. Rf1 Qh6 { [%cal Gh6h2,Gb7b2,Ga5a1] } 26. h3 gxf5 27. Bxf8 Rxf8 28. Ne7+ Kh8 29. Nxf5 { [%csl Gf5,Gf3,Gf1,Ge5,Gf8,Gh6] } 29... Qe6 30. Rg1 a4 { Keeping an equal amount of defenders and attackers and watching for weaknesses. } 31. Rg4 Qb3 32. Qf1 a3 33. Rg3 Qxg3 { Flexing that we can take this rook because we are sure of promotion. } 34. Nxg3 a2 *
+
+
+[Event "Pirc Defense: Opening Repertoire for Black: Pirc Defense: Versus H4 Bayonet Attack"]
+[Date "2023.06.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense: Bayonet Attack"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Versus H4 Bayonet Attack"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/bI4nDoge"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+[UTCDate "2023.06.09"]
+[UTCTime "13:43:13"]
+
+1. e4 { https://www.youtube.com/watch?v=B0EuOXsJ0q4 } 1... d6 2. d4 Nf6 3. Nc3 g6 4. h4 Bg7 5. Be2 c5 (5... h5 { If you choose this variation, make sure you protect g5. } { [%csl Gg5] }) 6. dxc5 Qa5 7. Bd2 (7. cxd6 Nxe4 { [%cal Ge4c3,Ga5e1] }) 7... Qxc5 8. h5 gxh5 { Okay in this specific variation. It kind-of marks the end of the opening. The plans are similar to the remedy for the 150 attack and spike attack. Delaying castling too, to prevent any strong attack at the start of the game on the king's side. } 9. Nh3 (9. Bxh5 Nc6 { [%cal Gc8e6,Ge8c8,Ge1b1,Ga8c8,Gc8c2] }) 9... Nc6 10. Nf4 { Keep in mind that this in an example game for analysis purposes but it shows the main ideas of what to do next. } 10... Bg4 { [%csl Ge1][%cal Gf4e6,Gf2f3,Gd1h5] } 11. f3 Be6 { [%csl Ge7,Ge6,Gd6][%cal Gf7e6] } 12. Qc1 Nd4 13. Bd3 Bc4 14. Bxc4 Qxc4 15. Be3 Rc8 { [%cal Gc8c1] } 16. Qd2 Ne6 17. Nxe6 fxe6 18. g3 Nd7 19. Rxh5 Bxc3 (19... Ne5 { The clear better move! }) *
+
+
+[Event "Pirc Defense: Opening Repertoire for Black: Pirc Defense: Versus Shy 150 Attack"]
+[Date "2023.06.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense: 150 Attack"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Versus Shy 150 Attack"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/hhfADO7E"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+[UTCDate "2023.06.09"]
+[UTCTime "13:43:37"]
+
+1. e4 { Based on example game in https://www.youtube.com/watch?v=eOvOuERnWLw. } 1... d6 2. d4 Nf6 3. Nc3 g6 4. Be3 { This is an indication that they play aggresive. } 4... c6 5. Qd2 b5 { [%cal Gd8a5] } 6. Bd3 Nbd7 7. Nf3 Qc7 { Getting ready for an attack for the queen's side. This is an alternative to a5 played by a Super GM. We can deviate. } (7... Qa5) 8. O-O Bg7 9. Bh6 O-O 10. Bxg7 Kxg7 { We have castled because our attack isn't as promising with the king on the other side. Neither is their attack because they have castled too. We play from here in a quiet position. } 11. a4 b4 12. Ne2 c5 13. dxc5 { [%cal Gc7c5] } *
+
+
+[Event "Pirc Defense: Opening Repertoire for Black: Pirc Defense: Tactics And Traps You Must Know"]
+[Date "2023.06.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B09"]
+[Opening "Pirc Defense: Austrian Attack, Dragon Formation"]
+[StudyName "Pirc Defense: Opening Repertoire for Black"]
+[ChapterName "Pirc Defense: Tactics And Traps You Must Know"]
+[ChapterURL "https://lichess.org/study/FwXo3Qhq/WeK0cgPB"]
+[Annotator "https://lichess.org/@/AlmightyRafa"]
+[UTCDate "2023.06.09"]
+[UTCTime "13:44:03"]
+
+1. e4 { Opening trap in the Austrian attack variation. https://www.youtube.com/watch?v=NV3ypecxzYw&list=PLQKBpQZcRycrdFv_RC9rovYN1Wh6F_JPR&index=7 } 1... d6 2. d4 Nf6 3. Nc3 g6 4. f4 (4. Bf4 { https://www.youtube.com/watch?v=_hZWuxha1Yw&list=PLQKBpQZcRycrdFv_RC9rovYN1Wh6F_JPR&index=43 } 4... Bg7 5. Qd2 c6 6. Bh6 Bxh6 7. Qxh6 Qa5 8. Bd3 c5 9. Ne2 cxd4 10. Nxd4 Qc5 11. Nb3 Qxf2+ 12. Kxf2 Ng4+ { Black is on -2 here. A nice trap in a kind of variation of the 150 attack. } { [%cal Gg4f2,Gg4h6] }) 4... Bg7 5. Nf3 c5 6. dxc5 Qa5 7. Bd2 Qxc5 8. Bd3 O-O 9. Qe2 Nc6 10. Be3 Qb4 11. O-O-O?? { The following idea also works after Rb1. } 11... Nxe4 { [%csl Ge4] } 12. Bxe4 (12. Nxe4 Bxb2+ 13. Kb1 Bc3+ 14. Kc1 Qb2#) 12... Bxc3 13. bxc3 Qxe4 { Taking the bishop and ending the trap. Opponents will want to draw, don't help them. Example from part of a game from here onwards. } 14. Qd3 Qa4 15. g4 Qa3+ 16. Kd2 Qxa2 (16... Na5) 17. h3 *
+
+

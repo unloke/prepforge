@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { atlasAnalysis, atlasProfile, indexTree, positionThumbnail, routeGlyph, subtreeNodes } from "./build-atlas.js";
+import { atlasAnalysis, atlasScoreText, indexTree, positionThumbnail, routeGlyph, subtreeNodes } from "./build-atlas.js";
 import { html } from "../html.js";
 
 const nodes = [
@@ -12,20 +12,11 @@ const nodes = [
 ];
 
 describe("Repertoire atlas", () => {
-  it("profiles tree structure without inventing training evidence", () => {
-    const tree = [{ id: "r", parent_id: null }, ...Array.from({ length: 20 }, (_, i) => ({
-      id: `p${i}`, parent_id: i ? `p${i - 1}` : "r", ply: i + 1, move_side: i % 2 ? "black" : "white",
-    }))];
-    const untrained = atlasProfile(atlasAnalysis(tree, "black"), "black");
-    expect(Number(untrained.index)).toBeGreaterThan(0);
-    tree.forEach((n) => { n.mastery = "mastered"; });
-    expect(atlasProfile(atlasAnalysis(tree, "black"), "black")).toEqual(untrained);
-    expect(atlasProfile(atlasAnalysis([], "black"), "black").index).toBeNull();
-    const shallow = atlasProfile(atlasAnalysis(tree.slice(0, 3), "black"), "black");
-    expect(Number(untrained.index)).toBeGreaterThan(Number(shallow.index));
-    expect(untrained.scores.every((n) => Number.isFinite(n) && n >= 0 && n <= 100)).toBe(true);
-    const disabled = [...tree, { id: "off", parent_id: "r", is_enabled: false, ply: 500 }];
-    expect(atlasProfile(atlasAnalysis(disabled, "black"), "black")).toEqual(untrained);
+  it("keeps unknown documentation distinct from a measured zero", () => {
+    expect(atlasScoreText(null)).toBe("—");
+    expect(atlasScoreText({ score: 0 })).toBe("0");
+    expect(atlasScoreText({ score: 84.6 })).toBe("85");
+    expect(atlasScoreText({ score: null })).toBe("—");
   });
 
   it("scores own enabled moves and excludes descendants of a disabled branch", () => {

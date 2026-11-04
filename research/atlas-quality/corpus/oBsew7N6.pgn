@@ -1,0 +1,135 @@
+[Event "🏆 Opening Systems YOU can USE in your games: Introduction"]
+[Date "2017.08.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A40"]
+[Opening "Queen's Pawn Game"]
+[StudyName "🏆 Opening Systems YOU can USE in your games"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/oBsew7N6/mizwOHh0"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.08.28"]
+[UTCTime "00:08:21"]
+
+1. d4 { Edit: Thank you all for the wonderful support I'm getting! I never thought this study would reach 200 loves!! (Can we reach 300?! :o) You're all wonderful! Happy checkmating! :)
+Welcome to FunnyAnimatorJimTV's Opening Systems Study. Feel free to SHARE this study with your friends.
+Please click the heart button below if you enjoyed this study so that more people will know about it. Also you can follow to keep updated with the studies I create. I've just created a brand new study on a GREAT defense to play as black against white's e4 which can be found here: https://lichess.org/study/sEo8o4Rm I'd really appreciate it if you checked it out! :)
+Anyway, what is an opening System? A system is a sequence of moves played in the opening where the moves made are not intuitive; they are on-the-card moves that you will most-of-the-time play no matter what moves your opponent makes. Another benefit to learning opening systems is that they require very little time to learn and start using. You can take 15 minutes to learn the theory and start playing these in tournaments. I have made chapters for the most popular opening systems and there will be moves that you make on your own. Continue to the next chapter. } *
+
+
+[Event "🏆 Opening Systems YOU can USE in your games: London System"]
+[Date "2017.08.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D02"]
+[Opening "Queen's Pawn Game: London System"]
+[StudyName "🏆 Opening Systems YOU can USE in your games"]
+[ChapterName "London System"]
+[ChapterURL "https://lichess.org/study/oBsew7N6/fg6uuw76"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.08.28"]
+[UTCTime "00:08:46"]
+[ChapterMode "gamebook"]
+
+{ Welcome to the London System chapter. The cool thing about systems is that you can generally play them no matter how your opponent responds. There will be exceptions, of course, but the general moves are made systematically and you have the option of making defense moves when necessary. To start, bring a pawn to the center and open up a line for your dark-squared bishop. }
+1. d4 { Correct! d4 is a very strong opening move, although not as common as e4, the king's pawn. d4 often leads to very dynamic positions. Black's most common options are shown here. } { [%cal Bd7d5,Bg8f6,Be7e6] } 1... d5 { Black can play several different moves and for most of them we are going to be making the same general moves. Now- how can you develop your dark-squared bishop? } 2. Bf4 { This is the signature move of the London System. White brings his dark-squared bishop (his bad bishop) outside his future pawn chain. This bishop often becomes an extremely powerful piece. } { [%csl Gd4,Ge3,Gf2,Yf4][%cal Ge2e3,Yf4c7] } (2. e3 { This move would block in our dark-squared bishop, which we don't want to do. } { [%csl Rc1,Re3][%cal Rc1e3] }) (2. Nf3 { That's a good move and we are, in fact, going to be playing it shortly! But let's develop the bishop first. }) (2. c4 { This is a good move, which leads to the Queen's Gambit. This is not the opening we're looking for, however. } { [%cal Bd5c4,Be7e6,Bc7c6,Bb8c6] }) (2. Nc3 { That's a logical move, developing the knight towards the center, however we want to develop our dark-squared bishop first. }) 2... Nf6 { What's the most logical developing move at this point? } 3. Nf3 { Great! White develops his knight, controls the important e5 square and gets a step closer to casting. } { [%csl Gf3,Gf4] } (3. e3 { That's a good move, and we are going to be playing it shortly! But let's develop one more piece first. }) (3. Nc3 { This move is good... But the d5 pawn is already firmly defended, and developing the queen's knight on c3 isn't going to give us any major benefits. }) 3... e6 { Black is strengthening his center and getting ready to develop his bishop. How can we strengthen our center and open up a line for another piece? } 4. e3 { Very good! We can play e3 because our dark-squared bishop is placed OUTSIDE of the pawn chain, and he is very ACTIVE. This is something not often seen in typical queen's pawn openings, where the dark-squared bishop is often stuck on either c1 or d2. This also opens up our light-squared bishop to get developed. } { [%csl Bd4,Be3,Bf2,Yf4][%cal Gf1d3,Yf4c7] } (4. e4 { A bit too ambitious. This loses a pawn after dxe4. } { [%csl Re4][%cal Rd5e4] }) (4. Nc3 { This move is acceptable, but it allows black to pin our knight with Bb4 and the knight is looking very silly. } { [%csl Rc3][%cal Gf8b4,Rb4c3] }) 4... Bb4+ { How to block the check? } { [%cal Rb4e1] } 5. c3 { Good! The bishop must retreat, and we have a nice pawn formation with our dark-squared bishop working well. } { [%csl Gf4,Bb2,Bc3,Bd4,Be3,Bf2,Rb4][%cal Gf4c7,Rb4e7] } (5. Nc3 { Not quite. Black's b4 bishop is very active pinning our knight and black can jump his knight into e4 attacking. } { [%csl Bb4,Rc3][%cal Rf6e4,Re4c3,Rb4c3,Rb4e1] }) (5. Nbd2 { This is okay, but the bishop is still in our camp. } { [%csl Bb4] }) (5. Qd2 { You must be joking. xD } { [%csl Rd2][%cal Rb4d2] }) 5... Be7 { Let's continue with our development. } 6. Bd3 { Great! We're continuing our development, have very active pieces and are ready to castle at this point. } { [%cal Gd3h7,Gd3a6,Gf4c7,Gf4h6,Bf3e5,Bf3g5,Ye1g1,Bf3d4,Bf3h4] } (6. Nbd2 { That's a good move, but let's develop our other bishop first. }) (6. Be2 { Right piece, but not the best place for it. }) (6. Bb5+ { This is met by c6, where you've wasted a move. } { [%cal Rc7c6] }) 6... O-O { How to improve our position? } 7. O-O { Very good! Our king is pretty safe now and our rook is a little more active than it was on h1. } { [%csl Gg1] } (7. Nbd2 { That's a good move, and we are going to be playing it shortly. Let's solidify our position first. }) 7... c5 { Black is putting pressure on our center, but our center is pretty solid. How to improve our position even more? } { [%csl Rd4][%cal Rc5d4] } 8. Nbd2 { Very good! Now all of our minor pieces are developed well. There's ALWAYS control of the center. } { [%csl Bd2,Bd3,Bf3,Bf4,Bg1] } (8. Re1 { That's a good developing move, but minor pieces before major ones. } { [%csl Ge1] }) 8... cxd4 { Black captures our pawn. How to recapture? } { [%csl Rd4][%cal Rc3d4,Re3d4,Rf3d4] } 9. exd4 { Nice! We have the open e-file to activate our major pieces onto. It's true; we're trading a central pawn for a flank pawn, but the central control of our pieces is equally, if not more important than the central control of our pawns. } { [%cal Gf1e1,Gd1e2,Ye1e6] } (9. cxd4 { We keep two pawns in the center this way and we open up the c-file, but there is something better. } { [%csl Gd4,Ge3,Rd5,Re6] }) (9. Nxd4 { Not quite. }) 9... Nc6 10. Re1 { Correct! We bring our rook to the central file that WE opened on the previous move. Notice how much more active our rook is here than it was on f1. } { [%cal Be1e6,Rf1f2] } (10. Qe2 { We do want to put the queen here, but the rooks are equally important. Don't forget about the rooks. }) 10... Bd7 { Black continues with his development. Let's develop more. } 11. Qe2 { Correct! Our pieces are active. } (11. Qc2 { This move is good and pins black's f6 knight to the defense of his h7 pawn, but we need more centralization. } { [%csl Rc2,Rd3,Rh7,Bf6][%cal Rc2h7,Gf6h7] }) 11... Rc8 { Black is developing also. At any time of all of this, black can play Nh5 and try to win our dark-squared bishop. In the opening, bishops are ever-so-slightly stronger than the knights, and our bishop is extremely strong on the h2-b8 diagonal, so we don't want him to take our bishop. How can we save it in case he plays Nh5? } { [%csl Rf4][%cal Rf6h5,Yh5f4] } 12. h3 { Yes! Now the bishop can hide at h2 if he is attacked. } (12. h4 { Right idea, but the h pawn is pretty weak here and the king is being exposed more. }) (12. Be3 { The bishop was the most active on the h2-b8 diagonal. Why move it from there? Best to allow it to stay there safely. }) 12... Nh5 { Now the point of playing h3 is revealed. } { [%csl Gh2][%cal Bf4h2] } 13. Bh2 { And this rounds up the essentials of the London System. White has a solid position, active pieces and Stockfish gives white a 0.7 advantage. From here white can go for a kingside attack with Ne5 followed by f4, or something else depending on the position. } { [%csl Ge5][%cal Gf3e5,Yf2f4,Gd4e5,Gd2f3] } *
+
+
+[Event "🏆 Opening Systems YOU can USE in your games: Hippopotamus Defense"]
+[Date "2017.08.29"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Owen Defense"]
+[StudyName "🏆 Opening Systems YOU can USE in your games"]
+[ChapterName "Hippopotamus Defense"]
+[ChapterURL "https://lichess.org/study/oBsew7N6/mL5Z211f"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.08.29"]
+[UTCTime "15:49:31"]
+
+1. e4 { The Hippopotamus Defense ("Hippo") has become an increasingly popular opening nowadays. Conceived in the 1960s, its extremely passive, hippo-like nature led many to believe it was ridiculous. However, times have changed. More ideas have come forward, and the opening contains lots of customization. You can tinker with this opening to suit yourself and the position. The cool thing about it is that you can play it as either white or black! :D The hippo player must have good timing, patience and a good sense of humor to play this opening. } 1... b6 { What is this move?? Black is obviously going to fianchetto his bishop to b7, but white is going to build up a strong center in the process... } { [%csl Re4,Rd4][%cal Yc8b7,Rd2d4,Rb1c3,Rg1f3] } 2. Nc3 Bb7 3. d4 e6 { [%csl Rd5][%cal Re6d5] } 4. Bd3 g6 { [%csl Gb7,Gg7][%cal Gf8g7] } 5. Nf3 Bg7 6. Be3 Ne7 { [%csl Ge7][%cal Ge8g8] } 7. O-O O-O 8. Re1 h6 { [%csl Rg5][%cal Rh6g5] } 9. Qe2 d6 { [%csl Be6,Bd6,Yf5,Ye5,Yd5,Yc5] } 10. Rad1 Nd7 { [%csl Ge7,Gd7] } 11. a3 { [%cal Ga7a6] } 11... a6 { This is the typical Hippo setup. We move a number of pawns to our 6th rank, a number of pieces to our 7th rank, being very passive and maneuvering, like a hippo, but we're waiting for the right time to strike! } { [%csl Bg7,Gh6,Gg6,Ge6,Gd6,Gb6,Ga6,Bb7,Bd7,Be7] } 12. d5 { White has pulled the trigger! } { [%csl Ge4,Gd5,Re6][%cal Rd5e6] } (12. e5 { White is pushing forward! } { [%csl Ge5,Rd6][%cal Re5d6,Ge5f6] } 12... d5 { Black has closed the position and started his plan to play on the queenside with a c5 thrust and to activate his knights. } { [%csl Ge6,Gd5,Be5,Bd4,Rc5][%cal Ge7c6,Gd7c5,Rc7c5,Ba8c8,Rb6b5,Ra6a5,Rb5b4] }) 12... e5 { Locked! As you can see, black has closed up the center. White can't do anything in the center, and this gives black the time to strike on the wing with an f5 thrust. Similarly, if white had played e5 instead of d5 (sideline ->) black would close the center with d5 and play for a c5 thrust on the queenside. The PAWNS POINT to the side of the board you want to play on. This rounds up the Hippopotamus Defense chapter. } { [%csl Gd6,Ge5,Bd5,Be4,Rf5][%cal Gd7f6,Ge7f5,Rf7f5] } *
+
+
+[Event "🏆 Opening Systems YOU can USE in your games: Lion System"]
+[Date "2017.08.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense"]
+[StudyName "🏆 Opening Systems YOU can USE in your games"]
+[ChapterName "Lion System"]
+[ChapterURL "https://lichess.org/study/oBsew7N6/5GzkqIEB"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.08.28"]
+[UTCTime "00:08:56"]
+
+1. d4 { Welcome to the Lion System chapter. The Lion System, also known as the "Black Lion" is an opening for black that can be used against white's move d4, and in certain cases e4. The move setup is easy to perform and is going to be quite unfamiliar to white. } 1... c6 { This move looks strange and passive, but it gives black a compact center soon. } 2. e4 { This is probably going to be white's most natural-looking response (along with c4) as black is basically handing white the center here... } 2... d6 { Black is restraining white's pawns and freeing squares for his pieces to sit on his 7th rank. } { [%csl Bd7,Bc7,Gb5,Gc5,Gd5,Ge5] } 3. Nc3 { Once again, the moves that white plays aren't going to differ the position too much... } 3... Qc7 { It may seem immature that we're developing the queen before all else, but the queen is not endangering herself and she supports the area very well. } { [%csl Gc7][%cal Gd8c7] } 4. Nf3 { [%cal Rc8g4,Gg1f3] } 4... Bg4 { Whenever white plays his knight to f3 in the Lion, you want to pin the knight with Bg4. } { [%csl Rf3][%cal Bg4d1] } 5. h3 { [%csl Rg4][%cal Rh3g4] } 5... Bh5 { [%cal Gh5d1] } 6. Bc4 { Now we want to develop our pieces. } { [%cal Gb8d7] } 6... Nd7 { Now we have more pieces developed. We want to follow Nd7 with an e5 thrust. } { [%cal Re7e5] } 7. Be3 { [%cal Be7e5] } 7... e5 { Nd7 and e5 moves go together. In some circumstances you can alternate these move orders. } { [%csl Bd7,Be5][%cal Bb8d7,Be7e5] } 8. g4 { [%csl Rh5][%cal Rg4h5] } 8... Bg6 { [%csl Ye4][%cal Yg6e4] } 9. Qd2 { We need more development. } { [%csl Bg8][%cal Gg8f6] } 9... Ngf6 { Yes! We develop more of our army and at the same time attack white's e4 pawn in this case. White must move a piece a second time. } { [%csl Re4][%cal Rg6e4,Rf6e4,Gc3e4] } 10. Bd3 { Now we must develop our last minor piece. } { [%csl Ge4][%cal Bf8e7] } 10... Be7 { Excellent! This concludes my Lion System chapter. Now black can castle in either direction depending on the position. For example, if white has castled on the kingside, you can go for a safe game by castling in the same direction (kingside) and go for the queenside push of your a and b pawns. If white has castled on the queenside, you can play it safe and go for the same side castle, and plan on for the central break with d5. Either way, you can play for an aggressive game and go for the opposite-side-castle and respective plans. } { [%cal Ge8g8,Be8c8,Ge1g1,Be1c1,Gb7b5,Ga7a5,Ga5a4,Bd6d5] } *
+
+
+[Event "🏆 Opening Systems YOU can USE in your games: King's Indian Attack"]
+[Date "2017.08.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C20"]
+[Opening "King's Pawn Game: Leonardis Variation"]
+[StudyName "🏆 Opening Systems YOU can USE in your games"]
+[ChapterName "King's Indian Attack"]
+[ChapterURL "https://lichess.org/study/oBsew7N6/R2Iq95mP"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.08.28"]
+[UTCTime "00:09:08"]
+[ChapterMode "gamebook"]
+
+{ Welcome to FunnyAnimatorJimTV's Opening Systems Study. What is an opening System? A system is a sequence of moves played in the opening where the moves made are not intuitive; they are on-the-card moves that you will most-of-the-time play no matter what moves your opponent makes. Another benefit to learning opening systems is that they require very little time to learn and start using. You can take 15 minutes to learn the theory and start playing these in tournaments. I have made chapters for the most popular opening systems and there will be moves that you make on your own. Continue to the next chapter. }
+1. e4 { Black has a variety of responses to this, but against all of them our plan of campaign will be nearly identical. } { [%cal Ge2e4,Be7e5,Be7e6,Bc7c5,Bc7c6,Bd7d6,Bd7d5] } 1... e5 { Black's most common response. Now, how can we STRENGTHEN OUR CENTER? } 2. d3 { Yes! It may look like we're rendering our bishop inactive, but we're going to use this bishop as a king defender. Our center is strong. } { [%csl Gc2,Gd3,Ge4,Rf1][%cal Rf1d3,Yg2g3,Yf1g2] } (2. Nf3 { That's a great move, and the most common! However we're looking for something a bit different. }) (2. Nc3 { Good, we're overprotecting our e4 pawn. This would be the Vienna Game. However, we're looking for something a bit different. }) (2. f4 { King's Gambit! A very aggressive opening, but not what we're looking for. }) (2. g3 { This is one of the ideas of the "King's Indian", fianchettoing our bishop. But we need to strengthen our center first. }) (2. c3 { A cool looking move, but not what we're looking for. }) 2... Nf6 { Now we need to develop our pieces. } 3. Nf3 { Excellent! Piece development is more important than pushing pawns. } { [%cal Gg1f3] } (3. g3 { We are going to be playing this move shortly, but let's develop actively first. :) }) (3. Nc3 { You have the right idea, but there's a more important piece that needs to be developed. }) (3. Be3 { That's a developing move, but knights before bishops. }) (3. Nd2 { In fact, we are going to be playing this move shortly! Let's develop the king's knight first. }) 3... Nc6 { Let's continue with development. } 4. Nbd2 { Correct! The King's Indian Attack is a more passive than aggressive opening, so white doesn't often place his pieces on their "most active" squares. } (4. Nc3 { That's a more active square for the knight, but it's not in the King's Indian Attack theory. The King's Indian Attack is more passive than active, despite the name. :P }) (4. g3 { We are going to be playing that move shortly, but knights before bishops. }) 4... Bc5 { Black is developing well. Time to continue with our development! } 5. g3 { Yes! Our bishop will be a good king guardian on g2 after we've castled, similar to in the King's Indian Defense. } { [%cal Gg2g3,Bf1g2,Be1g1] } (5. Be2 { That's developing the bishop, but it doesn't fit with our "King's Indian" theme. }) 5... d6 { Next move should be pretty obvious :) } 6. Bg2 { Exactly! Now our bishop is fulfilling king defense. REMEMBER; white's first few moves are built upon the objective of creating an extremely safe defense around his king, and ONLY THEN proceeding to create an attack on a wing. } { [%csl Bg2][%cal Ge1g1] } (6. Be2 { We played g3 for a reason. }) 6... Be6 { Now what? :) } 7. O-O { Wonderful! In "King's Indian" setups, the player's king is often extremely safe, with a very good guardian on g2. } { [%csl Gg2,Yg1] } 7... Qd7 { Now the King's Indian Attack setup is nearly completed. We need to solidify our center... } 8. c3 { Nice! Our structure here is pretty solid and white's position has little risk. His king is safe, his pieces are developed and the plan is as follows: If black has castled on the kingside, white will go for a kingside attack with Nh4 followed by f4, where the f-pawn will run down the board. If black has castled on the queenside, white will go for a queenside attack by throwing the a and b pawns up the board. This concludes the King's Indian Attack chapter. } { [%cal Gf2f4,Gf4f5,Rf3h4,Bb2b4,Ba2a4,Ba4a5,Re8g8,Be8c8] } *
+
+
+[Event "🏆 Opening Systems YOU can USE in your games: Glek System"]
+[Date "2017.08.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C47"]
+[Opening "Four Knights Game: Glek System"]
+[StudyName "🏆 Opening Systems YOU can USE in your games"]
+[ChapterName "Glek System"]
+[ChapterURL "https://lichess.org/study/oBsew7N6/CIqDxLY3"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.08.28"]
+[UTCTime "00:09:33"]
+
+1. e4 e5 2. Nf3 Nc6 { I'm sure this looks familiar to you... } 3. Nc3 Nf6 { We have reached a four knights game. It seems pretty standard, until... } { [%csl Bc3,Bf3,Bf6,Bc6] } 4. g3 { What is this?! This is a pretty strange-looking move. White clearly wants to place a bishop on g2, but it'll be looking at its own pawn... 4. g3 is known as the Glek System. It's quite interesting. } { [%csl Re4][%cal Yf1g2,Yg2e4] } 4... d5 { If black ever wants to break the center with a d5 thrust, this is all the better for us! } { [%csl Re4][%cal Rd5e4] } 5. exd5 Nxd5 { [%csl Gc3][%cal Bd5c3,Yf1g2] } 6. Bg2 { So it turns out that by exchanging on d5, black has helped white's bishop in becoming more active. Neat! } { [%cal Gg2a8] } 6... Nxc3 { [%csl Rd1][%cal Rd2c3,Gd8d1,Re1d1] } 7. bxc3 { By recapturing with the b-pawn, white has gained the open b-file to place his rook on. } { [%cal Yb1b7,Ga1b1] } 7... Bd7 8. Rb1 { This rook on the b-file is very well placed and active, and works well in conjunction with the g2 bishop. If, for example, black plays b6 to defend the pawn... } { [%csl Rb7,Gg2,Gb1][%cal Rb1b7,Gg2a8] } 8... b6 { Your bishop REALLY opens up a lot. There are no pawns in the way of it controlling the ENTIRE a8-h1 diagonal. White is very active here. } { [%cal Rg2a8] } 9. O-O { King safety. } 9... Bc5 10. Re1 { Controlling the central open file. } { [%csl Re5][%cal Re1e5] } 10... f6 11. d3 { [%csl Gc4,Ge4,Gd4,Gb4] } 11... O-O 12. Bd2 { The idea here is to develop the other bishop on the other long diagonal. The Glek gives white (and black) very dynamic possibilities. } { [%csl Be1,Bf3,Bg2,Bd2,Bb1,Rg8,Rf7,Re6][%cal Gc3c4,Gd2c3] } *
+
+
+[Event "🏆 Opening Systems YOU can USE in your games: Mystery System"]
+[Date "2017.08.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B24"]
+[Opening "Sicilian Defense: Closed"]
+[StudyName "🏆 Opening Systems YOU can USE in your games"]
+[ChapterName "Mystery System"]
+[ChapterURL "https://lichess.org/study/oBsew7N6/6PvvLGs7"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.08.28"]
+[UTCTime "00:43:07"]
+
+1. e4 { This system doesn't really have a name; it's just a system that you can occasionally use. This system could work against things like the King's Indian Attack, the English Opening, The Closed Sicilian, etc. It won't work against any opening where white has a pawn on d4 or gets an early d4 (Open Sicilian, etc.), for reasons we'll get into. } 1... c5 { We're not intentionally playing the Sicilian Defense here, but we are playing something similar to a few of its variations. Note that if white plays the Smith Morra Gambit with an early d4, this system will not work; you'll have to take the pawn and continue with intuitive play. } 2. Nc3 (2. Nf3 { Here we're seeing what happens if black uses this system against white's early d4. } 2... Nc6 { [%cal Rd2d4] } 3. d4 cxd4 4. Nxd4 { [%csl Rd4][%cal Yd1d6] } 4... g6 5. Nc3 Bg7 6. Be3 e6 { It is going to cause black huge problems if he uses this system against white's playing d4. The reason is, black cannot play the move e6 without creating enormous weaknesses on the d-file, which white has open BECAUSE he exchanged his d-pawn on d4. White can jump his knight into b5-d6. The knight is incredibly strong here, causes black enormous headaches, and white can use his major pieces on the d-file to attack black's weakness on d7. This is a disgusting position for black. } { [%csl Rd6,Rb5,Rd7][%cal Rd4b5,Gb5d6,Rd1d6,Ra1d1,Rd1d2,Rd5d7] }) 2... Nc6 3. g3 g6 { [%cal Gf8g7] } 4. Bg2 Bg7 { [%csl Rd4][%cal Rg7d4,Rc5d4,Rc6d4,Yd2d4] } 5. Nge2 e6 { [%csl Rd6][%cal Re7e6,Rc7c6] } 6. O-O Nge7 { [%cal Ge8g8] } *
+
+
+[Event "🏆 Opening Systems YOU can USE in your games: Gurgenidze System"]
+[Date "2017.08.29"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation"]
+[StudyName "🏆 Opening Systems YOU can USE in your games"]
+[ChapterName "Gurgenidze System"]
+[ChapterURL "https://lichess.org/study/oBsew7N6/ryKdsBQJ"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.08.29"]
+[UTCTime "17:03:16"]
+
+1. e4 { This is a pretty strong system. It will generally work against any opening where white has a pawn on e4 and he pushes it to e5. This could derive from the f4 Sicilian or the Caro Kann (what we'll be looking at). All of the MAIN MOVES & IDEAS that you must play in this system will be MARKED IN BLUE. } 1... c6 2. d4 d5 { Getting a pawn on d5... } { [%csl Bd5] } 3. e5 h5 { [%csl Bh5][%cal Bh5g4] } 4. Nf3 Bg4 { You want to bring this bishop out and swap it off for either white's bishop or knight. Swapping off our bad bishop. } { [%csl Bg4][%cal Bg4f3] } 5. Nbd2 e6 { [%csl Be6] } 6. h3 { [%csl Rg4][%cal Rh3g4] } 6... Bxf3 { Whenever they play h3, we take on f3. } { [%csl Bf3][%cal Bg4f3] } 7. Nxf3 g6 { [%csl Bg6] } 8. Bd3 Nh6 { [%csl Bh6][%cal Bh6f5] } 9. c3 Nf5 { The idea of this entire game will revolve around black's knight on f5. White is going to do his best to dislodge it, and black is going to do his best to make it invincible. Black can try to play for Nc6-e7, supporting the f5 knight or use his, while white is going to do his best to play for a g4 push. As for black's other pieces... Black's bishop will go on e7 where it controls strong diagonals. Black's rook is very well placed on h8, so black's king won't castle; instead Ke8-f8-g7. Black's queenside will be developed with a6, controlling b5. From here black will plan for c5 and to swap off white's d4 pawn. From here black will develop his rook to c8 and queen to b6. A long with the knight on c6 and the knight on f4, black can build tremendous pressure against white's d4 pawn. } { [%csl Bf5,Be8,Yf8,Gh8,Yg4,Gc6,Rb5][%cal Bb8c6,Bc6e7,Be7f5,Be8f8,Bf8g7,Yf8e7,Rd8b6,Ra8c8,Yh5g4,Rg2g4,Gc6c5,Ga7a6,Ra6b5] } *
+
+

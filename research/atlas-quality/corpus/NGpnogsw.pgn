@@ -1,0 +1,160 @@
+[Event "The Sicilian: Sicilian and Introduction"]
+[Date "2018.12.21"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B20"]
+[Opening "Sicilian Defense"]
+[StudyName "The Sicilian"]
+[ChapterName "Sicilian and Introduction"]
+[ChapterURL "https://lichess.org/study/NGpnogsw/bDZvuEet"]
+[Annotator "https://lichess.org/@/iiPlasma"]
+[UTCDate "2018.12.21"]
+[UTCTime "22:48:29"]
+
+1. e4 c5 { Welcome everyone to the Sicilian! This was based off of Starting Out: The Sicilian which is great for anyone looking to add this to their e4 defense repertoire.
+The Sicilian is THE MOST popular defense against e4 and we'll be looking at the Open and Closed variations. There is a lot of theory at the highest level of play but just by understanding the thematic ideas and motifs you'll be able to start playing the Sicilian to great success. If you learn something or enjoy this study, feel free to leave a heart. Feel free to check out my other studies too and have a nice day (: } *
+
+
+[Event "The Sicilian: Open Sicilian: Introduction"]
+[Date "2018.12.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B50"]
+[Opening "Sicilian Defense"]
+[StudyName "The Sicilian"]
+[ChapterName "Open Sicilian: Introduction"]
+[ChapterURL "https://lichess.org/study/NGpnogsw/QCOJ8yVw"]
+[Annotator "https://lichess.org/@/iiPlasma"]
+[UTCDate "2018.12.22"]
+[UTCTime "15:19:21"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 { This is the Open Sicilian position. This is the most common way for white to react to the Sicilian where white will have an advantage in development, but black has an extra center pawn and a better pawn structure. } *
+
+
+[Event "The Sicilian: Open Sicilian: The Dragon"]
+[Date "2018.12.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B70"]
+[Opening "Sicilian Defense: Dragon Variation"]
+[StudyName "The Sicilian"]
+[ChapterName "Open Sicilian: The Dragon"]
+[ChapterURL "https://lichess.org/study/NGpnogsw/SBgwNJVz"]
+[Annotator "https://lichess.org/@/iiPlasma"]
+[UTCDate "2018.12.22"]
+[UTCTime "15:22:30"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 { The Dragon variation of the Sicilian gets it's name from the pawn structure and has what's called the "Dragon bishop". This fianchettoed bishop on g7 controls the long diagonal and will play a key part in not only kingside defense but eventually offense.
+This variation is very aggressive and a test to see who can withstand the attack on their king while managing to destroy the other's. This, is the dragon. } *
+
+
+[Event "The Sicilian: The Dragon: The Yugoslav Attack"]
+[Date "2018.12.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B78"]
+[Opening "Sicilian Defense: Dragon Variation, Yugoslav Attack"]
+[StudyName "The Sicilian"]
+[ChapterName "The Dragon: The Yugoslav Attack"]
+[ChapterURL "https://lichess.org/study/NGpnogsw/k8kie88Q"]
+[Annotator "https://lichess.org/@/iiPlasma"]
+[UTCDate "2018.12.22"]
+[UTCTime "15:26:40"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3 { This bishop move to e3 shows white's intentions to initiate the Yugoslav Attack. White will quickly develop queenside, castle long, and go on an all out attack on the black king. } 6... Bg7 (6... Ng4 { In both of the variations shown, we see how this is a horrible blunder. At face value it can look like a fine move by attack the bishop and starting to have some kingside presence, after both sequences black will be down material. } 7. Bb5+ Nc6 (7... Bd7 8. Qxg4) 8. Nxc6 bxc6 9. Bxc6+ Bd7 10. Bxa8) 7. f3 { This now prevents any Ng4 ideas in the future while also preparing Qd2 and castling long. } 7... O-O 8. Qd2 Nc6 9. Bc4 { Another option for white would be an immediate castle queenside. This would give white extra time for his attack but it also allows black the option of d5 which immediately opens up the center. } { [%cal Gd6d5] } 9... Bd7 10. O-O-O { Here we've reached the standard positions you'll see when playing the Dragon against the Yugoslav attack.
+White Strategies:
+1) Open the h-file with h2-h4-h5 with support from the g pawn
+2) Exchange the dark square bishops with Be3-h6.
+3) Eliminate the kingside knight either through methods such as Nd5 and g4-g5
+Black Strategies:
+1) Moves such as Ra8-c8, Ne5-c4, b7-b5, and Qd8-a5 to generate queenside counterplay.
+2) A thematic sacrifice is the rook on c8 taking the knight on c3 to dismantle the pawns around the white king.
+3) Defensively, black has ideas such as h7-h5 and sequences where he looks to freeze not only the white kingside pawns but also white's initiative.
+Warning: This line is very theoretical and while smart play is useful, you will have to learn how to navigate some of the critical positions that arise in this opening. } *
+
+
+[Event "The Sicilian: Game 1: Minic vs P. Lee"]
+[Date "2018.12.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B78"]
+[Opening "Sicilian Defense: Dragon Variation, Yugoslav Attack, Old Line"]
+[StudyName "The Sicilian"]
+[ChapterName "Game 1: Minic vs P. Lee"]
+[ChapterURL "https://lichess.org/study/NGpnogsw/OfwgugoE"]
+[Annotator "https://lichess.org/@/iiPlasma"]
+[UTCDate "2018.12.23"]
+[UTCTime "17:38:39"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3 Bg7 7. f3 O-O 8. Qd2 Nc6 9. Bc4 Bd7 10. O-O-O Rc8 11. Bb3 { A sensible move that moves the bishop out of the rooks scope. } 11... Ne5 { Gives the semi-open file for the rook while also preparing Ne5-Nc4 } { [%cal Gc8c1,Ge5c4] } 12. h4 Nc4 { Another possibility is is h5 which freezes the kingside. (Check Game 2 to see this variation) } 13. Bxc4 { It's generally better for white to exchange the light square bishop for the knight. The other bishop can't be exchanged because it has to be used to exchange for the "Dragon Bishop" } 13... Rxc4 14. h5 { Another possibility for white here is g4 instead of the h pawn's sacrifice. } 14... Nxh5 15. g4 { White has opened up the h-file and also gained time for the attack by attacking the knight. } 15... Nf6 16. Bh6 { This move leads to many complications. This is to exchange dark squared bishops but also the start of the attack for white. } 16... Bxh6 { This move is the start of the end, black is giving time to white for his attack. } (16... Nxe4 { This is the theoretically best line for black. Here he threatens d4 and instead of giving into white's attack he is going on the counter attack on white's king now. } 17. Qe3 Rxc3 18. bxc3 Nf6 19. Bxg7 Kxg7 { White is ahead the exchange but Black can now counterattack with Qa5 and Rc8 } 20. Qh6+ Kh8 21. g5 Nh5 { Notice how this now is completely fine for black and White's attack has now reached a dead end. If we were to continue this though: } 22. Rxh5 gxh5 23. Rh1 Rg8 24. Rxh5 Rg7 { Here we see that white's attack is now completely neutralized and black still has his light squared bishop and queen to go on the counterattack against the open white king. }) 17. Qxh6 Rxc3 { He prevents Nd5 while also ruining the pawn structure around the white king. This is a thematic sacrifice for black that is essential to getting counterplay. Unfortunately, this is too late. } 18. g5 { Ignoring the rook and starting an unstoppable attack on the h-file. } 18... Nh5 19. Rxh5 { Black's final kingside defender is wiped off the board and now the kingside is about to crumble. } 19... gxh5 20. Rh1 { It doesn't matter that black is up a rook right now because the attack down the h-file will be the game. } 20... Qc8 (20... f6 21. g6 hxg6 22. Qxg6+ Kh8 23. Rxh5# { Here we see how no matter how black may try and diverge the attacking forces from the kingside, the impeding checkmate is coming soon. }) 21. Rxh5 Bf5 22. exf5 Rxc2+ 23. Nxc2 Qxf5 24. g6 Qxg6 25. Rg5 { Black resigned on move 24 but here we can see why. If he were to continue the game, his queen would be lost and with her the game. } *
+
+
+[Event "The Sicilian: Game 2: Koval vs Berman"]
+[Date "2018.12.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B77"]
+[Opening "Sicilian Defense: Dragon Variation, Yugoslav Attack"]
+[StudyName "The Sicilian"]
+[ChapterName "Game 2: Koval vs Berman"]
+[ChapterURL "https://lichess.org/study/NGpnogsw/B1nJfGyv"]
+[Annotator "https://lichess.org/@/iiPlasma"]
+[UTCDate "2018.12.23"]
+[UTCTime "19:52:22"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3 Bg7 7. f3 Nc6 8. Qd2 O-O 9. Bc4 Bd7 10. h4 Rc8 11. Bb3 h5 12. O-O-O Ne5 { Here we have a different move order but it's the same position but here we have h7-h5 which stops white's ideas of h5. } 13. Bg5 { Here white goes to an active square and prepares for a kingside attack. Possible continuations are Bh6, g2-g4 or Kb1. } { [%cal Gg2g4,Gg5h6,Gc1b1] } 13... Rc5 { Not only can the rook pressure the c-file but it can also defend the fourth rank. } { [%csl Gc5][%cal Ge5c4] } 14. g4 { White goes 'all in' } 14... hxg4 15. Bxf6 { This is a huge mistake for white. Never exchange your dark square bishop for anything but the "Dragon Bishop" unless it leads to something calculated. This goes for both colors. A better move would've been h5 to open the h-file. } 15... Bxf6 16. h5 g5 { Black refuses to open the h-file which is a key part of white's attack. } 17. Nd5 Rxd5 { Since the rook is always sacrificed for the knight, this is a fine time to sacrifice. Although it isn't on c3 where it would open the kingside pawn structure, this is still a great way to remove white's powerful knight. } 18. exd5 gxf3 19. c3 g4 { White's attack is all but extinguished and now black has two passed pawns which he's threatening to push to victory. } 20. Kb1 Qb6 21. Bc2 Nc4 22. Qc1 Rc8 23. Nf5 { This deadly mistake allows black a deadly combination. } 23... Na3+ 24. Ka1 Rxc3 25. Nxe7+ Kf8 { White resigned here but let's keep playing the position to understand why. } 26. bxc3 (26. Rh2 f2 { Another variation showing how if white does prevent mate, his position completely falls apart as the black pawns push to victory. }) 26... Bxc3+ 27. Qb2 Qxb2# *
+
+
+[Event "The Sicilian: Game 3: Almasi vs Watson"]
+[Date "2018.12.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B76"]
+[Opening "Sicilian Defense: Dragon Variation, Yugoslav Attack, Modern Line"]
+[StudyName "The Sicilian"]
+[ChapterName "Game 3: Almasi vs Watson"]
+[ChapterURL "https://lichess.org/study/NGpnogsw/a2enFti9"]
+[Annotator "https://lichess.org/@/iiPlasma"]
+[UTCDate "2018.12.23"]
+[UTCTime "20:11:58"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3 Bg7 7. f3 O-O 8. Qd2 Nc6 9. O-O-O { White's idea here instead of Bc4 is to gain time for his kingside attack. If Black just develops normally it can be very advantageous to White. } 9... d5 { This is what happens because Bc4 didn't. } 10. exd5 Nxd5 11. Nxc6 bxc6 12. Bd4 { Here white is trying to offer the exchange of the dark-squared bishops. } 12... e5 13. Bc5 Be6 { This is a typical exchange in the Dragon. } 14. Ne4 (14. Bxf8 Qxf8 { In this variation most GMs agree that Black's attacking chances and dark square control make up for the material deficit. }) 14... Re8 15. g4 h6 16. h4 a5 17. g5 h5 18. a4 Qc7 19. Bc4 Red8 20. Qf2 Qb7 21. b3 { The game is a lot slower than the last two because both flanks are closed. } 21... Nf4 22. Bxe6 Nxe6 23. Rxd8+ Rxd8 24. Bb6 Ra8 25. Rd1 Nd4 26. Bc5 Qd7 27. Nf6+ Bxf6 28. gxf6 Qf5 (28... Rd8 29. Rd3 Nxb3+ 30. Rxb3 Qd1+ 31. Kb2 Rd2 { This is the correct move that black should've played. This woudl've been a winning attack for him. } 32. Qxd2 Qxd2) 29. Bxd4 exd4 30. Qxd4 Qxf3 31. Qe5 { It's too late now as White is breaking through on the kingside. } 31... Qf2 32. Rd7 Rf8 33. Kb2 c5 34. Rxf7 { Black resigned here but we'll continue to see why exactly. } 34... Kxf7 35. Qe7+ Kg8 36. Qg7# *
+
+
+[Event "The Sicilian: The Dragon: The Classical Variation"]
+[Date "2018.12.24"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B74"]
+[Opening "Sicilian Defense: Dragon Variation, Classical Variation, Normal Line"]
+[StudyName "The Sicilian"]
+[ChapterName "The Dragon: The Classical Variation"]
+[ChapterURL "https://lichess.org/study/NGpnogsw/vdfaWnIp"]
+[Annotator "https://lichess.org/@/iiPlasma"]
+[UTCDate "2018.12.24"]
+[UTCTime "01:58:12"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be2 { While the Yugoslav Attack is the ultimate test of the dragon player, the all out win it all or die mentality isn't for everyone. Instead, some might find the Classical variation where white simply developed in a "classical" manner and castles kingside. } 6... Bg7 7. O-O Nc6 8. Be3 { This is a logical move supporting the Knight on d4 but there are a few alternatives.
+NOTE: IN the Dragon, Black has many tactics available to exploit from the pressure along the long a1-h8 diagonal. } (8. Bf4 { White neglects to deal with the threat. } 8... Nxe4 9. Nxc6 Qb6 10. Kh1 Nxc3 11. bxc3 bxc6 { Now black has won a critical central pawn from white. }) (8. Nb3 { A more passive move that chooses to bring the knight away from the action in the center. } 8... O-O 9. Bg5 { This is usually the line that white takes to continue with which was made popular by none other than Karpov. (Game 4) }) 8... O-O 9. Nb3 { Once again white is choosing to remove his knight from the center and eliminate any tactics black might have. } (9. Kh1 { If white were to play a waiting move such as this... } 9... d5 10. exd5 Nxd5 11. Nxd5 Qxd5 12. Bf3 Qa5 13. Nxc6 bxc6 14. Bxc6 Rb8 { Here we see how Black's pieces are extremly active and his powerful Dragon bishop remains a force to be reckoned with. }) 9... Be6 { Setting up the light square bishop to assist in the future with a queenside attack.
+STRATEGIES
+White tries to control the center squares (especially d5) with moves like f2-f4-f5 and g2-g4-g5. These thrusts are double edged as white can easily overextend himself and leave counterattack opportunities just waiting for black.
+Blacks best hopes of counterplay lie on the semi open c file and the possibility of pushing the a and b pawns. You will also try to get a piece on c4 such as your knight and be looking to see if he can open the position with d6-d5 that would favor him.
+The Classical is much more strategic and positional than the Yugoslav. White still focuses on the kingside whereas Black focuses on the queenside but the attacks are more restrained and are more for gaining space than an all out assault on the enemy king. It's also a lot less theoretical and playing good moves based on principle should be more then ample. } *
+
+
+[Event "The Sicilian: Game 4: Apicella vs Svidler"]
+[Date "2018.12.24"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B70"]
+[Opening "Sicilian Defense: Dragon Variation, Classical Variation"]
+[StudyName "The Sicilian"]
+[ChapterName "Game 4: Apicella vs Svidler"]
+[ChapterURL "https://lichess.org/study/NGpnogsw/Zyk1ogjn"]
+[Annotator "https://lichess.org/@/iiPlasma"]
+[UTCDate "2018.12.24"]
+[UTCTime "20:54:51"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be2 Bg7 7. O-O Nc6 8. Nb3 O-O 9. Bg5 a6 { Black begins the queenside operation. } { [%cal Ge2b5] } 10. f4 b5 11. Bf3 { White threatens e4-e5 but black has a natural response. } { [%cal Ge4e5] } 11... Bb7 12. Kh1 { This is a common move where white avoids any tactics or checks with Qb6. } 12... Nd7 13. Rb1 { Defending the b pawn so the knight on c3 can move to d5. } 13... Re8 14. Nd5 { White is starting to pile on the pressure on the weak e7 pawn. } { [%cal Gd5e7,Gg5e7] } 14... f6 { It might seem strange to block the "Dragon Bishop" but there are positional factors that are positive for black here. } 15. Bh4 e6 16. Ne3 g5 17. Bg3 { After some trades in the middle black's dark squared bishop will become powerful again and help create outposts for the knights. } { [%cal Gf4g6] } 17... gxf4 18. Bxf4 Nde5 19. Bh5 Rf8 20. c3 Qe7 21. Qe2 Ng6 22. Bg3 Nce5 23. Nd2 Kh8 24. Rf2 Rad8 25. Rbf1 Bh6 { Now the dark squared bishop is as active as the light squared bishop. } 26. Ng4 Nxg4 27. Bxg4 d5 { Breaking the center and increasing the activity of his pieces. Black is now in control. } 28. Bh5 dxe4 29. Nxe4 f5 30. Bxg6 hxg6 31. Nd6 Ba8 32. Be5+ Kg8 33. Rd1 Rd7 34. Qd3 Rfd8 { This knight might seem strong here but realize it has no safe squares to escape to. } { [%csl Gd6,Rc8,Rb7,Rb5,Rc4,Re4,Rf5,Rf7,Re8] } 35. Qg3 Qg5 36. Qxg5 Bxg5 37. Rd3 Be4 38. Rh3 Rxd6 39. Rh8+ Kf7 40. Rh7+ Ke8 41. Rh8+ Kd7 { Apicella, Manuel - Svidler, Peter, 0-1, Yerevan ol (Men), 1996, https://lichess.org/Qvj6hrwi } { Here white resigned since it would be a rook versus bishop pair endgame which is completely in black's favor. } *
+
+

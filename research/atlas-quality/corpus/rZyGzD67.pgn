@@ -1,0 +1,180 @@
+[Event "Smash the QGD with the Queen ATTACK!: The Queen attack"]
+[Date "2025.07.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D21"]
+[Opening "Queen's Gambit Accepted: Rosenthal Variation"]
+[StudyName "Smash the QGD with the Queen ATTACK!"]
+[ChapterName "The Queen attack"]
+[ChapterURL "https://lichess.org/study/rZyGzD67/J5RjgHd6"]
+[Annotator "https://lichess.org/@/MPEN480"]
+[UTCDate "2025.07.26"]
+[UTCTime "15:00:24"]
+[ChapterMode "gamebook"]
+
+{ Hey welcome to another one of MPEN480's studies!!!
+This time we'll be learning about how to crush with the Queen attack!!!
+play d4 }
+1. d4 { Now people of the Kurtz might already seen this move where we played 2. e3 before 2. c4 } 1... d5 { Now instead of using the e3 move, play c4!! } 2. c4 { BONKING THE CENTER!!!!!!!
+People decline the Queen's gambit more often } 2... e6 { Yes
+Now make a nice developing move! } { [%csl Gf3][%cal Gg1f3] } 3. Nf3 { Yessir } 3... dxc4 $40 { Now this is the third most common move, instead of e4 or e3 or Nc3 just that type of thingy, play Qa4+!!!! } 4. Qa4+!? $132 $146 { This is the new Queen attack, it attacks the pawn and if plays Nc6 they cannot recover the advantage cause the knight is defending the pawn, soo.....
+The main point is to recapture the pawn quickly!! } *
+
+
+[Event "Smash the QGD with the Queen ATTACK!: QA - Bishop's defence, 5... Nc6, Main line"]
+[Date "2025.07.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Smash the QGD with the Queen ATTACK!"]
+[ChapterName "QA - Bishop's defence, 5... Nc6, Main line"]
+[ChapterURL "https://lichess.org/study/rZyGzD67/opbjWL8A"]
+[Annotator "https://lichess.org/@/MPEN480"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4"]
+[SetUp "1"]
+[UTCDate "2025.07.26"]
+[UTCTime "15:06:27"]
+[ChapterMode "gamebook"]
+
+4... Bd7 { They play this with the main focus of attacking our queen.
+The move is obvious you don't even need my help } 5. Qxc4 { Yessir } 5... Nc6 { Now develop like normal chess } { [%csl Gc3][%cal Gb1c3] } 6. Nc3 Nf6 7. e4 Bb4 { Now play the move Bd3 to defend the pawn } 8. Bd3 O-O { Kick da bishop! } 9. a3 Bxc3+ 10. Qxc3 a6 { Now pin the knight } 11. Bg5 h6 { [%csl Gh4][%cal Gg5h4] } 12. Bh4 g5 { [%csl Gg3][%cal Gh4g3] } 13. Bg3 Re8 { Now we can castle kingside or queenside and attack the knights with e5 } { [%csl Ge5][%cal Ge4e5,Re1h1,Be1a1] } *
+
+
+[Event "Smash the QGD with the Queen ATTACK!: QA - Bishop's defence, 5... Nc6, Pin attack"]
+[Date "2025.07.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Smash the QGD with the Queen ATTACK!"]
+[ChapterName "QA - Bishop's defence, 5... Nc6, Pin attack"]
+[ChapterURL "https://lichess.org/study/rZyGzD67/a2IXt6MX"]
+[Annotator "https://lichess.org/@/MPEN480"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4"]
+[SetUp "1"]
+[UTCDate "2025.07.26"]
+[UTCTime "15:22:06"]
+[ChapterMode "gamebook"]
+
+4... Bd7 5. Qxc4 Nc6 6. Nc3 { So we saw what to do if Black plays 6. Nf6, but what if they pin our knight? } 6... Bb4 { No comment, just kick that bishop out } 7. a3 Bxc3+ 8. Qxc3 Nf6 { We'll play e3 to free the bishop to play e4 next, develop our other bishop, launch a queenside attack and castle } { [%csl Ge3,Gd3,Gd2,Ge4,Gb4][%cal Ge2e3,Gf1d3,Gc1d2,Ge1h1,Ge1a1,Ge3e4,Gb2b4] } *
+
+
+[Event "Smash the QGD with the Queen ATTACK!: QA - Bishop's defence, 5... Nf6"]
+[Date "2025.07.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Smash the QGD with the Queen ATTACK!"]
+[ChapterName "QA - Bishop's defence, 5... Nf6"]
+[ChapterURL "https://lichess.org/study/rZyGzD67/kC0mNJ5G"]
+[Annotator "https://lichess.org/@/MPEN480"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4"]
+[SetUp "1"]
+[UTCDate "2025.07.26"]
+[UTCTime "15:15:47"]
+[ChapterMode "gamebook"]
+
+4... Bd7 { Remember the moves } 5. Qxc4 Nf6 { This is so far the second most common move here in this position.
+Still, develop } 6. Nc3 Nc6 { And this transposes to the Nc6 line in the Nc6 main line chapter } *
+
+
+[Event "Smash the QGD with the Queen ATTACK!: QA - Knight's defence"]
+[Date "2025.07.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Smash the QGD with the Queen ATTACK!"]
+[ChapterName "QA - Knight's defence"]
+[ChapterURL "https://lichess.org/study/rZyGzD67/UyqxJK0K"]
+[Annotator "https://lichess.org/@/MPEN480"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4"]
+[SetUp "1"]
+[UTCDate "2025.07.26"]
+[UTCTime "15:27:06"]
+[ChapterMode "gamebook"]
+
+{ Now, what if Black plays Nc6? }
+4... Nc6 { This is the Knight's defence, no comment, just take the pawn } 5. Qxc4 Nf6 { [%csl Gc3][%cal Gb1c3] } 6. Nc3 { And now it's basically a Bishop's defence Main line position but without the bishop on d2 } *
+
+
+[Event "Smash the QGD with the Queen ATTACK!: QA - Ender's defence"]
+[Date "2025.07.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Smash the QGD with the Queen ATTACK!"]
+[ChapterName "QA - Ender's defence"]
+[ChapterURL "https://lichess.org/study/rZyGzD67/XsMGrm7Y"]
+[Annotator "https://lichess.org/@/MPEN480"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4"]
+[SetUp "1"]
+[UTCDate "2025.07.26"]
+[UTCTime "15:30:41"]
+[ChapterMode "gamebook"]
+
+{ But what if Black plays the move Nd7? }
+4... Nd7! { This line is surprisingly strong against Qxc4 but since the knight is pinned and there is no knight on f6 yet, play e4! } 5. e4 { Now our win rate got back to a 49% } 5... Nf6 { They try to develop but the knight is pinned and it will take more time for them to pin our knight so Nc3 } 6. Nc3 $10 { And we have a surprisingly good structure while Black can have their pawn so Stockfish says equal but the win rate for white is 50% compared to 42% of black } *
+
+
+[Event "Smash the QGD with the Queen ATTACK!: QA - Pawn's defence"]
+[Date "2025.07.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Smash the QGD with the Queen ATTACK!"]
+[ChapterName "QA - Pawn's defence"]
+[ChapterURL "https://lichess.org/study/rZyGzD67/xSkcIHpw"]
+[Annotator "https://lichess.org/@/MPEN480"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4"]
+[SetUp "1"]
+[UTCDate "2025.07.26"]
+[UTCTime "17:12:56"]
+[ChapterMode "gamebook"]
+
+4... c6 { This is the pawn's defence, just take like always } 5. Qxc4 Nf6 { Now you do not have to worry about the Bb4 pin cause the pawn on c3 blocks the b1 knight's square, so play Nc3! } 6. Nc3 { Now we have a nice position we're plannig to play e4 next and develop so we can castle } *
+
+
+[Event "Smash the QGD with the Queen ATTACK!: QA - Queen's defence"]
+[Date "2025.07.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Smash the QGD with the Queen ATTACK!"]
+[ChapterName "QA - Queen's defence"]
+[ChapterURL "https://lichess.org/study/rZyGzD67/v36Begd3"]
+[Annotator "https://lichess.org/@/MPEN480"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4"]
+[SetUp "1"]
+[UTCDate "2025.07.26"]
+[UTCTime "17:16:27"]
+[ChapterMode "gamebook"]
+
+4... Qd7 { So this is the queen defence, take the pawn as always } 5. Qxc4 Nc6 { [%csl Ge4][%cal Ge2e4] } 6. e4 Nf6 7. Nc3 { Now this became a bishop's defence main line position but with the queen on d7 instead of the bishop } *
+
+
+[Event "Smash the QGD with the Queen ATTACK!: Conclusion"]
+[Date "2025.07.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Smash the QGD with the Queen ATTACK!"]
+[ChapterName "Conclusion"]
+[ChapterURL "https://lichess.org/study/rZyGzD67/cmHiqRBz"]
+[Annotator "https://lichess.org/@/MPEN480"]
+[FEN "r2qk2r/pppb1ppp/2n1pn2/8/3P4/P1Q2N2/1P2PPPP/R1B1KB1R w KQkq - 1 9"]
+[SetUp "1"]
+[UTCDate "2025.07.26"]
+[UTCTime "15:25:09"]
+[ChapterMode "gamebook"]
+
+{ The Queen attack is very strong and can catch your opponents off guard quickly. I might add some smaller lines soon, but it's practically complete, and the other 2 moves (b5 and Ke7) are bad, so we don't include them in the study }
+ *
+
+

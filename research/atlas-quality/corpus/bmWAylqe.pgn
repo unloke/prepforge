@@ -1,0 +1,810 @@
+[Event "🏆Repertoire for the D4 PLAYER 🏆: Introduction"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/RTKXYP1R"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "12:34:40"]
+
+{ Hello there! The goal of this study is to provide an up-to-date, effective, positional opening repertoire for both white and black pieces. I have included ONLY the openings white needs for the 1. d4 player. I'm not including any lines for 1. e4 or any other moves. Chapter 2 is the exception which I have provided a 1. e4 system white can play as a sort of fast-food. I have started production on a 1. e4 repertoire which will be shared in a separate study once completed.
+
+The contents in this study were constructed by @FunnyAnimatorJimTV, with a few extra lines from @Sittingbull98 and @Nazar1005. Feel free to leave thoughts and suggestions in the chat. Clicking the heart button below and checking out some of my other studies, such as how to avoid blunders, are appreciated! :) https://lichess.org/study/kKRTP1Ft
+
+Edit: Thank you EVERYONE for 300 loves!! I really appreciate all the support! :) Can we reach 350? :o }
+1. d4 { As white, I have constructed the repertoire for the 1. d4 players. If you are not a 1. d4 player, I'd strongly recommend trying it out, or maybe you could learn something from the analysis in the chapters. Also I have shown an system you can use as white with 1. e4, shown in Chapter 2. Chapters 3 through 23 cover opening variations by black that white should definitely know how to deal with. } 1... Nf6 { For black, the style of opening is chosen by you. All I have done in this study for the black pieces is what my recommended defenses are against the white openings such as 1. e4, 1. d4, 1. c4, etc. Chapters 24-50 will cover all my recommended systems against white's systems. } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: UNIVERSAL SYSTEM"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: UNIVERSAL SYSTEM"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/Ctmo8KhH"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[FEN "4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2017.10.13"]
+[UTCTime "13:02:15"]
+
+{ This Chapter goes over a system that white can use NO MATTER WHAT black plays (mostly) and it is a good system that gives white clear ideas, development and plans. The opening I'm showcasing is known as the "King's Indian Attack". }
+1. e4 { This opening starts out with 1. e4, unlike the rest of my repertoire for white that starts with 1. d4. } 1... Kd8 2. d3 { This is a very strange-looking move, but our plan is to fianchetto the bishop like in the Catalan Opening, which is also showcased frequently in my 1. d4 repertoire. } { [%csl Gg2][%cal Gg2g3,Gf1g2] } 2... Ke8 3. g3 { [%cal Gf1g2] } 3... Kd8 4. Bg2 Ke8 5. Nd2 { First knight to d2, } { [%csl Gd2][%cal Gb1d2] } 5... Kd8 6. Ngf3 { Other knight to f3. } { [%csl Gf3][%cal Gg1f3] } 6... Ke8 7. O-O { King safety... } 7... Kd8 8. c3 { Securing the center... } { [%csl Gd4,Ge4] } 8... Ke8 { Alright. Now here is the plan for white. If black's king has castled on the queenside, We will rush our a and b-pawns down the board and sturm the black king. If black has castled kingside, the plan is to go Nh4, put the king in the corner and roll the f-pawn up the board towards black's king. This is a very effective, simple, easy opening and plan to do, and it attracts many club and tournament players. } { [%csl Bh1][%cal Be8g8,Bf3h4,Bf2f5,Re8c8,Rb2b4,Ra2a5,Bg1h1] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Slav Defense"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D14"]
+[Opening "Slav Defense: Exchange Variation, Symmetrical Line"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Slav Defense"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/8WMerLaN"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:05:07"]
+
+1. d4 d5 2. c4 c6 { Very popular defense by black, and one of the better ones out there. Black's c8 bishop can still see in this direction, unlike the Queen's Gambit Declined. } { [%csl Bc6,Gc8][%cal Bc7c6,Gc8g4] } 3. cxd5 { Exchange Variation is the way to eliminate the complicated positions found in the Slav Mainline } 3... cxd5 4. Nf3 Nf6 5. Nc3 Nc6 { Logically developing all the knights } { [%csl Gc6,Gc3,Gf3,Gf6] } 6. Bf4 { Best diagonal for the bishop } { [%cal Bf4b8] } 6... Bf5 { [%cal Gf5b1] } 7. e3 e6 { [%csl Rc3,Rd4,Rd5,Rc6,Re6,Rf6,Rf5,Rf4,Rf3,Re3] } 8. Bb5 { [%cal Rb5e8] } 8... Nd7 (8... Rc8 9. Qa4 Nd7 10. Bxc6 Rxc6 11. Qxa7 Qc8 { [%csl Ra6][%cal Rc6a6] } 12. Qa5 { [%csl Gc3][%cal Ga5c3] } 12... Ra6 13. Qc7 Qa8 { [%csl Rc6][%cal Ra6c6] } 14. O-O Rc6 (14... Bd3 { [%csl Gb5,Rf1][%cal Gd3b5,Rd3f1] } 15. Rfc1 Rc6 { [%csl Rc7][%cal Rc6c7] } 16. Nxd5 exd5 17. Rxc6 bxc6 18. Ne5 { [%csl Rd3,Rc6,Rd7][%cal Re5d3,Re5c6,Re5d7] } 18... Nxe5 19. Qxe5+ { [%csl Rg7][%cal Ge8d7,Rf8e7] } 19... Kd7 (19... Be7 20. Qxg7) 20. Qc7+ Ke8 21. Rc1 { [%csl Re8,Bc6] }) 15. Nb5 { [%csl Gc7][%cal Gb5c7,Rc7a8,Rc7e8] }) (8... Bb4 9. Qa4) (8... Bd6 9. Ne5) 9. O-O Be7 10. a3 { [%csl Rb4][%cal Ra3b4] } 10... O-O 11. h3 { [%csl Rg4][%cal Rh3g4] } 11... Rc8 12. Rc1 { [%cal Bc1c8] } 12... Qb6 *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Queen Gambit Accepted"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D26"]
+[Opening "Queen's Gambit Accepted: Classical Defense, Steinitz Variation, Exchange Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Queen Gambit Accepted"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/oKQqQNTV"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "16:43:07"]
+
+1. d4 { I play this move as white instead of 1. e4 because it is a less sharp opening and more positional opening. } (1. c4 { [%cal Gd2d4] }) 1... d5 { [%csl Ge4][%cal Gd5e4,Re2e4] } 2. c4 { White's idea here is to deflect the d5 pawn from the defense of the e4 square. This move order is known as the "Queen's Gambit" and is one of the most popular openings in all of chess. } { [%csl Ge4][%cal Rd5c4,Ge2e4] } 2... dxc4 3. e3 { [%csl Gc4][%cal Gf1c4] } 3... Nf6 { Black's best move, giving the pawn back. } (3... b5 4. a4 c6 5. axb5 cxb5 6. Qf3 { [%csl Ra8][%cal Rf3a8] } 6... Nc6 7. Qxc6+ { [%cal Rc6e8,Rc6a8] } 7... Bd7 { [%cal Gd8a8] } 8. Qa6 { [%csl Gb1,Gc1,Gf1,Gg1,Rd7,Rf8,Rg8] }) (3... e6 4. Nf3 Nf6 5. Bxc4 a6 { [%cal Gb7b5] } 6. O-O Be7 7. Nc3 Nbd7 8. e4 b5 9. Bd3 Bb7 10. e5 Nd5 11. a4 b4 12. Ne4 O-O 13. Bd2) 4. Nf3 { Develop first. } { [%csl Gf3][%cal Gg1f3] } 4... e6 5. Bxc4 c5 { Attacking white's strong center. You have to fight your opponent's strong center as allowing it to maintain itself and advance can lead you to total disaster. } { [%cal Rc5d4] } (5... a6 { [%cal Gb7b5,Gc7c5] } 6. O-O Nbd7 7. Qe2 b5 8. Bd3 c5 9. a4 b4 10. Nbd2 Bb7 11. Nc4) 6. O-O cxd4 7. Nxd4 { White has a good position and center here. } { [%csl Gd4,Gc4,Ge3,Gg1] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: QGD Catalan"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E05"]
+[Opening "Catalan Opening: Open Defense, Classical Line"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: QGD Catalan"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/d25CllQx"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "16:48:04"]
+
+1. d4 d5 2. c4 e6 { [%csl Gd5][%cal Ge6d5] } 3. Nf3 Nf6 4. g3 { [%anno "Sittingbull98", sittingbull98] Catalan opending } { [%cal Gf1g2] } 4... Be7 5. Bg2 { This bishop on g2 is known as "Catalan Bishop" and he will shoot black's queenside tremendously. } { [%csl Gg2][%cal Gf1g2,Yg2a8] } 5... O-O 6. O-O dxc4 (6... c6 7. b3 b6 8. Bb2 Bb7 9. Nc3 Nbd7 { [%cal Gd1c2,Ga1c1,Gf1d1] }) 7. Ne5 { [%csl Gg2][%cal Re5c4,Gg2a8] } 7... Nd5 (7... Nc6 8. Bxc6 bxc6 9. Nxc6) 8. Nxc4 b5 9. Ne5 Bb7 { [%csl Gb7,Gg2] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: QGD Catalan ...Bd6"]
+[Date "2017.10.12"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D30"]
+[Opening "Queen's Gambit Declined"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: QGD Catalan ...Bd6"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/xrp0PQzU"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.12"]
+[UTCTime "13:02:09"]
+
+1. d4 e6 2. c4 d5 3. Nf3 Nf6 4. g3 Nbd7 5. Bg2 c6 6. O-O Bd6 { This is quite a mistake by black as the bishop is more exposed and will fall into white's attack. Better place for the bishop is on e7. } { [%csl Rd6] } 7. Nfd2 { Idea is to play Nc3 and e2-e4. } { [%csl Be4][%cal Gb1c3,Be2e4] } 7... O-O 8. Nc3 { [%csl Ge4][%cal Gd2e4,Gc3e4,Ge2e4] } 8... Re8 9. e4 { [%csl Rd6,Rf6][%cal Ge4e5] } 9... dxe4 10. Ndxe4 Nxe4 11. Nxe4 Bc7 12. b3 { White is much better here. They have very active pieces. } { [%csl Gd6][%cal Gc1a3,Ge4d6] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Albin Countergambit"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D09"]
+[Opening "Queen's Gambit Declined: Albin Countergambit, Fianchetto Variation, Bg4 Line"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Albin Countergambit"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/NBa3ht81"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:03:49"]
+
+1. d4 d5 2. c4 e5 3. dxe5 d4 4. Nf3 (4. e3 Bb4+ 5. Bd2 dxe3 6. Bxb4 exf2+ 7. Ke2 fxg1=N+ { [%csl Ge2][%cal Gg1e2] } (7... fxg1=Q 8. Qxd8+ Kxd8 9. Rxg1) 8. Ke1 Qh4+ 9. Kd2 Nc6 { [%csl Gc6,Gg8,Gg1,Gc8,Gb4,Gf1,Gb1] }) 4... Nc6 5. g3 { [%csl Gg2][%cal Gf1g2] } 5... Bg4 6. Bg2 Qd7 7. O-O O-O-O 8. Qa4 Bh3 { [%csl Bg2][%cal Bh3g2] } 9. e6 { [%csl Re6][%cal Rd7e6,Rf7e6,Gh3e6] } 9... Bxe6 (9... Qxe6 10. Ng5 { [%csl Be6,Bh3][%cal Bg5e6,Bg5h3] }) (9... fxe6 { [%csl Rh3] } 10. Bxh3) 10. Rd1 Nf6 (10... Bh3 { [%cal Rh3g2] } 11. Bh1 { [%csl Gh1][%cal Gh1a8] }) 11. Bg5 Be7 12. Nc3 { [%csl Gc3][%cal Gd1d7,Rd4c3] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Chigorin Defense"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D07"]
+[Opening "Queen's Gambit Declined: Chigorin Defense, Main Line"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Chigorin Defense"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/JtkRTFc2"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:13:55"]
+
+1. d4 d5 2. c4 Nc6 { Interesting and sound opening played by several levels. } { [%csl Gc6][%cal Gb8c6] } 3. Nf3 { Move I'm recommending } 3... Bg4 4. cxd5 Bxf3 5. exf3 Qxd5 6. Be3 { [%csl Gd4][%cal Ge3d4] } 6... e5 7. Nc3 { [%cal Rc3d5] } 7... Bb4 { [%csl Bc3,Gd5][%cal Bb4e1] } 8. dxe5 Qxe5 9. Qc1 { [%cal Be1g1,Gf1e2] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Refused Defense"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D06"]
+[Opening "Queen's Gambit Declined: Marshall Defense"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Refused Defense"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/blqrG8rS"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:14:49"]
+
+1. d4 d5 2. c4 Nf6 { A common mistake among weaker players. It gives white the center. } { [%csl Gd5][%cal Gf6d5] } 3. cxd5 Nxd5 4. Nf3 Nc6 5. e4 Nf6 6. Nc3 { [%csl Bc3,Bd4,Be4,Bf3] } 6... Bg4 { [%csl Rd4][%cal Rg4f3,Rc6d4] } 7. d5 Ne5 { This looks aggressive, but it is a significant blunder. } { [%csl Bf3][%cal Be5f3,Bg4d1] } 8. Nxe5 { [%csl Rd1][%cal Rg4d1] } 8... Bxd1 9. Bb5+ { [%cal Bb5e8] } 9... c6 (9... Nd7 10. Bxd7+ Qxd7 11. Nxd7 Kxd7 12. Kxd1 { White is ahead a whole minor piece. } { [%csl Gc3] }) 10. dxc6 a6 11. c7+ { [%csl Rd8][%cal Gb5e8,Rc7d8] } 11... axb5 12. cxd8=Q+ Rxd8 13. Nxd1 { White is ahead a whole minor piece. } { [%csl Ge5][%cal Be1g1] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: King's Indian: Catalan"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E69"]
+[Opening "King's Indian Defense: Fianchetto Variation, Classical Main Line"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: King's Indian: Catalan"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/qLlZ1el9"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "17:47:14"]
+
+1. d4 Nf6 2. c4 g6 { What to play against King's Indian?? } { [%csl Rg7][%cal Rf8g7] } 3. Nc3 { Here is a big moment- we don't know if black is playing King's Indian Defense with Bg7 or Grunfeld Defense with d5 (Chapter 12). } { [%cal Gd7d5,Gf8g7] } 3... Bg7 4. e4 { Now black cannot play Grunfeld with d5. } { [%csl Rd5][%cal Rd7d5] } 4... d6 5. Nf3 O-O 6. g3 { Now we are fianchettoing the bishop to g2 like in Catalan (Chapter 5) White's Castled king will be safer. } { [%csl Gg2][%cal Gf1g2] } 6... Nbd7 { Normal King's Indian moves } 7. Bg2 e5 { Black must attack white's strong center! } { [%cal Re5d4] } 8. O-O { Here black has two main moves... } { [%cal Bc7c6,Be5d4] } 8... c6 (8... exd4 9. Nxd4 Re8 { [%cal Be8e4] } 10. Re1 Nc5 { [%csl Re4][%cal Rf6e4,Rc5e4,Re8e4] } 11. h3 a5 12. b3 { Double-fianchetto will be good for white here. } { [%csl Gb2][%cal Gc1b2] } 12... c6 { Black has the backward d6 pawn while black will attack white's e4 pawn. } { [%csl Rd6,Ge4] }) 9. h3 Re8 10. Be3 { White has two active bishops and the plan will be to play c4-c5. } { [%csl Ge3,Gg2,Bc5][%cal Bc4c5] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: King's Indian: Smyslov"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E61"]
+[Opening "King's Indian Defense"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: King's Indian: Smyslov"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/8P2nQWck"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "17:49:32"]
+
+1. d4 Nf6 2. c4 g6 3. Nc3 Bg7 4. Nf3 { Instead of e4 immediately... } { [%csl Gf3][%cal Gg1f3,Re2e4] } 4... O-O 5. Bg5 { Another good system you can play against King's Indian, known as "Smyslov System" } 5... d6 6. e3 { [%csl Ge3,Gd4,Gf2][%cal Rg7d4,Gf2d4] } 6... Nbd7 7. Be2 { [%cal Ge1g1] } 7... c6 8. Qc2 { [%cal Rh7h6] } 8... Qc7 (8... h6 { [%cal Rh6g5] } 9. Bh4 g5 { [%cal Rg5h4] } 10. Bg3 Nh5 { [%csl Rg3][%cal Rh5g3] } 11. Nxg5 { [%csl Bh7][%cal Bc2h7,Bg5h7,Re2h5] } 11... hxg5 (11... Nxg3 12. Qh7#) 12. Bxh5 { [%csl Gh2] }) 9. O-O (9. h4 e5 10. O-O-O a6 11. Bd3 b5) 9... e5 { Black must attack white's strong center. } { [%cal Re5d4] } 10. Rfd1 Re8 11. Rac1 { This is the position you want to reach in this system. } { [%csl Gc2,Gc3,Gc1,Gd1,Ge2,Gf3,Gg5,Bf2,Be3,Bd4,Bc4][%cal Bf2d4,Bd4c4] } 11... Nf8 12. b4 { [%csl Gc5][%cal Bf3d2,Bd2c4,Bc4d6,Gc4c5] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Grunfeld Defense"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D85"]
+[Opening "Grünfeld Defense: Exchange Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Grunfeld Defense"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/pKZDTw7q"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:03:58"]
+
+1. d4 Nf6 2. c4 g6 3. Nc3 { [%cal Gd7d5,Gf8g7] } 3... d5 { A very aggressive choice by black. The idea in the Grunfeld is for black to attack white's d4 pawn ferociously, and it will be a battle between the opponents about who is better at attacking/defending. } { [%csl Bd5,Rd4][%cal Bd7d5] } 4. cxd5 Nxd5 5. e4 { [%csl Gd5][%cal Ge4d5] } 5... Nxc3 6. bxc3 Bg7 { [%csl Bd4][%cal Bg7d4,Bd8d4,Gb8c6,Gc7c5] } 7. Be3 { White wants to overprotect the d4 point as much as possible. } { [%csl Gd4][%cal Ge3d4,Gc3d4,Gd1d4] } 7... c5 { [%csl Bd4][%cal Bc5d4,Bg7d4,Bd8d4] } 8. Qd2 O-O 9. Bc4 Nc6 10. Ne2 { By deploying the knight to e2 instead of f3, white sidesteps the threatening move Bg4, attacking one of the defenders of the d4 pawn, as the move f2-f3 could be inserted. } { [%csl Gd4,Rg4][%cal Ge2d4,Rc8g4,Rf2f3,Gc3d4,Gd2d4,Ge3d4,Ga1d1,Be1g1] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Queen's Indian: Catalan"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E15"]
+[Opening "Queen's Indian Defense: Fianchetto Variation, Check Variation, Intermezzo Line"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Queen's Indian: Catalan"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/GDYx0Sos"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "17:27:19"]
+
+1. d4 Nf6 2. c4 e6 { Black is going to meet Nc3 with ...Bb4. } { [%cal Rb1c3,Rf8b4] } 3. Nf3 b6 { This is the "Queen's Indian Defense" by black. Black wants to put the light-squared bishop on either b7 or a6 to put pressure on white's center. Usually black will wait for white to play Nc3 to then play Bb4. } { [%csl Bc4,Bd4][%cal Gc8b7,Gc8a6,Rf8b4,Rb1c3] } 4. g3 { I'm recommending a Catalan setup against Queen's Indian. } { [%csl Bg2][%cal Bf1g2] } 4... Ba6 { [%cal Ra6c4] } 5. b3 Bb4+ { [%cal Rb4e1] } 6. Bd2 Be7 { Black can argue that white's d2 bishop has been misplaced. } { [%csl Rd2][%cal Rb1d2] } 7. Bg2 c6 8. O-O d5 { Black is creating a wall to our Catalan bishop. Now white's plan will be to play e2-e4. } { [%csl Rc6,Rd5,Re6][%cal Gg2d5,Be2e4,Bd1c2,Bb1c3] } 9. Qc2 Nbd7 10. Rd1 O-O { Now we are in some Catalan territory. } { [%cal Gb1c3,Ga1c1] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Bogo-Indian: Catalan"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E11"]
+[Opening "Bogo-Indian Defense: Nimzowitsch Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Bogo-Indian: Catalan"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/Jq1ocHkM"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:15:26"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 Bb4+ { Bogolgubov Indian Defense, an alternative to the Queen's Indian. } { [%cal Rb4e1] } 4. Bd2 { [%csl Rb4][%cal Rd2b4] } 4... Qe7 { [%csl Gb4][%cal Ge7b4] } 5. g3 { Another Catalan setup. } { [%csl Gg2][%cal Gf1g2] } 5... Bxd2+ 6. Nbxd2 O-O 7. Bg2 { Now we are in some kind of Catalan territory. } { [%cal Ge1g1,Gd1c2,Ga1c1,Ge2e4] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Budapest Gambit"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A52"]
+[Opening "Indian Defense: Budapest Defense, Rubinstein Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Budapest Gambit"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/0k6Fykpb"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:14:23"]
+
+1. d4 Nf6 2. c4 e5 { Budapest Gambit, a very famous opening. } { [%csl Re5] } 3. dxe5 Ng4 { [%cal Rg4e5] } 4. Bf4 { Best way to defend the pawn. } { [%csl Ge5][%cal Gf4e5] } 4... Nc6 5. Nf3 Bb4+ { [%cal Rb4e1] } 6. Nbd2 { We're blocking with the knight on e2 to avoid the rupture of our pawn structure. } { [%csl Gd2,Rc3][%cal Gb1d2] } 6... Qe7 { [%csl Be5][%cal Be7e5,Bc6e5,Bg4e5] } 7. e3 Ngxe5 8. Nxe5 { Exchange one pair of knights } 8... Nxe5 9. Be2 { [%cal Ge1g1] } 9... O-O 10. O-O d6 11. Nb3 { [%csl Rc4][%cal Gd2b3] } 11... Be6 { This is a blunder- we have created a trap! } { [%csl Rc4][%cal Re6c4,Re5c4] } 12. a3 { [%csl Rb4][%cal Rb4a5] } 12... Bc5 { The d6 pawn has become overloaded. } { [%csl Rd6][%cal Rd6c5,Rd6e5] } 13. Nxc5 dxc5 14. Bxe5 { White is ahead a whole minor piece. } { [%csl Ge5] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Modern Benoni: Catalan"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A64"]
+[Opening "Benoni Defense: Fianchetto Variation, Hastings Defense, Main Line"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Modern Benoni: Catalan"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/0WYGB19Y"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "17:23:00"]
+
+1. d4 Nf6 2. c4 c5 { Benoni Defense, a very popular and sharp opening against d4. Black tries to disrupt white's plan of taking the center as quickly as possible. } { [%csl Bc5][%cal Bc7c5] } 3. d5 { This is white's best move, maintaining the strong center pawn. } { [%csl Gd5][%cal Gd4d5] } 3... e6 4. Nc3 exd5 5. cxd5 d6 6. g3 { This is what I'm recommending Catalan players play- fianchetto the king's bishop on g2 like in all Catalan variations. } { [%csl Gg2][%cal Gf1g2] } 6... g6 7. Bg2 { From g2, the bishop will help to overprotect the e4 and d5 points. Overprotection is always a good strategy to implement. } { [%csl Be4,Bd5][%cal Bg2d5] } 7... Bg7 8. Nf3 O-O 9. O-O { White's plan is Nf3-d2-c4 and e2-e4 and possibly e4-e5. The white knight on c4 will be in a very good, secure position and will help the thrust of the central pawns. Also white must delay black's plan of b7-b5. } { [%csl Gc4,Rb5][%cal Gd2c4,Gf3d2,Rb7b5,Be2e4] } 9... Re8 { Rooks belong on open files. } { [%cal Ge8e2] } 10. Nd2 { [%csl Bc4][%cal Bf3d2,Bd2c4] } 10... a6 { Black is going to play b7-b5 } { [%csl Rb5][%cal Ra6b5,Rb7b5] } 11. a4 { So we stop it! } { [%csl Gb5][%cal Ga4b5] } 11... Nbd7 12. Nc4 { Black's weak point in the Benoni is the d6 pawn, so it makes sense to attack it. } { [%csl Gc4,Rd6][%cal Rc4d6] } 12... Ne5 { [%cal Re5c4] } 13. Na3 { Avoiding the exchange of pieces since white has more space. } 13... Rb8 { [%csl Rb5][%cal Rb8b5] } 14. h3 Nh5 { Black is trying for counterplay on the kingside. } { [%csl Rg3][%cal Rh5g3,Gf2f4] } 15. e4 Bd7 { Black desperately wants to push b5... } { [%csl Gb5][%cal Gd7b5,Gb7b5] } 16. g4 b5 17. axb5 axb5 18. Naxb5 Bxb5 19. Nxb5 Rxb5 20. gxh5 { White is good here. } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Old Benoni"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A43"]
+[Opening "Benoni Defense: Old Benoni"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Old Benoni"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/Bw0Mnx1q"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "17:55:41"]
+
+1. d4 c5 { [%cal Bc5d4] } 2. d5 d6 3. c4 e6 4. Nc3 exd5 5. cxd5 Nf6 { Now this is a transposition to the Modern Benoni } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Benko Gambit"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A59"]
+[Opening "Benko Gambit Accepted: King Walk Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Benko Gambit"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/BEBQmd9x"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "17:51:59"]
+
+1. d4 Nf6 2. c4 c5 3. d5 b5 { Very popular and correct gambit. If white isn't careful he can find himself blown off the board. } { [%csl Rb5][%cal Rb7b5] } 4. cxb5 a6 5. bxa6 { We are doing the full acceptance of the gambit. } { [%csl Gb5,Ga6][%cal Gc4b5,Gb5a6] } 5... g6 { This is black's most common procedure. Another approach is to immediately take on a6, but the move order doesn't matter. } { [%cal Bf8g7,Gc8a6] } (5... e6 { This is a tricky move which is suggested by the computer. } { [%csl Ge6][%cal Ge7e6] } 6. Nc3 exd5 7. Nxd5 Bxa6 8. g3 Nxd5 9. Qxd5 Nc6 10. Bg5 f6 11. Bd2 Nd4 { [%csl Gd4][%cal Gd4c2,Gd4e2,Gd4b3,Gd4f3,Gd4f5,Gd4e6,Gd4c6,Gd4b5] }) 6. Nc3 { [%cal Ge2e4] } 6... Bxa6 7. e4 { [%csl Rf1][%cal Ra6f1] } 7... Bxf1 (7... Bg7 8. Bxa6 Nxa6 9. Nf3 { [%cal Ge1g1] }) 8. Kxf1 d6 9. Nf3 Bg7 10. g3 { [%csl Gg2][%cal Gf1g2] } 10... O-O 11. Kg2 Nbd7 12. a4 { Recently very popular system against the Benko Gambit, and I believe it is the best system- it gives me very good results. Black has 4 main moves here, but the mainline is ...Qb6. } { [%cal Rd8a5,Ga8a6,Gd8b6,Rf6g4] } 12... Qb6 (12... Qa5 13. Qe2 Rfb8 { [%csl Rb8,Ra8][%cal Rb8b2,Ra8a2] }) (12... Ra6 13. Qc2 Qa8 14. Ra3 { [%csl Ya1,Ga3][%cal Yg7a1] } 14... Rb8 15. Nb5 { [%csl Gb5,Ga4,Gb3,Gc4][%cal Gb2b3,Gf3d2,Gd2c4,Bh1d1,Bc1e3] }) 13. Qe2 Rfb8 { Black's idea behind his last few moves, and the Benko Gambit in general, is to put tremendous pressure on white's queenside with his major pieces and the fianchettoed bishop on g7. } { [%cal Rb8b2,Ra8a2,Rg7b2,Rd7c5,Gc5c4] } 14. Nb5 { White is going to alleviate the pressure against the queenside. } { [%csl Gb5,Gc4,Gb3,Ga4][%cal Gf3d2,Gd2c4,Gb2b3] } 14... Ne8 15. Bg5 { [%csl Re7][%cal Rg5e7] } 15... Kf8 { White will alleviate the pressure and show his extra pawn advantage. } { [%csl Ga4] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Dutch Defense"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A92"]
+[Opening "Dutch Defense: Stonewall Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Dutch Defense"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/bZnne2t1"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "17:56:57"]
+
+1. d4 f5 { Dutch Defense, also an interesting opening against d4. There are two possible systems against the Dutch. Bg5 is much more aggressive, but c4 is more positional, which is what I prefer. } { [%cal Rc1g5,Gc2c4] } 2. c4 { From here, white is playing a Catalan. } (2. Bg5 { Bg5 is pinning the e-pawn, preventing it to move to e6, where black wants it in the Dutch. } { [%csl Re7][%cal Rg5d8,Ge7e6] } 2... h6 (2... Nf6 3. Bxf6 exf6 4. e3 d5 5. c4 c6 6. Nc3 Bb4 7. Qb3) 3. Bh4 g5 4. e3 { Black can't take the bishop or he will be checkmated. } { [%csl Rh5,Re8][%cal Rd1h5] } 4... Nf6 { [%csl Gh5][%cal Gf6h5] } (4... gxh4 5. Qh5#) 5. Bg3 { White's bishop is safe. Black's kingside is extremely weak. } { [%csl Gf4][%cal Ge3f4,Rf5f4] }) 2... e6 3. g3 { [%cal Gf1g2] } 3... Nf6 4. Bg2 Be7 5. Nf3 O-O 6. O-O d5 { Black builds a stonewall. } { [%csl Rd5][%cal Rd7d5] } 7. Nbd2 Nc6 (7... c6 { [%csl Gc6,Gd5,Ge6,Gf5] } 8. Qc2 Ne4 { The weak point in black's camp is the e5 square, so white will plan to take control of it. } { [%csl Re5] } 9. Ne5 { [%csl Ge5][%cal Gf3e5] } 9... Nd7 10. Nd3 Ndf6 11. Nf3 { White rearranged their knights to be looking at the e5 square. } { [%csl Re5][%cal Rf3e5,Rd3e5] } 11... Bd7 12. Nfe5 Be8 13. f3 { [%cal Rf3e4] } 13... Nd6 14. c5 { [%cal Rc5d6] } 14... Nf7 15. b4 { Now white has two plans: a2-a4 followed by b4-b5, or Re1 followed by e2-e4. } { [%csl Gb5,Be4][%cal Ga2a4,Gb4b5,Bf1e1,Be2e4] }) 8. b3 Ne4 9. Bb2 Bf6 *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Mikenas Defense"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D02"]
+[Opening "Queen's Pawn Game: Chigorin Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Mikenas Defense"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/lwVPYpUs"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:14:08"]
+
+1. d4 Nc6 2. Nf3 (2. e4 e5 3. d5 Nce7 4. Nf3 Ng6 5. h4 Nf6 6. h5 Ne7 7. Nc3 d6 8. Bg5) 2... d5 { Something like a Reverse Veresov Attack. } 3. c4 { Now a Chigorin! Covered in Chapter 6. } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Englund Gambit"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A40"]
+[Opening "Englund Gambit: Main Line"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Englund Gambit"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/3JPEmYdf"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:16:26"]
+
+1. d4 e5 { This is, of course, an unsound opening, but every once in a while you may run into it and not know what to do. It's important that you have something against it. } { [%csl Re5][%cal Rd4e5] } 2. dxe5 Nc6 (2... d6 3. Nf3 Bg4 { [%cal Rg4f3] } (3... Nc6 4. Bf4 Bg4 { [%cal Rg4f3] } 5. Nc3 Bxf3 6. exf3 dxe5 7. Qe2 { [%csl Re5][%cal Re2e8,Rf4e5] } 7... Bd6 8. O-O-O { White has positional advantage here- two open files plus bishop pair. } { [%csl Gf4,Gf1][%cal Be1e7,Bd1d7] }) 4. Bf4 { [%csl Ge5][%cal Gf4e5] } 4... Bxf3 5. exf3 g5 { [%csl Rf4][%cal Rg5f4] } 6. Bg3 Bg7 { [%csl Rb2,Be5][%cal Rg7b2] } 7. exd6 { [%csl Bb2][%cal Bg7b2] } 7... Bxb2 8. Qe2+ Kf8 (8... Kd7 9. Qb5+ { [%csl Rd7,Rb2][%cal Rb5d7,Rb5b2] }) 9. dxc7 { [%cal Rc7d8,Rc7b8] } 9... Qc8 10. Bd6+ { [%cal Rd6f8] } 10... Kg7 11. Qb5 { [%csl Gb2,Bb8,Rg5][%cal Gb5b2,Bc7b8,Rb5g5] } 11... Bf6 { [%csl Gg5][%cal Gf6g5] } 12. cxb8=Q Rxb8 13. Bxb8 Qxb8 14. c3 { [%csl Ga1] }) 3. Nf3 Qe7 { [%csl Re5][%cal Re7e5,Rc6e5] } (3... d6 4. Bg5 { [%cal Rg5d8] } 4... f6 (4... Nge7 5. exd6 cxd6 { [%csl Rd6][%cal Gb1c3,Gc3b5,Gg5f4,Gd1d2,Ga1d1] }) (4... Be7 5. Bxe7 Ngxe7 6. exd6 cxd6 { [%cal Gb1c3,Gc3b5,Gd1d2,Ga1d1] }) (4... Qd7 { [%csl Rc8][%cal Rc8d7] } 5. exd6 Bxd6 { [%cal Gb1c3,Ge2e4,Gf1d3,Ge1g1] }) 5. exf6 gxf6 6. Bf4 { [%csl Rf6,Rh7,Ge2][%cal Gb1c3,Ge2e4,Gd1d2,Ge1c1] }) 4. Nc3 { [%csl Rf8][%cal Rf8e7] } 4... Nxe5 5. e4 Nf6 6. Bf4 { [%csl Ge5][%cal Gf4e5,Gf3e5] } 6... d6 { [%cal Gd6e5] } 7. Qd4 { Very wonderful centralization of the queen. } { [%csl Bd4][%cal Bd1d4] } 7... Nxf3+ 8. gxf3 { ...c5 is not good as it weakens the d6 pawn which we can easily put pressure on. } { [%csl Rd6][%cal Rc7c5,Gd4d2,Ge1c1] } 8... Bd7 9. O-O-O { [%csl Ba7][%cal Re8c8,Bd4a7] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Pirc Defense"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Pirc Defense"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/r5IdYqQQ"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:16:47"]
+
+1. d4 d6 { Typical Pirc Defense move } { [%csl Gd6] } 2. e4 Nf6 3. Nc3 g6 4. f3 { This is the signature move of the 150 Attack, which is my favorite system against the Pirc Defense. } { [%csl Rf3][%cal Rf2f3] } 4... Bg7 5. Be3 O-O 6. Qd2 { Ideas of 150 attack shown here. } { [%csl Bd2,Be3,Rg8][%cal Ge1c1,Bd2h6,Rg2g4,Rh2h4,Rh4h5] } 6... e5 7. O-O-O exd4 8. Bxd4 Nc6 9. Be3 *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: W: Sniper"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B06"]
+[Opening "Pterodactyl Defense: Eastern, Pterodactyl"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "W: Sniper"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/j0UEXtFh"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "18:16:52"]
+
+1. d4 g6 { [%csl Gg7][%cal Gf8g7] } 2. e4 Bg7 3. Nc3 c5 { These 3 moves are characteristic of "The Sniper" opening. } { [%csl Rc5,Rg7,Rg6][%cal Rf8g7,Rg7g6,Rc7c5] } 4. dxc5 Qa5 { Also mainline Sniper move. } 5. Bd2 Qxc5 6. Nd5 { Great move! Black's best moves are shown in green and blunders in red. The blunders look quite natural! } { [%cal Rg8f6,Re7e6,Gb8a6,Gb7b6,Ge8f8] } 6... Nf6 7. Bb4 { [%csl Rc7,Gc5][%cal Rd5c7] } 7... Qc6 { [%csl Gc7][%cal Gc6c7] } 8. Bb5 { [%cal Rb5c6] } 8... Qxb5 9. Nc7+ { [%cal Rc7b5,Rc7e8,Rc7a8] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: King's Gambit"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C30"]
+[Opening "King's Gambit Declined: Miles Defense"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: King's Gambit"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/9A4IczmH"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "12:31:47"]
+
+1. e4 Nc6 { Move I prefer against e4. What it does is it avoids any mainline gambits from white and will generally throw your opponent to their own resources. More lines to this opening are covered in Chapters 24-33. However, one gambit can, somewhat, be played by white: The King's Gambit. } 2. f4 { Characterized by this move. King's Gambit is a very attacking, risky opening, } { [%csl Gf4][%cal Gf2f4] } 2... e5 3. Nf3 { Developing a piece, also stopping Qh4. } { [%csl Gh4][%cal Gf3h4,Rd8h4] } (3. fxe5 { This is a blunder you may see once in a blue moon. } 3... Qh4+ { The procedure here is a long king hunt similar to the one in the Damiano Defense. } { [%cal Rh4e1] } 4. Ke2 (4. g3 Qxe4+ { [%cal Be4e1,Be4h1] }) 4... Qxe4+ 5. Kf2 Bc5+) 3... f5 { This is known as the Adileide Countergambit. White has a few responses: exf5, d3 and Nc3 are the good moves. Our development will be very simple from those. fxe5/Nxe5 are blunders. Play the moves to see the continuations. } { [%csl Gf5,Re5][%cal Rf3e5,Rf4e5,Ge4f5,Gd2d3,Gb1c3] } 4. exf5 (4. fxe5 fxe4 { [%csl Rh4,Rg5,Rd4][%cal Gf3g1] } 5. Ng1 Nxe5 6. Qh5+ Ng6 7. Nc3 Nf6 { [%cal Gd7d5] }) (4. Nxe5 Nxe5 5. fxe5 Qh4+ { [%cal Rh4e1] }) (4. d3 { [%csl Rf1] } 4... d6 5. Nc3 Nf6 6. Be2 Be7 7. O-O O-O { Equal middlegame happens. }) (4. Nc3 fxe4 5. Nxe4 (5. Nxe5 Nf6 6. Bb5 Nd4 { [%cal Rd4b5] } 7. Ba4 c6 { [%cal Ba4c6] } 8. O-O Bc5 { [%csl Rg1][%cal Rc5g1] } 9. Kh1 O-O { Planning is d7-d6-d5. Black is fine here. } { [%cal Gd7d6,Gd6d5] }) 5... d5 { [%csl Ge4][%cal Gd5e4] } 6. Nc3 e4 { [%cal Re4f3] } 7. Ne5 Nf6 { Black is doing fine here, with a great center and easy development. } { [%csl Ge4,Gd5] }) 4... e4 { [%cal Re4f3] } 5. Ne5 { From here, our moves will simply be logical, developing moves. } 5... Nf6 { [%csl Gf6][%cal Gg8f6] } 6. Nc3 d5 { [%csl Gf5][%cal Gc8f5] } 7. Bb5 { [%csl Rc6][%cal Rb5e8,Re5c6] } 7... Qd6 { [%csl Gc6][%cal Gd6c6] } 8. d3 Bxf5 9. O-O a6 { [%csl Rb5] } 10. Bxc6+ bxc6 11. dxe4 Nxe4 12. Re1 Be7 { [%csl Gd5,Gc6,Ge4][%cal Ge8g8] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Nimzo-Linksspringer"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Nimzowitsch Defense: Kennedy Variation, Linksspringer Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Nimzo-Linksspringer"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/rooV2rte"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "21:17:04"]
+
+1. e4 Nc6 { Very interesting, positional defense by black. } { [%csl Bc6][%cal Bb8c6] } 2. d4 { Most common move. Black can play either e5 or d5. I prefer e5. } { [%csl Ge5,Rd5][%cal Rd7d5,Ge7e5] } 2... e5 { [%cal Gd4e5,Gg1f3,Rd4d5] } 3. d5 { Nimzowitsch Defense: Linksspringer Variation } 3... Nce7 4. c4 { White is gaining queenside space. } { [%csl Gc4,Gd5][%cal Gc2c4,Gd2d5] } 4... Ng6 { Black transferred the knight to the kingside and is going to proceed with development. } { [%csl Bg6][%cal Gf8b4,Bb8c6,Bc6e7,Be7g6] } 5. Nc3 Bb4 { [%csl Rc3][%cal Rb4e1] } 6. Nf3 { White allows us to take on c3. } { [%csl Gc3][%cal Gb4c3] } 6... Bxc3+ 7. bxc3 { [%csl Rc4,Rc3] } 7... d6 { Black managed to exchange his bad bishop and now obtains a nice light-squared bishop. } { [%csl Rb4,Gc8,Rc7,Rd6,Re5][%cal Rb4c3] } 8. Be3 { White's plan is to plan c5. Whenever white tries to do this, it is necessary for us to stop it! } { [%csl Bc5][%cal Be3c5,Bc4c5] } 8... b6 { [%csl Gc5][%cal Gb6c5,Gd6c5] } 9. a4 { [%cal Ra4a5] } 9... a5 { Black has stopped all white play on the queenside, and can now concentrate on the kingside attack. } { [%csl Ga5,Gb6,Gc7,Gd6,Ge5,Rd5,Rc4,Rc3,Ra4] } 10. Rb1 Nf6 { [%cal Rf6e4] } 11. Bd3 O-O 12. O-O { Here the plan is to move the f6 knight out of the way so that the f-pawn can advance up to f5. Either h5 or e8 work in this case. Most of the time you are putting him on e8, but this is one of the cases where we can put him on h5. } { [%csl Gh5,Ge8,Rf7][%cal Gf6h5,Gf6e8,Rf7f5] } 12... Nh5 { The reason the Nxe5 tactic doesn't work here is because white has a shaky bishop on d3. } { [%csl Ge5,Rd3][%cal Gf3e5,Bd1h5] } 13. Re1 { And now, the idea behind Nh4... } (13. Nxe5 { [%cal Bd1h5] } 13... Nxe5 { [%csl Rd3][%cal Re5d3,Gd1h5] } 14. Qxh5 Nxd3 { Black is up a piece. } { [%csl Gc8] }) 13... Nhf4 { WONDERFUL knight has been posted on f4. If you can manage your knight to place on f4, essentially 50% of your game has been won. :) } { [%csl Gf4][%cal Gh5f4] } 14. Bxf4 Nxf4 { [%csl Gf4][%cal Gg6f4] } 15. Rc1 f5 { Now this part of the plan, f5. } { [%csl Bf5][%cal Bf7f5] } 16. exf5 Bxf5 17. Bxf5 Rxf5 { If white's knight is not on f3, the black queen has access of f6, g5 and h4. } { [%cal Gd8f6,Gd8g5,Gd8h4] } 18. Qc2 Qf6 { [%cal Gf6g6,Ga8f8] } 19. Rb1 Rf8 { And now the other rook can join the party. :) Quite slow but very effective plan of kingside attack. Most of my opponents are helpless against this plan. } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Nimzo-Exchanged"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Nimzowitsch Defense: Kennedy Variation, Paulsen Attack"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Nimzo-Exchanged"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/NG1IHyBS"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "21:19:13"]
+
+1. e4 Nc6 2. d4 e5 { You can see what happens after 3. d5 in chapter 25. } { [%cal Rd4d5,Gd4e5,Gg1f3] } 3. dxe5 Nxe5 { Two main moves are shown here. } { [%cal Rg1f3,Rf2f4] } 4. Nf3 { Most reasonable-looking move, and our plan will be simple from here on. } (4. f4 { Quite common and aggressive move. } { [%cal Rf4e5] } 4... Nc6 { [%csl Bc5][%cal Bf8c5,Rc1e3] } 5. Be3 { [%csl Gc5][%cal Ge3c5] } 5... Bb4+ { Both c3 and Nd2 will transpose to each other. } { [%cal Rb4e1,Gb1d2,Gc2c3] } 6. c3 Ba5 7. Nf3) 4... Qf6 { [%csl Bf3][%cal Bf6f3,Be5f3] } 5. Nxe5 Qxe5 { [%csl Ge4][%cal Ge5e4] } 6. Nc3 Bb4 { [%csl Rc3][%cal Rb4c3,Ge5e4] } 7. Bd2 Nf6 { [%csl Ge4][%cal Gf6e4,Ge5e4] } 8. Bd3 { If you want to play very, very aggressive chess, then you can go for d5. However black's king and queen are in line, so personally I like to play it safer. } { [%csl Be8,Be5][%cal Rd7d5] } 8... d6 9. O-O Bg4 { [%cal Rg4d1] } 10. f3 Bc5+ { [%cal Rc5g1] } 11. Kh1 Bd7 { In the exchange variation, if white wants to get any kind of advantage, he has to look out for the move f4. } { [%cal Gf3f4] } 12. f4 Qe7 { Remember that e7 is the best square for the queen. } { [%csl Ge7] } 13. Qf3 { Which side to castle on? Looks like a lot of white's army is coming on the kingside, so... } { [%csl Gf4,Ge4][%cal Rd2h6,Rd3h7,Rf3h5,Re8g8,Re8c8] } 13... O-O-O { Castling long should be safer in this case. } { [%csl Gc8] } 14. Be3 Bxe3 15. Qxe3 { [%cal Re3a7] } 15... Kb8 16. a4 { [%cal Ga2a7,Gb2b7] } 16... d5 { [%csl Re4] } 17. e5 Ng4 { [%cal Rg4e3] } 18. Qf3 d4 { [%csl Rc3] } 19. Ne4 f5 { [%cal Gd8g8,Gg7f6,Re5f6] } 20. Ng5 h6 21. Nh3 { [%csl Re3,Gh3][%cal Gc3e4,Ge4g5,Gg5h3,Rg4e3] } 21... Ne3 { [%csl Be3][%cal Bd4e3,Gd7c6] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Scotch Game"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C45"]
+[Opening "Scotch Game: Classical Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Scotch Game"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/7rCb3hY7"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "21:19:34"]
+
+1. e4 Nc6 2. d4 e5 { You can see what happens after 3. d5 in chapter 21 and after 3. dxe5 in chapter 22. } { [%cal Gg1f3,Gd4e5,Rd4d5] } 3. Nf3 { This is also very common- white has transposed into a Scotch Game, as if he had just played the move d4. } { [%csl Gd4,Ge4,Ge5,Gf3,Gc6][%cal Gd2d4] } 3... exd4 4. Nxd4 Bc5 5. Be3 Qf6 6. c3 Nge7 7. Bc4 O-O 8. O-O d6 9. Nxc6 Nxc6 10. Bxc5 dxc5 11. f4 *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Scotch Gambit"]
+[Date "2017.10.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C44"]
+[Opening "Scotch Game: Haxo Gambit"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Scotch Gambit"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/gnGrdxw8"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.10"]
+[UTCTime "21:19:40"]
+
+1. e4 Nc6 2. d4 e5 3. Nf3 exd4 4. Bc4 Bc5 5. c3 (5. O-O d6 6. Re1) 5... Nf6 *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Nimzo-Italian"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Nimzowitsch Defense"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Nimzo-Italian"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/IElRcqIN"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "12:30:48"]
+
+1. e4 Nc6 { In chapters 29 and 30, we're covering white's moves 2. Bc4 and 2. Bb5. } { [%cal Gf1c4,Gf1b5] } 2. Bc4 Nf6 { Pure hypermodernism, or developing the pieces before the pawn structure. } { [%csl Bf6,Bc6][%cal Rf6e4,Gd2d3,Gb1c3] } 3. Nc3 { [%csl Ge4][%cal Gc3e4] } 3... e6 { This is a vital move, as we'll see shortly. } { [%csl Ge6][%cal Gd7d5] } 4. d3 d5 { [%csl Rd5][%cal Rd7d5] } 5. exd5 exd5 6. Bb3 Bb4 { [%cal Rd5d4] } 7. Bd2 O-O { [%cal Gf8e8] } 8. Nge2 Re8 9. O-O Bg4 { [%csl Re2][%cal Gb4c3] } 10. f3 Bc5+ { [%cal Rc5g1] } 11. Kh1 Be6 12. Nf4 { [%csl Re6][%cal Rf4e6] } 12... Nd4 { And now we'll see very shortly, the idea behind the e6 move. } { [%cal Ge7e6] } 13. Nxe6 Rxe6 14. Re1 Rxe1+ 15. Bxe1 { Alright, so here's the idea behind the e6 move: What we want to do is, at the right time, move the c6 knight out of the way, and play the move... } { [%csl Gd4][%cal Gc6d4] } 15... c6 { ...c6. And what it does is, it COMPLETELY shuts down white's bishop ad knight. The idea in the Bc4 line is, black wants to play the move e6, d5, move the knight and completely block this bishop with the move c6 and pawn chain. } { [%csl Gd5,Gc6,Gb7,Rc3,Rb3][%cal Gb7d5] } 16. Na4 Bd6 17. Bf2 Ne6 18. Qe2 b5 19. Nc3 a5 { [%cal Ra5a4] } 20. a3 a4 21. Ba2 { Look at this ridiculous bishop xD } { [%csl Ra2] } 21... Qa5 22. Be1 Qc7 { [%csl Rh2][%cal Rc7h2] } 23. h3 { Example of weak dark squares. } { [%csl Gg3,Gh4,Gh2,Gf4,Gf2] } 23... Nh5 { [%csl Gg3][%cal Gh5g3] } 24. Nd1 { White desperately tries to liberate the bishop, but it is too little, too late. } { [%cal Gc2c4] } 24... Nd4 { [%csl Be2,Bc2][%cal Bd4e2,Bd4c2] } 25. Qf2 Ng3+ { [%cal Rg3h1] } 26. Kg1 Nde2+ { Look at that pathetic bishop on a2...Which was in prison by this amazing pawn chain. This is, more or less, the concept in the Bc4 line: What black wants to do is play the moves: e6, d5, move the c6 knight and play the move c6, gaining the advantage. } { [%csl Ra2,Gd5,Gc6,Gb5,Ga4] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Nimzo-Spanish"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Nimzowitsch Defense: Pseudo-Spanish Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Nimzo-Spanish"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/8RMNlvgs"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "12:46:10"]
+
+1. e4 Nc6 2. Bb5 a6 { If the bishop moves to a4, we can play b5 and it will be a transposition to the Nimzo-Italian development and plan, shown in chapter 29. } { [%cal Rb5a4,Gb5c6] } 3. Bxc6 bxc6 4. d4 { [%csl Be4,Bd4] } 4... d5 { Hitting back in the center. White has two main moves here. } { [%cal Ge4e5,Gb1c3] } 5. e5 (5. Nc3 e6 { And now, the plan: What black is aiming for is to destroy the white's center with two c-pawns. So you have a structure like French Defense or Caro Kann, but white doesn't have the light-squared bishop, so black is a bit better. } { [%csl Rc6,Rc7,Bf1][%cal Rc7c5] } 6. Nf3 Nf6 7. Bg5 { [%cal Rg5d8] } 7... Be7 8. e5 Nd7 9. Bxe7 Qxe7 { [%csl Gc5][%cal Ge7c5,Gd7c5,Gc6c5] } 10. O-O c5 { And, the move which was waiting for a while. :) } { [%csl Gc5][%cal Gc6c5] } 11. dxc5 Nxc5 12. Qe2 O-O 13. Rad1 { So in a way, white is playing natural moves, but white is planless! That is the advantage black is getting. Black plan is very simple: Expand on the queenside and attack there. } 13... Bb7 14. b4 Nd7 15. b5 { This is a tactical error. Can you spot it? :) } 15... axb5 16. Nxb5 c6 17. Nd6 (17. Nbd4 Ba6 { [%csl Be2,Bf1][%cal Ba6f1] } 18. Nxc6 Qc5 { [%csl Rc6,Re2][%cal Rc5c6,Ra6e2] }) 17... Ba6 { [%csl Be2,Bf1][%cal Ba6f1] }) 5... Bf5 { This will be something like a Caro Kann defense, with the light-squared bishop outside the pawn chain. } { [%csl Gf5][%cal Ge7e6] } 6. Nf3 e6 { Something like a Caro Kann. } { [%csl Bf7,Be6,Bd5,Bc6,Gf5] } 7. O-O c5 { [%csl Rd4][%cal Rc5d4] } 8. c3 { [%csl Ga4][%cal Gd1a4] } 8... Qd7 9. Be3 cxd4 10. cxd4 Ne7 11. Nc3 Bg6 { [%csl Gf5][%cal Ge7f5] } 12. Na4 Nf5 13. Nc5 { [%cal Rc5d7] } 13... Bxc5 14. dxc5 Nxe3 15. fxe3 { White pawns are all over the place. Now let's see how to execute this plan. } { [%csl Re3,Re5,Rc5] } 15... Rb8 16. b3 Rb5 { [%csl Rc5][%cal Rb5c5] } 17. Qd4 O-O 18. b4 Rfb8 { [%csl Gb1][%cal Gg6b1,Ra1b1] } 19. a3 a5 20. Nh4 { [%cal Rh4g6] } 20... Be4 21. Nf3 axb4 22. axb4 h6 { [%csl Gg5][%cal Gf3g5] } 23. Ra4 { [%csl Gb4][%cal Ga4b4] } 23... Bc2 { [%cal Rc2a4] } 24. Ra2 Rxb4 { [%cal Rb4d4] } 25. Qc3 Rc4 { [%csl Gc3][%cal Gc4c2] } 26. Qa5 Be4 27. Nd2 Rcb4 28. Nxe4 Rxe4 { [%csl Be5,Be3][%cal Be4e5,Be4e3] } 29. Ra3 Qe7 { [%cal Ge7h4] } 30. Rfa1 Rb2 { Black is so much better here. } { [%csl Bb2,Be4,Ra5,Ra3,Ra1][%cal Be4e5,Be5e3,Bb2h2,Be7h4] } 31. Qa8+ Kh7 32. R3a2 Rxa2 33. Rxa2 Qxc5 *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Colorado Gambit Accept"]
+[Date "2017.10.12"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Nimzowitsch Defense: Colorado Countergambit Accepted"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Colorado Gambit Accept"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/vb1qVKXz"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.12"]
+[UTCTime "16:45:51"]
+
+1. e4 Nc6 2. Nf3 { Another common move by white, begging black to play 2...e5 and go back into a King's Pawn game. } { [%cal Ge7e5] } 2... f5 { But black plays this stunning reply, 2...f5! 3. exf5 will be covered in this chapter, 3.e5 in chapter 32 and the other moves in chapter 33. } { [%cal Re4f5,Gf1c4,Gb1c3,Gd2d3,Be4e5] } 3. exf5 { Most aggressive continuation by white. } 3... d5 { [%cal Gc8f5] } 4. Bb5 { [%cal Rb5e8] } 4... Bxf5 5. Ne5 { When you pin a piece, then attack it. White follows that principle here. } { [%csl Rc6][%cal Re5c6,Rb5e8] } 5... Bd7 { The move which I'm recommending. } { [%csl Gc6][%cal Gd7c6] } 6. Qh5+ g6 7. Nxg6 { [%csl Rh8][%cal Rg6h8] } 7... Nf6 { [%csl Rh5][%cal Rf6h5,Gh8g8] } 8. Qh4 Rg8 { [%cal Rg8g6] } 9. Nxf8 (9. Nf4 Rg4 { [%csl Bh4,Bf4][%cal Bg4h4,Bg4f4] }) 9... Rxf8 { Although black is a pawn down, black gets a very clear plan of attack in compensation. } 10. O-O a6 { [%cal Ra6b5] } 11. Be2 { Black's plan is as follows: Bf5, Qd7 and castle queenside, and then black will go on the kingside attack on white's king. } { [%csl Rg1][%cal Gd7f5,Rd8d7,Be8c8] } 11... Bf5 { According to the plan. } 12. d3 Qd7 { [%cal Re8c8] } 13. b3 O-O-O 14. Bb2 Rg8 { [%cal Bg8g1] } 15. Nc3 Rdf8 { Look at those rooks. They are wonderfully placed. Black can also play well in the center. } { [%csl Bg8,Bf8,Ge5,Gd4][%cal Bg8g1,Bf8f1,Ge7e5,Gc6d4] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Colorado Gambit Decline"]
+[Date "2017.10.12"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Nimzowitsch Defense: Colorado Countergambit"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Colorado Gambit Decline"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/q5hIV4U3"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.12"]
+[UTCTime "16:46:26"]
+
+1. e4 Nc6 2. Nf3 f5 { We covered 3. exf5 in the last chapter, so now we're looking at 3. e5. } { [%cal Re4f5,Ge4e5] } 3. e5 { White may think taking the pawn is a trap, so he pushes by. } { [%csl Ge5][%cal Ge4e5] } 3... d6 { [%cal Rd6e5] } 4. exd6 cxd6 5. Nc3 (5. Be2 e5 { [%csl Ge5,Gf5,Gd6] } 6. d3 Nf6 7. O-O d5 { [%csl Bf5,Be5,Bd5][%cal Gf8d6,Re8g8] }) 5... e5 { [%csl Bf5,Be5,Bd6] } 6. d4 Nf6 7. d5 Nb4 8. Bb5+ { [%cal Rb5e8] } 8... Bd7 9. Bxd7+ Qxd7 10. a3 Na6 { This knight can come to either c5 or c7 depending on what needed. } { [%csl Gc7,Gc5][%cal Ga6c7,Ga6c5] } 11. Ng5 { If the knight is allowed to come into e6, it will be a disaster... } { [%csl Re6][%cal Rg5e6] } 11... Nc7 { But we can cover that square! } { [%csl Ge6][%cal Gc7e6] } 12. O-O Be7 13. Qd3 O-O { [%csl Bf5,Be5][%cal Rh7h6] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Colorado Gambit Sideline"]
+[Date "2017.10.12"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Nimzowitsch Defense: Colorado Countergambit"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Colorado Gambit Sideline"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/xZypvHfo"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.12"]
+[UTCTime "16:47:01"]
+
+1. e4 Nc6 2. Nf3 f5 { A few sideline moves will be covered in this chapter. } { [%cal Gf1c4,Gb1c3,Gd2d3] } 3. d3 { Somewhat common move. } (3. Bc4 { This is a very bad-looking move but is sometimes played by weaker opponents. } { [%cal Rc4g8] } 3... fxe4 { [%csl Rf3] } 4. Ng5 { [%csl Bf7][%cal Bg5f7,Bc4f7] } (4. Bxg8 exf3 { [%csl Rg2,Rg8][%cal Rf3g2,Rh8g8] } 5. Bd5 { [%csl Gg2][%cal Gd5g2] } 5... fxg2 6. Bxg2 g6 { [%csl Rf2,Rh2][%cal Bf8g7,Be8g8,Ge7e5,Gd7d5] }) 4... d5 { [%csl Rc4][%cal Be7e5,Bg8f6] }) (3. Nc3 { [%cal Gc3e4] } 3... fxe4 4. Nxe4 d5 { [%cal Re4c3,Rd5d4] } 5. Ng3 e5 { [%csl Be5,Bd5] } 6. Bb5 { [%csl Ge5][%cal Rb5c6,Gf3e5] } 6... Bg4 { [%cal Rg4d1] } 7. h3 Bxf3 8. Qxf3 Nf6 9. Nh5 { Opponent may try this move... } { [%cal Rh5f6] } 9... Qd6 { [%csl Gc6,Gf6][%cal Gd6c6,Gd6f6] } 10. Nxf6+ gxf6 11. Qh5+ { [%cal Rh5e8] } 11... Kd7 { Black has the nice center and black will play Rd8 and Kc8, tucking the king to safety. } { [%csl Bf6,Be5,Bd5][%cal Ra8d8,Gd7c8] }) 3... e5 { [%csl Be5,Bf5] } 4. Nc3 Nf6 5. Be2 d6 6. O-O Be7 7. exf5 Bxf5 { [%cal Ge8g8] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Pawn Push"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Pawn Push Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Pawn Push"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/aosKviSB"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "02:25:37"]
+
+1. d4 Nf6 2. d5 e6 { Something like a Benoni } { [%csl Rd5][%cal Re6d5] } 3. c4 exd5 4. cxd5 d6 { [%cal Gc7c5] } 5. Nc3 c5 { Now we are in complete Benoni territory. Black has simple development from here on and his spacial plan will be a6 and b7-b5. } { [%cal Gg7g6,Gf8g7,Ge8g8,Rb7b5,Ra7a6] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: London System"]
+[Date "2017.10.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A46"]
+[Opening "Indian Defense: London System"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: London System"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/a0b2ddNs"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.11"]
+[UTCTime "01:01:55"]
+
+1. d4 Nf6 2. Bf4 { London System, a very common opening against many levels. White's idea is that he will have a very nice, essentially pre-movable opening at the cost of a slow position and lack of a plan in the middlegame. } { [%csl Bf4][%cal Bc1f4] } 2... e6 { 'Tis what I'm recommending against the London System, play like a Nimzo-Indian } 3. Nf3 b6 { Both bishops are going on the 7th rank. } { [%csl Bb7,Be7][%cal Bc8b7,Bf8e7] } 4. e3 (4. c4) 4... Bb7 5. Nbd2 { These are all typical London System moves. } { [%cal Gb1d2,Gg1f3,Ge2e3] } 5... Be7 6. c3 { [%csl Gc3,Gd4,Ge3] } 6... O-O (6... Nh5 { [%csl Gf4][%cal Gh5f4] } 7. Bg3 Nxg3 8. hxg3 { [%csl Ge7,Gb7][%cal Rh1h7] } 8... h6 { [%csl Gb7,Ge7,Rf1][%cal Gc7c5] }) 7. h3 { [%csl Gh2][%cal Gf4h2,Rf6h5] } 7... c5 { This is a typical pawn break that black wants to make in 1. d4 openings, trading black's flank pawn for white's central pawn. } { [%csl Bc5][%cal Bc7c5] } 8. Bd3 cxd4 9. exd4 d6 10. O-O Nbd7 11. Qe2 a6 { Hedgehog Formation. White doesn't really have a plan. One possible plan for white could be to play for a kingside attack with g2-g4-g5, at the cost of slightly weakening his own kingside.
+Although, most people playing the London System are going to be quiet, positional players, not aggressive, attacking players. You're more likely to see a move like Rfe1. } { [%csl Rg1,Be6,Bd6,Bb6,Ba6][%cal Rg2g4,Gf1e1] } 12. g4 { [%anno "Sittingbull98", sittingbull98] my recomandation } { Here white is storming down the kingside, but his king is slightly weak. } { [%csl Rg1][%cal Gg4g5,Gh3h4] } (12. Rfe1 Re8 13. Rad1 Bf8 { From here, black's plan is to break the center with e6-e5. Another possible plan is b6-b5 and Nb6. } { [%csl Be5][%cal Bd8c7,Be8e5,Gb6b5,Gd7b6] } 14. Bh2 Qc7 { [%cal Be6e5,Gb6b5,Gd7b6] }) 12... b5 13. a4 { [%csl Ga4,Gb5,Ga6][%cal Ga2a4,Ga4b5] } 13... b4 14. Bg3 { [%cal Gg4g5] } 14... a5 15. Rfe1 h6 16. g5 { [%csl Gg5,Gf6,Gh6][%cal Gg4g5,Gg5h6,Gg5f6] } 16... hxg5 { [%csl Gg8][%cal Gh4h8] } 17. Nxg5 { [%csl Rh7][%cal Rg5h7,Rd3h7,Rh5h7,Ge2h5] } 17... bxc3 18. bxc3 { [%csl Rc3,Ge2,Gd3,Gg5,Bf6][%cal Gd3h7,Ge2h5,Gg5h7,Bf6h7,Rc8c3,Rb8b1] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Colle/Zukertort"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Colle/Zukertort"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/OSWr0gLg"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "02:26:07"]
+
+1. d4 Nf6 2. e3 { [%csl Ge3] } 2... g6 { My plan is to play a Reverse Catalan. } { [%cal Rf8g7] } 3. Nf3 Bg7 { [%cal Rf1d3,Gf1e2] } 4. Be2 O-O 5. O-O d5 6. b3 c5 { Now black is playing a Catalan. } { [%csl Bg7,Bg8,Bf8,Bf6,Bd5,Bc5] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Trompowsky Attack"]
+[Date "2017.10.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Trompowsky Attack: Edge Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Trompowsky Attack"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/8JR8YKIs"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.11"]
+[UTCTime "01:15:55"]
+
+1. d4 Nf6 2. Bg5 { Trompowsky Attack. } 2... Ne4 { [%cal Re4g5] } 3. Bh4 d5 4. f3 Nf6 5. Nc3 c6 6. e4 Qb6 *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Veresov Attack"]
+[Date "2017.10.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D01"]
+[Opening "Richter-Veresov Attack"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Veresov Attack"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/YomnF4cP"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.11"]
+[UTCTime "00:35:40"]
+
+1. d4 Nf6 2. Nc3 { White is looking for a quick e4. This move is not recommended for white as the c-pawn is blocked when white usually wants it on c4 before the knight comes to c3. } { [%csl Ge4,Rc2][%cal Ge2e4] } 2... d5 { [%cal Rd5e4] } 3. Bg5 { [%cal Rg5f6,Ge2e4] } 3... Nbd7 { There are two ways white can continue for the e4 plan. } { [%csl Gf6,Be4][%cal Gd7f6,Bd1d3,Bf2f3] } 4. Qd3 { [%csl Ge4][%cal Gd3e4] } (4. f3 c6 5. e4 dxe4 6. fxe4 e5 7. dxe5 Qa5 { [%cal Ge5f6,Ra5g5] } 8. Bxf6 gxf6 9. e6 Ne5 { [%csl Ge5][%cal Gf6e5] }) 4... h6 5. Bh4 { White wants to avoid conceding the bishop pair immediately... } { [%cal Bg5h4] } 5... c6 { This move stops e4 completely. If white plays e4, there is a nice trap. } { [%csl Gc6][%cal Re2e4] } 6. e4 Nxe4 7. Nxe4 dxe4 8. Qxe4 g5 { [%cal Rg5h4] } 9. Bg3 Qa5+ { [%cal Ra5e1] } 10. c3 f5 { [%csl Gf5][%cal Ga5f5,Rf5e4] } 11. Qc2 (11. b4 { [%cal Rb4a5] } 11... Qa3 { [%csl Bc3][%cal Bc3e1,Bc3a1,Ra3c3] } 12. Qc2 f4 { [%csl Rg3] }) 11... f4 { [%csl Rg3] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: English Fianchetto"]
+[Date "2017.10.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A25"]
+[Opening "English Opening: King's English Variation, Reversed Closed Sicilian"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: English Fianchetto"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/Hn8IEpQj"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.11"]
+[UTCTime "01:11:39"]
+
+1. c4 e5 2. Nc3 Nc6 3. g3 { [%csl Gg2][%cal Gf1g2] } 3... f5 { The Reverse Grand Prix Attack. } 4. Bg2 Nf6 { [%cal Re2e3,Gg1f3,Ge5e4,Bd2d3,Bf8b4] } 5. e3 (5. d3 Bb4 6. Bd2 O-O) (5. Nf3 e4) 5... d5 { Reverse Grand Prix Gambit. } { [%csl Gd5][%cal Gd7d5] } 6. cxd5 (6. Nxd5 Nxd5 7. cxd5 Nb4 { [%csl Rd3,Gd5][%cal Rb4d3,Gb4d5] } 8. d3) 6... Nb4 { [%csl Rd3,Gd5][%cal Rb4d3,Gb4d5,Gf6d5,Gd8d5] } 7. d3 Nbxd5 8. Nxd5 Nxd5 9. a3 { [%csl Gb4][%cal Ga3b4] } 9... c6 { [%cal Gc8e6,Gf8d6,Bd8e7,Re8g8] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Classical English"]
+[Date "2017.10.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A27"]
+[Opening "English Opening: King's English Variation, Three Knights System"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Classical English"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/DkWa9N3o"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.11"]
+[UTCTime "01:12:27"]
+
+1. c4 e5 2. Nc3 Nc6 3. Nf3 f5 { Similar to the line shown in Chapter 28. } 4. d4 e4 5. Ng5 Bb4 6. Nh3 Nf6 7. e3 Bxc3+ 8. bxc3 O-O 9. Nf4 { [%cal Gc1a3,Ga3f8,Gd7d6] } 9... d6 10. c5 dxc5 11. Ba3 g5 { [%cal Gg7g4,Gf7f4,Rg8h8,Bd8e8,Be8h5] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Bird Opening"]
+[Date "2017.10.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A02"]
+[Opening "Bird Opening"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Bird Opening"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/g6JN2mdB"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.11"]
+[UTCTime "00:41:07"]
+
+1. f4 Nf6 2. Nf3 g6 { Playing a King's Indian. } { [%cal Gf8g7] } 3. e3 Bg7 4. c4 O-O 5. Nc3 { [%cal Gd7d5,Gc4d5,Gf6d5,Gc3d5] } 5... d5 { Grunfeld? } 6. cxd5 Nxd5 7. Bc4 *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Reti Opening"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A05"]
+[Opening "King's Indian Attack: Wahls Defense"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Reti Opening"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/AJBjvLeu"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "12:46:38"]
+
+1. Nf3 { This move is also a quite common system by white- they are just developing, not immediately showing what pawn structure they are going to build. } 1... Nf6 { I'm recommending a King's Indian Defense structure against this, as black's position will have a lot of flexibility in terms of responding accurately to white.
+Another common system black can use here is to play a Reverse Catalan with d5 and c5. } { [%cal Gd7d5,Gc7c5,Gg7g6] } 2. g3 { Here black can play a Reverse King's Indian Catalan with d5. The standard setup for white is showcased in Chapter 10. } { [%cal Bd7d5] } 2... g6 { First we are developing the "Indian Bishop" } { [%csl Bg7][%cal Bf8g7] } 3. Bg2 Bg7 4. O-O O-O { Now it's time for white to show his pawn structure intentions. } 5. d3 d5 { We can play something like a reverse QGD Catalan (Chapter 5) or reverse King's Indian Catalan (Chapter 10) } 6. Nbd2 c5 7. e4 Nc6 8. Re1 e5 9. c3 Be6 { Two active bishops just like in Chapter 10 } { [%csl Gg7,Ge6][%cal Rh7h6] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: King's Indian Attack"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense: King's Indian Attack"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: King's Indian Attack"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/A6xrFnlV"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "12:51:33"]
+
+1. e4 e6 { If you are playing the French Defense, you may run into a system by white known as the "King's Indian Attack" or a reverse King's Indian Defense. } 2. d3 { [%csl Bf1][%cal Bf1d3,Gg2g3,Gf1g2] } 2... d5 3. Nd2 Nf6 4. Ngf3 { The normal move for the French Defense is c5, but here we are playing... } { [%cal Rc7c5] } 4... Nc6 { Nc6, blocking the c-pawn. } { [%csl Rc7] } 5. g3 { [%cal Gf1g2] } 5... Bc5 { [%csl Rf2][%cal Rc5f2] } 6. Bg2 dxe4 { Best capture is with the pawn, but some may capture with the knight. } { [%cal Rd2e4,Gd3e4] } 7. dxe4 (7. Nxe4 Nxe4 8. dxe4 Qxd1+ 9. Kxd1 Bxf2 { [%csl Gf7,Rd1] }) 7... e5 { [%csl Rg2][%cal Rg2e4] } 8. O-O O-O 9. c3 { Once again, these moves by white are all standard K.I.A. theory, covered in Chapter 2. White's idea is to get a quick thrust on the queenside. Here there is a golden rule for black: Whenever white wants to push forward on the queenside, we need to stop this: } { [%csl Gb4][%cal Gb2b4,Gb4b5] } 9... a5 { Now the b4 square is covered. } { [%csl Rb4] } 10. Qe2 { Idea is to put the rook on the open file and attack black queen. } { [%csl Gd8][%cal Gf1d1] } 10... Qe7 { If white allows black to push that pawn, black has a quick queenside attack compared to the slow white kingside attack. } { [%cal Ga5a4,Ga4a3] } 11. a4 { [%csl Ga5][%cal Ga4a5] } (11. Rd1 Ng4 { [%csl Rf2][%cal Rg4f2,Gd1f1] }) 11... b6 { [%csl Be2,Bf1][%cal Gc8a6,Ga6f1] } 12. Nc4 { We are following a game played by WGM Judit Polgar (black pieces) } 12... Ba6 { [%csl Rc4][%cal Ga6e2] } 13. b3 { [%csl Gc4][%cal Gb3c4] } 13... b5 { [%csl Rc4,Ra4][%cal Rb5c4,Rb5a4] } 14. axb5 Bxb5 { [%cal Ga5a4] } 15. Nfd2 { [%csl Gc4][%cal Gd2c4] } (15. Qc2 Bxc4 16. bxc4 { [%csl Rc4,Rc3,Ga5][%cal Ga8a1] }) 15... Nd7 { [%csl Rc4][%cal Rd7b6,Rb6c4] } 16. Qd1 Rfd8 { [%cal Rd8d1] } 17. Re1 { [%csl Gc4,Rf2][%cal Rf1f2] } 17... Qf6 { [%csl Bf2][%cal Bf6f2,Bc5f2] } 18. Ne3 { [%csl Gf5,Gd5][%cal Ge3f5,Ge3d5] } 18... Bxe3 19. Rxe3 Nc5 { [%csl Rd3][%cal Rc5d3,Rb5d3,Rd8d3] } 20. Bf1 { [%csl Gd3][%cal Gf1d3] } 20... Bxf1 21. Qxf1 { [%csl Gd3][%cal Gf1d3] } 21... Qe6 { [%csl Rb3][%cal Re6b3,Rc5b3] } 22. Qb5 { [%csl Bc5,Gb3][%cal Bb5c5,Gb5b3] } 22... Nd7 23. Ba3 { [%csl Rd2] } 23... Nf6 { [%csl Rd2][%cal Rd8d2,Be6h3,Gf6g4,Gg4e3,Gg4h2] } 24. Re2 { [%csl Gd2][%cal Ge2d2] } 24... Rab8 { [%csl Rb5][%cal Rb8b5] } 25. Qa4 { As you can see, white's queen is so far away from her honey, so this is the right time to go on the kingside attack. } { [%csl Ga4,Rg1] } 25... h5 { [%cal Rh5h4,Rh4h3] } 26. Kg2 { [%csl Rh3][%cal Re6h3] } 26... h4 27. f3 Rd3 { [%csl Rc3][%cal Rd3c3] } 28. Rc1 Rbd8 { [%csl Bd2][%cal Bd8d2] } 29. Nf1 hxg3 30. hxg3 Nh5 31. Bc5 { [%cal Gc5g1,Gc5a7] } 31... Qg6 { [%cal Rg6g2,Gh5f4] } 32. Kf2 Rd1 { [%csl Rc1][%cal Rd1c1] } 33. Re1 R8d2+ { White is lost. } { [%cal Bd2f2] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Polish Opening"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A00"]
+[Opening "Polish Opening"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Polish Opening"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/eBnqvS3j"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "13:08:29"]
+
+1. b4 { Also known as the Orangutan, the Polish opening looks very weird, but it's actually quite sound. } 1... e5 { [%cal Rf8b4] } 2. Bb2 { Mainline Polish Opening move. } { [%csl Be5][%cal Bb2e5] } 2... f6 { We want to create a wall to that powerful bishop. } { [%cal Rb2e5] } 3. a3 { [%csl Gb4][%cal Ga3b4] } 3... d5 { Development ideas shown here. } { [%cal Gc8e6,Gf8d6,Bb8d7,Be7c6,Bg8e7,Re8g8,Ra7a5] } 4. e3 { Standard Polish theory. } 4... Be6 { [%csl Ge6][%cal Gc8e6] } 5. Nf3 Bd6 { [%csl Gd6][%cal Gf8d6] } 6. Be2 Ne7 { [%csl Ge7][%cal Gg8e7] } 7. O-O O-O { [%csl Gg8][%cal Ge8g8] } 8. d3 Nd7 { [%csl Gd7][%cal Gb8d7] } 9. c4 { Attacking black's strong center! } { [%cal Rc4d5] } 9... c6 { Black is better here. } { [%csl Gd5][%cal Gc6d5] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Grob's Attack"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A00"]
+[Opening "Grob Opening"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Grob's Attack"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/wW7xFKOw"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "13:08:22"]
+
+1. g4 { Grob's Attack has recently gotten very popular, but it is quite unsound. Let's see how we can exploit it. } 1... e5 { Establishing a pawn in the center. } 2. Bg2 { Mainline Grob move. } { [%cal Gg2a8] } 2... Nc6 { Closing off this diagonal. } { [%cal Bg2b7] } 3. c4 d6 { Now we are threatening to take the pawn. } { [%csl Rg4][%cal Rc8g4] } 4. h3 { [%csl Gg4][%cal Gh3g4] } 4... h5 { Now we are continuously attacking white's very weak g4 pawn. } { [%csl Rg4][%cal Rh5g4] } 5. e3 hxg4 6. hxg4 Rxh1 7. Bxh1 Qh4 { [%csl Rg4,Rh1][%cal Rh4g4,Rh4h1] } 8. Bf3 Nf6 { Not possible to defend the g4 pawn any longer, so white will lose the pawn. This is my recommendation against the Grob. } { [%csl Rg4][%cal Rf6g4,Rh4g4,Rc8g4] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Rubinstein System"]
+[Date "2017.10.12"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E55"]
+[Opening "Nimzo-Indian Defense: Normal Variation, Gligoric System, Bronstein Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Rubinstein System"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/q2kEpKrk"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.12"]
+[UTCTime "13:29:30"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 { This is known as the Nimzo-Indian Defense. With black's move Bb4, he is removing white's control of the e4 square, which is critical to white's central plan. } { [%csl Rc3][%cal Rb4e1,Ge2e4] } 4. e3 { There are three main moves white plays against the Nimzo-Indian. E3 is a very popular system against the Nimzo- the Rubinstein System. } { [%cal Ge2e3,Gd1c2,Gf2f3] } 4... O-O 5. Bd3 { [%csl Ge4][%cal Gd3e4] } 5... d5 { Fighting for the e4 square. } { [%csl Re4][%cal Rd5e4] } 6. Nf3 c5 { [%cal Rc5d4,Rd5c4] } 7. O-O dxc4 8. Bxc4 Nbd7 9. a3 { [%cal Ra3b4] } 9... Bxc3 { In the Nimzo-Indian, whenever your bishop is kicked with a3, you take on c3. } 10. bxc3 b6 { [%cal Gc8b7] } 11. Bd3 { [%csl Re4][%cal Rd3e4,Re3e4] } 11... Bb7 { [%csl Ge4][%cal Gb7e4] } 12. Re1 { [%csl Re4][%cal Re1e4] } 12... Ne4 { Very important that you stop white's plan of e4. } { [%csl Ge4] } 13. Bb2 f5 { [%csl Ge4][%cal Gf5e4] } 14. c4 Qe7 15. a4 { [%cal Ra4a5] } 15... a5 { [%csl Ga5] } 16. Rb1 Rad8 { Black has completed development and has a very strong position. } { [%csl Bf8,Be7,Bd8,Bd7,Bb7,Be4][%cal Gf8f6,Gf6g6] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Nimzo-Indian Classical"]
+[Date "2017.10.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E36"]
+[Opening "Nimzo-Indian Defense: Classical Variation, Noa Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Nimzo-Indian Classical"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/zd7Imsws"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.11"]
+[UTCTime "16:40:02"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 { [%cal Rf8b4] } 3... Bb4 { [%csl Bc3][%cal Bb4e1,Ge2e4] } 4. Qc2 { [%csl Gc3][%cal Gc2c3] } 4... d5 { Fight for the e4 square. } { [%csl Re4][%cal Rd5e4] } 5. a3 Bxc3+ 6. Qxc3 O-O 7. Nf3 dxc4 8. Qxc4 b6 { [%csl Ga6][%cal Gc8a6] } 9. Bg5 Ba6 { [%cal Ra6c4] } 10. Qc2 Nbd7 { Idea is to play c7-c5. } { [%csl Gc5][%cal Gc7c5] } 11. e3 Bxf1 12. Kxf1 c5 { Black is very good in this position. } { [%csl Gc5][%cal Bd8e7,Bf8d8,Ba8c8,Gc7c5] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Nimzo-Indian Kmoch"]
+[Date "2017.10.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E25"]
+[Opening "Nimzo-Indian Defense: Sämisch Variation"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Nimzo-Indian Kmoch"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/axYLmN3h"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.13"]
+[UTCTime "12:22:37"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. f3 { White's idea here is to secure the e4 square with a pawn. This game was played with V. Anand and M. Carlsen in 2011. } { [%csl Re4][%cal Rf3e4,Re2e4] } 4... d5 { [%csl Ge4][%cal Gd5e4] } 5. a3 Bxc3+ 6. bxc3 c5 7. cxd5 exd5 8. e3 { [%csl Gd3][%cal Gf1d3] } 8... c4 { [%csl Rd3][%cal Rc4d3] } 9. Ne2 Nc6 10. g4 O-O 11. Bg2 Na5 { Knight is going to the very nice home on b3, as no pawns will ever be able to chase it away from that point. } { [%csl Gb3][%cal Ga5b3,Rc2c3,Ra2a3] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Queen's Indian ...Ba6"]
+[Date "2017.10.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E15"]
+[Opening "Queen's Indian Defense: Fianchetto Variation, Check Variation, Intermezzo Line"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Queen's Indian ...Ba6"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/9fQwbXsE"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.14"]
+[UTCTime "01:44:13"]
+
+1. d4 Nf6 2. c4 e6 3. Nf3 { Many opponents are going to know the active positions black will get after the Nimzo-Indian, so white plays this calmer move, Nf3. Chapters 49 and 50 will cover the two best options for black here, ...b6 and ...c5. } { [%csl Gf3][%cal Gg1f3,Bc7c5,Bb7b6] } 3... b6 { This is the Queen's Indian, one of the possible continuations. At any moment, if white plays Nc3, Bb4 is in the picture. } { [%cal Gc8a6,Gc8b7,Rb1c3,Rf8b4] } 4. g3 Ba6 { [%csl Rc4][%cal Ra6c4] } 5. b3 { [%cal Gb3c4] } 5... Bb4+ { [%cal Rb4e1] } 6. Bd2 Be7 7. Bg2 c6 { The idea here is to play d5 and create a wall to white's "Catalan Bishop". } { [%csl Rg2][%cal Rd7d5] } 8. O-O d5 { Now white's plan will be to push e2-e4 and open the position for his bishop. } { [%csl Rc6,Rd5,Re6][%cal Ge2e4] } 9. Qc2 { [%csl Ge4][%cal Gc2e4] } 9... O-O 10. Rd1 Nbd7 { The development here is similar to Nimzo-Indian. } 11. Bc3 Rc8 12. Nbd2 { [%csl Ge4][%cal Ge2e4,Gd2e4,Gc2e4] } 12... c5 { Break open the center. } { [%csl Rd5,Rc5,Rc4,Rd4] } *
+
+
+[Event "🏆Repertoire for the D4 PLAYER 🏆: B: Blumenfeld Gambit"]
+[Date "2017.10.12"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E10"]
+[Opening "Blumenfeld Countergambit Accepted"]
+[StudyName "🏆Repertoire for the D4 PLAYER 🏆"]
+[ChapterName "B: Blumenfeld Gambit"]
+[ChapterURL "https://lichess.org/study/bmWAylqe/JgfCFbsn"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2017.10.12"]
+[UTCTime "13:40:50"]
+
+1. d4 { The Blumenfeld Gambit is also a very good opening for aggressive players. I'm not really an aggressive player, so I use the Queen's Indian instead, but I thought I'd include the opening. } 1... Nf6 2. c4 e6 3. Nf3 { With this move, white isn't allowing a direct pin. } { [%csl Rb4][%cal Rf8b4] } 3... c5 { Very exciting move. } { [%csl Rc5] } 4. d5 { [%cal Gd4d5] } 4... b5 { This is known as the Blumenfeld Gambit, which is similar to the Benko Gambit and has a similar layout to the Nimzo-Indian. } { [%csl Rb5][%cal Rc4b5] } 5. dxe6 fxe6 6. cxb5 d5 { Wonderful center similar to the Colorado Gambit. } { [%csl Ge6,Gd5,Gc5] } 7. e3 { From here the piece layout is similar to the Nimzo-Indian layout. } 7... Bd6 { [%csl Bd6][%cal Bf8d6] } 8. Be2 O-O { [%csl Bg8][%cal Be8g8] } 9. O-O Bb7 { [%csl Bb7][%cal Bc8b7] } 10. b3 Qe7 { [%csl Be7][%cal Bd8e7] } 11. Bb2 Nbd7 { [%csl Bd7][%cal Bb8d7] } 12. Nc3 Rad8 { [%csl Bd8][%cal Ba8d8] } 13. Qc2 e5 { Black has a very wonderful position in compensation for the pawn. Two bishops strongly looking on the kingside, the open f-file and the wonderful center. } { [%csl Bc5,Bd5,Be5,Rb5][%cal Gb7h1,Gd6h2,Rf8f2] } *
+
+

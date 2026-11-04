@@ -1,0 +1,428 @@
+[Event "♦ All about the Sicilian Defense ♦: Introduction"]
+[Date "2017.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B20"]
+[Opening "Sicilian Defense"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/en521qn8"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.25"]
+[UTCTime "09:46:30"]
+
+{ In this study we are going to explore some of the key variations of the Sicilian defense (c5), a very common response to e4 and it is used by most top level players. } { [%anno "FunnyAnimatorJimTV", funnyanimatorjimtv] The Sicilian is an excellent way to play with the black pieces against 1.e4. But there are quite a few variations you need to know about! Francesco has done an excellent job at } { [%csl Be4,Bc5][%cal Be2e4,Bc7c5] }
+1. e4 c5 { This is the Sicilian defense. In this study we are going to explore the main and most common variations played by Black.
+If you like this study, please press the heart below and follow me to keep updated with new studies exploring openings and tactics :) } { [%anno "Nazar1005", nazar1005] the main Idea of Sicilian defence is dont give play d2-d4 for white or they will have very strong pawn centre } { [%csl Gc5][%cal Gc7c5,Ge2e4,Gc5d4,Rd2d4] } (1... e5 { [%anno "Nazar1005", nazar1005] black can play e5 with the same Idea but after } { [%cal Ge5d4] } 2. Nf3 { [%anno "Nazar1005", nazar1005] black must protect the pawn } { [%cal Gf3e5] } 2... Nc6 3. Bb5 { [%anno "Nazar1005", nazar1005] and you can see that black must protect the pawn a lot } { [%csl Ye5][%cal Gb5c6,Gf3e5] }) (1... a6 2. d4 { [%cal Gd4c5,Ge4d5,Ge4f5,Gd4e5] }) *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Dragon Variation"]
+[Date "2017.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B76"]
+[Opening "Sicilian Defense: Dragon Variation, Yugoslav Attack, Panov Variation"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Dragon Variation"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/qwnXMwVC"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.25"]
+[UTCTime "10:12:04"]
+
+{ This chapter will go over the Dragon Variation, a very common variation used by Black and it is the most aggressive variation in the Sicilian defense. }
+1. e4 c5 2. Nf3 { Simple developing move to control the d4 square } { [%csl Gd4,Gc5][%cal Gf3d4,Gc5d4] } 2... d6 { [%cal Gd6e5] } (2... e6 3. d4 cxd4 4. Nxd4 Nf6 5. e5 (5. Nc3 { [%cal Ge4e5] }) 5... Qa5+) 3. d4 { Whites want the exchange of pawns } { [%cal Gc5d4] } 3... cxd4 { [%cal Gf3d4] } 4. Nxd4 { Whites are now ahead in development but blacks still have the two central pawns whereas whites only one. } { [%csl Ge7,Gd6,Ge4] } 4... Nf6 { Blacks are now developing their knight and threatening the e4 pawn } { [%csl Ge4][%cal Gf6e4] } 5. Nc3 { The e4 pawn is now protected by the c3 knight } { [%csl Ge4,Bc3][%cal Rf6e4,Bc3e4] } 5... g6 { This is the DRAGON VARIATION. g6 allows the dark-squared bishop to develop and move to g7, controlling the long dark-squared diagonal } { [%csl Gd4] } 6. Be3 { [%cal Gd1d2,Gf2f3,Ge1c1,Gg2g4,Gh2h4,Gg4g5] } (6. Be2 Bg7 7. O-O Nc6 8. Be3 { [%cal Ge3d4] } (8. f3 Nxe4 { [%cal Gg7d4,Gc6d4] } 9. Nxc6 Qb6+ { [%cal Gb6c6,Gb6g1] } 10. Kh1 Nxc3 { [%cal Gc3d1,Gc3e2] } 11. bxc3 bxc6 { [%cal Gc8a6] }) 8... O-O 9. Nb3 a6 { [%cal Gb7b5,Gb5b4,Ge2c4] }) 6... Bg7 (6... Ng4 { [%cal Gg4e3] } 7. Bb5+ { [%cal Gb5e8,Gb8d7,Gc8d7,Gd1g4] } 7... Nc6 8. Nxc6 bxc6 9. Bxc6+ { [%cal Gc6a8] }) 7. f3 { [%anno "fjachess", fjachess] The key opening moves for White, who attempt to castle queenside , whereas f3 strengthens the pawn structure, connecting e4 to the h2 and g2, while White also plan pushing to g4 and possibly h4. } { [%csl Bf3,Be3][%cal Rg2g4,Rh2h4,Rg4g5] } 7... O-O (7... h5 { [%anno "fjachess", fjachess] Is operating against g4. }) 8. Qd2 { [%csl Gh6,Gg7][%cal Ge1c1,Ga1d1,Re3h6,Rd2h6] } 8... Nc6 { [%csl Gc6,Gh6][%cal Gb8c6,Ge1c1,Ga7a6,Ge3h6] } 9. g4 (9. Bh6 { [%cal Ge3d4] } 9... Bxh6 10. Qxh6 Nxd4) 9... Be6 (9... Nxd4 10. Bxd4 Be6 { [%cal Rf1c4] }) 10. Nxe6 fxe6 { The rook has a powerful open file! } { [%cal Gf8f1] } 11. O-O-O Ne5 { [%csl Gf3][%cal Ge5f3] } 12. Be2 { [%csl Gf3][%cal Re5f3,Bd1h1,Bg1d1,Ge2f3] } 12... Qc8 { [%cal Gc8c1] } 13. h4 { [%cal Ge5c4] } *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Yugoslav Attack"]
+[Date "2017.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B78"]
+[Opening "Sicilian Defense: Dragon Variation, Yugoslav Attack, Old Line"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Yugoslav Attack"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/5STFiOIX"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.25"]
+[UTCTime "10:40:01"]
+
+{ The Yugoslav Attack is an ultra-aggressive attack from blacks after the Dragon Variation. }
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 { This is the Dragon Variation } 6. Be3 { Developing move to give further protection to the knight in d4. Moreover, whites are aiming to castle queenside. } { [%cal Ge3d4] } 6... Bg7 { The bishop is now controlling the long diagonal. } { [%cal Gg7a1] } (6... Ng4 { Big Blunder } { [%cal Gf1b5,Gb5e8] } 7. Bb5+ Bd7 { [%cal Gd1g4] } 8. Qxg4 { The bishop can't move because it's pinned } { [%csl Rd7] }) 7. f3 { A very important move to support the e4 pawn, which is very important because it's controlling the centre of the board. It also prevents Ng4 } { [%csl Gf5,Gd5][%cal Gf3e4,Be4f5,Be4d5,Rf6g4] } 7... O-O { Blacks castle on the kingside } { [%csl Gg4][%cal Gg2g4,Gd1d2,Gf1c4] } 8. Qd2 { Blacks castled kingside whereas whites castled queenside. This leads to a very tactical and aggressive game from both sides. } (8. g4 Nc6 9. Qd2) 8... Nc6 9. Bc4 { Very common move to give pressure to the f7 pawn and to prevent the move d5 } { [%csl Gf7][%cal Rd6d5,Gc4f7] } 9... Bd7 { Blacks are preparing to move the rook in c8 to attack the semi-open file } { Black is preparing to move the rook in c8 to attack the semi-open file } { [%cal Ga8c8,Gc8c2] } 10. O-O-O { Whites now castle queenside (opposite to blacks) leading to a very tactical and aggressive game from both sides } { [%csl Gd1,Gc1,Gg8,Gf8][%cal Ga7a5,Gb7b5,Gg2g4,Gh2h4] } 10... Rc8 { This rook in the C-file is very dangerous } { [%cal Gc8c3] } 11. Bb3 { The bishop retreats for protection } (11. h4 Nxd4 12. Bxd4 Rxc4) 11... Ne5 { Nice move trying to control the centre and at the same time free the rook } { [%cal Gc8c2] } 12. Kb1 a6 { [%cal Rc3b5] } 13. h4 { [%csl Gh5,Gg4][%cal Gh7h5,Gh5g4,Gf6h5] } *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Accelerated Dragon"]
+[Date "2017.06.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B34"]
+[Opening "Sicilian Defense: Accelerated Dragon, Modern Variation"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Accelerated Dragon"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/A85fUgI4"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.26"]
+[UTCTime "16:23:51"]
+
+{ In this study we are going to explore another aggressive opening for blacks: the accelerated dragon. }
+1. e4 c5 2. Nf3 { Simple developing move and very common } 2... Nc6 { Blacks respond with Nc6 to control the e5 and d4 squares } { [%csl Ge5,Gd4] } 3. d4 { Whites are threatening the c5 pawn } (3. Bb5 e6) 3... cxd4 4. Nxd4 { This is what we call the Open Sicilian } 4... g6 { Blacks are preparing to fianchetto their bishop } { [%csl Gg7][%cal Gf8g7] } 5. Nc3 (5. Nxc6) (5. c4 Nf6 6. Nc3 d6) 5... Bg7 { The bishop is now controlling the long diagonal } { [%cal Gg7b2] } 6. Be3 { Developing move trying to defend the knight } { [%csl Gg7,Gc6][%cal Ge3d4,Gd1d4] } (6. Nxc6 { Mistake from whites } 6... bxc6 { Whites now have a better center control and the b-file is now opened for the rook } { [%csl Gf5,Gd5,Gb5,Gh5,Gg6,Gc6][%cal Ga8b8,Gb8b2,Gg7c3] }) 6... Nf6 { This move allows the pawn to push forward in d5 and allows the king to castle } { [%csl Gd5][%cal Gd7d5,Ge8g8] } 7. Nxc6 { Nice move from whites } (7. Bc4 { This move prevents d5 } 7... O-O 8. Bb3 { The bishop is safer in b3 } 8... a5 { Blacks are aiming to push the pawn in a4 and if either the bishop or the knight take it blacks can eat the e4 pawn } { [%cal Ga5a4] } 9. f3 { f3 protects the e4 pawn } { [%csl Ge4] }) 7... bxc6 { Now whites can push the e4 pawn forward } { [%cal Ge4e5] } 8. e5 Ng8 { The e5 pawn is now unprotected } { [%cal Gg7e5] } 9. f4 Nh6 { The knight can then go in f5 threatening the bishop } { [%csl Gf5][%cal Gh6f5,Gf5e3] } 10. Qf3 O-O 11. O-O-O d5 { According to stockfish, blacks have an advantage of -0.3 } 12. h3 Qa5 13. Rd4 *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Hyperaccelerated Dragon"]
+[Date "2017.06.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B35"]
+[Opening "Sicilian Defense: Accelerated Dragon, Modern Bc4 Variation"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Hyperaccelerated Dragon"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/J7BZ323T"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.26"]
+[UTCTime "18:32:33"]
+
+{ This chapter is going to go over the hyper accelerated dragon, in which blacks move g6 in the second move }
+1. e4 c5 2. Nf3 g6 { Blacks prepare to fianchetto their bishop } 3. d4 cxd4 (3... Bg7 { [%anno "fjachess", fjachess] This (funnily) is called Hyperaccelerated Pterodactyl (https://en.wikipedia.org/wiki/Pterodactylus) } 4. dxc5 Qa5+ { [%cal Ra5e1,Ra5c5] } 5. c3 { [%csl Rg7,Rc3,Rb2][%cal Bg7c3] } (5. Nc3 Bxc3+ 6. bxc3 Qxc3+ 7. Bd2 Qxc5) 5... Qxc5 6. Be3 Qc7 7. Nbd2 (7. Na3 { [%anno "fjachess", fjachess] gives Black the opportunity to play : } 7... Bxc3+ { [%cal Rc3b2] } 8. bxc3 Qxc3+ 9. Nd2 Qxa3 { [%anno "fjachess", fjachess] But Black's extra pawn is not compensating their terrible development.
+Stil, Queen intensive openings such as this one will often be handled wrongly by your opponent in Bullet Chess and the pawn that you are up, if your opponent has no other plan than skipping the middlegame by exchanging as fast as possible, could be a game decider in the Endgame. } 10. Rc1 Nc6 11. Nc4 Qb4+ 12. Bd2 Qc5 13. Bc3 f6 (13... Nf6 14. Bxf6 exf6 15. Nd6+ { [%cal Rc1c5] } 15... Qxd6 16. Qxd6)) 7... d6 { [%csl Be5,Bc5][%cal Gc8g4,Gb8d7] }) 4. Nxd4 (4. Qxd4 { [%anno "Bratac38", bratac38] Another possibility for white instead of Nxd4 } 4... Nf6 (4... f6 { [%anno "Bratac38", bratac38] Ugly due to lack of black development. }) 5. e5 Nc6 6. Qa4 Nd5 7. Qe4 Nb6 8. Bb5) 4... Nc6 5. Nc3 Bg7 { Blacks put a lot of pressure on the knight in d4 } { [%cal Gg7d4,Gc6d4] } 6. Be3 Nf6 7. Bc4 { Same position as in the Accelerated Dragon } 7... O-O 8. Bb3 d6 9. f3 Bd7 { [%cal Ga8c8,Gc8c1] } *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Najdorf Variation Part 1"]
+[Date "2017.06.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B98"]
+[Opening "Sicilian Defense: Najdorf Variation"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Najdorf Variation Part 1"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/bT2zPPp7"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.26"]
+[UTCTime "21:29:46"]
+
+{ This chapter is about the Najdorf Variation, a very common and strong variation used by players at all levels.
+TO LEARN MORE ABOUT THE NAJDORF, PLS CHECK OUT https://lichess.org/study/YcFtDNCn }
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 { Simple developing moves } 5... a6 { This strange-looking move is very important: 1) it prevents the knights to move in b5 2) it prevents the bishop to check the king 3) it allows b5 } { [%csl Rb5][%cal Ga7a6,Rd4b5,Rc3b5,Rf1b5,Bb7b5,Ge7e5] } (5... e5 { [%csl Yd5,Yc7][%cal Yc6d5,Ye6d5,Yc7c6,Ye7e5] } 6. Ndb5 a6 7. Na3 b5 8. Nd5 Bb7 { [%csl Gd5][%cal Ga3c2,Gc2e3,Gf2f3] } 9. Be2 Nxe4) 6. Bg5 { This is the 'Old Main Line' } { [%cal Yg5f6] } (6. Be3 { This is the English Attack } 6... e5 7. Nb3 Be6 8. f3 { [%cal Rf6g4] } 8... Nbd7 { [%cal Ga8c8,Gc8c1] } 9. Qd2 b5 10. a3) 6... e6 { Whites are putting pressure on the kingside } 7. f4 Be7 8. Qf3 { Getting ready to castle queenside } { [%cal Gb6b2] } 8... Qb6 { [%cal Gb6b2,Gb6d4] } (8... Qc7 9. O-O-O Nbd7 10. g4 b5 11. Bxf6 Nxf6 12. g5 Nd7 13. f5 Bxg5+ 14. Kb1 Ne5 15. Qh5 Qe7) 9. O-O-O { [%cal Gd1d4,Gc1b2] } 9... Nbd7 { [%cal Gd7f6,Ge7f6] } 10. h4 h6 11. Bxf6 Bxf6 *
+
+
+[Event "White/Attack/Encyclopedia"]
+[Site "https://lichess.org/study/IQS92CkX/h7RFDdxT"]
+[Date "2022.02.21"]
+[White "Build Survey..."]
+[Result "*"]
+[Annotator "Attack"]
+[Variant "Standard"]
+[ECO "B97"]
+[Opening "Sicilian Defense: Najdorf Variation, Poisoned Pawn Accepted"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Najdorf Variation Part 2"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/jDdV8VNt"]
+
+1. e4 { [%anno "Nazar1005", nazar1005] Following variations were added with help of my friend of Daniel Leclere the original study https://lichess.org/study/IQS92CkX } 1... c5 (1... e5 2. Nf3 Nc6 3. Bb5) 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 (5... e5 6. Ndb5 a6 7. Na3 b5 8. Nd5 Bb7 9. Be2 Nxe4) 6. Bg5 { This is the 'Old Main Line' } (6. Be3 { This is the English attack } 6... e5 7. Nb3 Be6 8. f3 Nbd7 9. Qd2 b5 10. a3) 6... e6 (6... h6 7. Bxf6) (6... h5 7. f4) (6... Bd7 7. Qd2 { Fedoseev 2678 - Kobo 2449, 2020 1-0 (25) }) (6... b5 7. Qd2) (6... Qb6 7. Bxf6 gxf6 8. Nb3) (6... e5 7. Nf5 Bxf5 8. exf5 Nbd7 9. Bc4) (6... Nc6 7. Qd2 e6 (7... h6 8. Bxf6 gxf6 9. O-O-O e6 10. f4 Bd7 (10... Qc7 11. Be2) (10... h5 11. Kb1 Bd7 12. f5) (10... Qb6 11. Nf3 Bd7 12. f5) 11. f5) (7... Bd7 { ( -> 8.0-0-0 transposes into 8...e7-e6 transposes into 7...
+e6 8.0-0-0 Bd7 ) }) (7... Qb6 8. Nb3 { ( -> 8...e7-e6 transposes into 9.0-0-0
+transposes into 8.0-0-0 Qb6 9.Nb3 ) }) (7... Nxd4 8. Qxd4 Qa5 (8... e5 9. Qd2 Be6 10. O-O-O Rc8 11. Kb1) 9. f4 e5 (9... e6 10. O-O-O Nd7 (10... Be7 11. Bc4) 11. Kb1) 10. Qd2 Be7 11. O-O-O) 8. O-O-O Bd7 (8... Qc7 9. f4 Be7 10. Kb1 Bd7 11. f5) (8... Qb6 9. Nb3 Be7 (9... Qc7 10. f4 b5 (10... Bd7 11. Be2) (10... Be7 11. Be2 Bd7 (11... O-O 12. Bxf6 gxf6 13. g4) (11... b5 12. Bxf6) 12. Bxf6 gxf6 13. Bh5 Rf8 14. f5) 11. Bd3) 10. f3 O-O (10... Qc7 11. Be3 { ( -> 11...0-0
+transposes into 12.g2-g4 transposes into 11.g4 Qc7 12.Be3 ) }) 11. g4 Qc7 (11... Rd8 12. Be3 Qc7 13. g5 Nd7 14. h4 b5 15. h5 b4 (15... Nce5 16. g6) 16. Ne2) 12. Be3 b5 13. g5 Nd7 14. f4 Nb6 (14... Nc5 15. Nxc5 dxc5 16. e5) 15. Qf2) (8... Nxd4 9. Qxd4 { ( -> 9...Lf8-e7 transposes into 10.f2-f4 transposes into 9.f4
+Nxd4 10.Qxd4 ) }) (8... Be7 9. f4 Nxd4 10. Qxd4 b5 (10... O-O 11. Kb1 b5 12. Bxf6 Bxf6 13. Qxd6) 11. Bxf6 gxf6 12. e5 d5 13. f5 O-O (13... fxe5 14. Qxe5 Bf6 15. Qg3 Bh4 16. Qh3 { Karjakin 2727 - Ivanchuk 2781, 2008 0-1 (39) }) 14. Qg4+) (8... h6 9. Be3 Be7 (9... Ng4 10. Nxc6 bxc6 11. Bc5 d5 (11... Qg5 12. Qxg5 hxg5 13. Be2) (11... Bb7 12. h3 Qa5 13. Bxd6 O-O-O 14. Bc7 Qxc7 15. Qxd8+ Qxd8 16. Rxd8+ Kxd8 17. hxg4) 12. Bxf8 Kxf8 13. h3 Nf6 14. Qe3) (9... Qc7 10. f4 Bd7 11. h3 b5 12. Bd3 Na5 13. Kb1 Nc4 14. Bxc4 Qxc4 15. e5) (9... Nxd4 10. Bxd4 b5 { ( -> 11.f2-f4 transposes into 11...Bf8-e7 transposes into 10...Nxd4 11.Bxd4 b5
+) }) (9... Bd7 10. f4 b5 11. Bd3 Qc7 (11... b4 12. Nce2) 12. Rhe1 Na5 13. e5 b4 (13... dxe5 14. fxe5) 14. Ncb5) 10. f4 Nxd4 (10... O-O 11. h3) (10... Qc7 11. Be2 Nxd4 (11... e5 12. Nf5) (11... Na5 12. e5) (11... Bd7 12. g4 Nxd4 13. Qxd4) 12. Qxd4 b5 (12... e5 13. Qd3) 13. Bf3) (10... Bd7 11. h3 b5 12. Bd3 Nxd4 (12... O-O 13. g4 Nxd4 14. Bxd4) (12... Qc7 13. g4) 13. Bxd4 b4 (13... Bc6 14. Qe3 O-O 15. Ne2) 14. Ne2 e5 15. Be3 Qa5 16. Kb1 O-O (16... Be6 17. Nc1) 17. g4 exf4 (17... Rfd8 18. g5) 18. Bxf4 Be6 19. Nc1 d5 (19... Nd7 20. Nb3) 20. e5) 11. Bxd4 b5 12. Bd3 Bb7 (12... Qa5 13. Kb1) (12... b4 13. Na4 Rb8 14. e5 dxe5 (14... Nd5 15. Bc4) 15. Bxe5 Bd7 16. f5 Bxa4 17. fxe6 Rc8 18. exf7+ Kxf7 19. Qf4 Qb6 20. Bc4+) 13. Rhe1 O-O 14. Kb1 b4 15. Ne2) 9. f4 b5 (9... Rc8 10. Nf3) (9... Qc7 10. f5) (9... h6 10. Bh4 g5 (10... Qc7 11. Bxf6 { Kotronias 2718 - Von
+Bahr 2388, 2008 1-0 (19) }) (10... Rc8 11. Nf3 Qa5 12. Kb1 b5 13. e5) (10... b5 11. Bxf6 gxf6 12. Kb1 Qb6 (12... b4 13. Nce2 Qb6 14. Nf3 { Ponomariov 2712 - Li
+2751, 2016 0-1 (56) }) 13. Nxc6 Bxc6 14. f5 O-O-O 15. Qf4) (10... Nxe4 11. Qe1 Nf6 (11... g5 12. Nxe4) 12. Nf5 Qa5 13. Nxd6+ Bxd6 14. Rxd6 Qc7 (14... O-O-O 15. Qd2 Ne7 16. Bd3) 15. Rd2 O-O-O 16. Ne4) 11. fxg5 Ng4 12. Be2 Nge5 13. Nf3 Be7 14. Rhg1 b5 (14... Rg8 15. Bg3 hxg5 16. Nxe5 Nxe5 17. Bxe5 dxe5 18. Bh5) 15. Rdf1 b4 (15... Rb8 16. Nd1) 16. Nd1 hxg5 (16... a5 17. Kb1) 17. Bxg5 Bxg5 18. Nxg5 Qa5 19. Qf4) (9... Be7 10. Nf3 b5 (10... Qc7 11. e5 dxe5 12. fxe5 Nd5 13. Nxd5 exd5 14. Bxe7 Nxe7 15. Qg5) (10... h6 11. Bh4 Rc8 (11... g5 12. fxg5 Ng4 13. g3 Nge5 14. Nxe5) (11... b5 12. Bd3 b4 (12... g5 13. fxg5 Ng4 14. Rhf1) 13. Ne2) (11... Qc7 12. Bxf6) 12. Kb1 Nb8 13. Bd3 Bc6 14. e5) 11. Bxf6 gxf6 (11... Bxf6 12. Qxd6 Be7 (12... Ra7 13. e5 Be7 14. Qd2 Qa5 15. Kb1 Bb4 16. Qd3) 13. Qd2 b4 14. Ne2 Ra7 15. Kb1) 12. f5 Qb6 (12... Ne5 13. Bd3) (12... O-O 13. g4) (12... b4 13. Ne2) (12... h5 { ( -> 13.Kc1-b1 transposes into 13...Qd8-b6
+transposes into 12...Qb6 13.Kb1 h5 ) }) (12... Qa5 13. Kb1 h5 (13... Rc8 14. g3) 14. fxe6 { Karjakin 2752 - Gabrielian 2463, 2020 1-0 (32) }) 13. Kb1 O-O-O (13... b4 14. fxe6) (13... Ne5 14. Nxe5) (13... h5 14. Qe1) 14. Bd3 Kb8 15. Ne2) 10. Bxf6 gxf6 11. Kb1 Qb6 (11... h5 12. f5 Qb6 13. fxe6 fxe6 { ( -> 14.Sd4xc6
+transposes into 14...Bd7xc6 transposes into 13...h5 14.fxe6 fxe6 ) }) (11... Rc8 12. f5 Ne5 13. Qe3) (11... b4 12. Nce2 Qb6 13. Nxc6 { ( -> 13...Ld7xc6
+transposes into 14.f4-f5 transposes into 13.f5 b4 14.Ne2 ) }) 12. Nxc6 Bxc6 13. f5 b4 (13... O-O-O 14. fxe6 fxe6 15. a3) (13... h5 14. fxe6 fxe6 15. Bd3 b4 (15... O-O-O 16. Ne2 { Anand 2764 - Caruana 2819, 2019 1-0 (41) }) 16. Ne2 Bh6 17. Qe1) (13... Qc5 14. Bd3 h5 (14... O-O-O 15. Rhf1 Be7 16. Qh6) (14... b4 15. Ne2 e5 (15... a5 16. Nf4) 16. Ng3 h5 (16... Ke7 17. Nh5 Rg8 18. Rhg1 Rg5 (18... a5 19. g4 a4 20. g5 fxg5 21. f6+ Kd7 22. Ng3) 19. Qe2 Bh6 20. g4 Rgg8 21. Rg3) 17. h4 Bh6 (17... a5 18. Qe2 a4 19. Bc4 Ke7 20. b3) 18. Qe2 Qe3 (18... Ke7 { ( -> 19.Sg3xh5 transposes into 19...Qc5-e3 transposes into 18...Qe3 19.Nxh5
+Ke7 ) }) 19. Nxh5 Ke7 20. Qf1 Bxe4 21. Rh3 Bxd3 22. Rxd3 Qc1+ (22... Qe4 23. Qd1 Rad8 24. g4) 23. Qxc1 Bxc1 24. Nxf6 Kxf6 25. Kxc1 { Karjakin 2752 - Harsha 2509,
+2020 1/2-1/2 (34) }) 15. fxe6 fxe6 16. Rhf1 Bh6 (16... Bg7 17. e5) 17. Qe2) 14. Ne2 e5 (14... Bxe4 15. fxe6 fxe6 16. Qf4 { Naiditsch 2710 - Kozul 2601, 2013
+1-0 (43) }) 15. Ng3 h5 (15... Qc5 16. Nh5 Ke7 17. g4) 16. h4 Qc5 (16... a5 17. Bc4) (16... Bh6 17. Qe2 Ke7 18. Nxh5 { Karjakin 2752 - Siva 2349, 2020 0-1 (41) }) 17. Qe2 Ke7 (17... Bb5 18. Qf3 Rc8 19. Bxb5+ axb5 20. Qe2) 18. Nxh5 Bb5 19. Qg4 Bh6 20. Rd5 Qc7 21. Qd1 Bc6 22. Bc4 Rac8 23. b3 Bxd5 24. Qxd5 Rh7 25. g4 Be3 26. Rh3) (6... Nbd7 7. Qe2 h6 (7... e5 8. Nf5 { ( -> 8...h7-h6 transposes
+into 9.Bg5-h4 transposes into 8.Bh4 e5 9.Nf5 ) }) (7... Qa5 8. f4 h6 (8... e5 9. Nb3 Qc7 10. f5 b5 11. O-O-O) 9. Bh4 e5 10. Nb3 Qc7 11. f5) (7... g6 8. O-O-O Bg7 (8... e5 9. Nd5) 9. f4 O-O (9... Qa5 10. Kb1) 10. f5 Ne5 11. h4) (7... Qc7 { ( -> 8.0-0-0 transposes into 8...e7-e6 transposes into 7...e6 8.0-0-0 Qc7 ) }) (7... b5 8. O-O-O Bb7 9. f4 Rc8 10. e5 dxe5 11. fxe5 Rxc3 12. exf6 Rc5 13. h4 { Karjakin 2752 - Bocharov 2524, 2020 0-1 (74) }) (7... e6 8. O-O-O Qc7 (8... b5 { ( -> 9.f2-f4 transposes into 9...Qd8-c7 transposes into 8...Qc7 9.f4 b5 ) }) (8... Be7 { ( -> 9.f2-f4 transposes into 9...Qd8-c7 transposes into 8...Qc7 9.f4
+Be7 ) }) 9. f4 b5 (9... Be7 10. g4 { ( -> 10...b7-b5 transposes into 11.a2-a3
+transposes into 10.a3 Be7 11.g4 ) }) 10. a3 Bb7 (10... Be7 { ( -> 11.g2-g4
+transposes into 11...Bc8-b7 transposes into 10...Bb7 11.g4 Be7 ) }) 11. g4 Be7 (11... Rc8 12. Rg1) 12. Bg2 Rc8 (12... h6 13. Bxf6) (12... Qc4 13. Qe1) (12... O-O 13. h4) 13. Bxf6 Nxf6 14. g5 Nd7 15. Kb1) 8. Bh4 g6 (8... g5 9. Bg3 e6 { ( -> 10.0-0-0 transposes into 10...Qd8-c7 transposes into 9...g5 10.Bg3 e6 ) }) (8... e5 9. Nf5 g6 10. Ne3 Be7 11. O-O-O b5 12. f3 Bb7 13. Kb1) (8... e6 9. O-O-O Be7 { ( -> 10.f2-f4 transposes into 10...Qd8-c7 transposes into 9...e6 10.
+f4 Be7 ) }) (8... Qc7 9. O-O-O { ( -> 9...g7-g6 transposes into 10.f2-f4
+transposes into 9.f4 Qc7 10.0-0-0 ) }) (8... b5 9. O-O-O Bb7 (9... e6 10. f4 g5 11. fxg5 hxg5 { ( -> 12.Lh4xg5 transposes into 12...Bc8-b7 transposes into 11...
+hxg5 12.Bxg5 e6 ) }) 10. f4 g5 11. fxg5 hxg5 12. Bxg5 e6 13. g4) 9. f4 e5 (9... Qc7 10. O-O-O e5 { ( -> 11.f4xe5 transposes into 11...d6xe5 transposes into 10..
+.dxe5 11.0-0-0 Qc7 ) } (10... Bg7 11. f5 { Pichot 2752 - Moussard 2787, 2018 1-0
+(73) })) 10. fxe5 dxe5 11. O-O-O Qc7 (11... Be7 12. Nf3 Qc7 13. Qc4 Qb8 14. Bxf6) 12. Nb3 b5 (12... Be7 13. Qf3 g5 14. Bg3) 13. Nd5 Nxd5 14. exd5 Bd6 15. Qd2 Kf8 (15... g5 16. Be1 { Naiditsch 2697 - Hamdouchi 2580, 2018 1-0 (39) }) (15... f5 16. g4 f4 17. Bd3 Kf7 18. Qe2) 16. Kb1 Kg7 17. g4) 7. f4 Qb6 (7... Qa5 8. Qd2) (7... Bd7 8. Qf3 Nc6 { ( -> 9.0-0-0 transposes into 9...Qd8-c7 transposes
+into 8...Nc6 9.0-0-0 Bd7 ) }) (7... b5 8. e5 dxe5 9. fxe5 Qc7 10. Qe2 Nfd7 11. O-O-O Bb7 (11... Nc6 12. Nxc6 Qxc6 13. Ne4 Bb7 14. Nd6+ Bxd6 15. exd6 O-O 16. h4) 12. Qg4 Qxe5 (12... Qb6 13. Be2 Nxe5 14. Qh3 Nbd7 15. Rhe1 { Vallejo Pons
+2722 - Bromberger 2505, 2011 1/2-1/2 (30) }) 13. Bd3 h6 14. Nxe6) (7... Nc6 8. Nxc6 bxc6 9. e5 h6 10. Bh4 g5 (10... dxe5 11. Qxd8+ Kxd8 12. fxe5 g5 13. Bg3) 11. fxg5 Nd5 12. Ne4 Qb6 (12... dxe5 13. Bd3) 13. c3 dxe5 (13... Rb8 14. g6) (13... Qxb2 14. Rb1 Qxa2 15. g6 fxg6 16. Bd3) 14. g6 fxg6 (14... Qe3+ 15. Qe2) 15. Qd2) (7... h6 8. Bh4 Qb6 (8... Nc6 9. e5 g5 (9... Nxd4 10. Qxd4 dxe5 11. Qxd8+ Kxd8 12. fxe5 g5 13. Bg3 Nd7 14. O-O-O Bg7 15. Be2 Ke7 16. Bh5) (9... dxe5 10. Nxc6 Qxd1+ 11. Rxd1 bxc6 12. fxe5 Nd7 (12... Nd5 13. Ne4 Rb8 14. b3 { Adams 2665 - Anand 2765, 1997 1/2-1/2 (32) }) 13. Be2) 10. fxg5 Nd5 11. Nxd5 exd5 12. exd6 Bxd6 (12... Qxd6 13. Qe2+ Be7 14. Nxc6 bxc6 15. Bg3 Qg6 16. Qe5) 13. Nxc6 bxc6 14. Qd4 Qe7+ 15. Be2 Be5 16. Qa4 Qd6 17. Bg3) (8... Nbd7 9. Qf3 e5 (9... Qc7 { ( -> 10.0-0-0 transposes into 10...Bf8-e7 transposes into 9...h6
+10.Bh4 Nbd7 ) }) 10. Nf5 exf4 11. Bxf6 Nxf6 12. O-O-O Bxf5 (12... Qa5 13. Bc4) 13. exf5 Be7 14. Qxf4) 9. a3 Be7 (9... Nc6 10. Bf2 Qc7 { ( -> 11.Dd1-f3
+transposes into 11...Bf8-e7 transposes into 10...Qc7 11.Qf3 Nc6 ) }) (9... Nbd7 10. Bf2 Qc7 11. Qf3 b5 12. O-O-O Bb7 13. g4 Nc5 14. Bd3) 10. Bf2 Qc7 11. Qf3 Nbd7 (11... Nc6 12. O-O-O Bd7 13. Be2 Rc8 14. g4 { Sebastian 2796 - Darini 2580,
+2018 1-0 (29) }) (11... b5 12. O-O-O Bb7 { ( -> 13.g2-g4 transposes into 13...
+Nb8-d7 transposes into 12...b5 13.g4 Bb7 ) }) 12. O-O-O b5 13. g4 Bb7 (13... g5 14. f5) 14. Bg2 g5 (14... Rc8 15. Kb1 { Nakamura 2779 - Vachier Lagrave 2804,
+2016 1-0 (37) }) 15. f5 e5 16. Nb3 h5 17. h3) (7... Qc7 8. Qf3 b5 (8... Nc6 9. O-O-O Bd7 (9... Nxd4 10. Rxd4) 10. Bxf6 gxf6 11. f5 Nxd4 12. Rxd4 Qc5 13. Rc4) 9. O-O-O b4 (9... Bb7 10. Bxf6 gxf6 11. Qh5 Ke7 12. Bxb5) 10. e5 Bb7 11. Ncb5 axb5 12. Bxb5+ Nbd7 13. Qh3 b3 14. Qxb3 Bd5 15. c4 Ne4 16. Rhe1 Nxg5 17. fxg5) (7... Nbd7 8. Qf3 Qc7 9. O-O-O b5 10. e5 Bb7 11. Qh3 dxe5 12. Nxe6 fxe6 13. Qxe6+ Be7 14. Bxb5 axb5 15. Nxb5 Qc6 (15... Qb6 16. Nd6+ Kd8 17. Bxf6 gxf6 (17... Bxf6 18. Nf7+) 18. Nxb7+) 16. Nd6+ Kd8 17. fxe5 Kc7 (17... Nd5 18. Bxe7+ Nxe7 19. Rd4) 18. Kb1) (7... Be7 8. Qf3 Qc7 (8... Nc6 9. O-O-O Nxd4 10. Rxd4 Qc7 11. Be2 O-O 12. Rhd1 { Karjakin 2694 - Polgar 2708, 2007 1-0 (45) }) (8... O-O { ( -> 9.0-0-0 transposes into 9...Qd8-c7 transposes into 8...Qc7 9.0-0-0
+0-0 ) }) (8... Qa5 9. O-O-O Bd7 10. g4 Nc6 11. Nb3 Qc7 12. Bh4 h6 13. Bg3 O-O-O (13... g5 14. e5 Nh7 15. exd6 Bxd6 16. Rxd6) 14. h4) (8... Nbd7 { ( -> 9.0-0-0
+transposes into 9...Qd8-c7 transposes into 8...Qc7 9.0-0-0 Nbd7 ) }) (8... h6 9. Bh4 { ( -> 9...Dd8-c7 transposes into 10.0-0-0 transposes into 9.0-0-0 h6 10.
+Bh4 ) }) 9. O-O-O Nbd7 (9... b5 10. Bxf6 gxf6 11. f5) (9... O-O 10. g4 Nc6 11. f5) (9... Bd7 10. f5 Nc6 11. Nxc6 { Leko 2745 - Morozevich 2745, 2001 1-0 (42) }) (9... Nc6 10. Nxc6 Qxc6 (10... bxc6 11. g4) 11. Bd3 b5 12. Rde1) (9... h6 10. Bh4 Nbd7 11. Be2 b5 (11... Nb6 12. Bg3) (11... O-O 12. g4 b5 13. g5 hxg5 14. fxg5) (11... Rg8 12. Bg3 b5 (12... g5 13. e5 g4 14. Qf2) 13. e5 Bb7 14. Qf2 dxe5 15. fxe5) (11... g5 12. fxg5 Ne5 13. Qe3 Nh7 (13... Nfg4 14. Bxg4 Nxg4 15. Qd2 Rg8 16. Nf3 Ne5 17. gxh6) 14. Nf3 hxg5 (14... Nxf3 15. Bxf3) 15. Bg3 Bd7 16. Qd4) (11... Rb8 12. Qg3 Rg8 (12... g5 13. fxg5 hxg5 14. Bxg5) (12... O-O 13. Bf3 Nb6 14. e5) 13. Rhf1 b5 14. f5) 12. Bxf6 Nxf6 (12... gxf6 13. e5) 13. e5 Bb7 14. Qg3 dxe5 15. fxe5 Nd5 (15... Nd7 16. Nxe6 fxe6 17. Bh5+ Kd8 18. Qxg7 Rf8 19. Bg4) 16. Nxe6 fxe6 17. Qg6+ Kd7 18. Bg4 Qxe5 19. Nxd5 Qg5+ 20. Qxg5 Bxg5+ 21. Kb1 Bxd5 22. Rxd5+ Kc7 23. Bxe6) 10. g4 b5 (10... Rb8 11. Bxf6 Bxf6 12. g5 Bxd4 { ( -> 13.Td1xd4 transposes into 13...b7-b5 transposes into 12...
+Bxd4 13.Rxd4 Rb8 ) }) (10... O-O 11. Bxf6 Bxf6 12. g5 Bxd4 13. Rxd4 b5 14. Bh3) (10... h6 11. Bxf6 Bxf6 (11... gxf6 12. f5) 12. h4 Qb6 (12... g5 13. hxg5 hxg5 14. Rxh8+ Bxh8 15. f5) 13. Nde2 Nc5 (13... Be7 14. g5 hxg5 15. hxg5 Rxh1 16. Qxh1) 14. g5 Be7 15. g6 O-O 16. gxf7+ Rxf7 17. Qg3) 11. Bxf6 Nxf6 (11... Bxf6 12. g5 Bxd4 13. Rxd4 Rb8 14. a3) (11... gxf6 12. f5 Ne5 (12... Nc5 13. fxe6) 13. Qh3 O-O 14. Qh5) 12. g5 Nd7 13. f5 Bxg5+ (13... Ne5 14. Qg3 Bd7 15. Bh3) (13... O-O 14. h4 b4 15. Nce2 Bb7 (15... e5 16. f6 exd4 17. fxe7 Re8 18. Nxd4 Ne5 19. Qf2) 16. Kb1 { Sutovsky 2683 - Huschenbeth 2596, 2017 1-0 (24) }) (13... Nc5 14. f6 gxf6 15. gxf6 Bf8 16. Rg1 h5 (16... b4 17. Nd5 exd5 18. exd5) (16... Bd7 17. Rg7 Bxg7 (17... b4 18. Nd5 exd5 19. exd5 O-O-O 20. Rxf7 Bh6+ 21. Kb1 Rdf8 22. Rxf8+) 18. fxg7 Rg8 19. e5 O-O-O 20. exd6 Qb6 21. Ne4) 17. a3 Rb8 (17... Nd7 18. e5) 18. e5) 14. Kb1 Ne5 (14... O-O 15. fxe6 Nb6 16. Nd5 Nxd5 17. exd5 fxe6 (17... Bf6 18. Bd3) 18. Qh5 e5 19. Qxg5 exd4 20. Bd3 g6 21. h4 { Radjabov 2742 - Cheparinov 2670, 2007 1/2-1/2 (34) }) 15. Qh5 Qd8 (15... Qe7 16. Nxe6 Bxe6 (16... g6 17. Qxg5 fxe6 18. Qd2) 17. fxe6 g6 18. exf7+ Kxf7 19. Qh3 Kg7 20. Nd5 Qd8 21. Qc3 Ra7 22. Qa3 Qb8 23. h4 Bh6 24. h5 a5 25. Be2) 16. h4 Bf6 17. fxe6 O-O 18. Bh3 fxe6 (18... g6 19. Qe2) (18... Kh8 19. Nd5 { ( -> 19...
+f7xe6 transposes into 20.Bh3xe6 transposes into 19.Bxe6+ Kh8 20.Nd5 ) }) 19. Bxe6+ Kh8 20. Nd5 Nc4 (20... Ra7 21. Rdf1) (20... Bb7 21. Qe2 Nc4 22. Nxf6) 21. Nc6 Qe8 22. Qxe8 Rxe8 23. Nxf6 gxf6 24. Bxc4 bxc4 25. Rxd6 Bb7 26. Rxf6) 8. Qd2 Qxb2 (8... Nc6 9. O-O-O Qxd4 (9... Nxd4 10. Qxd4 { ( -> 10...Db6xd4 transposes
+into 11.Rd1xd4 transposes into 10.Qxd4 Nxd4 11.Rxd4 ) }) (9... Bd7 10. Nb3) 10. Qxd4 Nxd4 11. Rxd4 Be7 (11... Rb8 12. Be2) (11... Bd7 12. Be2 Bc6 13. Rhd1 Be7 14. Bf3 h6 15. Bh4 g5 16. fxg5 Nd7 17. Nd5) (11... Nd7 12. Be2 h6 13. Bh4 g5 14. fxg5 Be7 15. Bg3 hxg5 16. Rhd1) (11... h6 12. Bh4 Be7 (12... Bd7 13. Bc4) 13. Be2) 12. e5) 9. Rb1 Qa3 10. f5 Nc6 (10... e5 11. Bxf6 gxf6 12. Nd5) (10... b5 11. fxe6 fxe6 12. Rb3) (10... Be7 11. fxe6 Bxe6 12. Nxe6 fxe6 13. Bc4 Nbd7 14. Bxe6 Nc5 15. Bc4 { Radjabov 2759 - Nepomniachtchi 2775, 2019 1/2-1/2 (33) }) 11. fxe6 fxe6 12. Nxc6 bxc6 13. e5 dxe5 (13... Nd5 14. Nxd5 cxd5 15. Bd3 dxe5 16. O-O Ra7 17. Kh1) 14. Bxf6 gxf6 15. Ne4 Qxa2 (15... Be7 16. Be2 h5 (16... O-O 17. Rb3 Qa4 18. Rg3+) 17. Rf1 f5 (17... Qxa2 18. Rd1 Qd5 19. Qe3 Qa5+ 20. c3 f5 21. Qg3 Kf7 22. Rxf5+ exf5 23. Bc4+) 18. Rf3 Qxa2 (18... Qa4 19. Nd6+ Bxd6 20. Qxd6 Qa5+ 21. Kf1) 19. Rfb3 Qa4 (19... fxe4 20. Qc3 Bd8 21. Qxc6+ Bd7 22. Qxe4) 20. Nd6+ Bxd6 21. Qxd6 Qa5+ 22. Kf1) 16. Rd1 Be7 17. Be2 O-O 18. O-O { [%cal Gf1f6,Gd1d7] } 18... Ra7 (18... f5 19. Qh6 Qxc2 20. Rf3 { Radjabov 2710 - Grischuk 2750, 2017 1/2-1/
+2 (29) }) 19. Rf3 Rd7 (19... Kh8 { ( -> 20.Tf3-g3 transposes into 20...Ra7-d7
+transposes into 19...Rd7 20.Rg3+ Kh8 ) }) 20. Rg3+ Kh8 21. Qh6 Rxd1+ (21... Rf7 22. Qh5 { ( -> 22...Td7xd1 transposes into 23.Be2xd1 transposes into 22.Bxd1
+Rf7 23.Qh5 ) }) 22. Bxd1 Rf7 23. Qh5 Qa5 24. Kf1 Qd8 25. Qxf7 Qxd1+ 26. Kf2 Qxc2+ 27. Kf3 Qd1+ { ( -> 28.Kf3-f2 transposes into 28...Qd1-c2 transposes into
+25...Qxd1+ 26.Kf2 Qxc2+ ) Sicilian Najdorf: Poisoned-Pawn White/Attack/
+Encyclopedia 2020 [Attack) Sizilianisch-Najdorf-Variante White/Attack/
+Encyclopedia 2021 [Attack] Build Survey... White/Attack/Encyclopedia 2022
+[Attack] } *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Alapin Variation"]
+[Date "2017.06.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B22"]
+[Opening "Sicilian Defense: Alapin Variation, Barmen Defense, Modern Line"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Alapin Variation"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/xKFVqaUV"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.26"]
+[UTCTime "20:34:17"]
+
+{ This variation is not very common but with the move c3 whites can then move the pawn to d4 and could disrupt blacks' plans }
+1. e4 c5 { [%cal Gc2c3] } 2. c3 { c3 allows d4 and this is the Alapin Variation. However, whites can't make the move Nc3 } { [%cal Gd2d4] } 2... d5 { Strong response by blacks trying to take control of the center } (2... Nf6 3. d4) 3. exd5 (3. Bd3 dxe4 4. Bxe4 Nf6 5. Bc2 { Another variation }) 3... Qxd5 { Blacks are taking advantage of White's inability to make the move Nc3 } 4. d4 Nf6 5. Nf3 Bg4 6. Be2 e6 7. O-O Nc6 8. Be3 { [%csl Gc5][%cal Gd4c5] } 8... cxd4 9. cxd4 Be7 10. Nc3 Qd6 { It's an equal position } 11. h3 Bf5 *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Classical Variation"]
+[Date "2017.06.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B78"]
+[Opening "Sicilian Defense: Dragon Variation, Yugoslav Attack, Old Line"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Classical Variation"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/lfNLfNy5"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.26"]
+[UTCTime "20:26:30"]
+
+{ This chapter will go over the Classical Variation, which is not as aggressive as the other variations of the Sicilian }
+1. e4 c5 2. Nf3 Nc6 { This is the Old Sicilian } 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 d6 { This is the Classical Variation, which is not commonly used in the modern days } 6. Be3 g6 7. Qd2 Bg7 8. f3 O-O { [%cal Ge1b1,Gf1c4,Gg2g4] } 9. Bc4 (9. O-O-O Nxd4 10. Bxd4 Be6 { [%csl Ga2][%cal Ge6a2] } 11. Kb1 { [%csl Gc7,Gc8][%cal Gd8c7,Gf8c8] } 11... Qc7 12. h4 Rfc8) 9... Bd7 { [%cal Ga8c8,Gc8c1] } 10. O-O-O Rc8 { [%csl Gc4][%cal Gc8c1] } 11. Bb3 Ne5 12. Kb1 *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Open Sicilian"]
+[Date "2017.06.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B32"]
+[Opening "Sicilian Defense: Open"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Open Sicilian"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/lleARfzO"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.26"]
+[UTCTime "20:30:33"]
+
+1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 d6 5. Nc3 g6 *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Closed Sicilian"]
+[Date "2017.06.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B26"]
+[Opening "Sicilian Defense: Closed"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Closed Sicilian"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/fPYfHX8M"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.26"]
+[UTCTime "20:31:19"]
+
+1. e4 c5 2. Nc3 { When whites move Kc3, the variation is called the 'Closed Sicilian' } { It is useful for players who prefer less attacking and more closed positions as White. } { [%cal Gb1c3,Gb8c6] } 2... Nc6 (2... d6) 3. g3 { [%cal Gf1g2,Gg1f3] } 3... g6 4. Bg2 Bg7 5. d3 d6 6. Be3 e6 (6... Rb8) 7. Qd2 (7. f4 Nd4 8. Qd2 Qa5 9. Nh3 h5) 7... Rb8 8. Nge2 Nd4 9. O-O Ne7 10. Bh6 O-O *
+
+
+[Event "Daniel's attacking Closed Sicilian: Closed Sicilian part 1"]
+[Site "https://lichess.org/study/rSLE9UIy/8udrod9j"]
+[Date "2022.01.26"]
+[White "That is all for part 1"]
+[Result "*"]
+[Annotator "https://lichess.org/@/AnimeWillDieSoon"]
+[Variant "Standard"]
+[ECO "B26"]
+[Opening "Sicilian Defense: Closed"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Closed Sicilian part 2"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/tFH530Ea"]
+
+1. e4 { [%anno "Nazar1005", nazar1005] Following variations were added with help of my friend of Daniel Leclere the original study https://lichess.org/study/rSLE9UIy } 1... c5 2. Nc3 Nc6 3. g3 (3. g4 h5) (3. Bc4 g6 4. f4 (4. d3 Bg7 5. a3 Nf6 { Duda 2730 - Xiong 2707, 2019 1-0 (44) }) 4... Bg7 5. Nf3 e6 6. f5 (6. e5 d6 7. exd6 Qxd6 $15) (6. d3 Nge7 { ( -> 7.0-0 transposes into 6.0-0 Nge7 7.d3 ) }) (6. O-O Nge7 7. d3 (7. e5 d5 8. exd6 Nf5 9. d3 O-O $17) (7. Qe1 O-O 8. d3 d5 { ( -> 9.Bc4-b3 transposes into 8.Bb3 0-0 9.Qe1 ) }) 7... d5 8. Bb3 (8. Bb5 O-O 9. Bxc6 Nxc6 10. Bd2 f5) 8... O-O 9. Qe1 (9. a3) (9. a4 dxe4) 9... Nd4 10. Nxd4 (10. Kh1) 10... cxd4 11. Nd1 (11. Ne2 dxe4 12. dxe4 b6) 11... a5 12. a4 f5) 6... Nge7 7. fxe6 dxe6 8. d3 (8. O-O O-O 9. d3 Nd4 10. Nxd4 (10. Bg5 h6 11. Bh4 g5 { Al Modiahki 2542 - Kuzubov 2699, 2017 0-1 (28) }) 10... cxd4 11. Ne2 Nc6 12. Qe1 Bd7) 8... h6) (3. d3 g6 { ( -> 4.g2-g3 transposes into 3.g3 g6 4.d3 ) }) (3. f4 g6 4. Nf3 Bg7 { ( -> 5.Bf1-b5 transposes into 4.f4 Bg7 5.Nf3 ) }) (3. Nge2 g6 4. d4 (4. d3 Bg7 5. Be3 d6 6. Qd2 Nf6) (4. g3 Bg7 { ( -> 5.Bf1-g2 transposes
+into 4.Bg2 Bg7 5.Nge2 ) }) 4... cxd4 { ( -> 5.Ne2xd4 transposes into 4.d4 cxd4 5.
+Nxd4 ) }) (3. Nf3 g6 4. d4 cxd4 5. Nxd4 Bg7 6. Be3 (6. Nf3 d6 7. h3 Nf6 8. Bc4 O-O 9. O-O e6 $14) (6. Nxc6 bxc6 7. Bc4 e6) (6. Nde2 d6 7. g3 (7. h3 b6) 7... Bg4 8. Bg2 Bxc3+ 9. bxc3 Nf6 { Movsesian 2653 - Ivanchuk 2710, 2016
+1-0 (54) }) (6. Nb3 Nf6 7. Be2 (7. g3 O-O 8. Bg2 d6 9. h3 (9. O-O Bg4 10. f3 Be6 11. Nd5 (11. Kh1 d5 $15) 11... Bd7) (9. Nd5 Bd7) 9... a5 10. a4 Nb4 11. O-O Bd7 12. Re1 Rc8 13. Be3 Be6) (7. Bg5 d6 8. Be2 (8. Qd2 Be6 $14) 8... O-O { ( -> 9.0-0 transposes into 8.0-0 d6 9.Bg5 ) }) (7. g4 d5 8. exd5 Nb4 9. Bb5+ Kf8 10. Be2 Bxg4 $17) (7. Bc4 O-O 8. O-O d6 9. Re1 Na5 $14) 7... O-O 8. O-O (8. Bg5) 8... d6 9. Bg5 (9. Kh1 Be6 10. f4 (10. Bg5 a5 11. a4 Rc8 12. f4 Nb4 13. Nd4 (13. Nd2 Rc5 14. Bh4 Qc8) (13. f5 Bxb3) (13. Bh4) 13... Bc4 14. Ndb5 Qb6 15. Bxc4 (15. Bd3 h5 $14) (15. Bh4 Qc5 16. Bd3 Rfd8 $14) 15... Rxc4 16. Qe2 Rfc8 17. Rad1 Qc5 $16) 10... Qc8 { ( -> 11.Bc1-e3 transposes into 10.f4 Qc8 11.
+Kh1 ) }) (9. Re1 Be6 10. Bf1 (10. Bg5 Rc8 11. Bf1 (11. Qd2 Re8) 11... h6 12. Bh4 (12. Bf4 d5 { Andriasian 2585 - Nakamura 2781, 2018 0-1 (52) }) 12... Ne5 13. Nd5 g5) 10... d5 11. Nc5 (11. exd5 Nxd5 12. Nxd5 (12. Ne4 Ndb4 $14) 12... Bxd5 13. c3 e5 $15) 11... d4 12. Nxe6 fxe6 13. Nb1 Ne5) 9... a6 10. f4 (10. Qd2 b5 11. a3 Bb7) (10. Re1 h6 11. Bh4 b5 12. Bf1 Bb7 13. a4 (13. Nd5 g5 14. Bg3 Nxd5 15. exd5 Nb4) 13... bxa4 $14) (10. a4 Be6 11. Kh1 (11. Qd2 Na5 $14) (11. Re1 Rc8 12. Bf1 Na5) (11. f4 Qb6+ $14) 11... Rc8 12. f4 Na5 13. Nxa5 (13. Nd2 Nc4) (13. f5 Bxb3 14. cxb3 Rxc3) 13... Qxa5 14. Bd3 Rc5 15. f5 gxf5 16. Bd2 Qc7 $16) 10... b5 11. Bf3 (11. a3 Bd7) 11... b4 12. Na4 (12. Ne2 Ng4 { Mamedov 2580 - Motylev 2687, 2011 1/2-1/2 (24) }) (12. Nd5 Nxd5 13. exd5 Na7) 12... e5) 6... Nf6 7. Bc4 (7. h3 O-O 8. Qd2 d5) (7. Qd2 d6 8. f3 (8. h3 O-O 9. O-O-O Nxd4 10. Bxd4 Be6 11. Kb1 (11. g4 Qa5 12. a3 Rfc8) 11... Qc7 $16) (8. Be2 { ( -> 8...0-0 transposes into 7...0-0
+8.Qd2 d6 ) }) 8... O-O 9. Bc4 (9. Nb3 Be6 10. O-O-O a5) (9. g4 Bxg4 10. fxg4 Nxg4 11. Nb3 (11. Nxc6 bxc6 $18) (11. Bg1 e6 12. h4 (12. Nf3 Qf6) 12... h5 13. Be2 Bh6 $16) 11... Rc8 $18 { Gokerkan 2452 - Jones 2688, 2019 1-0 (43) }) (9. O-O-O { ( -> 9...d6-d5 transposes into 8.Qd2 d5 9.0-0-0 ) }) 9... Bd7 10. O-O-O (10. g4 Ne5 11. Be2 Rc8 12. O-O-O Nc4 13. Bxc4 Rxc4 14. h4 (14. Kb1 Qb8 15. h4 (15. b3 Rcc8 $16) (15. g5 Nh5 16. b3 Rcc8 17. Nd5 Rfe8 18. Ne2 e6 $14) 15... b5 16. h5 b4 17. Nd5 Nxd5 18. exd5 Be5 $16) 14... h5 15. gxh5 Nxh5 $16) (10. Bb3 Nxd4 11. Bxd4 b5 12. a4 (12. a3 a5 { ( -> 13.0-0 transposes into 12.0-0 a5 13.
+a3 ) }) (12. Nd5 Nxd5 13. Bxg7 (13. Bxd5 Rc8 { Semjonovs 2490 - Willow 2780,
+2019 1/2-1/2 (60) }) (13. exd5 Bxd4 14. Qxd4 a5 15. a3 Qc7 { Naiditsch 2697
+- Jakovenko 2760, 2009 1/2-1/2 (70) }) 13... Kxg7 14. Bxd5 (14. exd5 a5 15. a3 e5) 14... Rc8 15. O-O (15. h4 h6) 15... Qb6+ 16. Kh1 b4) (12. O-O-O a5 13. e5 (13. a4 bxa4) (13. Nd5 Nxd5 14. Bxg7 Kxg7 15. Bxd5 Rb8) 13... dxe5 14. Bxe5 Bc6 15. Qxd8 Rfxd8 16. a4 bxa4 17. Bxa4 Bxa4 18. Nxa4 Bh6+) (12. O-O a5 13. a4 (13. a3 Rc8) 13... b4 14. Nd5 (14. Ne2 Bc6) 14... Nxd5 15. exd5 (15. Bxg7 Kxg7 16. exd5 Qb6+ 17. Kh1 Rfe8) 15... Bxd4+ 16. Qxd4 Rc8 17. Rfe1 Re8 18. Re2 Rc5) (12. h4 a5 13. h5 (13. a3 e5 $14) (13. Nd5 a4 14. Nxf6+ exf6 $14) (13. a4 bxa4 14. Nxa4 (14. Bxa4 h5) 14... h5 15. Nb6 Ra6 { Vachier Lagrave 2795 - Radjabov 2710, 2017 1/2-1/2 (19) }) 13... a4 14. Bd5 (14. Bxf6 exf6 15. Bd5 b4 16. Ne2 f5 17. hxg6 hxg6 18. Bxa8 (18. exf5 Bxf5 19. Bxa8 Qxa8 20. Rd1 a3 $14) (18. Qxb4 a3 { Stellwagen 2600 -
+Tiviakov 2663, 2007 1/2-1/2 (30) }) 18... Qxa8 19. Qxd6 Bb5 20. Nf4 Rd8 21. Qb6 fxe4) 14... Rc8 $16) 12... b4 13. Nd5 (13. Ne2 a5) 13... Nxd5 14. Bxg7 (14. exd5 Bxd4 15. Qxd4 { ( -> 15...Qd8-a5 transposes into 15...Qa5 16.Qd4+ Kg8
+) }) 14... Kxg7 15. exd5 Qa5 16. h4 (16. Qd4+ Kg8 17. O-O (17. h4 e5 $14) 17... Qc5 $14) (16. O-O Qc5+ 17. Kh1 e5) 16... h6 $14) (10. h4 Ne5 11. Bb3 Rc8 12. O-O-O (12. Bh6 Nc4 $16) (12. h5 Nxh5 13. O-O-O (13. Bh6 Bxh6 14. Qxh6 Rxc3 15. bxc3 Qa5) (13. g4 Ng3 14. Rg1 Rxc3 15. bxc3 Nxf3+ 16. Nxf3 Nxe4 17. Qd3 Bxc3+ 18. Ke2 Bxa1 $14) 13... Qa5 14. g4 Nf6) 12... h5 13. Bg5 (13. Rdg1 Nc4) (13. Rhe1 Nc4 14. Bxc4 Rxc4 15. Nb3 (15. Kb1 Qb8) 15... Qc7 16. Bd4 Bc6 $14) (13. g4 hxg4 14. h5 Nxh5 15. Bh6 (15. Rdg1 Rxc3) 15... Kh7 $15) (13. Kb1 a6 14. g4 (14. Rdg1 b5 15. g4 hxg4 $16) (14. Bg5 Rc5 15. g4 hxg4) (14. Bh6 b5) 14... hxg4 15. h5 Nxh5 16. Rdg1 (16. Bh6 Bf6) 16... Qa5 17. Bh6 Bf6 18. fxg4 Bxg4 { Karjakin 2727 - Radjabov 2744, 2008 0-1 (52) }) (13. Bh6 Nc4 14. Bxc4 Rxc4 15. Bxg7 Kxg7 16. Kb1 (16. Nd5 e5 17. Nb3 Nxd5 18. Qxd5 Rc6) (16. g4 hxg4 17. h5 Rh8 18. hxg6 fxg6 19. f4 Rxh1) 16... b5) 13... Re8 14. f4 Nc4 15. Qd3 Na5 16. f5 Nxb3+ 17. axb3 Ng4) 10... Rc8 11. Bb3 (11. Be2 Nxd4 $14) 11... Nxd4 12. Bxd4 b5 13. Nd5 (13. Qe3 a5) (13. Kb1 a5) (13. a3 a5 14. Nd5 (14. e5 dxe5 15. Bxe5 Bc6 16. Qe3 Qe8 $14) 14... Nxd5 15. Bxg7 Kxg7 { ( -> 16.e4xd5 transposes into 15.exd5 a5 16.a3 ) }) (13. Bxa7 Qa5 $14) (13. h4 b4 $16) (13. e5 dxe5 14. Bxe5 Bc6 15. Qxd8 (15. Qe3 Qa5) 15... Rfxd8 16. Rxd8+ (16. Kb1 Nh5) (16. a4 a6 17. axb5 axb5) 16... Rxd8 17. Rd1 Bh6+ 18. Kb1 Rxd1+ 19. Nxd1 Nd7 20. Bd4 a6) 13... Nxd5 14. Bxg7 (14. Bxd5 Bxd4 15. Qxd4 Qc7 { Short 2695 - Topalov 2750, 1996 1/2-1/2 (47) }) (14. exd5 Bxd4 15. Qxd4 a5 16. a3 b4 17. axb4 axb4 { Bartholomew 2605 - Mamedov 2808, 2018
+0-1 (38) }) 14... Kxg7 15. exd5 (15. Bxd5 Kg8 $18) 15... a5 16. a3 (16. a4 bxa4 $17) 16... Qb6 17. Rhe1 h5 18. Qd4+ Qxd4 19. Rxd4 Bf5 $14) (7. f4 e5) (7. f3 O-O 8. Qd2 d5 9. Nxc6 (9. exd5 Nxd5 10. Nxc6 bxc6 11. Bd4 Bxd4 12. Qxd4 e5 $15) (9. O-O-O Nxd4 10. Bxd4 dxe4 $15) 9... bxc6 10. e5 (10. Rd1 Be6 $15) (10. O-O-O) 10... Ne8 $17) (7. Nb3 O-O { ( -> 8.Bf1-e2 transposes into 7.Be2 0-0 8.
+Nb3 ) }) (7. Be2 O-O 8. O-O (8. Qd2 d6 9. O-O-O (9. h4 d5) (9. Rd1 Bd7) (9. O-O Ng4 10. Bxg4 Bxg4 11. Nd5 (11. h3 Bd7 12. Rad1 Qa5 $14 { Short 2663 -
+Motylev 2676, 2009 1/2-1/2 (48) }) (11. f4 Nxd4 12. Bxd4 e5 13. Be3 exf4 14. Rxf4 Be6 15. Rf2 Re8) (11. f3 Bd7 12. Rad1 (12. Rfd1 Rc8 $14) 12... Ne5) (11. Nxc6 bxc6 12. Bh6 Bxh6 13. Qxh6 Be6) 11... Rc8 12. c4 Qd7) 9... Ng4 10. Bxg4 Bxg4 11. f3 Nxd4 $14) (8. f4 d6 { ( -> 9.Nd4-b3 transposes into 8.Nb3
+d6 9.f4 ) }) (8. Nb3 d6 9. O-O (9. f3 Be6 10. Nd5 Nd7 11. c3 f5 $14) (9. Qd2 Ng4) (9. g4 a5 10. g5 Nd7) (9. f4 Be6 10. g4 Na5 11. g5 (11. f5 Bc4 12. Nxa5 Bxe2 13. Qxe2 Qxa5) (11. Bd4 Bc4 12. g5 e5 $14) 11... Nd7 12. Bd4 Nxb3 $16) 9... Be6 10. f4 (10. Qd2 Rc8) (10. f3 d5 11. exd5 Nxd5 12. Nxd5 Qxd5 13. Qxd5 Bxd5 14. c3 b6) 10... Qc8 11. Kh1 (11. Qe1 Rd8) (11. Qd2 Rd8) (11. Bf3 Ng4 12. Bc1 (12. Bxg4 Bxg4) 12... a5) (11. h3 Rd8 12. Bf3 (12. Qe1 d5) (12. Nd4 Nxd4 13. Bxd4 d5) 12... Bc4 13. Rf2 e5 14. Rd2 exf4 15. Bxf4 Ne5 $15) 11... Rd8 12. Bg1 (12. Nd4 Nxd4 13. Bxd4 Bc4) (12. Bf3 Bc4 13. Rf2 (13. Re1 e5) 13... e5 14. Rd2 Bh6) 12... d5 13. e5 Ne4 14. Bd3 (14. Nd4 Nxc3 15. bxc3 Nxd4 16. Bxd4 h5) (14. Nb5 f6 15. exf6 exf6 16. c3 f5 17. a4 h5) 14... f5 15. exf6 exf6 16. Nb5 f5 17. c3 Bf7 18. a4 h5) 8... d5 9. exd5 (9. Nxc6 bxc6 10. e5 (10. exd5 cxd5) 10... Nd7 11. f4 f5 $14) 9... Nb4 10. Qd2 (10. Bf3 Nfxd5) (10. Nb3 Nfxd5 $15) (10. d6 Qxd6 11. Ncb5 (11. Ndb5 Qb8 $15) 11... Qb8 12. c4 e5 $14) 10... Nbxd5 11. Nxd5 Nxd5 12. Bh6 e5 13. Bxg7 Kxg7 14. Nb3 (14. Nf3 Nf4 $15) 14... Nf4 $15) (7. Nxc6 bxc6 8. e5 Ng8 9. Bd4 (9. f4 f6 10. Bd4 (10. f5 fxe5 $15) (10. e6 d5 11. f5 Qd6) (10. exf6 Nxf6 11. Be2 O-O 12. O-O Qa5) 10... fxe5 11. fxe5 Nh6 $16) 9... Qa5 10. Bc4 (10. f4 Rb8) (10. e6 Nf6 11. exd7+ (11. exf7+ Kxf7 12. Bc4+ d5 13. Bb3 Ba6) 11... Bxd7 12. Qe2 (12. Bc4 Rd8) 12... O-O 13. O-O-O Bg4) 10... Bxe5 11. O-O f6 12. Re1 Nh6) 7... O-O 8. Bb3 (8. f3 Qb6 9. Bb3 (9. Qd2 Nxe4 $19) (9. O-O Qxb2 10. Ncb5 Qb4 11. Qe2 Qa5 $15) 9... Ng4 10. fxg4 Bxd4 11. Bxd4 (11. Nd5 Qa5+ 12. Bd2 Qd8 13. c3 Bg7 $14) 11... Nxd4 $16) (8. O-O d6 9. h3 (9. Bb3 Ng4) 9... Bd7 10. Bb3 (10. f4 a6) (10. Qd2 Nxd4 11. Bxd4 b5 12. Bd3 e5) (10. Re1 Ne5 $14) 10... Rc8 11. f4 (11. Qd2 Na5 12. Bh6 Rc5 $14) (11. Re1 a6 12. Qd2 (12. Nxc6 Bxc6) (12. Nf3 b5 $14) (12. f4 b5 13. a3 Qc7) (12. Nd5 Ne5) 12... b5 13. Nxc6 Bxc6) 11... Qa5 12. Qf3 (12. Qd3 Qh5 $14) (12. Nf3 Qh5 13. Qd3 b5 $14) 12... Qh5 13. Nxc6 (13. Qf2 Nb4 $16) 13... bxc6 $14 { Poetsch 2403 - Naiditsch 2706, 2011 1/2-1/2 (115) }) 8... Re8 9. f3 (9. f4 d6 10. Qf3 Qa5 $14) (9. h4 h5 10. f3 Qc7) (9. Nxc6 dxc6 10. Qxd8 (10. Qf3 Qc7) 10... Rxd8 11. f3 (11. a4 Ng4 $14) 11... Nd7 $14 { Gabrielian 2716 - Melkumyan 2937, 2018 0-1 (53) }) (9. h3 d6 { ( -> 10.0-0
+transposes into 9.0-0 d6 10.h3 ) }) (9. O-O d6 10. h3 Na5 11. Qd2 (11. Qe2 b6) (11. Qd3 b6 $14) (11. f4 Nxb3) (11. Re1 b6 12. Bg5 Bb7) 11... a6 12. Bh6 b5 13. Bxg7 Kxg7) 9... e6 10. f4 (10. Nxc6 bxc6) (10. Qd2 d5 11. O-O-O (11. exd5 Nxd5 12. Nxd5 Nxd4 { Morozov 2310 - Zvjaginsev 2672,
+2016 0-1 (70) }) 11... Nxd4 12. Bxd4 e5) (10. O-O d5 11. exd5 Nxd5 12. Nxd5 exd5 13. Bf2 Qg5 14. Kh1 (14. c3 Bh3) 14... Qh5 { Leko 2734 - Vitiugov
+2742, 2014 1/2-1/2 (57) }) 10... Nd5 $14) (3. Bb5 g6 4. Bxc6 (4. Nge2 Bg7 5. O-O Nd4) (4. f4 Bg7 5. Nf3 (5. Bxc6 bxc6 6. Nf3 (6. d3 d6 { ( -> 7.Ng1-f3
+transposes into 6.Nf3 d6 7.d3 ) }) 6... d6 7. d3 (7. O-O Nh6 { ( -> 8.d2-d3
+transposes into 7.d3 Nh6 8.0-0 ) }) 7... Nh6 8. O-O f5 9. e5 (9. Qe2 fxe4) (9. Qe1 O-O 10. e5 Nf7 $14) 9... dxe5 $14) 5... Nd4 6. O-O (6. Bd3 d6 7. Nxd4 cxd4 8. Ne2 { ( -> 8...Ng8-f6 transposes into 7...Nf6 8.Bd3 d6 ) }) (6. Bc4 d6 7. O-O (7. d3 Nf6) 7... e6 8. Nxd4 cxd4 9. Ne2 Ne7) (6. a4 a6 7. Bc4 (7. Bd3 d6 8. Nxd4 cxd4 9. Ne2 Nf6 10. O-O O-O) 7... e6 8. O-O (8. d3 Ne7 9. Nxd4 (9. e5 d5 10. exd6) 9... cxd4) (8. e5 d5 9. exd6) 8... Ne7 9. d3 (9. e5 d5 10. exd6) 9... d5 10. Ba2 O-O $15) (6. Nxd4 cxd4 7. Ne2 Nf6 8. e5 (8. Bd3 d6 9. O-O (9. Nxd4 Nxe4 10. Bxe4 Bxd4 11. c3 Bg7) (9. c3 dxc3 $15) 9... O-O 10. c3 (10. Qe1 Nd7 $15 { Polgar 2665 - Topalov 2750, 1996 1-0 (36) }) 10... dxc3 11. dxc3 e5) 8... Nd5 9. c3 (9. c4 { ( -> 9...d4xc3 transposes into 8...Nd5
+9.c3 dxc3 ) }) 9... dxc3 10. dxc3 Nc7) 6... Nxb5 7. Nxb5 d5 8. e5 (8. d3 Bd7 9. Nc3 dxe4 $15) (8. exd5 a6 9. Nc3 Nf6 10. d4 cxd4 11. Qxd4 O-O) 8... h5 $14) (4. Nf3 Bg7 5. O-O (5. h3 d6) (5. d3 Nd4 6. Bc4 e6 7. Nxd4 (7. O-O Ne7 { Pichot 2584 - Henriquez 2667, 2017 1/2-1/2 (82) }) 7... cxd4 8. Ne2 Ne7 9. O-O O-O $14) (5. Bxc6 bxc6 6. O-O { ( -> 6...e7-e5 transposes into 5...e5 6.
+Bxc6 bxc6 ) } (6. d3 d6 7. h3 (7. O-O { ( -> 7...e7-e5 transposes into 6...bxc6
+7.d3 d6 ) }) 7... Rb8 $14)) 5... e5 6. a3 (6. Nd5 Nge7 7. c3 (7. d3 Nxd5) 7... O-O) (6. Bc4 d6 { Quesada Perez 2612 - Melkumyan 2668, 2018 1-0
+(56) }) (6. d3 Nge7 7. Bc4 (7. Ne1 O-O 8. f4 exf4) (7. Be3 d6 { Quesada
+Perez 2582 - Saric 2667, 2020 0-1 (27) }) (7. a3 O-O 8. Bc4 d6 9. Bg5 h6 10. Bxe7 Nxe7 { Antal 2522 - Motylev 2673, 2018 0-1 (32) }) (7. Bg5 O-O) 7... h6 8. a3 O-O 9. b4 d6 10. bxc5 (10. Rb1 Kh7 { Quesada Perez 2612 -
+Melkumyan 2668, 2018 1-0 (56) }) 10... dxc5 11. a4 (11. Rb1 Kh7 12. Nd5 b6 13. Re1 Bb7) 11... Kh7 $14 { Maurizzi 2433 - Anton Guijarro 2703, 2020 1/2-1/2
+(39) }) (6. Bxc6 bxc6 7. d3 (7. a3 a5 8. d3 Ne7 9. Be3 d6) 7... d6 8. Ne1 (8. Be3 Ne7 9. Qd2 (9. Nd2 O-O 10. f4 exf4 11. Bxf4 d5) 9... O-O) (8. a3 Ne7 $14) 8... Nf6 9. f4 exf4 10. Bxf4 Ng4 11. Nf3 Qe7 $16) 6... Nge7 7. b4 b6 8. bxc5 bxc5 9. d3 O-O $14) 4... dxc6 5. d3 (5. f4 Bg7 6. Nf3 Bg4 7. O-O e5 $14) 5... Bg7 6. Be3 (6. Nge2 Nf6 7. Be3 b6 8. h3 O-O 9. Qd2 Re8) (6. f4 c4 7. Nf3 cxd3 8. cxd3 Bg4 9. O-O Qb6+ 10. Kh1 O-O-O $16) 6... b6 7. Qd2 (7. f4 Nf6 8. h3 O-O $14) 7... Qc7 8. Nge2 h5) 3... g6 4. Bg2 (4. f4 Bg7 { ( -> 5.Bf1-g2
+transposes into 4.Bg2 Bg7 5.f4 ) }) (4. d3 Bg7 5. Be3 d6 6. Qd2 Rb8 { ( -> 7.
+Bf1-g2 transposes into 6.Be3 Rb8 7.Qd2 ) }) 4... Bg7 5. d3 (5. h4 h5 6. d3 { ( -> 6...d7-d6 transposes into 5...d6 6.h4 h5 ) }) (5. Nh3 d6) (5. Nf3 d6 6. O-O e5 7. d3 (7. a3 Nge7 8. b4 O-O $15) 7... Nge7 8. Nd2 (8. Bg5 f6) (8. a3 O-O 9. Rb1 (9. b4 h6) 9... a5 { Meskovs 2743 - Korchmar 2750, 2019 0-1
+(34) }) (8. Be3 O-O 9. Qd2 f5 10. Bh6 f4 11. Bxg7 Kxg7) (8. Nh4 O-O 9. f4 (9. Be3 Nd4) 9... f5) 8... h5 9. Nc4 Bg4) (5. f4 d6 { ( -> 6.d2-d3
+transposes into 5.d3 d6 6.f4 ) }) (5. Nge2 d6 6. O-O h5) 5... d6 6. Be3 (6. h3 e5) (6. Bd2 Rb8) (6. h4 h5 7. Nh3 Rb8) (6. Nf3 e6 7. O-O (7. Bg5 Nge7 8. Qd2 Nd4 9. O-O a6) 7... Nge7 8. Be3 (8. Nh4 O-O 9. f4 f5) (8. Bg5 h6 9. Be3 e5 10. Qd2 (10. Nd2 Be6) 10... f5) 8... Nd4 9. Qd2 (9. Ne1 h5) 9... Nec6 10. Ne1 h5 $14) (6. Bg5 Rb8 7. Nge2 (7. Nf3 b5 $15) (7. Qd2 b5 $15) 7... b5 8. Qc1 (8. Qd2 b4 9. Nd1 Nf6 { Nader 2599 - Praggnanandhaa 2787,
+2020 0-1 (28) }) 8... b4 9. Nd1 Qd7) (6. Nh3 Nf6 7. O-O (7. Nf4 Nd4) 7... h5 8. Nd5 h4 $15) (6. Nge2 Nf6 7. O-O (7. Be3 O-O 8. O-O Rb8 { ( -> 9.h2-h3
+transposes into 8.h3 0-0 9.0-0 ) }) (7. Bg5 Bd7) (7. h3 O-O 8. O-O (8. Be3 { ( -> 8...Ra8-b8 transposes into 7...Nf6 8.h3 0-0 ) }) 8... Rb8 9. f4 Ne8 10. a4 f5 $14 { Predke 2622 - Najer 2670, 2018 1-0 (65) }) 7... h5 { Aronian 2764 -
+Grischuk 2766, 2018 1-0 (39) }) (6. f4 Nh6 7. Nf3 O-O 8. O-O f5 9. Kh1 (9. h3 Nd4) 9... Bd7 10. Be3 Rb8) 6... Rb8 7. Qd2 (7. Qc1 b5) (7. Nf3 Nf6 { Katz 2584 - Le 2950, 2019 0-1 (83) }) (7. f4 b5 { ( -> 8.Qd1-d2 transposes
+into 7.Qd2 b5 8.f4 ) }) (7. a4 a6 8. Qd2 (8. Nge2 b5 $14) (8. f4 Nh6) 8... b5 9. axb5 axb5 10. Nge2 b4 11. Nd1 Nd4 12. O-O h5) (7. Nge2 Nf6 8. h3 O-O 9. Qd2 (9. a4 a6) (9. f4 Ne8 { Fedoseev 2724 - Giri 2783, 2019 0-1 (41) }) (9. O-O e5 10. f4 b5) 9... b5 10. O-O (10. a3 Nd7) (10. Bh6 b4 11. Nd1 e5) 10... b4 11. Nd1 e5 12. f4 Nd4 $15) 7... b5 8. Nge2 (8. Nd1 e6) (8. a3 e6 $14) (8. h3 b4 9. Nd1 e6) (8. Nf3 Nd4 9. O-O b4 10. Nd1 Nxf3+ 11. Bxf3 Bh3) (8. f4 b4 9. Nd1 Qb6 10. Nf3 (10. h3 f5) 10... f5 11. O-O Nf6 12. exf5 gxf5 13. Kh1 O-O 14. Bg1 Bd7) 8... Nd4 9. O-O (9. h3 b4) 9... h5 10. Nd1 (10. h4 b4 $15) (10. h3 Bxh3 11. Bxd4 cxd4 12. Bxh3 dxc3 13. bxc3 b4) 10... h4 *
+
+
+[Event "Daniel's attacking Closed Sicilian: Closed Sicilian part 2"]
+[Site "https://lichess.org/study/rSLE9UIy/d3pBw82n"]
+[Date "2022.01.26"]
+[White "And that is all for Closed Sicilian!"]
+[Result "*"]
+[Annotator "Gambit"]
+[Variant "Standard"]
+[ECO "B25"]
+[Opening "Sicilian Defense: Closed"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Closed Sicilian Part 3"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/k5gWu5u7"]
+
+{ [%anno "Nazar1005", nazar1005] Following variations were added with help of my friend of Daniel Leclere the original study https://lichess.org/study/rSLE9UIy }
+1. e4 c5 2. Nc3 Nc6 3. g3 (3. Bc4 g6 4. f4 Bg7 { ( -> 5.Ng1-f3 transposes into 4.Nf3 Bg7 5.Bc4 ) }) (3. d3 e6 4. g3 g6 5. Bg2 Bg7 6. Be3 (6. Nge2 Nge7 7. O-O { ( -> 7...d7-d6 transposes into 6...e6 7.d3 Nge7 ) } (7. Be3 Nd4)) (6. f4 d6 7. Nf3 Nge7 8. O-O (8. Be3 Nd4 9. O-O { ( -> 9...0-0
+transposes into 8...0-0 9.Be3 Nd4 ) }) 8... O-O 9. Be3 (9. Kh1 d5) (9. Rb1 b6) (9. Ne2 f5) (9. Bd2 Rb8 10. Rb1 b5) 9... Nd4 10. e5 (10. Rb1 Nxf3+) (10. Qd2 Bd7) (10. Bf2 Nec6 11. Nxd4 Bxd4) 10... Nef5 11. Bf2 Nxf3+ 12. Qxf3 Bd7) 6... d6 7. Qd2 (7. Nge2 Nd4 8. O-O Ne7 9. Qd2 (9. Rb1 b6) 9... O-O 10. Nd1 Nxe2+ { Predke 2622 - Le 2714, 2018 1-0 (36) }) (7. f4 Bd4) 7... h6) (3. f4 g6 4. Nf3 Bg7 5. Bb5 (5. a3 Nh6) (5. d3 d6 6. g3 Nh6) (5. g3 e6 6. Bg2 Nge7 { Wang 2521 - Ni 2703, 2015 0-1 (47) }) (5. Bc4 e6 6. f5 (6. d3 Nge7) (6. O-O d6 7. d3 (7. d4 Nxd4 { Grischuk 2750 - Vachier Lagrave 2795, 2017 1-0 (24) }) (7. f5 exf5 8. d3 h6) 7... Nge7 8. Qe1 O-O 9. f5 (9. Bb3 d5) 9... d5 10. Bb3 c4 11. dxc4 d4) 6... Nge7 7. fxe6 fxe6 8. d3 O-O) 5... d6 6. Bxc6+ (6. O-O Nf6) 6... bxc6 7. d3 (7. O-O Nf6 { Ivanchuk 2739 - Naiditsch 2689, 2009 1-0 (41) }) 7... Nf6 8. O-O O-O 9. Qe1 c4) (3. Nge2 Nf6 4. d4 (4. g3 d5 5. exd5 Nd4 6. Bg2 Bg4 7. h3 Bf3) 4... d5 5. exd5 Nxd5) (3. Nf3 e5 4. Bc4 (4. g3 d6 5. Bg2 g6) 4... Be7 5. d3 (5. Nd5 Nf6) (5. O-O d6 6. d3 { ( -> 6...Ng8-f6 transposes into 5.
+..Nf6 6.0-0 d6 ) }) 5... Nf6 6. Nd2 (6. O-O d6 7. Ng5 (7. h3 O-O 8. a3 Be6 { Nakamura 2769 - Vachier Lagrave 2789, 2018 1/2-1/2 (34) }) 7... O-O 8. f4 exf4 9. Bxf4 h6 10. Nf3 Be6 11. Nd5 (11. Qd2 d5 12. exd5 Nxd5) 11... Bxd5 12. Bxd5 (12. exd5 Na5 13. Nh4 b5 { Sutovsky 2657 - Smirin 2683, 2002 1-0 (24) }) 12... Nxd5 13. exd5 Ne5 { Guseinov 2631 - Moiseenko 2711, 2013 1-0 (44) }) (6. Ng5 O-O 7. f4 d5) 6... d6 7. Nf1 Bg4 8. f3 (8. Qd2 O-O) 8... Be6 9. Ne3 Nd4 { Guliyev 2690 - Dourerassou 2670, 2012 0-1 (31) }) (3. Bb5 Nd4 4. Bc4 (4. a4 e6) (4. Ba4 g6) (4. Nf3 Nxb5 5. Nxb5 d5) 4... e6 5. Nge2 (5. Nf3 Nf6 6. O-O a6 7. d3 (7. a4 d5 { McShane 2671 - Shirov 2713, 2012 1/2-1/2 (43) }) 7... d5) 5... Nf6 6. O-O d5) 3... g6 4. Bg2 (4. d3 Bg7 5. Be3 d6 6. Qd2 Rb8 7. Bg2 Nd4) 4... Bg7 5. d3 (5. f4 d6 { ( -> 6.d2-d3 transposes into 5.d3 d6 6.f4 ) }) (5. Nge2 d6 6. O-O e6 7. d3 Nge7 8. Bg5 (8. Be3 Qb6) 8... O-O 9. Qd2 Nd4 { Jobava 2730 -
+Wojtaszek 2717, 2012 0-1 (62) }) 5... d6 6. f4 (6. Nf3 Rb8) (6. Bg5 Nd4) (6. Nh3 h5) (6. Nge2 Nf6 7. O-O (7. h3 Rb8 { Demchenko 2679 - Jones 2682, 2018 0-1 (53) }) 7... h5 { Aronian 2764 - Grischuk 2766, 2018 1-0 (39) }) (6. Be3 e5 7. Qd2 (7. Nh3 Nge7 { Artemiev 2704 - Dubov 2696, 2018 1-0 (35) }) (7. Nge2 Nge7) (7. f4 Nf6) 7... Be6 8. f4 Qd7) 6... f5 7. Nf3 Nf6 8. O-O O-O 9. Kh1 Qd7 { Closed Sicilian: 3 g3,l-without early Be3 Black/Gambit/Master 2021 [Gambit] } *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Scheveningen System"]
+[Date "2017.06.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B80"]
+[Opening "Sicilian Defense: Scheveningen Variation"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Scheveningen System"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/Krk0wDzm"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.27"]
+[UTCTime "13:04:38"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6 { This move controls the d5 square } { [%csl Gc5,Ge5,Gf5,Bd5][%cal Ge6f5,Gd6e5,Gd6c5,Ge6d5] } 6. Be3 a6 7. Be2 Qc7 8. O-O Be7 { This position can be achieved after the Najdorf variation as well- } (8... b5 9. a3 Nbd7 10. f4 Bb7 11. Bf3 Be7) 9. f4 O-O 10. g4 d5 11. exd5 Nxd5 12. Nxd5 exd5 13. Bf3 Rd8 *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Clasical Sveshnikov"]
+[Date "2018.01.04"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B33"]
+[Opening "Sicilian Defense: Lasker-Pelikan Variation, Sveshnikov Variation, Chelyabinsk Variation"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Clasical Sveshnikov"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/nMJHcacw"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2018.01.04"]
+[UTCTime "07:39:03"]
+
+1. e4 c5 2. Nf3 Nc6 (2... d6 { [%anno "Nazar1005", nazar1005] also can happen with this move } 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5 6. Ndb5 Nc6) 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5 { [%anno "Nazar1005", nazar1005] It is one of the first and most common variants in Sicilian } 6. Ndb5 d6 7. Bg5 { [%anno "Nazar1005", nazar1005] main move there are a lot of other moves } 7... a6 8. Na3 b5 9. Nd5 Be7 10. Bxf6 Bxf6 11. c3 { [%anno "Nazar1005", nazar1005] there you can see all power of the Knight on d5 it is much better than Bishop f6 } { [%csl Gd5,Rf6] } 11... Bg5 12. Nc2 Ne7 { [%anno "Nazar1005", nazar1005] black is going to destroy this Knight } { [%csl Gd5][%cal Re7d5] } 13. h4 Bh6 14. a4 { [%anno "Nazar1005", nazar1005] white playing good attacking b5 } { [%cal Ga4b5] } 14... bxa4 { [%anno "Nazar1005", nazar1005] look like only move } 15. Bc4 { [%anno "Nazar1005", nazar1005] white musk support d5 } { [%cal Gc4d5] } 15... O-O { [%anno "Nazar1005", nazar1005] and this position is playable i think white has easyer game there but all you need it is to study endgame } { [%cal Gc8b7] } *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Carlsen's Answer to the Sicilian"]
+[Date "2017.06.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B52"]
+[Opening "Sicilian Defense: Moscow Variation, Main Line"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Carlsen's Answer to the Sicilian"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/bx8gxDia"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.27"]
+[UTCTime "12:53:33"]
+
+1. e4 c5 2. Nf3 d6 3. Bb5+ Bd7 4. Bxd7+ Qxd7 5. O-O Nc6 6. c3 { [%cal Gd2d4] } 6... Nf6 7. Qe2 { [%csl Gd1,Gd2,Gd3,Gd4,Gd5] } 7... e6 8. d4 cxd4 9. cxd4 d5 { [%anno "fjachess", fjachess] Black often gain lots of power from attacking and if possible controlling the important d5-square. } 10. e5 Ne4 11. Be3 Be7 12. Ne1 { [%cal Gf2f3] } 12... f6 { [%cal Re4g5,Gf6g5] } 13. f3 Ng5 14. Nd3 O-O 15. Nd2 Nf7 { [%cal Rf7e5,Rf6e5,Rc6e5] } 16. f4 { [%cal Gf4e5,Gd4e5,Gd3e5] } 16... b6 17. Nf3 f5 { [%anno "fjachess", fjachess] Building a blockade. } 18. Rac1 Rfc8 19. g3 { [%csl Bh2,Bg3,Bf4,Be5,Bd4][%cal Gf3g5,Gf3h4,Ge2h5] } 19... g6 { [%csl Rh5] } 20. Kg2 a5 21. a3 { [%csl Rb4] } 21... Ncd8 22. Nf2 { [%anno "fjachess", fjachess] The Knight's positioning is often very imporatant in such closed positions, we can see White and Black looking to improve theirs. } 22... b5 { [%cal Gf2d3,Gd3c5,Rb6c5] } 23. Nd3 Rc4 { [%cal Ra5a4] } 24. b3 (24. h3 a4 { [%anno "fjachess", fjachess] And the position is more locked down than ever. }) 24... Rxc1 { [%cal Re7a3] } 25. Bxc1 { [%cal Re7a3,Gc1a3] } 25... Rc8 26. Bb2 { [%csl Ga3,Bd4,Be5][%cal Gb2h8] } 26... Rc7 27. Qd2 { [%cal Rd2a5] } *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Rossolimo Sicilian or Spanish Attack"]
+[Date "2017.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B31"]
+[Opening "Sicilian Defense: Nyezhmetdinov-Rossolimo Attack, Fianchetto Variation"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Rossolimo Sicilian or Spanish Attack"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/nu7rrKjI"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.28"]
+[UTCTime "07:37:01"]
+
+1. e4 c5 2. Nf3 Nc6 3. Bb5 { I play this variant against the Old Sicilian. The main idea is to play c3 and d4 castle } { [%cal Gc2c3,Gd2d4,Ge1g1] } 3... g6 (3... e6 4. O-O Nge7 5. Re1 a6 6. Bf1 { [%anno "Nazar1005", nazar1005] it is good position dor bishop he defending the king and can be active } { [%csl Gf1] }) (3... d6 { [%anno "Nazar1005", nazar1005] we are have stinitz defends in the Ruy Lopez } 4. d4 cxd4 5. Nxd4 Bd7 6. Nxc6 Bxc6 7. Bxc6+ bxc6 8. O-O Nf6 9. Qf3 d5 10. e5 Nd7 11. e6 { [%anno "Nazar1005", nazar1005] With good postion }) 4. O-O Bg7 (4... a6 5. Bxc6 dxc6 6. d3 Bg7 7. Nc3) 5. Re1 a6 6. Bxc6 dxc6 7. d3 Nf6 8. a4 O-O 9. h3 b5 10. Nbd2 { [%anno "Nazar1005", nazar1005] With good game for White } *
+
+
+[Event "♦ All about the Sicilian Defense ♦: King's Indian Attack against Sicilian"]
+[Date "2017.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B50"]
+[Opening "Sicilian Defense: Modern Variations"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "King's Indian Attack against Sicilian"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/VEOW8r33"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.28"]
+[UTCTime "07:24:53"]
+
+1. e4 c5 2. Nf3 d6 (2... e6 3. g3 d5 4. e5 { [%anno "Nazar1005", nazar1005] we are control good squares with a pawn } { [%cal Ge5f6,Ge5d6] } 4... Nc6 5. Bg2 Be7 6. O-O Qc7 7. Re1 b5 { [%anno "Nazar1005", nazar1005] Black are plaing on Qweenside and White on Kingside } { [%cal Gb5b4,Gc5c3,Gb5b3,Gh2h7] } 8. d3 Bb7 9. Bf4 Bd8 { [%cal Gg8e7] } 10. Nbd2 Nge7 11. h4 a5 12. Nf1 O-O 13. Ne3 { [%anno "Nazar1005", nazar1005] wih good position for white they can attack the black king }) 3. g3 { [%anno "Nazar1005", nazar1005] I am plaing this variants against the Sicilian with 2...d6 and 2...e6 they are They are very easy to remember and very effective } 3... Nf6 { [%anno "Nazar1005", nazar1005] It is main Line } 4. d3 { [%anno "Nazar1005", nazar1005] protect the pawn } { [%cal Gd3e4] } 4... e6 5. Bg2 Nc6 6. O-O Be7 7. Nbd2 (7. Nc3 { [%anno "fjachess", fjachess] Is absolutely playable as well, keeping d5 under Control for now. } 7... d5 8. exd5 exd5 9. d4 O-O 10. Bg5) 7... d5 (7... O-O) 8. Re1 { [%csl Ge4][%cal Re1e8] } 8... O-O 9. e5 { [%anno "Nazar1005", nazar1005] It is a strong pawn } { [%csl Ge5] } 9... Nd7 10. Nf1 (10. d4 { [%anno "fjachess", fjachess] Keeps the Centre covered, the game looks drawy. } 10... h6 11. a4 { [%anno "fjachess", fjachess] Covering some Queenside space. } { [%csl Gb5] } 11... Qb6 12. dxc5 Nxc5 13. c3 a5 14. Qe2 f6 15. exf6 Bxf6 16. Qb5 Qxb5 17. axb5 Ne7 18. Bf1 { [%cal Gf1b5,Rg2d5] } (18. Ne5)) 10... Qc7 { [%anno "Nazar1005", nazar1005] black attacking t5 pawn } 11. Bf4 { [%cal Gf4b8] } 11... b5 12. h4 a5 13. Ne3 a4 (13... Ndxe5 14. Nxe5 Nxe5 15. Bxe5 Qxe5 16. Nxd5) 14. Nxd5 { [%anno "Nazar1005", nazar1005] Tactical move } 14... exd5 15. e6 Bd6 16. Bxd6 Qxd6 17. exd7 Bxd7 { [%anno "Nazar1005", nazar1005] with a initiative } *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Prins Variation"]
+[Date "2017.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B54"]
+[Opening "Sicilian Defense: Prins Variation"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Prins Variation"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/bzT1PUua"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.28"]
+[UTCTime "07:45:47"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. f3 { [%anno "Nazar1005", nazar1005] Variant For Prins. I am plying it but I am not Prins. It is good varian against Sicilian we are protect the pawn and going to play } { [%anno "fjachess", fjachess] for ?? ... playing ... a good variant against the Sicilian. We protect the pawn and are going to play .... (please insert something ) ...
+Now the c-pawn can't move. } { [%cal Gf3e4,Gc2c4] } (5. Nc3 { [%anno "Nazar1005", nazar1005] now c pawn cant go } { [%cal Rc2c4] }) 5... e5 (5... e6 6. c4 Be7 7. Nc3 O-O 8. Nc2 { [%anno "Nazar1005", nazar1005] white not giving to play d5 for black }) 6. Nb3 *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Sicilian Gambit"]
+[Date "2017.06.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B20"]
+[Opening "Sicilian Defense: Wing Gambit"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Sicilian Gambit"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/1l2tAqP9"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.28"]
+[UTCTime "15:24:28"]
+
+1. e4 c5 2. b4 cxb4 (2... d5 3. exd5 cxb4 4. Nf3) 3. Nf3 Nc6 (3... d5 4. exd5 { [%anno "fjachess", fjachess] Gives us the same position as in the variant above . }) 4. d4 d5 5. exd5 Qxd5 6. c4 bxc3 7. Nxc3 Qa5 8. d5 Qxc3+ 9. Bd2 Qf6 10. dxc6 bxc6 11. Rc1 Qe6+ 12. Be2 Ba6 13. Nd4 Qe4 14. O-O Bxe2 15. Nxe2 Nf6 16. Re1 e6 17. Nf4 *
+
+
+[Event "♦ All about the Sicilian Defense ♦: Concluding ideas"]
+[Date "2017.06.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B20"]
+[Opening "Sicilian Defense"]
+[StudyName "♦ All about the Sicilian Defense ♦"]
+[ChapterName "Concluding ideas"]
+[ChapterURL "https://lichess.org/study/8c8bmUfy/agwI67kI"]
+[Annotator "https://lichess.org/@/francesco_super"]
+[UTCDate "2017.06.26"]
+[UTCTime "22:08:08"]
+
+1. e4 c5 { In conclusion, the Sicilian Defense can lead to very aggressive variations and the games played with this defense are usually attacking and one mistake can make a difference! The Sicilian is my personal favorite after e4 because there are so many variations that can be played which lead to very even games between both sides. I hope you found this study useful :) } *
+
+
