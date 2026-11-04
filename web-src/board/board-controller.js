@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { Chess } from "chess.js";
 import { typedSquare } from "../board-navigation.js";
 import {
   boardTransition, moveMotion, playMoveMotion, positionKey,
@@ -32,7 +33,6 @@ class BoardController {
     this._peekReal = null;      // the real position while a peek shows another (peek)
     this._peekClass = null;
     this._draggedMove = null;   // the move a drag released, so it lands without a slide
-    this._soundedKey = null;    // the move whose sound was already played
     this.engineArrow = null;
     this.betterArrow = null;
     this.branchArrows = [];
@@ -567,7 +567,7 @@ class BoardController {
       this._draggedMove = null;
       if (motion) playMoveMotion(motion, (sq) => this.squares.get(sq), pref("moveAnim") && !dragged);
       // A step back is quiet: the undone move's cue played when it was made.
-      if (this._hadPosition && lastMove && !back) this._feedbackForMove(prevFen, fen, lastMove, cue);
+      if (positionChanged && transition && lastMove && !back) this._feedbackForMove(prevFen, fen, lastMove, cue);
     }
     this._hadPosition = true;
     this._updateClasses();
@@ -595,13 +595,16 @@ class BoardController {
   // sound: a caller may render the same move twice (an optimistic landing, then
   // the confirmed position), and the second render of it stays quiet.
   _feedbackForMove(prevFen, fen, lastMove, cue) {
-    // The sound belongs to the move, not to a position change: the optimistic
-    // render and the confirmed one are the same move, and it sounds once. Two
-    // different moves never share a `lastMove`, so a real move still sounds.
-    const heard = lastMove === this._soundedKey;
-    this._soundedKey = lastMove;
+    // Prove this exact forward move, including turn, castling and legal en
+    // passant. UCI alone is not an event identity: it can recur after a rewind
+    // or in a different position. Same-position confirmations never get here.
+    try {
+      const chess = new Chess(prevFen);
+      chess.move({ from: lastMove.slice(0, 2), to: lastMove.slice(2, 4), promotion: lastMove[4] });
+      if (positionKey(chess.fen()) !== positionKey(new Chess(fen).fen())) return;
+    } catch { return; }
     if (cue === undefined) cue = moveCue(prevFen, fen, lastMove);
-    if (cue && !heard) playSound(cue);
+    if (cue) playSound(cue);
     if (pref("lastMovePulse")) this._pulseSquare(lastMove.slice(2, 4));
   }
 

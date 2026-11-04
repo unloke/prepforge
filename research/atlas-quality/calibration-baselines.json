@@ -1,0 +1,866 @@
+{
+  "baseline_commit": "11d8952f",
+  "baseline_scorer_sha256": "57ecc3073fbbabb74c0f77e9bd0816ce0ebb64b02c1ddc7a4ae78398032ab4b6",
+  "reports": [
+    {
+      "id": "2EaSmZtz",
+      "color": "white",
+      "score": 72.17199830217942
+    },
+    {
+      "id": "artuehhC",
+      "color": "white",
+      "score": 94.05118897306397
+    },
+    {
+      "id": "D8QPC8Zr",
+      "color": "white",
+      "score": 66.22990038029101
+    },
+    {
+      "id": "ACmyH8gC",
+      "color": "white",
+      "score": 57.22881585189341
+    },
+    {
+      "id": "NGpnogsw",
+      "color": "black",
+      "score": 79.46428571428571
+    },
+    {
+      "id": "8Uztu7Xx",
+      "color": "black",
+      "score": 68.58192695948136
+    },
+    {
+      "id": "8c8bmUfy",
+      "color": "black",
+      "score": 59.553664017096786
+    },
+    {
+      "id": "fTpa2qZW",
+      "color": "white",
+      "score": 74.7646231130513
+    },
+    {
+      "id": "CfSYkcMp",
+      "color": "white",
+      "score": 67.03504404797157
+    },
+    {
+      "id": "yteYURRC",
+      "color": "black",
+      "score": 56.817908375685036
+    },
+    {
+      "id": "vPqdbuqZ",
+      "color": "black",
+      "score": 78.77049180327869
+    },
+    {
+      "id": "2XxhfIAJ",
+      "color": "white",
+      "score": 57.24270741315153
+    },
+    {
+      "id": "2XxhfIAJ",
+      "color": "black",
+      "score": 73.75242344637729
+    },
+    {
+      "id": "oBsew7N6",
+      "color": "white",
+      "score": 97.94520547945206
+    },
+    {
+      "id": "oBsew7N6",
+      "color": "black",
+      "score": 66.10576923076923
+    },
+    {
+      "id": "tU7Nq5nE",
+      "color": "white",
+      "score": 100
+    },
+    {
+      "id": "rZyGzD67",
+      "color": "white",
+      "score": 47.523148148148145
+    },
+    {
+      "id": "ztgulNGx",
+      "color": "black",
+      "score": 74.14641203703704
+    },
+    {
+      "id": "AKbQXhWw",
+      "color": "white",
+      "score": 76.29365193917252
+    },
+    {
+      "id": "2MMWpcNI",
+      "color": "white",
+      "score": 72.5
+    },
+    {
+      "id": "2MMWpcNI",
+      "color": "black",
+      "score": 41.96105072463768
+    },
+    {
+      "id": "sEo8o4Rm",
+      "color": "black",
+      "score": 70.96997377935281
+    },
+    {
+      "id": "GNlZ2WKx",
+      "color": "white",
+      "score": 82.336309101713
+    },
+    {
+      "id": "KjivNw7F",
+      "color": "white",
+      "score": 71.5556669702606
+    },
+    {
+      "id": "1gqDv9cx",
+      "color": "black",
+      "score": 47.01122838823337
+    },
+    {
+      "id": "8eyxyvBh",
+      "color": "white",
+      "score": 80.26785714285715
+    },
+    {
+      "id": "dgUQNQ2B",
+      "color": "black",
+      "score": 73.52326033690277
+    },
+    {
+      "id": "whCVdUeM",
+      "color": "black",
+      "score": 74.36708860759492
+    },
+    {
+      "id": "OnPMlzHT",
+      "color": "black",
+      "score": 77.86458333333333
+    },
+    {
+      "id": "PDVt7Kbh",
+      "color": "black",
+      "score": 70.18994836182337
+    },
+    {
+      "id": "jtlLwUvh",
+      "color": "black",
+      "score": 84.765625
+    },
+    {
+      "id": "A4EBp7Ds",
+      "color": "black",
+      "score": 63.18840440270935
+    },
+    {
+      "id": "UzKIIAtz",
+      "color": "black",
+      "score": 100
+    },
+    {
+      "id": "bbxmDYZV",
+      "color": "white",
+      "score": 26.23355263157895
+    },
+    {
+      "id": "bbxmDYZV",
+      "color": "black",
+      "score": 52.02850877192982
+    },
+    {
+      "id": "nRiq9SZx",
+      "color": "black",
+      "score": 54.4248583105491
+    },
+    {
+      "id": "HHZpRszr",
+      "color": "white",
+      "score": 42.849445812807886
+    },
+    {
+      "id": "HHZpRszr",
+      "color": "black",
+      "score": 57.73358585858586
+    },
+    {
+      "id": "bmWAylqe",
+      "color": "white",
+      "score": 76.22954651706404
+    },
+    {
+      "id": "bmWAylqe",
+      "color": "black",
+      "score": 68.0422891619519
+    },
+    {
+      "id": "nYAJ7Km3",
+      "color": "black",
+      "score": 57.116168478260875
+    },
+    {
+      "id": "FwXo3Qhq",
+      "color": "black",
+      "score": 76.64554876682561
+    },
+    {
+      "id": "LLNDy032",
+      "color": "white",
+      "score": 60.760002367424235
+    },
+    {
+      "id": "e01yoGqe",
+      "color": "white",
+      "score": 46.74252717391305
+    },
+    {
+      "id": "e01yoGqe",
+      "color": "black",
+      "score": 48.06547619047619
+    }
+  ],
+  "first_phase_trial": {
+    "description": "32-ply adaptive phase/core trial before restricting Replies and Consistency to the assessment horizon. This exposed a 0.48-point truncation gain in the opening sampler; retained as failed development evidence.",
+    "reports": [
+      {
+        "id": "2EaSmZtz",
+        "color": "white",
+        "final": 85.00682330089819,
+        "shortened": {
+          "score": 49.93403686272634,
+          "delta": -35.07278643817185
+        },
+        "holes": {
+          "removed_nodes": 538,
+          "score": 54.283383159745895,
+          "delta": -30.723440141152295
+        }
+      },
+      {
+        "id": "artuehhC",
+        "color": "white",
+        "final": 82.3223581609418,
+        "shortened": {
+          "score": 44.81404746557164,
+          "delta": -37.50831069537016
+        },
+        "holes": {
+          "removed_nodes": 213,
+          "score": 42.15967646454153,
+          "delta": -40.16268169640027
+        }
+      },
+      {
+        "id": "D8QPC8Zr",
+        "color": "white",
+        "final": 89.17043715916071,
+        "shortened": {
+          "score": 47.49571257964981,
+          "delta": -41.6747245795109
+        },
+        "holes": {
+          "removed_nodes": 653,
+          "score": 51.71312076569183,
+          "delta": -37.45731639346888
+        }
+      },
+      {
+        "id": "ACmyH8gC",
+        "color": "white",
+        "final": 76.93314295048961,
+        "shortened": {
+          "score": 46.64027187038131,
+          "delta": -30.2928710801083
+        },
+        "holes": {
+          "removed_nodes": 980,
+          "score": 55.80042665910371,
+          "delta": -21.132716291385904
+        }
+      },
+      {
+        "id": "NGpnogsw",
+        "color": "black",
+        "final": 82.75611202829653,
+        "shortened": {
+          "score": 36.84031498640386,
+          "delta": -45.91579704189267
+        },
+        "holes": {
+          "removed_nodes": 349,
+          "score": 35.56893304490062,
+          "delta": -47.18717898339591
+        }
+      },
+      {
+        "id": "8Uztu7Xx",
+        "color": "black",
+        "final": 95.45002583238903,
+        "shortened": {
+          "score": 62.3167968436975,
+          "delta": -33.13322898869153
+        },
+        "holes": {
+          "removed_nodes": 20716,
+          "score": 56.61184790471581,
+          "delta": -38.83817792767322
+        }
+      },
+      {
+        "id": "8c8bmUfy",
+        "color": "black",
+        "final": 92.2775633605965,
+        "shortened": {
+          "score": 60.23543741263315,
+          "delta": -32.04212594796335
+        },
+        "holes": {
+          "removed_nodes": 3922,
+          "score": 54.894446068971,
+          "delta": -37.3831172916255
+        }
+      },
+      {
+        "id": "fTpa2qZW",
+        "color": "white",
+        "final": 96.688308963085,
+        "shortened": {
+          "score": 50.24177704913861,
+          "delta": -46.446531913946394
+        },
+        "holes": {
+          "removed_nodes": 10624,
+          "score": 48.859263471613765,
+          "delta": -47.82904549147124
+        }
+      },
+      {
+        "id": "CfSYkcMp",
+        "color": "white",
+        "final": 83.56196235917807,
+        "shortened": {
+          "score": 38.02952460761391,
+          "delta": -45.53243775156416
+        },
+        "holes": {
+          "removed_nodes": 580,
+          "score": 49.18384965455534,
+          "delta": -34.37811270462273
+        }
+      },
+      {
+        "id": "yteYURRC",
+        "color": "black",
+        "final": 96.15857694734751,
+        "shortened": {
+          "score": 56.93746897624322,
+          "delta": -39.221107971104296
+        },
+        "holes": {
+          "removed_nodes": 1258,
+          "score": 45.11835152627682,
+          "delta": -51.040225421070694
+        }
+      },
+      {
+        "id": "vPqdbuqZ",
+        "color": "black",
+        "final": 84.3432665301749,
+        "shortened": {
+          "score": 53.13292845913054,
+          "delta": -31.21033807104436
+        },
+        "holes": {
+          "removed_nodes": 592,
+          "score": 37.73006710498553,
+          "delta": -46.61319942518937
+        }
+      },
+      {
+        "id": "2XxhfIAJ",
+        "color": "white",
+        "final": 97.02532277914929,
+        "shortened": {
+          "score": 49.88393644424648,
+          "delta": -47.14138633490281
+        },
+        "holes": {
+          "removed_nodes": 29349,
+          "score": 51.002087347261096,
+          "delta": -46.023235431888196
+        }
+      },
+      {
+        "id": "2XxhfIAJ",
+        "color": "black",
+        "final": 95.27737143735212,
+        "shortened": {
+          "score": 61.37217567742952,
+          "delta": -33.9051957599226
+        },
+        "holes": {
+          "removed_nodes": 30133,
+          "score": 45.50211771502495,
+          "delta": -49.775253722327164
+        }
+      },
+      {
+        "id": "oBsew7N6",
+        "color": "white",
+        "final": 78.11397584559374,
+        "shortened": {
+          "score": 48.274469230281476,
+          "delta": -29.839506615312267
+        },
+        "holes": {
+          "removed_nodes": 133,
+          "score": 34.25966042414678,
+          "delta": -43.85431542144696
+        }
+      },
+      {
+        "id": "oBsew7N6",
+        "color": "black",
+        "final": 64.37660061841463,
+        "shortened": {
+          "score": 41.73116625363,
+          "delta": -22.645434364784627
+        },
+        "holes": {
+          "removed_nodes": 134,
+          "score": 32.467799420604486,
+          "delta": -31.908801197810142
+        }
+      },
+      {
+        "id": "tU7Nq5nE",
+        "color": "white",
+        "final": 79.5899153631303,
+        "shortened": {
+          "score": 32.18297948685432,
+          "delta": -47.40693587627598
+        },
+        "holes": {
+          "removed_nodes": 77,
+          "score": 49.46278611163058,
+          "delta": -30.127129251499724
+        }
+      },
+      {
+        "id": "rZyGzD67",
+        "color": "white",
+        "final": 65.58097897512536,
+        "shortened": {
+          "score": 28.11442217672497,
+          "delta": -37.46655679840039
+        },
+        "holes": {
+          "removed_nodes": 26,
+          "score": 52.339780983587325,
+          "delta": -13.241197991538037
+        }
+      },
+      {
+        "id": "ztgulNGx",
+        "color": "black",
+        "final": 70.70176752251835,
+        "shortened": {
+          "score": 54.18533813309134,
+          "delta": -16.51642938942701
+        },
+        "holes": {
+          "removed_nodes": 111,
+          "score": 36.84031498640386,
+          "delta": -33.86145253611449
+        }
+      },
+      {
+        "id": "AKbQXhWw",
+        "color": "white",
+        "final": 93.26485875336579,
+        "shortened": {
+          "score": 49.26459905662743,
+          "delta": -44.000259696738354
+        },
+        "holes": {
+          "removed_nodes": 3135,
+          "score": 48.88381586945035,
+          "delta": -44.381042883915434
+        }
+      },
+      {
+        "id": "2MMWpcNI",
+        "color": "white",
+        "final": 43.72447490669137,
+        "shortened": {
+          "score": 35.54833724814456,
+          "delta": -8.176137658546807
+        },
+        "holes": {
+          "removed_nodes": 23,
+          "score": 35.10694655824726,
+          "delta": -8.617528348444111
+        }
+      },
+      {
+        "id": "2MMWpcNI",
+        "color": "black",
+        "final": 47.773721731150204,
+        "shortened": {
+          "score": 41.98127861546236,
+          "delta": -5.7924431156878455
+        },
+        "holes": {
+          "removed_nodes": 19,
+          "score": 32.623897009740524,
+          "delta": -15.14982472140968
+        }
+      },
+      {
+        "id": "sEo8o4Rm",
+        "color": "black",
+        "final": 95.0496372336124,
+        "shortened": {
+          "score": 57.5684853732076,
+          "delta": -37.4811518604048
+        },
+        "holes": {
+          "removed_nodes": 997,
+          "score": 39.292079437200535,
+          "delta": -55.75755779641187
+        }
+      },
+      {
+        "id": "GNlZ2WKx",
+        "color": "white",
+        "final": 97.60386254517898,
+        "shortened": {
+          "score": 46.131272960501335,
+          "delta": -51.47258958467765
+        },
+        "holes": {
+          "removed_nodes": 1984,
+          "score": 47.9562826090494,
+          "delta": -49.64757993612958
+        }
+      },
+      {
+        "id": "KjivNw7F",
+        "color": "white",
+        "final": 81.35381371225427,
+        "shortened": {
+          "score": 49.999999999999986,
+          "delta": -31.35381371225428
+        },
+        "holes": {
+          "removed_nodes": 755,
+          "score": 50.93519351939255,
+          "delta": -30.418620192861717
+        }
+      },
+      {
+        "id": "1gqDv9cx",
+        "color": "black",
+        "final": 77.73702092096337,
+        "shortened": {
+          "score": 50.2551064567051,
+          "delta": -27.481914464258274
+        },
+        "holes": {
+          "removed_nodes": 1560,
+          "score": 38.90668700985824,
+          "delta": -38.830333911105136
+        }
+      },
+      {
+        "id": "8eyxyvBh",
+        "color": "white",
+        "final": 69.94794304007056,
+        "shortened": {
+          "score": 34.19951893353393,
+          "delta": -35.748424106536625
+        },
+        "holes": {
+          "removed_nodes": 91,
+          "score": 34.19951893353393,
+          "delta": -35.748424106536625
+        }
+      },
+      {
+        "id": "dgUQNQ2B",
+        "color": "black",
+        "final": 82.66579611151366,
+        "shortened": {
+          "score": 60.37338637699925,
+          "delta": -22.292409734514408
+        },
+        "holes": {
+          "removed_nodes": 1499,
+          "score": 45.92101174051117,
+          "delta": -36.74478437100249
+        }
+      },
+      {
+        "id": "whCVdUeM",
+        "color": "black",
+        "final": 83.46130034380025,
+        "shortened": {
+          "score": 36.84031498640386,
+          "delta": -46.620985357396385
+        },
+        "holes": {
+          "removed_nodes": 193,
+          "score": 33.471647504108475,
+          "delta": -49.98965283969177
+        }
+      },
+      {
+        "id": "OnPMlzHT",
+        "color": "black",
+        "final": 65.76030285714063,
+        "shortened": {
+          "score": 47.49571257964981,
+          "delta": -18.264590277490818
+        },
+        "holes": {
+          "removed_nodes": 50,
+          "score": 39.68502629920498,
+          "delta": -26.075276557935652
+        }
+      },
+      {
+        "id": "PDVt7Kbh",
+        "color": "black",
+        "final": 86.54957859690852,
+        "shortened": {
+          "score": 59.58401722409656,
+          "delta": -26.965561372811955
+        },
+        "holes": {
+          "removed_nodes": 1534,
+          "score": 37.936574979913544,
+          "delta": -48.61300361699497
+        }
+      },
+      {
+        "id": "jtlLwUvh",
+        "color": "black",
+        "final": 64.40783664262995,
+        "shortened": {
+          "score": 51.787208432564306,
+          "delta": -12.62062821006564
+        },
+        "holes": {
+          "removed_nodes": 34,
+          "score": 45.493473145955996,
+          "delta": -18.91436349667395
+        }
+      },
+      {
+        "id": "A4EBp7Ds",
+        "color": "black",
+        "final": 81.56931845775554,
+        "shortened": {
+          "score": 58.22272871556078,
+          "delta": -23.346589742194766
+        },
+        "holes": {
+          "removed_nodes": 1359,
+          "score": 42.52557572470854,
+          "delta": -39.043742733047004
+        }
+      },
+      {
+        "id": "UzKIIAtz",
+        "color": "black",
+        "final": 67.20789576266161,
+        "shortened": {
+          "score": 47.49571257964981,
+          "delta": -19.712183183011796
+        },
+        "holes": {
+          "removed_nodes": 44,
+          "score": 32.93168780041747,
+          "delta": -34.276207962244136
+        }
+      },
+      {
+        "id": "bbxmDYZV",
+        "color": "white",
+        "final": 38.825257958485665,
+        "shortened": {
+          "score": 37.448488946148665,
+          "delta": -1.3767690123370002
+        },
+        "holes": {
+          "removed_nodes": 15,
+          "score": 30.46455059893005,
+          "delta": -8.360707359555615
+        }
+      },
+      {
+        "id": "bbxmDYZV",
+        "color": "black",
+        "final": 42.21782348083165,
+        "shortened": {
+          "score": 42.69904597171238,
+          "delta": 0.4812224908807323
+        },
+        "holes": {
+          "removed_nodes": 6,
+          "score": 37.46331709616237,
+          "delta": -4.754506384669277
+        }
+      },
+      {
+        "id": "nRiq9SZx",
+        "color": "black",
+        "final": 76.72681183197001,
+        "shortened": {
+          "score": 58.9200731904487,
+          "delta": -17.806738641521314
+        },
+        "holes": {
+          "removed_nodes": 366,
+          "score": 45.98083109880686,
+          "delta": -30.74598073316315
+        }
+      },
+      {
+        "id": "HHZpRszr",
+        "color": "white",
+        "final": 79.95155742687811,
+        "shortened": {
+          "score": 50.63992317480722,
+          "delta": -29.31163425207089
+        },
+        "holes": {
+          "removed_nodes": 330,
+          "score": 46.21806541178394,
+          "delta": -33.73349201509417
+        }
+      },
+      {
+        "id": "HHZpRszr",
+        "color": "black",
+        "final": 79.92450405603513,
+        "shortened": {
+          "score": 55.84552096507058,
+          "delta": -24.078983090964556
+        },
+        "holes": {
+          "removed_nodes": 330,
+          "score": 44.33005663319083,
+          "delta": -35.594447422844304
+        }
+      },
+      {
+        "id": "bmWAylqe",
+        "color": "white",
+        "final": 81.06824157943547,
+        "shortened": {
+          "score": 51.89609217546894,
+          "delta": -29.17214940396653
+        },
+        "holes": {
+          "removed_nodes": 1230,
+          "score": 52.80740379593058,
+          "delta": -28.260837783504883
+        }
+      },
+      {
+        "id": "bmWAylqe",
+        "color": "black",
+        "final": 81.31026937751956,
+        "shortened": {
+          "score": 60.91899519316356,
+          "delta": -20.391274184356
+        },
+        "holes": {
+          "removed_nodes": 1273,
+          "score": 42.394227420497984,
+          "delta": -38.91604195702158
+        }
+      },
+      {
+        "id": "nYAJ7Km3",
+        "color": "black",
+        "final": 63.6016788800263,
+        "shortened": {
+          "score": 49.999999999999986,
+          "delta": -13.601678880026313
+        },
+        "holes": {
+          "removed_nodes": 42,
+          "score": 27.516060407455218,
+          "delta": -36.085618472571085
+        }
+      },
+      {
+        "id": "FwXo3Qhq",
+        "color": "black",
+        "final": 92.65987321555002,
+        "shortened": {
+          "score": 55.728803897953064,
+          "delta": -36.93106931759696
+        },
+        "holes": {
+          "removed_nodes": 599,
+          "score": 42.572746244086275,
+          "delta": -50.087126971463746
+        }
+      },
+      {
+        "id": "LLNDy032",
+        "color": "white",
+        "final": 81.29649943784969,
+        "shortened": {
+          "score": 50.770580012066,
+          "delta": -30.52591942578369
+        },
+        "holes": {
+          "removed_nodes": 518,
+          "score": 48.0289145249713,
+          "delta": -33.26758491287839
+        }
+      },
+      {
+        "id": "e01yoGqe",
+        "color": "white",
+        "final": 59.391940323721734,
+        "shortened": {
+          "score": 48.060442471727455,
+          "delta": -11.331497851994278
+        },
+        "holes": {
+          "removed_nodes": 127,
+          "score": 44.49601049460846,
+          "delta": -14.895929829113271
+        }
+      },
+      {
+        "id": "e01yoGqe",
+        "color": "black",
+        "final": 64.83890946150281,
+        "shortened": {
+          "score": 62.6834118522601,
+          "delta": -2.1554976092427083
+        },
+        "holes": {
+          "removed_nodes": 157,
+          "score": 47.102668296035276,
+          "delta": -17.736241165467533
+        }
+      }
+    ]
+  }
+}

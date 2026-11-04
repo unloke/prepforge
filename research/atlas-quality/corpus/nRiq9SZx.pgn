@@ -1,0 +1,222 @@
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: 🏴‍☠️ Introduction 🏴‍☠️"]
+[Date "2021.02.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "🏴‍☠️ Introduction 🏴‍☠️"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/zRP1qaFb"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[FEN "rnbqkb1r/pp2pppp/2pp1n2/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 2 4"]
+[SetUp "1"]
+[UTCDate "2021.02.23"]
+[UTCTime "20:00:17"]
+
+{ Welcome to the country of Czech, in the Pirc Region! This study will cover the hypermodern Pribyl System or Czech Defense, a close kin of the Pirc. The basic setup is d6, Nf6, and c6. } { [%csl Bf6,Bd6,Bc6] }
+4. f4 Qa5 5. Bd3 e5 6. Nf3 Bg4 7. Be3 Nbd7 { The absolute main line of the so-called Czech defense is given here, but the point of this repertoire is to provide you with an easy-to-learn, flexible system against l̳i̳t̳e̳r̳a̳l̳l̳y̳ ̳e̳v̳e̳r̳y̳t̳h̳i̳n̳g̳ White plays. Good Luck! And most importantly, s̴t̴u̴d̴y̴ ̴t̴h̴e̴o̴r̴y̴ have fun! } *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: 🎼Prelude: 🎵🎶🐀"]
+[Date "2021.02.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "🎼Prelude: 🎵🎶🐀"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/x1kBAQf7"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[FEN "rnbqkb1r/pp2pppp/2pp1n2/8/4PP2/5N2/PPPP2PP/RNBQKB1R w KQkq - 2 4"]
+[SetUp "1"]
+[UTCDate "2021.02.23"]
+[UTCTime "20:25:01"]
+
+{ A small joke: This position, from one of my recent games is known as the Rat Defense: Harmonist 🐀🎶 I have to say that there is a certain 𝒉𝒂𝒓𝒎𝒐𝒏𝒚 to being able to play this system against everything 😄 That's it -- great joke right?! Now settle back and enjoy the music of this piece, so aptly named 𝐏𝐫𝐞𝐥𝐮𝐝𝐞 𝐍𝐨.𝟏 𝐢𝐧 𝐂𝟔, 𝐂𝐳𝐞𝐜𝐡 𝐓𝐡𝐞𝐦𝐞 🎹🎧 }
+ *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: London Bridge is Falling Down!"]
+[Date "2021.02.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A40"]
+[Opening "Queen's Pawn Game"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "London Bridge is Falling Down!"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/UC9lPnjY"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.23"]
+[UTCTime "20:39:38"]
+
+1. d4 { 🚫 Oh no! White played the best move, and they intend to absolutely crush us with the London 🇬🇧 Will we survive?? 😱 } 1... c6 { Not to worry, we got it covered! } 2. Bf4 { Here is you are already familiar with "anti-London" variations, you probably want to play Nf6 or even Qb6 → try that out - next time! For now we'll stick with the plan. [Note: technically you could play d6 and then c6, but I prefer c6 first.] } 2... d6 3. e3?! { Umm, I don't know whaat to do! Ok, better just continue with our normal London. It's in the book 📚 🤷🏼 } { [%csl Re3] } (3. Nf3 Nf6 { With the standard ideas against the London. } { [%csl Bf8,Gg7,Bd8,Gb6][%cal Bf8g7,Bg7g6,Gd8b6] } (3... h6 { Another super sharp idea. } { [%csl Rg7,Rg5][%cal Rg7g5] })) 3... g5!? { Baam! Ok, you can also just play Nf6 or Qb6, but this is a nasty surprise weapon, or sideline to use against <9000 players. } { [%csl Gf4,Gg3][%cal Gf4g3] } (3... Nf6 { A solid idea as well, especially if your idea is to go after the bishop. } { [%csl Gf6,Rh5,Rf4,Rg3][%cal Rf6h5,Bh5f4] }) (3... Qb6 { [%csl Rb2,Gb6][%cal Bb6b2] }) 4. Bg3 $7 (4. Bxg5?? Qa5+ { Winning the bishop, and trust me, people still fall for this! } { [%csl Ba5,Rg5][%cal Ra5e1,Ra5g5] }) 4... h5!? { The logical continuation, gaining space on the Kingside, and threatening to trap the bishop. } 5. h4 (5. Nf3?? h4 { [%csl Rh4,Rg3][%cal Rh4g3] }) (5. h3 { Both moves are fine for White. } 5... h4) 5... g4 { And the arrows illustrate a sample development strategy for Black. This is just one line to choose for Black, move 3..Nf6 and 3...Qb6 are certainly more solid for normal play. If White plays 3.Nf3, be sure to check the above sidelines for that on how to play. } { [%csl Gg8,Gf8,Gd8,Rb6,Rg7,Rh6,Gc8,Rf5,Gb8,Rd7][%cal Bg8h6,Bf8g7,Bd8b6,Bc8f5,Bb8d7] } *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: Czech: The Old Indian"]
+[Date "2021.02.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E94"]
+[Opening "King's Indian Defense: Orthodox Variation, Donner Defense"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "Czech: The Old Indian"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/zRxWIvzy"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.23"]
+[UTCTime "21:23:06"]
+
+1. d4 c6 2. c4 d6 3. Nc3 Nf6 { Black always plays the same set-up (except in rare cases). } 4. e4 g6 { The move I recommend here, although there are many other moves. Black wants to go for a typical King's Indian set-up, break in the center with e5, and wait to see what White wants. Admittedly, this isn't the most ambitious set-up, but it's still very playable. } 5. Nf3 Bg7 6. Be2 (6. g3 O-O 7. Bg2 e5 8. O-O Nbd7 9. h3 { Another variation of the King's Indian Defense. }) 6... O-O 7. O-O e5 { And we've completed our journey from Czech into the King's Indian territory. My goal isn't to deal with the specific middlegame plans and ideas that are possible, just to give you a feel for this versatile system that is the Czech/Pribyl System. } *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: English and Catalan systems"]
+[Date "2021.02.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A16"]
+[Opening "English Opening: Anglo-Indian Defense, Queen's Knight Variation"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "English and Catalan systems"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/7fcH9sdU"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.23"]
+[UTCTime "21:39:01"]
+
+1. c4 Nf6 { Preference, to stop the immediate e4. } (1... c6 2. e4 { [%csl Rg8,Rf6,Ge4,Re5][%cal Ge4e5,Re5f6] } 2... d6 { Is also fine. }) 2. Nc3 c6 3. g3 d6 { [%csl Bd6,Bc6,Bf6] } 4. Bg2 g6 5. Nf3 Bg7 6. O-O O-O { And again, we have a flexible set-up. Our goal isn't going to be traditional plans of preventing e4 or d4 and occupying the center. We are going to develop our pieces, and perhaps go for an attack on the queenside, trade pieces to minimize White's attack, and chip away at the center at the right moment. } *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: Bread and Butter: The Main ideas against e4 🍞"]
+[Date "2021.02.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Czech Defense"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "Bread and Butter: The Main ideas against e4 🍞"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/kqHpIvry"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.23"]
+[UTCTime "21:49:16"]
+
+1. e4 { Now your personal taste will decide if you play c6 (as if you were going to play the Caro-Kann) or d6, which would be the Pirc. } { [%csl Bc7,Bc6,Yd7,Yd6][%cal Bc7c6,Yd7d6] } 1... d6 (1... c6) 2. d4 Nf6 { Forcing White to defend the pawn and not continue aggressively occupying the center with pawns. } { [%csl Bf6,Re4][%cal Yf6e4] } 3. Nc3 c6 { Now we exit the Pirc highway for the Czech road. } { [%csl Yf2,Rf4][%cal Yf2f4] } 4. Nf3 { 4.f4 will be covered in a later chapter. } 4... Qa5 $140 { Of course Bg4 or g6 are also good, but I quite like this move. } { [%csl Re4] } 5. Bd3 { The main move, Bd2 and e5! being the other popular moves. Check the alternate lines for notes on how to meet each of these. } { [%csl Gd3,Ge4][%cal Gd3e4] } (5. Bd2 { Aggressively developing and x-raying the queen. } { [%csl Gd2,Ga5,Rc3,Rc7,Rf6][%cal Rd2a5,Rc3d5,Rc3b5] } 5... Nbd7 { Nbd7 is preferred. } (5... e5 6. dxe5 dxe5 7. Bc4 { And you move the Queen somewhere } 7... Qc7) 6. Nd5 Qd8 7. Nxf6+ Nxf6 8. Bd3 g6 { This line hasn't been played much, and although White has an edge, Black seems to do well from here. }) (5. e5! { Strong move, but I doubt most of your opponents will play this. } 5... Ne4! { If White now brings the bishop to d2, Black should capture it. } { [%csl Be4,Gd6,Rc3,Bd2][%cal Ge4d6,Ge4c3,Ge4d2] }) 5... Bg4 (5... e5 { A move that also make sense here. Black will bring the bishop to e7 and castle, and perhaps have a similar position to the Bg4 line if White takes on e5. } { [%csl Gf8,Ge8,Bg8,Gc1,Be3,Ge1,Bg1,Bd1,Be2][%cal Bf8e7,Be8g8,Bc1e3,Be1g1,Bd1e2] }) 6. h3 Bxf3 { Black shouldn't be afraid to give up the Bishop here, a trade one would normally avoid. 1. Black's position is a bit cramped, so it's best to trade pieces. 2. The Nf3 is a key defender of the center. } 7. Qxf3 Nbd7 *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: Bread and Butter: The Main ideas against e4 🍞🍞 f4"]
+[Date "2021.02.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Czech Defense"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "Bread and Butter: The Main ideas against e4 🍞🍞 f4"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/SsDyVo19"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.23"]
+[UTCTime "22:29:09"]
+
+1. e4 d6 2. d4 Nf6 { [%csl Bf6,Re4][%cal Yf6e4] } 3. Nc3 c6 4. f4 { [%csl Bf4,Bd4,Be4][%cal Ge4e5] } 4... Qa5 { [%csl Gf6,Re4][%cal Yf6e4] } 5. Bd3 (5. e5 Ne4 6. Bd2 (6. Qf3 d5 7. Bd3 c5 (7... Nxc3 8. Bd2 { [%csl Ra5][%cal Rd2a5] }) 8. Bxe4 dxe4 9. Qxe4 cxd4 10. Qxd4 Nc6 11. Qd5 Qb6) 6... Nxd2 7. Qxd2) 5... e5 6. Nf3 Bg4 7. Be3 Nbd7 { With the absolute main line as shown in the intro.
+https://youtu.be/NsewPZzQqBE for more info. } *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: Bread and Butter: The Main ideas against e4 🍞🍞🍞 Toasty  Sliced-lines"]
+[Date "2021.02.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Czech Defense"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "Bread and Butter: The Main ideas against e4 🍞🍞🍞 Toasty  Sliced-lines"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/izReQwbu"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.23"]
+[UTCTime "22:46:37"]
+
+{ [%csl Bf2,Bg1,Bd2,Bg2,Yg4,Yf4,Ye4,Be2,Yd4,Yc4,Bc2,Bb2,Yb4,Gf3][%cal Yg2g4,Yf2f4,Ye2e4,Yd2d4,Yc2c4,Yb2b4,Gg1f3] }
+1. e4 (1. Nf3 d6 2. g3 c6 3. Bg2 Nf6 4. O-O g6 5. d3 Bg7 6. Nbd2 O-O 7. e4 (7. c3 e5) 7... Nbd7 8. Re1 e5 $10 { With an equal game against the King's Indian Attack. https://lichess.org/1P2of78A/black }) (1. c4 c6 2. Nf3 d6 3. g3 Nf6 4. Bg2 g6 5. b3 Bg7 6. Bb2 O-O 7. O-O $10 Na6!? { and Black went on to win https://lichess.org/y1MKF2Cf/black }) (1. b4 c6 { This is actually a valid line against the Polish. } 2. Bb2 d6 (2... a5!) 3. c4 Nf6 $10) (1. g4 c6 2. Bg2 d6 3. h3 Nf6 { Just because we can! } (3... h5!? { The supposed "refutation" -- as if there needed to be one for the 𝙘𝙤𝙖𝙧𝙨𝙚, 𝙧𝙤𝙪𝙜𝙝 𝙪𝙣𝙘𝙤𝙪𝙩𝙝, 𝙧𝙪𝙙𝙚, 𝙘𝙧𝙪𝙙𝙚 Grob. But yeah, no hard feelings or anything. } 4. g5 e5)) (1. d4 c6 2. Bf4 d6 3. Nf3 Nf6 { With multiple ideas: 1. To win the bishop pair if allowed 2. To develop the Queen and attack the b2 pawn. 3. To play g6 and fianchetto the Bishop } 4. h3 (4. c3 h6 5. h3 g5!? 6. Bh2 Bf5) 4... h6 5. e3 g5! { Because, yes! }) (1. f4 { Ah, the Bird. 🐦 If you're too chicken 🐥 to play the From Gambit here, you can play the Czech/Pribyl System and possible transpose to the 𝒉𝒂𝒓𝒎𝒐𝒏𝒊𝒐𝒖𝒔 Rat Defense that we saw before. } 1... c6 (1... e5 2. fxe5 d6 { [%csl Ge5,Gf8,Rd6,Bg1,Gf3][%cal Bf8d6,Ye5d6,Yg1f3] }) 2. Nf3 d6 3. e4 Nf6) 1... d6 2. d4 (2. f4 c6 3. Nf3 Nf6 { https://lichess.org/j7feFCBM/black a hideous example. }) 2... Nf6 3. Nc3 c6 4. Nf3 (4. Bc4?! Qa5!? (4... d5!) 5. Bd2 Qb6!? { Being greedy is fine, whatever the engine says. } { [%csl Rb2,Rd4] }) 4... Qa5 5. e5 (5. Bd3 Bg4 6. Bd2 Qb6! { Putting the pressure to White. This scores well for Black against lower rated opponents and nice for players who like sharp tactical lines. } 7. Na4 Qc7 8. c4 e5) 5... Ne4 6. Bd2?! Nxd2 7. Qxd2 dxe5 8. dxe5 Bg4 $10 { https://lichess.org/3jR3vjut/black } *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: Alternate Plans: 🦁 Lion"]
+[Date "2021.02.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Czech Defense"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "Alternate Plans: 🦁 Lion"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/WB3Njf99"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.28"]
+[UTCTime "05:07:35"]
+
+1. e4 d6 2. d4 Nf6 3. Nc3 c6 { Nothing wrong with this move, although e5 (or even g6) is by far more popular. The main drawback with c6 is that it allows f4. But with c6 we are trying to steer the game away from typical Pirc lines. } (3... e5 4. Nf3 (4. dxe5 { This is is a forcing line, so it's best to be prepared for it. } 4... dxe5 5. Qxd8+ Kxd8 { [%csl Gf1,Yc4,Rf7,Gc1,Yg5,Bf6][%cal Yf1c4,Yc1g5] } 6. Bg5 Be6 7. O-O-O+ Nd7 8. f4 exf4) 4... Nbd7 5. Bc4 Be7 6. O-O h6 7. h3 c6 8. a4 Qc7 9. Be3 Nf8 10. Qd2 g5 11. Rad1 Ng6 { This is our master plan, but how to find the right move order 🥺 }) 4. Nf3 (4. f4 Qa5 { This probably best. }) 4... Qc7 { The start of our alternative plan. } 5. Bd3 { The most common move at lower levels, although it's hard to say as this is already an infrequently occurring position. } (5. Bc4 b5!) (5. e5 Nd5 6. Nxd5 cxd5 7. Bf4 e6 8. Bd3 Nc6 { Perhaps the most critical line, but not too often played. }) 5... Nbd7 (5... e5 6. O-O (6. dxe5 dxe5 $10) 6... Nbd7 { alternative }) 6. O-O e5 7. h3 { [%csl Gh3,Rg4,Bf6,Be3,Gc1][%cal Yf6g4,Yc1e3] } 7... Be7 (7... g6 { also good }) 8. Be3 Nf8!? 9. Ne2 h6 (9... Ng6 10. c4 (10. c3 Nh5 11. Qd2) 10... Nh5 { [%csl Ge2,Rg3,Bg6,Bh5][%cal Re2g3,Yg6f4,Yh5f4] } 11. b4 O-O 12. Rc1 Bd7 { This 9...Ng6 line is more complicated, but also more novel and thus useful. One thing to remember is that we don't play Ng5 to play f5? any time soon, because of exf and g4 tactics. }) 10. c4 { [%csl Gg7,Bg5][%cal Yg7g5] } 10... g5 11. Rc1 { [%csl Bg5,Rg4][%cal Yg5g4] } *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: Alternate Plans: 🦁 Lion(ess) and Complications"]
+[Date "2021.02.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C41"]
+[Opening "Philidor Defense: Lion Variation"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "Alternate Plans: 🦁 Lion(ess) and Complications"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/6EkT0pNp"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.28"]
+[UTCTime "16:58:25"]
+
+1. e4 e5 2. Nf3 d6 { Trying to reach our position via the Philidor position main move order is a bit sus 🤨 } 3. d4 (3. Bc4 Be7 4. d4 exd4 5. Nxd4 Nf6 6. Nc3 { Fine, but not what we wanted. }) 3... Nf6!? 4. Nc3 (4. dxe5! Nxe4 5. Qd5 Nc5 6. Bg5 { And I already don't like our position so much. }) 4... Nbd7 5. Bc4 (5. dxe5 dxe5 6. Bc4 $10) 5... Be7 6. O-O c6 7. a4 Qc7 8. Re1 (8. h3 h6 9. Be3) 8... h6 9. h3 Nf8 10. Be3 g5 { We were lucky to make it this far! 😅 In the next chapter we'll look at further reasons why the Philidor move order is not to be preferred. } *
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: Alternate Plans: 🦁 Lion(ess) and Complications Et Tu"]
+[Date "2021.02.28"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Pirc Defense"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "Alternate Plans: 🦁 Lion(ess) and Complications Et Tu"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/YORbYVes"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.28"]
+[UTCTime "17:08:49"]
+
+1. e4 d6 2. d4 Nf6 3. Nc3 Nbd7?! { Typical GingerGM poison! ☠️ } 4. Nf3 { Principled, but I think f4! just loads up the pressure on Black. } (4. f4! { You know it's bad when you have to have an Anti-Philidor. But like before, we'll look at the Nf3 lines as well, which might give us some more hope... or heartaches. 🤨 } 4... e5 5. Nf3 c6 6. dxe5 (6. Bd3?! Qc7 7. O-O Be7 { Dream on, this won't ever happen. There are far too many juicy options for White to allow us to get our beloved setup. }) 6... dxe5 7. fxe5 (7. Bc4 Qa5 8. Ng5 Bb4 9. Bxf7+) 7... Ng4 8. e6 fxe6 9. Ng5! { Did I mention I'm not a fan? 😫 }) 4... c6?! (4... e5 5. Bc4 (5. dxe5 dxe5 6. Bc4 $10) 5... h6! { [%csl Bf3,Gg5,Rf7,Bc4][%cal Yf3g5,Yg5f7,Yc4f7] }) 5. e5! { hAHa! No, you're not getting away with this, but looking at the stats from online play you just must might if they don't play this move. } 5... Nd5 6. Nxd5 cxd5 7. e6 fxe6 8. Ng5 Qa5+ { The computer seem to prefer Nf6 (at least at low depth), and at first sight it seems to hold onto the pawn, which is why it's played online. Unfortunately it invites some severe headaches. } (8... Nf6 9. Bb5+ Bd7 10. Nxe6 Qa5+?? (10... Qc8 11. Bxd7+ $14) 11. Bd2 { Ooops!! } 11... Qb6 (11... Qxb5?? $18 12. Nc7+ { [%csl Re8,Ra8,Rb5][%cal Bc7e8,Bc7a8,Bc7b5] }) 12. a4) 9. Bd2 Qb6 10. Nxe6 (10. Bd3 Nf6 11. Bxh7!? Nxh7 12. Qh5+ Kd7 13. Nxh7 Qxb2 14. O-O Qxd4 15. Be3 Qe5 16. Nf6+ Qxf6 17. Qxh8 $13) 10... Nf6 11. Nxf8 (11. Bb5+ Kf7 12. Ng5+ Kg8) 11... Rxf8 *
+
+
+[Event "Casual Blitz game"]
+[Site "https://lichess.org/VbruCKw5"]
+[Date "2022.06.22"]
+[White "dbtmedusa"]
+[Black "Watsonchenney"]
+[Result "0-1"]
+[WhiteElo "1899"]
+[BlackElo "1851"]
+[TimeControl "180+0"]
+[Termination "Normal"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Masi Variation"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "dbtmedusa (1899) - Watsonchenney (1851)"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/PdMv932d"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+
+1. d4 { [%clk 0:03:00] } 1... c6 { This was actually a mouse-slip - I was intending c5 instead. After e4, I could have gone into Caro-Kann Defense, but for some reason I didn't and I easily slipped back into Czech defense ideas. I had assumed my opponent would play the London at first, but maybe my opponent realized that they had mouse-slipped e4 on the first move as well. 😂 } { [%clk 0:03:00] } 2. e4 { [%clk 0:02:59] } 2... Nf6 { [%clk 0:02:58] } 3. Bd3 { [%clk 0:02:57] } 3... d6 { [%csl Gf6,Gd6,Gc6] [%clk 0:02:56] } 4. Ne2 { [%clk 0:02:55] } 4... e5 { [%clk 0:02:53] } 5. c3 { [%clk 0:02:47] } 5... exd4 { [%clk 0:02:46] } 6. cxd4 { [%clk 0:02:46] } 6... Be7 { [%clk 0:02:43] } 7. Qc2 { [%clk 0:02:45] } 7... Nbd7 { [%clk 0:02:35] } 8. Bf4 { [%clk 0:02:40] } 8... Nh5 { [%clk 0:02:30] } 9. Be3 { [%clk 0:02:36] } 9... Nhf6 { [%clk 0:02:21] } 10. O-O { [%clk 0:02:34] } 10... c5 { [%clk 0:01:58] } 11. d5 { [%clk 0:02:30] } 11... Ne5 { [%clk 0:01:56] } 12. Bb5+ { [%clk 0:02:26] } 12... Bd7 { [%clk 0:01:55] } 13. Bxd7+ { [%clk 0:02:20] } 13... Qxd7 { [%clk 0:01:47] } 14. f4 { [%clk 0:02:19] } 14... Neg4 { [%clk 0:01:45] } 15. Bf2 { [%clk 0:02:06] } 15... Nxf2 { [%clk 0:01:41] } 16. Rxf2 { [%clk 0:02:04] } 16... Ng4 { [%clk 0:01:41] } 17. Rf1 { [%clk 0:02:02] } 17... Ne3 { [%clk 0:01:40] } 18. Qc1 { [%clk 0:01:59] } 18... Nxf1 { [%clk 0:01:39] } 19. Qxf1 { [%clk 0:01:58] } 19... Qb5 { [%clk 0:01:36] } 20. b3 { [%clk 0:01:55] } 20... Bf6 { [%clk 0:01:31] } 21. Nbc3 { [%clk 0:01:51] } 21... Bxc3 { [%clk 0:01:29] } 22. Nxc3 { [%clk 0:01:51] } 22... Qxf1+ { [%clk 0:01:28] } 23. Rxf1 { [%clk 0:01:49] } 23... a6 { [%clk 0:01:27] } 24. e5 { [%clk 0:01:48] } 24... dxe5 { [%clk 0:01:26] } 25. fxe5 { [%clk 0:01:48] } 25... O-O { [%clk 0:01:19] } 26. Ne4 { [%clk 0:01:45] } 26... Rfe8 { [%clk 0:01:16] } 27. Nxc5 { [%clk 0:01:38] } 27... Rxe5 { [%clk 0:01:14] } 28. Rd1 { [%clk 0:01:38] } 28... Rd8 { [%clk 0:01:09] } 29. Nxb7 { [%clk 0:01:24] } 29... Rexd5 { [%clk 0:01:04] } 30. Rc1 { [%clk 0:01:23] } 30... Rd1+ { [%clk 0:01:03] } 31. Rxd1 { [%clk 0:01:22] } 31... Rxd1+ { [%clk 0:01:02] } 32. Kf2 { [%clk 0:01:22] } 32... Rd2+ { [%clk 0:01:02] } 33. Ke3 { [%clk 0:01:21] } 33... Rxa2 { 0-1 White resigns. } { [%clk 0:01:01] } 0-1
+
+
+[Event "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖: 🏁 Finale 🏁"]
+[Date "2021.02.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖"]
+[ChapterName "🏁 Finale 🏁"]
+[ChapterURL "https://lichess.org/study/nRiq9SZx/mtiStdKm"]
+[Annotator "https://lichess.org/@/WatsonChenney"]
+[UTCDate "2021.02.23"]
+[UTCTime "23:45:34"]
+
+{ Please hit the 💗 button if you want to touch my heart. I̶f̶ ̶y̶o̶u̶ ̶h̶a̶p̶p̶e̶n̶ ̶t̶o̶ ̶h̶a̶v̶e̶ When you have comments, questions, suggestions, complaints, feel free to message me here or on Discord [Watsonchenney#6760] Thank you for taking the time to enjoy life, and also this study. ☮️✌️❤️🦄🌈 }
+ *
+
+

@@ -1,0 +1,259 @@
+[Event "Jerome Gambit: Introduction"]
+[Date "2022.05.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game: Jerome Gambit"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/gyDi9GPH"]
+[Annotator "https://lichess.org/@/Meane"]
+[UTCDate "2022.05.22"]
+[UTCTime "18:44:34"]
+
+{ You're about to learn a bad (but fun) gambit, called "Jerome Gambit".
+Note that this gambit is totally overpowered in Three-Check . }
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. Bxf7+?? { The gambit begins... } *
+
+
+[Event "Jerome Gambit: Line 1 : Kf6"]
+[Date "2022.05.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game: Jerome Gambit"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 1 : Kf6"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/j3XzvvS1"]
+[Annotator "https://lichess.org/@/Meane"]
+[UTCDate "2022.05.22"]
+[UTCTime "18:56:24"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. Bxf7+?? Kxf7 5. Nxe5+ Nxe5 6. Qh5+ { [%cal Rh5f7,Rh5c5] } 6... Kf6?? 7. Qf5+ Ke7 8. Qxe5+ { [%cal Re5e7,Re5c5] } 8... Kf8 (8... Kf7 9. Qd5+ Ke8 10. Qxc5) 9. Qxc5+ { You've got an amazing position. } *
+
+
+[Event "Jerome Gambit: Line 1 : Exercise 1"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 1 : Exercise 1"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/YnyBsGXN"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/2n5/2b1p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:15:12"]
+[ChapterMode "gamebook"]
+
+1. Nxe5+ Nxe5 2. Qh5+ { [%cal Rh5f7,Rh5c5] } 2... Kf6 3. Qf5+ Ke7 4. Qxe5+ { [%cal Re5e7,Re5c5] } 4... Kf7 5. Qd5+ Ke8 6. Qxc5 *
+
+
+[Event "Jerome Gambit: Line 2 : g6"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 2 : g6"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/QFtCFkfa"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n3/4P3/8/PPPP1PPP/RNBQK2R w KQ - 0 4"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "14:58:31"]
+
+4. Qh5+ { [%cal Rh5f7,Rh5c5] } 4... g6 5. Qxe5 { [%cal Re5c5,Re5h8] } 5... Bxf2+?? { Most played move. } (5... d6 6. Qxh8) (5... Nf6 6. Qxc5) (5... Qe7 { If your opponent know what they're doing, they would play Qe7. At this moment, just hope for the best. } 6. Qf4+ Qf6 7. d3 Qxf4 8. Bxf4) 6. Kxf2 Qf6+ 7. Qxf6+ Nxf6 *
+
+
+[Event "Jerome Gambit: Line 2 : Exercise 1 | Bxf2+"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 2 : Exercise 1 | Bxf2+"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/WxurfFnT"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n3/4P3/8/PPPP1PPP/RNBQK2R w KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:17:10"]
+[ChapterMode "gamebook"]
+
+1. Qh5+ { [%cal Rh5f7,Rh5c5] } 1... g6 2. Qxe5 { [%cal Re5c5,Re5h8] } 2... Bxf2+?? 3. Kxf2 Qf6+ 4. Qxf6+ Nxf6 *
+
+
+[Event "Jerome Gambit: Line 2 : Exercise 2 | d6"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 2 : Exercise 2 | d6"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/AIDfxHFT"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n2Q/4P3/8/PPPP1PPP/RNB1K2R b KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:24:38"]
+[ChapterMode "gamebook"]
+
+ *
+
+
+[Event "Jerome Gambit: Line 2 : Exercise 3 | Nf6"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 2 : Exercise 3 | Nf6"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/KgtQ2osm"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n2Q/4P3/8/PPPP1PPP/RNB1K2R b KQ - 1 4"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:23:16"]
+[ChapterMode "gamebook"]
+
+{ [%cal Rh5f7,Rh5c5] }
+4... g6 5. Qxe5 { [%cal Re5c5,Re5h8] } 5... Nf6 6. Qxc5 *
+
+
+[Event "Jerome Gambit: Line 3 : Ng6"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 3 : Ng6"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/vIhJTJOB"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n3/4P3/8/PPPP1PPP/RNBQK2R w KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "14:57:02"]
+
+1. Qh5+ { [%cal Rh5f7,Rh5c5] } 1... Ng6? 2. Qd5+ Ke8 3. Qxc5 *
+
+
+[Event "Jerome Gambit: Line 3 : Exercise 1"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 3 : Exercise 1"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/cyPBjBHP"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n2Q/4P3/8/PPPP1PPP/RNB1K2R b KQ - 1 4"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:25:36"]
+[ChapterMode "gamebook"]
+
+4... Ng6? 5. Qd5+ Ke8 6. Qxc5 *
+
+
+[Event "Jerome Gambit: Line 4 : Kf8"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 4 : Kf8"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/tuqeQpYh"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n3/4P3/8/PPPP1PPP/RNBQK2R w KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:02:16"]
+
+1. Qh5+ { [%cal Rh5f7,Rh5c5] } 1... Kf8 2. Qxe5 *
+
+
+[Event "Jerome Gambit: Line 4 : Exercise 1"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 4 : Exercise 1"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/RzVjVb5c"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n2Q/4P3/8/PPPP1PPP/RNB1K2R b KQ - 1 4"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:26:13"]
+[ChapterMode "gamebook"]
+
+4... Kf8 5. Qxe5 *
+
+
+[Event "Jerome Gambit: Line 5 : Ke6"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 5 : Ke6"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/EUNiUHWM"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n3/4P3/8/PPPP1PPP/RNBQK2R w KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:08:05"]
+
+1. Qh5+ { [%cal Rh5f7,Rh5c5] } 1... Ke6 2. f4 Nf6?? (2... g6 3. Qxe5+ { [%cal Re5e6,Re5h8,Re5c5] } 3... Kf7 4. Qxh8) 3. Qxe5+ { [%cal Re5e6,Re5c5] } 3... Kf7 4. Qxc5 { You've got an amazing position. } *
+
+
+[Event "Jerome Gambit: Line 5 : Exercise 1 | Nf6"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 5 : Exercise 1 | Nf6"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/Nxh625Un"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n2Q/4P3/8/PPPP1PPP/RNB1K2R b KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:29:41"]
+[ChapterMode "gamebook"]
+
+1... Ke6 2. f4 Nf6 3. Qxe5+ { [%cal Re5e6,Re5c5] } 3... Kf7 4. Qxc5 *
+
+
+[Event "Jerome Gambit: Line 5 : Exercise 2 | g6"]
+[Date "2022.05.23"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Jerome Gambit"]
+[ChapterName "Line 5 : Exercise 2 | g6"]
+[ChapterURL "https://lichess.org/study/8eyxyvBh/Mr3DoqQj"]
+[Annotator "https://lichess.org/@/Meane"]
+[FEN "r1bq2nr/pppp1kpp/8/2b1n2Q/4P3/8/PPPP1PPP/RNB1K2R b KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2022.05.23"]
+[UTCTime "15:30:43"]
+[ChapterMode "gamebook"]
+
+1... Ke6 2. f4 g6 3. Qxe5+ { [%cal Re5e6,Re5c5,Re5h8] } 3... Kf7 4. Qxh8 { If you enjoyed, feel free to click the heart shape and also join my team to get notified for new studies : https://lichess.org/team/meanes-fan-club } *
+
+

@@ -1,0 +1,354 @@
+[Event "🍄 Ideas in the London System 🍄: Introduction"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/E9SccSB6"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "01:33:25"]
+
+{ Hi! You've probably heard about an opening for white called the London System. In this study, I will teach you the basics of this popular opening.
+ADVANCED PLAYERS -> see the final chapter.
+
+If you enjoy this study please click the heart button
+(under the h1 square). Thanks!
+
+Please check out my new 2022 study where I'm learning the Classical Sicilian https://lichess.org/study/nrGAXGfg Thank you! :) }
+1. d4 { We will be starting with d4. It is not as aggressive as e4 can be but d4 is a good middleground between aggressive and solid games.
+To start off as an example I will show you the ideas where black plays 1...d5. 1...Nf6 is a popular choice as well. } { [%cal Bd7d5,Bg8f6] } 1... d5 2. Bf4 { This is the trademark move of the London Opening, where you play d4 and Bf4. The idea is to build a solid pyramid in the center with e3 and c3, and the bishop on f4 will be very well placed.
+This is as far as I will go for this chapter. In the next few chapters I will go into more detail on the ideas.
+PLEASE DON'T STOP HERE. Continue through the next 14 chapters (in the top left corner)
+Note: If you want to see a more advanced course on the London I highly recommend IM Alex Banzea's free London System playlist on youtube. He goes into detail about many of the modern move orders and more challenging ideas from black. } { [%csl Ge3,Gc3,Bf4][%cal Ge2e3,Gc2c3] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: The Main Ideas"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "The Main Ideas"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/2saKs20w"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "02:04:47"]
+
+{ The London Opening can bring you great results and easily teach you very important ideas in chess. In this chapter I will show you the must-know ideas when playing the London Opening }
+1. d4 { In this chapter I'll explain the main ideas you will do in most London Opening games. } 1... d5 2. Bf4 { Our London Opening move.
+Plan Part #1: Start with d4 and Bf4. } 2... Nf6 3. e3 { Plan Part #2: Build a Pyramid! Play the moves e3 and c3 as soon as you can! } { [%csl Gc3,Ge3][%cal Gc2c3] } (3. Nf3 c5 4. e3 Nc6 5. c3 Qb6 6. Qb3 c4 7. Qc2 Bf5) 3... c5 { When c5 hits you never want to take on c5. The main reason is because when you take something you RELEASE TENSION and releasing tension is bad. You don't want to capture with your d4 pawn cause then you're just gonna destroy your own pyramid. Instead you let them take us. If they ever play cxd4, you almost always capture back with the e-pawn. } { [%csl Gd4][%cal Ge3d4,Gc5d4,Rd4c5] } 4. c3 { Your goal is to have e3 already played and to MEET C5 WITH C3. } { [%csl Ge3][%cal Gc7c5,Gc2c3] } 4... e6 { Plan Part #3: Develop your remaining minor pieces.
+The question is, where? The answer? Where they are closest to the CENTER!! The center is where your pieces are the most powerful, so we should get our pieces towards there. Thus, the best squares for our pieces are Nd2, Nf3 and Bd3. } { [%cal Bf1d3,Bb1d2,Bg1f3] } 5. Nd2 { I recommend developing the queen's knight before the king's knight, because there are some nasty things that can happen if you play Nf3 too early. You can avoid these annoyances by developing the queen knight first. } { [%csl Gd2][%cal Rg1f3,Gb1d2] } 5... Nc6 6. Ngf3 { Both knights are out to their best squares
+Here black can play either Bd6 or Be7. Be7 is more passive. I created a sideline so you can see my recommendation for what to do if they play that.
+The mainline runs Bd6. } { [%cal Bf8e7,Bf8d6] } 6... Bd6 { IDEA #4: The "Standoff" as GM Simon Williams likes to call it. There are two pistols aiming at each other. When black plays Bd6 aiming at your bishop, you've got to remember to NOT TAKE, but to drop this bishop back to g3.
+If you take, you help black to develop the queen and they can play e5 next. That is unacceptable. } { [%cal Rf4d6,Gf4g3] } (6... Be7) 7. Bg3 { Generally when you are given a choice whether to make an exchange or not, you should NOT do the exchange, but KEEP THE TENSION and let your opponent make the exchange. If black takes the bishop on g3, which weaker plays often do, you get a free open file and g-pawn battering rams. These are both excellent resources when you do your kingside attack. } { [%cal Bd6g3,Bh2g3,Yh1h8] } 7... O-O (7... Bxg3 8. hxg3 h6 9. Ne5 { Super important move. The idea is to stop black playing e5 and we want to increase our control of this square by playing f4. } { [%csl Be5][%cal Bf3e5,Rf2f4] } 9... Qd6 10. f4 { We upgraded our "Pyramid" into a "Stonewall" and we can do a very good kingside attack. } { [%csl Rb2,Rc3,Rd4,Re3,Rf4,Ge5][%cal Re3f4,Re3d4,Rb2d4,Gd4e5,Gf4e5] } 10... cxd4 11. exd4) 8. Bd3 { We completed idea 3, developing all our minor pieces } { [%csl Bd3,Bd2,Bf3] } 8... Re8 { Okay here is a typical example where black is going to play e6-e5, break up the center and free up his position and his light squared bishop.
+**GOLDEN RULE** #4: You should *NEVER* allow black to play e5. You have to block this square. } { [%csl Be5,Yc8][%cal Rf8e8,Re8e5,Be6e5,Yc8f5] } 9. Ne5 { **GOLDEN RULE** #5 Play Ne5. You have to play this at some point in the London System in order to get into the middlegame. With the move Ne5, we are:
+1. Preventing black from playing e5. *Super important, please take note of this*
+2. Occupying the center, the very best thing you can do
+3. Getting ready to play f4 next (Stonewall) and thereby setting up potential for a kingside attack. } { [%csl Ge5][%cal Gf2f4,Re6e5] } 9... Qc7 { The knight is attacked by too many pieces and not supported enough. } { [%csl Re5][%cal Rc7e5,Rc6e5] } 10. f4 { GOLDEN IDEA #6: Convert the "Pyramid" into what's known as a "Stonewall". (Pawns on c3, d4, e3 and f4)
+This is your main goal in the London System out of the opening. You want to have:
+1. Got all your pieces out and working, controlling both light and dark squares
+2. Stopped black playing e5 (played Ne5)
+3. Built your stonewall successfully } { [%csl Ge4,Rb2,Rc3,Rd4,Rf4,Re3][%cal Gd3e4,Gd2e4,Rb2d4,Re3d4,Re3f4] } 10... b6 { Now what do we do? We're in the middlegame. The plan is pretty straight forward: Put everything on the kingside and checkmate black. :)
+The attack will depend on your game; I can't really give you exact guidelines.
+But in Chapters 3 & 4 I included good examples on how to attack, and you can also check out my study containing my most brutal London Opening games: https://lichess.org/study/VSmBjmFj } { [%cal Bg3h4,Bd2f3,Be1g1,Yd1h5,Bd1f3,Yf3g5] } (10... cxd4 11. exd4 { If black captures on d4 you always recapture with e3 pawn } { [%cal Rc5d4,Re3d4] } 11... Bxe5 12. fxe5 { If black chops off your knight on e5 then you take with the f4 pawn. You keep your pawn on d4 and open the f-file. } { [%csl Gd4][%cal Rd6e5,Rf4e5,Gf1f7,Ge1g1] } 12... Nd7 { This is a fantastic attacking position for white. The white pieces are coming flying in, you have the two bishops, Qh5, Nf3-g5, and even castling bringing the rooks in on the f-file. } { [%csl Rc6,Rc7,Rd7,Rc8][%cal Bd3h7,Bd1h5,Bd2f3,Bf3g5,Be1g1] }) *
+
+
+[Event "Casual Rapid game"]
+[Site "https://lichess.org/q4Y2Hz48"]
+[Date "2018.02.03"]
+[Round "-"]
+[White "FunnyAnimatorJimTV"]
+[Black "MateusCornelius16"]
+[Result "1-0"]
+[WhiteElo "1842"]
+[BlackElo "1848"]
+[TimeControl "900+10"]
+[Termination "Normal"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System, Steinitz Countergambit"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "Crashing on the Kingside"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/HeMVAmwi"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+
+{ I think this is a decent example by me on how to attack on the kingside in the mainline London Opening.
+
+Calling all London System players!! We made a club on lichess for people who play the London Opening! The club is free for all lichess users to join!
+Here is the lichess club https://lichess.org/team/london-system-club-of-lichess Please join! Let's rack up tournament points! :) }
+1. d4 { [%clk 0:15:00] } 1... d5 { [%clk 0:15:00] } 2. Bf4 { Starting with d4 and Bf4 } { [%clk 0:15:08] } 2... c5 { [%clk 0:14:44] } 3. e3 { [%clk 0:14:49] } 3... e6 { [%clk 0:14:16] } 4. c3 { I built my pyramid } { [%csl Rb2,Rc3,Rd4,Re3,Rf2][%cal Rf2d4,Rb2d4] [%clk 0:14:44] } 4... Nc6 { Black developed the knight } { [%csl Gc6] [%clk 0:14:13] } 5. Nd2 { I develop my queen knight } { [%csl Gd2][%cal Gb1d2] [%clk 0:14:39] } 5... h6 { An utterly pointless bunny-ear move. I BEG YOU not to play moves like this in your games. } { [%csl Bh6][%cal Bh7h6] [%clk 0:14:13] } 6. Ngf3 { [%clk 0:14:43] } 6... Nf6 { [%clk 0:14:20] } 7. Bd3 { Developed all my minor pieces } { [%csl Bd2,Bd3,Bf3] [%clk 0:14:44] } 7... Bd6 { Standoff. Do we take? Of course not, because that releases tension, and releasing tension is bad. } { [%cal Rd6f4,Rf4d6] [%clk 0:14:14] } 8. Bg3 { Instead we step back a bit and allow them to take us if they want. } { [%cal Bd6g3] [%clk 0:14:51] } 8... O-O { [%clk 0:14:18] } 9. Ne5 { Ne5, the key move. Occupying the center } { [%csl Ge5][%cal Gf3e5] [%clk 0:14:23] } 9... Qc7 { The knight is attacked } { [%csl Re5][%cal Rc7e5] [%clk 0:13:50] } 10. f4 { Which beautifully makes us go into a Stonewall. Because we prevented e5, black's light squared bishop stays blocked in and will most likely be a dead piece for black the whole game, while all of the white pieces are very happy. :) } { [%csl Gb2,Gc3,Gd4,Ge3,Gf4,Rc8][%cal Gf4e5,Gd4e5,Rc8e6] [%clk 0:14:22] } 10... a6 { Maybe black is going to try and undermine this white queenside pawn chain } { [%csl Rc3,Rd4,Rb2][%cal Bb7b5,Bb5b4,Bb4c3] [%clk 0:13:22] } 11. Bh4 { I reposition this bishop, getting ready to swap off that knight that protects the black king } { [%csl Gh4][%cal Rh4f6,Gg3h4] [%clk 0:13:56] } 11... Be7 { [%clk 0:13:11] } 12. g4 { Here comes the attack!! } { [%csl Rg4,Rf4][%cal Rg2g4,Rg4g5] [%clk 0:13:36] } 12... cxd4 { [%clk 0:11:41] } 13. exd4 { ALWAYS recapture with the e3 pawn
+That way you still have your queenside pawns there to safeguard that area so black has decreased chances of counterplay } { [%csl Bb2,Bc3,Bd4][%cal Gc5d4,Ge3d4,Yc3b4,Yb2a3,Yd4c5] [%clk 0:12:53] } 13... Nh7 { A really bad move. Black was clearly intending to defend, but the worst defensive moves are the ones that go back into passivity...Just like this one. This move was the beginning of the end for black. } { [%csl Rh7][%cal Rf6h7] [%clk 0:10:18] } 14. Bxe7 { [%clk 0:12:20] } 14... Qxe7 { [%clk 0:10:26] } 15. Ndf3 { Bringing in another piece and getting ready to push more pawns } { [%csl Gf3][%cal Gd2f3,Gh2h4,Gg4g5] [%clk 0:12:23] } 15... Rd8 { [%clk 0:09:31] } 16. h4 { [%clk 0:12:19] } 16... g6 { [%clk 0:09:34] } 17. Bc2 { The next plan, to attack along this diagonal } { [%csl Bd3,Rh7][%cal Bd3c2,Bd1d3,Yc2h7] [%clk 0:11:33] } 17... Na5 { [%clk 0:09:28] } 18. Qd3 { [%cal Rc2h7,Rh4h5] [%clk 0:11:29] } 18... Nf8 { Black keeps doing PASSIVE DEFENSE and it's hurting him. } { [%csl Rf8][%cal Rh7f8,Rf6h7] [%clk 0:09:20] } 19. h5 { [%clk 0:11:25] } 19... f5 { Finally he tried to close this diagonal but it's a bit too late. } { [%csl Gf5][%cal Rc2h7] [%clk 0:09:00] } 20. hxg6 { I got a pawn and am ready to utilize my rooks. } { [%csl Gg6][%cal Gh1h6] [%clk 0:11:12] } 20... Nc4 { [%cal Rc4b2] [%clk 0:08:57] } 21. O-O-O { Protecting the b2 pawn and bringing the other rook into the attack } { [%csl Gb2,Bd1][%cal Gc1b2,Bd1h1,Bh1h6] [%clk 0:10:40] } 21... Bd7 { All of black's play is just too slow } { [%clk 0:08:37] } 22. Rxh6 { [%clk 0:10:23] } 22... Bb5 { [%cal Rb5d3] [%clk 0:08:19] } 23. Nxc4 { Removing his best piece } { [%csl Bc4][%cal Be5c4] [%clk 0:10:04] } 23... Bxc4 { [%clk 0:08:24] } 24. Qd2 { [%cal Bd2h2,Bd1h1,Rh1h8] [%clk 0:09:51] } 24... Qg7 { [%clk 0:07:58] } 25. Rdh1 { [%clk 0:09:46] } 25... Nxg6 { [%clk 0:07:59] } 26. gxf5 { [%clk 0:09:53] } 26... exf5 { [%clk 0:07:33] } 27. Bxf5 { Attacking } { [%csl Bf5,Bh6,Bh1] [%clk 0:09:39] } 27... Rd6 { [%clk 0:07:39] } 28. Bxg6 { [%clk 0:09:35] } 28... Rxg6 { [%clk 0:07:46] } 29. Rh8+ { [%cal Rh8a8] [%clk 0:09:42] } 29... Kf7 { [%clk 0:07:52] } 30. Ne5+ { [%clk 0:09:47] } 30... Kf6 { [%clk 0:07:48] } 31. Rxa8 { Finally the attack materialized. } { [%clk 0:09:29] } 31... Rg1+ { [%clk 0:07:51] } 32. Rxg1 { [%clk 0:09:38] } 32... Qxg1+ { [%clk 0:08:00] } 33. Qd1 { [%clk 0:09:44] } 33... Qe3+ { [%clk 0:08:06] } 34. Kb1 { [%clk 0:09:43] } 34... Qe4+ { [%clk 0:07:48] } (34... Qxf4 35. Rf8+ { [%cal Rf8f4] }) 35. Ka1 { Black resigned. He's a whole rook down and his king will fall soon. This was a great game that shows how you can attack in the London System where black is helpless. I've got another spectacular game to show you in chapter 4. } { [%csl Rf6,Ga8] [%clk 0:09:41] } 1-0
+
+
+[Event "🍄 Ideas in the London System 🍄: A Brutal Example"]
+[Date "2018.03.22"]
+[White "FunnyAnimatorJimTV"]
+[Black "Elizabeth"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "A Brutal Example"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/BWzscdtY"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "02:53:01"]
+
+{ This is a game I played in a G60+10 tournament in early March. I used my favorite London Opening and completely crushed my opponent on the kingside. }
+1. d4 d5 2. Bf4 { Stage 1 complete } 2... e6 3. e3 Nf6 4. c3 { Stage 2 complete } { [%csl Rb2,Rc3,Rd4,Re3,Rf2][%cal Rf2d4,Rb2d4] } 4... c6 { Okay here black is playing in Semi-Slav Defense style, but the main problem for her is the light squared bishop and how it's stuck inside its pyramid. This is why we played Bf4, to avoid this problem! } { [%csl Bc6,Bb7,Bd5,Be6,Bf7,Rc8][%cal Rc8b7,Rc8e6] } 5. Nd2 { [%cal Gb1d2] } 5... Be7 { The more passive square. At this point I think white is much better } { [%csl Rd6][%cal Bf8e7] } 6. Ngf3 { [%cal Gg1f3] } 6... Nbd7 7. Bd3 { Stage 3 complete } { [%csl Gd3,Gd2,Gf3][%cal Gf1d3] } 7... c5 { Okay here black realized her mistake and played c5. But she lost one important tempo and it helps me to develop an attack quicker. } { [%cal Rc7c6,Rc6c5] } 8. h3 { My idea is to tuck this bishop back to h2, then play Ne5 and finally f4. } { [%csl Gh2,Ge5][%cal Gf4h2,Gf3e5,Rf2f4] } 8... O-O 9. O-O cxd4 { She released the tension: This is really bad } { [%cal Rc5d4] } 10. exd4 Qb6 11. Qb3 { We have to meet Qb6 with Qb3 (more explanation in chapter 6) } { [%cal Rd8b6,Rd1b3] } 11... Qc6 12. Ne5 Nxe5 13. Bxe5 { dxe5 was also good, but I wanted to play f4 } { [%csl Ge5,Bf4][%cal Gd4e5,Bf2f4] } 13... Nd7 14. Bh2 { I'm getting ready to play f4. } { [%cal Gf2f4] } 14... Bd6 15. Bxd6 Qxd6 { Black is ready to play e6-e5 } { [%csl Be5][%cal Rd7e5,Rd6e5,Be6e5] } 16. f4 { So I stop her. } { [%csl Ge5][%cal Gf4e5,Gd4e5] } 16... b6 { Black wants to develop the bishop to b7, but why waste two moves? The bishop won't be doing anything there at all
+Don't spend the time developing pieces to squares they won't be improved on!! } { [%cal Bb7b6,Bc8b7] } 17. Rae1 { Bringing my last piece in } { [%csl Be1,Bf1] } 17... Bb7 { Okay now I need to come up with an attacking plan. My first will be to transfer my queen near her king. } { [%cal Gb3d1,Gd1h5,Gh5g4,Gg4h4] } 18. Qd1 Rfe8 19. Qh5 { Honestly I was expecting g6, so h6 came as a surprise to me. } { [%cal Rg7g6] } 19... h6 20. Qg4 Nf6 { I was kinda happy to see this move because it blocks her f-pawn which is the only way she will be able to play e5. } { [%csl Gf6,Rf7][%cal Gd7f6,Rf7f6,Re6e5] } 21. Qh4 Re7 { And now I just need to do some maneuvering and calculation } 22. Re3 { [%cal Ge1e3,Ge3f3,Gg2g4,Gf1e1] } 22... Kh8 23. g4 Ng8 { Knight goes back to the corner. Super passive and this is the beginning of the end for black. } { [%csl Rg8][%cal Rf6g8] } 24. g5 Rae8 25. Nf3 { [%csl Ge5][%cal Gf3e5] } 25... f6 26. Rf2 fxg5 27. fxg5 Rf8 28. Ne5 { Now I'm attacking the weak light squares } { [%csl Gg6][%cal Ge5g6,Gd3h7] } 28... Rxf2 29. Ng6+ Kh7 30. Nxe7+ { Here I think Rf5 was also good } { [%cal Rf2f5] } 30... Kh8 31. Ng6+ Kh7 32. Qxf2 hxg5 33. h4 g4 34. Ne5+ g6 35. Qf7+ Kh8 36. Nxg6# { That shows you the kind of epic, brutal games you can play in the London Opening! } { [%csl Rb7,Rg8] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: Sacrifice Combinations"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "Sacrifice Combinations"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/o5w9t6or"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "17:35:56"]
+
+{ The London is NOT a boring opening. It can be very tactical for white too, and there are sacrifices that you may find in the 1 e4 openings. In this chapter I will show you a typical combination }
+1. d4 d5 2. Bf4 Nf6 3. e3 e6 4. c3 c5 5. Nd2 Nc6 6. Ngf3 Bd6 7. Bg3 O-O 8. Bd3 Qe7 { Black is threatening to play e6-e5. How do we stop it? Can you guess the right move? } { [%csl Re5][%cal Re6e5] } 9. Ne5 { We block the e6 pawn! } { [%csl Ge5] } 9... Nd7 { Here if you want you can play f4 and go into an immediate Stonewall, but here there is a nice combination. } { [%cal Rf2f4] } 10. Nxd7 { This combination works only if black recaptures with the bishop and not the queen. Recapturing with bishop will look most natural to average players, so be happy! } { [%csl Gd7][%cal Ge7d7,Rc8d7] } 10... Bxd7 11. Bxd6 Qxd6 12. dxc5 Qxc5 13. Bxh7+ Kxh7 14. Qh5+ Kg8 15. Ne4 { [%csl Ge4][%cal Gh5c5] } 15... g6 (15... Qc4 16. Ng5 { [%csl Rh7][%cal Rh5h7,Rg5h7,Yh5f7,Yg5f7] } 16... Qd3 { [%csl Gh7][%cal Gd3h7] } (16... Rfd8 17. Qxf7+ Kh8 18. Qh5+ Kg8 19. Rd1) 17. e4 { [%cal Rd3h7] }) (15... Qe7 16. Ng5) 16. Nxc5 gxh5 17. Nxd7 Rfc8 18. Nf6+ Kg7 19. Nxh5+ Kg6 20. Nf4+ Kf6 21. Ke2 { [%csl Gg2,Gh2] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: - Black plays D5"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System, Steinitz Countergambit"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "- Black plays D5"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/WOEDgrA0"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "01:57:15"]
+
+{ And now in the next few chapters I'm going to go over the specific variations on what black can play against the London Opening and I will tell you the ideas. We will start out with 1.d4 d5. }
+1. d4 d5 { We've already talked about this a fair bit but I'd just like to go over a few extra things before we move on to 1...Nf6. } 2. Bf4 { Okay so black can play this early c5 move and I talk about this Nf6 + c5 on move 2 setup in more detail on chapter 9. } { [%cal Bc7c5] } (2. Nf3 Nf6 3. Bf4 e6 4. e3) 2... c5 (2... e6 3. e3) 3. e3 { Building our pyramid } { [%csl Re3,Rd4,Rf2,Rc3,Rb2][%cal Rc2c3] } 3... Nf6 4. c3 Nc6 { In chapter 2, The Essential Ideas, I recommended you play Nd2 before Nf3. If you're wondering why that is, I encourage you check out the sideline 5.Nf3 to see what happens. } { [%csl Gd2,Rf3][%cal Gb1d2,Rg1f3] } 5. Nd2 (5. Nf3 { This is a very common mistake. Many London Opening players are playing Nf3 either right here or even before they build the pyramid. It looks like the most natural developing move, however there is a flaw with it. } 5... Qb6 { Black can now go Qb6, hitting b2. } { [%csl Rb2,Ra1][%cal Rb6b2] } 6. Qb3 { This is the way you're supposed to meet Qb6; with Qb3. If black takes your queen then you get an open a-file. } { [%csl Gb3][%cal Gd1b3,Bb6b3,Ba2b3] } 6... c4 { But now black plays this forcing move c4. And of course you don't want to exchange queens because then you allow black to open the a-file for himself } { [%csl Rb6][%cal Rc5c4,Rb3b6,Ra7b6] } 7. Qc2 { So we play Qc2. And if black allows (say for example if black plays a bad move like e6), then white is going to play b3 and you will have the better pawn structure. However... } { [%csl Gc2][%cal Gb2b3,Re7e6] } 7... Bf5 { Black has this very crafty move Bf5.
+(Continue to next move) } { [%csl Bf5,Ra1][%cal Bc2f5,Rb6b2,Rb2a1] } 8. Qxf5 Qxb2 { Okay...So remember how I told you to develop Nd2 before Nf3? Well, now we can see why. Imagine in this position if we had the knight on d2 instead of the Nf3. Well, the rook wouldn't be trapped! It could escape to b1, and black's Bf5 move would be a blunder; white would be up a piece! } { [%csl Rf3,Ga1][%cal Ga1b1,Gb1d2,Yc8f5,Rg1f3] }) 5... Qb6 { Okay so this is a move I wanted to talk about a bit. Black's idea with the c5 move was for the queen to come to b6 and attack the b2 pawn. This is a move you need to watch out for in the London System, but if you know how to meet it then you're ok. } { [%csl Rb2,Rf4][%cal Rd8b6,Rb6b2,Yf4c1] } 6. Qb3 { Each side is hoping the other side will take the queen, in which case the a-file will be opened up. } { [%cal Rb3b6,Rb6b3,Ga2b3,Ga7b6] } 6... c4 { Here black tries to force white to trade queens, but we will just move to c2. } { [%cal Rc5c4] } (6... Bf5 7. dxc5) 7. Qc2 { And now black has to deal with the white pawn breaks b3 and e4. White is better because he has the active pawn breaks, and black's c5-c4 gaining-space move is, in fact, a passive move. } { [%csl Gb3,Ge4][%cal Gb2b3,Ge3e4] } 7... e6 (7... Bf5 8. Qxf5 Qxb2 9. Qb1 Qxc3 10. Ne2 Qb4 11. Qc1 Ne4 12. f3 Qxd2+ 13. Qxd2 Nxd2 14. Kxd2) 8. b3 { There it goes with our pawn break b3. White gets a very good game } 8... cxb3 9. axb3 { White has the better pawn structure } { [%csl Gb3,Gc3,Gd4,Ge3,Gf2,Gg2,Gh2,Ra7,Rb7,Rd5][%cal Gc3c4,Gc4d5] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: - Black plays King's Indian"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "- Black plays King's Indian"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/BP0eJEKK"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "01:55:55"]
+
+{ In this chapter I'll explain what to do if black plays the King's Indian Defense: that is with Nf6, g6, Bg7, d6 and 0-0. } { [%cal Gg8f6,Gg7g6,Gf8g7,Ge8g8,Gd7d6] }
+1. d4 Nf6 2. Bf4 { Now at this point if black plays d5, we transpose back into our first chapters. But today we're going to talk about when black plays g6. } { [%cal Rd7d5] } 2... g6 { [%csl Gg6][%cal Gg7g6] } (2... d5 3. e3) 3. Nc3 { GOLDEN RULE #1: As soon as they go g6, you play Nc3. Why? Because we want to win in a very aggressive (not reckless) way. You'll see what I mean! :)
+Here if black is playing the King's Indian Defense, he'll play Bg7 quickly. But if your opponent plays the Grunfeld Defense or wants to stop our ambitions of playing e4, he may play d5. } { [%csl Gc3][%cal Gb1c3,Rg7g6,Bd7d5,Bf8g7] } 3... Bg7 { So if your opponent is a King's Indian Defense player and he just plays Bg7 quickly... } 4. e4 { *GOLDEN RULE* #2 And we play e4!! This is a bit similar to the 150 attack in the Pirc Defense, where we're going Qd2, 0-0-0 and going to attack black on the kingside.
+AND this opening has an added benefit over normal Pirc openings because black hasn't played d6 too early, so he can't go e5 too quickly. Our London Bishop keeps good control of the e5 square. } { [%csl Ge5,Ye4,Yd4][%cal Gd1d2,Ge1c1,Rd7d6,Re7e5,Gf4e5] } 4... d6 5. Qd2 { Planning to castle queenside and go Bh6, exchanging off this g7 bishop, a key piece } { [%csl Gg7][%cal Ge1c1,Gf4h6] } 5... O-O 6. O-O-O { Some of black's best moves are Nbd7 and Nc6, because both of these moves aim to at least create some central counterplay with e5. } { [%cal Bb8c6,Bb8d7,Be7e5] } 6... Nc6 { Here black is trying to play e5, so I think now we should stop this and go for CENTRAL CONTROL. } { [%csl Re5][%cal Re7e5] } (6... Nbd7 7. Nf3 (7. Bh6 e5 (7... Bxh6 8. Qxh6 e5 9. Nf3 exd4 10. Nxd4 Re8 11. f3 { [%cal Gg2g4,Gh2h4,Gh4h5] }) 8. Bxg7 Kxg7 9. dxe5 dxe5 10. f3) 7... c5 8. dxc5) (6... c6 7. Bh6) 7. Nf3 { *GOLDEN RULE* #3: DO your best to delay black from playing e5. } { [%csl Ge5][%cal Gf3e5] } 7... Bg4 { How do we stop e5 now? } { [%cal Rg4d1,Ge7e5] } 8. Qe3 { Qe3! The rook will be facing the queen on d8 } { [%cal Gd1d8,Ge7e5,Gd4e5,Gd6e5] } 8... Nd7 { Still trying to go e5. How do we stop e5 now?? } { [%csl Be5][%cal Rd7e5,Rc6e5,Rd6e5,Rg7e5,Be7e5] } 9. Bg5 { Pinning the e-pawn. Very clever! } { [%csl Re7][%cal Rg5d8] } 9... Qe8 { Trying really hard to enforce this move. And ONLY NOW that the queen has been misplaced to e8, do we go Bh6. } 10. Bh6 { Swapping off this key defensive bishop. } { [%csl Rg7,Gf8][%cal Rh6f8] } 10... Bxf3 11. gxf3 e5 12. Bxg7 Kxg7 13. dxe5 Qxe5 14. Nd5 { And white is in total control. The f and h pawns are ready to storm up the board. Plus we removed that important g7 bishop. Imagine if black had that dark squared bishop now! He'd be having brilliant influence across to b2, and his king would be well defended. } { [%csl Rg7][%cal Gf3f4,Gf4f5,Gh2h4,Gh4h5,Rg7b2] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: - Black plays Grunfeld"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D01"]
+[Opening "Rapport-Jobava System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "- Black plays Grunfeld"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/Z7RDkuTT"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "02:03:29"]
+
+{ Are you wondering how I draw my colorful arrows and circles?
+
+Green = Right Click
+Red = Right Click + Shift
+Blue = Right Click + Alt
+Yellow = Right Click + Shift + Alt } { [%csl Gb6,Gb5,Gb4,Gb3,Rd3,Rd4,Rd5,Rd6,Bf3,Bf4,Bf5,Bf6,Yh6,Yh5,Yh4,Yh3][%cal Ga3a6,Rc3c6,Be3e6,Yg3g6] }
+1. d4 { Alright... BACK TO THE SUBJECT.. :) In this chapter we'll look at when black plays Nf6+g6, and combines this with d5.
+The method I recommend involves e3. So this means we can transpose into this variation if black plays d5 and Nf6 early, and only after that do they play the move G6. } { [%csl Ge3][%cal Bg8f6,Bg7g6,Bd7d5,Ge2e3] } 1... Nf6 (1... d5 2. Bf4 Nf6 3. e3 g6 4. Nc3 { Remember as soon as they go g6 you go Nc3 } { [%csl Gg6,Gc3][%cal Gg7g6,Gb1c3] }) 2. Bf4 g6 3. Nc3 { Meet g6 with Nc3 } { [%csl Gc3,Gg6][%cal Gb1c3,Gg7g6] } 3... d5 { If your opponent is a Grunfeld Defense player, or they just want to stop you playing e4, then they will play this d5 move.
+So now we can't go e4, so what do we do? } { [%cal Re2e4] } 4. e3 { This is my recommendation. You play e3. } { [%csl Ge3][%cal Ge2e3] } 4... Bg7 5. h4 { And then you play h4. So this is what I think you should play when your opponent plays D5. So when you can't play e4, play e3 and h4.
+GOLDEN RULE #1: PLAY E3 AND H4 (Against Grunfeld) } { [%csl Rh4,Re3][%cal Rh2h4,Re2e3] } 5... O-O 6. h5 { Because now we're going all out with h5!! :) } 6... Nxh5 { A losing move!! } 7. Rxh5 { BOOM! We sacrifice the exchange with Rxh5!! } { [%csl Rh5][%cal Rh1h5] } 7... gxh5 8. Qxh5 { And Qxh5. We sacrificed the exchange, but honestly black is losing here!! We just develop our pieces and threaten mate. Bd3, Nf3-g5, 0-0-0 Rh1. Black won't be able to defend this. } { [%csl Bd3,Bg5,Bh1][%cal Bf1d3,Bg1f3,Bf3g5,Ba1h1] } 8... f5 9. Qh2 { Very subtle move, getting out of any Nf6 tempos on the queen, and simply threatens to take on c7! } { [%csl Gf6][%cal Rh2c7,Yb8d7,Yd7f6,Gf6h5] } 9... Na6 { Don't take the knight because it will open the file for black } { [%csl Ra6][%cal Ga8b8,Gb8b2,Yb7a6,Yf1a6] } (9... c6 10. Bc7 { Very important you go here before taking the knight } { [%cal Gf4c7,Gc7b8] } 10... Qd7 11. Bxb8 { Because we played Bc7 first, now black can't come to b6. } { [%cal Gd8b6] }) 10. O-O-O { [%cal Gf1d3,Gg1f3,Gf3g5,Gd1h1] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: - Black plays Copycat"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "- Black plays Copycat"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/wCHfU2BA"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "15:32:45"]
+
+1. d4 { In this chapter I'll look at a variation you may see frequently } 1... d5 2. Bf4 Bf5 { It's where black plays this copycat move Bf5. There is a slight weakness with this move and that is that it leaves the b7 pawn unguarded.
+Here you have two ways to play. The safer way is to play e3 and Bd3. The more aggressive, riskier way is to play c4 and Qb3. } { [%csl Rf5,Rb7][%cal Ge2e3,Gf1d3,Rc2c4,Rd1b3] } 3. c4 { c4!! And this idea is to attack with a quick Qb3 similar to how black plays Qb6 against us. } { [%csl Gb7][%cal Rc4d5,Gd1b3,Gb3b7] } (3. e3 { This e3 move was played by Magnus Carlsen. } 3... e6 4. Bd3 Bxd3 5. Qxd3 { From here we get a very easy game. Depending on black's response we can play either c3 or c4. } { [%cal Gc2c4,Gc2c3] } 5... c6 6. Nf3 Nf6 7. O-O Bd6 8. Bxd6 Qxd6 9. c4 Nbd7 10. Nc3 O-O 11. Rad1) 3... e6 4. Nc3 { Develop a piece first } { [%csl Gc3][%cal Gb1c3] } 4... c6 5. Qb3 { And now you attack this pawn like black does to us. } { [%cal Rb3b7] } 5... Qb6 6. c5 { And now black MUST take the queen cause our bishop on f4 is preventing the black queen from going to c7 } { [%csl Rc7][%cal Rf4c7,Gb6c7] } 6... Qxb3 7. axb3 { And now you have the plan to go b3-b4-b5, maybe play e3 and even Nf3-h4 to exchange off black's best piece } { [%csl Gf5,Gb5,Re5][%cal Gg1f3,Ge2e3,Gf3h4,Ya1a7,Gb3b5,Re6e5] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: - Black Plays Benko"]
+[Date "2018.04.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "- Black Plays Benko"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/wmu0bOgR"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.04.14"]
+[UTCTime "16:24:50"]
+
+1. d4 Nf6 2. Bf4 c5 { The Benoni Systems } { [%cal Rc7c5] } 3. d5 { White's best choice } { [%csl Gd5] } 3... b5 { Here black plays this b5 move, as it is iconic in the Benko Gambit. You may encounter this move if you're playing against a Benko Gambit player. White should not fear. } { [%csl Rb5,Rc5,Rf6][%cal Rb7b5,Rc7c5,Rg8f6] } 4. a4 { First we provoke the pawn forward. } { [%cal Ba2a4,Ra4b5] } 4... b4 5. f3 { And now, I think this is white's best choice. f3 prepares e4. } { [%csl Gf3][%cal Ge2e4] } 5... d6 (5... e6 6. e4 exd5 7. exd5 Qe7+ 8. Kf2) (5... Nh5 6. Bg5 h6 7. Bh4 d6 8. e4 g5 9. Bf2) 6. e4 Nbd7 { Now that we controlled the center, we need to develop our pieces. } { [%csl Ge4,Gd5,Gf3,Bb1,Bd1,Bf1,Bg1] } 7. Nd2 { The knight controls the weakened light squares } { [%csl Yc4,Yb3][%cal Yd2c4,Yd2b3] } 7... g6 8. Nc4 { Preparing to play Qd2 and Bh6 } { [%csl Bd2][%cal Bd1d2,Yd2h6] } 8... Bg7 9. Qd2 O-O 10. Bh6 { Exchanging off black's painful dark squared bishop } { [%csl Rg7][%cal Yh8b2] } 10... Ne8 11. Bd3 { White has a small edge here, a space advantage and black will lose their best piece
+But as white you need to be a little prepared for black's counterplay with f7-f5 } { [%csl Ge2,Rg7][%cal Gg1e2,Rf7f5,Rf5e4,Gg1h3] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: - Black plays Benoni"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "- Black plays Benoni"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/vkhdz80G"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "02:03:41"]
+
+{ I think the Benoni systems by black are the most challenging for white by far. If you are playing black and your opponent plays the London, I highly recommend you play the Benoni against it. You can see I went into more detail for black in chapter 12, "Anti-London" }
+1. d4 Nf6 2. Bf4 c5 { Nf6 + c5 = Benoni
+Okay here you have two main options as white: e3/c3 (you are ready to accept a draw) or d5 (you play for a win).
+We want to play for a win as white, so let's play d5 } { [%cal Gd4d5,Re2e3,Rc2c3] } 3. d5 { The idea is that we want to play into the Benoni Pawn Structures
+Here black has two moves. Qb6 is more critical, but I cover d6 too } { [%csl Gd5][%cal Rd7d6,Rd8b6] } (3. e3 { As white, at this point you just have to hope and pray black doesn't play Qb6. If they play any other move then you just play c3 in a flash. (That way in case black ever plays Qb6 in the future, you can meet it with Qb3.) } { [%csl Gc3][%cal Bd8b6,Gc2c3,Gd1b3] } 3... Qb6 { OK......Black played Qb6. Now what?
+I really don't recommend playing b3 here. Instead we should try to sacrifice a pawn with Nc3. } 4. Nc3 Qxb2 5. Nb5 { Na6 is worse; Nd5 is better } { [%cal Rb8a6,Gf6d5] } 5... Na6 (5... Nd5 6. Rb1 (6. a3 a6 7. Rb1 Qa2 8. Ra1 Qb2 9. Rb1) 6... Qxa2 7. Ra1 Qb2 8. Rb1 Qa2 9. Ra1 Qb2) 6. a3 { Idea is to play Bc4 and Ra2 trapping the queen.
+Black is going to lose material here } { [%cal Gf1c4,Ga1a2] } 6... d6 (6... cxd4 7. Be5 e6 8. Bxd4 Bb4+ 9. axb4 Qxb4+ 10. c3 Qe7) (6... Nd5 7. Rb1 Qa2 8. Bg3 d6) 7. Bc4 Bf5 8. Ra2 Bxc2 9. Qxc2 Qxc2 10. Rxc2) 3... Qb6 { Here we don't want to play moves like Bc1, so the only other option is Nc3. } { [%cal Bb1c3,Rf4c1] } (3... d6 4. Nc3 e5 5. Bd2 (5. Bg5 Bf5 (5... h6 6. Bxf6 Qxf6 7. e4 Be7 8. Bd3 O-O 9. Nge2 a6 10. a4 Bg4))) (3... b5 4. c4 d6 5. cxb5 a6 6. bxa6 Bxa6) 4. Nc3 { Here as white we must be willing to sacrifice the pawn and play aggressively. } { [%csl Rb2] } 4... Qxb2 { Here black got 1 pawn, but he's going to have to waste 3-4 tempi in exchange for it. As white here, that's usually a decent deal. } { [%csl Rb2][%cal Bd8b6,Bb6b2,Bb2b6,Bb6d8] } 5. Bd2 { Here black has to play Qb6- if he doesn't he will lose material (Qb4 and a6 still do work but they are inferior) } { [%csl Rb6][%cal Rb2b6,Yb2b4,Ya7a6] } 5... Qb6 (5... a6 6. Rb1 Qa3 7. e4 d6) 6. e4 d6 7. f4 { As white we must play aggressively and actively, so we need to attack in the center } { [%csl Ge5][%cal Gf2f4,Ge4e5] } 7... g6 { I will show you how one line can go } 8. e5 dxe5 9. fxe5 Nfd7 10. Nf3 Bg7 11. Rb1 Qd8 12. e6 fxe6 13. Ng5 Nf6 14. Bb5+ Kf8 15. dxe6 Kg8 16. O-O { White has an edge here. All the pieces are out in the open and active } { [%csl Rh8,Ra8,Ge6,Gg5,Gf1,Gd2,Gd1,Gc3,Gb1,Gb5][%cal Yb1b7,Yf1f7,Yg5f7,Yg5e6,Yg5h7,Yd2h6,Yd2a5,Yb5a6,Yb5e8,Yc3d5,Yc3b5,Yc3e4,Yc3a4,Yd1h5,Yd1d8,Ye6f7,Ye6d7] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: - Black Plays Old Benoni"]
+[Date "2018.03.29"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A43"]
+[Opening "Benoni Defense: Benoni-Indian Defense"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "- Black Plays Old Benoni"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/MVvO9WFO"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.29"]
+[UTCTime "12:05:14"]
+
+1. d4 c5 { Old Benoni Defense. Here as white you need to make some changes in our system. } (1... e6 2. Bf4 g5 3. Bg3 h5 4. h4) 2. d5 { The Old Benoni is a completely different opening and has a completely different structure you need to learn. } 2... Nf6 3. Nc3 { Very important move. Do not play c4, but play Nc3 instead. This has an advantage over typical Queen's Gambit Benoni positions, because the c pawn is left flexible. It can move to c3 blunting the a1-h8 diagonal, and also the c4 square is left free for a white piece. } { [%csl Bc3][%cal Yc2c4] } 3... d6 4. e4 g6 5. Nf3 Bg7 6. Be2 O-O 7. O-O Na6 8. Bf4 Nc7 9. a4 b6 10. h3 Bb7 11. Bc4 a6 12. Qd3 Qd7 13. Rfe1 Rad8 14. Rad1 Qc8 15. Qe3 Rfe8 16. Bh6 e6 17. Bxg7 Kxg7 18. dxe6 Nxe6 19. Nd5 Bxd5 20. Bxd5 Nd4 21. Nxd4 Nxd5 22. Qg5 Ne7 23. Ne2 Ng8 24. Nc3 Nf6 25. Rd3 b5 26. axb5 axb5 27. Rf3 Re6 28. Nxb5 Qb7 29. c4 Rde8 30. Rfe3 Nxe4 31. Qd5 Qe7 32. f3 Ng5 33. Rxe6 Nxe6 34. Nxd6 Rd8 35. Qe5+ Qf6 36. f4 h5 37. Re3 h4 38. b3 Ra8 39. f5 Qxe5 40. Rxe5 Kf6 41. Rd5 gxf5 42. Nxf5 Rb8 43. Nxh4 Rxb3 44. Rf5+ Kg7 45. Rf3 Rb1+ 46. Kh2 Rc1 47. Nf5+ Kg6 48. Nd6 f6 49. Rg3+ Kh5 50. Rg8 Rc2 51. Nf5 Nd4 52. Ne3 Re2 53. Nd5 Kh6 54. Nxf6 Nf3+ 55. Kg3 Ne1 56. Ng4+ Kh7 57. Re8 Rxg2+ 58. Kf4 Nd3+ 59. Ke4 { Hansen, Curt - Rechlis, Gad, 1-0, Jerusalem, 1986, https://lichess.org/sNkDgJlJ } 59... Ne1 60. Kd5 *
+
+
+[Event "🍄 Ideas in the London System 🍄: - Black plays Dutch"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A83"]
+[Opening "Dutch Defense: Staunton Gambit"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "- Black plays Dutch"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/vWUFGUqC"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "02:04:10"]
+
+1. d4 f5 { Okay so when black plays the Dutch Defense, he is hoping you will play something normal like c4, Nf3, or even Bf4. In these cases he gets a normal position and he will use his preparation.
+We want to force black to play differently. So in this case I am recommending the Staunton Gambit } 2. e4 fxe4 3. Nc3 Nf6 4. Bg5 { 5 moves for black:
+d5 is the most obvious move, but it is a blunder move
+e6 will give white a good game
+Nc6, g6 and c6 are the main moves } { [%cal Rd7d5,Gb8c6,Gc7c6,Ye7e6,Gg7g6] } 4... Nc6 { From here, you are going to have to do your own research on the Staunton Gambit. } (4... d5 { A very obvious move. But this is a blunder move for black. } { [%csl Gd5,Ge4] } 5. Bxf6 { Two ways to recapture. Both ways lose for black } { [%cal Re7f6,Rg7f6] } 5... gxf6 (5... exf6 6. Qh5+ g6 (6... Kd7 7. Qxd5+ Ke8 8. Qxe4+) (6... Ke7) 7. Qxd5 Qxd5 8. Nxd5 { [%csl Rc7,Rf6][%cal Rd5c7,Rd5f6] } 8... Kd8 9. Nxf6 Bf5 10. Ne2 { [%csl Re4,Rf5][%cal Re2g3,Rf6e4] }) 6. Qh5+ Kd7 7. Qxd5+ Ke8 8. Qh5+ Kd7 9. O-O-O a6 10. Nxe4 { White is a pawn up and black's king is caught in the center } { [%csl Rd7,Ge4,Gh5,Bd4,Gd1][%cal Gd1d7] }) (4... e6 5. Nxe4 { [%csl Ge4,Gg5][%cal Gf1d3,Gg1f3] } 5... Be7 6. Bd3 Nxe4 7. Bxe7 Qxe7 (7... Nxf2 8. Qh5+ Kxe7 9. Qh4+ Kf7 10. Qxf2+ Qf6 11. Nf3) 8. Bxe4) (4... c6 { Here you can gambit the pawn with f3, or if you don't want to do that you can simply regain your pawn with Bxf6 and Nxe4. In both cases you will get a good game.
+You are going to have to do some research on your own. } { [%csl Rf3][%cal Rf2f3,Gg5f6,Gc3e4] } 5. f3) (4... g6 { You are going to have to some research of your own. }) *
+
+
+[Event "🍄 Ideas in the London System 🍄: Anti-London For Black"]
+[Date "2018.03.26"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "Anti-London For Black"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/JKIfJa7P"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.26"]
+[UTCTime "18:00:04"]
+
+{ If you are playing black and you face the London System, I recommend you play the method I showcase in this chapter.
+
+I must admit...I've had quite a hard time against this method by black... .__. }
+1. d4 { It works if you play Nf6 or d5 (c5 works too) } { [%cal Bg8f6,Bd7d5,Gc7c5] } 1... Nf6 { Bf4 or Nf3 } { [%cal Gg1f3,Gc1f4] } (1... d5 2. Bf4 c5 { Same idea } { [%cal Gd8b6] }) (1... c5 { If you know for a fact that your opponent plays London Opening, then the Old Benoni works well and forces them to play differently } { [%csl Gd5][%cal Gd4d5] } 2. d5) 2. Bf4 { London Opening } { [%csl Gf4] } (2. Nf3 { Normally I play the Nimzo-Indian Defense. However I think e6 is a bad move against Nf3, because it may transpose into a London Mainline, which is good for white. } { [%csl Be6][%cal Be7e6] } 2... c5 { Instead I would just play c5 right here and learn the Benoni-ish ideas } 3. d5 e6 4. c4 b5 5. dxe6 fxe6 6. cxb5 d5) 2... c5 { Bam. We strike in the center immediately at white's presently loose d4 pawn. And we want to swing our queen to b6, punishing white for playing Bf4 early.
+You have to play c5 on either move one or move 2. If you wait till the 3rd move it allows white to organize himself. Right now, either e3 or c3 lead to undesired positions for white. White also has the move d4-d5 which is very interesting. } { [%csl Bb6,Gd5,Ge3,Gc3][%cal Rc5d4,Bd8b6,Yb6b2,Gd4d5,Ge2e3,Gc2c3] } 3. d5 { Here you have two ideas: Play the aggressive Qb6 or try to play for e5. Both ways are better for black } { [%csl Bd6,Be5,Rb6][%cal Bd7d6,Be7e5,Rd8b6] } (3. c3 { This looks like an okay move cause it defends the pawn and white can meet Qb6 with Qb3. } { [%csl Gc3][%cal Gc3d4,Rd8b6,Rd1b3] } 3... Qb6 4. Qb3 { Here you have a few different move orders, but black should be better in all } { [%cal Rc5d4,Rb6b3] } 4... Qxb3 (4... cxd4 5. Qxb6 axb6 6. cxd4 Nc6 7. e3 Nb4 8. Na3 Rxa3 9. bxa3 Nc2+ 10. Kd2 Nxa1) 5. axb3 cxd4 6. cxd4 { [%csl Rb3,Rb2] } 6... Nc6 7. e3 Nb4) (3. e3 { This defends the pawn in the way white actually wants to, but the problem is black has this annoying Qb6 } { [%csl Gd4,Rb2][%cal Ge3d4,Rd8b6] } 3... Qb6 { And white can't play Qb3 the way they like to. } { [%csl Gb3][%cal Rb6b2,Gd1b3] } 4. b3 (4. Nc3 Qxb2 5. Nb5 Nd5 { [%csl Gc7][%cal Rd5f4,Gd5c7] }) 4... g6 5. Nf3 Bg7 6. c3 O-O 7. Bd3 d5 (7... Nc6)) 3... d6 (3... Qb6 { Attacking b2. The two moves I will consider are b3 and Nc3. } { [%csl Gc3,Gb3][%cal Rb6b2,Gb1c3,Gb2b3] } 4. Nc3 { White sacrifices the pawn } (4. b3 { Common move by weaker or uninformed players } 4... Qb4+ 5. Bd2 Qd4 { [%cal Rd4a1,Rd4d5] } 6. Nc3 Nxd5 7. Nb5 Qe4 { [%csl Gc7][%cal Gd5c7] }) 4... Qxb2 5. Bd2 Qb6 { You need to come back to b6 to avoid any traps.
+Now as black you need to try and develop quickly to consolidate your extra pawn before white can get any initiative. } 6. e4 d6 (6... e5) 7. f4 g6 8. Nf3 Bg7 { [%csl Ga1,Ge5,Gd4][%cal Gg7a1] } 9. Rb1 Qd8 10. Bb5+ Nfd7 11. O-O O-O 12. a4 Na6 13. Ne2 Nc7 14. Bd3) 4. Nc3 e5 { [%csl Gg5][%cal Gd5e6,Gf4d2,Gf4g5] } 5. Bd2 (5. dxe6 Bxe6 { [%cal Gf8e7,Gb8c6,Ge8g8,Ya7a6,Yb7b5,Yd6d5] } 6. Nf3 Be7 7. e4 O-O 8. Bd3 Nc6 9. O-O) (5. Bg5 { Probably white's best } 5... h6 6. Bxf6 Qxf6 7. e4 { When black's bishops are not that great (yet) } { [%csl Ge4,Gd5] }) 5... Bf5 6. f3 { White's intention is to play e4, so we should stop them } { [%cal Re2e4] } 6... e4 { d4 players are having a hard time here } { [%csl Be4][%cal Be5e4] } *
+
+
+[Event "🍄 Ideas in the London System 🍄: Quiz :]"]
+[Date "2018.03.22"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "Quiz :]"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/fFnXDXWT"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.03.22"]
+[UTCTime "15:10:52"]
+[ChapterMode "gamebook"]
+
+{ Welcome to the London Opening Quiz!
+In this chapter you will answer moves as if you were playing in a game. If you make the wrong move then I will have an explanation on why it is not the correct move, and I will offer hints along the way if you need them. Good luck! :)
+
+Alright, how should we start off the game? }
+1. d4 d5 { What next? } 2. Bf4 (2. Bg5 { This is another good move but it's not what the London System requires. Try again! }) (2. Be3 { You developed the bishop but you block in your central pawn which usually isn't good. } { [%csl Be3,Re2,Rf1][%cal Bc1e3,Re2e3] }) (2. Bd2 { That's wayy too passive!! } { [%csl Rd2] }) 2... Nf6 { Now what? } 3. e3 { GOOD JOB! We're building the pyramid :) } { [%csl Rb2,Rd4,Re3,Rf2,Rc3][%cal Rc2c3] } (3. c3 { You have the right idea! But we want to start with the e-pawn to e3 :) } { [%csl Ge3][%cal Ge2e3,Rc2c3] }) 3... c5 4. c3 { You built the pyramid! :) } (4. dxc5 { NOOO! You NEVER want to release the tension! Always KEEP the tension and let your OPPONENT make the exchanges. } { [%cal Gf8c5] }) 4... Nc6 5. Nd2 { [%csl Gd2][%cal Gb1d2] } (5. Nf3 { This is a logical move too but in previous chapters remember I told you to "develop the queen's knight first" :)
+The reason why this Nf3 is inferior is because black has the very annoying sequence ...Qb6 and after Qb3 black plays c4 and after Qc2 black has the very annoying Bf5 move. Black can play Bf5 because the rook on a1 is stuck. } { [%csl Gf3,Ba1][%cal Rd8b6,Rd1b3,Rc5c4,Rb3c2,Bc8f5] }) (5. Bd3 { This is also a really good developing move because it stop black from playing Bf5. Unfortunately I cannot add multiple solutions. } { [%csl Gf5][%cal Gd3f5,Rc8f5] }) 5... e6 6. Ngf3 (6. Bd3 { That's developing a piece but generally we want to do knights before bishops } { [%csl Gd3][%cal Gf1d3] }) 6... Bd6 7. Bg3 (7. Bxd6 { No! Never release the tension and take! You help your opponent to become more active! Try again :) } { [%csl Rd6][%cal Rf4d6] }) 7... O-O 8. Bd3 { Beautiful Development!! } { [%csl Gd3,Gd2,Gf3,Gg3] } 8... Re8 { Uh-oh!! Black is going to play e5! How do we stop this?? } { [%csl Ge5][%cal Re8e5,Ge6e5] } 9. Ne5 { Brilliant blocking the pawn with the knight! You're good at this! :) } { [%csl Ge5][%cal Re6e5,Gd4e5] } (9. O-O { Castling is logical to get the king safe, but this move allows e5! In chess one of the best things you can do to improve is to notice your opponent's plans and stop them! } { [%csl Be5][%cal Be6e5] }) (9. Be5 { You have the right idea! But this is not the best. Usually we prefer KNIGHTS in the center over bishops because
+1.Bishops in the center are more exposed and more vulnerable to harassment from enemy pieces
+2. Bishops can exert just as much pressure on a diagonal by sitting back, while a knight is vastly better in the center than anywhere else. Thus, it makes sense to put the knights in the center rather than bishops } { [%csl Re5][%cal Rg3e5] }) 9... Qc7 { The Knight is attacked. What do we do? } { [%csl Re5][%cal Rc7e5] } 10. f4 { Awesome! You built the Stonewall!
+Congratulations! You completed this quiz. Great job!
+If you enjoyed this quiz and this study, please click the heart button below for more studies and quizzes like these :) Thanks!! :)
+Also please check out my study on the typical mistakes players make when playing the London System: https://lichess.org/study/NboFy7hm } { [%csl Be5,Rf4,Re3,Rd4,Rc3,Rb2][%cal Bd4e5,Bf4e5,Rb2d4,Re3d4,Re3f4] } (10. Ndf3 { You could do that, but we want to support our knights with PAWNS because the pawns give the best support and they stand up to threats better than pieces do. } { [%csl Ge5][%cal Gf3e5] }) (10. Nxc6 { No! You must never release tension. TO TAKE IS A MISTAKE. Keeping the tension and supporting the knight further is better than taking black's piece! } { [%cal Re5c6] }) *
+
+
+[Event "🍄 Ideas in the London System 🍄: What Now?"]
+[Date "2024.10.01"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D02"]
+[Opening "Queen's Pawn Game: London System"]
+[StudyName "🍄 Ideas in the London System 🍄"]
+[ChapterName "What Now?"]
+[ChapterURL "https://lichess.org/study/KjivNw7F/b51EDzT4"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2024.10.01"]
+[UTCTime "21:58:42"]
+
+{ I'm writing this in Autumn 2024.
+
+I made this study in 2018 when I was first learning the London System and while it may be OK for beginners, it is not good for intermediate/advanced level.
+
+IM Alex Banzea used to have a comprehensive London System playlist on youtube but since then he removed many of the videos and has probably put the theory in Chessable courses - large paid ones and small free ones. If you have a chessable account you can get free courses on the london like his and many others. That can teach you more than I can put in a study.
+There are lots of free chessable courses and I extract as much from the free courses as I can all the time.
+There are no ads or shady stuff because chessable makes money from paid courses.
+
+But there are many more great resources like lichess studies and youtube videos that can give you more nudges in the right direction, ... and the most important tool is the lichess Masters Database where you can see the most common moves by Masters. You should develop your own repertoire yourself. You can learn a lot of ideas without a course/coach just by looking at the masters database and asking questions to the engine. }
+1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3 Nc6 5. Nbd2 { this is one of the modern move orders } 5... Qb6 6. dxc5! { it gets very sharp from here, you have to look in the database yourself (press E)
+if a move is confusing, try to figure out the reason behind it using the engine.
+If you look in the masters database you can play several different moves and eventually you will only be following a single game. If it's your own study you can click "insert" and it will paste the entire game for you to quickly go through. You should be viewing and adding as many games as possible so that you can get an overview of what types of plans the grandmasters play, what moves they go for and what they avoid. } 6... Qxb2 7. Rb1 Qc3 8. Bb5 e6 9. O-O { I'm not going to cover this theory anymore, so you have to find from other lichess studies, youtube videos, free chessable courses, and using the masters database so you can develop your repertoire yourself.
+Thank you for looking at this study and good luck. } *
+
+

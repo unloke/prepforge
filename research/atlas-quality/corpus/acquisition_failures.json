@@ -1,0 +1,37 @@
+[
+  {
+    "study_id": "u7UE6wUm",
+    "at_utc": "2026-11-03T23:21:06.641565+00:00",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "study_id": "tfgIsHyW",
+    "at_utc": "2026-11-03T23:21:07.881906+00:00",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "study_id": "7Q7fYg9h",
+    "at_utc": "2026-11-03T23:21:12.304016+00:00",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "study_id": "R0uFV8bD",
+    "at_utc": "2026-11-03T23:21:13.538877+00:00",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "study_id": "0hjkNe91",
+    "at_utc": "2026-11-03T23:21:14.754292+00:00",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "study_id": "Pn20fv0N",
+    "at_utc": "2026-11-03T23:21:15.989243+00:00",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "study_id": "Ama1NsNR",
+    "at_utc": "2026-11-03T23:22:33.055342+00:00",
+    "error": "HTTP Error 403: Forbidden"
+  }
+]

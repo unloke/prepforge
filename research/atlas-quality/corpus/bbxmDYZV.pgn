@@ -1,0 +1,442 @@
+[Event "🏆What is your Ideal Opening? 🤔: Introduction"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/E1nrE94O"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:09:47"]
+[ChapterMode "gamebook"]
+
+{ Hi! Welcome to my new studio. You've probably wondered many times ''Which opening should I play? If so, let me tell you that you are not the only one asking yourself this question, and that is the reason for this study.
+
+I will consider many important factors when determining which opening to play, and my goal will be that by the end of this study you will be able to achieve your ideal opening.
+
+Do not forget to press the heart that is under the study to support me, and also press the following chapters :) }
+ *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: The 3 Keys"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "The 3 Keys"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/PHGuEFZZ"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:11:17"]
+[ChapterMode "gamebook"]
+
+{ The first thing you should know to choose your ideal opening is that there are 3 VERY IMPORTANT factors that are your level of play, your time and your style of play.
+
+These are the 3 keys necessary to choose your ideal opening. Maybe you don't have that much time to study openings, or you need openings that suit your style and level of play, if these are some of your cases then calm down, I will take all this into account to get the opening I should play. }
+ *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Level of Play, Beginner: 1- Italian Opening"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game: Giuoco Piano"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Level of Play, Beginner: 1- Italian Opening"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/Bq9eyNC3"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:13:28"]
+[ChapterMode "gamebook"]
+
+{ Well, the first thing we are going to evaluate is your level of play.
+This is very important, since if you are a chess beginner you will not want to study very deep openings like the Najdorf Defense, on the contrary, you must learn easy openings.
+
+My recommendation if you have a low level is that you always start your games with 1.e4 (do it now) }
+1. e4 e5 { Play 2.Nf3 } { [%csl Gf3][%cal Gg1f3] } 2. Nf3 { That's! } 2... Nc6 { Now play 3.Bc4 } { [%csl Gc4][%cal Gf1c4] } 3. Bc4 { This is the Italian Opening, one of the first openings that beginners in chess learn.
+I recommend that you use this opening in your games if you are just starting out in the world of chess, as it is very easy to play and understand.
+This is just what you were looking for if you want an opening according to your level :)
+If you want to learn this opening I leave you this link from one of my studies: https://lichess.org/study/vJsZScnC } 3... Bc5 { Now you can continue with 4.c3 or with 4.O-O, both options are good. } { [%cal Gc2c3,Ge1g1] } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Level of Play, Beginner: 2- French Defense"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Level of Play, Beginner: 2- French Defense"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/uzQBjUoh"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:18:20"]
+[ChapterMode "gamebook"]
+
+{ You don't always play with the white pieces, you must also play with the black pieces, so I will also help you find a defense that is easy to play.
+
+Play 1.e6 } { [%csl Ge6][%cal Ge7e6] }
+1... e6 2. d4 { Now play 2.d5 } { [%csl Gd5][%cal Gd7d5] } 2... d5 { This is the French Defense.
+I chose this defense because I consider that it is easy to play and understand, and you should not study much as in other defenses such as the Sicilian Defense for example.
+If you want to fully learn this defense and start playing with it you can visit my study on it: https://lichess.org/study/UzKIIAtz } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Level of Play, Intermediate: 1- Ruy Lopez"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C70"]
+[Opening "Ruy Lopez: Morphy Defense"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Level of Play, Intermediate: 1- Ruy Lopez"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/dyU7jH8E"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:19:50"]
+[ChapterMode "gamebook"]
+
+{ Now let's move on to the level where a lot of players are likely to be, the intermediate level.
+Players at this stage understand chess better, they are now free to choose which opening to play and which move to start with.
+Although there are many options, the opening that I recommend you play at this level is the Ruy Lopez, a slightly more complex opening than the previous ones, but which adapts easily to your level.
+
+To play this opening your first move must be 1.e4 } { [%csl Ge4][%cal Ge2e4] }
+1. e4 e5 { Play 2.Nf3 } { [%csl Gf3][%cal Gg1f3] } 2. Nf3 Nc6 { Now play 3.Bb5 } { [%csl Gb5][%cal Gf1b5] } 3. Bb5 { This is the Ruy Lopez Opening.
+This opening has many variations, but don't worry, I show you the most common ones in my study: https://lichess.org/study/ZkCxh0nB } 3... a6 { You should know that 3.a6 is the most common variation, called the Morphy Defense.
+Your bishop is being attacked, what is the best square for it? } { [%csl Rb5] } 4. Ba4 { All right, staying on this diagonal is best. } { [%cal Ga4e8] } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Level of Play, Intermediate: 2- Sicilian Defense"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B27"]
+[Opening "Sicilian Defense"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Level of Play, Intermediate: 2- Sicilian Defense"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/0opXeFKx"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:24:34"]
+[ChapterMode "gamebook"]
+
+{ As for defenses, you can start playing the Sicilian Defense, one of the most popular defenses in chess. Although this defense has a lot of theory, your level can resist it.
+
+Play 1.c5 } { [%csl Gc5][%cal Gc7c5] }
+1... c5 { This is one of the best options to play to win with the black pieces.
+If you want to learn about this defense check out my study in which I show each of the variations: https://lichess.org/study/jsSks17H } 2. Nf3 { 2.Nf3 is the most common move.
+You can continue playing with 2.d6 or 2.Nc6, as you prefer. } { [%cal Gb8c6,Gd7d6] } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Level of Play, Advanced: 1- English Opening"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A22"]
+[Opening "English Opening: Carls-Bremen System"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Level of Play, Advanced: 1- English Opening"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/rQUnil5l"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:26:33"]
+[ChapterMode "gamebook"]
+
+{ Now, if you are an advanced player you can play ANY opening or defense. You can even get out of the rut with 1.e4 or 1.d4, and you can play other moves like 1.c4 for example. } { [%csl Gc4][%cal Gc2c4] }
+1. c4 { This is the English Opening.
+I do not recommend playing this opening at other levels, as it can be difficult for them to change the ''routine'' when playing 1.c4, a move that they are not used to doing. On the other hand, if you are an advanced player you can play this opening without any problem. } 1... e5 { Play 2.Nc3 (as you may already know, this will always be your second move) } { [%csl Gc3][%cal Gb1c3] } 2. Nc3 Nf6 { Now play 3.g3 } { [%csl Gg3][%cal Gg2g3] } 3. g3 { The idea of the English opening is to take your bishop from f1 to g2. } { [%cal Gf1g2] } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Level of Play, Advanced: 2- Sicilian (Najdorf or Dragon)"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Level of Play, Advanced: 2- Sicilian (Najdorf or Dragon)"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/XQRNtBHa"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R b KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:30:21"]
+[ChapterMode "gamebook"]
+
+{ As I said before, if you are an advanced player you can play any opening or defense, even so, I will talk about defenses that a chess beginner should NEVER play, that you can play freely.
+
+This position is typical of the Sicilian Defense, and now you can play a6 (Najdorf Sicilian) or g6 (Dragon Sicilian), something that lower level players should not do, as these defenses are full of theory and will not resist it.
+
+If you are an advanced player visit my studies on these defenses:
+
+https://lichess.org/study/ANrk7cS9 (Najdorf) https://lichess.org/study/AvqP0tL1 (Dragon) } { [%cal Ga7a6,Gg7g6] }
+ *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Little time to study: 1- London System"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Little time to study: 1- London System"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/RwGQgAWI"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:33:10"]
+[ChapterMode "gamebook"]
+
+{ Now we are going to talk about the second key to choosing which opening to play, time. If you have a lot of responsibilities, you don't have free time to study chess but you still want to learn, you can play the London System.
+
+This opening is the ''ideal opening'' for world champion Magnus Carlsen, and it is quite easy to learn, which is why I highly recommend it. I'm sorry that you want to learn but you don't have time, so I'll help you a bit. Ignore the moves of the opponent's king, just focus on what I will tell you.
+
+Play 1.d4 } { [%csl Gd4][%cal Gd2d4] }
+1. d4 Kd8 { Please ignore the moves of the black king.
+Play 2.Bf4 } { [%csl Gf4][%cal Gc1f4] } 2. Bf4 { This is the London System. } { [%csl Gf4,Gd4] } 2... Ke8 { [%csl Ge3][%cal Ge2e3] } 3. e3 Kd8 { [%csl Gd2][%cal Gb1d2] } 4. Nd2 Ke8 { [%csl Gc3][%cal Gc2c3] } 5. c3 { You are going to want to form this pyramid of pawns in your games.
+(Follow the arrows) } { [%csl Bb2,Bc3,Bd4,Be3,Bf2] } 5... Kd8 { [%csl Gf3][%cal Gg1f3] } 6. Ngf3 Ke8 { [%csl Gd3][%cal Gf1d3] } 7. Bd3 { This is the scheme that you will ALWAYS have in your games, simply memorize the moves, it is very easy and it is not necessary to study!
+Although if you are interested in learning more, you can visit my study: https://lichess.org/study/vIEKP8t3 } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Little time to study: 1- Four Knights Game"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C47"]
+[Opening "Four Knights Game"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Little time to study: 1- Four Knights Game"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/TwHnnNye"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:37:34"]
+[ChapterMode "gamebook"]
+
+{ Another opening that I can recommend if you have little time to play chess is the '' Four Knights Game '', a VERY EASY opening to learn and that doesn't need much study.
+
+Follow the moves that I will tell you, play 1.e4 } { [%csl Ge4][%cal Ge2e4] }
+1. e4 e5 { Play 2.Nf3 } { [%csl Gf3][%cal Gg1f3] } 2. Nf3 Nc6 { Now play 3.Nc3 } { [%csl Gc3][%cal Gb1c3] } 3. Nc3 Nf6 { This is the game of the 4 horses, and I think you already know why it has this name.
+This is also easy to learn, so you can do it quickly by looking at my study where I teach you this opening:
+https://lichess.org/study/JRFGuWZi } { [%csl Bf3,Bc3,Bc6,Bf6] } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Your Play Style"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Your Play Style"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/2awYrKy6"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:44:43"]
+[ChapterMode "gamebook"]
+
+{ Now we are going to take into account the MOST IMPORTANT key when choosing which opening is ideal for you, we are talking about the style of play.
+
+Although there are many styles of games, we can summarize them in 2 parts, the "tactical" style and the "positional" style, I will help you to know what your playing style is. The tactical style is the style of play possessed by players who love tactics, if you have this style you will probably feel comfortable playing in open positions where the possibility of attacks against the enemy king is greater. On the other hand, if your style is positional you will probably love the game a little slower and full of maneuvers, you usually want your pieces to be in the best situation and you will not feel uncomfortable in closed positions.
+
+Here are some openings and defenses that you should use in your games regardless of your playing style. }
+ *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Openings for Tactical Players: 1- King's Gambit"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C33"]
+[Opening "King's Gambit Accepted"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Openings for Tactical Players: 1- King's Gambit"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/u4WxqVaA"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:46:22"]
+[ChapterMode "gamebook"]
+
+{ If your style of play is the ''tactical'' style, then you may consider playing King's Gambit. The king's gambit, is the favorite opening of the players with the ''tactical'' style of play, the reason is because it offers MANY opportunities to attack against the enemy king, since the board literally EXPLODES, and this makes you feel comfortable players of this style.
+
+To play this opening, your first move should be 1.e4 (you will normally like openings that rotate around 1.e4, as this move initiates openings that are normally favorites of players with the tactical style) } { [%csl Ge4][%cal Ge2e4] }
+1. e4 e5 { Now play 2.f4 } { [%csl Gf4][%cal Gf2f4] } 2. f4 { This is the dangerous King's Gambit, you should try this opening in your games, it may be your ideal opening.
+I have a study on this gambit in case you want to learn it: https://lichess.org/study/SNOYkgFo } 2... exf4 { Yes, you have lost a pawn, but you will soon get it back, you also have better control of the center, and you will surely reach a better development.
+If this still sounds crazy to you, it is a sign that you are not a tactical player. } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Openings for Tactical Players: 2- Italian Opening"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C52"]
+[Opening "Italian Game: Evans Gambit, Main Line"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Openings for Tactical Players: 2- Italian Opening"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/RiAb8MFL"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:49:51"]
+[ChapterMode "gamebook"]
+
+{ Another option for you could be the Italian Opening in a more aggressive way to suit your playing style, the Evans Gambit.
+
+The Evans Gambit is probably the most aggressive way to play the Italian Opening. Here other players would prefer to play c3 as normal, but you should play something that suits your ''tactical'' style of play, so you can play 4.b4, the Evans Gambit. } { [%csl Gb4][%cal Gb2b4] }
+1. b4 { You offer a pawn in exchange for better control of the center, and have a rapid development.
+I have a chapter on this gambit in this study if you are interested: https://lichess.org/study/vJsZScnC } 1... Bxb4 { Play 5.c3 } { [%csl Gc3][%cal Gc2c3] } 2. c3 Ba5 { Now play 6.d4 } { [%csl Gd4][%cal Gd2d4] } 3. d4 { Your castling is very close, you also have good control of the center with your pawns. } { [%csl Ge4,Gd4][%cal Ge1g1] } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Openings for Tactical Players: 3- Sicilian Dragon"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B70"]
+[Opening "Sicilian Defense: Dragon Variation"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Openings for Tactical Players: 3- Sicilian Dragon"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/eq71pvWN"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R b KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:52:51"]
+[ChapterMode "gamebook"]
+
+{ As for defenses, you must take into account those dynamic defenses that provide many chances of victory, such as the Sicilian Defense. You are free to choose the variation that you like the most in my study: https://lichess.org/study/jsSks17H
+
+Still, I'll give you an idea.
+A variation that you have to try if or if is the "Sicilian Dragon," one of the most aggressive ways to play the Sicilian Defense.
+
+The move that characterizes the Sicilian Dragon is g6 (do it) } { [%csl Gg6][%cal Gg7g6] }
+1... g6 { The idea is to bring your dark-squared bishop to g7 and attack the opponent's king.
+If you want to learn more about this defense, I'll leave you this link from one of my studies: https://lichess.org/study/AvqP0tL1 } { [%cal Gf8g7] } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Openings for Positional Players: 1- Queen's Gambit"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D35"]
+[Opening "Queen's Gambit Declined: Normal Defense"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Openings for Positional Players: 1- Queen's Gambit"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/hFr5MA1M"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:54:03"]
+[ChapterMode "gamebook"]
+
+{ It is time to choose openings for players of the "positional" style, to whom, as I said before, the positioning of their pieces is VERY IMPORTANT.
+
+If you have this style of play you will not want to play openings that risk or damage your position, since your position in your games is one of the most important things for you, so if you have this style of play you can try to play the Queen's Gambit .
+
+To play this opening you must start with 1.d4 } { [%csl Gd4][%cal Gd2d4] }
+1. d4 d5 { Now play 2.c4 } { [%csl Gc4][%cal Gc2c4] } 2. c4 { The Queen's Gambit can be your ideal opening, so try playing some games and determine how you feel while doing it, but first I recommend that you learn to play this opening, here I can teach you: https://lichess.org/study/JkPnQ5g5 } 2... e6 { It is common that they do not accept your gambit, so you must develop your knight. } { [%csl Gc3][%cal Gb1c3] } 3. Nc3 Nf6 { Playing this opening you can achieve what you want, a good position for all your pieces.
+Try this opening in your games, it can be your ideal opening ;) } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Openings for Positional Players: 2- English Opening"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A22"]
+[Opening "English Opening: Carls-Bremen System"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Openings for Positional Players: 2- English Opening"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/MhUk0bJ3"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:57:06"]
+[ChapterMode "gamebook"]
+
+{ The English Opening is a very solid opening, and it may be your ideal opening. If you have an "advanced" level of play, and your playing style is "positional" then this opening can connect with you.
+
+You have to start your games with 1.c4 if you really think that the English Opening can be your ideal opening. } { [%csl Gc4][%cal Gc2c4] }
+1. c4 { Unfortunately I do not have any study on this opening, so you will have to study on your own with books or other content (comment if you want me to do a study on this opening, I will be very attentive to your comment)
+In the same way, I can tell you that you should ALWAYS form this play structure, you start with 1.c4 and regardless of the variation your opponent plays you continue with 2.Nc3 and then 3.g3 to bring your bishop from f1 to g2. } 1... e5 { [%csl Gc3][%cal Gb1c3] } 2. Nc3 Nf6 { [%csl Gg3][%cal Gg2g3] } 3. g3 { You want to take your bishop to g7 } { [%cal Gf1g2] } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Openings for Positional Players: 3- Caro-Kann Defense"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Openings for Positional Players: 3- Caro-Kann Defense"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/3BO4dKuR"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.03.19"]
+[UTCTime "20:58:51"]
+[ChapterMode "gamebook"]
+
+{ As for defenses, you should not play tactical or '' dynamic '' defenses so to speak (Like the Sicilian defense or king's indian defense, on the contrary, you should play these defenses if your playing style is tactical), but play openings that do not risk your position and take you towards a calm and relaxed game, in which you can feel comfortable with your position and with your pieces like the Slav or Semi-Slav Defense, or the Caro-Kann Defense, which is the favorite of one of the greatest players with the positional style of play, Anatoly Karpov.
+
+You have to play 1.c6 if you want to play this defense :) } { [%csl Gc6][%cal Gc7c6] }
+1... c6 { Very good } 2. d4 { Play 2.d5 } { [%csl Gd5][%cal Gd7d5] } 2... d5 { Here your opponent has many options, but you can check them all with one of my studies: https://lichess.org/study/jtlLwUvh
+This may be your ideal opening :) } *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Importance of the Keys"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Importance of the Keys"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/DMxAS4Vu"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "21:01:40"]
+[ChapterMode "gamebook"]
+
+{ I want to use this chapter to answer some questions that you may have.
+
+This is the value that I consider of the 3 keys that I mentioned to choose an opening:
+1- Your Level of Play
+2- The Style of Play
+3- The time to study
+
+So if you are a chess beginner you should not give importance to your style of play, or at least not for now, so you should play the openings that I recommend in chapters 1 and 2. On the other hand, if you are a player intermediate, you can also give priority to the other keys.
+
+I hope this chapter has helped you better choose which opening to play. }
+ *
+
+
+[Event "🏆What is your Ideal Opening? 🤔: Conclusion"]
+[Date "2021.03.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "🏆What is your Ideal Opening? 🤔"]
+[ChapterName "Conclusion"]
+[ChapterURL "https://lichess.org/study/bbxmDYZV/en3mMdxC"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.03.19"]
+[UTCTime "21:02:07"]
+[ChapterMode "gamebook"]
+
+{ I hope it helped you choose which opening to play, and if so, press the heart under the study to support me and let me know. It really cost me a lot to do this study, so I would like you to do it.
+
+In case you want to know, I am an intermediate player (my real rating is not 1100), my style of play is a mix between positional and tactical, so I will give the highest priority to my level of play, and as mentioned in Chapter 5, my ideal opening is Ruy Lopez.
+Please, comment which is your ideal opening according to everything seen in this study.
+
+I am Lenin Perez, and see you in a next studio! }
+ *
+
+

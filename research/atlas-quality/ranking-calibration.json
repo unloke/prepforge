@@ -1,0 +1,5195 @@
+{
+  "scorer_sha256": "0a763feadc21cb57c1b71f8ac80c11728dddd295b19018da64697f341bde7eee",
+  "method": "All 38 studies informed development. Structural damage is controlled evidence of missing preparation, not a label that an author or chess choice is bad. Baseline is frozen at bab295f5 in facet-baseline.json. Current coefficients fit frozen move-content facet judgments; no likes or annotation fitting.",
+  "reports": 45,
+  "shortened_increases": [],
+  "holes_increases": [],
+  "facet_increases": {
+    "replies": {
+      "shortened": [],
+      "holes": []
+    },
+    "reach": {
+      "shortened": [],
+      "holes": []
+    },
+    "depth": {
+      "shortened": [],
+      "holes": []
+    },
+    "moveOrders": {
+      "shortened": [
+        [
+          "2EaSmZtz",
+          "white",
+          2.757283471624305
+        ],
+        [
+          "artuehhC",
+          "white",
+          0.07875305194136217
+        ],
+        [
+          "D8QPC8Zr",
+          "white",
+          1.1746919375338365
+        ],
+        [
+          "ACmyH8gC",
+          "white",
+          9.033752666113415
+        ],
+        [
+          "NGpnogsw",
+          "black",
+          18.761021936847712
+        ],
+        [
+          "8Uztu7Xx",
+          "black",
+          0.18951386015045557
+        ],
+        [
+          "8c8bmUfy",
+          "black",
+          0.8717673430169981
+        ],
+        [
+          "CfSYkcMp",
+          "white",
+          0.46888275559447834
+        ],
+        [
+          "yteYURRC",
+          "black",
+          23.79251844053462
+        ],
+        [
+          "vPqdbuqZ",
+          "black",
+          0.5029151198700816
+        ],
+        [
+          "oBsew7N6",
+          "white",
+          0.3007366487240404
+        ],
+        [
+          "oBsew7N6",
+          "black",
+          0.4466331894747384
+        ],
+        [
+          "ztgulNGx",
+          "black",
+          1.5869269400387367
+        ],
+        [
+          "KjivNw7F",
+          "white",
+          1.1051133145143837
+        ],
+        [
+          "1gqDv9cx",
+          "black",
+          16.27978003928081
+        ],
+        [
+          "dgUQNQ2B",
+          "black",
+          7.76918816517491
+        ],
+        [
+          "PDVt7Kbh",
+          "black",
+          3.925792675904006
+        ],
+        [
+          "jtlLwUvh",
+          "black",
+          0.2794046324438284
+        ],
+        [
+          "A4EBp7Ds",
+          "black",
+          10.549801554100654
+        ],
+        [
+          "UzKIIAtz",
+          "black",
+          0.09169056350428662
+        ],
+        [
+          "nRiq9SZx",
+          "black",
+          0.8211790192840454
+        ],
+        [
+          "HHZpRszr",
+          "white",
+          0.19290568710718503
+        ],
+        [
+          "HHZpRszr",
+          "black",
+          0.7164019778449315
+        ],
+        [
+          "bmWAylqe",
+          "black",
+          1.2870868313278194
+        ],
+        [
+          "nYAJ7Km3",
+          "black",
+          0.8531212786256788
+        ],
+        [
+          "FwXo3Qhq",
+          "black",
+          12.72394998889817
+        ],
+        [
+          "e01yoGqe",
+          "white",
+          0.42639786141113944
+        ],
+        [
+          "e01yoGqe",
+          "black",
+          0.5205289548647869
+        ]
+      ],
+      "holes": [
+        [
+          "2EaSmZtz",
+          "white",
+          12.889894398235867
+        ],
+        [
+          "artuehhC",
+          "white",
+          0.5727448692131958
+        ],
+        [
+          "D8QPC8Zr",
+          "white",
+          0.828688337760255
+        ],
+        [
+          "ACmyH8gC",
+          "white",
+          7.553485506470494
+        ],
+        [
+          "NGpnogsw",
+          "black",
+          18.761021936847712
+        ],
+        [
+          "8Uztu7Xx",
+          "black",
+          1.58641379089552
+        ],
+        [
+          "8c8bmUfy",
+          "black",
+          4.877017545062948
+        ],
+        [
+          "fTpa2qZW",
+          "white",
+          3.4321236690091155
+        ],
+        [
+          "CfSYkcMp",
+          "white",
+          2.6074829112126565
+        ],
+        [
+          "yteYURRC",
+          "black",
+          24.014158068743143
+        ],
+        [
+          "vPqdbuqZ",
+          "black",
+          1.8525818214651508
+        ],
+        [
+          "oBsew7N6",
+          "white",
+          0.45874622664176457
+        ],
+        [
+          "oBsew7N6",
+          "black",
+          1.3476121041796674
+        ],
+        [
+          "tU7Nq5nE",
+          "white",
+          0.9900762234985052
+        ],
+        [
+          "rZyGzD67",
+          "white",
+          0.33481790665891253
+        ],
+        [
+          "ztgulNGx",
+          "black",
+          2.4756285082449665
+        ],
+        [
+          "2MMWpcNI",
+          "white",
+          24.64885209682719
+        ],
+        [
+          "2MMWpcNI",
+          "black",
+          0.8480075864250836
+        ],
+        [
+          "sEo8o4Rm",
+          "black",
+          19.897056871209855
+        ],
+        [
+          "KjivNw7F",
+          "white",
+          3.934507157794968
+        ],
+        [
+          "1gqDv9cx",
+          "black",
+          16.63461427190073
+        ],
+        [
+          "dgUQNQ2B",
+          "black",
+          7.428649477982987
+        ],
+        [
+          "PDVt7Kbh",
+          "black",
+          20.45812969931015
+        ],
+        [
+          "jtlLwUvh",
+          "black",
+          1.4587856719175107
+        ],
+        [
+          "A4EBp7Ds",
+          "black",
+          23.494232851177784
+        ],
+        [
+          "bbxmDYZV",
+          "black",
+          0.5152050581180845
+        ],
+        [
+          "HHZpRszr",
+          "white",
+          0.7033310377610533
+        ],
+        [
+          "HHZpRszr",
+          "black",
+          1.4837472682491324
+        ],
+        [
+          "nYAJ7Km3",
+          "black",
+          20.399252298023853
+        ],
+        [
+          "FwXo3Qhq",
+          "black",
+          13.386382747455812
+        ],
+        [
+          "LLNDy032",
+          "white",
+          12.483587992913414
+        ],
+        [
+          "e01yoGqe",
+          "white",
+          0.6233246653868818
+        ],
+        [
+          "e01yoGqe",
+          "black",
+          2.687080804680839
+        ]
+      ]
+    },
+    "ease": {
+      "shortened": [
+        [
+          "2EaSmZtz",
+          "white",
+          15.780532509666543
+        ],
+        [
+          "artuehhC",
+          "white",
+          25.81582615373017
+        ],
+        [
+          "D8QPC8Zr",
+          "white",
+          16.58852130290186
+        ],
+        [
+          "ACmyH8gC",
+          "white",
+          12.633740098679418
+        ],
+        [
+          "8Uztu7Xx",
+          "black",
+          1.682936090706086
+        ],
+        [
+          "8c8bmUfy",
+          "black",
+          5.07929393449524
+        ],
+        [
+          "fTpa2qZW",
+          "white",
+          6.8346528955192625
+        ],
+        [
+          "yteYURRC",
+          "black",
+          1.6680880177932949
+        ],
+        [
+          "2XxhfIAJ",
+          "white",
+          10.519384925707008
+        ],
+        [
+          "2XxhfIAJ",
+          "black",
+          11.495793574148621
+        ],
+        [
+          "oBsew7N6",
+          "white",
+          9.20697515460526
+        ],
+        [
+          "ztgulNGx",
+          "black",
+          11.510710409519717
+        ],
+        [
+          "AKbQXhWw",
+          "white",
+          3.3705661442118213
+        ],
+        [
+          "2MMWpcNI",
+          "white",
+          1.8391435833333247
+        ],
+        [
+          "2MMWpcNI",
+          "black",
+          1.5764087857142783
+        ],
+        [
+          "sEo8o4Rm",
+          "black",
+          3.2719228503312294
+        ],
+        [
+          "GNlZ2WKx",
+          "white",
+          19.34921193358479
+        ],
+        [
+          "KjivNw7F",
+          "white",
+          20.0217459928123
+        ],
+        [
+          "1gqDv9cx",
+          "black",
+          14.831220759255608
+        ],
+        [
+          "A4EBp7Ds",
+          "black",
+          6.857542897668424
+        ],
+        [
+          "nRiq9SZx",
+          "black",
+          12.567943506766369
+        ],
+        [
+          "HHZpRszr",
+          "white",
+          8.300563822607096
+        ],
+        [
+          "HHZpRszr",
+          "black",
+          3.6063983771627264
+        ],
+        [
+          "bmWAylqe",
+          "white",
+          4.3241739043349625
+        ],
+        [
+          "nYAJ7Km3",
+          "black",
+          10.504357075487022
+        ],
+        [
+          "FwXo3Qhq",
+          "black",
+          25.573442640861316
+        ],
+        [
+          "LLNDy032",
+          "white",
+          13.931060675779221
+        ],
+        [
+          "e01yoGqe",
+          "white",
+          5.929992057934605
+        ],
+        [
+          "e01yoGqe",
+          "black",
+          6.604914569642858
+        ]
+      ],
+      "holes": [
+        [
+          "2EaSmZtz",
+          "white",
+          17.058371011039398
+        ],
+        [
+          "artuehhC",
+          "white",
+          12.342818478730166
+        ],
+        [
+          "D8QPC8Zr",
+          "white",
+          9.635183300133129
+        ],
+        [
+          "ACmyH8gC",
+          "white",
+          7.674732557081278
+        ],
+        [
+          "8Uztu7Xx",
+          "black",
+          5.778482692202722
+        ],
+        [
+          "8c8bmUfy",
+          "black",
+          16.064825167079285
+        ],
+        [
+          "fTpa2qZW",
+          "white",
+          5.699096721625288
+        ],
+        [
+          "CfSYkcMp",
+          "white",
+          13.107109549366129
+        ],
+        [
+          "yteYURRC",
+          "black",
+          4.702812631177139
+        ],
+        [
+          "2XxhfIAJ",
+          "white",
+          4.101624586020812
+        ],
+        [
+          "2XxhfIAJ",
+          "black",
+          2.611363669321399
+        ],
+        [
+          "oBsew7N6",
+          "white",
+          3.916601156657208
+        ],
+        [
+          "tU7Nq5nE",
+          "white",
+          17.538070971893937
+        ],
+        [
+          "ztgulNGx",
+          "black",
+          44.23916211406518
+        ],
+        [
+          "AKbQXhWw",
+          "white",
+          7.576727121912441
+        ],
+        [
+          "2MMWpcNI",
+          "black",
+          2.7587153750000084
+        ],
+        [
+          "sEo8o4Rm",
+          "black",
+          20.92703018902293
+        ],
+        [
+          "GNlZ2WKx",
+          "white",
+          21.88882032273178
+        ],
+        [
+          "KjivNw7F",
+          "white",
+          20.92565292460182
+        ],
+        [
+          "1gqDv9cx",
+          "black",
+          36.58883971380107
+        ],
+        [
+          "dgUQNQ2B",
+          "black",
+          10.514704834984741
+        ],
+        [
+          "PDVt7Kbh",
+          "black",
+          10.416229083552835
+        ],
+        [
+          "jtlLwUvh",
+          "black",
+          0.3267529099999962
+        ],
+        [
+          "A4EBp7Ds",
+          "black",
+          19.387234096495277
+        ],
+        [
+          "bbxmDYZV",
+          "white",
+          3.3084290937070335
+        ],
+        [
+          "bbxmDYZV",
+          "black",
+          2.8912775530303065
+        ],
+        [
+          "nRiq9SZx",
+          "black",
+          16.007695992901716
+        ],
+        [
+          "HHZpRszr",
+          "white",
+          9.410276250614366
+        ],
+        [
+          "HHZpRszr",
+          "black",
+          5.920408344979634
+        ],
+        [
+          "FwXo3Qhq",
+          "black",
+          19.38485733808355
+        ],
+        [
+          "LLNDy032",
+          "white",
+          11.35435432305303
+        ],
+        [
+          "e01yoGqe",
+          "white",
+          1.9226656000444962
+        ],
+        [
+          "e01yoGqe",
+          "black",
+          11.362271818514841
+        ]
+      ]
+    }
+  },
+  "observations": [
+    {
+      "id": "2EaSmZtz",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 79.23395235458827,
+      "final": 78.1585698241982,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 81.36703256112656
+        },
+        {
+          "key": "reach",
+          "value": 81.38535350309607
+        },
+        {
+          "key": "depth",
+          "value": 79.54981202026366
+        },
+        {
+          "key": "moveOrders",
+          "value": 79.42838938570488
+        },
+        {
+          "key": "ease",
+          "value": 60.22603654451616
+        }
+      ],
+      "counts": {
+        "positions": 360,
+        "occurrences": 706,
+        "moves": 368,
+        "ownPositions": 99,
+        "answeredPositions": 98,
+        "repeatedGroups": 9,
+        "commonGroups": 5,
+        "answeredAlternatives": 45,
+        "easePositions": 78,
+        "easePairs": 108,
+        "identicalPositionPairs": 4,
+        "openingBoundaries": 14
+      },
+      "shortened": {
+        "score": 47.90010422772529,
+        "delta": -30.258465596472902,
+        "facets": {
+          "replies": {
+            "value": 47.55962796415097,
+            "delta": -33.807404596975594
+          },
+          "reach": {
+            "value": 62.35744151470931,
+            "delta": -19.027911988386762
+          },
+          "depth": {
+            "value": 27.82190578125,
+            "delta": -51.72790623901366
+          },
+          "moveOrders": {
+            "value": 82.18567285732918,
+            "delta": 2.757283471624305
+          },
+          "ease": {
+            "value": 76.0065690541827,
+            "delta": 15.780532509666543
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 538,
+        "score": 48.63759164480156,
+        "delta": -29.520978179396636,
+        "facets": {
+          "replies": {
+            "value": 48.539620251380114,
+            "delta": -32.82741230974645
+          },
+          "reach": {
+            "value": 62.274411143285995,
+            "delta": -19.110942359810075
+          },
+          "depth": {
+            "value": 29.684902265625002,
+            "delta": -49.86490975463866
+          },
+          "moveOrders": {
+            "value": 92.31828378394074,
+            "delta": 12.889894398235867
+          },
+          "ease": {
+            "value": 77.28440755555556,
+            "delta": 17.058371011039398
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 77.8970725500412,
+        "h24": 78.37757189221402,
+        "h32": 78.1585698241982
+      }
+    },
+    {
+      "id": "artuehhC",
+      "color": "white",
+      "role": "repertoire-and-exercises",
+      "baseline": 75.77722283113839,
+      "final": 62.14885579479824,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 65.60787311606232
+        },
+        {
+          "key": "reach",
+          "value": 63.73583763246228
+        },
+        {
+          "key": "depth",
+          "value": 63.71316
+        },
+        {
+          "key": "moveOrders",
+          "value": 92.82165306621116
+        },
+        {
+          "key": "ease",
+          "value": 66.77575264626984
+        }
+      ],
+      "counts": {
+        "positions": 111,
+        "occurrences": 254,
+        "moves": 112,
+        "ownPositions": 56,
+        "answeredPositions": 54,
+        "repeatedGroups": 2,
+        "commonGroups": 2,
+        "answeredAlternatives": 11,
+        "easePositions": 35,
+        "easePairs": 59,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 2
+      },
+      "shortened": {
+        "score": 18.770703804303192,
+        "delta": -43.37815199049504,
+        "facets": {
+          "replies": {
+            "value": 19.842020016769165,
+            "delta": -45.76585309929315
+          },
+          "reach": {
+            "value": 24.875800731272193,
+            "delta": -38.860036901190085
+          },
+          "depth": {
+            "value": 20.1340453125,
+            "delta": -43.5791146875
+          },
+          "moveOrders": {
+            "value": 92.90040611815252,
+            "delta": 0.07875305194136217
+          },
+          "ease": {
+            "value": 92.59157880000001,
+            "delta": 25.81582615373017
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 213,
+        "score": 18.286996118598125,
+        "delta": -43.86185967620011,
+        "facets": {
+          "replies": {
+            "value": 19.63281424738335,
+            "delta": -45.97505886867897
+          },
+          "reach": {
+            "value": 22.93068784424521,
+            "delta": -40.805149788217065
+          },
+          "depth": {
+            "value": 23.864682109375,
+            "delta": -39.848477890625006
+          },
+          "moveOrders": {
+            "value": 93.39439793542435,
+            "delta": 0.5727448692131958
+          },
+          "ease": {
+            "value": 79.118571125,
+            "delta": 12.342818478730166
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 62.85648615412356,
+        "h24": 63.42941942461992,
+        "h32": 62.14885579479824
+      }
+    },
+    {
+      "id": "D8QPC8Zr",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 84.19691425682043,
+      "final": 82.001637271053,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 86.03473691327403
+        },
+        {
+          "key": "reach",
+          "value": 82.89712064687724
+        },
+        {
+          "key": "depth",
+          "value": 90.115913125
+        },
+        {
+          "key": "moveOrders",
+          "value": 90.7557603660824
+        },
+        {
+          "key": "ease",
+          "value": 55.491188681308664
+        }
+      ],
+      "counts": {
+        "positions": 502,
+        "occurrences": 808,
+        "moves": 506,
+        "ownPositions": 62,
+        "answeredPositions": 59,
+        "repeatedGroups": 3,
+        "commonGroups": 3,
+        "answeredAlternatives": 49,
+        "easePositions": 137,
+        "easePairs": 145,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 10
+      },
+      "shortened": {
+        "score": 43.47483692337509,
+        "delta": -38.526800347677906,
+        "facets": {
+          "replies": {
+            "value": 43.26566867644827,
+            "delta": -42.76906823682576
+          },
+          "reach": {
+            "value": 58.50975150939994,
+            "delta": -24.3873691374773
+          },
+          "depth": {
+            "value": 25.259285625,
+            "delta": -64.8566275
+          },
+          "moveOrders": {
+            "value": 91.93045230361624,
+            "delta": 1.1746919375338365
+          },
+          "ease": {
+            "value": 72.07970998421052,
+            "delta": 16.58852130290186
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 653,
+        "score": 48.52438235245134,
+        "delta": -33.47725491860166,
+        "facets": {
+          "replies": {
+            "value": 47.621858535287686,
+            "delta": -38.412878377986345
+          },
+          "reach": {
+            "value": 64.54231610249002,
+            "delta": -18.35480454438722
+          },
+          "depth": {
+            "value": 22.01690484375,
+            "delta": -68.09900828125001
+          },
+          "moveOrders": {
+            "value": 91.58444870384265,
+            "delta": 0.828688337760255
+          },
+          "ease": {
+            "value": 65.12637198144179,
+            "delta": 9.635183300133129
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 80.02837895013312,
+        "h24": 82.65740663480264,
+        "h32": 82.001637271053
+      }
+    },
+    {
+      "id": "ACmyH8gC",
+      "color": "white",
+      "role": "repertoire-and-model-games",
+      "baseline": 67.68079797244198,
+      "final": 76.07972999788308,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 77.52288216612708
+        },
+        {
+          "key": "reach",
+          "value": 85.7033733422591
+        },
+        {
+          "key": "depth",
+          "value": 66.30981168847656
+        },
+        {
+          "key": "moveOrders",
+          "value": 71.6672712622092
+        },
+        {
+          "key": "ease",
+          "value": 46.93141403005744
+        }
+      ],
+      "counts": {
+        "positions": 991,
+        "occurrences": 1242,
+        "moves": 995,
+        "ownPositions": 195,
+        "answeredPositions": 195,
+        "repeatedGroups": 6,
+        "commonGroups": 1,
+        "answeredAlternatives": 142,
+        "easePositions": 240,
+        "easePairs": 418,
+        "identicalPositionPairs": 5,
+        "openingBoundaries": 17
+      },
+      "shortened": {
+        "score": 41.75068862140738,
+        "delta": -34.3290413764757,
+        "facets": {
+          "replies": {
+            "value": 41.495871250213426,
+            "delta": -36.02701091591365
+          },
+          "reach": {
+            "value": 57.2307514795606,
+            "delta": -28.472621862698496
+          },
+          "depth": {
+            "value": 22.879709765624998,
+            "delta": -43.43010192285156
+          },
+          "moveOrders": {
+            "value": 80.70102392832261,
+            "delta": 9.033752666113415
+          },
+          "ease": {
+            "value": 59.56515412873686,
+            "delta": 12.633740098679418
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 980,
+        "score": 54.871730106960875,
+        "delta": -21.207999890922203,
+        "facets": {
+          "replies": {
+            "value": 54.00554732973599,
+            "delta": -23.517334836391086
+          },
+          "reach": {
+            "value": 71.2380240544197,
+            "delta": -14.465349287839402
+          },
+          "depth": {
+            "value": 25.142612734375,
+            "delta": -41.16719895410156
+          },
+          "moveOrders": {
+            "value": 79.22075676867969,
+            "delta": 7.553485506470494
+          },
+          "ease": {
+            "value": 54.60614658713872,
+            "delta": 7.674732557081278
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 77.62539028481706,
+        "h24": 78.46374778127208,
+        "h32": 76.07972999788308
+      }
+    },
+    {
+      "id": "NGpnogsw",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 75.28355488659948,
+      "final": 60.99960503465816,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 67.7477391628523
+        },
+        {
+          "key": "reach",
+          "value": 51.800774399651225
+        },
+        {
+          "key": "depth",
+          "value": 100
+        },
+        {
+          "key": "moveOrders",
+          "value": 70.60926406315228
+        },
+        {
+          "key": "ease",
+          "value": 65.49381052747253
+        }
+      ],
+      "counts": {
+        "positions": 99,
+        "occurrences": 382,
+        "moves": 99,
+        "ownPositions": 31,
+        "answeredPositions": 31,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 6,
+        "easePositions": 13,
+        "easePairs": 10,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 3
+      },
+      "shortened": {
+        "score": 7.437071313791558,
+        "delta": -53.562533720866604,
+        "facets": {
+          "replies": {
+            "value": 9.420199773412918,
+            "delta": -58.32753938943938
+          },
+          "reach": {
+            "value": 1.1518386852636622,
+            "delta": -50.64893571438756
+          },
+          "depth": {
+            "value": 20.8138059375,
+            "delta": -79.1861940625
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": 18.761021936847712
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 349,
+        "score": 7.437071313791558,
+        "delta": -53.562533720866604,
+        "facets": {
+          "replies": {
+            "value": 9.420199773412918,
+            "delta": -58.32753938943938
+          },
+          "reach": {
+            "value": 1.1518386852636622,
+            "delta": -50.64893571438756
+          },
+          "depth": {
+            "value": 20.8138059375,
+            "delta": -79.1861940625
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": 18.761021936847712
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 42.77695757904962,
+        "h24": 61.05287942112053,
+        "h32": 60.99960503465816
+      }
+    },
+    {
+      "id": "8Uztu7Xx",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 94.42427972864144,
+      "final": 89.53021723076907,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 93.86897017905169
+        },
+        {
+          "key": "reach",
+          "value": 90.50297890411883
+        },
+        {
+          "key": "depth",
+          "value": 93.2996866985383
+        },
+        {
+          "key": "moveOrders",
+          "value": 69.73697577710563
+        },
+        {
+          "key": "ease",
+          "value": 56.10251480098063
+        }
+      ],
+      "counts": {
+        "positions": 7331,
+        "occurrences": 22200,
+        "moves": 7401,
+        "ownPositions": 855,
+        "answeredPositions": 839,
+        "repeatedGroups": 114,
+        "commonGroups": 29,
+        "answeredAlternatives": 611,
+        "easePositions": 1961,
+        "easePairs": 7572,
+        "identicalPositionPairs": 104,
+        "openingBoundaries": 365
+      },
+      "shortened": {
+        "score": 60.33444158954726,
+        "delta": -29.195775641221807,
+        "facets": {
+          "replies": {
+            "value": 58.58276653898359,
+            "delta": -35.286203640068095
+          },
+          "reach": {
+            "value": 81.05949865393234,
+            "delta": -9.443480250186497
+          },
+          "depth": {
+            "value": 18.139767513586957,
+            "delta": -75.15991918495133
+          },
+          "moveOrders": {
+            "value": 69.92648963725608,
+            "delta": 0.18951386015045557
+          },
+          "ease": {
+            "value": 57.785450891686715,
+            "delta": 1.682936090706086
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 20716,
+        "score": 62.03667863518315,
+        "delta": -27.493538595585918,
+        "facets": {
+          "replies": {
+            "value": 60.345073316031076,
+            "delta": -33.52389686302061
+          },
+          "reach": {
+            "value": 82.01510911981615,
+            "delta": -8.487869784302688
+          },
+          "depth": {
+            "value": 20.216011432291666,
+            "delta": -73.08367526624663
+          },
+          "moveOrders": {
+            "value": 71.32338956800115,
+            "delta": 1.58641379089552
+          },
+          "ease": {
+            "value": 61.88099749318335,
+            "delta": 5.778482692202722
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 82.07064585462412,
+        "h24": 88.61270158603995,
+        "h32": 89.53021723076907
+      }
+    },
+    {
+      "id": "8c8bmUfy",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 90.10408744038703,
+      "final": 84.29534131904342,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 87.66147623980743
+        },
+        {
+          "key": "reach",
+          "value": 85.7813487730721
+        },
+        {
+          "key": "depth",
+          "value": 79.03243772135417
+        },
+        {
+          "key": "moveOrders",
+          "value": 59.50665389291208
+        },
+        {
+          "key": "ease",
+          "value": 58.15593405384727
+        }
+      ],
+      "counts": {
+        "positions": 1696,
+        "occurrences": 4161,
+        "moves": 1706,
+        "ownPositions": 152,
+        "answeredPositions": 148,
+        "repeatedGroups": 31,
+        "commonGroups": 2,
+        "answeredAlternatives": 299,
+        "easePositions": 515,
+        "easePairs": 1508,
+        "identicalPositionPairs": 39,
+        "openingBoundaries": 61
+      },
+      "shortened": {
+        "score": 46.64723503576815,
+        "delta": -37.64810628327527,
+        "facets": {
+          "replies": {
+            "value": 46.33926975725397,
+            "delta": -41.322206482553455
+          },
+          "reach": {
+            "value": 60.71196517715146,
+            "delta": -25.069383595920634
+          },
+          "depth": {
+            "value": 24.978861015625,
+            "delta": -54.05357670572917
+          },
+          "moveOrders": {
+            "value": 60.378421235929075,
+            "delta": 0.8717673430169981
+          },
+          "ease": {
+            "value": 63.23522798834251,
+            "delta": 5.07929393449524
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 3922,
+        "score": 46.507786751578266,
+        "delta": -37.78755456746515,
+        "facets": {
+          "replies": {
+            "value": 46.22797454218942,
+            "delta": -41.433501697618006
+          },
+          "reach": {
+            "value": 59.38291588968703,
+            "delta": -26.39843288338507
+          },
+          "depth": {
+            "value": 26.5109205625,
+            "delta": -52.52151715885417
+          },
+          "moveOrders": {
+            "value": 64.38367143797502,
+            "delta": 4.877017545062948
+          },
+          "ease": {
+            "value": 74.22075922092655,
+            "delta": 16.064825167079285
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 80.47775161354332,
+        "h24": 84.23101128777023,
+        "h32": 84.29534131904342
+      }
+    },
+    {
+      "id": "fTpa2qZW",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 96.23877074083913,
+      "final": 88.42935842777311,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 92.92787582431832
+        },
+        {
+          "key": "reach",
+          "value": 86.92486250620584
+        },
+        {
+          "key": "depth",
+          "value": 91.69413994973678
+        },
+        {
+          "key": "moveOrders",
+          "value": 69.18307141483083
+        },
+        {
+          "key": "ease",
+          "value": 58.066508469767534
+        }
+      ],
+      "counts": {
+        "positions": 1671,
+        "occurrences": 11394,
+        "moves": 1689,
+        "ownPositions": 294,
+        "answeredPositions": 291,
+        "repeatedGroups": 21,
+        "commonGroups": 9,
+        "answeredAlternatives": 176,
+        "easePositions": 413,
+        "easePairs": 581,
+        "identicalPositionPairs": 13,
+        "openingBoundaries": 40
+      },
+      "shortened": {
+        "score": 53.06614961927684,
+        "delta": -35.36320880849627,
+        "facets": {
+          "replies": {
+            "value": 52.26736697679316,
+            "delta": -40.66050884752516
+          },
+          "reach": {
+            "value": 68.81340777179074,
+            "delta": -18.111454734415105
+          },
+          "depth": {
+            "value": 26.11286728713768,
+            "delta": -65.5812726625991
+          },
+          "moveOrders": {
+            "value": 66.5534077123344,
+            "delta": -2.62966370249643
+          },
+          "ease": {
+            "value": 64.9011613652868,
+            "delta": 6.8346528955192625
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 10624,
+        "score": 50.792405700384364,
+        "delta": -37.636952727388746,
+        "facets": {
+          "replies": {
+            "value": 49.74264591867269,
+            "delta": -43.18522990564563
+          },
+          "reach": {
+            "value": 66.28758429576251,
+            "delta": -20.637278210443327
+          },
+          "depth": {
+            "value": 24.527380473318715,
+            "delta": -67.16675947641806
+          },
+          "moveOrders": {
+            "value": 72.61519508383995,
+            "delta": 3.4321236690091155
+          },
+          "ease": {
+            "value": 63.76560519139282,
+            "delta": 5.699096721625288
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 83.40302529146054,
+        "h24": 87.71710841874267,
+        "h32": 88.42935842777311
+      }
+    },
+    {
+      "id": "CfSYkcMp",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 76.38585524607211,
+      "final": 75.30778707746032,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 77.62837645998418
+        },
+        {
+          "key": "reach",
+          "value": 78.87391087042172
+        },
+        {
+          "key": "depth",
+          "value": 67.90142755208333
+        },
+        {
+          "key": "moveOrders",
+          "value": 69.28192156651173
+        },
+        {
+          "key": "ease",
+          "value": 38.58073079031904
+        }
+      ],
+      "counts": {
+        "positions": 449,
+        "occurrences": 637,
+        "moves": 454,
+        "ownPositions": 60,
+        "answeredPositions": 60,
+        "repeatedGroups": 2,
+        "commonGroups": 2,
+        "answeredAlternatives": 72,
+        "easePositions": 125,
+        "easePairs": 250,
+        "identicalPositionPairs": 3,
+        "openingBoundaries": 8
+      },
+      "shortened": {
+        "score": 6.5588803929816235,
+        "delta": -68.7489066844787,
+        "facets": {
+          "replies": {
+            "value": 8.307835300332528,
+            "delta": -69.32054115965165
+          },
+          "reach": {
+            "value": 1.0158262372237494,
+            "delta": -77.85808463319798
+          },
+          "depth": {
+            "value": 18.425631875,
+            "delta": -49.47579567708333
+          },
+          "moveOrders": {
+            "value": 69.7508043221062,
+            "delta": 0.46888275559447834
+          },
+          "ease": {
+            "value": 35.70338039347304,
+            "delta": -2.8773503968459977
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 580,
+        "score": 25.521538432874618,
+        "delta": -49.7862486445857,
+        "facets": {
+          "replies": {
+            "value": 26.145008588197733,
+            "delta": -51.48336787178645
+          },
+          "reach": {
+            "value": 28.82180311698648,
+            "delta": -50.052107753435244
+          },
+          "depth": {
+            "value": 20.134045312499996,
+            "delta": -47.76738223958334
+          },
+          "moveOrders": {
+            "value": 71.88940447772438,
+            "delta": 2.6074829112126565
+          },
+          "ease": {
+            "value": 51.68784033968517,
+            "delta": 13.107109549366129
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 71.11783433550521,
+        "h24": 76.58322207586417,
+        "h32": 75.30778707746032
+      }
+    },
+    {
+      "id": "yteYURRC",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 95.94957541712871,
+      "final": 85.49666808767273,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 90.52074948896556
+        },
+        {
+          "key": "reach",
+          "value": 80.31551483381276
+        },
+        {
+          "key": "depth",
+          "value": 93.8158568359375
+        },
+        {
+          "key": "moveOrders",
+          "value": 68.60606701325743
+        },
+        {
+          "key": "ease",
+          "value": 58.987922879933976
+        }
+      ],
+      "counts": {
+        "positions": 529,
+        "occurrences": 1344,
+        "moves": 528,
+        "ownPositions": 118,
+        "answeredPositions": 118,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 50,
+        "easePositions": 127,
+        "easePairs": 193,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 20
+      },
+      "shortened": {
+        "score": 42.45361987753327,
+        "delta": -43.04304821013946,
+        "facets": {
+          "replies": {
+            "value": 41.97213951988301,
+            "delta": -48.548609969082555
+          },
+          "reach": {
+            "value": 55.14362801441058,
+            "delta": -25.171886819402175
+          },
+          "depth": {
+            "value": 19.1053925,
+            "delta": -74.7104643359375
+          },
+          "moveOrders": {
+            "value": 92.39858545379205,
+            "delta": 23.79251844053462
+          },
+          "ease": {
+            "value": 60.65601089772727,
+            "delta": 1.6680880177932949
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 1258,
+        "score": 25.672922799827795,
+        "delta": -59.823745287844936,
+        "facets": {
+          "replies": {
+            "value": 25.190727982099077,
+            "delta": -65.33002150686649
+          },
+          "reach": {
+            "value": 35.626257431456864,
+            "delta": -44.68925740235589
+          },
+          "depth": {
+            "value": 9.090510625,
+            "delta": -84.72534621093749
+          },
+          "moveOrders": {
+            "value": 92.62022508200057,
+            "delta": 24.014158068743143
+          },
+          "ease": {
+            "value": 63.690735511111114,
+            "delta": 4.702812631177139
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 74.54659352954795,
+        "h24": 82.3271359016033,
+        "h32": 85.49666808767273
+      }
+    },
+    {
+      "id": "vPqdbuqZ",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 77.45966692414834,
+      "final": 67.16691822222222,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 74.14956677777778
+        },
+        {
+          "key": "reach",
+          "value": 58.251078384126984
+        },
+        {
+          "key": "depth",
+          "value": 100
+        },
+        {
+          "key": "moveOrders",
+          "value": 65.7335909247523
+        },
+        {
+          "key": "ease",
+          "value": 76.90170436387484
+        }
+      ],
+      "counts": {
+        "positions": 147,
+        "occurrences": 628,
+        "moves": 147,
+        "ownPositions": 71,
+        "answeredPositions": 71,
+        "repeatedGroups": 3,
+        "commonGroups": 1,
+        "answeredAlternatives": 5,
+        "easePositions": 20,
+        "easePairs": 15,
+        "identicalPositionPairs": 2,
+        "openingBoundaries": 7
+      },
+      "shortened": {
+        "score": 35.51647172872746,
+        "delta": -31.650446493494762,
+        "facets": {
+          "replies": {
+            "value": 35.80782049535523,
+            "delta": -38.34174628242255
+          },
+          "reach": {
+            "value": 48.03154103487385,
+            "delta": -10.219537349253137
+          },
+          "depth": {
+            "value": 23.0103375,
+            "delta": -76.98966250000001
+          },
+          "moveOrders": {
+            "value": 66.23650604462239,
+            "delta": 0.5029151198700816
+          },
+          "ease": {
+            "value": 75.53475366114118,
+            "delta": -1.3669507027336607
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 592,
+        "score": 20.664203747597128,
+        "delta": -46.502714474625094,
+        "facets": {
+          "replies": {
+            "value": 20.809893407258567,
+            "delta": -53.33967337051921
+          },
+          "reach": {
+            "value": 31.411791643041727,
+            "delta": -26.839286741085257
+          },
+          "depth": {
+            "value": 13.3094034375,
+            "delta": -86.6905965625
+          },
+          "moveOrders": {
+            "value": 67.58617274621746,
+            "delta": 1.8525818214651508
+          },
+          "ease": {
+            "value": 70.75711011795936,
+            "delta": -6.144594245915485
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 59.77823037619279,
+        "h24": 66.54794210041344,
+        "h32": 67.16691822222222
+      }
+    },
+    {
+      "id": "2XxhfIAJ",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 97.70818484635798,
+      "final": 90.35168819844365,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 94.9261233850989
+        },
+        {
+          "key": "reach",
+          "value": 85.54746638991486
+        },
+        {
+          "key": "depth",
+          "value": 93.79522044277833
+        },
+        {
+          "key": "moveOrders",
+          "value": 52.57340538116206
+        },
+        {
+          "key": "ease",
+          "value": 37.76185366068599
+        }
+      ],
+      "counts": {
+        "positions": 6571,
+        "occurrences": 30746,
+        "moves": 6623,
+        "ownPositions": 361,
+        "answeredPositions": 357,
+        "repeatedGroups": 43,
+        "commonGroups": 28,
+        "answeredAlternatives": 704,
+        "easePositions": 1522,
+        "easePairs": 2734,
+        "identicalPositionPairs": 45,
+        "openingBoundaries": 323
+      },
+      "shortened": {
+        "score": 56.13548508991743,
+        "delta": -34.21620310852622,
+        "facets": {
+          "replies": {
+            "value": 54.984153029020604,
+            "delta": -39.9419703560783
+          },
+          "reach": {
+            "value": 68.90901062718481,
+            "delta": -16.638455762730047
+          },
+          "depth": {
+            "value": 23.721713531249996,
+            "delta": -70.07350691152834
+          },
+          "moveOrders": {
+            "value": 46.09174473679302,
+            "delta": -6.481660644369043
+          },
+          "ease": {
+            "value": 48.281238586393,
+            "delta": 10.519384925707008
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 29349,
+        "score": 58.51176564882943,
+        "delta": -31.839922549614222,
+        "facets": {
+          "replies": {
+            "value": 56.741382162231275,
+            "delta": -38.18474122286763
+          },
+          "reach": {
+            "value": 69.94233750000696,
+            "delta": -15.605128889907903
+          },
+          "depth": {
+            "value": 20.42568809189815,
+            "delta": -73.36953235088018
+          },
+          "moveOrders": {
+            "value": 50.96749628934839,
+            "delta": -1.6059090918136718
+          },
+          "ease": {
+            "value": 41.863478246706805,
+            "delta": 4.101624586020812
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 83.02060488045247,
+        "h24": 88.84631726590747,
+        "h32": 90.35168819844365
+      }
+    },
+    {
+      "id": "2XxhfIAJ",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 95.12266844219047,
+      "final": 88.46024625136032,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 92.56092657590713
+        },
+        {
+          "key": "reach",
+          "value": 88.72489635346678
+        },
+        {
+          "key": "depth",
+          "value": 88.21042967236885
+        },
+        {
+          "key": "moveOrders",
+          "value": 66.92578899068114
+        },
+        {
+          "key": "ease",
+          "value": 49.96777824812941
+        }
+      ],
+      "counts": {
+        "positions": 5658,
+        "occurrences": 30746,
+        "moves": 5697,
+        "ownPositions": 466,
+        "answeredPositions": 461,
+        "repeatedGroups": 49,
+        "commonGroups": 26,
+        "answeredAlternatives": 624,
+        "easePositions": 1342,
+        "easePairs": 1961,
+        "identicalPositionPairs": 62,
+        "openingBoundaries": 252
+      },
+      "shortened": {
+        "score": 61.43961398241144,
+        "delta": -27.02063226894888,
+        "facets": {
+          "replies": {
+            "value": 60.68865870777499,
+            "delta": -31.87226786813214
+          },
+          "reach": {
+            "value": 77.26937722192042,
+            "delta": -11.455519131546353
+          },
+          "depth": {
+            "value": 33.07631781249999,
+            "delta": -55.13411185986886
+          },
+          "moveOrders": {
+            "value": 66.56638323088087,
+            "delta": -0.3594057598002678
+          },
+          "ease": {
+            "value": 61.463571822278034,
+            "delta": 11.495793574148621
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 30133,
+        "score": 50.425209835197876,
+        "delta": -38.03503641616244,
+        "facets": {
+          "replies": {
+            "value": 48.98310863907343,
+            "delta": -43.5778179368337
+          },
+          "reach": {
+            "value": 65.73066784937014,
+            "delta": -22.99422850409664
+          },
+          "depth": {
+            "value": 19.371542000868054,
+            "delta": -68.8388876715008
+          },
+          "moveOrders": {
+            "value": 65.90840350441398,
+            "delta": -1.017385486267159
+          },
+          "ease": {
+            "value": 52.57914191745081,
+            "delta": 2.611363669321399
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 84.23684906931513,
+        "h24": 87.52972296093563,
+        "h32": 88.46024625136032
+      }
+    },
+    {
+      "id": "oBsew7N6",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 69.82120021884471,
+      "final": 62.36496371725424,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 68.06714954241357
+        },
+        {
+          "key": "reach",
+          "value": 56.06222525300344
+        },
+        {
+          "key": "depth",
+          "value": 92.355849375
+        },
+        {
+          "key": "moveOrders",
+          "value": 65.29851570487746
+        },
+        {
+          "key": "ease",
+          "value": 70.52644780384907
+        }
+      ],
+      "counts": {
+        "positions": 120,
+        "occurrences": 186,
+        "moves": 120,
+        "ownPositions": 59,
+        "answeredPositions": 57,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 5,
+        "easePositions": 12,
+        "easePairs": 7,
+        "identicalPositionPairs": 2,
+        "openingBoundaries": 4
+      },
+      "shortened": {
+        "score": 40.7526915853099,
+        "delta": -21.612272131944344,
+        "facets": {
+          "replies": {
+            "value": 41.20611326370253,
+            "delta": -26.861036278711047
+          },
+          "reach": {
+            "value": 50.86599586552056,
+            "delta": -5.19622938748288
+          },
+          "depth": {
+            "value": 33.3132346875,
+            "delta": -59.042614687500006
+          },
+          "moveOrders": {
+            "value": 65.5992523536015,
+            "delta": 0.3007366487240404
+          },
+          "ease": {
+            "value": 79.73342295845433,
+            "delta": 9.20697515460526
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 133,
+        "score": 10.645845565624047,
+        "delta": -51.7191181516302,
+        "facets": {
+          "replies": {
+            "value": 11.29906573146623,
+            "delta": -56.768083810947346
+          },
+          "reach": {
+            "value": 12.193954205658844,
+            "delta": -43.86827104734459
+          },
+          "depth": {
+            "value": 13.276849921875,
+            "delta": -79.07899945312501
+          },
+          "moveOrders": {
+            "value": 65.75726193151922,
+            "delta": 0.45874622664176457
+          },
+          "ease": {
+            "value": 74.44304896050627,
+            "delta": 3.916601156657208
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 63.168784201979484,
+        "h24": 63.480387794235924,
+        "h32": 62.36496371725424
+      }
+    },
+    {
+      "id": "oBsew7N6",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 64.04344228724749,
+      "final": 46.270551259051395,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 52.74234571773608
+        },
+        {
+          "key": "reach",
+          "value": 32.86397012522566
+        },
+        {
+          "key": "depth",
+          "value": 87.40054921874999
+        },
+        {
+          "key": "moveOrders",
+          "value": 45.644695812142615
+        },
+        {
+          "key": "ease",
+          "value": 61.871049861319456
+        }
+      ],
+      "counts": {
+        "positions": 162,
+        "occurrences": 186,
+        "moves": 162,
+        "ownPositions": 57,
+        "answeredPositions": 56,
+        "repeatedGroups": 3,
+        "commonGroups": 0,
+        "answeredAlternatives": 3,
+        "easePositions": 17,
+        "easePairs": 15,
+        "identicalPositionPairs": 8,
+        "openingBoundaries": 4
+      },
+      "shortened": {
+        "score": 27.35472173644795,
+        "delta": -18.915829522603445,
+        "facets": {
+          "replies": {
+            "value": 28.78252531742567,
+            "delta": -23.95982040031041
+          },
+          "reach": {
+            "value": 29.934324396592846,
+            "delta": -2.929645728632817
+          },
+          "depth": {
+            "value": 31.79646375,
+            "delta": -55.604085468749986
+          },
+          "moveOrders": {
+            "value": 46.09132900161735,
+            "delta": 0.4466331894747384
+          },
+          "ease": {
+            "value": 60.98473785262831,
+            "delta": -0.8863120086911493
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 134,
+        "score": 14.118915769906764,
+        "delta": -32.15163548914463,
+        "facets": {
+          "replies": {
+            "value": 15.442999877836417,
+            "delta": -37.29934583989966
+          },
+          "reach": {
+            "value": 16.915447148873252,
+            "delta": -15.948522976352411
+          },
+          "depth": {
+            "value": 19.907458437499997,
+            "delta": -67.49309078124999
+          },
+          "moveOrders": {
+            "value": 46.99230791632228,
+            "delta": 1.3476121041796674
+          },
+          "ease": {
+            "value": 53.653356640090095,
+            "delta": -8.21769322122936
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 44.15436300552881,
+        "h24": 47.38587763642202,
+        "h32": 46.270551259051395
+      }
+    },
+    {
+      "id": "tU7Nq5nE",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 71.00469468046929,
+      "final": 62.59044569438637,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 67.10387595491233
+        },
+        {
+          "key": "reach",
+          "value": 61.514467398683024
+        },
+        {
+          "key": "depth",
+          "value": 78.68526806249997
+        },
+        {
+          "key": "moveOrders",
+          "value": 92.9767717765015
+        },
+        {
+          "key": "ease",
+          "value": 49.85148336333334
+        }
+      ],
+      "counts": {
+        "positions": 100,
+        "occurrences": 109,
+        "moves": 100,
+        "ownPositions": 50,
+        "answeredPositions": 50,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 7,
+        "easePositions": 29,
+        "easePairs": 34,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 6.956743204303192,
+        "delta": -55.633702490083174,
+        "facets": {
+          "replies": {
+            "value": 8.811790016769164,
+            "delta": -58.29208593814316
+          },
+          "reach": {
+            "value": 1.0774464312721919,
+            "delta": -60.43702096741083
+          },
+          "depth": {
+            "value": 20.1340453125,
+            "delta": -58.55122274999997
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": -3.6064857765015006
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 77,
+        "score": 17.080918560744358,
+        "delta": -45.50952713364201,
+        "facets": {
+          "replies": {
+            "value": 19.450079835380063,
+            "delta": -47.65379611953226
+          },
+          "reach": {
+            "value": 13.190605401476976,
+            "delta": -48.32386199720605
+          },
+          "depth": {
+            "value": 30.31436140625,
+            "delta": -48.37090665624997
+          },
+          "moveOrders": {
+            "value": 93.966848,
+            "delta": 0.9900762234985052
+          },
+          "ease": {
+            "value": 67.38955433522727,
+            "delta": 17.538070971893937
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 47.803219775936995,
+        "h24": 60.73258347604572,
+        "h32": 62.59044569438637
+      }
+    },
+    {
+      "id": "rZyGzD67",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 54.159381794511255,
+      "final": 45.67832447478744,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 48.02371419791112
+        },
+        {
+          "key": "reach",
+          "value": 50.97133926434652
+        },
+        {
+          "key": "depth",
+          "value": 49.31997828125
+        },
+        {
+          "key": "moveOrders",
+          "value": 92.66433283018318
+        },
+        {
+          "key": "ease",
+          "value": 65.83091632167223
+        }
+      ],
+      "counts": {
+        "positions": 48,
+        "occurrences": 59,
+        "moves": 48,
+        "ownPositions": 24,
+        "answeredPositions": 23,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 6,
+        "easePositions": 13,
+        "easePairs": 26,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 6.956743204303192,
+        "delta": -38.72158127048424,
+        "facets": {
+          "replies": {
+            "value": 8.811790016769164,
+            "delta": -39.21192418114195
+          },
+          "reach": {
+            "value": 1.0774464312721919,
+            "delta": -49.893892833074325
+          },
+          "depth": {
+            "value": 20.1340453125,
+            "delta": -29.185932968750002
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": -3.2940468301831913
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 26,
+        "score": 22.098922041433838,
+        "delta": -23.5794024333536,
+        "facets": {
+          "replies": {
+            "value": 24.057722591134116,
+            "delta": -23.965991606777003
+          },
+          "reach": {
+            "value": 25.39126849496272,
+            "delta": -25.5800707693838
+          },
+          "depth": {
+            "value": 29.99713978125,
+            "delta": -19.322838500000003
+          },
+          "moveOrders": {
+            "value": 92.9991507368421,
+            "delta": 0.33481790665891253
+          },
+          "ease": {
+            "value": 63.51723101,
+            "delta": -2.3136853116722307
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 48.80921168209981,
+        "h24": 47.40136644716102,
+        "h32": 45.67832447478744
+      }
+    },
+    {
+      "id": "ztgulNGx",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 59.89098065228239,
+      "final": 57.99897579456089,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 59.84705305173828
+        },
+        {
+          "key": "reach",
+          "value": 65.1310986136272
+        },
+        {
+          "key": "depth",
+          "value": 51.412774067708334
+        },
+        {
+          "key": "moveOrders",
+          "value": 91.49121949175503
+        },
+        {
+          "key": "ease",
+          "value": 55.27432888593482
+        }
+      ],
+      "counts": {
+        "positions": 108,
+        "occurrences": 171,
+        "moves": 107,
+        "ownPositions": 54,
+        "answeredPositions": 53,
+        "repeatedGroups": 0,
+        "commonGroups": 0,
+        "answeredAlternatives": 9,
+        "easePositions": 22,
+        "easePairs": 24,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 14.513875106505235,
+        "delta": -43.48510068805565,
+        "facets": {
+          "replies": {
+            "value": 16.198522717577454,
+            "delta": -43.648530334160824
+          },
+          "reach": {
+            "value": 15.63813846113647,
+            "delta": -49.49296015249073
+          },
+          "depth": {
+            "value": 23.0103375,
+            "delta": -28.402436567708335
+          },
+          "moveOrders": {
+            "value": 93.07814643179377,
+            "delta": 1.5869269400387367
+          },
+          "ease": {
+            "value": 66.78503929545454,
+            "delta": 11.510710409519717
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 111,
+        "score": 10.431437498420838,
+        "delta": -47.56753829614006,
+        "facets": {
+          "replies": {
+            "value": 12.055975310886812,
+            "delta": -47.79107774085146
+          },
+          "reach": {
+            "value": 9.206639066566309,
+            "delta": -55.92445954706089
+          },
+          "depth": {
+            "value": 20.1340453125,
+            "delta": -31.278728755208334
+          },
+          "moveOrders": {
+            "value": 93.966848,
+            "delta": 2.4756285082449665
+          },
+          "ease": {
+            "value": 99.513491,
+            "delta": 44.23916211406518
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 62.796517230450334,
+        "h24": 60.64505065738564,
+        "h32": 57.99897579456089
+      }
+    },
+    {
+      "id": "AKbQXhWw",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 91.7444276461496,
+      "final": 87.14149307883862,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 91.18795424018957
+        },
+        {
+          "key": "reach",
+          "value": 88.02243508573352
+        },
+        {
+          "key": "depth",
+          "value": 89.0213718066406
+        },
+        {
+          "key": "moveOrders",
+          "value": 76.46274506274767
+        },
+        {
+          "key": "ease",
+          "value": 61.59683672267458
+        }
+      ],
+      "counts": {
+        "positions": 2006,
+        "occurrences": 3385,
+        "moves": 2029,
+        "ownPositions": 193,
+        "answeredPositions": 192,
+        "repeatedGroups": 21,
+        "commonGroups": 13,
+        "answeredAlternatives": 172,
+        "easePositions": 467,
+        "easePairs": 662,
+        "identicalPositionPairs": 8,
+        "openingBoundaries": 67
+      },
+      "shortened": {
+        "score": 51.6051020519759,
+        "delta": -35.536391026862724,
+        "facets": {
+          "replies": {
+            "value": 50.6478112315466,
+            "delta": -40.54014300864297
+          },
+          "reach": {
+            "value": 68.29962520205652,
+            "delta": -19.722809883677
+          },
+          "depth": {
+            "value": 22.1841414375,
+            "delta": -66.8372303691406
+          },
+          "moveOrders": {
+            "value": 73.30512904361024,
+            "delta": -3.1576160191374356
+          },
+          "ease": {
+            "value": 64.9674028668864,
+            "delta": 3.3705661442118213
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 3135,
+        "score": 49.23788574383876,
+        "delta": -37.90360733499986,
+        "facets": {
+          "replies": {
+            "value": 47.68808227886943,
+            "delta": -43.49987196132014
+          },
+          "reach": {
+            "value": 66.23317807558182,
+            "delta": -21.7892570101517
+          },
+          "depth": {
+            "value": 15.01556390625,
+            "delta": -74.00580790039061
+          },
+          "moveOrders": {
+            "value": 68.34243492691684,
+            "delta": -8.120310135830834
+          },
+          "ease": {
+            "value": 69.17356384458702,
+            "delta": 7.576727121912441
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 81.49942380936403,
+        "h24": 87.4742896744379,
+        "h32": 87.14149307883862
+      }
+    },
+    {
+      "id": "2MMWpcNI",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 29.85303508361761,
+      "final": 20.79899442974469,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 22.953780857403626
+        },
+        {
+          "key": "reach",
+          "value": 17.600992067657085
+        },
+        {
+          "key": "depth",
+          "value": 35.10281729166667
+        },
+        {
+          "key": "moveOrders",
+          "value": 42.02468326904437
+        },
+        {
+          "key": "ease",
+          "value": 54.8841650919648
+        }
+      ],
+      "counts": {
+        "positions": 43,
+        "occurrences": 54,
+        "moves": 42,
+        "ownPositions": 20,
+        "answeredPositions": 18,
+        "repeatedGroups": 2,
+        "commonGroups": 0,
+        "answeredAlternatives": 1,
+        "easePositions": 4,
+        "easePairs": 10,
+        "identicalPositionPairs": 7,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 16.776707927825854,
+        "delta": -4.022286501918835,
+        "facets": {
+          "replies": {
+            "value": 17.858933598952333,
+            "delta": -5.094847258451292
+          },
+          "reach": {
+            "value": 16.978028403515218,
+            "delta": -0.6229636641418672
+          },
+          "depth": {
+            "value": 23.092058229166668,
+            "delta": -12.0107590625
+          },
+          "moveOrders": {
+            "value": 41.93140004247031,
+            "delta": -0.09328322657405863
+          },
+          "ease": {
+            "value": 56.72330867529813,
+            "delta": 1.8391435833333247
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 23,
+        "score": 5.879521118170535,
+        "delta": -14.919473311574153,
+        "facets": {
+          "replies": {
+            "value": 7.447321824446724,
+            "delta": -15.5064590329569
+          },
+          "reach": {
+            "value": 0.910608435631749,
+            "delta": -16.690383632025338
+          },
+          "depth": {
+            "value": 18.7745240625,
+            "delta": -16.32829322916667
+          },
+          "moveOrders": {
+            "value": 66.67353536587156,
+            "delta": 24.64885209682719
+          },
+          "ease": {
+            "value": 49.082317222397045,
+            "delta": -5.801847869567759
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 24.14517977368434,
+        "h24": 22.441070354384227,
+        "h32": 20.79899442974469
+      }
+    },
+    {
+      "id": "2MMWpcNI",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 35.96390937840014,
+      "final": 22.7996469755036,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 24.195970167481242
+        },
+        {
+          "key": "reach",
+          "value": 27.50180410864817
+        },
+        {
+          "key": "depth",
+          "value": 26.12786864583333
+        },
+        {
+          "key": "moveOrders",
+          "value": 62.11528050405685
+        },
+        {
+          "key": "ease",
+          "value": 64.59697317550703
+        }
+      ],
+      "counts": {
+        "positions": 43,
+        "occurrences": 54,
+        "moves": 42,
+        "ownPositions": 23,
+        "answeredPositions": 18,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 3,
+        "easePositions": 3,
+        "easePairs": 2,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 20.29270895027475,
+        "delta": -2.5069380252288482,
+        "facets": {
+          "replies": {
+            "value": 21.020545861218775,
+            "delta": -3.1754243062624674
+          },
+          "reach": {
+            "value": 27.11353457657279,
+            "delta": -0.3882695320753804
+          },
+          "depth": {
+            "value": 19.189933333333332,
+            "delta": -6.937935312499999
+          },
+          "moveOrders": {
+            "value": 62.11528050405685,
+            "delta": 0
+          },
+          "ease": {
+            "value": 66.17338196122131,
+            "delta": 1.5764087857142783
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 19,
+        "score": 11.507035939414987,
+        "delta": -11.292611036088612,
+        "facets": {
+          "replies": {
+            "value": 12.071999315364588,
+            "delta": -12.123970852116654
+          },
+          "reach": {
+            "value": 15.538396338968273,
+            "delta": -11.963407769679897
+          },
+          "depth": {
+            "value": 13.172997604166666,
+            "delta": -12.954871041666665
+          },
+          "moveOrders": {
+            "value": 62.96328809048193,
+            "delta": 0.8480075864250836
+          },
+          "ease": {
+            "value": 67.35568855050704,
+            "delta": 2.7587153750000084
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 26.41797151071711,
+        "h24": 24.151019321743185,
+        "h32": 22.7996469755036
+      }
+    },
+    {
+      "id": "sEo8o4Rm",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 93.87851274024842,
+      "final": 85.42281681300136,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 90.39355054980784
+        },
+        {
+          "key": "reach",
+          "value": 81.95966626291592
+        },
+        {
+          "key": "depth",
+          "value": 95.21748486177884
+        },
+        {
+          "key": "moveOrders",
+          "value": 72.6959109738086
+        },
+        {
+          "key": "ease",
+          "value": 53.865345810977075
+        }
+      ],
+      "counts": {
+        "positions": 553,
+        "occurrences": 1063,
+        "moves": 554,
+        "ownPositions": 102,
+        "answeredPositions": 102,
+        "repeatedGroups": 4,
+        "commonGroups": 1,
+        "answeredAlternatives": 49,
+        "easePositions": 112,
+        "easePairs": 125,
+        "identicalPositionPairs": 3,
+        "openingBoundaries": 24
+      },
+      "shortened": {
+        "score": 42.63461935514512,
+        "delta": -42.78819745785624,
+        "facets": {
+          "replies": {
+            "value": 42.83934541402573,
+            "delta": -47.55420513578211
+          },
+          "reach": {
+            "value": 54.98676058921975,
+            "delta": -26.972905673696168
+          },
+          "depth": {
+            "value": 28.50166640625,
+            "delta": -66.71581845552885
+          },
+          "moveOrders": {
+            "value": 68.30582868236527,
+            "delta": -4.390082291443321
+          },
+          "ease": {
+            "value": 57.137268661308305,
+            "delta": 3.2719228503312294
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 997,
+        "score": 10.423352118170534,
+        "delta": -74.99946469483083,
+        "facets": {
+          "replies": {
+            "value": 11.689717978292878,
+            "delta": -78.70383257151497
+          },
+          "reach": {
+            "value": 11.294879531785593,
+            "delta": -70.66478673113032
+          },
+          "depth": {
+            "value": 18.7745240625,
+            "delta": -76.44296079927884
+          },
+          "moveOrders": {
+            "value": 92.59296784501845,
+            "delta": 19.897056871209855
+          },
+          "ease": {
+            "value": 74.792376,
+            "delta": 20.92703018902293
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 77.2059125366345,
+        "h24": 84.86661634288345,
+        "h32": 85.42281681300136
+      }
+    },
+    {
+      "id": "GNlZ2WKx",
+      "color": "white",
+      "role": "repertoire-and-model-games",
+      "baseline": 96.4274111134126,
+      "final": 88.76441598029557,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 94.31430033004926
+        },
+        {
+          "key": "reach",
+          "value": 83.8015807175126
+        },
+        {
+          "key": "depth",
+          "value": 100
+        },
+        {
+          "key": "moveOrders",
+          "value": 74.4644641478601
+        },
+        {
+          "key": "ease",
+          "value": 60.07260556341996
+        }
+      ],
+      "counts": {
+        "positions": 558,
+        "occurrences": 2178,
+        "moves": 575,
+        "ownPositions": 218,
+        "answeredPositions": 218,
+        "repeatedGroups": 16,
+        "commonGroups": 6,
+        "answeredAlternatives": 52,
+        "easePositions": 151,
+        "easePairs": 338,
+        "identicalPositionPairs": 12,
+        "openingBoundaries": 32
+      },
+      "shortened": {
+        "score": 33.83586541820148,
+        "delta": -54.92855056209409,
+        "facets": {
+          "replies": {
+            "value": 34.42840177367478,
+            "delta": -59.885898556374485
+          },
+          "reach": {
+            "value": 42.66301327661407,
+            "delta": -41.138567440898534
+          },
+          "depth": {
+            "value": 27.82190578125,
+            "delta": -72.17809421875
+          },
+          "moveOrders": {
+            "value": 73.86859003230893,
+            "delta": -0.5958741155511689
+          },
+          "ease": {
+            "value": 79.42181749700475,
+            "delta": 19.34921193358479
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 1984,
+        "score": 35.76233247548939,
+        "delta": -53.00208350480618,
+        "facets": {
+          "replies": {
+            "value": 36.760891869273394,
+            "delta": -57.55340846077587
+          },
+          "reach": {
+            "value": 42.67333105829503,
+            "delta": -41.12824965921758
+          },
+          "depth": {
+            "value": 35.78945942382812,
+            "delta": -64.21054057617188
+          },
+          "moveOrders": {
+            "value": 66.90185136927394,
+            "delta": -7.562612778586157
+          },
+          "ease": {
+            "value": 81.96142588615174,
+            "delta": 21.88882032273178
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 80.02884277772964,
+        "h24": 86.43201349741894,
+        "h32": 88.76441598029557
+      }
+    },
+    {
+      "id": "KjivNw7F",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 74.76942524233472,
+      "final": 73.43515579245454,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 76.12401302288309
+        },
+        {
+          "key": "reach",
+          "value": 77.95378406894721
+        },
+        {
+          "key": "depth",
+          "value": 70.92985552368164
+        },
+        {
+          "key": "moveOrders",
+          "value": 77.74947498672861
+        },
+        {
+          "key": "ease",
+          "value": 57.385055592592295
+        }
+      ],
+      "counts": {
+        "positions": 375,
+        "occurrences": 878,
+        "moves": 380,
+        "ownPositions": 129,
+        "answeredPositions": 125,
+        "repeatedGroups": 8,
+        "commonGroups": 5,
+        "answeredAlternatives": 33,
+        "easePositions": 94,
+        "easePairs": 103,
+        "identicalPositionPairs": 3,
+        "openingBoundaries": 6
+      },
+      "shortened": {
+        "score": 45.08725646582053,
+        "delta": -28.347899326634007,
+        "facets": {
+          "replies": {
+            "value": 44.93338272605574,
+            "delta": -31.19063029682735
+          },
+          "reach": {
+            "value": 59.30741583291136,
+            "delta": -18.646368236035855
+          },
+          "depth": {
+            "value": 27.82190578125,
+            "delta": -43.10794974243164
+          },
+          "moveOrders": {
+            "value": 78.854588301243,
+            "delta": 1.1051133145143837
+          },
+          "ease": {
+            "value": 77.4068015854046,
+            "delta": 20.0217459928123
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 755,
+        "score": 41.06434036042442,
+        "delta": -32.37081543203012,
+        "facets": {
+          "replies": {
+            "value": 41.42285660936332,
+            "delta": -34.70115641351977
+          },
+          "reach": {
+            "value": 52.454886347999995,
+            "delta": -25.49889772094722
+          },
+          "depth": {
+            "value": 31.722482734375,
+            "delta": -39.20737278930664
+          },
+          "moveOrders": {
+            "value": 81.68398214452358,
+            "delta": 3.934507157794968
+          },
+          "ease": {
+            "value": 78.31070851719412,
+            "delta": 20.92565292460182
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 73.45661026616544,
+        "h24": 74.2502160349005,
+        "h32": 73.43515579245454
+      }
+    },
+    {
+      "id": "1gqDv9cx",
+      "color": "black",
+      "role": "repertoire-and-traps",
+      "baseline": 70.76303508495069,
+      "final": 77.21099870919363,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 79.25680020691107
+        },
+        {
+          "key": "reach",
+          "value": 79.76653903089102
+        },
+        {
+          "key": "depth",
+          "value": 73.2019617547743
+        },
+        {
+          "key": "moveOrders",
+          "value": 76.56896697533173
+        },
+        {
+          "key": "ease",
+          "value": 36.591411357627514
+        }
+      ],
+      "counts": {
+        "positions": 679,
+        "occurrences": 1698,
+        "moves": 681,
+        "ownPositions": 119,
+        "answeredPositions": 114,
+        "repeatedGroups": 6,
+        "commonGroups": 2,
+        "answeredAlternatives": 101,
+        "easePositions": 176,
+        "easePairs": 354,
+        "identicalPositionPairs": 6,
+        "openingBoundaries": 29
+      },
+      "shortened": {
+        "score": 26.627553389027184,
+        "delta": -50.58344532016645,
+        "facets": {
+          "replies": {
+            "value": 28.363397007097234,
+            "delta": -50.89340319981383
+          },
+          "reach": {
+            "value": 31.1160497293269,
+            "delta": -48.65048930156412
+          },
+          "depth": {
+            "value": 36.189526875,
+            "delta": -37.012434879774304
+          },
+          "moveOrders": {
+            "value": 92.84874701461254,
+            "delta": 16.27978003928081
+          },
+          "ease": {
+            "value": 51.42263211688312,
+            "delta": 14.831220759255608
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 1560,
+        "score": 14.71021488512088,
+        "delta": -62.500783824072755,
+        "facets": {
+          "replies": {
+            "value": 16.447217379762172,
+            "delta": -62.809582827148894
+          },
+          "reach": {
+            "value": 15.66854717216311,
+            "delta": -64.09799185872791
+          },
+          "depth": {
+            "value": 28.67971725,
+            "delta": -44.52224450477431
+          },
+          "moveOrders": {
+            "value": 93.20358124723246,
+            "delta": 16.63461427190073
+          },
+          "ease": {
+            "value": 73.18025107142859,
+            "delta": 36.58883971380107
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 75.07651023234038,
+        "h24": 78.12839382474274,
+        "h32": 77.21099870919363
+      }
+    },
+    {
+      "id": "8eyxyvBh",
+      "color": "white",
+      "role": "repertoire-and-exercises",
+      "baseline": 59.38674695827104,
+      "final": 41.8640017082908,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 44.20969278721399
+        },
+        {
+          "key": "reach",
+          "value": 46.96350760203356
+        },
+        {
+          "key": "depth",
+          "value": 44.054279906249995
+        },
+        {
+          "key": "moveOrders",
+          "value": 92.17898052537075
+        },
+        {
+          "key": "ease",
+          "value": 20.04072798472222
+        }
+      ],
+      "counts": {
+        "positions": 55,
+        "occurrences": 107,
+        "moves": 54,
+        "ownPositions": 24,
+        "answeredPositions": 23,
+        "repeatedGroups": 0,
+        "commonGroups": 0,
+        "answeredAlternatives": 9,
+        "easePositions": 12,
+        "easePairs": 14,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 9.838320589472437,
+        "delta": -32.02568111881836,
+        "facets": {
+          "replies": {
+            "value": 12.461752950498793,
+            "delta": -31.747939836715197
+          },
+          "reach": {
+            "value": 1.5237393558356243,
+            "delta": -45.439768246197936
+          },
+          "depth": {
+            "value": 35.50976625,
+            "delta": -8.544513656249997
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": -2.808694525370754
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 91,
+        "score": 9.838320589472437,
+        "delta": -32.02568111881836,
+        "facets": {
+          "replies": {
+            "value": 12.461752950498793,
+            "delta": -31.747939836715197
+          },
+          "reach": {
+            "value": 1.5237393558356243,
+            "delta": -45.439768246197936
+          },
+          "depth": {
+            "value": 35.50976625,
+            "delta": -8.544513656249997
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": -2.808694525370754
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 37.379406808215414,
+        "h24": 44.24398206166183,
+        "h32": 41.8640017082908
+      }
+    },
+    {
+      "id": "dgUQNQ2B",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 75.40502011889755,
+      "final": 78.31640075441885,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 80.24205319965539
+        },
+        {
+          "key": "reach",
+          "value": 85.42182634767384
+        },
+        {
+          "key": "depth",
+          "value": 67.31536718928571
+        },
+        {
+          "key": "moveOrders",
+          "value": 84.14591468597017
+        },
+        {
+          "key": "ease",
+          "value": 59.92666668353378
+        }
+      ],
+      "counts": {
+        "positions": 1254,
+        "occurrences": 1738,
+        "moves": 1265,
+        "ownPositions": 135,
+        "answeredPositions": 133,
+        "repeatedGroups": 14,
+        "commonGroups": 10,
+        "answeredAlternatives": 177,
+        "easePositions": 358,
+        "easePairs": 532,
+        "identicalPositionPairs": 4,
+        "openingBoundaries": 15
+      },
+      "shortened": {
+        "score": 50.44220768632222,
+        "delta": -27.87419306809663,
+        "facets": {
+          "replies": {
+            "value": 50.27523879617861,
+            "delta": -29.966814403476775
+          },
+          "reach": {
+            "value": 64.64758439209317,
+            "delta": -20.774241955580678
+          },
+          "depth": {
+            "value": 30.779550989583335,
+            "delta": -36.535816199702374
+          },
+          "moveOrders": {
+            "value": 91.91510285114508,
+            "delta": 7.76918816517491
+          },
+          "ease": {
+            "value": 58.73091302661082,
+            "delta": -1.1957536569229603
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 1499,
+        "score": 44.03608423025682,
+        "delta": -34.28031652416203,
+        "facets": {
+          "replies": {
+            "value": 43.25589209230323,
+            "delta": -36.98616110735216
+          },
+          "reach": {
+            "value": 53.1645342687706,
+            "delta": -32.25729207890324
+          },
+          "depth": {
+            "value": 23.11533609375,
+            "delta": -44.20003109553571
+          },
+          "moveOrders": {
+            "value": 91.57456416395316,
+            "delta": 7.428649477982987
+          },
+          "ease": {
+            "value": 70.44137151851852,
+            "delta": 10.514704834984741
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 80.22285931154272,
+        "h24": 80.30061158998348,
+        "h32": 78.31640075441885
+      }
+    },
+    {
+      "id": "whCVdUeM",
+      "color": "black",
+      "role": "repertoire-and-traps",
+      "baseline": 76.67353792296608,
+      "final": 71.426587998761,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 74.94395482479703
+        },
+        {
+          "key": "reach",
+          "value": 73.37068561535362
+        },
+        {
+          "key": "depth",
+          "value": 77.47571345833332
+        },
+        {
+          "key": "moveOrders",
+          "value": 92.79934424523641
+        },
+        {
+          "key": "ease",
+          "value": 38.88457732652486
+        }
+      ],
+      "counts": {
+        "positions": 145,
+        "occurrences": 250,
+        "moves": 146,
+        "ownPositions": 44,
+        "answeredPositions": 43,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 24,
+        "easePositions": 39,
+        "easePairs": 81,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 5
+      },
+      "shortened": {
+        "score": 10.517607116299914,
+        "delta": -60.90898088246108,
+        "facets": {
+          "replies": {
+            "value": 13.322174279824505,
+            "delta": -61.62178054497252
+          },
+          "reach": {
+            "value": 1.628945890365866,
+            "delta": -71.74173972498775
+          },
+          "depth": {
+            "value": 36.189526875,
+            "delta": -41.28618658333332
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": -3.429058245236419
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 193,
+        "score": 10.517607116299914,
+        "delta": -60.90898088246108,
+        "facets": {
+          "replies": {
+            "value": 13.322174279824505,
+            "delta": -61.62178054497252
+          },
+          "reach": {
+            "value": 1.628945890365866,
+            "delta": -71.74173972498775
+          },
+          "depth": {
+            "value": 36.189526875,
+            "delta": -41.28618658333332
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": -3.429058245236419
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 71.36480784346644,
+        "h24": 71.77682761960946,
+        "h32": 71.426587998761
+      }
+    },
+    {
+      "id": "OnPMlzHT",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 53.32682251925387,
+      "final": 51.32434171619006,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 54.08249611037074
+        },
+        {
+          "key": "reach",
+          "value": 55.340161838749296
+        },
+        {
+          "key": "depth",
+          "value": 60.53705787500001
+        },
+        {
+          "key": "moveOrders",
+          "value": 91.96163137087443
+        },
+        {
+          "key": "ease",
+          "value": 66.65213555686275
+        }
+      ],
+      "counts": {
+        "positions": 55,
+        "occurrences": 65,
+        "moves": 55,
+        "ownPositions": 27,
+        "answeredPositions": 27,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 5,
+        "easePositions": 17,
+        "easePairs": 22,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 19.251031913791557,
+        "delta": -32.073309802398505,
+        "facets": {
+          "replies": {
+            "value": 20.45042977341292,
+            "delta": -33.63206633695782
+          },
+          "reach": {
+            "value": 24.950192985263662,
+            "delta": -30.389968853485634
+          },
+          "depth": {
+            "value": 20.8138059375,
+            "delta": -39.72325193750001
+          },
+          "moveOrders": {
+            "value": 91.92393155555555,
+            "delta": -0.037699815318873675
+          },
+          "ease": {
+            "value": 52.436049125,
+            "delta": -14.216086431862749
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 50,
+        "score": 8.314898505575798,
+        "delta": -43.009443210614265,
+        "facets": {
+          "replies": {
+            "value": 10.532103527489701,
+            "delta": -43.55039258288104
+          },
+          "reach": {
+            "value": 1.2877947996817671,
+            "delta": -54.052367039067526
+          },
+          "depth": {
+            "value": 22.1733271875,
+            "delta": -38.36373068750001
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": -2.5913453708744356
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 57.03625154405441,
+        "h24": 53.712536665545855,
+        "h32": 51.32434171619006
+      }
+    },
+    {
+      "id": "PDVt7Kbh",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 80.65611355530436,
+      "final": 78.35715276282656,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 81.44932138116943
+        },
+        {
+          "key": "reach",
+          "value": 81.57803822581818
+        },
+        {
+          "key": "depth",
+          "value": 76.45325458116318
+        },
+        {
+          "key": "moveOrders",
+          "value": 72.72079352633683
+        },
+        {
+          "key": "ease",
+          "value": 64.89733393462899
+        }
+      ],
+      "counts": {
+        "positions": 599,
+        "occurrences": 1666,
+        "moves": 605,
+        "ownPositions": 203,
+        "answeredPositions": 203,
+        "repeatedGroups": 8,
+        "commonGroups": 2,
+        "answeredAlternatives": 47,
+        "easePositions": 163,
+        "easePairs": 266,
+        "identicalPositionPairs": 12,
+        "openingBoundaries": 15
+      },
+      "shortened": {
+        "score": 42.642795135717904,
+        "delta": -35.714357627108654,
+        "facets": {
+          "replies": {
+            "value": 42.21175921009378,
+            "delta": -39.237562171075645
+          },
+          "reach": {
+            "value": 57.889613522497015,
+            "delta": -23.68842470332116
+          },
+          "depth": {
+            "value": 19.85282337890625,
+            "delta": -56.60043120225693
+          },
+          "moveOrders": {
+            "value": 76.64658620224084,
+            "delta": 3.925792675904006
+          },
+          "ease": {
+            "value": 62.97305887110287,
+            "delta": -1.9242750635261174
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 1534,
+        "score": 14.70952921190308,
+        "delta": -63.64762355092348,
+        "facets": {
+          "replies": {
+            "value": 15.101399726542924,
+            "delta": -66.3479216546265
+          },
+          "reach": {
+            "value": 20.20891287045014,
+            "delta": -61.36912535536804
+          },
+          "depth": {
+            "value": 11.9897924375,
+            "delta": -64.46346214366318
+          },
+          "moveOrders": {
+            "value": 93.17892322564698,
+            "delta": 20.45812969931015
+          },
+          "ease": {
+            "value": 75.31356301818182,
+            "delta": 10.416229083552835
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 75.77798348661585,
+        "h24": 80.25206582874063,
+        "h32": 78.35715276282656
+      }
+    },
+    {
+      "id": "jtlLwUvh",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 51.69018282033833,
+      "final": 47.53885931769674,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 49.287597832816736
+        },
+        {
+          "key": "reach",
+          "value": 55.59617669539926
+        },
+        {
+          "key": "depth",
+          "value": 43.51317496875
+        },
+        {
+          "key": "moveOrders",
+          "value": 91.41940290702985
+        },
+        {
+          "key": "ease",
+          "value": 62.85755384000001
+        }
+      ],
+      "counts": {
+        "positions": 51,
+        "occurrences": 61,
+        "moves": 51,
+        "ownPositions": 25,
+        "answeredPositions": 25,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 5,
+        "easePositions": 15,
+        "easePairs": 12,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 23.547017586518827,
+        "delta": -23.991841731177914,
+        "facets": {
+          "replies": {
+            "value": 24.461422500685643,
+            "delta": -24.826175332131093
+          },
+          "reach": {
+            "value": 31.85827606708184,
+            "delta": -23.73790062831742
+          },
+          "depth": {
+            "value": 20.8138059375,
+            "delta": -22.69936903125
+          },
+          "moveOrders": {
+            "value": 91.69880753947368,
+            "delta": 0.2794046324438284
+          },
+          "ease": {
+            "value": 55.9184699,
+            "delta": -6.93908394000001
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 34,
+        "score": 21.804988054286213,
+        "delta": -25.733871263410528,
+        "facets": {
+          "replies": {
+            "value": 22.93608097872231,
+            "delta": -26.351516854094427
+          },
+          "reach": {
+            "value": 28.683486475896327,
+            "delta": -26.91269021950293
+          },
+          "depth": {
+            "value": 21.266979687499997,
+            "delta": -22.246195281250003
+          },
+          "moveOrders": {
+            "value": 92.87818857894736,
+            "delta": 1.4587856719175107
+          },
+          "ease": {
+            "value": 63.184306750000005,
+            "delta": 0.3267529099999962
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 53.637036514996126,
+        "h24": 49.81640737804864,
+        "h32": 47.53885931769674
+      }
+    },
+    {
+      "id": "A4EBp7Ds",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 73.92706725903244,
+      "final": 77.02464843707801,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 79.61350662762307
+        },
+        {
+          "key": "reach",
+          "value": 82.19415155933324
+        },
+        {
+          "key": "depth",
+          "value": 76.29299589453124
+        },
+        {
+          "key": "moveOrders",
+          "value": 69.61394005195874
+        },
+        {
+          "key": "ease",
+          "value": 61.553855530777454
+        }
+      ],
+      "counts": {
+        "positions": 594,
+        "occurrences": 1510,
+        "moves": 597,
+        "ownPositions": 207,
+        "answeredPositions": 207,
+        "repeatedGroups": 8,
+        "commonGroups": 1,
+        "answeredAlternatives": 57,
+        "easePositions": 137,
+        "easePairs": 181,
+        "identicalPositionPairs": 7,
+        "openingBoundaries": 24
+      },
+      "shortened": {
+        "score": 46.16895486723036,
+        "delta": -30.855693569847652,
+        "facets": {
+          "replies": {
+            "value": 45.36685985350552,
+            "delta": -34.24664677411755
+          },
+          "reach": {
+            "value": 63.22497836460216,
+            "delta": -18.969173194731077
+          },
+          "depth": {
+            "value": 18.25118578125,
+            "delta": -58.041810113281244
+          },
+          "moveOrders": {
+            "value": 80.16374160605939,
+            "delta": 10.549801554100654
+          },
+          "ease": {
+            "value": 68.41139842844588,
+            "delta": 6.857542897668424
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 1359,
+        "score": 18.39130186599724,
+        "delta": -58.63334657108078,
+        "facets": {
+          "replies": {
+            "value": 18.43580737960326,
+            "delta": -61.177699248019806
+          },
+          "reach": {
+            "value": 28.1033351102594,
+            "delta": -54.090816449073834
+          },
+          "depth": {
+            "value": 9.547063828125,
+            "delta": -66.74593206640624
+          },
+          "moveOrders": {
+            "value": 93.10817290313652,
+            "delta": 23.494232851177784
+          },
+          "ease": {
+            "value": 80.94108962727273,
+            "delta": 19.387234096495277
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 74.07721824066371,
+        "h24": 78.60415709435593,
+        "h32": 77.02464843707801
+      }
+    },
+    {
+      "id": "UzKIIAtz",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 55.09731650193396,
+      "final": 44.37666329446512,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 49.65327275317397
+        },
+        {
+          "key": "reach",
+          "value": 39.93096538976536
+        },
+        {
+          "key": "depth",
+          "value": 75.20237781249999
+        },
+        {
+          "key": "moveOrders",
+          "value": 91.34839236047232
+        },
+        {
+          "key": "ease",
+          "value": 70.37918771
+        }
+      ],
+      "counts": {
+        "positions": 51,
+        "occurrences": 65,
+        "moves": 50,
+        "ownPositions": 25,
+        "answeredPositions": 25,
+        "repeatedGroups": 0,
+        "commonGroups": 0,
+        "answeredAlternatives": 2,
+        "easePositions": 8,
+        "easePairs": 4,
+        "identicalPositionPairs": 0,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 19.251031913791557,
+        "delta": -25.12563138067356,
+        "facets": {
+          "replies": {
+            "value": 20.45042977341292,
+            "delta": -29.20284297976105
+          },
+          "reach": {
+            "value": 24.950192985263662,
+            "delta": -14.9807724045017
+          },
+          "depth": {
+            "value": 20.8138059375,
+            "delta": -54.38857187499999
+          },
+          "moveOrders": {
+            "value": 91.4400829239766,
+            "delta": 0.09169056350428662
+          },
+          "ease": {
+            "value": 61.57200687500001,
+            "delta": -8.80718083499999
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 44,
+        "score": 6.956743204303192,
+        "delta": -37.419920090161924,
+        "facets": {
+          "replies": {
+            "value": 8.811790016769164,
+            "delta": -40.84148273640481
+          },
+          "reach": {
+            "value": 1.0774464312721919,
+            "delta": -38.85351895849317
+          },
+          "depth": {
+            "value": 20.1340453125,
+            "delta": -55.06833249999999
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": -1.9781063604723244
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 47.736886643466434,
+        "h24": 46.46645141125032,
+        "h32": 44.37666329446512
+      }
+    },
+    {
+      "id": "bbxmDYZV",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 26.59821944750772,
+      "final": 5.5949924428402795,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 7.086922300254306
+        },
+        {
+          "key": "reach",
+          "value": 0.8665412052013431
+        },
+        {
+          "key": "depth",
+          "value": 18.453525989583333
+        },
+        {
+          "key": "moveOrders",
+          "value": 43.028875171449194
+        },
+        {
+          "key": "ease",
+          "value": 56.28366641817251
+        }
+      ],
+      "counts": {
+        "positions": 38,
+        "occurrences": 48,
+        "moves": 37,
+        "ownPositions": 19,
+        "answeredPositions": 14,
+        "repeatedGroups": 2,
+        "commonGroups": 0,
+        "answeredAlternatives": 3,
+        "easePositions": 8,
+        "easePairs": 11,
+        "identicalPositionPairs": 7,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 5.560561393131463,
+        "delta": -0.034431049708816275,
+        "facets": {
+          "replies": {
+            "value": 7.043310056538978,
+            "delta": -0.04361224371532835
+          },
+          "reach": {
+            "value": 0.8612085932959946,
+            "delta": -0.0053326119053485055
+          },
+          "depth": {
+            "value": 18.415761510416665,
+            "delta": -0.03776447916666825
+          },
+          "moveOrders": {
+            "value": 43.028875171449194,
+            "delta": 0
+          },
+          "ease": {
+            "value": 56.28366641817251,
+            "delta": 0
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 15,
+        "score": 4.016477561687547,
+        "delta": -1.5785148811527323,
+        "facets": {
+          "replies": {
+            "value": 5.087489338224134,
+            "delta": -1.9994329620301725
+          },
+          "reach": {
+            "value": 0.6220639871324015,
+            "delta": -0.24447721806894163
+          },
+          "depth": {
+            "value": 11.561815468749998,
+            "delta": -6.891710520833335
+          },
+          "moveOrders": {
+            "value": 42.91767161360596,
+            "delta": -0.11120355784323266
+          },
+          "ease": {
+            "value": 59.59209551187954,
+            "delta": 3.3084290937070335
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 7.912514194039697,
+        "h24": 6.460540785975514,
+        "h32": 5.5949924428402795
+      }
+    },
+    {
+      "id": "bbxmDYZV",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 29.492230615310653,
+      "final": 16.210281762424906,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 16.79803861108579
+        },
+        {
+          "key": "reach",
+          "value": 23.562956253011127
+        },
+        {
+          "key": "depth",
+          "value": 15.112228072916668
+        },
+        {
+          "key": "moveOrders",
+          "value": 78.94275720881208
+        },
+        {
+          "key": "ease",
+          "value": 54.22174811421914
+        }
+      ],
+      "counts": {
+        "positions": 38,
+        "occurrences": 48,
+        "moves": 37,
+        "ownPositions": 19,
+        "answeredPositions": 15,
+        "repeatedGroups": 1,
+        "commonGroups": 1,
+        "answeredAlternatives": 5,
+        "easePositions": 6,
+        "easePairs": 10,
+        "identicalPositionPairs": 6,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 16.195305727564417,
+        "delta": -0.014976034860488596,
+        "facets": {
+          "replies": {
+            "value": 16.779069149284638,
+            "delta": -0.01896946180115222
+          },
+          "reach": {
+            "value": 23.560636794775977,
+            "delta": -0.002319458235149341
+          },
+          "depth": {
+            "value": 15.093345833333334,
+            "delta": -0.018882239583334126
+          },
+          "moveOrders": {
+            "value": 78.94275720881208,
+            "delta": 0
+          },
+          "ease": {
+            "value": 53.59118459993343,
+            "delta": -0.6305635142857113
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 6,
+        "score": 14.877871454368064,
+        "delta": -1.3324103080568417,
+        "facets": {
+          "replies": {
+            "value": 15.177856694815262,
+            "delta": -1.6201819162705284
+          },
+          "reach": {
+            "value": 23.042944467877,
+            "delta": -0.5200117851341268
+          },
+          "depth": {
+            "value": 11.185580729166666,
+            "delta": -3.926647343750002
+          },
+          "moveOrders": {
+            "value": 79.45796226693017,
+            "delta": 0.5152050581180845
+          },
+          "ease": {
+            "value": 57.113025667249445,
+            "delta": 2.8912775530303065
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 18.279069901353523,
+        "h24": 16.982933041758425,
+        "h32": 16.210281762424906
+      }
+    },
+    {
+      "id": "nRiq9SZx",
+      "color": "black",
+      "role": "repertoire-and-model-games",
+      "baseline": 69.13962213265793,
+      "final": 66.93455812226647,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 68.36878186495312
+        },
+        {
+          "key": "reach",
+          "value": 76.02575896678769
+        },
+        {
+          "key": "depth",
+          "value": 52.19428750951522
+        },
+        {
+          "key": "moveOrders",
+          "value": 65.77837848180184
+        },
+        {
+          "key": "ease",
+          "value": 64.16071876308845
+        }
+      ],
+      "counts": {
+        "positions": 316,
+        "occurrences": 495,
+        "moves": 316,
+        "ownPositions": 81,
+        "answeredPositions": 80,
+        "repeatedGroups": 5,
+        "commonGroups": 1,
+        "answeredAlternatives": 34,
+        "easePositions": 76,
+        "easePairs": 164,
+        "identicalPositionPairs": 4,
+        "openingBoundaries": 2
+      },
+      "shortened": {
+        "score": 49.33540679702933,
+        "delta": -17.599151325237138,
+        "facets": {
+          "replies": {
+            "value": 48.64914628965922,
+            "delta": -19.7196355752939
+          },
+          "reach": {
+            "value": 65.84567614381493,
+            "delta": -10.180082822972764
+          },
+          "depth": {
+            "value": 22.21159875,
+            "delta": -29.98268875951522
+          },
+          "moveOrders": {
+            "value": 66.59955750108588,
+            "delta": 0.8211790192840454
+          },
+          "ease": {
+            "value": 76.72866226985482,
+            "delta": 12.567943506766369
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 366,
+        "score": 31.157674280517796,
+        "delta": -35.77688384174867,
+        "facets": {
+          "replies": {
+            "value": 31.103363926298098,
+            "delta": -37.26541793865502
+          },
+          "reach": {
+            "value": 44.13852982221758,
+            "delta": -31.887229144570114
+          },
+          "depth": {
+            "value": 17.708106770833332,
+            "delta": -34.48618073868189
+          },
+          "moveOrders": {
+            "value": 61.87130810027672,
+            "delta": -3.9070703815251164
+          },
+          "ease": {
+            "value": 80.16841475599017,
+            "delta": 16.007695992901716
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 70.8223918092074,
+        "h24": 68.73656581179725,
+        "h32": 66.93455812226647
+      }
+    },
+    {
+      "id": "HHZpRszr",
+      "color": "white",
+      "role": "opening-guide",
+      "baseline": 73.06619821706495,
+      "final": 69.0651488452449,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 72.97111279850364
+        },
+        {
+          "key": "reach",
+          "value": 64.93916918573062
+        },
+        {
+          "key": "depth",
+          "value": 79.86169274739582
+        },
+        {
+          "key": "moveOrders",
+          "value": 39.0496002641524
+        },
+        {
+          "key": "ease",
+          "value": 45.476192677333934
+        }
+      ],
+      "counts": {
+        "positions": 354,
+        "occurrences": 472,
+        "moves": 353,
+        "ownPositions": 170,
+        "answeredPositions": 164,
+        "repeatedGroups": 4,
+        "commonGroups": 0,
+        "answeredAlternatives": 12,
+        "easePositions": 48,
+        "easePairs": 54,
+        "identicalPositionPairs": 16,
+        "openingBoundaries": 7
+      },
+      "shortened": {
+        "score": 48.20673847157404,
+        "delta": -20.858410373670864,
+        "facets": {
+          "replies": {
+            "value": 47.81421889029136,
+            "delta": -25.156893908212282
+          },
+          "reach": {
+            "value": 57.92138592363076,
+            "delta": -7.0177832620998615
+          },
+          "depth": {
+            "value": 27.309381750000004,
+            "delta": -52.55231099739582
+          },
+          "moveOrders": {
+            "value": 39.24250595125959,
+            "delta": 0.19290568710718503
+          },
+          "ease": {
+            "value": 53.77675649994103,
+            "delta": 8.300563822607096
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 330,
+        "score": 26.709200510136316,
+        "delta": -42.35594833510859,
+        "facets": {
+          "replies": {
+            "value": 27.274701687292172,
+            "delta": -45.69641111121147
+          },
+          "reach": {
+            "value": 29.065773911442083,
+            "delta": -35.87339527428854
+          },
+          "depth": {
+            "value": 22.090545578125003,
+            "delta": -57.77114716927082
+          },
+          "moveOrders": {
+            "value": 39.752931301913456,
+            "delta": 0.7033310377610533
+          },
+          "ease": {
+            "value": 54.8864689279483,
+            "delta": 9.410276250614366
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 67.23279238507938,
+        "h24": 68.88907832192825,
+        "h32": 69.0651488452449
+      }
+    },
+    {
+      "id": "HHZpRszr",
+      "color": "black",
+      "role": "opening-guide",
+      "baseline": 72.73159470560955,
+      "final": 66.26860974282599,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 69.60375595704038
+        },
+        {
+          "key": "reach",
+          "value": 68.48638748308885
+        },
+        {
+          "key": "depth",
+          "value": 70.486913234375
+        },
+        {
+          "key": "moveOrders",
+          "value": 51.17568978623972
+        },
+        {
+          "key": "ease",
+          "value": 56.301410959228036
+        }
+      ],
+      "counts": {
+        "positions": 371,
+        "occurrences": 472,
+        "moves": 370,
+        "ownPositions": 171,
+        "answeredPositions": 163,
+        "repeatedGroups": 5,
+        "commonGroups": 0,
+        "answeredAlternatives": 14,
+        "easePositions": 52,
+        "easePairs": 74,
+        "identicalPositionPairs": 23,
+        "openingBoundaries": 7
+      },
+      "shortened": {
+        "score": 47.62485978039443,
+        "delta": -18.643749962431556,
+        "facets": {
+          "replies": {
+            "value": 47.350491052616874,
+            "delta": -22.253264904423503
+          },
+          "reach": {
+            "value": 61.62627179697256,
+            "delta": -6.860115686116288
+          },
+          "depth": {
+            "value": 27.131496375,
+            "delta": -43.355416859375
+          },
+          "moveOrders": {
+            "value": 51.892091764084654,
+            "delta": 0.7164019778449315
+          },
+          "ease": {
+            "value": 59.90780933639076,
+            "delta": 3.6063983771627264
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 330,
+        "score": 31.89540803058341,
+        "delta": -34.373201712242576,
+        "facets": {
+          "replies": {
+            "value": 31.658292374070143,
+            "delta": -37.945463582970234
+          },
+          "reach": {
+            "value": 44.8292371537085,
+            "delta": -23.65715032938035
+          },
+          "depth": {
+            "value": 17.1884675375,
+            "delta": -53.29844569687499
+          },
+          "moveOrders": {
+            "value": 52.659437054488855,
+            "delta": 1.4837472682491324
+          },
+          "ease": {
+            "value": 62.22181930420767,
+            "delta": 5.920408344979634
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 64.75232749192908,
+        "h24": 66.3661605337121,
+        "h32": 66.26860974282599
+      }
+    },
+    {
+      "id": "bmWAylqe",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 73.60602527300964,
+      "final": 76.74897357739007,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 79.3637305590719
+        },
+        {
+          "key": "reach",
+          "value": 75.8208895000732
+        },
+        {
+          "key": "depth",
+          "value": 76.48451464005906
+        },
+        {
+          "key": "moveOrders",
+          "value": 44.01339772735142
+        },
+        {
+          "key": "ease",
+          "value": 47.467831844921
+        }
+      ],
+      "counts": {
+        "positions": 991,
+        "occurrences": 1577,
+        "moves": 996,
+        "ownPositions": 413,
+        "answeredPositions": 396,
+        "repeatedGroups": 14,
+        "commonGroups": 4,
+        "answeredAlternatives": 51,
+        "easePositions": 171,
+        "easePairs": 293,
+        "identicalPositionPairs": 60,
+        "openingBoundaries": 19
+      },
+      "shortened": {
+        "score": 53.40216777034901,
+        "delta": -23.346805807041065,
+        "facets": {
+          "replies": {
+            "value": 52.46818723429884,
+            "delta": -26.895543324773058
+          },
+          "reach": {
+            "value": 64.06332644959853,
+            "delta": -11.757563050474673
+          },
+          "depth": {
+            "value": 24.25652121603261,
+            "delta": -52.22799342402645
+          },
+          "moveOrders": {
+            "value": 40.126797967999515,
+            "delta": -3.8865997593519026
+          },
+          "ease": {
+            "value": 51.792005749255964,
+            "delta": 4.3241739043349625
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 1230,
+        "score": 46.80847718379148,
+        "delta": -29.940496393598593,
+        "facets": {
+          "replies": {
+            "value": 46.25990894669093,
+            "delta": -33.10382161238097
+          },
+          "reach": {
+            "value": 53.332213189259015,
+            "delta": -22.488676310814192
+          },
+          "depth": {
+            "value": 22.906258328125,
+            "delta": -53.57825631193406
+          },
+          "moveOrders": {
+            "value": 38.15006205093648,
+            "delta": -5.863335676414941
+          },
+          "ease": {
+            "value": 47.07090745006235,
+            "delta": -0.39692439485865094
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 78.48413876402927,
+        "h24": 78.77923370440891,
+        "h32": 76.74897357739007
+      }
+    },
+    {
+      "id": "bmWAylqe",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 74.34053630629248,
+      "final": 77.1286297581568,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 79.74521503486251
+        },
+        {
+          "key": "reach",
+          "value": 82.11784509983895
+        },
+        {
+          "key": "depth",
+          "value": 75.9914838695131
+        },
+        {
+          "key": "moveOrders",
+          "value": 57.42516014077516
+        },
+        {
+          "key": "ease",
+          "value": 54.21665435779144
+        }
+      ],
+      "counts": {
+        "positions": 991,
+        "occurrences": 1577,
+        "moves": 995,
+        "ownPositions": 401,
+        "answeredPositions": 388,
+        "repeatedGroups": 11,
+        "commonGroups": 2,
+        "answeredAlternatives": 52,
+        "easePositions": 166,
+        "easePairs": 257,
+        "identicalPositionPairs": 65,
+        "openingBoundaries": 16
+      },
+      "shortened": {
+        "score": 59.33383466351007,
+        "delta": -17.794795094646737,
+        "facets": {
+          "replies": {
+            "value": 58.601607676939395,
+            "delta": -21.143607357923116
+          },
+          "reach": {
+            "value": 75.2385069241206,
+            "delta": -6.879338175718345
+          },
+          "depth": {
+            "value": 31.1733342287234,
+            "delta": -44.8181496407897
+          },
+          "moveOrders": {
+            "value": 58.71224697210298,
+            "delta": 1.2870868313278194
+          },
+          "ease": {
+            "value": 53.024431545293176,
+            "delta": -1.1922228124982652
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 1273,
+        "score": 43.87597807012344,
+        "delta": -33.25265168803337,
+        "facets": {
+          "replies": {
+            "value": 42.58891879528824,
+            "delta": -37.156296239574274
+          },
+          "reach": {
+            "value": 59.10677720289116,
+            "delta": -23.011067896947786
+          },
+          "depth": {
+            "value": 17.42466465438988,
+            "delta": -58.566819215123225
+          },
+          "moveOrders": {
+            "value": 54.44913414387257,
+            "delta": -2.9760259969025924
+          },
+          "ease": {
+            "value": 51.22966667071245,
+            "delta": -2.9869876870789938
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 79.77623142543662,
+        "h24": 79.3775365323495,
+        "h32": 77.1286297581568
+      }
+    },
+    {
+      "id": "nYAJ7Km3",
+      "color": "black",
+      "role": "repertoire",
+      "baseline": 51.53882032022076,
+      "final": 35.90146801725577,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 39.48827008430922
+        },
+        {
+          "key": "reach",
+          "value": 36.33412450063254
+        },
+        {
+          "key": "depth",
+          "value": 53.5829011875
+        },
+        {
+          "key": "moveOrders",
+          "value": 68.97103370197614
+        },
+        {
+          "key": "ease",
+          "value": 60.95727650596827
+        }
+      ],
+      "counts": {
+        "positions": 45,
+        "occurrences": 48,
+        "moves": 44,
+        "ownPositions": 22,
+        "answeredPositions": 21,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 3,
+        "easePositions": 11,
+        "easePairs": 15,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 1
+      },
+      "shortened": {
+        "score": 9.407233789072857,
+        "delta": -26.49423422818292,
+        "facets": {
+          "replies": {
+            "value": 11.915714919114759,
+            "delta": -27.572555165194462
+          },
+          "reach": {
+            "value": 1.4569734970107984,
+            "delta": -34.87715100362174
+          },
+          "depth": {
+            "value": 30.0392385,
+            "delta": -23.5436626875
+          },
+          "moveOrders": {
+            "value": 69.82415498060182,
+            "delta": 0.8531212786256788
+          },
+          "ease": {
+            "value": 71.46163358145529,
+            "delta": 10.504357075487022
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 42,
+        "score": 5.258803558149957,
+        "delta": -30.642664459105816,
+        "facets": {
+          "replies": {
+            "value": 6.661087139912253,
+            "delta": -32.82718294439697
+          },
+          "reach": {
+            "value": 0.814472945182933,
+            "delta": -35.519651555449606
+          },
+          "depth": {
+            "value": 18.0947634375,
+            "delta": -35.48813775
+          },
+          "moveOrders": {
+            "value": 89.370286,
+            "delta": 20.399252298023853
+          },
+          "ease": {
+            "value": null,
+            "delta": null
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 39.4949927291762,
+        "h24": 37.41875041100073,
+        "h32": 35.90146801725577
+      }
+    },
+    {
+      "id": "FwXo3Qhq",
+      "color": "black",
+      "role": "repertoire-and-traps",
+      "baseline": 92.67079334854981,
+      "final": 81.063998525013,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 86.3175064340223
+        },
+        {
+          "key": "reach",
+          "value": 77.00807886132179
+        },
+        {
+          "key": "depth",
+          "value": 94.68182255357144
+        },
+        {
+          "key": "moveOrders",
+          "value": 80.10010635364326
+        },
+        {
+          "key": "ease",
+          "value": 57.01981853691646
+        }
+      ],
+      "counts": {
+        "positions": 323,
+        "occurrences": 674,
+        "moves": 323,
+        "ownPositions": 79,
+        "answeredPositions": 79,
+        "repeatedGroups": 2,
+        "commonGroups": 1,
+        "answeredAlternatives": 33,
+        "easePositions": 72,
+        "easePairs": 106,
+        "identicalPositionPairs": 1,
+        "openingBoundaries": 14
+      },
+      "shortened": {
+        "score": 21.65228118947244,
+        "delta": -59.411717335540565,
+        "facets": {
+          "replies": {
+            "value": 23.491982950498794,
+            "delta": -62.82552348352351
+          },
+          "reach": {
+            "value": 25.322093655835623,
+            "delta": -51.68598520548617
+          },
+          "depth": {
+            "value": 32.345596640625,
+            "delta": -62.33622591294644
+          },
+          "moveOrders": {
+            "value": 92.82405634254143,
+            "delta": 12.72394998889817
+          },
+          "ease": {
+            "value": 82.59326117777778,
+            "delta": 25.573442640861316
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 599,
+        "score": 18.811990476586853,
+        "delta": -62.25200804842615,
+        "facets": {
+          "replies": {
+            "value": 19.89431596560191,
+            "delta": -66.4231904684204
+          },
+          "reach": {
+            "value": 22.07451920719595,
+            "delta": -54.933559654125844
+          },
+          "depth": {
+            "value": 23.071628046875,
+            "delta": -71.61019450669644
+          },
+          "moveOrders": {
+            "value": 93.48648910109907,
+            "delta": 13.386382747455812
+          },
+          "ease": {
+            "value": 76.40467587500001,
+            "delta": 19.38485733808355
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 73.32888231799038,
+        "h24": 80.39288809407397,
+        "h32": 81.063998525013
+      }
+    },
+    {
+      "id": "LLNDy032",
+      "color": "white",
+      "role": "repertoire",
+      "baseline": 77.14931061929367,
+      "final": 74.56265848704062,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 76.80350339544907
+        },
+        {
+          "key": "reach",
+          "value": 81.40359447016084
+        },
+        {
+          "key": "depth",
+          "value": 64.72624085625
+        },
+        {
+          "key": "moveOrders",
+          "value": 78.93266849401994
+        },
+        {
+          "key": "ease",
+          "value": 56.90845345756492
+        }
+      ],
+      "counts": {
+        "positions": 497,
+        "occurrences": 704,
+        "moves": 502,
+        "ownPositions": 82,
+        "answeredPositions": 78,
+        "repeatedGroups": 4,
+        "commonGroups": 2,
+        "answeredAlternatives": 57,
+        "easePositions": 110,
+        "easePairs": 135,
+        "identicalPositionPairs": 2,
+        "openingBoundaries": 6
+      },
+      "shortened": {
+        "score": 53.377161687472444,
+        "delta": -21.185496799568178,
+        "facets": {
+          "replies": {
+            "value": 52.757654084758975,
+            "delta": -24.045849310690095
+          },
+          "reach": {
+            "value": 69.93020937460797,
+            "delta": -11.473385095552871
+          },
+          "depth": {
+            "value": 30.1670025375,
+            "delta": -34.559238318750005
+          },
+          "moveOrders": {
+            "value": 76.49171747234429,
+            "delta": -2.4409510216756445
+          },
+          "ease": {
+            "value": 70.83951413334414,
+            "delta": 13.931060675779221
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 518,
+        "score": 43.850302441749484,
+        "delta": -30.712356045291138,
+        "facets": {
+          "replies": {
+            "value": 42.82327770795665,
+            "delta": -33.98022568749242
+          },
+          "reach": {
+            "value": 60.86855957675312,
+            "delta": -20.53503489340772
+          },
+          "depth": {
+            "value": 17.32758671875,
+            "delta": -47.3986541375
+          },
+          "moveOrders": {
+            "value": 91.41625648693335,
+            "delta": 12.483587992913414
+          },
+          "ease": {
+            "value": 68.26280778061795,
+            "delta": 11.35435432305303
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 72.37290714800938,
+        "h24": 74.7756128276896,
+        "h32": 74.56265848704062
+      }
+    },
+    {
+      "id": "e01yoGqe",
+      "color": "white",
+      "role": "repertoire-and-traps",
+      "baseline": 46.980714128246284,
+      "final": 57.18790483854343,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 57.14231759667557
+        },
+        {
+          "key": "reach",
+          "value": 66.30830701662143
+        },
+        {
+          "key": "depth",
+          "value": 39.22684058052885
+        },
+        {
+          "key": "moveOrders",
+          "value": 42.61057148470278
+        },
+        {
+          "key": "ease",
+          "value": 34.08957395220003
+        }
+      ],
+      "counts": {
+        "positions": 218,
+        "occurrences": 251,
+        "moves": 217,
+        "ownPositions": 75,
+        "answeredPositions": 72,
+        "repeatedGroups": 1,
+        "commonGroups": 0,
+        "answeredAlternatives": 20,
+        "easePositions": 52,
+        "easePairs": 97,
+        "identicalPositionPairs": 9,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 47.364315791045655,
+        "delta": -9.823589047497777,
+        "facets": {
+          "replies": {
+            "value": 46.88951754060805,
+            "delta": -10.252800056067521
+          },
+          "reach": {
+            "value": 57.94295646251659,
+            "delta": -8.365350554104836
+          },
+          "depth": {
+            "value": 28.08245091826923,
+            "delta": -11.14438966225962
+          },
+          "moveOrders": {
+            "value": 43.03696934611392,
+            "delta": 0.42639786141113944
+          },
+          "ease": {
+            "value": 40.01956601013463,
+            "delta": 5.929992057934605
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 127,
+        "score": 39.00187121829421,
+        "delta": -18.18603362024922,
+        "facets": {
+          "replies": {
+            "value": 38.398949708042245,
+            "delta": -18.743367888633323
+          },
+          "reach": {
+            "value": 46.12309735074278,
+            "delta": -20.185209665878645
+          },
+          "depth": {
+            "value": 19.174437989182692,
+            "delta": -20.05240259134616
+          },
+          "moveOrders": {
+            "value": 43.23389615008966,
+            "delta": 0.6233246653868818
+          },
+          "ease": {
+            "value": 36.01223955224452,
+            "delta": 1.9226656000444962
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 60.39142522147039,
+        "h24": 58.929234095925345,
+        "h32": 57.18790483854343
+      }
+    },
+    {
+      "id": "e01yoGqe",
+      "color": "black",
+      "role": "repertoire-and-traps",
+      "baseline": 54.5658368904533,
+      "final": 45.89076458413109,
+      "facets": [
+        {
+          "key": "replies",
+          "value": 48.35465738864575
+        },
+        {
+          "key": "reach",
+          "value": 49.59625851554272
+        },
+        {
+          "key": "depth",
+          "value": 47.1403276514423
+        },
+        {
+          "key": "moveOrders",
+          "value": 51.79647376894836
+        },
+        {
+          "key": "ease",
+          "value": 45.91484497459051
+        }
+      ],
+      "counts": {
+        "positions": 153,
+        "occurrences": 251,
+        "moves": 152,
+        "ownPositions": 77,
+        "answeredPositions": 68,
+        "repeatedGroups": 2,
+        "commonGroups": 0,
+        "answeredAlternatives": 4,
+        "easePositions": 21,
+        "easePairs": 52,
+        "identicalPositionPairs": 16,
+        "openingBoundaries": 0
+      },
+      "shortened": {
+        "score": 41.59269111410127,
+        "delta": -4.29807347002982,
+        "facets": {
+          "replies": {
+            "value": 42.91048332870317,
+            "delta": -5.444174059942576
+          },
+          "reach": {
+            "value": 48.93058151904747,
+            "delta": -0.6656769964952503
+          },
+          "depth": {
+            "value": 32.34234370673077,
+            "delta": -14.797983944711525
+          },
+          "moveOrders": {
+            "value": 52.31700272381315,
+            "delta": 0.5205289548647869
+          },
+          "ease": {
+            "value": 52.51975954423337,
+            "delta": 6.604914569642858
+          }
+        }
+      },
+      "holes": {
+        "removed_nodes": 157,
+        "score": 23.206493165091075,
+        "delta": -22.684271419040016,
+        "facets": {
+          "replies": {
+            "value": 24.801043697314356,
+            "delta": -23.553613691331392
+          },
+          "reach": {
+            "value": 28.50921753068484,
+            "delta": -21.087040984857882
+          },
+          "depth": {
+            "value": 23.715038697916675,
+            "delta": -23.425288953525623
+          },
+          "moveOrders": {
+            "value": 54.4835545736292,
+            "delta": 2.687080804680839
+          },
+          "ease": {
+            "value": 57.27711679310535,
+            "delta": 11.362271818514841
+          }
+        }
+      },
+      "horizon_sensitivity": {
+        "h16": 47.4959765402954,
+        "h24": 46.90207393041912,
+        "h32": 45.89076458413109
+      }
+    }
+  ]
+}

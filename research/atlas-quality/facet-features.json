@@ -1,0 +1,1085 @@
+{
+  "judgments_sha256": "187b56f83b62f52062a29a8a280e33db33089bf710145e62cdcdb965d0a4907a",
+  "rows": [
+    {
+      "id": "2EaSmZtz",
+      "color": "white",
+      "features": {
+        "completion": 0.682393391927083,
+        "handover": 0.7890625,
+        "adequacy": 0.7337922293248028,
+        "routeBreadth": 0.8732568693786616,
+        "supportedBreadth": 0.8964401294498382,
+        "coherence": 0.9366907474171292,
+        "repeatedAgreement": 0.5555555555555556,
+        "pawnReuse": 0.3948734685637851,
+        "quiet": 0.7341040462427746,
+        "planReuse": 0.30508368945868947
+      },
+      "score": 78.1585698241982,
+      "facets": {
+        "replies": 81.36703256112656,
+        "reach": 81.38535350309607,
+        "depth": 79.54981202026366,
+        "moveOrders": 79.42838938570488,
+        "ease": 60.22603654451616
+      }
+    },
+    {
+      "id": "artuehhC",
+      "color": "white",
+      "features": {
+        "completion": 0.7656250000000001,
+        "handover": 0.5738636363636364,
+        "adequacy": 0.6628456431107541,
+        "routeBreadth": 0.7707006369426752,
+        "supportedBreadth": 0.6666666666666666,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.7508583733257959,
+        "quiet": 0.7962962962962963,
+        "planReuse": 0.35107142857142853
+      },
+      "score": 62.14885579479824,
+      "facets": {
+        "replies": 65.60787311606232,
+        "reach": 63.73583763246228,
+        "depth": 63.71316,
+        "moveOrders": 92.82165306621116,
+        "ease": 66.77575264626984
+      }
+    },
+    {
+      "id": "D8QPC8Zr",
+      "color": "white",
+      "features": {
+        "completion": 0.7656250000000001,
+        "handover": 0.8958333333333334,
+        "adequacy": 0.82817413376254,
+        "routeBreadth": 0.889271227820604,
+        "supportedBreadth": 0.9066147859922179,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.30141535479830406,
+        "quiet": 0.6416666666666667,
+        "planReuse": 0.31578901633646167
+      },
+      "score": 82.001637271053,
+      "facets": {
+        "replies": 86.03473691327403,
+        "reach": 82.89712064687724,
+        "depth": 90.115913125,
+        "moveOrders": 90.7557603660824,
+        "ease": 55.491188681308664
+      }
+    },
+    {
+      "id": "ACmyH8gC",
+      "color": "white",
+      "features": {
+        "completion": 0.4708821614583332,
+        "handover": 0.6837121212121212,
+        "adequacy": 0.5674044778212678,
+        "routeBreadth": 0.9276998338100346,
+        "supportedBreadth": 0.958005249343832,
+        "coherence": 0.9830486468225285,
+        "repeatedAgreement": 0.16666666666666666,
+        "pawnReuse": 0.24588794397183542,
+        "quiet": 0.5448851774530271,
+        "planReuse": 0.25288562758614835
+      },
+      "score": 76.07972999788308,
+      "facets": {
+        "replies": 77.52288216612708,
+        "reach": 85.7033733422591,
+        "depth": 66.30981168847656,
+        "moveOrders": 71.6672712622092,
+        "ease": 46.93141403005744
+      }
+    },
+    {
+      "id": "NGpnogsw",
+      "color": "black",
+      "features": {
+        "completion": 0.890625,
+        "handover": 1,
+        "adequacy": 0.9437293044088437,
+        "routeBreadth": 0.7037037037037037,
+        "supportedBreadth": 0.4838709677419355,
+        "coherence": 1,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.6955113546063968,
+        "quiet": 0.7619047619047619,
+        "planReuse": 0.38461538461538464
+      },
+      "score": 60.99960503465816,
+      "facets": {
+        "replies": 67.7477391628523,
+        "reach": 51.800774399651225,
+        "depth": 100,
+        "moveOrders": 70.60926406315228,
+        "ease": 65.49381052747253
+      }
+    },
+    {
+      "id": "8Uztu7Xx",
+      "color": "black",
+      "features": {
+        "completion": 0.8974218749999999,
+        "handover": 0.8996975806451613,
+        "adequacy": 0.8985590073865735,
+        "routeBreadth": 0.9619849211633799,
+        "supportedBreadth": 0.99313672922252,
+        "coherence": 0.8623962665969702,
+        "repeatedAgreement": 0.2543859649122807,
+        "pawnReuse": 0.23522763146030878,
+        "quiet": 0.7147445399743056,
+        "planReuse": 0.2515299285435571
+      },
+      "score": 89.53021723076907,
+      "facets": {
+        "replies": 93.86897017905169,
+        "reach": 90.50297890411883,
+        "depth": 93.2996866985383,
+        "moveOrders": 69.73697577710563,
+        "ease": 56.10251480098063
+      }
+    },
+    {
+      "id": "8c8bmUfy",
+      "color": "black",
+      "features": {
+        "completion": 0.8226996527777778,
+        "handover": 0.7455357142857143,
+        "adequacy": 0.7831679087375131,
+        "routeBreadth": 0.8356830661369223,
+        "supportedBreadth": 0.9716172733857735,
+        "coherence": 0.6646817384086656,
+        "repeatedAgreement": 0.06451612903225806,
+        "pawnReuse": 0.27397933092201365,
+        "quiet": 0.8023543990086741,
+        "planReuse": 0.2376250340791438
+      },
+      "score": 84.29534131904342,
+      "facets": {
+        "replies": 87.66147623980743,
+        "reach": 85.7813487730721,
+        "depth": 79.03243772135417,
+        "moveOrders": 59.50665389291208,
+        "ease": 58.15593405384727
+      }
+    },
+    {
+      "id": "fTpa2qZW",
+      "color": "white",
+      "features": {
+        "completion": 0.9471209490740737,
+        "handover": 0.8669354838709677,
+        "adequacy": 0.9061416877452788,
+        "routeBreadth": 0.8633091583160566,
+        "supportedBreadth": 0.970090662678755,
+        "coherence": 0.7266720168042621,
+        "repeatedAgreement": 0.42857142857142855,
+        "pawnReuse": 0.21442763614734603,
+        "quiet": 0.7474747474747475,
+        "planReuse": 0.3218505818233423
+      },
+      "score": 88.42935842777311,
+      "facets": {
+        "replies": 92.92787582431832,
+        "reach": 86.92486250620584,
+        "depth": 91.69413994973678,
+        "moveOrders": 69.18307141483083,
+        "ease": 58.066508469767534
+      }
+    },
+    {
+      "id": "CfSYkcMp",
+      "color": "white",
+      "features": {
+        "completion": 0.615451388888889,
+        "handover": 0.6647727272727273,
+        "adequacy": 0.6396368487629951,
+        "routeBreadth": 0.7590630228667038,
+        "supportedBreadth": 0.9029322548028311,
+        "coherence": 0.32973243695388377,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.23132606015949775,
+        "quiet": 0.6026785714285714,
+        "planReuse": 0.2138410256410256
+      },
+      "score": 75.30778707746032,
+      "facets": {
+        "replies": 77.62837645998418,
+        "reach": 78.87391087042172,
+        "depth": 67.90142755208333,
+        "moveOrders": 69.28192156651173,
+        "ease": 38.58073079031904
+      }
+    },
+    {
+      "id": "yteYURRC",
+      "color": "black",
+      "features": {
+        "completion": 0.9928385416666663,
+        "handover": 0.8806818181818182,
+        "adequacy": 0.9350801313448942,
+        "routeBreadth": 0.7508631276502074,
+        "supportedBreadth": 0.9036144578313253,
+        "coherence": 0.9943910909709097,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.2982151992642778,
+        "quiet": 0.706,
+        "planReuse": 0.2932670348024678
+      },
+      "score": 85.49666808767273,
+      "facets": {
+        "replies": 90.52074948896556,
+        "reach": 80.31551483381276,
+        "depth": 93.8158568359375,
+        "moveOrders": 68.60606701325743,
+        "ease": 58.987922879933976
+      }
+    },
+    {
+      "id": "vPqdbuqZ",
+      "color": "black",
+      "features": {
+        "completion": 1,
+        "handover": 1,
+        "adequacy": 1,
+        "routeBreadth": 0.7714285714285715,
+        "supportedBreadth": 0.5555555555555556,
+        "coherence": 0.6581449960016927,
+        "repeatedAgreement": 0.3333333333333333,
+        "pawnReuse": 0.38939901987081416,
+        "quiet": 0.971830985915493,
+        "planReuse": 0.495
+      },
+      "score": 67.16691822222222,
+      "facets": {
+        "replies": 74.14956677777778,
+        "reach": 58.251078384126984,
+        "depth": 100,
+        "moveOrders": 65.7335909247523,
+        "ease": 76.90170436387484
+      }
+    },
+    {
+      "id": "2XxhfIAJ",
+      "color": "white",
+      "features": {
+        "completion": 0.9601056134259253,
+        "handover": 0.8891129032258065,
+        "adequacy": 0.9239276429226038,
+        "routeBreadth": 0.7260262883953816,
+        "supportedBreadth": 0.9922911055954108,
+        "coherence": 0.06276734077800125,
+        "repeatedAgreement": 0.6511627906976745,
+        "pawnReuse": 0.0955456693914989,
+        "quiet": 0.6437587657784011,
+        "planReuse": 0.2463329617662292
+      },
+      "score": 90.35168819844365,
+      "facets": {
+        "replies": 94.9261233850989,
+        "reach": 85.54746638991486,
+        "depth": 93.79522044277833,
+        "moveOrders": 52.57340538116206,
+        "ease": 37.76185366068599
+      }
+    },
+    {
+      "id": "2XxhfIAJ",
+      "color": "black",
+      "features": {
+        "completion": 0.9106231312692901,
+        "handover": 0.8341346153846154,
+        "adequacy": 0.8715401742671668,
+        "routeBreadth": 0.8927817088174748,
+        "supportedBreadth": 0.9907350908090929,
+        "coherence": 0.5877055116118874,
+        "repeatedAgreement": 0.5306122448979592,
+        "pawnReuse": 0.18994856575229052,
+        "quiet": 0.6717011128775835,
+        "planReuse": 0.2969729054259293
+      },
+      "score": 88.46024625136032,
+      "facets": {
+        "replies": 92.56092657590713,
+        "reach": 88.72489635346678,
+        "depth": 88.21042967236885,
+        "moveOrders": 66.92578899068114,
+        "ease": 49.96777824812941
+      }
+    },
+    {
+      "id": "oBsew7N6",
+      "color": "white",
+      "features": {
+        "completion": 0.8125,
+        "handover": 0.9107142857142857,
+        "adequacy": 0.8602065781792517,
+        "routeBreadth": 0.7037037037037037,
+        "supportedBreadth": 0.5555555555555556,
+        "coherence": 0.8898817709880238,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.2961386127445973,
+        "quiet": 0.9122807017543859,
+        "planReuse": 0.28125
+      },
+      "score": 62.36496371725424,
+      "facets": {
+        "replies": 68.06714954241357,
+        "reach": 56.06222525300344,
+        "depth": 92.355849375,
+        "moveOrders": 65.29851570487746,
+        "ease": 70.52644780384907
+      }
+    },
+    {
+      "id": "oBsew7N6",
+      "color": "black",
+      "features": {
+        "completion": 0.8203125,
+        "handover": 0.8482142857142857,
+        "adequacy": 0.8341467384399461,
+        "routeBreadth": 0.4146341463414634,
+        "supportedBreadth": 0.2982456140350877,
+        "coherence": 0.26219781462402736,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.3296497424744867,
+        "quiet": 0.9016393442622951,
+        "planReuse": 0.3700980392156863
+      },
+      "score": 46.270551259051395,
+      "facets": {
+        "replies": 52.74234571773608,
+        "reach": 32.86397012522566,
+        "depth": 87.40054921874999,
+        "moveOrders": 45.644695812142615,
+        "ease": 61.871049861319456
+      }
+    },
+    {
+      "id": "tU7Nq5nE",
+      "color": "white",
+      "features": {
+        "completion": 0.7562499999999993,
+        "handover": 0.7589285714285714,
+        "adequacy": 0.7575881019015918,
+        "routeBreadth": 0.7894736842105263,
+        "supportedBreadth": 0.6190476190476191,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.7846050540602966,
+        "quiet": 0.52,
+        "planReuse": 0.39722222222222225
+      },
+      "score": 62.59044569438637,
+      "facets": {
+        "replies": 67.10387595491233,
+        "reach": 61.514467398683024,
+        "depth": 78.68526806249997,
+        "moveOrders": 92.9767717765015,
+        "ease": 49.85148336333334
+      }
+    },
+    {
+      "id": "rZyGzD67",
+      "color": "white",
+      "features": {
+        "completion": 0.46093750000000017,
+        "handover": 0.4791666666666667,
+        "adequacy": 0.4699637064887743,
+        "routeBreadth": 0.7333333333333333,
+        "supportedBreadth": 0.5,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.716632742076185,
+        "quiet": 0.6956521739130435,
+        "planReuse": 0.5438461538461538
+      },
+      "score": 45.67832447478744,
+      "facets": {
+        "replies": 48.02371419791112,
+        "reach": 50.97133926434652,
+        "depth": 49.31997828125,
+        "moveOrders": 92.66433283018318,
+        "ease": 65.83091632167223
+      }
+    },
+    {
+      "id": "ztgulNGx",
+      "color": "black",
+      "features": {
+        "completion": 0.5021701388888888,
+        "handover": 0.49375,
+        "adequacy": 0.49794227183117207,
+        "routeBreadth": 0.7983193277310924,
+        "supportedBreadth": 0.6923076923076923,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.4614173575283079,
+        "quiet": 0.5660377358490566,
+        "planReuse": 0.4772727272727273
+      },
+      "score": 57.99897579456089,
+      "facets": {
+        "replies": 59.84705305173828,
+        "reach": 65.1310986136272,
+        "depth": 51.412774067708334,
+        "moveOrders": 91.49121949175503,
+        "ease": 55.27432888593482
+      }
+    },
+    {
+      "id": "AKbQXhWw",
+      "color": "white",
+      "features": {
+        "completion": 0.8611653645833329,
+        "handover": 0.8571428571428571,
+        "adequacy": 0.8591517567178851,
+        "routeBreadth": 0.9094696091139316,
+        "supportedBreadth": 0.9756138865368332,
+        "coherence": 0.8256627106489036,
+        "repeatedAgreement": 0.6190476190476191,
+        "pawnReuse": 0.20862898127740936,
+        "quiet": 0.7707240293809025,
+        "planReuse": 0.332685803965247
+      },
+      "score": 87.14149307883862,
+      "facets": {
+        "replies": 91.18795424018957,
+        "reach": 88.02243508573352,
+        "depth": 89.0213718066406,
+        "moveOrders": 76.46274506274767,
+        "ease": 61.59683672267458
+      }
+    },
+    {
+      "id": "2MMWpcNI",
+      "color": "white",
+      "features": {
+        "completion": 0.2673611111111111,
+        "handover": 0.35714285714285715,
+        "adequacy": 0.3090082702956526,
+        "routeBreadth": 0.21739130434782608,
+        "supportedBreadth": 0.17241379310344826,
+        "coherence": 0.13366030427818937,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.4245581725953927,
+        "quiet": 0.8888888888888888,
+        "planReuse": 0.2361111111111111
+      },
+      "score": 20.79899442974469,
+      "facets": {
+        "replies": 22.953780857403626,
+        "reach": 17.600992067657085,
+        "depth": 35.10281729166667,
+        "moveOrders": 42.02468326904437,
+        "ease": 54.8841650919648
+      }
+    },
+    {
+      "id": "2MMWpcNI",
+      "color": "black",
+      "features": {
+        "completion": 0.2586805555555555,
+        "handover": 0.25,
+        "adequacy": 0.25430324199445214,
+        "routeBreadth": 0.4929577464788732,
+        "supportedBreadth": 0.23809523809523805,
+        "coherence": 0.7566256425708087,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.5184646699621983,
+        "quiet": 0.8333333333333334,
+        "planReuse": 0.3333333333333333
+      },
+      "score": 22.7996469755036,
+      "facets": {
+        "replies": 24.195970167481242,
+        "reach": 27.50180410864817,
+        "depth": 26.12786864583333,
+        "moveOrders": 62.11528050405685,
+        "ease": 64.59697317550703
+      }
+    },
+    {
+      "id": "sEo8o4Rm",
+      "color": "black",
+      "features": {
+        "completion": 0.9518229166666665,
+        "handover": 0.9086538461538461,
+        "adequacy": 0.9299879322262942,
+        "routeBreadth": 0.8239205196790218,
+        "supportedBreadth": 0.9053254437869822,
+        "coherence": 0.957889466683632,
+        "repeatedAgreement": 0.25,
+        "pawnReuse": 0.2443122828608607,
+        "quiet": 0.6685606060606061,
+        "planReuse": 0.22490079365079366
+      },
+      "score": 85.42281681300136,
+      "facets": {
+        "replies": 90.39355054980784,
+        "reach": 81.95966626291592,
+        "depth": 95.21748486177884,
+        "moveOrders": 72.6959109738086,
+        "ease": 53.865345810977075
+      }
+    },
+    {
+      "id": "GNlZ2WKx",
+      "color": "white",
+      "features": {
+        "completion": 1,
+        "handover": 1,
+        "adequacy": 1,
+        "routeBreadth": 0.8440020460343626,
+        "supportedBreadth": 0.9211822660098522,
+        "coherence": 0.8950425074815649,
+        "repeatedAgreement": 0.375,
+        "pawnReuse": 0.4634043176207458,
+        "quiet": 0.7683397683397684,
+        "planReuse": 0.2471808146477021
+      },
+      "score": 88.76441598029557,
+      "facets": {
+        "replies": 94.31430033004926,
+        "reach": 83.8015807175126,
+        "depth": 100,
+        "moveOrders": 74.4644641478601,
+        "ease": 60.07260556341996
+      }
+    },
+    {
+      "id": "KjivNw7F",
+      "color": "white",
+      "features": {
+        "completion": 0.6248168945312501,
+        "handover": 0.69921875,
+        "adequacy": 0.6609717754738265,
+        "routeBreadth": 0.8463203939640734,
+        "supportedBreadth": 0.8588235294117648,
+        "coherence": 0.8448318081890641,
+        "repeatedAgreement": 0.625,
+        "pawnReuse": 0.32852455044019824,
+        "quiet": 0.7134831460674157,
+        "planReuse": 0.3075650118203309
+      },
+      "score": 73.43515579245454,
+      "facets": {
+        "replies": 76.12401302288309,
+        "reach": 77.95378406894721,
+        "depth": 70.92985552368164,
+        "moveOrders": 77.74947498672861,
+        "ease": 57.385055592592295
+      }
+    },
+    {
+      "id": "1gqDv9cx",
+      "color": "black",
+      "features": {
+        "completion": 0.5203776041666667,
+        "handover": 0.7546296296296297,
+        "adequacy": 0.6266517044577838,
+        "routeBreadth": 0.6817803603113077,
+        "supportedBreadth": 0.9427031005978375,
+        "coherence": 0.9843302238411141,
+        "repeatedAgreement": 0.3333333333333333,
+        "pawnReuse": 0.5072983384993321,
+        "quiet": 0.39171974522292996,
+        "planReuse": 0.24544725529100522
+      },
+      "score": 77.21099870919363,
+      "facets": {
+        "replies": 79.25680020691107,
+        "reach": 79.76653903089102,
+        "depth": 73.2019617547743,
+        "moveOrders": 76.56896697533173,
+        "ease": 36.591411357627514
+      }
+    },
+    {
+      "id": "8eyxyvBh",
+      "color": "white",
+      "features": {
+        "completion": 0.49375,
+        "handover": 0.40625,
+        "adequacy": 0.44786821443366576,
+        "routeBreadth": 0.7101449275362319,
+        "supportedBreadth": 0.4482758620689655,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.6110424542018028,
+        "quiet": 0.18518518518518517,
+        "planReuse": 0.13958333333333334
+      },
+      "score": 41.8640017082908,
+      "facets": {
+        "replies": 44.20969278721399,
+        "reach": 46.96350760203356,
+        "depth": 44.054279906249995,
+        "moveOrders": 92.17898052537075,
+        "ease": 20.04072798472222
+      }
+    },
+    {
+      "id": "dgUQNQ2B",
+      "color": "black",
+      "features": {
+        "completion": 0.5813690476190476,
+        "handover": 0.6666666666666666,
+        "adequacy": 0.6225587242014725,
+        "routeBreadth": 0.8829371133992363,
+        "supportedBreadth": 0.9637967445802865,
+        "coherence": 0.9971582893884032,
+        "repeatedAgreement": 0.7142857142857143,
+        "pawnReuse": 0.24779696802140883,
+        "quiet": 0.7142857142857143,
+        "planReuse": 0.30484559279950335
+      },
+      "score": 78.31640075441885,
+      "facets": {
+        "replies": 80.24205319965539,
+        "reach": 85.42182634767384,
+        "depth": 67.31536718928571,
+        "moveOrders": 84.14591468597017,
+        "ease": 59.92666668353378
+      }
+    },
+    {
+      "id": "whCVdUeM",
+      "color": "black",
+      "features": {
+        "completion": 0.6819444444444438,
+        "handover": 0.7638888888888888,
+        "adequacy": 0.7217546563414862,
+        "routeBreadth": 0.8297335645593568,
+        "supportedBreadth": 0.7894736842105263,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.7460050022683076,
+        "quiet": 0.4,
+        "planReuse": 0.2953590391090391
+      },
+      "score": 71.426587998761,
+      "facets": {
+        "replies": 74.94395482479703,
+        "reach": 73.37068561535362,
+        "depth": 77.47571345833332,
+        "moveOrders": 92.79934424523641,
+        "ease": 38.88457732652486
+      }
+    },
+    {
+      "id": "OnPMlzHT",
+      "color": "black",
+      "features": {
+        "completion": 0.4739583333333336,
+        "handover": 0.6125,
+        "adequacy": 0.5387944683890759,
+        "routeBreadth": 0.75,
+        "supportedBreadth": 0.5555555555555556,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.5637572974920033,
+        "quiet": 0.7777777777777778,
+        "planReuse": 0.388235294117647
+      },
+      "score": 51.32434171619006,
+      "facets": {
+        "replies": 54.08249611037074,
+        "reach": 55.340161838749296,
+        "depth": 60.53705787500001,
+        "moveOrders": 91.96163137087443,
+        "ease": 66.65213555686275
+      }
+    },
+    {
+      "id": "PDVt7Kbh",
+      "color": "black",
+      "features": {
+        "completion": 0.7047526041666663,
+        "handover": 0.7453703703703703,
+        "adequacy": 0.7247770068008442,
+        "routeBreadth": 0.8580637530309303,
+        "supportedBreadth": 0.9050445103857567,
+        "coherence": 0.9450558064570734,
+        "repeatedAgreement": 0.25,
+        "pawnReuse": 0.33783327713478384,
+        "quiet": 0.8044982698961938,
+        "planReuse": 0.3006835652205667
+      },
+      "score": 78.35715276282656,
+      "facets": {
+        "replies": 81.44932138116943,
+        "reach": 81.57803822581818,
+        "depth": 76.45325458116318,
+        "moveOrders": 72.72079352633683,
+        "ease": 64.89733393462899
+      }
+    },
+    {
+      "id": "jtlLwUvh",
+      "color": "black",
+      "features": {
+        "completion": 0.4453125,
+        "handover": 0.4125,
+        "adequacy": 0.4285923543998423,
+        "routeBreadth": 0.7894736842105263,
+        "supportedBreadth": 0.5555555555555556,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.4457933792756089,
+        "quiet": 0.76,
+        "planReuse": 0.3
+      },
+      "score": 47.53885931769674,
+      "facets": {
+        "replies": 49.287597832816736,
+        "reach": 55.59617669539926,
+        "depth": 43.51317496875,
+        "moveOrders": 91.41940290702985,
+        "ease": 62.85755384000001
+      }
+    },
+    {
+      "id": "A4EBp7Ds",
+      "color": "black",
+      "features": {
+        "completion": 0.5842122395833335,
+        "handover": 0.775390625,
+        "adequacy": 0.6730473189777749,
+        "routeBreadth": 0.8766881972988844,
+        "supportedBreadth": 0.912568306010929,
+        "coherence": 0.9388817759621702,
+        "repeatedAgreement": 0.125,
+        "pawnReuse": 0.30144273310931297,
+        "quiet": 0.7633451957295374,
+        "planReuse": 0.2833355057351409
+      },
+      "score": 77.02464843707801,
+      "facets": {
+        "replies": 79.61350662762307,
+        "reach": 82.19415155933324,
+        "depth": 76.29299589453124,
+        "moveOrders": 69.61394005195874,
+        "ease": 61.553855530777454
+      }
+    },
+    {
+      "id": "UzKIIAtz",
+      "color": "black",
+      "features": {
+        "completion": 0.708333333333333,
+        "handover": 0.7291666666666666,
+        "adequacy": 0.7186745129441807,
+        "routeBreadth": 0.6666666666666666,
+        "supportedBreadth": 0.3333333333333333,
+        "coherence": 1,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.43034475777163883,
+        "quiet": 0.84,
+        "planReuse": 0.375
+      },
+      "score": 44.37666329446512,
+      "facets": {
+        "replies": 49.65327275317397,
+        "reach": 39.93096538976536,
+        "depth": 75.20237781249999,
+        "moveOrders": 91.34839236047232,
+        "ease": 70.37918771
+      }
+    },
+    {
+      "id": "bbxmDYZV",
+      "color": "white",
+      "features": {
+        "completion": 0.14149305555555558,
+        "handover": 0.1875,
+        "adequacy": 0.16288016428241553,
+        "routeBreadth": 0,
+        "supportedBreadth": 0,
+        "coherence": 0.14078711167614175,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.5940959409594097,
+        "quiet": 1,
+        "planReuse": 0.03125
+      },
+      "score": 5.5949924428402795,
+      "facets": {
+        "replies": 7.086922300254306,
+        "reach": 0.8665412052013431,
+        "depth": 18.453525989583333,
+        "moveOrders": 43.028875171449194,
+        "ease": 56.28366641817251
+      }
+    },
+    {
+      "id": "bbxmDYZV",
+      "color": "black",
+      "features": {
+        "completion": 0.14496527777777782,
+        "handover": 0.14583333333333334,
+        "adequacy": 0.14539865775145908,
+        "routeBreadth": 0.4838709677419355,
+        "supportedBreadth": 0.189873417721519,
+        "coherence": 0.5724823629956891,
+        "repeatedAgreement": 1,
+        "pawnReuse": 0.6665129151291511,
+        "quiet": 0.8666666666666667,
+        "planReuse": 0.013888888888888888
+      },
+      "score": 16.210281762424906,
+      "facets": {
+        "replies": 16.79803861108579,
+        "reach": 23.562956253011127,
+        "depth": 15.112228072916668,
+        "moveOrders": 78.94275720881208,
+        "ease": 54.22174811421914
+      }
+    },
+    {
+      "id": "nRiq9SZx",
+      "color": "black",
+      "features": {
+        "completion": 0.5326605902777777,
+        "handover": 0.4951923076923077,
+        "adequacy": 0.5135848780059626,
+        "routeBreadth": 0.8675949034546171,
+        "supportedBreadth": 0.8344827586206897,
+        "coherence": 0.7501649108876498,
+        "repeatedAgreement": 0.2,
+        "pawnReuse": 0.40433220093191463,
+        "quiet": 0.8211920529801324,
+        "planReuse": 0.3493984359938307
+      },
+      "score": 66.93455812226647,
+      "facets": {
+        "replies": 68.36878186495312,
+        "reach": 76.02575896678769,
+        "depth": 52.19428750951522,
+        "moveOrders": 65.77837848180184,
+        "ease": 64.16071876308845
+      }
+    },
+    {
+      "id": "HHZpRszr",
+      "color": "white",
+      "features": {
+        "completion": 0.6981336805555556,
+        "handover": 0.7886904761904762,
+        "adequacy": 0.7420319298803596,
+        "routeBreadth": 0.5888063963449458,
+        "supportedBreadth": 0.7377049180327869,
+        "coherence": 0.07988541220463274,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.14650124969139042,
+        "quiet": 0.7439759036144579,
+        "planReuse": 0.27297453703703706
+      },
+      "score": 69.0651488452449,
+      "facets": {
+        "replies": 72.97111279850364,
+        "reach": 64.93916918573062,
+        "depth": 79.86169274739582,
+        "moveOrders": 39.0496002641524,
+        "ease": 45.476192677333934
+      }
+    },
+    {
+      "id": "HHZpRszr",
+      "color": "black",
+      "features": {
+        "completion": 0.6700520833333332,
+        "handover": 0.6818181818181818,
+        "adequacy": 0.6759095303232661,
+        "routeBreadth": 0.7988826815642458,
+        "supportedBreadth": 0.7288135593220338,
+        "coherence": 0.4503718266551779,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.24105672517317622,
+        "quiet": 0.7624521072796933,
+        "planReuse": 0.38601155788655783
+      },
+      "score": 66.26860974282599,
+      "facets": {
+        "replies": 69.60375595704038,
+        "reach": 68.48638748308885,
+        "depth": 70.486913234375,
+        "moveOrders": 51.17568978623972,
+        "ease": 56.301410959228036
+      }
+    },
+    {
+      "id": "bmWAylqe",
+      "color": "white",
+      "features": {
+        "completion": 0.5834604414682544,
+        "handover": 0.7779255319148937,
+        "adequacy": 0.673712679322937,
+        "routeBreadth": 0.5933935414472357,
+        "supportedBreadth": 0.9075144508670521,
+        "coherence": 0.04355440025104029,
+        "repeatedAgreement": 0.2857142857142857,
+        "pawnReuse": 0.11095026710717625,
+        "quiet": 0.7690373563218391,
+        "planReuse": 0.30483333164741555
+      },
+      "score": 76.74897357739007,
+      "facets": {
+        "replies": 79.3637305590719,
+        "reach": 75.8208895000732,
+        "depth": 76.48451464005906,
+        "moveOrders": 44.01339772735142,
+        "ease": 47.467831844921
+      }
+    },
+    {
+      "id": "bmWAylqe",
+      "color": "black",
+      "features": {
+        "completion": 0.594361083553792,
+        "handover": 0.7690217391304348,
+        "adequacy": 0.6760743998599466,
+        "routeBreadth": 0.872357453159744,
+        "supportedBreadth": 0.912568306010929,
+        "coherence": 0.5260336134458142,
+        "repeatedAgreement": 0.18181818181818182,
+        "pawnReuse": 0.2126543655953175,
+        "quiet": 0.7676659528907926,
+        "planReuse": 0.2610820343664219
+      },
+      "score": 77.1286297581568,
+      "facets": {
+        "replies": 79.74521503486251,
+        "reach": 82.11784509983895,
+        "depth": 75.9914838695131,
+        "moveOrders": 57.42516014077516,
+        "ease": 54.21665435779144
+      }
+    },
+    {
+      "id": "nYAJ7Km3",
+      "color": "black",
+      "features": {
+        "completion": 0.53125,
+        "handover": 0.5125,
+        "adequacy": 0.5217907866185449,
+        "routeBreadth": 0.6363636363636364,
+        "supportedBreadth": 0.30434782608695654,
+        "coherence": 0.9307695170585738,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.8144001367487975,
+        "quiet": 0.8095238095238095,
+        "planReuse": 0.16477272727272727
+      },
+      "score": 35.90146801725577,
+      "facets": {
+        "replies": 39.48827008430922,
+        "reach": 36.33412450063254,
+        "depth": 53.5829011875,
+        "moveOrders": 68.97103370197614,
+        "ease": 60.95727650596827
+      }
+    },
+    {
+      "id": "FwXo3Qhq",
+      "color": "black",
+      "features": {
+        "completion": 0.9598214285714286,
+        "handover": 0.9,
+        "adequacy": 0.9294295485480789,
+        "routeBreadth": 0.8180224154680947,
+        "supportedBreadth": 0.8318591820649794,
+        "coherence": 0.9833991653953912,
+        "repeatedAgreement": 0.5,
+        "pawnReuse": 0.4857293932084729,
+        "quiet": 0.6938775510204082,
+        "planReuse": 0.260228587962963
+      },
+      "score": 81.063998525013,
+      "facets": {
+        "replies": 86.3175064340223,
+        "reach": 77.00807886132179,
+        "depth": 94.68182255357144,
+        "moveOrders": 80.10010635364326,
+        "ease": 57.01981853691646
+      }
+    },
+    {
+      "id": "LLNDy032",
+      "color": "white",
+      "features": {
+        "completion": 0.6362500000000002,
+        "handover": 0.6205357142857143,
+        "adequacy": 0.6283437341251091,
+        "routeBreadth": 0.8990335062518092,
+        "supportedBreadth": 0.8968850698174007,
+        "coherence": 0.9766224180524713,
+        "repeatedAgreement": 0.5,
+        "pawnReuse": 0.2782735415186296,
+        "quiet": 0.6782608695652174,
+        "planReuse": 0.29518181818181816
+      },
+      "score": 74.56265848704062,
+      "facets": {
+        "replies": 76.80350339544907,
+        "reach": 81.40359447016084,
+        "depth": 64.72624085625,
+        "moveOrders": 78.93266849401994,
+        "ease": 56.90845345756492
+      }
+    },
+    {
+      "id": "e01yoGqe",
+      "color": "white",
+      "features": {
+        "completion": 0.26276041666666666,
+        "handover": 0.40865384615384615,
+        "adequacy": 0.3276859088942039,
+        "routeBreadth": 0.6335877862595419,
+        "supportedBreadth": 0.7775847089487402,
+        "coherence": 0.16780335338694477,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.3176161157607011,
+        "quiet": 0.5825242718446602,
+        "planReuse": 0.19949252136752135
+      },
+      "score": 57.18790483854343,
+      "facets": {
+        "replies": 57.14231759667557,
+        "reach": 66.30830701662143,
+        "depth": 39.22684058052885,
+        "moveOrders": 42.61057148470278,
+        "ease": 34.08957395220003
+      }
+    },
+    {
+      "id": "e01yoGqe",
+      "color": "black",
+      "features": {
+        "completion": 0.5359374999999997,
+        "handover": 0.4326923076923077,
+        "adequacy": 0.4815558468691311,
+        "routeBreadth": 0.6756756756756757,
+        "supportedBreadth": 0.4968553459119497,
+        "coherence": 0.45946067527801043,
+        "repeatedAgreement": 0,
+        "pawnReuse": 0.3137124850669688,
+        "quiet": 0.6764705882352942,
+        "planReuse": 0.22261904761904766
+      },
+      "score": 45.89076458413109,
+      "facets": {
+        "replies": 48.35465738864575,
+        "reach": 49.59625851554272,
+        "depth": 47.1403276514423,
+        "moveOrders": 51.79647376894836,
+        "ease": 45.91484497459051
+      }
+    }
+  ]
+}

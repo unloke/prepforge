@@ -3,7 +3,7 @@
 // Runs the per-view Playwright viewport smokes plus the cross-view states
 // and dialogs smokes (each serves the built
 // static/ tree with real-shape /api/* fixtures at 1440x900 / 1180x900 /
-// 390x844) sequentially and reports one summary. The smokes were promoted
+// 390x844) concurrently and reports one summary. The smokes were promoted
 // from throwaway tmp/ scripts after they caught regressions during the
 // ui-v2 page-internals round; they intentionally reuse the existing
 // fixture + Playwright setup — no new test framework.
@@ -11,6 +11,7 @@
 // Usage: npm run smoke:ui-v2   (or: node scripts/smoke/ui-v2/run-all.mjs)
 // Requires `npm run build` first — the smokes serve the built
 // src/prepforge_chess/web/static tree.
+import { selectSmokeShard } from "./sharding.mjs";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
@@ -33,6 +34,7 @@ const SUITE = [
   ["Train", "train-viewport-smoke.mjs"],
   ["Games", "games-viewport-smoke.mjs"],
   ["Scout", "scout-viewport-smoke.mjs"],
+  ["History refresh", "analyze-history-smoke.mjs"],
   ["Analyze", "analyze-viewport-smoke.mjs"],
   // Off-mainline Analyze: a selected variation node (not its mainline cousin of
   // the same move number) drives the board, caption, Coach and engine — through a
@@ -59,7 +61,11 @@ const SUITE = [
 
 // Each smoke serves its own port, so a few run side by side; output is held
 // per smoke and printed in suite order so the log stays readable.
-const CONCURRENCY = 3;
+const CONCURRENCY = Number(process.env.UI_V2_SMOKE_CONCURRENCY || 3);
+if (!Number.isInteger(CONCURRENCY) || CONCURRENCY < 1 || CONCURRENCY > 16) {
+  throw new Error("UI_V2_SMOKE_CONCURRENCY must be an integer from 1 to 16");
+}
+const selected = selectSmokeShard(SUITE, process.env.UI_V2_SMOKE_SHARD);
 
 function runOne([label, file]) {
   return new Promise((resolve) => {
@@ -91,12 +97,12 @@ function runOne([label, file]) {
   });
 }
 
-const results = new Array(SUITE.length);
+const results = new Array(selected.length);
 let next = 0;
 await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
-  while (next < SUITE.length) {
+  while (next < selected.length) {
     const i = next++;
-    results[i] = await runOne(SUITE[i]);
+    results[i] = await runOne(selected[i]);
   }
 }));
 for (const r of results) {

@@ -1,0 +1,114 @@
+[Event "🔥🔥Pirc Defense Repertoire🔥🔥: Pirc Defense: Set-up"]
+[Date "2021.07.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense"]
+[StudyName "🔥🔥Pirc Defense Repertoire🔥🔥"]
+[ChapterName "Pirc Defense: Set-up"]
+[ChapterURL "https://lichess.org/study/nYAJ7Km3/Lvp04R8J"]
+[Annotator "https://lichess.org/@/JoshSG"]
+[UTCDate "2021.07.27"]
+[UTCTime "10:45:24"]
+[ChapterMode "gamebook"]
+
+{ The Pirc Defense is a sharp hypermodern opening which leads to aggressive plays. The main idea of this opening is for Black to slowly develop pawns and pieces, tempting White to build a 'solid' pawn center in the middle. Black proceeds to counterstrike White's overextended pawn center and if White does not respond accurately, he literally self-destructs. lol. }
+1. e4 d6 { White greedily takes the center } 2. d4 { Black develops his Knight and later on, fianchettoes his Bishop in hopes of early castling while attacking White's e4 pawn } 2... Nf6 { White defends with Nc3 } { [%cal Gf6e4] } 3. Nc3 { Black prepares to fianchetto his Bishop } { [%cal Gc3e4,Gf6e4] } 3... g6 { And this is the Pirc Defense! Here, Black has a very solid position with minimal weaknesses as both his pawns have only advanced one rank. White's downfall is trying to occupy as much space as possible while accidentally overextending his pieces! } *
+
+
+[Event "🔥🔥Pirc Defense Repertoire🔥🔥: Pirc Defense: Austrian Attack i"]
+[Date "2021.07.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B09"]
+[Opening "Pirc Defense: Austrian Attack"]
+[StudyName "🔥🔥Pirc Defense Repertoire🔥🔥"]
+[ChapterName "Pirc Defense: Austrian Attack i"]
+[ChapterURL "https://lichess.org/study/nYAJ7Km3/KEQUVYs9"]
+[Annotator "https://lichess.org/@/JoshSG"]
+[FEN "rnbqkb1r/ppp1pp1p/3p1np1/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2021.07.27"]
+[UTCTime "10:57:16"]
+
+{ The Austrian Attack is characterised by f4, White's attempt to dominate the center }
+4. f4 { Black's plan is to counterstrike White's overextended center with d5, but first, he needs to play c6 to support his coming pawn break } { [%cal Gd6d5,Gc7c6] } 4... c6 { White's plan is to put his Knight behind his pawns and attack our Kingside! } { [%cal Gg1f3,Gf4f5,Ge4e5] } 5. Nf3 { Now, Black can finally challenge White's center! } 5... d5 *
+
+
+[Event "🔥🔥Pirc Defense Repertoire🔥🔥: Pirc Defense: Austrian Attack ii"]
+[Date "2021.07.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B09"]
+[Opening "Pirc Defense: Austrian Attack"]
+[StudyName "🔥🔥Pirc Defense Repertoire🔥🔥"]
+[ChapterName "Pirc Defense: Austrian Attack ii"]
+[ChapterURL "https://lichess.org/study/nYAJ7Km3/tHs7Ir4a"]
+[Annotator "https://lichess.org/@/JoshSG"]
+[FEN "rnbqkb1r/ppp1pp1p/3p1np1/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2021.07.27"]
+[UTCTime "11:19:22"]
+[ChapterMode "gamebook"]
+
+4. f4 { Develop your other Knight! } 4... Nc6 5. Nf3 { FIanchetto your Bishop } 5... Bg7 6. Bd3 { Castle your King to safety! } 6... O-O 7. O-O { Now, counterstrike in White's center } 7... e5 8. fxe5 dxe5 9. dxe5 { This next move is hard to find! } 9... Nxe5 10. Nxe5 { Now fork White's King and Knight! } 10... Qd4+ { [%cal Gd4e5,Gd4g1] } 11. Kh1 Qxe5 *
+
+
+[Event "🔥🔥Pirc Defense Repertoire🔥🔥: Pirc Defense: Two Knights System"]
+[Date "2021.07.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B08"]
+[Opening "Pirc Defense: Classical Variation, Quiet System, Parma Defense"]
+[StudyName "🔥🔥Pirc Defense Repertoire🔥🔥"]
+[ChapterName "Pirc Defense: Two Knights System"]
+[ChapterURL "https://lichess.org/study/nYAJ7Km3/HFf3Xxqj"]
+[Annotator "https://lichess.org/@/JoshSG"]
+[FEN "rnbqkb1r/ppp1pp1p/3p1np1/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2021.07.27"]
+[UTCTime "10:57:32"]
+
+{ The Two Knights System is the most natural variation of the Pirc Defense! }
+4. Nf3 { Pin White's Knight! } 4... Bg4 { White Defends the Pin } 5. Be2 { Fianchetto your Bishop and prepare to castle! } 5... Bg7 6. O-O O-O 7. Be3 { Play c6, preparing for d5 on your next turn! } { [%cal Gd6d5,Gc7c6] } 7... c6 8. Qd2 d5 9. exd5 cxd5 *
+
+
+[Event "🔥🔥Pirc Defense Repertoire🔥🔥: Pirc Defense: 150 Attack"]
+[Date "2021.07.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense: 150 Attack"]
+[StudyName "🔥🔥Pirc Defense Repertoire🔥🔥"]
+[ChapterName "Pirc Defense: 150 Attack"]
+[ChapterURL "https://lichess.org/study/nYAJ7Km3/1t2TPdJv"]
+[Annotator "https://lichess.org/@/JoshSG"]
+[FEN "rnbqkb1r/ppp1pp1p/3p1np1/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2021.07.30"]
+[UTCTime "10:17:51"]
+[ChapterMode "gamebook"]
+
+{ The 150 Attack is characterised by Be3! }
+4. Be3 { Black plays the silent move c6, preparing for counterplay on the Queenside } 4... c6 { White Qd2 is aiming at our Kingside Bishop, weakening Black's Kingside and preventing Black from castling } 5. Qd2 { We strike into the Queen's flank } { [%cal Ge3h6,Gd2e3] } 5... b5 *
+
+
+[Event "🔥🔥Pirc Defense Repertoire🔥🔥: Pirc Defense: Byrne Variation"]
+[Date "2021.07.27"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense: Byrne Variation"]
+[StudyName "🔥🔥Pirc Defense Repertoire🔥🔥"]
+[ChapterName "Pirc Defense: Byrne Variation"]
+[ChapterURL "https://lichess.org/study/nYAJ7Km3/iNr1EjLL"]
+[Annotator "https://lichess.org/@/JoshSG"]
+[FEN "rnbqkb1r/ppp1pp1p/3p1np1/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2021.07.27"]
+[UTCTime "13:52:22"]
+[ChapterMode "gamebook"]
+
+4. Bg5 { The Byrne Variation is characterised by Bg5, it is the most aggressive response for White! Black fianchettoes his Bishop, protecting his Knight } 4... Bg7 { White plays Qd2; he plans to play Bh6 on his next move, removing Black's Fianchettoed Bishop which is disadvantageous for Black! } 5. Qd2 { Find a way to prevent the Bishop trade! } 5... h6 6. Bf4 *
+
+

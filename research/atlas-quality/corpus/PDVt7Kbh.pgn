@@ -1,0 +1,697 @@
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: Caro Kann Introduction"]
+[Site "https://lichess.org/study/B15qse9e/rXDr3iXE"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Caro Kann Introduction"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/kCMwP7QO"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+{ Hello all, this is Mr_Penings bringing you yet another opening guide, this time on the Caro Kann, a much more solid defense if the Sicilian doesn't suit your style.
+
+❤️Please give this study a like (Heart) and share with others! }
+1. e4 c6 { Three principles to keep in mind when playing the Caro Kann:
+1) You will likely have to play endgames
+2) Bishops are not as effective than in other sharper openings like Sicilian
+3) Superior pawn structure is a common advantage to play for } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: ** Sample Game **"]
+[Site "https://lichess.org/study/B15qse9e/4gkbkMRZ"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "** Sample Game **"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/F75U4UbP"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+ *
+
+
+[Event "Las Palmas"]
+[Site "Las Palmas ESP"]
+[Date "1994.05.23"]
+[Round "2"]
+[White "Alexey Shirov"]
+[Black "Anatoly Karpov"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Short Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Alexey Shirov - Anatoly Karpov"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/AeuKgoCr"]
+
+{ This game is a great illustration how Black dominates on the queenside very slowly while restricting any counterplay on the kingside by White. Very nice technique, and smooth positional win. }
+1. e4 c6 2. d4 d5 3. e5 Bf5 4. Nf3 e6 5. Be2 c5 6. O-O Nc6 7. c3 cxd4 8. cxd4 Nge7 9. a3 Nc8 { Quite common in the advanced Caro Kann to maneuver the knight from g8-e7-c8 to head over to the queenside. In this case, it can hop in to c4 outpost if White ever expands too far with b4. } 10. Nbd2 Be7 11. b3 a5 12. Bb2 N8a7 13. Re1 O-O 14. Nf1 Rc8 15. Ng3 Bg6 16. Qd2 Qb6 17. Bd1 Rc7 18. h4 h6 19. Re2 Rfc8 { Slow but effective plan. } 20. Qf4 Nb8 { Try to reflect on why Karpov plays this weird looking move Nb8!? My best guess is the knight wasn't effective on c6, so it's moving out of the way to open up the power of the rooks. And as a backup, it can defend on the kingside with Nd7 later. } 21. Re3 Nb5 22. Ne2 Nd7 23. Nh2 Rc6 { Making room for the queen to drop back to d8 to defend. Again, very slow and patient, true to Karpov and the Caro Kann's style. } 24. Ng4 Qd8 25. Rh3 Qf8 26. a4 Na3 27. Bxa3 Bxa3 28. Rg3 h5 29. Ne3 Bb2 30. Ra2 Bc1 { Tempting White to play Nxc1 so the rook can invade. Otherwise, the bishop acts as a huge pest. } 31. Qg5 Qb4 32. Nf4 Bxe3 33. fxe3 Rc1 34. Nxg6 Rxd1+ 35. Kh2 fxg6 36. Qxg6 Qe7 { Clean-up crew. Get your mops ready } 37. Rf2 Qxh4+ 38. Rh3 Qxf2 { 0-1 White resigns. } 0-1
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: * Caro-Kann Important Themes *"]
+[Site "https://lichess.org/study/B15qse9e/8C9BGQZC"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "* Caro-Kann Important Themes *"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/kCI8H3eJ"]
+[FEN "rnbqkbnr/pp1ppppp/2p5/4P3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+ *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: Theme #1"]
+[Site "https://lichess.org/study/B15qse9e/D10CGFsm"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Theme #1"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/sRwKL0gj"]
+[FEN "r2qk2r/ppb2pp1/2p1pn1p/7P/2PP4/5N2/PP1BQPP1/2KR3R b kq - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1... b5 { c4 may seem like a plus for White, but in fact, it is actually a weakness because of Black's thematic b5! In fact, in the main lines, one of Black's plans is to tempt White into playing c4. White does not have a good response to b5. } 2. cxb5 (2. c5 Qd5 { Black still gets the important d5 square }) (2. b3 { This move holds on to the c4 pawn, but it does allow an open b-file for Black } 2... bxc4 3. bxc4 Rb8 { Great attacking chances to come }) 2... Qd5 *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: Theme #2"]
+[Site "https://lichess.org/study/B15qse9e/Ynz6qwvJ"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Theme #2"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/JlGKWnUy"]
+[FEN "rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1. exd5 cxd5 2. Nc3 { Very common move in the Exchange Caro, but is an inaccuracy! You may wonder: How can a simple knight move be inaccurate? The keys here are the d4 pawn and the knight on c3. With the knight acting as a roadblock, the pawn will be hard to defend since c3 is unavailable for the pawn. In addition, since Black's d5 pawn is well defended, the knight on c3 cannot find a lot of activity in the center. } (2. Bd3 { Bd3 + c3 is stronger and is one of the main lines. }) (2. c4 { The other main line: playing c4 before Nc3 adds pressure to the center. }) 2... Nc6 3. Nf3 Bg4 { Pinning the knight, making d4 even more vulnerable now } 4. Be2 e6 5. O-O Bd6 6. h3 Bh5 { This is a possible continuation. White has little coordination with his pieces. The d4 pawn is much weaker than Black's counterpart on d5 since it's not guarded by a pawn. Black gets quick and easy development. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: Theme #3"]
+[Site "https://lichess.org/study/B15qse9e/flU4XcUA"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Theme #3"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/JHlSeA5u"]
+[FEN "rn1qkbnr/pp2pppp/2p5/3pPb2/3P1P2/8/PPP3PP/RNBQKBNR b KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+{ This type of position is reached in many of the advanced variations. }
+1... h5 { An important move to prevent White from playing g4 and start to establish a nice outpost on f5 for a knight. } 2. Nf3 e6 3. Bd3 Nh6 { Black welcomes an exchange of light squared bishops, so the knight can now occupy f5. The c5 pawn break is next and Black gets a very comfortable middlegame. } { [%cal Gc6c5] } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: Theme # 4"]
+[Site "https://lichess.org/study/B15qse9e/gjhS50Aj"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Theme #4"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/xu6AbjDP"]
+[FEN "r2q1rk1/pp1nbpp1/2p1pn1p/7P/3P4/5NN1/PPPBQPP1/2KR3R w - - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+{ Common attacking theme for White in the main line. White plays for g4 in attempt to break open the kingside with the pawn break of g5. Black has to be prepared }
+1. Nf1 { With a clear idea of g4 next. At first glance, it looks like a free pawn, but White gets lots of compensation down the g-file that ultimately it is a poison pawn. } 1... Nb6 { Since you already know that White is planning g4 next, here is a common trick I like to use: Imagine you get 2 free moves here (one move now and one move after an "automatic" g4 from White). In this case, Nb6 + Qd5 is a good counter since you get immediate counterplay on the queenside } (1... c5 { Normal looking. } 2. g4 { Not going to say this is move is winning, but it is difficult for a human player to defend accurately. White has a direct plan of breaking open the g-file to attack. }) 2. g4 Qd5 3. Kb1 Qb5 { Of course, Black welcomes a queen trade to wipe out any possible kingside attacks from White. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: Theme #5"]
+[Site "https://lichess.org/study/B15qse9e/rUhlOok6"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Theme #5"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/lJohZSwA"]
+[FEN "r1bq1rk1/pp2bppp/2n1p3/3n4/3P4/2NB1N2/PP3PPP/R1BQR1K1 b - - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+{ Caro-Kann players must be ready to play against isolated queen pawn positions, which arise after majority of the c4 lines. Overarching principle: Trade minor pieces and blockade the d5 square so White doesn't ever push d5. }
+1... Nf6 2. a3 b6 { Finishing development and then lining up rooks on the d- and c- files to exert more pressure in the center. See Judit Polgar - Anatoly Karpov game below for an illustration of middlegame plans for both sides. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: ** Sidelines **"]
+[Site "https://lichess.org/study/B15qse9e/K2Oag9lj"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "**Sidelines**"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/Bs7XaVWZ"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+ *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 2. c4"]
+[Site "https://lichess.org/study/B15qse9e/zK19R38G"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense: Accelerated Panov Attack, Modern Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "2. c4"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/ztj5zU5J"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1. e4 c6 2. c4 d5 3. exd5 cxd5 4. cxd5 (4. d4 { See Chapter on Panov-Botvinnik below. }) 4... Nf6 { In this chapter, we'll look at tricky Bb5+ and Qa4+. The next part will be on the main line, 5. Nc3. } 5. Qa4+ { A tricky line in attempt to hold on to the d5 pawn. But with accurate play, Black should be able to castle safely and ultimately win back the d5 pawn. But be careful, this line is quite tricky! } (5. Bb5+ { The strategy is rather similar to the Qa4+ line. } 5... Nbd7 6. Nc3 g6 7. Nf3 Bg7 8. d6 { The most demanding line, which scores quite well for White in practice. White gives back the pawn immediately before black gets to castle, to basically force a queen trade and play a slightly better endgame. } (8. O-O O-O { An improved version of the Qa4+ line since the bishop is on b5 and not c4 }) 8... exd6 9. Qe2+ Qe7 10. Qxe7+ Kxe7 11. O-O Rd8 12. d4 Kf8 { I'd say the position is about equal, White being slightly better if anything. But it's a fairly symmetrical position and balanced. }) 5... Nbd7 6. Nc3 g6 7. Nf3 Bg7 8. Bc4 O-O { Important to get castled first before you start to get tangled up in the center. } 9. d3 a6 10. Qa3 b6 { Preparing Bb7 and only then, b5. b5 right away leads to Bxb5, where White takes advantage of the unprotected rook on a8. } 11. O-O Bb7 12. Re1 Re8 13. h3 b5 14. Bb3 Nb6 { And only now do you win back the d-pawn. As is the case with the Caro-Kann in general, you need high patience if you want to play this opening. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 2. c4 part 2"]
+[Site "https://lichess.org/study/B15qse9e/4qAcRSfC"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense: Accelerated Panov Attack, Modern Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "2. c4 part 2 (Panov-Botvinnik Attack)"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/fJPt9EAH"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1. e4 c6 2. c4 d5 3. exd5 cxd5 4. cxd5 Nf6 5. Nc3 { I have played the White side of this variation for years now, and it has always given be difficult games. } 5... Nxd5 6. Nf3 Nc6 7. Bb5 e6 8. O-O Bd6 { Less popular than Be7, but it is far more active. As long as Black can castle safely, the middlegame should be pretty balanced. } 9. d4 (9. Nxd5 exd5 10. Re1+ Be6 { White cannot easily take advantage of the king stuck in the center in the next move. So Black castles next and reaches an equal middlegame. }) 9... O-O 10. Re1 Bd7 11. Bd3 Rc8 12. a3 Nce7 13. Ne4 Bb8 { Black has good piece coordination here. Knights are connected, a piece is coming to f4 next to exchange minor pieces. Just watch for potential kingside dangers and you'll be fine. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: Nf3 + Nc3"]
+[Site "https://lichess.org/study/B15qse9e/iWPnHQ4l"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B11"]
+[Opening "Caro-Kann Defense: Two Knights Attack, Mindeno Variation, Exchange Line"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Nf3 + Nc3"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/HzdnJBao"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1. e4 c6 2. Nc3 d5 3. Nf3 { A popular line to sidestep any of the main line variations. This scores pretty well for White in practice, but there are lines for Black that can be more annoying for your opponent to face, which I will show. } 3... Bg4 4. h3 Bxf3 { An instance of where bishop exchanging for knight is reasonable. The reason is Black's triangle pawn formation is very solid and it's hard for White to fully take advantage of the bishop pair advantage. } 5. Qxf3 e6 6. d3 (6. d4 { Also playable to aim for a more open position. } 6... Nf6 7. e5 (7. Bd3 dxe4 8. Nxe4 Qxd4 9. Be3 Bb4+ { Forcing the king to move } 10. Ke2 Qd8 11. Rhd1 Nbd7 { White has compensation for the pawn, but it still quite solid for Black here. }) 7... Nfd7 8. Bd3 c5) 6... Nf6 { Here White has 3 common tries: Bd2, g3, and g4. } 7. Bd2 { The most popular and sharpest line of the trio. } (7. g3 Bb4 { Threatening d4 } 8. Bd2 d4 9. Nb1 Qb6 { Black is definitely comfortable here in terms of development and space. Nbd7 and castle either side is playable. }) (7. g4 Bb4 { Same recipe as 7. g3: Play Bb4 to annoy White } 8. Bd2 (8. g5 Qa5 9. Bd2 d4 10. gxf6 dxc3 { This works out tactically in Black's favor. }) 8... d4 9. Nb1 Qb6) 7... Qb6 { Chasing after the now undefended b2 pawn. Black is tempting 0-0-0 from White. } 8. O-O-O d4 9. Ne2 c5 { And Black scores very well here in practice. The position is quite locked up and White can hardly create open diagonals for the bishop pair. } 10. g4 Nc6 11. g5 Nd7 { Black is going to castle long next. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 2. f4"]
+[Site "https://lichess.org/study/B15qse9e/FFCaOWBN"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "2. f4"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/0IP9gU3L"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1. e4 c6 2. f4 { This line is harmless for Black. There's a reason why it's not played often, and why it will always remain a poor sideline choice for White. } 2... d5 3. e5 Bf5 4. Nf3 e6 5. d4 (5. d3 { Too passive. } 5... c5) 5... c5 6. c3 Nc6 { An advanced French with the typical "French bishop" outside of the pawn chain instead of in prison on c8. Black is comfortable here. Qb6 next to attack the soon-to-be base of pawn chain d4. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 2. d3 Kings Indian attack"]
+[Site "https://lichess.org/study/B15qse9e/Un7JKANN"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense: Breyer Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "2. d3 Kings Indian attack"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/w2Oak8p6"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1. e4 c6 2. d3 { White attempts to mimic the Kings Indian Attack setup against the French. However, it comes at one drawback: Black hasn't played e6! That means as black, you should take advantage of this by playing e5 in one move! } 2... d5 3. Nd2 e5 4. Ngf3 Bd6 5. g3 Nf6 6. Bg2 O-O 7. O-O Re8 8. Re1 d4 { Important to play d4 as soon as White plays Re1 to mitigate the power of the rook. } 9. c3 c5 10. Nc4 Bc7 11. a4 Nc6 { Black has a good space advantage in the center. The Nc4 is not on an outpost, so a good long term plan is to eventually kick the knight back with a6 + b5. Comfortable position for Black. No troubles } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: The Infamous Penings-He Gambit"]
+[Site "https://lichess.org/study/B15qse9e/h9dBHNSY"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B15"]
+[Opening "Caro-Kann Defense: von Hennig Gambit"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "The Infamous Penings-He Gambit"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/Jh45R8uu"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+{ Yes, the gambit has the unofficial name of Penings-He Gambit, and yes that's my name attached to it. I've played this gambit online for years but to be frank, it has been refuted, which is the reason I stopped playing it as White. I will shamelessly show you the refutation to my own gambit. }
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Bc4 (4. f3 exf3 5. Nxf3 Nf6 6. Bc4 { Transposes }) 4... Nf6 5. f3 exf3 6. Nxf3 Bf5 { The key move. With this setup, White cannot generate any play and will get zero compensation for the gambited pawn. } 7. O-O e6 8. Ne5 Bg6 { A must-play move. } (8... Nbd7 { Blunder! } 9. Rxf5 exf5 10. Nxf7 { And White wins }) 9. Bg5 Nbd7 { Black's pieces are well coordinated to stop White's entire attack. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: ** Main Lines **"]
+[Site "https://lichess.org/study/B15qse9e/4cQgHRB7"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "** Main Lines **"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/4NXPavzK"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+ *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 3. f3 Fantasy Variation"]
+[Site "https://lichess.org/study/B15qse9e/xGlnqD8I"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Maróczy Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "3. f3 Fantasy Variation"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/l48aX15j"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1. e4 c6 2. d4 d5 3. f3 { The Fantasy variation, from my own speculation, is named because White has a fantasy of getting the full pawn center before playing Nc3. Like all openings, there really is no refutation to the Caro-Kann. Moving the f-pawn too early has its drawbacks. } 3... Qb6 { Weird looking, but this has been the known way to approach the Fantasy variation. Black eyes the long g1-a7 diagonal to punish White's early f3 } 4. Nc3 (4. a4 e5 5. dxe5 a5 6. exd5 Bc5 { With plenty of compensation in the form of activity on the dark squares. }) 4... dxe4 5. fxe4 e5 { Now White is in some trouble to protect the dream pawn center, which is going down! } 6. dxe5 (6. Nf3 exd4 7. Nxd4 Nd7 8. Be2 Ngf6 { Again, having the queen on b6 is placing a ton of pressure on the dark squares. White cannot safely castle here } 9. O-O Bc5) 6... Be6 7. Nf3 Nd7 { Although Black is temporarily down a pawn, White's double isolated e-pawns will not last long. Black will get castled and play Bc5 next. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 3. Nc3/Nd2"]
+[Site "https://lichess.org/study/B15qse9e/8LPcftRz"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B18"]
+[Opening "Caro-Kann Defense: Classical Variation, Flohr Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "3. Nc3/Nd2"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/KHowXaP3"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 (5. Nc5 { A rare attempt, but the awkward placement of the knight on c5 must be punished! } 5... e5 6. Nxb7 Qb6 7. Nc5 Bxc5 8. dxc5 Qxc5 { Black regains the pawn and has a nice lead in development! }) (5. Bd3 Qxd4 6. Nf3 Qd8 7. Qe2 Bxe4 8. Bxe4 Nf6 { In theory, White has compensation for the pawn, but Black is definitely not worse. }) 5... Bg6 6. Nh3 (6. N1e2 Nf6 7. Nf4 { Transposes to the Nh3 line }) 6... Nf6 7. Nf4 e5 { A thematic move in these kind of positions. See Breckenridge - Dreev game below for a sample. The trick is after dxe5, black has Qa5+ to regain the pawn. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 3. Nc3/Nd2 part 2"]
+[Site "https://lichess.org/study/B15qse9e/TnNt5CDR"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B19"]
+[Opening "Caro-Kann Defense: Classical Variation, Lobron System"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "3. Nc3/Nd2 part 2"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/QdueB1UV"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:22:24"]
+
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. h4 h6 7. Nf3 Nd7 8. h5 Bh7 9. Bd3 Bxd3 10. Qxd3 e6 11. Bd2 { The other popular line is 11. Bf4, which will be covered in the next chapter. } 11... Ngf6 12. O-O-O Be7 13. Kb1 (13. Ne4 Nxe4 14. Qxe4 Nf6 15. Qe2 Qd5 { Black occupies the nice central square d5. You may ask: "Hmm, can't White just play c4 to kick away the queen?" Yes, but as seen in Theme #1 above, Black actually welcomes c4, so playing b5 will aim to win the d5 square altogether. } 16. c4 Qe4 17. Qxe4 Nxe4 18. Be3 f5 { Balanced position here. f4 is the current threat, since Bxf4 Nxf2 forks the two rooks. }) 13... Qb6 14. Ne4 Nxe4 15. Qxe4 Nf6 16. Qe2 Qb5 { Offering a queen trade. Of course, the doubled b-pawns are a strength since it claims the d5 square for your knight and the open c-file. } 17. c4 Qf5+ 18. Ka1 Rd8 { A well timed b5 should be next. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 3. Nc3/Nd2 part 3"]
+[Site "https://lichess.org/study/B15qse9e/xdsykl28"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B19"]
+[Opening "Caro-Kann Defense: Classical Variation, Spassky Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "3. Nc3/Nd2 part 3"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/K75BidHk"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:23:09"]
+
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. h4 h6 7. Nf3 Nd7 8. h5 Bh7 9. Bd3 Bxd3 10. Qxd3 e6 11. Bf4 Bb4+ (11... Qa5+ { Qa5+ is the main line, but Bb4+ is a more uncommon approach, but it scores better for Black in practice. Bb4+ is much simpler and focuses on smaller advantages. }) 12. c3 Be7 13. O-O-O (13. O-O { Castling kingside just does not make sense since the h5 pawn is so far advanced and White cannot claim any advantage whatsoever. } 13... Ngf6 14. c4 O-O) 13... Ngf6 14. Kb1 a5 { Rush the a-pawn up the board to create a new base of the pawn chain to attack. } 15. Ne4 (15. c4 a4 16. Ne4 Nxe4 17. Qxe4 a3 18. b3 Nf6 19. Qc2) 15... Nxe4 16. Qxe4 a4 17. Ne5 a3 18. b3 Nf6 19. Qf3 Qd5 *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 3. Nc3/Nd2 part 4"]
+[Site "https://lichess.org/study/B15qse9e/RWgmAlb7"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B19"]
+[Opening "Caro-Kann Defense: Classical Variation, Lobron System"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "3. Nc3/Nd2 part 4"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/Mj8BqDVQ"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:23:09"]
+
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. h4 h6 7. Nf3 Nd7 8. h5 Bh7 9. Bd3 Bxd3 10. Qxd3 e6 11. Bd2 Ngf6 12. O-O-O Be7 13. Qe2 O-O 14. Nf1 { This is the position from Theme #4. Read above for more detail } 14... Nb6 15. g4 Qd5 16. Kb1 Qb5 { And now White's g4 just seems overextending since the queens are going to be off the board, and pawns cannot move backwards. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 3. e5"]
+[Site "https://lichess.org/study/B15qse9e/5oR2wMmO"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Van der Wiel Attack"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "3. e5"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/x8DhxSW9"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:23:09"]
+
+1. e4 c6 2. d4 d5 3. e5 Bf5 { This chapter, I will analyze the somewhat challenging 4th move sidelines: Nc3, Ne2, Be3, and f4. } 4. Nc3 { An ambitious line which plans g4 next move. The drawback here is the d4 pawn will be hard to maintain with the pawn chain, since c3 is no longer available. } (4. Ne2 e6 5. Ng3 Bg6 6. h4 h5 7. Bd3 Bxd3 8. Qxd3 c5 { This is an improved version of the advanced French, with the Bc8 out and gone. Nc6 + Qb6 is normal. The Ng3 now just seems misplaced and would love to be tipped to f3. }) (4. Be3 { A common move amongst titled players. It seems very counterintuitive since the bishop is stuck on e3, but the goal is more positional. The bishop prevents Black from playing c5, and Nd2-Nb3 is up next to make c5 even harder. } 4... e6 5. Nd2 Ne7 6. Ngf3 Bg6 7. Nh4 Nf5 8. Nxf5 Bxf5 9. Nb3 Nd7 10. Be2 Be7 11. O-O O-O 12. c3 f6) (4. f4 e6 5. Nf3 h5 { See Theme #3 for more detail. } 6. Bd3 Nh6 7. O-O c5 8. c3 Nc6) 4... e6 5. g4 Bg6 6. Nge2 c5 7. h4 h5 8. Nf4 Bh7 9. Nxh5 { A pawn sacrifice, but Black immediately strikes the d4 pawn, and the pawn center will likely collapse under pressure. } 9... Nc6 10. dxc5 (10. Bb5 cxd4 11. Qxd4 Ne7) 10... Bxc5 *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 3. e5 part 2"]
+[Site "https://lichess.org/study/B15qse9e/da3CehE8"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Tal Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "3. e5 part 2"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/TSJCowTa"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:23:09"]
+
+1. e4 c6 2. d4 d5 3. e5 Bf5 { This chapter, I will analyze the ambitious 4. h4 and 4. g4 } 4. h4 (4. g4 { A very direct move to force the bishop somewhere, but often times White does not have enough compensation for the overly advanced g-pawn. Black has lots of good replies here (including Bc8!) since g4 is quite a committal move. } 4... Be4 { Forcing sequence } 5. f3 Bg6 6. h4 h5 7. e6 Qd6 8. exf7+ Bxf7 { Black's doing well here. }) 4... Qb6 { Qb6 acts as a waiting move to force White to commit something. White would love to have Black play e6. But here, White does not want to play g4 because Black can play Bd7, and the advanced kingside pawns are now very ugly for White. } (4... e6 { Do NOT fall for this trap! The bishop is trapped now } 5. g4 Be4 6. f3 Bg6 7. h5) 5. Nc3 (5. g4 Bd7 6. Nc3 e6 { White now wishes the g and h pawns were back on the original squares. }) 5... h5 6. Nge2 e6 7. Ng3 Bg6 8. Be2 c5 { With a similar plan to 4. Nc3 in the previous chapter. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 3. e5 part 3"]
+[Site "https://lichess.org/study/B15qse9e/IayU0jx7"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Short Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "3. e5 part 3"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/Xzplk2cx"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:23:09"]
+
+1. e4 c6 2. d4 d5 3. e5 Bf5 { This chapter, I will analyze the two most popular lines: Nf3, and Bd3. } 4. Nf3 { Most common amongst players of all levels, from beginners all the way up to Super-GM! Nf3 is quite a flexible move, and it's impossible to tell what White's plan is here. } (4. Bd3 { Bd3 is quite common at the lower levels, but it is harmless. Think advance French, where the Bc8 is horrible. Now, white is intentionally offering to swap the bishops. } 4... Bxd3 5. Qxd3 e6 6. c3 c5 { That's it. Simple as that. An immensely improved version of the Advanced French. }) 4... e6 5. Be2 Ne7 6. O-O Nd7 7. Nbd2 (7. c4 { Also possible for White to play c4 + Nc3 instead of Nbd2. This does give Black a permanent outpost on d5 for his knight, but White argues that the new space advantage is also a plus. } 7... dxc4 8. Bxc4 Nb6 9. Bd3 Bxd3 10. Qxd3 Ned5 11. Nc3 Be7) 7... h6 8. Nb3 g5 { Since White is controlling the c5 square, Black switches gears and plays on the kingside! See Alekseenko - Artemiev below for a sample game. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: 3. exd5 and 4. Bd3"]
+[Site "https://lichess.org/study/B15qse9e/gcSDd9PN"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B13"]
+[Opening "Caro-Kann Defense: Exchange Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "3. exd5 and 4. Bd3"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/YTmkD27k"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:23:10"]
+
+1. e4 c6 2. d4 d5 3. exd5 cxd5 4. Bd3 (4. Nc3 { See Theme #2 for a reminder of why Nc3 is an inaccuracy here. }) 4... Nc6 5. c3 Qc7 6. Ne2 (6. Nf3 Bg4 { Bg4 is basically an automatic response to Nf3, which almost always leads to equality right away. }) (6. h3 e5 7. dxe5 Nxe5 8. Bc2 Nf6 9. Nf3 Nxf3+ 10. Qxf3 Bd6 11. O-O O-O { Balanced position. }) 6... Bg4 7. f3 (7. O-O Nf6 8. Qe1 e6 9. f3 Bh5 10. Qh4 Bg6) 7... Bd7 8. Bf4 e5 9. dxe5 Nxe5 { White's f3 push hinders his position. Now Black can take over on the dark squares with Qb6 or Bc5 in the near future. } *
+
+
+[Event "🏆 Caro-Kann Defense Repertoire 🏆: ** Grandmaster Games in the Caro Kann **"]
+[Site "https://lichess.org/study/B15qse9e/H8w9bYlA"]
+[Date "2020.07.28"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "** Grandmaster Games in the Caro Kann **"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/Q2sudVJc"]
+[UTCDate "2020.07.28"]
+[UTCTime "04:23:10"]
+
+ *
+
+
+[Event "London"]
+[Site "London ENG"]
+[Date "1922.08.14"]
+[Round "11"]
+[White "Henry Ernest Atkins"]
+[Black "Jose Raul Capablanca"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Henry Ernest Atkins - Jose Raul Capablanca"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/SsSRgcxN"]
+
+1. e4 c6 2. d4 d5 3. e5 Bf5 4. Bd3 Bxd3 5. Qxd3 e6 { We reach a pawn structure similar to the advance French with Black having played c6 instead of c5. However, the advantage is the light squared bishop, the usual drawback of the French, is exchanged for White's good bishop. } 6. Ne2 Qb6 7. O-O Qa6 { Caro-Kann players must be willing to trade pieces into an endgame with small advantages to press for a win. In this case, Black can say he has the superior bishop and no clear weaknesses, a good sign entering the endgame. } 8. Qd1 { White wisely declines the trade and hopes to utilize the kingside space advantage for an attack. } 8... c5 9. c3 Nc6 10. Nd2 cxd4 { Correct time to exchange on d4 since the White knight just moved from b1. Otherwise, it can easily hop in to c3, the ideal square. } 11. cxd4 Qd3 12. Nb3 Qxd1 13. Rxd1 Nge7 14. Bd2 a5 15. Rac1 b6 { Cutting off the important c5 square from White's knight. Now it's a matter of slow endgame technique. Capablanca plays it very smoothly and is very instructive. } 16. a4 Kd7 17. Nc3 Na7 { No outpost for you! } 18. Kf1 Nec6 19. Ke2 Rc8 20. Be1 Be7 21. Nb1 f5 22. exf6 Bxf6 23. Bc3 Nb4 24. Bd2 (24. Bxb4 axb4 { White does not really want to exchange bishop for knight. Even though Black will have doubled b-pawns, they are extremely difficult to attack. On the downside, the a4 pawn is not on an more b-file, making it more vulnerable. }) 24... Nac6 25. Be3 Na2 { Very interesting. The Na2 is quite a pest, allowing Black to fully control the c-file. } 26. Rc2 Rc7 27. Na3 Rhc8 28. Rcd2 Na7 29. Rd3 Nb4 30. R3d2 Rc6 31. Rb1 Be7 32. Ra1 Bd6 33. h3 R6c7 34. Rad1 Na2 35. Ra1 Bxa3 36. Rxa2 Bb4 37. Rd1 Rc4 38. Rc1 Nc6 { Threatening Nxd4+ } 39. Rxc4 dxc4 40. Nd2 Bxd2 41. Kxd2 Kd6 { Black has the superior minor piece. } 42. Kc3 Kd5 43. Ra1 g6 44. f3 Rb8 45. Ra3 b5 46. axb5 Rxb5 47. Bf2 Nb4 48. b3 cxb3 49. Kxb3 Nc6+ 50. Kc3 Rb1 51. Ra4 Rc1+ 52. Kd2 Rc4 53. Ra1 a4 54. Ra3 Na7 55. Ra1 Nb5 56. Rb1 Kc6 57. Kd3 Rc3+ 58. Kd2 Rb3 59. Rc1+ Kb7 60. Rc2 a3 61. Bg3 Nxd4 62. Rc7+ Kb6 63. Rc4 Kb5 64. Rc8 Nc6 65. Ra8 Rb2+ 66. Ke3 Rxg2 67. Bf2 Nb4 { 0-1 White resigns. } 0-1
+
+
+[Event "New York"]
+[Site "New York, NY USA"]
+[Date "1927.03.13"]
+[Round "15"]
+[White "Aron Nimzowitsch"]
+[Black "Jose Raul Capablanca"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Aron Nimzowitsch - Jose Raul Capablanca"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/sCrm1DO1"]
+
+1. e4 c6 2. d4 d5 3. e5 Bf5 4. Bd3 Bxd3 5. Qxd3 e6 6. Nc3 Qb6 7. Nge2 c5 8. dxc5 Bxc5 9. O-O Ne7 10. Na4 Qc6 11. Nxc5 Qxc5 12. Be3 Qc7 13. f4 Nf5 14. c3 Nc6 15. Rad1 g6 16. g4 Nxe3 17. Qxe3 h5 { Very common idea in the Caro-Kann. After h5, White is forced into a very committal move. If the g-pawn moves, it leaves a very useful outpost on f5 for Black. If h3, Black can take over the h-file with hxg4 hxg4. } 18. g5 O-O 19. Nd4 Qb6 20. Rf2 Rfc8 21. a3 Rc7 22. Rd3 Na5 23. Re2 Re8 24. Kg2 Nc6 25. Red2 Rec8 26. Re2 Ne7 { Sometimes, it is hard to play for a win in such closed positions. The best plan is just to keep maneuvering and trying. } 27. Red2 Rc4 28. Qh3 Kg7 29. Rf2 a5 30. Re2 Nf5 { Black accepts a pawn weakness in order to dislodge the annoying knight on d4. Playing for a win! } 31. Nxf5+ gxf5 32. Qf3 (32. Qxh5 Rh8 33. Qf3 Rh4 { Black will ultimately win the pawn on f4 and has tons of counterplay in addition. }) 32... Kg6 33. Red2 Re4 34. Rd4 Rc4 35. Qf2 Qb5 36. Kg3 Rcxd4 37. cxd4 Qc4 { Black's pieces are invading! It is interesting to compare the relative king safeties. } 38. Kg2 b5 39. Kg1 b4 40. axb4 axb4 41. Kg2 Qc1 42. Kg3 Qh1 43. Rd3 Re1 { Now all that's left is to look for tactical shots to win the game. } 44. Rf3 Rd1 45. b3 Rc1 46. Re3 Rf1 { 0-1 White resigns. } 0-1
+
+
+[Event "Varna ol (Men) fin-A"]
+[Site "Varna BUL"]
+[Date "1962.10.03"]
+[Round "6"]
+[White "Andreas Dueckstein"]
+[Black "Tigran Vartanovich Petrosian"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B18"]
+[Opening "Caro-Kann Defense: Classical Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Andreas Dueckstein - Tigran Vartanovich Petrosian"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/GCBMorWp"]
+
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. Nf3 Nd7 7. Bd3 e6 8. O-O Qc7 9. c4 O-O-O { Castling queenside is a bit risky, but it adds to the dynamics of the game with attacks on either end. Plans of h5-h4 is possible } 10. Bxg6 hxg6 11. Qa4 Kb8 12. b4 Nh6 13. Qb3 Nf5 14. a4 e5 15. dxe5 Nxe5 16. Nxe5 Qxe5 17. Bb2 Qc7 18. c5 a5 { A fairly interesting move that achieves multiple purposes. 1) To slow down White's pawn storm. 2) Create pawn weaknesses for White to attack later with Rh4, and along with that, doubling up rooks is next in the sequence. } 19. Rad1 Rxd1 20. Rxd1 Rh4 21. bxa5 Bxc5 22. a6 b6 23. Re1 Ka7 24. Be5 Qd7 25. Ne4 Bd4 26. g3 Bxe5 { Interesting choice by Petrosian to sacrifice the exchange but also damage White's pawn structure around his king. If Black can safely maneuver his pieces to coordinate an attack without risking the king safety, then he'll be in good shape. } 27. gxh4 Nd4 28. Qd1 Qd5 29. Re3 Nf5 30. Re1 Nd4 31. Qd3 f5 32. Ng5 c5 { A pretty sight. White has a seemingly dangerous pawn on a6, but the lack of open files makes the rook quite useless at the moment. } 33. Re3 c4 34. Qd1 Kxa6 35. Ra3 Bf6 36. h3 f4 37. Qg4 Ka5 { White's pieces are completely disconnected while Black just has the simple but strong plan of pushing the c-pawn to promotion. } 38. Nf3 Kb4 39. Nxd4 Kxa3 40. Nc2+ Kxa4 { 0-1 White resigns. } 0-1
+
+
+[Event "Pepe Cuenca Invitational"]
+[Site "chess24.com INT"]
+[Date "2020.04.12"]
+[Round "1.3"]
+[White "Leinier Dominguez Perez"]
+[Black "Vladislav Artemiev"]
+[Result "0-1"]
+[WhiteElo "2758"]
+[BlackElo "2716"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Short Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Leinier Dominguez Perez - Vladislav Artemiev"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/1H2a7PVp"]
+
+1. e4 c6 { GM Artemiev is known to play the Caro-Kann and get very very miniscule advantages in endgames. This one is quite instructive win over fellow Super-GM Dominguez Peres } 2. d4 d5 3. e5 Bf5 4. Nf3 e6 5. Be2 Nd7 6. O-O Bg6 7. Nbd2 Nh6 8. Nb3 Be7 9. Bf4 (9. Bxh6 { There's always debate over whether or not Bxh6 is worth it for White. At the cost of the bishop pair, White creates double isolated h-pawn troubles for Black, but that can also give Black chances with the open g-file. }) 9... Nf5 10. c3 O-O 11. Bd3 (11. g4 Nh4 { g4 doesn't scare Black. The knight has an outpost on h4 }) 11... c5 12. dxc5 Nxc5 13. Nxc5 Bxc5 14. Qe2 Nh4 15. Nxh4 Qxh4 16. Be3 Rac8 17. Rad1 Bxd3 18. Qxd3 Qa4 { This is a typical pawn structure in the advanced Caro-Kann. Black's plan is to try to create pawn weaknesses on the queenside with b5-b4 while White's is to attack on the kingside with f4-f5. } 19. a3 Qb3 20. Bc1 b5 21. h4 Qc4 22. Qg3 (22. Qxc4 bxc4 { Trading queens has to favor Black because now White has a huge backwards pawn weakness on b2. }) 22... Kh8 23. h5 h6 24. Be3 Bxe3 25. Qxe3 Qg4 26. Qxa7 Qxh5 27. Qe3 Rc4 28. Rd4 Rfc8 29. Rfd1 Qf5 30. g3 Rxd4 31. Rxd4 { Dropping the essential b2 pawn by mistake. But this is a blitz game. } 31... Qb1+ 32. Kg2 Qxb2 33. Rf4 Kg8 34. Qa7 Rf8 35. Qc5 Qe2 36. Qd6 Qb2 37. Qc5 Qe2 38. Qd6 h5 39. Qc7 Qd3 40. Qc5 g5 41. Rd4 Qe2 42. Qd6 Rc8 43. Qd7 Rxc3 44. Qd8+ Kh7 45. Qxg5 Qf3+ 46. Kg1 Rc2 47. Rf4 { Missing Black's idea. } 47... Rc1+ { 0-1 White resigns. } 0-1
+
+
+[Event "Russian Championship Superfinal"]
+[Site "Izhevsk RUS"]
+[Date "2019.08.13"]
+[Round "3.3"]
+[White "Kirill Alekseenko"]
+[Black "Vladislav Artemiev"]
+[Result "0-1"]
+[WhiteElo "2668"]
+[BlackElo "2757"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Short Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Kirill Alekseenko - Vladislav Artemiev"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/fiiZrNdj"]
+
+{ This game is a good example of how Black can attack on the kingside in the advance Caro-Kann instead of the more normal queenside breaks. }
+1. e4 c6 2. d4 d5 3. e5 Bf5 4. Nf3 e6 5. Be2 h6 6. O-O Ne7 7. Nbd2 Nd7 8. Nb3 g5 { Very common plan to expand on the queenside. If White uses his resources to prevent c5, Black can switch gears and play on the kingside. } 9. a4 Bg7 10. a5 O-O 11. c3 Qc7 12. h4 g4 13. Ne1 h5 14. Nd3 Ng6 15. Nf4 Nxf4 16. Bxf4 f6 { Now the attack is forming, with an f-file about to open up. } 17. exf6 Qxf4 18. fxg7 Kxg7 19. Qc1 e5 20. c4 Be6 21. c5 a6 { Important to stop White's counterplay. If White gets to play a6 successfully, Black's pawn chain will be precarious. } 22. dxe5 Qxc1 23. Raxc1 Rf4 24. Rfd1 Nxe5 25. Rc3 Re8 26. Re3 Bc8 27. Nd4 Rff8 28. Bd3 Kf6 29. Kh2 Re7 30. Kg3 Rfe8 31. Bc2 Nd7 32. Rxe7 Rxe7 33. b4 Nf8 34. Kf4 Re5 35. f3 Ne6+ 36. Nxe6 Bxe6 37. Bg6 gxf3 38. gxf3 Bf5 39. Bxf5 Rxf5+ 40. Ke3 Ke5 { Again, we reach a better rook endgame for Black due to the more pawn weaknesses for White (h4, f3, and b4) } 41. Rg1 d4+ 42. Kf2 Kd5 43. Rg7 Kc4 44. Rxb7 d3 45. Rd7 Kc3 46. Ke3 Re5+ 47. Kf4 Re1 { 0-1 White resigns. } 0-1
+
+
+[Event "Israeli Open 2019"]
+[Site "Jerusalem ISR"]
+[Date "2019.12.15"]
+[Round "3.9"]
+[White "Dvoirys, Semen I."]
+[Black "Gorodetzky, David"]
+[Result "0-1"]
+[WhiteElo "2467"]
+[BlackElo "2483"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B19"]
+[Opening "Caro-Kann Defense: Classical Variation, Seirawan Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Dvoirys, Semen I. - Gorodetzky, David"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/1FTrXjW1"]
+
+1. e4 c6 2. d4 d5 3. Nd2 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. h4 h6 7. Nf3 Nd7 8. h5 Bh7 9. Bd3 Bxd3 10. Qxd3 e6 11. Bd2 Ngf6 12. O-O-O Bd6 13. Ne4 Nxe4 14. Qxe4 Nf6 15. Qe2 Bc7 16. c4 b5 { Again, the thematic b5 (See Theme #1). } 17. Kb1 bxc4 18. Qxc4 O-O 19. Qxc6 { A bold attempt to win a pawn. But in opposite sides castling positions, an extra pawn also means an extra open file for your opponent... } 19... Rb8 20. Rc1 Bd6 21. Qa6 Qd7 22. Rc6 Be7 23. Qc4 Nd5 { Beautiful outpost on d5 for the knight, all thanks to the b5 push earlier. } 24. Rc1 Qb7 25. Rc2 Bb4 26. Qa6 Qe7 27. Rc8 Bxd2 28. Rxf8+ Rxf8 29. Rxd2 Qc7 { White would be fine if not for this move. Now Black fully dominantes the c-file } 30. a3 Rc8 31. Ka2 Qc1 32. Qxa7 Qc4+ 33. Kb1 Qb3 { 0-1 White resigns. } 0-1
+
+
+[Event "FIDE World Championship Tournament"]
+[Site "San Luis ARG"]
+[Date "2005.09.28"]
+[White "Judit Polgar"]
+[Black "Viswanathan Anand"]
+[Result "0-1"]
+[WhiteElo "2735"]
+[BlackElo "2788"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B17"]
+[Opening "Caro-Kann Defense: Karpov Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Judit Polgar - Viswanathan Anand"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/l9SeU20Z"]
+
+{ A great sample game of Caro-Kann, it starts fairly slow but it gets extremely sharp as both sides castle opposite and then Anand gets the faster attack, which leads to victory on the queenside. }
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Nd7 5. Bd3 Ngf6 6. Nf3 Nxe4 7. Bxe4 Nf6 8. Bd3 Bg4 9. Be3 e6 10. c3 Bd6 11. h3 Bh5 12. Qe2 Qa5 13. a4 O-O 14. Qc2 Bxf3 15. gxf3 { Seizing the chance to ruin White's pawn structure. The open g-file is hard for White to attack on. It may have been scarier for Black if White got in the standard pawn storm with g4 and h4. } 15... Qh5 16. O-O-O Nd5 17. Kb1 b5 { We see a classic pawn break on the queenside (see Theme #1 below). Since kings are castled on opposite sides, Black can gambit pawns with no risk to king safety, and can open up lines for his rooks for a queenside attack. } 18. Rdg1 (18. axb5 cxb5 19. Bxb5 Nxe3 { Bb5 is now hanging } 20. fxe3 Qxb5) 18... f6 19. axb5 cxb5 20. Bc1 Rab8 21. Qe2 Rfe8 22. Qe4 Kh8 23. h4 f5 { This move singlehandedly stops all of White's potential attacks. Now it is time to focus on the queenside without worry. } 24. Qe2 Qf7 25. Rg2 Bf4 26. Rhg1 Rg8 27. Be3 Qd7 28. Qd2 Bd6 29. Bc2 Qb7 30. Bg5 b4 31. c4 b3 32. Bd3 Bb4 33. Qe2 Qa6 34. Bh6 Nc3+ 35. bxc3 Bxc3 { There is no stop to checkmate without giving up lots of material. } 36. Kc1 Qa3+ 37. Kd1 Qa1+ 38. Bc1 b2 39. Qe3 Bxd4 40. Qd2 bxc1=Q+ 41. Qxc1 Qa2 { 0-1 White resigns. } 0-1
+
+
+[Event "PRO League Group Stage"]
+[Site "chess.com INT"]
+[Date "2020.2.17"]
+[Round "7"]
+[White "Hansen, Eric"]
+[Black "Nakamura, Hikaru"]
+[Result "0-1"]
+[WhiteElo "2606"]
+[BlackElo "2736"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B11"]
+[Opening "Caro-Kann Defense: Two Knights Attack, Mindeno Variation, Retreat Line"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Hansen, Eric - Nakamura, Hikaru"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/uiNeoCTa"]
+
+1. e4 c6 2. Nc3 d5 3. Nf3 Bg4 4. h3 Bh5 5. d3 e6 { Placing all of the pawns on light squares signals that Black doesn't mind trading off the Bh5 since it's the "bad bishop" by definition. } 6. Be2 Nd7 7. Bf4 Bb4 8. O-O Ne7 9. Ne5 Bxc3 { Interesting decision to swap the good bishop. It does give him the better pawn structure going into an endgame as the minors are getting exchanged. } 10. bxc3 Bxe2 11. Qxe2 O-O 12. Nxd7 Qxd7 13. a4 Ng6 14. Bd2 { White can hardly claim any advantage of the bishop over the knight, and it's hard to really come up with an effective plan. } 14... e5 15. a5 f5 16. f3 Rf7 17. Be3 Qe6 18. exf5 Qxf5 19. Rab1 a6 20. Rb4 Rd8 21. c4 h6 22. Rfb1 Rdd7 { Making sure the base of the pawn chain (b7) is fully guarded, otherwise the rest of the chain falls } 23. cxd5 cxd5 24. Rb6 Kh7 25. Qe1 Rc7 { Eyeing a target on c2. e4 seems to be the ideal pawn break which results in the position exploding with play. } 26. R1b2 e4 27. fxe4 dxe4 28. d4 Rfd7 29. Kh2 Ne7 30. Qh4 Nd5 { The knight is clearly the superior minor piece here. It sits on a beautiful square, creating forks here and there. } 31. R6b3 Nxe3 32. Rxe3 Rxd4 33. Qg3 Qxa5 34. Qf4 Re7 35. c3 Rc4 36. Rbe2 Qe5 { 0-1 White resigns. } 0-1
+
+
+[Event "Hoogovens Blitz"]
+[Site "Wijk aan Zee NED"]
+[Date "1998.01.19"]
+[Round "8"]
+[White "Judit Polgar"]
+[Black "Anatoly Karpov"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B14"]
+[Opening "Caro-Kann Defense: Panov Attack"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Judit Polgar - Anatoly Karpov"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/X73Q8w0s"]
+
+1. e4 c6 2. d4 d5 3. exd5 cxd5 4. c4 Nf6 5. Nc3 e6 6. Nf3 Be7 7. cxd5 Nxd5 8. Bd3 Nc6 9. O-O O-O 10. Re1 Nf6 11. a3 b6 { As seen in Theme #4, Black's plan is to finish development and line up against the isolated d4 pawn. Black should welcome minor piece trades since White's pawn becomes weaker and weaker with each exchange. } 12. Be3 Bb7 13. Rc1 Rc8 14. Bb1 Na5 15. Ne5 Nc4 16. Nxc4 Rxc4 17. Qd3 Rc8 18. Bg5 g6 { Making sure White's attack is stopped first. Although Black has a static pawn structure advantage, White does have more space and potential to attack on the kingside temporarily. } 19. Ba2 Rc7 20. Rcd1 Nd5 21. Bh6 Re8 22. Nb5 Rd7 { Although this is a pawn sacrifice, Karpov comes up with a devious plan which involves an immediate counterattack in the center and kingside. } 23. Nxa7 Bg5 24. Bxg5 Qxg5 { Black's pieces are in good coordination for the cost of the a7 pawn } 25. Qg3 Qf6 26. Nb5 Nf4 { Either Black will regain the pawn on g2 or d4. } 27. Nc3 Rxd4 28. f3 Red8 29. Rxd4 Qxd4+ 30. Kh1 Qd2 31. h4 Nh5 32. Qe5 Qxb2 (32... Bxf3 { Karpov misses this interesting combo that creates an unstoppable mating net. } 33. gxf3 Qf2) 33. Qc7 Rc8 34. Qxb7 Qxc3 35. Rd1 Qc5 36. Qd7 Rf8 37. Qd4 Qxa3 38. Bb1 Qe7 { Black can happily retreat and be up 2 pawns from here } 39. Kh2 b5 40. Be4 b4 41. Bc2 Rc8 42. Ba4 Qc7+ 43. Kg1 Rb8 44. Bb3 Qc3 45. Rd3 Qxd4+ 46. Rxd4 Ng3 47. Kf2 Nf5 48. Rc4 Kf8 49. g3 h5 50. Bc2 b3 51. Bb1 Ne7 52. Rc7 Nd5 53. Rc6 b2 54. g4 hxg4 55. fxg4 Rb3 56. Rc8+ Kg7 57. h5 Nc3 58. Bc2 b1=Q 59. Bxb1 Nxb1 60. hxg6 Kxg6 61. Rg8+ Kh7 62. Rg5 Kh6 63. Rh5+ Kg6 64. Re5 { 0-1 White resigns. } 0-1
+
+
+[Event "Pro Chess League"]
+[Site "chess.com INT"]
+[Date "2018.01.18"]
+[Round "1"]
+[White "Steven James Breckenridge"]
+[Black "Alexey Dreev"]
+[Result "0-1"]
+[WhiteElo "2312"]
+[BlackElo "2653"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B18"]
+[Opening "Caro-Kann Defense: Classical Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Steven James Breckenridge - Alexey Dreev"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/N7YdCIAG"]
+
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. N1e2 Nd7 7. Nf4 e5 { Striking back in the center right away. May seem odd that Black is opening up the center without castling and White has the bishop pair, but you will see soon what's up. } 8. Nxg6 hxg6 9. dxe5 Qa5+ 10. Bd2 Qxe5+ 11. Qe2 O-O-O { The goal is to castle long! And given Black's solid pawn formation, it's really hard for White to find active and long range diagonals for his bishops. A Caro-Kann thing for sure } 12. O-O-O Ngf6 13. f4 { I will mark this move as dubious because it is unnecessary and only self inflicts a weakness for the rest of the game. } 13... Qc7 14. Qf3 Bd6 15. Bc4 Nb6 16. Bd3 Na4 17. Bc4 Nb6 18. Bd3 Kb8 19. Ne4 Nxe4 20. Bxe4 Na4 21. g3 { Missing the following sequence. } 21... f5 22. Bd3 Qb6 { Strangely no good way to defend against the threat on b2 } 23. Bc3 (23. b3 Ba3+ 24. Kb1 Qd4) 23... Nxc3 24. bxc3 Bc5 25. Kd2 Qa5 26. Rb1 Bb6 27. g4 Rxd3+ 28. Kxd3 (28. cxd3 Qxa2+ 29. Kc1 Bc5 { No chance! Ba3+ is winning material }) (28. Qxd3 Rd8) 28... Rd8+ 29. Ke2 Qa6+ 30. Ke1 Re8+ 31. Kd1 Qxa2 32. Rb4 Re3 33. Qg2 Qa1+ 34. Kd2 Qxc3+ 35. Kd1 Qxb4 36. gxf5 Ba5 37. Qf2 { 0-1 White resigns. } 0-1
+
+
+[Event "US Championship"]
+[Site "St Louis, MO USA"]
+[Date "2017.04.08"]
+[Round "10"]
+[White "Yaroslav Zherebukh"]
+[Black "Hikaru Nakamura"]
+[Result "0-1"]
+[WhiteElo "2605"]
+[BlackElo "2793"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "B18"]
+[Opening "Caro-Kann Defense: Classical Variation, Flohr Variation"]
+[StudyName "Caro-Kann Defense Repertoire"]
+[ChapterName "Yaroslav Zherebukh - Hikaru Nakamura"]
+[ChapterURL "https://lichess.org/study/PDVt7Kbh/x423xutU"]
+
+{ Nice miniature win by US Grandmaster Nakamura which nicely illustrates the potential dangers of a kingside attack with the open h-file. }
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. Nh3 Nf6 7. Nf4 Nbd7 8. Bc4 Qc7 9. O-O e6 10. c3 Bd6 11. Qf3 c5 12. dxc5 Bxc5 13. Bb3 O-O-O 14. Nxg6 { A move I'm sure White regretted after the game. The h-file looks deadly even to an intermediate level player! } 14... hxg6 15. Bf4 e5 16. Be3 e4 { A possible rook sac coming?! } 17. Qe2 Bxe3 18. Qxe3 (18. fxe3 Rxh2 { Rxh2 is coming either way }) 18... Rxh2 19. Rfd1 Rdh8 20. Qxa7 e3 21. Qxe3 Ng4 { White resigns 0-1. Try to find the mating pattern if White plays Qd2. } 0-1
+
+

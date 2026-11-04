@@ -1,0 +1,22 @@
+{
+  "studies": 38,
+  "bytes": 2746984,
+  "chapters": 724,
+  "colors": {
+    "white": 13,
+    "black": 18,
+    "both": 7
+  },
+  "roles": {
+    "repertoire": 18,
+    "repertoire-and-exercises": 2,
+    "repertoire-and-model-games": 7,
+    "opening-guide": 7,
+    "repertoire-and-traps": 4
+  },
+  "duplicate_bytes": [],
+  "duplicate_move_trees": [],
+  "parse_errors": {},
+  "raw_comments_preserved": true,
+  "synthetic_variants": 0
+}

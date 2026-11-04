@@ -1,0 +1,238 @@
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Introduction"]
+[Date "2017.09.18"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/zzm8fGDL"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.18"]
+[UTCTime "18:40:46"]
+
+{ Welcome to Water-Flame's study on punishing poor opening choices! This study will show you ways to gain a significant advantage over players who use weak openings. }
+ *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Damiano Defense"]
+[Date "2017.09.18"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C40"]
+[Opening "King's Pawn Game: Damiano Defense"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Damiano Defense"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/LztgG0lb"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.18"]
+[UTCTime "18:42:38"]
+
+{ The Damiano Defense (e4 e5 Nf3 f6) is one of the worst openings for black. While it may look like the move f6 guards black's pawn on e5, it actually does not, and it opens up black's kingside, which white can easily exploit. Despite being a terrible opening, the Damiano Defense is played commonly by beginners. }
+1. e4 e5 2. Nf3 { White attacks black's pawn on e5. Black has a few good ways to defend his pawn, such as Nc6 or d6, but instead, black will play f6. } { [%cal Rf3e5] } 2... f6 { Now this may look OK for black. It doesn't look great since the knight is blocked from its best square and it opens up the kingside. But it doesn't look like anything terrible is gonna happen soon. However, that is far from the truth. } { [%cal Bf6e5] } 3. Nxe5 { White's move here may look terrible. It gives up the knight, just for a pawn? What is white thinking?! Well, if black recaptures, he will be in for a world of pain. } 3... fxe5 { Now, white can take advantage of the open kingside. Can you spot the move? } (3... Qe7 { This is black's only hope. This move will regain the pawn, but white will be left with a far superior position. However, since this opening is played almost exclusively by beginners, it's not likely that they'll know of this trap. }) 4. Qh5+ { And now black is in a REALLY bad position. If he blocks the check with g6, the queen can then take the pawn on e5, giving check and forking the rook. So, black's only other option would be to move the king to e7. } { [%csl Rh5][%cal Rh5e5,Rh5e8] } 4... Ke7 (4... g6 5. Qxe5+ Qe7 6. Qxh8 { And the rook is lost. }) 5. Qxe5+ { [%cal Re5e7] } 5... Kf7 6. Bc4+ { And black is in deep water now. There are a couple of ways black can save himself from checkmate, but none are desirable. } { [%csl Rc4][%cal Rc4f7] } 6... d5 { [%csl Gc8][%cal Gc8f5] } (6... Kg6 { The move d5 may look like it's giving a pawn away, but it's actually black's only way to prevent checkmate. } 7. Qf5+ Kh6 8. h4 Qf6 { Black can try to trade off queens, but it won't work. White can deliver checkmate in a few moves here. } 9. d4+ g5 10. Bxg5+ Kg7 11. Bxf6+ Nxf6 12. Qg5# { And the game is over. So this is why black should play d5 before moving the king to g6. }) 7. Bxd5+ { And now black has to move his king to g6. } { [%csl Rf7][%cal Rd5f7] } 7... Kg6 8. h4 h6 { This move gives black an escape for his king after white plays h5. } 9. Bxb7 { This move may look like it's giving up the bishop, but if black takes, white can give checkmate in 1 move. At this point, black is pretty much lost. } { [%cal Rb7c8,Rb7a8] } 9... Bd6 { [%cal Rd6e5] } 10. Qa5 Nf6 11. Bxa8 { And, black has lost his rook, as well as an exposed king and terrible overall position. White clearly has a won position. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Fool's Mate"]
+[Date "2017.09.18"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A00"]
+[Opening "Barnes Opening: Fool's Mate"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Fool's Mate"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/Pr9M9R2z"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.18"]
+[UTCTime "22:35:42"]
+
+{ This is pretty rare, as most white opponents won't make these moves, but some beginners will occasionally do this. It's just good to know in case someone actually does do this. }
+1. g4 { This move is occasionally played by many players; even a few GMs have used it. It's an extremely risky move that all but destroys white's kingside defense. However, it can give white some good attacking chances. } 1... e5 { A lot of players do d5 instead of this, attacking the pawn on g4. I'd recommend this move over d5 even if you're not aiming for the 2-move checkmate. } 2. f3 { Now notice how there's a clear diagonal to white's king. The next move is pretty easy to spot. } { [%cal Yh4e1] } 2... Qh4# { And just like that, game over in 2 moves. This position can also be reached by white moving f3 first. This will also work if white does f4 instead of f3. } { [%cal Rh4e1] } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Parham's Attack"]
+[Date "2017.09.18"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C20"]
+[Opening "King's Pawn Game: Wayward Queen Attack"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Parham's Attack"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/PCSJClQN"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.18"]
+[UTCTime "22:40:42"]
+
+{ This opening is one of the most common among beginners. White hopes for black to fall into a trap within the first few moves. One trap leads to the loss of a rook; the other to losing the game in 4 moves. }
+1. e4 { White opens with e4, which is arguably the best first move. } { [%cal Gf1c4,Gd1h5] } 1... e5 { Black defends symmetrically. } 2. Qh5 { And this is the critical move- white is attacking the pawn on e5 with the queen, but notice black's f7 pawn guarded only by the king. } { [%cal Rh5e5,Rh5f7] } 2... Nc6 { This is probably black's best move. d6 and Nf6 are also good moves. This move develops the knight, while guarding the pawn on e5. } { [%csl Bc6][%cal Bc6e5] } (2... g6 { This move may look OK at first glance, but this is the move that loses a rook. } 3. Qxe5+ { And there goes the rook. Black can do nothing now to defend it. } { [%cal Re5e8,Re5h8] } 3... Qe7 4. Qxh8) (2... d6 { This move may look very passive at first, since it blocks in black's bishop on f8. However, black can fianchetto it within the next few moves. } 3. Bc4 { White is now threatening checkmate. Black can easily block the attack with g6. } { [%cal Rc4f7,Rh5f7] } 3... g6 4. Qf3 { Trying for mate again! Black again can defend very easily. } { [%cal Rf3f7,Rc4f7] } 4... Nf6 { And here, black has a better position. Both his bishops will become well placed shortly, and while white's bishop on c4 is good, the queen at f3 is placed terribly, since it's developed prematurely and blocks the knight from its best square. } { [%cal Gc8g4,Gf8g7] }) (2... Nf6 { This move may look bad. White will take the pawn at e5. Why would you just give up the pawn? Well, there's a simple reason- black will gain a major advantage in development. } 3. Qxe5+ Be7 { Here black is all ready to castle, and white's queen on e5 is placed awkwardly and is going to have to move again soon. While this line isn't the BEST of the possible moves for black, it leads to an overall equal game. }) 3. Bc4 { Here white is going for checkmate! An often blunder by black is Nf6, which attacks the queen, but however lets white give checkmate. The proper move here is g6. } { [%cal Rc4f7,Rh5f7] } 3... g6 { This move kicks the queen, and guards checkmate. White can try again now with Qf3. } (3... Nf6 4. Qxf7# { Checkmate in four moves... RIP }) 4. Qf3 { And now black can defend easily by playing Nf6. } { [%cal Rf3f7,Rc4f7] } 4... Nf6 { Here black has an advantageous position. The bishop on f8 can be fianchettoed, and white's queen is placed poorly, since it blocks the knight from its best square. } 5. Qb3 { White is trying again to attack the weak f7 pawn. While it may look like black's only defense would be Qe7, black can actually win the bishop here. } { [%cal Yb3f7,Rc4f7] } 5... Nd4 { [%csl Rb3][%cal Rd4b3] } 6. Bxf7+ { White takes the pawn, assuming he can deal with the queen under attack next move. } { [%csl Rf7][%cal Rf7e8] } 6... Ke7 { Now, the queen has to continue to protect the bishop on f7. There's only one retreat. Also notice black is threatening a fork on c2. } { [%csl Rb3,Rd4][%cal Rd4b3,Re7f7,Rd4c2] } 7. Qc4 { This move looks like it solves all of white's problems. But black can kick the queen one more time now and win the bishop. } { [%cal Bc4c2,Bc4f7] } 7... b5 { Now white has only one retreat to protect c2 and none to guard the bishop. } { [%cal Rb5c4,Re7f7] } 8. Qc3 { [%cal Bc3c2] } 8... Kxf7 { And black, despite having his king unable to castle, has better development and a material advantage. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Greco Defense"]
+[Date "2017.09.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C40"]
+[Opening "King's Pawn Game: McConnell Defense"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Greco Defense"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/c86jKJXU"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.19"]
+[UTCTime "15:02:51"]
+
+{ Another opening very common at beginner levels, the Greco defense is another weak response to e4 e5 Nf3. The move develops the queen too early, and blocks the kingside knight from its best square. }
+1. e4 e5 2. Nf3 { [%csl Re5][%cal Rf3e5] } 2... Qf6 { This is the Greco defense. The knight is taken from its best square, and the queen is out too early, and will not remain safe at f6 for very long. } { [%cal Bf6e5] } 3. Nc3 { This move threatens Nd5, which would force the queen to defend the c7 pawn. It also develops the knight. } { [%cal Gc3d5] } 3... Nc6 { Black develops the knight, which is necessary here, since it guards the pawn. White is going to play Nd5, attacking the queen, and will force the queen to let go of defending the e5 pawn. } 4. Nd5 Qd8 { And now black has to bring his queen back home. Qd6 would also guard the c7 pawn but it would block the kingside bishop, as well as the d-pawn from advancing. } 5. d4 exd4 6. Nxd4 { And here, it's pretty clear that white has a far better position. White's bishops can move freely about, and has two central knights and a central pawn, while black just has one central knight. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Latvian Gambit"]
+[Date "2017.09.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C40"]
+[Opening "Latvian Gambit"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Latvian Gambit"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/DdctVFN1"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.19"]
+[UTCTime "15:12:09"]
+
+{ The Latvian gambit is an extremely risky opening for black. After e4 e5 Nf3, black plays f5, attacking aggressively in the center. The move is considered unsound, since it gives away a pawn, and while black may get some attacking chances, if white knows how to play against it, he can come out of the opening with a significant advantage. }
+1. e4 e5 2. Nf3 { [%cal Rf3e5] } 2... f5 { This is the signature move of the Latvian. While many players may think taking the pawn on f5 is the best move, taking the pawn on e5 with the knight is better. } 3. Nxe5 Nf6 { Black kinda has to play this. He can't take the pawn on e4, since then white can exploit the kingside with Qh5+ } (3... fxe4 4. Qh5+ g6 5. Nxg6 hxg6 6. Qxh8 { And black now has a completely lost position. }) 4. Bc4 { This move is aiming after the f7 square to try and fork the queen and the rook. Black only two ways to avoid losing it, d5 or Qe7. Qe7 is far better though. } { [%cal Re5f7,Rc4f7] } 4... Qe7 (4... d5 5. exd5 { White now has a decisive advantage. }) 5. d4 { White defends the knight with an outpost, while gaining central space. } 5... Nc6 { This is black's best move here. Black attempts to trade off knights and then to regain the pawn on e4. } 6. O-O { This move will give back the pawn to black. But, white has castled and now has an excellent position. } 6... Nxe5 7. dxe5 Qxe5 8. exf5 Qxf5 { And here white has a clear advantage. Black has developed almost nothing, while white has safely castled, and the bishop on c4 will prevent black from castling kingside for a while. It's not completely lost for black or anything, but white has a far better position out of the opening. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Borg Defense"]
+[Date "2017.09.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Borg Defense"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Borg Defense"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/u4iMND1h"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.19"]
+[UTCTime "15:31:36"]
+
+{ Another response to e4, the Borg Defense basically self-destructs his kingside on move 1. Black will lose space in the center and time developing, all while his kingside will be extremely vulnerable to white attacks. }
+1. e4 g5 2. d4 { White plays d4, which gets yet another central pawn, and is attacking the pawn on g5. Black has two ways to defend the pawn, or can attempt a trap, which as white, you'll need to watch out for. } { [%cal Rc1g5] } 2... e6 { This is black's best way to defend the pawn, since it opens up for the queen and the bishop is black chooses not to place it on g7. However black's position is still very weak. } { [%cal Bd8g5] } (2... f6 { This move may look like it defends the pawn, but note that there's a clear diagonal to the king... } 3. Qh5# { So, uh, well, f6 doesn't exactly work. }) (2... h6 { This move also defends the pawn and looks OK for black since it makes a little pawn chain, but white can attack this weak move with 3. h4! } 3. h4 gxh4 { Black's only viable option here is to take the pawn, and now the pawn that started on g5 looks even worse than where it was after move 1. White has no need to recapture immediately. } 4. Nf3 { Taking with the rook isn't a great move since it brings the rook out in the opening; rooks are best in the middlegame and endgame. So, white can attack the pawn with the knight. } 4... Bg7 { Black has no way to save the pawn, so instead he can just go on with developing his army. } 5. Nc3 { And now white has both knights developed, two central pawns, and open diagonals for both bishops. Black just has a bishop placed on b7, which is OK, but the rest of his position is terrible. Hanging pawns on the h-file and almost no pieces developed. Not to mention his horribly weak kingside. White has a far better position here. }) (2... Bg7 { This is black's attempt to trap white. He sacrifices his pawn on b5, hoping white will fall for a trap that will lose him a rook. } 3. Bxg5 { This move is needed for the trap to work, but it's perfectly fine. White just has to be aware of this next pawn sacrifice by black. } 3... c5 { Black is hoping white will take this pawn. White should instead defend with Nf3. } 4. Nf3 (4. dxc5 { If white takes the pawn here, black can take the pawn on b2 with his bishop, and then go on to take white's rook. } 4... Bxb2 5. Nd2 Bxa1 6. Qxa1) 4... Nc6 { Black still tries to get white to take the pawn. White can still defend it, though. } 5. Be3 { White can bring back his bishop to e3, while defending the pawn. Pushing the pawn to d5 is also acceptable. } (5. d5 Bxb2 6. Nbd2 Bxa1 7. Qxa1 { [%cal Ra1h8] } 7... Nd4 8. Nxd4 cxd4 9. Qxd4 { And white has a good position here, too. })) 3. Nc3 { White can go on with developing his knight, taking firm control of the center. } 3... Bg7 { Black places the bishop on b7, trying to attack the center from a distance. } 4. Be3 { This move locks up the center for white. Black can't really do much here. His kingside is weakened, and white is dominating the center, and black doesn't really have any good counterattacking options here. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Dutch Defense"]
+[Date "2017.09.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A80"]
+[Opening "Dutch Defense: Hopton Attack"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Dutch Defense"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/uOOV9Djz"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.19"]
+[UTCTime "18:32:15"]
+
+{ The Dutch Defense is not necessarily a bad opening, but if black doesn't really know what he's doing it will lead to a quick victory for white. In most variations of the Dutch though, white will still gain a solid advantage. The Dutch weakens black's kingside quite a bit, and black needs to make sure to avoid a few traps. The Dutch is still played occasionally by Masters, though. }
+1. d4 f5 { This is the critical move of the Dutch defense. A critical move in the Dutch is e6, and white can prevent black from playing it easily. } 2. Bg5 { This is the Hopton attack, which is the move I'd recommend against the Dutch. It pretty much prevents black's plans of playing e6. In the other variations of the Dutch, such as where white plays c4 or Nf3, black gets a pretty good game. This move makes it tough for black though. There is also a trap here that players new to the Dutch will fall for. } { [%cal Rg5d8] } 2... Nf6 { This is black's best move to attempt to play e6, but white can trade off the bishop for black's knight and force the doubled pawns. } (2... h6 { This move will lead to the trap. } 3. Bh4 g5 { Black tries to get the bishop away to allow e6, even though it weakens his kingside. } 4. Bg3 f4 { And it looks like white's bishop is trapped! But, there's an easy way to avoid this for white now. } 5. e3 { White is threatening checkmate! Black can't take the bishop. } { [%cal Gd1h5,Rh5e8] } 5... Nf6 { This move defends from checkmate, but now white will have a big advantage. } (5... fxg3 6. Qh5# { And... checkmate. }) 6. exf4 gxf4 7. Bxf4) 3. Bxf6 exf6 4. c4 { And here white has an excellent position. White has two central pawns, and soon can play e3, while black has two pawns on the f-file and a weakened kingside. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Fred Defense"]
+[Date "2017.09.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B00"]
+[Opening "Duras Gambit"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Fred Defense"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/h4kq69ay"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.19"]
+[UTCTime "19:42:48"]
+
+{ The Fred Defense is another opening for black that weakens the kingside. It is similar to the Latvian in the sense that black offers white his f-pawn to try and get better development. However, with correct play, white will have an advantage. }
+1. e4 f5 { This is the Fred Defense, also known as the Duras Gambit. White is best off accepting the pawn. } 2. exf5 Nf6 { Black is almost forced to play this, since he has to defend Qh5+. } { [%cal Bf6h5] } 3. Be2 { Now white is really threatening an attack on the king. Black really doesn't have many ways to avoid losing the right to castle, but there is one way. } { [%csl Bd1][%cal Ge2h5,Bd1e2] } 3... h5 { This is pretty much the only way black can prevent his king from moving. But now his kingside defense is pretty mucn nonexistent and white is ahead in development, too. } 4. Nf3 d5 { It may look like black can easily regain his pawn and develop his bishop nicely, but that is not the case. } 5. Nh4 { There's not much black can do to try and regain the pawn. Instead, he can try and exchange pawns and develop his queenside knight. } { [%cal Bh4f5] } 5... e6 6. Ng6 Rh7 7. fxe6 Bxe6 8. d4 { Black's best option here is Nc6, to try and develop his minor pieces. } 8... Nc6 9. O-O { And now white is castled, with a far superior position. Black's position is pretty terrible, while white has his king castled safely and can develop his other minor pieces shortly. White is also winning by a pawn. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Scandinavian Defense (Qe5+ Variation)"]
+[Date "2017.09.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B01"]
+[Opening "Scandinavian Defense: Mieses-Kotroc Variation"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Scandinavian Defense (Qe5+ Variation)"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/4mWjcX5F"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.19"]
+[UTCTime "19:56:48"]
+
+{ The Scandinavian defense is an attempt by black to immediately respond to white's e4 move by attacking the pawn supported by the queen with d5. While the opening isn't played often by GMs due to the fact that it brings out the queen too early, it is still played occasionally. However, the Qe5+ variation is never played by GMs, but played often by beginners hoping for white to make a mistake. }
+1. e4 d5 { This is the Scandinavian defense. } { [%cal Rd5e4] } 2. exd5 Qxd5 { And as you can see, black's queen is developed on move 2, and white can gain some time developing by attacking it with Nc3. } 3. Nc3 { Here black has two good options: Qa5 (The Main Line) or Qd6. However, many beginners prefer to give check with Qe5+. } 3... Qe5+ { White can now gain more time developing by playing Be2. } 4. Be2 { And here most beginners will continue to try to get white to make a mistake by playing Qg5. } 4... Qg5 5. Bf3 { This prevents Qxg2, and now black's queen is very vulnerable to attack. } 5... Qe5+ { Many beginners will try again at checking the king. And now, white can develop his knight. } 6. Nge2 Nf6 7. d4 { And now white has his pieces developed so much better than black. All black has developed is a knight and the queen, whereas white has a central pawns, a bishop, two knights and the ability to safely castle. It's pretty obvious who's winning now. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Ruy Lopez: Nurenberg Defense"]
+[Date "2017.09.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C60"]
+[Opening "Ruy Lopez: Nürnberg Variation"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Ruy Lopez: Nurenberg Defense"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/Z4MYcQwA"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.19"]
+[UTCTime "21:49:25"]
+
+{ The Nurenberg defense against the Ruy Lopez (Spanish) opening is yet another opening where black advances his f-pawn early in the game. It's an extremely weak way to defend against the Spanish, and is therefore almost never seen in master play, but occasionally in games between amateurs. }
+1. e4 e5 2. Nf3 Nc6 3. Bb5 f6 { This is the main move of the Nurenberg defense. It's bad because it weakens the kingside and blocks the knight from it's best square. While there is no direct refutation of this opening such as in the Damiano defense, white can get a far better game just by developing normally. } 4. O-O a6 5. Bc4 { While this move may look strange due to the fact that in the Spanish white normally plays Ba4, this move is probably better, because it blocks black from castling kingside as well as putting some pressure on the diagonal to f7. } 5... Bc5 { Many players will choose to get their bishop out now, but it's not really doing that much on c5. White can now prepare a central pawn push with c3. } 6. c3 Nge7 { This is black's most common response, to attempt to castle kingside. However, white's bishop is blocking that. } { [%cal Rc4g8] } 7. d4 exd4 8. cxd4 { And now white has pretty much taken over the center of the board. Not only that, but black's kingside is weak and white can exploit this later. White should have a definitive advantage going into the middlegame. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: Napoleon's Attack"]
+[Date "2017.09.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C20"]
+[Opening "King's Pawn Game: Napoleon Attack"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "Napoleon's Attack"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/8lhmUHSY"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.19"]
+[UTCTime "22:00:01"]
+
+{ This opening is similar to Parham's Attack in the sense that white develops his queen on move two and hopes for a quick checkmate on f7. However, this opening is even easier for black to defend against. }
+1. e4 e5 2. Qf3 { White is obviously aiming for a checkmate in four moves. While this opening is played very rarely among masters, it is extremely popular among beginners. Black can easily defend the attack, if he knows what he is doing. } { [%cal Rf3f7,Gf1c4,Rc4f7] } 2... Nf6 3. Bc4 { And now here black can go after the center with c6, preparing a pawn push to d5. } 3... c6 4. Nc3 { White can play Nc3, preventing black from pushing his pawn to d5 while developing the knight. } { [%cal Bc3d5] } 4... Bb4 { This move may not look great at first look. Why is black exchanging his good bishop for the queenside knight? However, there's a very good reason behind this move. } 5. a3 Bxc3 6. dxc3 d5 7. exd5 cxd5 { And now black has control over the center. Black can also gain time developing next move by attacking the queen. } 8. Bb3 Bg4 { White's queen is forced to move away. g3 is its best square. } 9. Qg3 Nc6 10. Nf3 Qd6 { Black develops his queen to a relatively safe square, while guarding the pawn on e5. Black has a slight advantage here- but white still has a perfectly playable game. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: King's Head Opening"]
+[Date "2017.09.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C20"]
+[Opening "King's Pawn Game: King's Head Opening"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "King's Head Opening"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/HidBQUi8"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.19"]
+[UTCTime "22:07:10"]
+
+{ The King's Head opening is almost like a reversed Damiano Defense. It's not quite as bad, but it still gives black a significant advantage in the opening. It's played occasionally by beginners. }
+1. e4 e5 2. f3 { This is the main move of the King's Head Opening. It really doesn't do anything productive for white. While it guards the pawn on e4, it opens up the diagonal to the kingside and deprives the knight from its best square. } *
+
+
+[Event "Punishing 👊 Bad 😱 Openings ✌️: French Defense (Qh4 Variation)"]
+[Date "2017.09.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense: Normal Variation"]
+[StudyName "Punishing 👊 Bad 😱 Openings ✌️"]
+[ChapterName "French Defense (Qh4 Variation)"]
+[ChapterURL "https://lichess.org/study/e01yoGqe/62rAQeih"]
+[Annotator "https://lichess.org/@/Water-Flame"]
+[UTCDate "2017.09.20"]
+[UTCTime "11:40:22"]
+
+{ While the French defense is played by many masters and is known as one of the best responses to e4, there is one variation that beginners play A LOT. It brings out the queen on move 2, and really has no intended plan. But it's still popular among beginners. }
+1. e4 e6 { This is the French defense. In most variations, black prepares a pawn push from d7 to d5. However, most beginners playing this opening have a different idea. } 2. d4 Qh4 { Black brings out the queen on move two. He can't really try for the four move checkmate here, as his bishop can't move to c5, since the pawn is guarding it. White can easily defend the queen's only threat, which is the pawn on e4. } { [%cal Rh4e4] } 3. Nc3 { Here most players will stay aggressive, and attack the knight. } { [%cal Bc3e4] } 3... Bb4 4. Bd3 Nf6 { Nf6 is a common move here for black, but it's a really bad one. The queen is placed terribly on h4 and needs to retreat back, but Nf6 blocks it. The main idea of Nf6 is to keep pressuring the pawn on e4, but again, white can easily defend this attack. } { [%cal Bd3e4,Rf6e4] } 5. Nf3 { Black continues attacking, still hoping for white to make a mistake. White can just castle though, and gain even more time in development. } 5... Qg4 { [%cal Rg4g2,Rg4e4,Rf6e4] } 6. O-O Bxc3 { Black takes the knight, to double white's pawn and remove the knight defending the e4 pawn. } 7. bxc3 Nxe4 { Most players here take with the knight, even though this move is a blunder and gives white the knight for a pawn. } 8. h3 { Black's queen only has two retreats that still guard the knight: Qf5 and Qg6. Qf5 is slightly better. } 8... Qf5 9. g4 { White continues to attack black's queen. While it may look like this weakens the kingside, white should be fine. } 9... Qg6 { Black still tries to hang on to his knight. Now white can stop him, finally. } { [%cal Bg6e4] } 10. Ne5 { The queen has nowhere to go other than f6. White can now capture black's knight with an obvious advantage. } 10... Qf6 11. Bxe4 *
+
+

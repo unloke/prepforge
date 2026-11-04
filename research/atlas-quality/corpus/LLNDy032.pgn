@@ -1,0 +1,145 @@
+[Event "répertoire 1500 élo avec les blancs (solide): Introduction au répertoire"]
+[Date "2017.05.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game: Giuoco Piano"]
+[StudyName "répertoire 1500 élo avec les blancs (solide)"]
+[ChapterName "Introduction au répertoire"]
+[ChapterURL "https://lichess.org/study/LLNDy032/nAmKrVC9"]
+[Annotator "https://lichess.org/@/noktobirdo"]
+[UTCDate "2017.05.08"]
+[UTCTime "15:23:43"]
+
+1. e4 e5 (1... c5 2. c3 { [%anno "dranocrepus", dranocrepus] Sicilienne variante alapine } { [%cal Gd7d6,Gg7g6] } 2... d5 (2... e6 3. d4 d5 (3... d6 4. dxc5 { [%cal Gd8a5,Ga5e1,Ga5c5] } 4... dxc5 5. Qxd8+) (3... Nf6 4. e5 Nd5) 4. e5) 3. e5 Nc6 (3... e6 4. d4) (3... Bf5 4. d4 e6) 4. d4 Bf5) (1... e6 2. d4 d5 3. e5 { [%anno "dranocrepus", dranocrepus] défense française variante d'avance } 3... c5 4. c3 { [%csl Gc3] }) (1... Nf6 { [%anno "dranocrepus", dranocrepus] défense Alekhine } { [%cal Gf6e4] } 2. Nc3 (2. e5 Nd5 3. c4 Nb6 4. d4 { [%csl Gf5][%cal Gd7d6,Gb8c6,Gc8f5,Gf5c2,Gc6b4,Gb4c2] }) 2... d5 (2... e5 3. Nf3 Nc6 4. Bc4) 3. e5 Nfd7 (3... d4 4. exf6 dxc3 5. fxg7 cxd2+ 6. Bxd2 Bxg7) 4. d4 { [%csl Gd4,Ge5] } (4. e6 fxe6 5. Nf3) 4... e6 5. Nf3) (1... d5 { [%anno "dranocrepus", dranocrepus] défense Scandinave } 2. Nc3 (2. exd5 Qxd5 3. Nc3 Qa5) 2... d4 (2... Nf6 3. e5) (2... dxe4 3. Nxe4 Bf5 4. Ng3 Bg6) 3. Nce2 e5 4. Ng3) (1... c6 { [%anno "dranocrepus", dranocrepus] défense Caro-Kann } 2. d4 d5 3. e5 { [%cal Gc8f5] } 3... Bf5 4. Nf3 e6 5. Be2) (1... d6 { [%anno "dranocrepus", dranocrepus] En lien avec g6, défense Pirc ou moderne } { [%cal Gg7g6] } 2. d4 Nf6 { [%csl Ge4] } 3. Nc3 g6 4. Nf3 Bg7 5. Bc4 { [%csl Gf7] } 5... O-O 6. O-O) (1... b6) (1... Nc6 { [%anno "dranocrepus", dranocrepus] défense Nimzowitch du pion roi } 2. Nf3 d5 3. Nc3 dxe4 (3... d4 4. Ne2) 4. Nxe4) 2. Nf3 Nc6 (2... d6 { [%anno "dranocrepus", dranocrepus] défense Philidor } 3. Bc4) (2... Nf6 { [%anno "dranocrepus", dranocrepus] défense Russe ou Pettrof } 3. Nc3 Nc6 (3... Bb4) 4. Bc4 Nxe4 (4... Bc5) 5. Nxe4 d5 6. Bd3 dxe4 7. Bxe4 Nd4 8. Nxd4 exd4 9. O-O Be7 10. d3 O-O 11. Re1 c6 12. Bf4) (2... f5 { [%anno "dranocrepus", dranocrepus] gambit letton } 3. Bc4) (2... f6 3. Nxe5 fxe5 4. Qh5+ g6 (4... Ke7) 5. Qxe5+ { [%cal Ge5e8,Ge5h8] }) (2... d5) 3. Bc4 Bc5 { [%anno "dranocrepus", dranocrepus] Pour l'italienne, je vous renvoie à la playlist sur l'italienne:
+https://www.youtube.com/playlist?list=PL9MAvXRoNStlPNMr3MkkBth2bglCGeGBB } (3... Nf6 { [%csl Gc6,Gf6][%cal Gf3g5,Gg5f7] } 4. Nc3 { [%cal Gf8c5,Gf8b4] }) (3... Be7) *
+
+
+[Event "répertoire 1500 élo avec les blancs (solide): Sicilienne Alapine"]
+[Date "2017.05.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B22"]
+[Opening "Sicilian Defense: Alapin Variation, Smith-Morra Declined"]
+[StudyName "répertoire 1500 élo avec les blancs (solide)"]
+[ChapterName "Sicilienne Alapine"]
+[ChapterURL "https://lichess.org/study/LLNDy032/jTpiWgf2"]
+[Annotator "https://lichess.org/@/noktobirdo"]
+[UTCDate "2017.05.08"]
+[UTCTime "15:23:43"]
+
+1. e4 c5 2. c3 { [%anno "dranocrepus", dranocrepus] 3 options sérieuses: Cf6,e6 et d5 } { [%cal Gg8f6] } 2... Nf6 (2... e6 3. d4 d5 4. e5) (2... d5 3. e5 e6 (3... Bf5 4. d4 e6 5. Bb5+ Nd7 6. Nf3 a6 7. Bxd7+ Qxd7 8. O-O cxd4) (3... d4 4. Bc4 Nc6 5. Nf3 e6 6. O-O Nge7 7. d3 Ng6 { [%cal Gb1a3,Ga3c2] }) 4. d4) (2... d6 3. d4 Nf6 (3... cxd4 4. cxd4 Nf6 5. Nc3 Nc6 (5... g6 6. Be3 Bg7 7. Nf3 O-O 8. h3 Nc6 9. Bd3) 6. d5 Ne5 7. f4) 4. dxc5 dxc5 (4... Nxe4 5. Qa4+) (4... Nc6 5. Bc4 Nxe4 6. Bxf7+ Kxf7 7. Qd5+ Ke8 8. Qxe4) 5. Qxd8+) (2... g6 3. Nf3 Bg7 4. d4 cxd4 5. cxd4 d5 6. e5) 3. e5 Nd5 4. d4 (4. Bc4 { [%cal Gd5b6] } 4... Qc7 { [%cal Gc4d5] } (4... Nb6) 5. Bxd5 (5. Qe2 Nb6) 5... Qxe5+ 6. Qe2 Qxd5) 4... cxd4 5. cxd4 { [%csl Gd4,Ge5][%cal Gd7d6,Ge7e6] } (5. Bc4) 5... d6 6. Nf3 (6. exd6 Qxd6 { [%csl Gd4] }) 6... e6 7. Bc4 Nc6 (7... Nb6 8. Bb3 Be7 9. Nc3 Nc6 10. O-O O-O { [%csl Gc3,Gd4,Ge5] }) 8. O-O Be7 9. Nc3 { [%csl Gc3,Gc4,Gf3] } 9... Nxc3 { [%csl Gd5] } 10. bxc3 dxe5 11. dxe5 { [%csl Gc3] } 11... Qa5 { [%cal Ga5f5,Ga5e5] } 12. Qe2 Qxc3 13. Bd2 Qa3 14. Rfb1 { [%cal Gb1b3,Gb3g3] } *
+
+
+[Event "répertoire 1500 élo avec les blancs (solide): Défense pétroff ou russe"]
+[Date "2017.05.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C42"]
+[Opening "Petrov's Defense: Three Knights Game"]
+[StudyName "répertoire 1500 élo avec les blancs (solide)"]
+[ChapterName "Défense pétroff ou russe"]
+[ChapterURL "https://lichess.org/study/LLNDy032/m30gIOYb"]
+[Annotator "https://lichess.org/@/noktobirdo"]
+[UTCDate "2017.05.08"]
+[UTCTime "15:23:43"]
+
+1. e4 { [%cal Gc7c5,Gc2c3] } 1... e5 2. Nf3 { [%cal Gb8c6,Gd7d6,Gd8f6,Gf7f5] } 2... Nf6 { [%cal Gf3e5,Gd2d4] } 3. Nc3 { [%csl Ge5][%cal Gf1c4] } (3. Nxe5 d6 4. Nxf7 (4. Nf3 Nxe4) 4... Kxf7) (3. d4 { [%cal Ge5d4,Gf6e4] }) (3. Bc4 Nxe4 (3... Nc6 4. Nc3 Bc5) 4. Nc3 Nxc3 5. dxc3) 3... Bb4 (3... Nc6 4. Bc4 { [%cal Gf6e4] } 4... Bc5 (4... Nxe4 { [%cal Gc4f7,Gc6e5] } 5. Nxe4 (5. Bxf7+ Kxf7 6. Nxe4 d5 { [%csl Gd5,Ge5][%cal Gc6e5,Gf3e5,Ge5f7,Gf3g5] } 7. Nc3 e4 8. Ng1) 5... d5 { [%cal Gf6e4] } 6. Bd3 { [%csl Gd3] } 6... dxe4 7. Bxe4 { [%cal Ge4c6,Gc8d7] })) 4. Bc4 { [%cal Gd2d3] } 4... d6 (4... Nc6 5. d3 { [%csl Gd3,Ge4,Gc4,Gc3,Gf3] } 5... O-O 6. Bg5 { [%csl Gf6][%cal Gc3d5] } 6... Bxc3+ 7. bxc3 { [%csl Gc3,Gd4,Gb4,Gc4,Gg5][%cal Ga1b1,Gb1b7] }) (4... O-O 5. d3 { [%cal Gc1g5] }) (4... Bxc3 { [%cal Gb2c3] } 5. bxc3 O-O (5... Nxe4 6. d3 { [%cal Gf3e5] } 6... Nf6 (6... Nxc3 7. Qd2 d5 (7... Na4 8. Qa5 Nb6 9. Qxe5+ Qe7 10. Qxe7+ Kxe7 11. Bb3 a5 12. a4) 8. Bb5+ (8. Qxc3 dxc4 9. Qxe5+ Qe7 10. Qxe7+ Kxe7 11. Ba3+ Kf6 12. Bb2+) 8... Nxb5) 7. Nxe5 O-O 8. O-O { [%cal Gc1a3,Gc1g5,Gf1e1,Ga1b1,Gd7d6,Ge5f3,Gh2h3] })) (4... Nxe4 { [%cal Gb8c6] } 5. Bxf7+ Kxf7 6. Nxe4 { [%cal Gd7d5] } 6... d5 7. Nxe5+ Kg8 { [%cal Gd5e4] } 8. c3 dxe4 9. Qb3+ { [%cal Gb3b4,Gb3g8] } (9. cxb4) 9... Qd5 (9... Kf8 10. Qf7#) 10. Qxd5+ Be6 11. Qxe6+ Kf8 12. Qf7#) 5. d3 { [%cal Gc1g5] } (5. Nd5 { [%cal Gc3d5,Gd5f6,Gd5b4,Gb4c5] } 5... Bc5) 5... O-O (5... Nc6) 6. O-O { [%cal Gc8g4,Gh2h3,Gc1g5] } 6... Bxc3 7. bxc3 *
+
+
+[Event "répertoire 1500 élo avec les blancs (solide): Défense Philidor"]
+[Date "2017.05.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C41"]
+[Opening "Philidor Defense"]
+[StudyName "répertoire 1500 élo avec les blancs (solide)"]
+[ChapterName "Défense Philidor"]
+[ChapterURL "https://lichess.org/study/LLNDy032/iWCYQpNZ"]
+[Annotator "https://lichess.org/@/noktobirdo"]
+[UTCDate "2017.05.08"]
+[UTCTime "15:23:43"]
+
+1. e4 e5 2. Nf3 d6 3. Bc4 (3. d4 exd4 4. Nxd4 (4. Qxd4 Nf6 5. Bc4 Nc6 6. Qe3 Be7) 4... Nf6 5. Nc3) 3... Be7 (3... Bg4 4. h3 (4. d4 exd4) 4... Bh5 5. Nc3 (5. d4 Nd7 6. dxe5 Nxe5 7. Be2 Bg6 8. Nc3 Nf6) 5... Nc6 6. d3 Nf6 7. Nd5 Na5 8. Nxf6+ Qxf6 9. Bb5+ c6 10. Ba4 Bxf3 11. Qxf3 Qxf3) (3... h6 4. O-O Nf6 5. d4 Nbd7 6. Re1) (3... Nf6 4. c3 (4. Nc3 Be7 5. h3 O-O 6. d3 Nc6) 4... Nxe4 5. d4) 4. O-O (4. c3) 4... Nf6 5. Re1 O-O 6. c3 Bg4 7. d4 Nbd7 8. h3 Bh5 9. Nbd2 c6 10. Qb3 Rb8 11. a4 *
+
+
+[Event "répertoire 1500 élo avec les blancs (solide): Défense Pirc"]
+[Date "2017.05.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B07"]
+[Opening "Pirc Defense: Kholmov System"]
+[StudyName "répertoire 1500 élo avec les blancs (solide)"]
+[ChapterName "Défense Pirc"]
+[ChapterURL "https://lichess.org/study/LLNDy032/bRmuwCU8"]
+[Annotator "https://lichess.org/@/noktobirdo"]
+[UTCDate "2017.05.08"]
+[UTCTime "15:23:43"]
+
+1. e4 d6 (1... g6 2. d4 Bg7 3. Nc3 d6 4. Bc4 Nf6 5. Qe2 O-O 6. e5) 2. d4 Nf6 3. Nc3 g6 4. Bc4 Bg7 { [%cal Gd1e2] } 5. Qe2 { [%cal Ge2c4,Ge2e4] } 5... O-O (5... c6) 6. e5 dxe5 (6... Ne8) (6... Nfd7 7. e6 fxe6 8. Bxe6+ Kh8) 7. dxe5 Ng4 8. f4 { [%cal Gg4h6,Gh6f5] } 8... Nc6 9. Nf3 *
+
+
+[Event "répertoire 1500 élo avec les blancs (solide): Gambit éléphant et Latvian"]
+[Date "2017.05.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C40"]
+[Opening "Elephant Gambit"]
+[StudyName "répertoire 1500 élo avec les blancs (solide)"]
+[ChapterName "Gambit éléphant et Latvian"]
+[ChapterURL "https://lichess.org/study/LLNDy032/zuflVskk"]
+[Annotator "https://lichess.org/@/noktobirdo"]
+[UTCDate "2017.05.08"]
+[UTCTime "15:23:43"]
+
+1. e4 e5 2. Nf3 d5 (2... f5 3. Bc4) (2... Qf6) *
+
+
+[Event "répertoire 1500 élo avec les blancs (solide): Défense McConnell"]
+[Date "2017.05.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C40"]
+[Opening "King's Pawn Game: McConnell Defense"]
+[StudyName "répertoire 1500 élo avec les blancs (solide)"]
+[ChapterName "Défense McConnell"]
+[ChapterURL "https://lichess.org/study/LLNDy032/VGIqOKnL"]
+[Annotator "https://lichess.org/@/noktobirdo"]
+[UTCDate "2017.05.08"]
+[UTCTime "15:23:43"]
+
+1. e4 e5 2. Nf3 Qf6 3. Bc4 *
+
+
+[Event "répertoire 1500 élo avec les blancs (solide): Défense Française"]
+[Date "2017.05.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C02"]
+[Opening "French Defense: Advance Variation, Lputian Variation"]
+[StudyName "répertoire 1500 élo avec les blancs (solide)"]
+[ChapterName "Défense Française"]
+[ChapterURL "https://lichess.org/study/LLNDy032/GQHloVoE"]
+[Annotator "https://lichess.org/@/noktobirdo"]
+[UTCDate "2017.05.08"]
+[UTCTime "15:23:43"]
+
+1. e4 e6 2. d4 d5 3. e5 c5 4. c3 Nc6 { [%cal Gc6d4,Gc5d4] } 5. Nf3 { [%cal Gf3d4] } 5... Qb6 { [%cal Gb6d4] } (5... Bd7 6. a3 f6 (6... Qb6) 7. Bd3 fxe5 8. dxe5 (8. Nxe5) 8... c4 (8... Qc7) 9. Bc2) 6. a3 Nh6 (6... f6 7. b4 c4 (7... cxb4 8. cxb4 fxe5) (7... fxe5 8. Nxe5 Nxe5 9. dxe5 Ne7 10. Bd3)) 7. b4 (7. Bxh6 Qxb2) 7... cxd4 8. cxd4 (8. Bxh6 gxh6 9. cxd4) 8... Nf5 { [%cal Gb6d4,Gc6d4,Gf5d4] } 9. Bb2 (9. Be3 f6 10. Bd3 Nxe3 11. fxe3 fxe5 12. b5 Nxd4 13. exd4 e4 14. Bxe4 dxe4 15. Ne5 Bd7) 9... Bd7 10. g4 Nh6 (10... Nfe7 11. Bd3 (11. Nc3) 11... Ng6) 11. h3 f6 12. Nc3 fxe5 13. dxe5 Be7 14. Na4 Qd8 15. Rc1 O-O 16. Nc5 *
+
+
+[Event "répertoire 1500 élo avec les blancs (solide): Défense Caro-Kann"]
+[Date "2017.05.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Van der Wiel Attack"]
+[StudyName "répertoire 1500 élo avec les blancs (solide)"]
+[ChapterName "Défense Caro-Kann"]
+[ChapterURL "https://lichess.org/study/LLNDy032/mj9KShKe"]
+[Annotator "https://lichess.org/@/noktobirdo"]
+[UTCDate "2017.05.08"]
+[UTCTime "15:23:43"]
+
+1. e4 c6 2. d4 d5 { [%cal Ge4d5,Gc6d5,Gc2c4,Gf2f3,Gb1c3,Gb1d2] } 3. e5 { [%csl Gd4,Ge5][%cal Gf7f6,Gc8f5] } 3... Bf5 { [%csl Gh2][%cal Gh2h4] } 4. Nc3 { [%cal Gg8e7,Ge7g6] } (4. Nf3 { [%cal Gg1e2,Gb1c3,Ge2c3] }) (4. c3 { [%cal Gc6c5] }) (4. g4 Bg6 5. h4 h5) 4... e6 (4... Qb6 5. g4 { [%cal Gf5d7] } 5... Bd7 (5... Bg6 6. h4) 6. Bg2 e6 7. Nge2 c5 8. O-O h5 { [%csl Gd7,Gb6] } 9. gxh5 Rxh5 { [%csl Gh5,Ge2,Gg2,Gd1,Gc1] } 10. Be3 { [%cal Gb6b2,Ga1b1] } 10... Rh4 (10... Qxb2 11. Rb1 Qa3 12. Rxb7 { [%csl Gg2][%cal Gd1b1,Ge2f4] }) 11. f4 cxd4 12. Nxd4 { [%cal Ge3b6] } 12... Bc5 13. Qd2 Ne7 14. a3 Qa6 15. Rad1) 5. g4 { [%cal Gh2h4,Gg1e2] } 5... Bg6 6. Nge2 c5 { [%cal Gf7f6] } (6... f6 { [%csl Gd4,Ge5] } 7. exf6 gxf6 8. Nf4 { [%csl Ge2][%cal Gf4g6,Gf4e6] } 8... e5 9. Qe2 Bd6 10. Nxg6 hxg6 11. Be3 Nd7 12. O-O-O) 7. h4 { [%cal Gb8c6,Gc5d4] } 7... h6 { [%cal Gb8c6,Gc5d4] } (7... Nc6 8. h5 Be4 9. Nxe4 dxe4 { [%csl Ge4] } 10. c3 cxd4 11. Nxd4 { [%csl Gb7][%cal Gc6e5,Gf1b5,Gd1a4] }) (7... cxd4 8. Nxd4 h5 9. f4 { [%csl Gc8][%cal Gc1e3,Gd1d2,Gc8c3] } 9... hxg4 10. Bb5+ Nd7 11. f5 { [%cal Gd8h4,Gh8h4] } 11... Rxh4 12. Rf1 Bh5 { [%cal Gh5d1] } 13. fxe6 fxe6 { [%cal Gd4e6] } 14. Nxe6 { [%csl Ge6][%cal Ge6f8,Ge6d8,Gb5d7,Gd1d5,Gc1g5] } 14... Qe7 15. Rxf8+ Qxf8 16. Bxd7+ Kxd7 17. Qxd5+ Ke7 18. Bg5+ Qf6 19. exf6+ gxf6 20. Bxh4) 8. Be3 { [%cal Gg6h7,Gd8b6,Ge2f4,Gf4g6] } 8... Qb6 { [%csl Gd4,Gb2][%cal Gb6d4,Gb6b2] } (8... Nc6 { [%cal Gc6d4,Gd4c5,Gc6e5] } 9. dxc5 Nxe5 10. Nf4 { [%csl Gh7][%cal Ge2f4,Gf4e6] }) (8... cxd4 9. Nxd4 { [%csl Gc6,Ge5] } 9... Bb4 10. h5 Bh7 (10... Be4 { [%cal Gc3e4,Ge4h1] } 11. f3 Bh7 12. Bd3 Bxd3 13. Qxd3 Nd7)) 9. Qd2 Nc6 { [%cal Gc6d4] } (9... Qxb2 10. Rb1 { [%csl Gg6] } 10... Qxc2 11. Qxc2 Bxc2 12. Rxb7 c4 13. Ng3 { [%cal Gf2f3,Gf3f4,Gf4f5,Gf5f6,Gg3h5] }) 10. O-O-O (10. h5 Bh7 11. O-O-O c4) 10... h5 11. dxc5 (11. g5) 11... Bxc5 12. Bxc5 Qxc5 13. Nf4 Nge7 14. gxh5 Bxh5 15. Nxh5 { [%csl Ge5,Gf4,Gf1] } 15... Rxh5 16. f4 *
+
+

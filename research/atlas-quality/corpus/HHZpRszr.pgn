@@ -1,0 +1,646 @@
+[Event "Openings: 🚀Introduction🚀"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Openings"]
+[ChapterName "🚀Introduction🚀"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/CqP6KLl5"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:40"]
+[ChapterMode "gamebook"]
+
+{ Hi study Fans!
+
+Today we are going to Learn how to Play different Openings as both White and Black. So get your Seatbelts on for the ride! } { [%csl Gb3,Gb4,Gb5,Gb6,Gb7,Gc5,Gd5,Gd6,Gd7,Gd4,Gd3,Gf3,Gf4,Gf5,Gf6,Gf7] }
+ *
+
+
+[Event "Openings: 🏰White openings🙂"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Openings"]
+[ChapterName "🏰White openings🙂"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/LTFV4mgM"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:25:15"]
+[ChapterMode "gamebook"]
+
+{ So, we move on to Part 1: White Openings.
+They are:
+
+English Opening
+London System
+King's Gambit
+The Queen's Gambit
+The Vienna Game
+Italian Opening
+Ruy Lopez
+Bird's Opening
+Reti Opening } { [%csl Gc6,Gd7,Ge8,Ge7,Ge6,Ge5,Ge4,Ge3,Ge2,Ge1,Gf1,Gg1,Gd1,Gc1] }
+ *
+
+
+[Event "Openings: London System"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "Openings"]
+[ChapterName "London System"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/hXVg197m"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ Lets continue with the first opening. The London System. To play the London, play d4 🙂 }
+1. d4 { [%anno "ArjunShukla23", arjunshukla23] d4 is a smart alternative to the more widely played e4. } (1. c4 e5 2. g3 d5 (2... Ne7)) 1... d5 { [%anno "ArjunShukla23", arjunshukla23] Follow my arrows to learn the London! } { [%csl Gf4][%cal Gc1f4] } 2. Bf4 Nf6 { [%csl Ge3][%cal Ge2e3] } 3. e3 e6 { Now? } { [%csl Gf3][%cal Gg1f3] } 4. Nf3 Bd6 { [%anno "dUbEaR504", dubear504] Play, Ne5. } { [%csl Ge5][%cal Gf3e5] } 5. Ne5 (5. Bg3?! c5 6. Nbd2 Qc7 { [%cal Gc7e5,Ge6e5] } 7. c3 Nbd7 $132 { [%anno "dUbEaR504", dubear504] Now Black has some counterplay. } { [%cal Ge6e5,Gb7b6,Gc8b7,Gf6e4] } (7... Nc6? 8. dxc5 { [%cal Gg3c7,Gd6c5] })) 5... c5 { [%csl Gc3][%cal Gc2c3] } 6. c3 { [%anno "dUbEaR504", dubear504] Now you've made a pyramid! } { [%csl Gb2,Gc3,Gd4,Ge3,Gf2] } 6... Qc7 { [%csl Gd2][%cal Gb1d2] } 7. Nd2 Nbd7 { [%csl Gf3][%cal Gd2f3] } 8. Ndf3 Ne4 { [%csl Gd3][%cal Gf1d3] } 9. Bd3 O-O { [%anno "dUbEaR504", dubear504] Castle. } { [%csl Gg1][%cal Ge1g1] } 10. O-O f6 { [%anno "dUbEaR504", dubear504] Black kicks the knight. Take the knight. } { [%csl Gd7][%cal Ge5d7] } 11. Nxd7 Bxd7 { [%csl Ge4][%cal Gd3e4] } 12. Bxe4 dxe4 { [%csl Gd6][%cal Gf4d6] } 13. Bxd6 Qxd6 { [%csl Gc5][%cal Gd4c5] } 14. dxc5 Qxd1 { [%csl Gd1][%cal Gf1d1] } 15. Rfxd1 $16 { [%anno "dUbEaR504", dubear504] White's up a pawn. } { [%cal Gd1d7,Ge4f3] } *
+
+
+[Event "Openings: English Opening"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A29"]
+[Opening "English Opening: King's English Variation, Four Knights Variation, Fianchetto Line, with Nb6"]
+[StudyName "Openings"]
+[ChapterName "English Opening"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/mneINyUa"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] Ah the english. My favourite. Now if you want to get your opponent out of the comfort zone, play the english. (A warning: It is a little complex, so if you are new to the english and do not understand it, no matter. Just move on to the next chapter) To play the English, Play c4 }
+1. c4!! { [%anno "ArjunShukla23", arjunshukla23] This move stops the move d5 and is better for you queen and knight } 1... e5 { [%anno "ArjunShukla23", arjunshukla23] Black plays e5, The Reversed Sicillian. Follow the arrows to learn this magnificent opening! } { [%csl Gc3][%cal Gb1c3] } 2. Nc3 { [%anno "ArjunShukla23", arjunshukla23] This move discourages d5 and gets the knight out. } 2... Nf6 { [%csl Gf3][%cal Gg1f3] } 3. Nf3 Nc6 { [%anno "ArjunShukla23", arjunshukla23] This move by black discourages us to play d4. But now play g3 to fianchetto the bishop. } { [%csl Gg3][%cal Gg2g3] } 4. g3 d5 { [%anno "ArjunShukla23", arjunshukla23] Here black plays d5, Trying to attack the pawn. Play cxd5! } { [%csl Gd5][%cal Gc4d5] } 5. cxd5 Nxd5 { [%anno "ArjunShukla23", arjunshukla23] Fianchetto } { [%csl Gg2][%cal Gf1g2] } 6. Bg2 Nb6 { [%csl Gg1][%cal Ge1g1] } 7. O-O { [%anno "ArjunShukla23", arjunshukla23] Now you have played the english opening and made you king safer by castling. This opening is one of my favourites and i hope after this chapter and a few more games after this study, yours too. } *
+
+
+[Event "Openings: The Bird's Opening"]
+[Date "2025.07.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A03"]
+[Opening "Bird Opening: Dutch Variation"]
+[StudyName "Openings"]
+[ChapterName "The Bird's Opening"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/hgxR2uHr"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.07.02"]
+[UTCTime "11:06:07"]
+[ChapterMode "gamebook"]
+
+{ Now let's learn the Bird's opening.
+Play f4🙂 }
+1. f4!! { The Bird comes! } (1. e4) 1... d5 { Follow my arrows to learn the Bird's! } { [%csl Gf3][%cal Gg1f3] } 2. Nf3 Nc6 { [%csl Ge3][%cal Ge2e3] } 3. e3 Bg4 { [%csl Ge2][%cal Gf1e2] } 4. Be2 Nf6 { [%csl Gg1][%cal Ge1g1] } 5. O-O e6 { [%csl Gb3][%cal Gb2b3] } 6. b3 Bd6 { [%csl Gb2][%cal Gc1b2] } 7. Bb2 O-O { [%csl Ge5][%cal Gf3e5] } 8. Ne5 Bxe2 { [%csl Ge2][%cal Gd1e2] } 9. Qxe2 Bxe5 { [%csl Ge5][%cal Gf4e5] } 10. fxe5 Nd7 { [%csl Gd4][%cal Gd2d4] } 11. d4 Nb6 { [%csl Gd2][%cal Gb1d2] } 12. Nd2 $10 *
+
+
+[Event "Openings: Reti Opening"]
+[Date "2025.07.07"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A08"]
+[Opening "King's Indian Attack: Sicilian Variation"]
+[StudyName "Openings"]
+[ChapterName "Reti Opening"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/s8v2laRF"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.07.07"]
+[UTCTime "07:41:20"]
+[ChapterMode "gamebook"]
+
+{ Now, the Reti. Let's play Nf3🙂 }
+1. Nf3!! { Here goes the HORSEY! } 1... d5 { The most popular response at all levels.
+Follow my arrows to learn the Reti ! } { [%csl Gg3][%cal Gg2g3] } 2. g3 Nf6 { [%csl Gg2][%cal Gf1g2] } 3. Bg2 e6 { [%csl Gg1][%cal Ge1g1] } 4. O-O Be7 { [%csl Gd3][%cal Gd2d3] } 5. d3 O-O { [%csl Gd2][%cal Gb1d2] } 6. Nbd2 c5 { [%csl Ge4][%cal Ge2e4] } 7. e4 Nc6 { [%csl Ge1][%cal Gf1e1] } 8. Re1 dxe4 { [%csl Ge4][%cal Gd2e4] } 9. Nxe4 Nxe4 { [%csl Ge4][%cal Ge1e4] } 10. Rxe4 b6 { [%csl Ge5][%cal Gf3e5] } 11. Ne5 Bb7 { [%csl Gc6][%cal Ge5c6] } 12. Nxc6 Bxc6 { [%csl Ge1][%cal Ge4e1] } 13. Re1 Qc7 { [%csl Gf4][%cal Gc1f4] } 14. Bf4 Qb7 { [%csl Gc6][%cal Gg2c6] } 15. Bxc6 Qxc6 { [%csl Gd2][%cal Gd1d2] } 16. Qd2 { From here, you won't lose easily🙂 } *
+
+
+[Event "Openings: King's Gambit"]
+[Date "2025.07.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: Schallopp Defense"]
+[StudyName "Openings"]
+[ChapterName "King's Gambit"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/Ve3NCkVs"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.07.08"]
+[UTCTime "13:49:55"]
+[ChapterMode "gamebook"]
+
+{ If you are an attacking player and want to make Spicy attacks on your opponent and destroy him, The King's gambit is for YOU!
+
+To play it, first play e4🙂 }
+1. e4 e5 { Now, play F4!! } 2. f4!! exf4 { Follow my Arrows! } { [%csl Gf3][%cal Gg1f3] } 3. Nf3 Nf6 { [%csl Ge5][%cal Ge4e5] } 4. e5 Nd5 { [%csl Gc3][%cal Gb1c3] } 5. Nc3 Nxc3 { [%csl Gc3][%cal Gd2c3] } 6. dxc3 d5 { [%csl Gf4][%cal Gc1f4] } 7. Bxf4 $14 { Stockfish says +0.4 } *
+
+
+[Event "Openings: The Queen's Gambit"]
+[Date "2025.06.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D06"]
+[Opening "Queen's Gambit"]
+[StudyName "Openings"]
+[ChapterName "The Queen's Gambit"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/C7iTKKQI"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.30"]
+[UTCTime "13:45:57"]
+[ChapterMode "gamebook"]
+
+{ Now we learn the Queen's Gambit.
+Let's play d4🙂 } { [%csl Gd4][%cal Gd2d4] }
+1. d4 d5 { Now let's play a gambit.
+Play C4! } 2. c4!! { [%anno "ArjunShukla23", arjunshukla23] This is the Queen's Gambit } *
+
+
+[Event "Openings: Queen's Gambit Declined"]
+[Date "2025.06.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D55"]
+[Opening "Queen's Gambit Declined: Modern Variation, Normal Line"]
+[StudyName "Openings"]
+[ChapterName "Queen's Gambit Declined"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/QK9giRhp"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.30"]
+[UTCTime "13:47:37"]
+[ChapterMode "gamebook"]
+
+{ Do you remember the first moves? }
+1. d4 d5 2. c4!! e6 { This enters the declined variation.
+Play Nc3. } { [%csl Gc3][%cal Gb1c3] } 3. Nc3 Nf6 { Follow my Arrows! } { [%csl Gg5][%cal Gc1g5] } 4. Bg5 Be7 { [%csl Ge3][%cal Ge2e3] } 5. e3 O-O { [%csl Gf3][%cal Gg1f3] } 6. Nf3 dxc4 { [%csl Gc4][%cal Gf1c4] } 7. Bxc4 Nc6 { [%csl Gg1][%cal Ge1g1] } 8. O-O { Now you have a great position! } *
+
+
+[Event "Openings: Queen's Gambit Accepted"]
+[Date "2025.06.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D20"]
+[Opening "Queen's Gambit Accepted: Central Variation, Greco Variation"]
+[StudyName "Openings"]
+[ChapterName "Queen's Gambit Accepted"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/73WSzpYK"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.30"]
+[UTCTime "13:48:44"]
+[ChapterMode "gamebook"]
+
+{ Do you remember the first moves? }
+1. d4 d5 2. c4!! dxc4?! { Follow my arrows! } { [%csl Ge4][%cal Ge2e4] } 3. e4 b5 { [%csl Ga4][%cal Ga2a4] } 4. a4 c6 { [%csl Gb3][%cal Gb2b3] } 5. b3 a6 { [%csl Gf3][%cal Gg1f3] } 6. Nf3 Nf6 { [%csl Ge5][%cal Ge4e5] } 7. e5 Nd5 { [%csl Gc4][%cal Gb3c4] } 8. bxc4 bxc4 { [%csl Gc4][%cal Gf1c4] } 9. Bxc4 $16 *
+
+
+[Event "Openings: The Vienna Game"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C29"]
+[Opening "Vienna Game: Vienna Gambit, Main Line"]
+[StudyName "Openings"]
+[ChapterName "The Vienna Game"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/OPDzzYcS"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ The Vienna is a good opening that you can play tactically or Gambit-style. It is IM Levy's favorite as White. To play this opening, first you have to play e4🙂 }
+1. e4 { [%anno "ArjunShukla23", arjunshukla23] e4 is the most played move in the world (I feel like i have told that before). } 1... e5 { [%anno "ArjunShukla23", arjunshukla23] Black copies us to increase strength on the center. Now black will be hoping that white plays Nf3 into his comfort zone. But we don't do that. PLAY NC3! } { [%csl Gc3][%cal Gb1c3] } 2. Nc3 { [%anno "ArjunShukla23", arjunshukla23] White's wish is that to remove the e5 pawn with f4 and strengthen the center. } 2... Nf6 { [%anno "ArjunShukla23", arjunshukla23] Black camouflages our control on d5 now, there are multiple options now. But let's play the most common one. } { [%anno "VofDoom41", vofdoom41] f4 } { [%csl Gf4][%cal Gf2f4] } 3. f4!! { [%anno "ArjunShukla23", arjunshukla23] BAM. White sacrifices the pawn on f4 to gain control over the center. Lets see if black takes it. } 3... d5! { [%anno "ArjunShukla23", arjunshukla23] BLACK OFFERS A GAMBIT OF HIS OWN! This move is very good by black. Lets see what do we do now. It is obvious, isn't it? } { [%csl Ge5][%cal Gf4e5] } 4. fxe5 { [%anno "ArjunShukla23", arjunshukla23] We take the pawn with our weakest pawn. Black will always play Nxe4. } { [%csl Ge4][%cal Gf6e4] } 4... Nxe4 { [%anno "ArjunShukla23", arjunshukla23] here we have a Variety of options. Let's go with the most common one. } { [%csl Gf3][%cal Gg1f3] } 5. Nf3 { [%anno "ArjunShukla23", arjunshukla23] Follow my arrows to learn the Vienna. } { [%anno "VofDoom41", vofdoom41] t } { [%csl Gc3][%cal Ge4c3] } 5... Nxc3 { [%csl Gc3][%cal Gd2c3] } 6. dxc3 { [%csl Gc3][%cal Gd2c3] } 6... Be6 { [%csl Ge6,Gd3][%cal Gc8e6,Gf1d3] } 7. Bd3 Bc5 { [%csl Gd4][%cal Gf3d4] } 8. Nd4 Bxd4 9. cxd4 O-O { [%csl Gg1][%cal Ge1g1] } 10. O-O *
+
+
+[Event "Openings: Italian Opening"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game"]
+[StudyName "Openings"]
+[ChapterName "Italian Opening"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/D4yyyJhS"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ Now we will study the Italian Opening. The Italian is one of the most oldest and most trustable openings in chess. it starts with the move e4 }
+1. e4 { [%anno "ArjunShukla23", arjunshukla23] e4 is the most common of moves in the chess universe. } 1... e5 { [%anno "ArjunShukla23", arjunshukla23] Play Nf3 } 2. Nf3 Nc6 { [%anno "ArjunShukla23", arjunshukla23] Now play Bc4 } 3. Bc4! { [%anno "ArjunShukla23", arjunshukla23] This is the Italian opening } *
+
+
+[Event "Openings: Italian Opening: Guioco Piano"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C54"]
+[Opening "Italian Game: Classical Variation, Greco Gambit, Traditional Line"]
+[StudyName "Openings"]
+[ChapterName "Italian Opening: Guioco Piano"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/jafpeEXw"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] The Giuoco Piano is an Variation of the Italian opening that can be used against 3. Bc4. Do you remember the first moves? }
+1. e4 e5 2. Nf3 Nc6 { Now? } 3. Bc4 Bc5 { [%anno "ArjunShukla23", arjunshukla23] This is the Giuoco Piano that black can use to counter the 3. Bc4 move by white. Just follow the arrows to learn how to play this variation! } { [%csl Gc3][%cal Gc2c3] } 4. c3 Nf6 { [%csl Gd4][%cal Gd2d4] } 5. d4 exd4 { Now? } { [%csl Gd4][%cal Gc3d4] } 6. cxd4 Bb4+ { Block! } { [%csl Gd2][%cal Gc1d2] } 7. Bd2 Bxd2+ { [%csl Gd2][%cal Gb1d2] } (7... Nxe4? 8. Bxb4 Nxb4 9. O-O O-O) 8. Nbxd2 O-O { Castle. } { [%csl Gg1][%cal Ge1g1] } 9. O-O { [%anno "Toadddddddd", toadddddddd] You now have a Great position. } { [%anno "ArjunShukla23", arjunshukla23] You now have played the Giuoco Piano version of the Italian opening. And also are in a great position to play. } (9. d5 { [%anno "Toadddddddd", toadddddddd] This is actually best. } { [%anno "ArjunShukla23", arjunshukla23] d5 and O-O are both good moves. } 9... Ne7) *
+
+
+[Event "Openings: Ruy Lopez"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C60"]
+[Opening "Ruy Lopez"]
+[StudyName "Openings"]
+[ChapterName "Ruy Lopez"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/Na32VmXT"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] Another favourite of the Grandmasters, The Ruy Lopez is also one of the oldest openings in the world. To play this opening, play e4. }
+1. e4 e5 { [%anno "ArjunShukla23", arjunshukla23] Play Nf3 } { [%csl Gf3][%cal Gg1f3] } 2. Nf3 Nc6 { [%anno "ArjunShukla23", arjunshukla23] Attack the knight with the move Bb5 } { [%csl Gb5][%cal Gf1b5] } 3. Bb5! { [%anno "ArjunShukla23", arjunshukla23] This is the Ruy Lopez. There are two main variations of this. } *
+
+
+[Event "Openings: Ruy Lopez: Morphy Defence"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C88"]
+[Opening "Ruy Lopez: Closed"]
+[StudyName "Openings"]
+[ChapterName "Ruy Lopez: Morphy Defence"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/uAxK5Agg"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] Do you remember the first moves of the Ruy Lopez? }
+1. e4 e5 2. Nf3 Nc6 { Now? } 3. Bb5 a6 { [%anno "ArjunShukla23", arjunshukla23] Black defends the attack on the knight on c6 by pushing a6. Try to keep the bishop on the diagonal. } { [%csl Ga4][%cal Gb5a4] } 4. Ba4 Nf6 { [%anno "ArjunShukla23", arjunshukla23] Follow the Arrows to learn how to play the Morphy Defense. Also do not worry about the pawn. If black is smart, he wont take the pawn. } { [%csl Gg1][%cal Ge1g1] } 5. O-O Be7 { [%anno "ArjunShukla23", arjunshukla23] Bring the Rook to e1 } { [%csl Ge1][%cal Gf1e1] } 6. Re1 { [%anno "ArjunShukla23", arjunshukla23] This is the Mainline of how to play the Morphy Defense. In the next chapter we will use the Marshall attack. } 6... b5 { [%csl Gb3][%cal Ga4b3] } 7. Bb3 O-O { [%csl Gc3][%cal Gc2c3] } 8. c3 Na5 { Retreat the Bishop. } { [%csl Gc2][%cal Gb3c2] } 9. Bc2 c5 { [%csl Gd4][%cal Gd2d4] } 10. d4 cxd4 { [%csl Gd4][%cal Gc3d4] } 11. cxd4 exd4 { [%csl Gd4][%cal Gf3d4] } 12. Nxd4 { [%cal Gc1f4,Ge4e5,Gb1c3,Ga1c1] } *
+
+
+[Event "Openings: Ruy Lopez: Marshall Attack."]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C89"]
+[Opening "Ruy Lopez: Marshall Attack, Original Marshall Attack"]
+[StudyName "Openings"]
+[ChapterName "Ruy Lopez: Marshall Attack."]
+[ChapterURL "https://lichess.org/study/HHZpRszr/AwSXfKAD"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] The Marshall Attack is an attack used by black to pressure white's center. Now we will know how to counter this attack. Do you remember the first moves of the Ruy Lopez: Morphy Defense? }
+1. e4 e5 { [%csl Gf3][%cal Gg1f3] } 2. Nf3 Nc6 { Now? } { [%csl Gb5][%cal Gf1b5] } 3. Bb5 a6 { And now? } { [%csl Ga4][%cal Gb5a4] } 4. Ba4 Nf6 { [%csl Gg1][%cal Ge1g1] } 5. O-O Be7 { Put the rook on e1. } { [%csl Ge1][%cal Gf1e1] } 6. Re1 { [%csl Gb7] } 6... b5 { [%csl Gb3][%cal Ga4b3] } 7. Bb3 O-O { Now? } { [%csl Gc3][%cal Gc2c3] } 8. c3 d5!! { [%anno "ArjunShukla23", arjunshukla23] BAM. Black goes on a all-out attack with d5. Do not panic against this move. I will tell you how to counter this attack. Play exd5 } { [%csl Gd5][%cal Ge4d5] } 9. exd5 Nxd5 { [%anno "ArjunShukla23", arjunshukla23] Take the pawn with Nxe5 } { [%csl Ge5][%cal Gf3e5] } 10. Nxe5 Nxe5 { [%anno "ArjunShukla23", arjunshukla23] take the knight with Rxe5 } { [%csl Ge5][%cal Ge1e5] } 11. Rxe5 Nf6 { [%anno "ArjunShukla23", arjunshukla23] Retreat the Rook with Re1. } 12. Re1 Bd6 { [%anno "ArjunShukla23", arjunshukla23] Play h3 to prevent the attack on the queen } { [%csl Gh3][%cal Gh2h3] } 13. h3 { [%anno "ArjunShukla23", arjunshukla23] Now this is the way to counter the aggressive Marshall Attack. } 13... Bb7 { [%csl Gd4][%cal Gd2d4] } 14. d4 Qd7 { [%csl Ge3][%cal Gc1e3] } 15. Be3 { White is up a pawn. } *
+
+
+[Event "Openings: 🏰Black openings🙂"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Openings"]
+[ChapterName "🏰Black openings🙂"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/5ZMImmA6"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:27:38"]
+[ChapterMode "gamebook"]
+
+{ Now we move on to Part 2: Black openings.
+They are:
+
+French Defense
+Caro-Kann Defense
+Sicillian Defense
+Scandinavian Defense
+King's Indian Defense
+Slav Defense
+Dutch Defense
+Pirc Defense } { [%csl Gg3,Gf2,Ge1,Gd2,Gc3,Gd4,Ge5,Gf6,Gg7,Gg8,Gf8,Ge8,Gd8,Gc8,Gb8] }
+ *
+
+
+[Event "Openings: French Defence"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense"]
+[StudyName "Openings"]
+[ChapterName "French Defence"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/gvat46ZK"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] This is the French Defence, also a good choice for you to improve. This opening is, in my opinion, very underrated. }
+1. e4 { [%anno "ArjunShukla23", arjunshukla23] e4 is the most common move in the world in chess. Now most people would be like, "PLAY E5 QUICKLY, WHAT ARE YOU DOING??". No need to worry about e5 here. just play e6 } { [%csl Ge6][%cal Ge7e6] } 1... e6!! { [%anno "ArjunShukla23", arjunshukla23] Now begins the French Defence. White will 89% of the time play d4. } 2. d4 { [%anno "ArjunShukla23", arjunshukla23] White plays d4 to get a good center. No worries. Just play d5 and contest the center! } { [%csl Gd5][%cal Gd7d5] } 2... d5! { [%anno "ArjunShukla23", arjunshukla23] There are multiple variations of the French. I am going to tell you the two most common ones. } *
+
+
+[Event "Openings: French Defence: Exchange Variation"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C01"]
+[Opening "French Defense: Exchange Variation"]
+[StudyName "Openings"]
+[ChapterName "French Defence: Exchange Variation"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/WpjbK9ZV"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] Do you remember the first moves? }
+1. e4 e6 2. d4 { Now? } 2... d5 { [%anno "ArjunShukla23", arjunshukla23] We are here again at this moment. White takes the pawn with exd5 } 3. exd5 { [%anno "ArjunShukla23", arjunshukla23] Play exd5 } { [%csl Gd5][%cal Ge6d5] } 3... exd5 { [%anno "ArjunShukla23", arjunshukla23] This is the French Defense's Exchange Variation } 4. Nf3 { [%anno "ArjunShukla23", arjunshukla23] Nf3 gains development in the center. Play Nf6 to copy them } { [%csl Gf6][%cal Gg8f6] } 4... Nf6 { [%anno "ArjunShukla23", arjunshukla23] Now just follow my arrows to find out about the French Defense! } 5. Bd3 { [%csl Gd6][%cal Gf8d6] } 5... Bd6 6. O-O { [%csl Gg8][%cal Ge8g8] } 6... O-O { [%anno "ArjunShukla23", arjunshukla23] This is the French Defense Exchange Variation piece setup of the black pieces.
+Stockfish says +0.1 } *
+
+
+[Event "Openings: French Defense: Advanced Variation"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C02"]
+[Opening "French Defense: Advance Variation, Paulsen Attack"]
+[StudyName "Openings"]
+[ChapterName "French Defense: Advanced Variation"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/7PgS56L9"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] Another variation of the French Defense. Do you remember the first moves? }
+1. e4 e6 2. d4 { Now? } 2... d5 3. e5 { [%anno "ArjunShukla23", arjunshukla23] Here white advanced with the pawn instead of taking with the pawn. Now you have to move the c pawn to c5. } 3... c5 4. c3 { [%anno "ArjunShukla23", arjunshukla23] Here white plays c3, trying to defend the pawn. Now just follow our arrows to learn the advanced variation of the French Defense! } { [%csl Gc6][%cal Gb8c6] } 4... Nc6 { [%csl Gf3][%cal Gg1f3] } 5. Nf3 { [%csl Gd4][%cal Gc5d4] } 5... cxd4 { [%csl Gd4][%cal Gc5d4] } 6. cxd4 { Follow my arrows to Learn the French! } { [%csl Gb4][%cal Gf8b4] } 6... Bb4+ { [%anno "ArjunShukla23", arjunshukla23] This is also known as the Paulsen Attack } 7. Bd2 { [%csl Gb6][%cal Gd8b6] } 7... Qb6! { [%csl Gb6][%cal Gd8b6] } (7... Qc7) 8. Bxb4! { Now? } { [%csl Gb4][%cal Gb6b4] } (8. Bc3! Nge7 9. Bd3 Ng6 10. O-O O-O { [%anno "Toadddddddd", toadddddddd] With okay position. }) 8... Qxb4+ 9. Nc3 { And Now? } { [%csl Gb2][%cal Gb4b2] } 9... Qxb2 10. Rc1? { [%anno "Toadddddddd", toadddddddd] You are up a pawn. } { [%csl Ge7][%cal Gg8e7] } (10. Nb5! { [%anno "Toadddddddd", toadddddddd] This is a tricky move. } { [%csl Gb4][%cal Gb2b4] } 10... Qb4+ { [%anno "Toadddddddd", toadddddddd] Only move. } 11. Nd2 { [%csl Ga5] } (11. Qd2 Qxd2+ 12. Kxd2 Kd8) 11... Qxb5 { [%anno "Toadddddddd", toadddddddd] not this } (11... Qa5 { [%anno "Toadddddddd", toadddddddd] this } 12. Nd6+ Kf8 { [%anno "Toadddddddd", toadddddddd] you are fine. })) 10... Nge7 *
+
+
+[Event "Openings: Caro-Kann Defense"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense"]
+[StudyName "Openings"]
+[ChapterName "Caro-Kann Defense"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/8rS0EG8W"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] I realized that i put a lot of white's openings. It is time that i show you that black ain't lesser than white. The Caro-Kann Defense is a reliable option that immediately challenges white to play carefully. }
+1. e4 { [%anno "ArjunShukla23", arjunshukla23] Play c6 } { [%csl Gc6][%cal Gc7c6] } 1... c6!! { [%anno "ArjunShukla23", arjunshukla23] This is the Caro-Kann Defense. It is quite underrated in my opinion. White normally plays d4. } 2. d4 { [%anno "ArjunShukla23", arjunshukla23] Play d5 to question white's e4 pawn. } { [%csl Gd5][%cal Gd7d5] } 2... d5! { [%anno "ArjunShukla23", arjunshukla23] This is the setup of the Caro-Kann Defense. As you can see here, the d pawn is questioning the e-pawn of white. there are a number of variations in the Caro. I will show you the most common of them in the next chapter } *
+
+
+[Event "Openings: Caro-Kann Defense: Advanced Variation"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Short Variation"]
+[StudyName "Openings"]
+[ChapterName "Caro-Kann Defense: Advanced Variation"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/fLCeIwq9"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] The most common variation of the Caro-Kann. The advanced. Do you remember the first moves? }
+1. e4 c6 2. d4 { And Now? } 2... d5 3. e5 { [%anno "ArjunShukla23", arjunshukla23] Here white plays e5, not taking the pawn. You have to play Bf5. } { [%csl Gf5][%cal Gc8f5] } 3... Bf5 { [%anno "ArjunShukla23", arjunshukla23] The bishop is very well placed here at f5. Here white plays Nf3. } 4. Nf3 { [%anno "ArjunShukla23", arjunshukla23] Nf3 is played to support the e and d pawns of white and develops the knight to a good square. Now play e5 to block the e pawn from advancing forward. } { [%csl Ge6][%cal Ge7e6] } 4... e6 5. Be2 { [%anno "ArjunShukla23", arjunshukla23] White plays Be2 to block the upcoming pin from black from Bg4 } { [%csl Gd7][%cal Gb8d7] } 5... Nd7 6. O-O { [%anno "ArjunShukla23", arjunshukla23] Alrighty, this is the position of the Caro-Kann Advance Variation. } *
+
+
+[Event "Openings: Sicillian Defense"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B20"]
+[Opening "Sicilian Defense"]
+[StudyName "Openings"]
+[ChapterName "Sicillian Defense"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/EoC6zet2"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ Here comes my favorite opening as Black. The Sicillian Defense is the most common reply after 1.e4. It is played at the Grandmaster level and in my opinion, the most aggressive option for black to play. white first plays e4 to start the game. }
+1. e4 { [%anno "ArjunShukla23", arjunshukla23] Now play c5 } 1... c5!! { [%anno "ArjunShukla23", arjunshukla23] c5 is a good option because it prevents d4 and it takes the center with the flank pawn. Like all the other openings like Caro-Kann, Sicillian also has a lot of variations. Lets check out the most common one in the next chapter. } *
+
+
+[Event "Openings: Sicilian Defense: Najdorf Sicilian"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B90"]
+[Opening "Sicilian Defense: Najdorf Variation"]
+[StudyName "Openings"]
+[ChapterName "Sicilian Defense: Najdorf Sicilian"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/o4PXYwa4"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] Do you remember the first moves? }
+1. e4 c5! { [%anno "ArjunShukla23", arjunshukla23] Black plays Nf3 to fortify the center. } 2. Nf3 { [%anno "ArjunShukla23", arjunshukla23] Here you can go Nc6 to play the Old Sicillian, but we are Modern People, we check out recent stuff. Play d6 } 2... d6 { [%anno "ArjunShukla23", arjunshukla23] this move gets a nice little chain of pawns in the center. Lets see what white does now. } 3. d4 { [%anno "ArjunShukla23", arjunshukla23] Ah, here we go again. Threatening the pawn on c5 with the d pawn. Not to worry. play cxd5. } { [%csl Gd4][%cal Gc5d4] } 3... cxd4 4. Nxd4 { [%anno "ArjunShukla23", arjunshukla23] White takes back with the knight. Play Nf6 now. } 4... Nf6 5. Nc3 { [%anno "ArjunShukla23", arjunshukla23] black defends the pawn with Nc3. Play a6. } { [%csl Ga6][%cal Ga7a6] } 5... a6 $14 { [%anno "ArjunShukla23", arjunshukla23] This is the Najdorf Variation of the Sicillian Defense. This move stops the attack on the queen by Bb5 and removing the key square on b5. } *
+
+
+[Event "Openings: Petrov's Attack"]
+[Date "2025.07.07"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C42"]
+[Opening "Petrov's Defense"]
+[StudyName "Openings"]
+[ChapterName "Petrov's Attack"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/TBz0cmYG"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.07.07"]
+[UTCTime "07:51:27"]
+[ChapterMode "gamebook"]
+
+{ Now we learn the Petrov🙂 }
+1. e4 { Play e5🙂 } 1... e5 2. Nf3 { Attacks the pawn.
+Guess what, we are not defending it!
+PLAY NF6!! } 2... Nf6!! { Counterattack with the Petrov! } { [%csl Ye5,Be4][%cal Yf3e5,Bf6e4] } 3. Nxe5 { [%csl Ge7][%cal Gd8e7] } 3... Qe7 4. d4 { [%csl Gd6][%cal Gd7d6] } 4... d6 5. Nf3 { [%csl Ge4][%cal Ge7e4] } 5... Qxe4+ 6. Be2 { [%csl Gf5][%cal Gc8f5] } 6... Bf5 7. Na3 { [%csl Ge7][%cal Ge4e7] } 7... Qe7 8. O-O { [%csl Gd7][%cal Ge7d7] } 8... Qd7 9. c4 { [%csl Gc6][%cal Gc7c6] } 9... c6 10. Nc2 { [%csl Ge7][%cal Gf8e7] } 10... Be7 11. Ne3 { [%csl Gg6][%cal Gf5g6] } 11... Bg6 12. b3 { [%csl Gg8][%cal Ge8g8] } 12... O-O 13. Bb2 { [%csl Ga5][%cal Ga7a5] } 13... a5 $14 { [%csl Ba4,Bb5,Bc5][%cal Ba5a4,Bb7b5,Bc6c5] } *
+
+
+[Event "Openings: Scandinavian Defense"]
+[Date "2025.06.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B01"]
+[Opening "Scandinavian Defense: Main Line"]
+[StudyName "Openings"]
+[ChapterName "Scandinavian Defense"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/koSYJEFS"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.30"]
+[UTCTime "13:49:36"]
+[ChapterMode "gamebook"]
+
+{ Now let's learn the Scandinavian defense. }
+1. e4 { Let's play D5! } 1... d5! 2. exd5 { Follow my arrows to learn the Scandi ! } { [%csl Gd5][%cal Gd8d5] } 2... Qxd5 3. Nc3 { [%csl Ga5][%cal Gd5a5] } 3... Qa5 4. Nf3 { [%csl Gc6][%cal Gb8c6] } 4... Nc6 5. d4 { [%csl Ge6][%cal Ge7e6] } 5... e6 6. Bf4 { [%csl Gb4][%cal Gf8b4] } 6... Bb4 7. Qd2 { [%csl Gf6][%cal Gg8f6] } 7... Nf6 { [%csl Re4][%cal Rf6e4,Re4c3,Re4d2] } 8. Bd3 { [%csl Gg8][%cal Ge8g8] } 8... O-O 9. O-O { [%csl Gd5][%cal Gf6d5] } 9... Nd5 $15 { Now you have a great position! } *
+
+
+[Event "Openings: King's Indian Defense"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "E90"]
+[Opening "King's Indian Defense: Normal Variation, Rare Defenses"]
+[StudyName "Openings"]
+[ChapterName "King's Indian Defense"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/AkcZ3n5c"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ [%anno "ArjunShukla23", arjunshukla23] The King's Indian Defense is also one of the most famous openings used by the Grandmasters. Hikaru Nakamura used this opening to win some matches. Let's see how to play this opening. }
+1. d4 { [%anno "ArjunShukla23", arjunshukla23] White plays d4. Now play Nf6 } { [%csl Gf6][%cal Gg8f6] } 1... Nf6 { [%anno "ArjunShukla23", arjunshukla23] The Knight is used to stop the e pawn from moving and prevents the d pawn to advance. } 2. c4 { [%anno "ArjunShukla23", arjunshukla23] White increases control over the center with c4. Play g6 } 2... g6 3. Nc3 { [%anno "ArjunShukla23", arjunshukla23] White play Nc3 to put the knight behind a wall of pawns. Fianchetto the bishop. } 3... Bg7 4. e4 { [%anno "ArjunShukla23", arjunshukla23] White plays e4 to attack the knight with e5. To stop that attack, play d6 } { [%csl Gd6][%cal Gd7d6] } 4... d6 5. Nf3 { [%anno "ArjunShukla23", arjunshukla23] Now what should you do? } 5... O-O { [%anno "ArjunShukla23", arjunshukla23] this is the King's Indian defense. With the move d6 Black opens the bishop. White gets a big center, but do not fear, we can bring it back. } *
+
+
+[Event "Openings: Slav Defense"]
+[Date "2025.07.08"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D10"]
+[Opening "Slav Defense"]
+[StudyName "Openings"]
+[ChapterName "Slav Defense"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/PnENSDso"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.07.08"]
+[UTCTime "13:34:32"]
+[ChapterMode "gamebook"]
+
+{ Now we will learn the Slav! }
+1. d4 { To play the Slav, play d5. } 1... d5 2. c4 { Now, play c6. } 2... c6! { Reinforces the center. } 3. Nc3 { Follow my Arrows to learn the Slav! } { [%csl Gc4][%cal Gd5c4] } 3... dxc4 4. e3 { [%csl Gb5][%cal Gb7b5] } 4... b5 5. a4 { [%csl Gb4][%cal Gb5b4] } 5... b4 6. Ne4 { [%csl Gd5][%cal Gd8d5] } 6... Qd5 7. Nd2 { [%csl Gc3][%cal Gc4c3] } 7... c3 8. bxc3 { [%csl Gc3][%cal Gb4c3] } 8... bxc3 9. Nb1 { [%csl Ga5][%cal Gd5a5] } 9... Qa5 10. Qc2 { [%csl Gf6][%cal Gg8f6] } 10... Nf6 11. Qxc3 { [%csl Gc3][%cal Ga5c3] } 11... Qxc3+ 12. Nxc3 { [%csl Ga5][%cal Ga7a5] } 12... a5 13. Ba3 { [%csl Ge6][%cal Ge7e6] } 13... e6 14. Bxf8 { [%csl Gf8][%cal Gh8f8] } 14... Rxf8 15. Be2 { [%csl Ge7][%cal Ge8e7] } 15... Ke7 16. Nf3 { [%csl Ga6][%cal Gc8a6] } 16... Ba6 17. Bxa6 { [%csl Ga6][%cal Gb8a6] } 17... Nxa6 18. Ke2 { [%csl Gc5][%cal Gc6c5] } 18... c5 $10 { Now yo know how to play the Slav! } *
+
+
+[Event "Openings: The Dutch Defense"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A81"]
+[Opening "Dutch Defense: Semi-Leningrad Variation"]
+[StudyName "Openings"]
+[ChapterName "The Dutch Defense"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/jsF2xFVp"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ Now, The Dutch Defense. It is rarely played nowadays, but that does not mean that this opening is bad. White has to play d4 to let us play the Dutch. }
+1. d4 { [%anno "ArjunShukla23", arjunshukla23] We do not play the Orthodox lines like Nf6 or d5. We play f5. } 1... f5 { [%anno "ArjunShukla23", arjunshukla23] This is the Dutch Defense and this move stops e4. White normally plays g3. } 2. g3 { [%anno "ArjunShukla23", arjunshukla23] Here black needs to play Nf6. } { [%csl Gf6][%cal Gg8f6] } 2... Nf6 { [%anno "ArjunShukla23", arjunshukla23] Follow the Arrows to learn the Dutch. } 3. Bg2 { [%csl Gg6][%cal Gg7g6] } 3... g6 { [%csl Gg1,Gf3][%cal Gg1f3] } (3... e6 { [%anno "ArjunShukla23", arjunshukla23] This move is also good. }) 4. Nf3 { Now? } { [%csl Gg7][%cal Gf8g7] } 4... Bg7 5. O-O { And Now? } { [%csl Gg8][%cal Ge8g8] } 5... O-O { [%anno "ArjunShukla23", arjunshukla23] This is the Dutch Defense: Semi-Leningrad. } *
+
+
+[Event "Openings: The Pirc Defense"]
+[Date "2025.07.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B08"]
+[Opening "Pirc Defense: Classical Variation"]
+[StudyName "Openings"]
+[ChapterName "The Pirc Defense"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/yhcD6xPm"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.07.02"]
+[UTCTime "11:14:01"]
+[ChapterMode "gamebook"]
+
+{ Now, the Pirc defense. The last opening. }
+1. e4 { Play d6. } 1... d6! 2. d4 { Follow my arrows to learn the Pirc! } { [%csl Gf6][%cal Gg8f6] } 2... Nf6 3. Nc3 { [%csl Gg6][%cal Gg7g6] } 3... g6 4. Nf3 { [%csl Gg7][%cal Gf8g7] } 4... Bg7 5. Bf4 { [%csl Gg8][%cal Ge8g8] } 5... O-O 6. Qd2 { [%csl Gd7][%cal Gb8d7] } 6... Nbd7 7. O-O-O { [%csl Gc5][%cal Gc7c5] } 7... c5 8. dxc5 { [%csl Gc5][%cal Gd7c5] } 8... Nxc5 9. e5 { [%csl Ge4][%cal Gf6e4] } 9... Nfe4 10. Nxe4 { [%csl Ge4][%cal Gc5e4] } 10... Nxe4 11. Qe3 { [%csl Gd5][%cal Gd6d5] } 11... d5 12. Bd3 { [%csl Ga5][%cal Gd8a5] } 12... Qa5 13. Kb1 { [%csl Gc5][%cal Ge4c5] } 13... Nc5 $14 *
+
+
+[Event "Openings: How to design a good study"]
+[Date "2025.07.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Openings"]
+[ChapterName "How to design a good study"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/Tdq9VmU2"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.07.11"]
+[UTCTime "13:16:01"]
+[ChapterMode "gamebook"]
+
+{ A lot of people mess this up. Designing good studies.
+
+Now I will teach you some rules to make your studies good.
+
+1. The chapters should be in order.
+I see many people not arrange their studies properly and these studies look absurd.
+
+2.Don't make a Study on something already discussed. make something new!
+If you make studies on the same topic, then people will not look at your study. So, make something new.
+
+3. Try for an Interactive Lesson
+People generally like Interactive Lessons over Normal Analysis. So, if you want your study to attract likes, going for an interactive Lesson is your best bet🙂
+
+Bonus Tip: Always put an introduction and conclusion chapter!
+
+So, that is some rules I suggest you to follow to make good studies🙂
+- rooks-pawn }
+ *
+
+
+[Event "Openings: 🙂Conclusion🙂"]
+[Date "2025.06.25"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Openings"]
+[ChapterName "🙂Conclusion🙂"]
+[ChapterURL "https://lichess.org/study/HHZpRszr/Vk8HqPK9"]
+[Annotator "https://lichess.org/@/rooks-pawn"]
+[UTCDate "2025.06.25"]
+[UTCTime "08:21:05"]
+[ChapterMode "gamebook"]
+
+{ So there you are, these are the openings that you need to get to improve your game! But do not forget, the real best thing that you can bestow your ambition on is you, the greatest weapon that you can use is you, not an opening. Believe and you shall reach!
+
+Can we reach 1000 likes?
+
+Regards, rooks-pawn, ArjunShulkha23 and dUbEaR504
+
+Pls, Also visit my other studies.
+https://lichess.org/study/rNXW9oNr
+https://lichess.org/study/BH3GSMbr
+https://lichess.org/study/V2kutV1o
+lichess.org/study/K2yZF6vh
+
+In progress,
+lichess.org/study/QnE6mbA6
+https://lichess.org/study/GzULtzym
+https://lichess.org/study/80oQL9Gk
+
+This was a study by:
+lichess.org/team/study-fans--creators
+
+Please Press the like button. It motivates us a lot.
+Bye! } { [%csl Rc3,Rd2,Rb4,Ra5,Rb6,Rc7,Rd6,Re7,Rf6,Rg5,Rf4,Re3][%cal Rd2c3,Rc3b4,Rb4a5,Ra5b6,Rb6c7,Rc7d6,Rd6e7,Re7f6,Rf6g5,Rg5f4,Rf4e3,Re3d2] }
+ *
+
+

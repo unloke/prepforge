@@ -202,6 +202,21 @@ class RepertoireExportService:
             board = chess.Board()
         game.setup(board)
 
+        def annotation(node):
+            parts = [node.comment] if node.comment else []
+            # The board model has one drawing colour; export it as green.
+            if node.arrows:
+                parts.append("[%cal " + ",".join("G" + a for a in node.arrows) + "]")
+            if node.circles:
+                parts.append("[%csl " + ",".join("G" + s for s in node.circles) + "]")
+            if not node.is_enabled:
+                parts.append("[disabled]")
+            if node.tags:
+                parts.append("[" + ",".join(node.tags) + "]")
+            return " ".join(parts)
+
+        game.comment = annotation(repertoire.root_node)
+
         def add_subtree(parent_pgn_node, opening_node):
             children = sorted(
                 [c for c in opening_node.children if c.move is not None],
@@ -216,26 +231,7 @@ class RepertoireExportService:
                     new_node = parent_pgn_node.add_main_variation(move)
                 else:
                     new_node = parent_pgn_node.add_variation(move)
-                annotations = []
-                if child.comment:
-                    annotations.append(child.comment)
-                # Lichess renders these drawing commands from PGN comments:
-                # arrows via [%cal ...], circles via [%csl ...]. Our board uses a
-                # single colour, so export everything green (G).
-                if child.arrows:
-                    annotations.append(
-                        "[%cal " + ",".join("G" + a for a in child.arrows) + "]"
-                    )
-                if child.circles:
-                    annotations.append(
-                        "[%csl " + ",".join("G" + s for s in child.circles) + "]"
-                    )
-                if not child.is_enabled:
-                    annotations.append("[disabled]")
-                if child.tags:
-                    annotations.append("[" + ",".join(child.tags) + "]")
-                if annotations:
-                    new_node.comment = " ".join(annotations)
+                new_node.comment = annotation(child)
                 add_subtree(new_node, child)
 
         add_subtree(game, repertoire.root_node)
@@ -272,6 +268,7 @@ class RepertoireExportService:
         repertoire_id = str(uuid.uuid4())
         starting_fen = parsed.headers.get("FEN") or STARTING_FEN
         root_id = str(uuid.uuid4())
+        root_comment, root_arrows, root_circles = _extract_drawings(parsed.comment)
         root = OpeningNode(
             id=root_id,
             repertoire_id=repertoire_id,
@@ -285,8 +282,10 @@ class RepertoireExportService:
             is_user_prepared_move=False,
             is_enabled=True,
             priority=0.0,
-            comment=None,
+            comment=root_comment,
             tags=[],
+            arrows=root_arrows,
+            circles=root_circles,
             source=MoveSource.IMPORTED_PGN,
         )
 
@@ -299,7 +298,13 @@ class RepertoireExportService:
                 new_board = board.copy(stack=False)
                 new_board.push(move)
                 node_id = str(uuid.uuid4())
-                comment, arrows, circles = _extract_drawings(variation.comment or None)
+                # Keep the introduction local to this branch, ahead of its move note.
+                # OpeningNode has one comment/drawing set, not separate before/after fields.
+                intro, intro_arrows, intro_circles = _extract_drawings(variation.starting_comment)
+                note, arrows, circles = _extract_drawings(variation.comment)
+                comment = "\n\n".join(part for part in (intro, note) if part) or None
+                arrows = intro_arrows + arrows
+                circles = intro_circles + circles
                 node = OpeningNode(
                     id=node_id,
                     repertoire_id=repertoire_id,

@@ -1,0 +1,306 @@
+[Event "London System Repertoire: Introduction"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "London System Repertoire"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/mgoBqs97"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[FEN "rnbqkbnr/pppppppp/8/8/3P1B2/2PBPN2/PPQN1PPP/R3K2R w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2018.05.19"]
+[UTCTime "02:45:13"]
+
+{ This is a study I've made for my own personal London System repertoire. It's a system that can be played against almost anything black dreams up. It can be used as an opening to build up a small positional edge or as a crazy attacking opening.
+
+Many of the games and commentary given were found in: https://lichess.org/study/GNlZ2WKx . If you want to play the London make sure to check it out: It's a really great study with lots of high-level example London games. Another study I found with interesting ideas in the London you may want to look it is this one: https://lichess.org/study/KjivNw7F.
+
+Green - typical positional moves
+Red - typical attacking moves
+Blue - typical pawn breaks (usually against a black c4 advance) } { [%csl Ge5,Rh7,Rf7,Gg3][%cal Ge1g1,Ge1c1,Gf3e5,Gd2f3,Rd3h7,Rf3g5,Bb2b3,Be3e4,Rc2h7,Rg5f7,Rg5h7,Gf4g3,Gc2b3,Rg2g4,Rh2h4] }
+ *
+
+
+[Event "London System Repertoire: London System Basics"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "London System Basics"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/C8pUIq2K"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "08:26:25"]
+
+{ In this chapter I outline the basic ideas of the London System against a typical black setup. }
+1. d4 { This is always the first move of the London System. } 1... d5 2. Bf4 { Bf4 should almost always be played next, NOT Nf3 which a lot of players (including myself previously) play. Nf3 leads to problems which I'll show in a later chapter. } 2... Nf6 3. e3 { Now we start building a "pawn pyramid" on c3, d4 and e3. Except in some particular scenarios this should be done before Nf3 is played. } 3... e6 4. c3 { The pawn pyramid is now complete. Now we want to develop our remaining pieces: The two knights and the light-squared bishop. The knights will go to d2 and f3 and the bishop will go to d3. } { [%csl Gb2,Gc3,Gd4,Ge3,Gf2] } 4... c5 { This is a common move used to meet the London system. We never want to take on c5. If black decides to take, we will recapture using the e-pawn. } 5. Nd2 { At this point it's actually okay to play Nf3 (due to the black pawn on e6) but in other opening positions you'll want to play this before Nf3 due to some tactical tricks involving Qb6 and Bf5. } 5... Nc6 (5... cxd4 6. exd4 { If black takes we recapture with the e-pawn. }) 6. Ngf3 Bd6 { A common idea by black. We almost never want to swap the bishop on d6 (and definitely not on f4) so we retreat the bishop to g3. If black exchanges on g3 we recapture using the h-pawn, opening the h-file for our rook. } 7. Bg3 (7. Bxd6 Qxd6 { Swapping on d6 allows the queen to be developed to d6, threatening e5. }) (7. Bd3 Bxf4 8. exf4 { Swapping on f4 isn't the end of the world but it disrupts the typical London pawn structure and may lead to further issues if black takes on d4. }) 7... O-O (7... Bxg3 8. hxg3 { The doubled pawns aren't all bad (the pawn on g3 can be used to probe the kingside and initiate an attack occasionally) and now the h-file is opened for the rook. } { [%csl Rh7][%cal Rh1h7] }) 8. Bd3 { We have developed all of our pieces to good central squares, now we can start to attack! Generally we will move the knight to e5, the queen to c2 and we may have the opportunity to attack via the h-file or the b1-h7 diagonal. } { [%csl Gd2,Gd3,Gf3,Gg3,Rh7,Ge5][%cal Rd3h7,Gf3e5,Gd1c2,Rc2h7,Rh1h7,Rb1h7] } *
+
+
+[Event "London System Repertoire: London vs d5 e6 Part 1"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "London vs d5 e6 Part 1"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/wnSlQzQd"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "02:58:35"]
+
+{ Carlsen - Caruana }
+1. d4 d5 (1... Nf6 2. Bf4 e6 3. e3 d5) (1... e6 2. Bf4 d5 (2... Nf6 3. e3 d5) 3. e3 Nf6) 2. Bf4 e6 3. e3 Nf6 { A typical setup for black with pawns on d5 and e6 and the knight on f6. I actually really like playing against this as the e5 square is now perfect for white's knight and the e6 pawn gets rid of any Bf5 ideas. The position can also be reached by a number of other move orders. } 4. Nf3 { Since Bf5 won't happen here, Nf3 is perfectly fine. } 4... c5 { This position comes from a game between Carlsen (white) and Caruana (black) - masters do actually play this stuff! c5 is a common (and good) way for black to counter the London System. } 5. c3 { Again, forming the pawn pyramid. } { [%csl Gb2,Gc3,Gd4,Ge3,Gf2] } 5... Nc6 { Developing the knight. This also defends the e5 square. However, this isn't necessarily a problem for white - often white will swap a pair of knights on the e5 square before rerouting the other knight to e5 square via Nd2, Nf3 and Ne5. } (5... Bd6 { Another common idea from black. White certainly doesn't want to swap the bishop on f4 (this would break the pawn pyramid) but swapping on d6 isn't great either. Instead white should generally play Bg3 in these kind of positions. } 6. Bg3 Bxg3 7. hxg3 { For the swapping of bishops, white has now opened the h-file. Also, white still has a light squared bishop outside of the pawn chain which can easily be developed to a number of good squares: d3, e2 or even b5, while black's light-squared bishop will only be able to access the a4-e8 diagonal. } { [%csl Rh7,Bc8][%cal Gf1d3,Gf1e2,Gf1b5,Rh1h7] }) 6. Nbd2 { Putting the knight on its usual square. It's also useful to have this move to prevent opponents from playing the annoying anti-London Ne4, where after Nd2 they can play Nxd2 Qxd2 (this isn't necessarily bad but if you like having familiar positions out of the opening it's probably not for you). } 6... Bd6 { Here's that Bd6 move discussed earlier. } 7. Bg3 { Carlsen avoids a bishop exchange on f4 or d6 and dares black to exchange on g3, which would open up the h-file. In general Bg3 should almost always be played as the reply to Bd6. } 7... O-O { Caruana doesn't want to trade here. However many players will jump at the chance to give white doubled pawns, ignoring the access it gives white to the h-file. } (7... Bxg3 8. hxg3 { So many good attacking ideas for white, especially if black castles. } { [%csl Rh7,Rf7][%cal Rh1h7,Rf3g5,Gd2f3,Rd1h5,Gf1d3,Rd3h7,Gd1c2] }) 8. Bb5 { The usual move is Bd3, but Carlsen shows that Bb5 is playable too. } (8. Bd3 c4 { Looks scary, but in reality c4 is often a weakening move. Since black is locking in the pawn chain, white will attempt to play for dynamics. This occurs primarily through the pawn breaks of b3 and/or e4. } { [%csl Rc4,Rd5,Re4,Rb3][%cal Gd3e2,Rb2b3,Rb3c4,Re3e4,Re4d5,Gd3c2] } 9. Be2 { One thing to keep in mind if you are playing for the pawn breaks is that castling queenside can be quite dangerous in these lines, no matter how tempting the open h-file looks! Castling kingside is generally the way to go. } { [%cal Ge1g1] }) 8... Bxg3 9. hxg3 { Now Caruana takes. Again, this opens the h-file for white. } 9... Qb6 { Attacking the bishop. } { [%csl Rb5,Gc6][%cal Rb6b5,Gb6c6] } 10. a4 h6 { Defending from any possible Ng5 incursions, as well as attacks along the h-file. } (10... a6 { Spending a move to chase the bishop isn't a good idea. } 11. Bxc6 bxc6 12. Qc2 { Defending the b2 pawn. } 12... Rb8 { [%csl Rb2][%cal Rb8b2] } 13. Rb1 h6 14. b4 cxb4 15. cxb4 { Now everything is defended. White has an edge here. }) 11. O-O { Castling kingside. Although the open h-file may look worrying for white, black can't easily get their major pieces over to the kingside. Also the second g-pawn could prove useful for initiating a kingside attack. } 11... Ne7 12. Qb3 Qc7 13. a5 Bd7 14. Be2 Ng6 { Black delays releasing the tension. } { [%csl Rc5][%cal Rc5c4,Rc5d4] } 15. Qa3 c4 { Caruana releases the tension. Later on, this will allow for white counterattacks via b3 and e4. } { [%csl Rc4,Rd5][%cal Gb2b3,Ge3e4,Rb3c4,Re4d5] } 16. b3 cxb3 17. Nxb3 Ne4 { Later the e4 break will be played. White is in a good position out of the opening. } (17... Qxc3 18. Rfc1 { The queen is now trapped. }) *
+
+
+[Event "London System Repertoire: London vs d5 e6 Part 2"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "London vs d5 e6 Part 2"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/IGpWgNhI"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "05:38:46"]
+
+{ Velazsquez - Acosta }
+1. d4 d5 2. Bf4 e6 3. e3 Nf6 4. Nf3 { Again, Nf3 is okay here due to the presence of the e6 pawn. In general, if e6 and e3 have been played then Nf3 is safe. } 4... c5 5. c3 { Forming the pawn pyramid. } { [%csl Gb2,Gc3,Gd4,Ge3,Gf2] } 5... Nc6 6. Nbd2 Be7 { Bd6 is generally thought to be better than Be7 as it challenges the f4 bishop. } { [%csl Bd6][%cal Rd6h2,Be7d6,Bd6f4] } 7. Bd3 { O-O or Nh5 are thought to be the best moves here. } { [%cal Ge8g8,Gf6h5] } 7... c4 { As we saw in the last chapter, c4 allows the b3 and e4 pawn breaks. } (7... Nh5 8. Bg3 Nxg3 9. hxg3 { The usual continuation after Nh5. }) (7... O-O 8. Ne5) 8. Bc2 { Keeping the bishop on the b1-h7 diagonal, threatening the black kingside. } 8... O-O (8... Nh5 9. Bg3 Nxg3 10. hxg3 { [%csl Rh7][%cal Rh1h7,Rc2h7] }) 9. Ne5 { One of the key moves of the London System. The knight is well-placed on e5, and the d1-h5 diagonal is opened up for the queen. } 9... Nxe5 { Of course, it is not illegal for black to not take the knight but leaving the knight on e5 can't be seen as particularly good. } (9... Bd7 10. O-O) 10. dxe5 { Originally I would take with the bishop here, but taking with the pawn is better. It chases the knight away from f6, weakening the kingside (as the queen guards g4 and h5). } { [%csl Rf6,Re5,Yg4,Yh5,Rh7][%cal Re5f6,Rc2h7] } 10... Nd7 11. h4 { Now the pawn storm begins. Taking the pawn with the bishop is a mistake as it opens up the h-file for the rook. Here we see the benefit of delaying castling kingside in the London System - if white were castled kingside, the rook would not be able to control the h-file. } 11... f5 (11... Bxh4 12. Bxh7+ Kxh7 13. Qh5+ Kg8 14. Nf3 Bxf2+ 15. Kxf2) 12. Nf3 { There is now a hole on d4 for the second white knight. } (12. exf6 Nxf6 13. Nf3 { Also good for white. }) 12... Nc5 13. Qe2 { Preparing to castle queenside. Then both rooks can be used on the kingside to devastating effect. } 13... a5 14. Nd4 h6 { Attempting to close the h-file, but it doesn't work. } 15. g4 Bxh4 { This doesn't lose anything immediately for black, but is still a mistake - white loses a pawn but activates the rook along the h-file. } { [%csl Rh8,Rh6,Rh7][%cal Rh1h8] } 16. gxf5 exf5 17. O-O-O Ne4 18. Bxe4 { The knight is black's strongest piece, while the bishop is white's weakest piece, so white chooses to exchange them. } 18... fxe4 19. Rdg1 { It's easy to see that black is in deep trouble here. } { [%csl Rg7,Rh6,Rh8,Rh5,Re6,Rf4][%cal Rg1g7,Rh1h6,Rh1h8,Re2h5,Re5e6,Rd4e6,Rf4h6] } 19... Bg5 20. Bxg5 hxg5 21. Qh5 { The g4 pawn will soon fall and black can't really do anything about white's domination of the g and h files. } { [%csl Rh8,Rg8,Rh5,Rg1,Rh1,Rg5][%cal Rh1h8,Rg1g8,Rh5h8] } *
+
+
+[Event "London System Repertoire: London vs d5 c5 Part 1"]
+[Date "2018.05.18"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "London vs d5 c5 Part 1"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/YGzPvf7o"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.18"]
+[UTCTime "13:00:40"]
+
+{ Puebla - Albertoni }
+1. d4 d5 2. Bf4 { As I discussed before, Bf4 then e3 is the most accurate London System move order. Playing Nf3 earlier can run into issues, and also blocks the d1-h5 diagonal. } { [%csl Rf3][%cal Gd1h5,Rg1f3,Ge2e3] } (2. Nf3 Nf6 3. Bf4 c5 4. c3 Nc6 5. e3 Qb6 { Defending the b-pawn now becomes awkward. I ran into this move many times during my initial experience with the London. } 6. Qb3 { The natural Qc2 runs into Bf5 problems. } (6. Qc2 Bf5 (6... g6 7. Be2 Bf5 8. dxc5 Bxc2 9. cxb6 Bxb1 10. Rxb1 axb6) 7. dxc5 (7. Qxf5 Qxb2 8. dxc5 g6 9. Qd3 { The computer is changing its mind constantly about what the evaluation is. }) 7... Bxc2 8. cxb6 axb6 { Computer says we're ahead, but this is still dubious for Londoners. }) 6... c4 7. Qc2 (7. Qxb6 axb6 8. Nbd2 b5 9. Be2 Bf5 { Either this or b4 causes problems for London players. } (9... b4)) 7... Bf5 8. Qc1 Nh5 { White has many positional problems here. }) 2... Nf6 3. e3 c5 { A move that always annoyed me when I first started playing the London. I mainly feared c4 and cxd4. I show how to deal with cxd4 in the chapter "London System vs cxd4", and as the previous chapter showed c4 is not a real threat to the London System. } 4. c3 { Forming the pawn pyramid. } { [%csl Gb2,Gc3,Gd4,Ge3,Gf2] } 4... Nc6 5. Nd2 e6 (5... Qb6 { Before with 2. Nf3 this move was winning, how about now? } 6. Qb3 { It's important to know this move as Qb6 will likely come up a lot in your games. Neither side wants to swap queens and open the a-file here. } 6... c4 (6... Bf5 7. dxc5 { Remember to play this if your opponent plays Bf5. }) 7. Qc2 Bf5 { Now this move is simply a blunder. } 8. Qxf5 Qxb2 9. Qb1 Qxc3 10. Ne2 Qb4 11. Qc1 Ne4 12. f3 Qxd2+ 13. Qxd2 Nxd2 14. Kxd2 { White is clearly winning. }) 6. Ngf3 { Now Nf3 is safe. However, it can be further delayed if necessary. This is now essentially a d5 e6 London. } 6... Be7 7. Bd3 O-O { An ideal position for London players, especially those who wish to attack on the kingside. } 8. h4 { Beginning the attack! } 8... Nh5 { Threatening to swap on f4... } { [%csl Rf4][%cal Rh5f4] } 9. Bxh7+ { … but white ignores it completely! Sacrificing the bishop on h7 is a common theme in the London. } 9... Kxh7 (9... Kh8 10. Bc2 { This is just winning for white. }) 10. Ng5+ { Kg8 and Kh8 both lose immediately, while Bxg5 is just bad. } 10... Kg6 (10... Kh8 11. Qxh5+ Kg8 12. Qh7#) (10... Kg8 11. Qxh5 Bxg5 12. hxg5 f5 13. g6 { [%csl Rh7][%cal Rh5h7] } 13... Qh4 14. Rxh4 c4 15. Qh7#) (10... Bxg5 11. hxg5 g6 12. Rxh5+ Kg7 13. Rh6) 11. Be5 f6 { A big mistake. } 12. Qc2+ f5 13. g4 Nxe5 14. gxh5+ Kh6 15. dxe5 { White is now clearly winning. } *
+
+
+[Event "London System Repertoire: London vs KID/Grunfeld"]
+[Date "2018.05.18"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A48"]
+[Opening "London System, with Be2"]
+[StudyName "London System Repertoire"]
+[ChapterName "London vs KID/Grunfeld"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/eUtKgX1n"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.18"]
+[UTCTime "13:46:27"]
+
+1. d4 Nf6 2. Bf4 g6 { Black chooses to reply with the King's Indian Defence, avoiding many common London System motifs. In particular, black will aim to play e5. Some Londoners fear the KID and will do anything to avoid playing the London against it but a true Londoner will play on and brave the tactical storm! } 3. Nf3 Bg7 4. e3 O-O { Up until this point it has been a typical London setup. Now we will make some deviations. } 5. Be2 { Avoiding the scenario when a pawn on e4 forks knight and bishop. } 5... d6 (5... d5 { Now this is a Grunfeld. We don't need to play h3 now. } 6. O-O c5 7. c3 { Pawn pyramid again! } { [%csl Gb2,Gc3,Gd4,Ge3,Gf2] } 7... Nc6 8. Nbd2 Qb6 9. Qb3 { Capturing on b3 would open the a-file for white. } 9... c4 10. Qxb6 axb6 { The computer line. Now we can prepare to use the b3 and e4 pawn breaks, as in a typical London. } { [%csl Gb3,Ge4,Rc4,Rd5][%cal Gb2b3,Ge3e4,Rb3c4,Re4d5] }) 6. h3 { Leaving a square on h2 to retreat the bishop to in the case of an e5 push. We will generally castle kingside, then play c4 (instead of c3) and Nc3 (instead of Nd2). Playing c3 and Nd2 leads to some annoying tactics. } { [%csl Re5,Rf4,Gc4,Gd4,Ge3,Gf2,Gc3][%cal Re7e5,Re5f4,Gf4h2,Ge1g1,Gc2c4,Gb1c3] } 6... Nbd7 7. O-O Qe8 { A typical KID move: Now e5 is unstoppable. } 8. c4 (8. c3 e5 9. Bh2 Qe7 10. Nbd2 e4 { Now the f3 knight has nowhere nice to go. With the other knight on c3 it would be able to retreat to d2. } { [%csl Re4,Rf3][%cal Re4f3] }) 8... e5 9. Bh2 { Retreating the bishop to h2 as planned. } 9... Qe7 10. Nc3 e4 11. Nd2 { The point of c4 and Nc3. The knight will be useful on d2, and the two knights together put pressure on e4. } *
+
+
+[Event "London System Repertoire: London vs Benoni"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "London vs Benoni"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/mE9ZojVx"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "09:52:53"]
+
+1. d4 Nf6 2. Bf4 c5 { Black now plays the Benoni. } 3. c3 Qb6 4. Qb3 Qxb3 5. axb3 cxd4 6. cxd4 Nc6 7. Nf3 e6 8. Nc3 Bb4 9. Bd2 O-O 10. e3 d5 11. Bd3 Bd7 12. O-O Bd6 *
+
+
+[Event "London System Repertoire: London vs Old Benoni"]
+[Date "2018.05.29"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A43"]
+[Opening "Benoni Defense: Benoni-Indian Defense"]
+[StudyName "London System Repertoire"]
+[ChapterName "London vs Old Benoni"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/DDiPVb0p"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.29"]
+[UTCTime "02:44:51"]
+
+1. d4 c5 { The Old Benoni Defence. Against this defence, simply playing the standard moves of the London System is not advised. So we will play a different system instead. } 2. d5 { In this system, we will put strong pawns on d5 and e4 and our knights on c3 and f3. It is important to avoid capturing with these central pawns (unless black plays some very strange response) in order to preserve the central pawn chain. } { [%csl Yd5,Ye4,Bc3,Bf3] } (2. Bf4 { This allows for the elimination of the central d-pawn in exchange for black's c-pawn. } 2... cxd4 3. Qxd4 Nc6 4. Qa4 e5 5. Bg3) (2. c3 { Playable and will lead to more typical London positions, but with a small advantage for black. } 2... Nf6 3. Bf4 Qb6 4. Qb3 Qxb3 5. axb3 cxd4 6. cxd4 Nc6 7. Nf3) (2. e3 { Also playable, but if black decides not to capture on d4 the e3 pawn blocks in the c1 bishop and prevents it from moving to f4. }) 2... Nf6 3. Nc3 { This move looks strange at first as it blocks in the c-pawn. However, it keeps the c-pawn flexible (it can still possibly move to c3 to block the a1-h8 diagonal) and more importantly prepares e4. } 3... e6 (3... d6 4. e4 e6 (4... g6 { Black can choose a fianchetto setup as shown here. } 5. Nf3 Bg7 { White can choose from two main options here: Developing the bishop to e2 or playing a4 in preparation for developing the bishop to b5. } 6. Be2 (6. a4 Na6 7. Bb5+ Bd7 8. O-O { A more aggressive setup, exploiting the tactical opportunities on the queenside. } 8... Bxb5 9. axb5 Nc7 10. Qe2 Nd7 11. Bf4 O-O { White has opportunities to develop the rooks to strong files, has a significant presence in the centre and has a strong pawn on b5 which may cause black problems. }) 6... O-O 7. O-O { A simple developing setup. }) 5. Nf3 { A transposition into the main line given in this study. }) 4. e4 { Establishing a strong pawn centre. Note that exd5 is a mistake for black here. } { [%csl Yd5,Ye4] } 4... d6 (4... exd5 { This allows e5, attacking the knight. } 5. e5 d4 (5... Ne4 { This doesn't actually save the knight. } 6. Nxd5 { Capturing back the pawn and preventing an exchange with the e4 knight. } 6... h6 { Attempting to retreat the knight to the g5 square. } (6... Ng5 7. Bxg5 Qxg5 8. Nc7+) 7. h4 d6 8. Qf3 { Finally winning the knight. } 8... Nxf2 9. Qxf2) 6. exf6 Qxf6 7. Qe2+ Qe6 8. Nb5 Na6 9. Nh3 b6 10. Nf4 Qxe2+ 11. Bxe2 Bb7 12. O-O Be7) 5. Nf3 Be7 6. Be2 (6. Bc4) 6... O-O 7. O-O { With a good position for white. Possible ideas include a queenside pawn advance (with a possible Bb5 or Bc4), developing the bishop to f4, and moving the rooks to the d and e files. } { [%csl Ra5,Rb5,Yd1,Ye1][%cal Ge2c4,Ra2a4,Ra4b5,Ra4a5,Ya1d1,Yf1e1,Yd1d8,Ye1e8,Gc1f4] } *
+
+
+[Event "London System Repertoire: Stonewall London"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "London System Repertoire"]
+[ChapterName "Stonewall London"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/9j2qOYK9"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "10:07:50"]
+
+ *
+
+
+[Event "London System Repertoire: Alternative London System"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "Alternative London System"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/mLFVIpd5"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "05:34:14"]
+
+{ In the previous chapter, c4 and Nc3 was used to combat the King's Indian Defence. These two moves can also be played against other black openings as well as an alternative London System. }
+1. d4 d5 2. Bf4 e6 3. e3 Nf6 4. Nf3 Bd6 5. Bg3 c5 6. c4 O-O 7. Nc3 *
+
+
+[Event "London System Repertoire: London System vs cxd4"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "London System vs cxd4"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/OC5Ewe0Z"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "05:09:32"]
+
+{ In this game we will have a look at one of the attempts some black players will make to try and derail the London System. }
+1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 { A typical London setup... } 4... cxd4 { … but the opponent doesn't want that! Surely swapping a flank pawn for a centre pawn is good, they say. How do we refute this strange play? } 5. exd4 { (This chapter is still work in progress...) } *
+
+
+[Event "London System Repertoire: London System vs Ne4"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "London System vs Ne4"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/ECcMwyyJ"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "05:12:05"]
+
+{ Here is another aggressive move some black players make in an attempt to refute the London. }
+1. d4 Nf6 2. Bf4 d5 3. e3 c5 4. Nf3 Ne4 { Their plan is usually to swap on d2, which can confuse the uninitiated London player. However, this shouldn't scare you! } 5. Nbd2 Nxd2 (5... Nc6 6. Nxe4 dxe4 7. d5 { Ne5 is okay but d5 is the way to go to really punish black's play. } 7... exf3 8. dxc6 Qxd1+ 9. Rxd1 bxc6 10. gxf3 { Computer evaluates this position as +1 for black, and it's easy to see why. Double isolated c-pawns and zero development versus decent development and a lack of weak pawns - I'll take that. }) 6. Qxd2 e6 7. Be2 Nc6 8. O-O f6 (8... Bd6 { Typical move in the London but a mistake. } 9. dxc5 Bxc5 10. Qc3 Bf8 11. Rad1) 9. c3 { Despite black's attempts, we have now reached a better-than-usual London position. } *
+
+
+[Event "London System Repertoire: London System vs Bf5"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "London System vs Bf5"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/dViPOIs1"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "06:31:45"]
+
+1. d4 d5 2. Bf4 Bf5 { We've all seen it - your opponent goes for the old "mirror their moves until they make a mistake" trick when they don't know your opening. No matter their reason, this is not a refutation of the London. } 3. e3 e6 4. Bd3 { Swapping bishops is the way to go here. } 4... Bxd3 5. Qxd3 { And now we just continue the London setup as per usual. } 5... Nf6 { In Carlsen - Giri, c6 was played instead here but Nf6 is good too. } 6. Nf3 c5 7. c3 Nc6 (7... c4 { Different opening moves, still allows for b3 and e4 pawn breaks! } 8. Qe2 { [%csl Gb3,Ge4,Rd5,Rc4][%cal Gb2b3,Ge3e4,Re4d5,Rb3c4] } 8... Nc6 9. Nbd2 { Now b3 is on the cards. }) 8. Nbd2 Bd6 9. Bg3 Bxg3 10. hxg3 O-O { Perfectly natural, but white has a clear edge here, with a number of good plans. Better is Qb6. Either way, it's typical London play from here. } { [%csl Ge5,Gf3,Rh7,Rg5,Rg4,Rg3,Ge1][%cal Gf3e5,Gd2f3,Ge1g1,Rh1h7,Rd3h7,Rg3g4,Rg4g5,Ge1c1] } *
+
+
+[Event "London System Repertoire: Anti-Londons Part 1"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System, Steinitz Countergambit"]
+[StudyName "London System Repertoire"]
+[ChapterName "Anti-Londons Part 1"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/cERy4zz8"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "10:08:16"]
+
+{ In this chapter I will demonstrate a way to play against the London. This opening will aim to expose the unprotected b-pawn as a weakness of the London System. }
+1. d4 d5 2. Bf4 c5 { Annoying for London players. Others recommend Nf6 c5 as an anti-London but the advantage of d5 c5 is that d5 is not an available response for white against c5. } 3. e3 Nf6 (3... Nc6 { For those wondering why Nf6 needs to be played at all, here's why. } 4. Nf3 Qb6 5. Nc3 Qxb2 6. Nxd5 { Now black cannot protect against Nc7+. } { [%csl Rc7,Re8,Ra8,Rf4,Rd5][%cal Rd5c7,Rc7e8,Rc7a8,Rf4c7] }) 4. Nf3 { As we've seen in previous chapters, this is dubious if you want to play in the style of the London. } (4. Nd2 Qb6 5. Ngf3 { Now we can either accept the sacrificed pawn on b2 or continue to play normally. } 5... Nc6 (5... Qxb2 6. Rb1 Qxa2 { With chances for both sides. }) 6. dxc5 { Instead of the typical c3 the counterintuitive dxc5 is best here. } (6. c3 { Now taking the b2 pawn looks very attractive. } 6... Qxb2 7. Rb1 Qxc3) 6... Qxb2 7. Rb1 Qc3 8. Bb5 e6 { Again, with chances for both sides. This line especially will feel very strange to London players. }) 4... Nc6 5. c3 Qb6 { Not the best move theoretically but guaranteed to annoy London players. } 6. Qb3 { Computer prefers b3 or Qc1 but a London player won't be happy playing either of these. } 6... c4 7. Qc2 Bf5 8. Qc1 Nh5 { Now threatening to swap the London bishop for a knight. } *
+
+
+[Event "London System Repertoire: Anti-Londons Part 2"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A40"]
+[Opening "Horwitz Defense"]
+[StudyName "London System Repertoire"]
+[ChapterName "Anti-Londons Part 2"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/jrStdPOE"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "10:24:21"]
+
+{ Here's another, more risky way to play against the London. If your opponent really knows what they're doing you may have problems but especially in fast games this response could be deadly. }
+1. d4 e6 2. Bf4 g5 { Positionally unsound but very unsettling. I found this novelty when testing the London against Stockfish level 3. The main ideas are h5 and g4 advances (also h4 if the opponent allows it). } 3. Bg3 h5 { A slightly more solid move is Nf6 but there's no point playing this variation for solid positional benefits! } (3... Nf6 4. e3 (4. Nf3 { A typical London move but not a good idea here! } 4... g4 (4... Ne4 5. Nbd2 Nxg3 6. hxg3 Nc6) 5. Nfd2 Nh5 6. e3 Nxg3 7. hxg3 h5) (4. Nd2 h5 5. h4 g4 6. e3 b6 7. c4 Bb7 8. Ne2 Bh6 { The two black bishops could cause trouble if white isn't paying attention. } { [%csl Re3,Rh6,Rh1,Rb7,Rg2,Rd2][%cal Rh6e3,Rb7h1,Rb7g2,Rh6d2] }) 4... h5 5. h4 g4 6. Bd3 d5 7. Ne2 Nc6) 4. h4 { This move solves some of the positional problems in this line, as it forces g4 with little chance of g and h file attacks. } (4. h3 h4 { Now the bishop must retreat to h2, where it will be essentially trapped. } 5. Bh2 Nc6 { Computer still says that white is ahead but the best moves it recommends are more of the alternative London System shown in an earlier chapter. } 6. c4 Bg7 7. e3 d6 8. Be2 e5 9. dxe5 Bxe5 { With only a slight edge for white according to Stockfish. }) (4. e3 { This lazy London move is a definite blunder. } 4... h4 5. Be5 f6 6. Bd3 Rh6 7. Qg4 fxe5 8. dxe5) (4. Nf3 { Same problem here. } 4... h4 5. Be5 f6 6. Qd3 Rh6 7. Bxf6 Qxf6) 4... g4 { This prevents the knight from going to f3. This also means that e5 will be hard to reach. While this may not theoretically be good for black any London player is definitely "out of book" at this point. } { [%csl Rf3,Rg4,Re5][%cal Rg1f3,Rg4f3] } 5. e3 d5 6. c4 { The alternative London System is the way to go here. } (6. c3 Bd6) 6... Bd6 7. Ne2 { The benefit of g4: The knight cannot be placed on f3. } 7... Nf6 8. Nbc3 dxc4 9. Nf4 { Regaining the pawn. } 9... Nbd7 10. Bxc4 Nb6 11. Qd3 (11. Bd3 Nfd5 12. Ncxd5 Nxd5 13. Nxd5 Bxg3 14. fxg3 exd5 15. O-O Be6 { Gives black counterattacking chances (according to Stockfish). }) 11... Nxc4 12. Qxc4 c6 13. O-O Nd5 { Black has succeeded in preventing the typical London but black's kingside has been left very open. } *
+
+
+[Event "London System Repertoire: Anti-Londons Part 3"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "Anti-Londons Part 3"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/ExzamkHD"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "15:02:52"]
+
+1. d4 d5 2. Bf4 Bg4 { Another Stockfish level 3 novelty... Annoying as now e3 and Nf3 cannot be played. } 3. c3 (3. h3 { This doesn't solve the problem. } 3... Bh5) 3... Nf6 4. Nd2 { Preparing Nf3. } 4... e6 5. Ngf3 Nbd7 (5... Bxf3 6. Nxf3 { This is fine for white. } 6... Bd6 7. Bg3 Bxg3 8. hxg3 Nbd7 9. e3 O-O 10. Ne5 c5 (10... Nxe5 11. dxe5 Nd7 12. Bd3) 11. Bd3 { White is doing well here. }) 6. h3 Bxf3 (6... Bf5 7. g4 Bg6 8. e3 h6 { Leaving the h7 square free for the bishop in case of Nh4. }) 7. Nxf3 c5 8. e3 Qb6 9. Qb3 c4 { Swapping queens won't be good for either player as it will open the a-file for the opponent's rook. } 10. Qc2 Bd6 11. Be2 (11. Bg3 Bxg3 12. fxg3 Ne4 13. g4 Qc7 { Essentially forcing white to castle queenside. } 14. O-O-O b5 { Now } 15. Rg1 O-O { Now black has good queenside chances. }) (11. Bh2 Bxh2 12. Nxh2 Qc7) 11... Bxf4 12. exf4 Qc7 { White is slightly better but like in the other anti-Londons it will likely not be a typical London middlegame. } *
+
+
+[Event "London System Repertoire: Anti-Londons Part 4"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "Anti-Londons Part 4"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/GnOtjEKd"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "15:28:51"]
+
+1. d4 d5 2. Bf4 e5 3. Bxe5 f6 4. Bf4 g5 5. Bg3 *
+
+
+[Event "London System Repertoire: Anti-Londons Part 5"]
+[Date "2018.05.19"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Repertoire"]
+[ChapterName "Anti-Londons Part 5"]
+[ChapterURL "https://lichess.org/study/2EaSmZtz/gpxpjBAD"]
+[Annotator "https://lichess.org/@/davidharoldchess"]
+[UTCDate "2018.05.19"]
+[UTCTime "15:30:25"]
+
+1. d4 Nf6 2. Bf4 c5 *
+
+

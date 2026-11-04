@@ -41,15 +41,54 @@ neither discussion data nor activity. Message bodies are rendered as escaped tex
 The message thread index was measured with 20,000 messages across 500 threads:
 the repertoire query dropped from 3.09 ms with a message scan to 0.15 ms with
 `ix_position_messages_thread_id` in an in-memory SQLite run. No cache or data cap
-was added. Atlas renders the current in-memory tree and opens from the route map
-beside the repertoire color, or More → Explore. The dossier presents a structural
-index and four facets: Reach (mean ending depth), Weave (branch breadth), Poise
-(depth consistency) and Resolve (own-side endings weighted by depth). Saturating
-scales keep one long line or many shallow branches from dominating. These are
-structural heuristics, not engine accuracy or measured opponent coverage.
-Disabled subtrees are excluded; an empty tree has no index. Imprint separately
-reports the percentage of enabled own-side moves marked mastered, with no score
-before training. Shared views omit Imprint. A 2,000-node route uses combined SVG
-paths rather than one element per edge.
+was added.
+
+Atlas opens from the route map beside the repertoire color, or More → Explore.
+It presents a branching route map, Preparation index, a five-facet radar and raw
+move, route, fork and depth counts. Whole repertoire selects the root; Current
+position selects its subtree. Disabled subtrees are excluded.
+
+A cancellable worker validates legal moves and merges equivalent positions only
+within scope. It reads prepared/mainline flags and no annotations, engine, LLM or
+network. Each occurrence selects its best own priority tier; tied chapter plans
+coexist. Core traversal follows preferred tiers for both sides, while other
+opponent responses can establish answered breadth without diluting core depth.
+
+The existing gamePhase detector bounds opening content after consecutive
+non-opening positions and two quiet plies without check. Later model-game moves
+earn nothing. A 32-ply relative limit applies when no completion is detected;
+a scope already outside opening uses the limit. Repetition and stored losses stop
+progress; winning mate/stalemate complete it. This does not prove tactical safety.
+
+Replies estimates response preparation; Reach measures supported opponent plans;
+Depth estimates opening handover from core survival and endpoint development.
+The five facets were calibrated against 225 frozen move-content judgments across
+38 studies / 45 sides, with opening-family development validation. Preparation
+combines supported breadth and route/deployment adequacy. Consistency describes
+alternative-choice burden and repeated-position agreement; Ease describes
+reusable two-action plans under matched pawn structures and development stage,
+quiet-action share and choice burden. These learning-load profiles do not reduce
+the total. Intentional systems are legitimate alternatives.
+
+The fits approximate one qualitative reviewer, not independent chess quality.
+Author intent and short instructional demonstrations remain ambiguous. Missing
+Ease comparisons display a dash; unrecorded opponent moves remain unknown.
+[Atlas research](../research/atlas-quality/facet-calibration-review.md) records
+per-facet rationales, frozen targets, fitted/held-out results, failed trials and
+remaining errors. No fitting, annotation processing, engine or LLM runs when
+opening Atlas.
+
+Tree PGN import/export preserves starting-position prose and drawings. Variation
+introductions are retained with the corresponding branch's move note, using the
+existing single annotation field, so those annotations are retained on import.
+
+The research also retains source PGNs, move-tree examples, direct instructional
+reviews and observed likes. Earlier course-clarity labels are not repertoire
+quality labels and cannot validate this move-only profile. High likes are
+positive-unlabeled reception evidence; low or missing likes remain unknown.
+
+Imprint separately reports the percentage of enabled own-side moves marked
+mastered, with no score before training. Shared views omit Imprint. A 2,000-node
+route uses combined SVG paths rather than one element per edge.
 
 Schema authority: Alembic revision `8e4a6c2d0f91`, following `7b3e5a9c1d2f`.

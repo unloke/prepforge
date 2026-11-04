@@ -57,7 +57,7 @@ function fakeAudio() {
     createBufferSource() {
       const source = node({
         start: (when, offset) => { made.sources += 1; made.starts.push({ when, offset }); },
-        stop: () => { made.stops += 1; },
+        stop: vi.fn(() => { made.stops += 1; }),
       });
       made.sourceNodes.push(source);
       return source;
@@ -91,13 +91,22 @@ async function soundWith({ sounds = true } = {}) {
   const { appState } = await import("../core/state.js");
   appState.prefs = { sounds };
   const audio = fakeAudio();
+  const visibilityListeners = new Map();
+  globalThis.document = {
+    hidden: false,
+    addEventListener: (type, fn) => visibilityListeners.set(type, fn),
+  };
   globalThis.AudioContext = audio.FakeContext;
   globalThis.fetch = vi.fn(async (url) => {
     audio.made.fetched.push(String(url));
     return { arrayBuffer: async () => new ArrayBuffer(8) };
   });
   const sound = await import("./sound.js");
-  return { sound, made: audio.made, appState };
+  const setHidden = (hidden) => {
+    document.hidden = hidden;
+    visibilityListeners.get("visibilitychange")?.();
+  };
+  return { sound, made: audio.made, appState, setHidden };
 }
 
 // Lets the fetch and decode promises settle.
@@ -121,7 +130,163 @@ afterEach(() => {
   delete globalThis.AudioContext;
   delete globalThis.window;
   delete globalThis.fetch;
+  delete globalThis.document;
   vi.restoreAllMocks();
+});
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+describe("cue lifecycle", () => {
+  it("does not create audio or load cues while hidden", async () => {
+    const { sound, made, setHidden } = await soundWith();
+    setHidden(true);
+    sound.playSound("move");
+    await settle();
+    expect(made.contexts).toBe(0);
+    expect(made.fetched).toHaveLength(0);
+  });
+
+  it("does not schedule decoded audio while resume is blocked", async () => {
+    const { sound, made } = await soundReady();
+    made.context.state = "suspended";
+    made.context.resume = vi.fn(() => new Promise(() => {}));
+    sound.playSound("move");
+    await settle();
+    expect(made.context.resume).toHaveBeenCalledOnce();
+    expect(made.sources).toBe(0);
+  });
+
+  it.each(["suspended", "interrupted"])("plays a fresh cue only after %s resume completes", async (state) => {
+    const { sound, made } = await soundReady();
+    const pending = deferred();
+    made.context.state = state;
+    made.context.resume = () => pending.promise;
+    sound.playSound("capture");
+    expect(made.sources).toBe(0);
+    made.context.state = "running";
+    pending.resolve();
+    await settle();
+    expect(made.sources).toBe(1);
+  });
+
+  it("expires by wall time while the audio clock is frozen during resume", async () => {
+    const { sound, made } = await soundReady();
+    let now = 1000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const pending = deferred();
+    made.context.state = "suspended";
+    made.context.resume = () => pending.promise;
+    sound.playSound("move");
+    now += 151;
+    made.context.state = "running";
+    pending.resolve();
+    await settle();
+    expect(made.context.currentTime).toBe(0);
+    expect(made.sources).toBe(0);
+  });
+
+  it("does not reset expiry between resume and decoding", async () => {
+    const { sound, made } = await soundWith();
+    let now = 1000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const resumed = deferred(), decoded = deferred();
+    // Construct the context using the gesture path, then hold both operations.
+    const listeners = new Map();
+    globalThis.window = { addEventListener: (type, fn) => listeners.set(type, fn) };
+    sound.installSoundUnlock();
+    listeners.get("pointerdown")();
+    made.context.state = "suspended";
+    made.context.resume = () => resumed.promise;
+    made.context.decodeAudioData = () => decoded.promise;
+    made.sources = 0;
+    sound.playSound("move");
+    await Promise.resolve();
+    now += 100;
+    made.context.state = "running";
+    resumed.resolve();
+    await settle();
+    now += 60;
+    decoded.resolve(decodedCue());
+    await settle();
+    expect(made.sources).toBe(0);
+  });
+
+  it("invalidates decoding across hide and show, without replaying on return", async () => {
+    const { sound, made, setHidden } = await soundWith();
+    const pending = deferred();
+    globalThis.fetch = () => pending.promise;
+    sound.playSound("move");
+    setHidden(true);
+    setHidden(false);
+    pending.resolve({ arrayBuffer: async () => new ArrayBuffer(8) });
+    await settle();
+    expect(made.sources).toBe(0);
+    sound.playSound("capture");
+    expect(made.sources).toBe(1);
+  });
+
+  it("invalidates pending resume across hide and show", async () => {
+    const { sound, made, setHidden } = await soundReady();
+    const pending = deferred();
+    made.context.state = "interrupted";
+    made.context.resume = () => pending.promise;
+    sound.playSound("move");
+    setHidden(true);
+    setHidden(false);
+    made.context.state = "running";
+    pending.resolve();
+    await settle();
+    expect(made.sources).toBe(0);
+  });
+
+  it("stops every playable source on hide, including a fading replacement", async () => {
+    const { sound, made, setHidden } = await soundReady();
+    sound.playSound("capture");
+    sound.playSound("move");
+    const [fading, active] = made.sourceNodes;
+    made.context.state = "suspended";
+    setHidden(true);
+    expect(fading.stop).toHaveBeenLastCalledWith();
+    expect(active.stop).toHaveBeenLastCalledWith();
+    setHidden(false);
+    made.context.state = "running";
+    sound.playSound("move");
+    expect(made.sources).toBe(3);
+  });
+
+  it("drops a rejected resume and lets a later gesture unlock normally", async () => {
+    const { sound, made } = await soundReady();
+    made.context.state = "suspended";
+    made.context.resume = () => Promise.reject(new Error("gesture required"));
+    sound.playSound("move");
+    await settle();
+    expect(made.sources).toBe(0);
+    const listeners = new Map();
+    globalThis.window = { addEventListener: (type, fn) => listeners.set(type, fn) };
+    sound.installSoundUnlock();
+    made.context.resume = () => { made.context.state = "running"; return Promise.resolve(); };
+    listeners.get("touchstart")();
+    expect(made.sources).toBe(1); // iOS silent unlock sample
+    sound.playSound("move");
+    expect(made.sources).toBe(2);
+  });
+
+  it("does not let an older resumed cue replace a newer cue", async () => {
+    const { sound, made } = await soundReady();
+    const pending = deferred();
+    made.context.state = "suspended";
+    made.context.resume = () => pending.promise;
+    sound.playSound("move");
+    made.context.state = "running";
+    sound.playSound("capture");
+    pending.resolve();
+    await settle();
+    expect(made.sources).toBe(1);
+  });
 });
 
 describe("which cue a move plays", () => {

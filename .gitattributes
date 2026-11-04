@@ -1,2 +1,4 @@
 # Vite preserves HTML line endings into the generated deploy shell.
 web-src/index.html text eol=lf
+# Corpus provenance hashes refer to the original Lichess response bytes.
+research/atlas-quality/corpus/*.pgn -text

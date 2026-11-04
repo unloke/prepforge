@@ -20,7 +20,7 @@
 需要延伸時，從棋譜的 More → Explore 選 Generate moves。
 等待 Saved 後返回 Library，再開啟一次，確認內容已儲存。
 刪除走法時，該步與後續分支會立即從畫面移除；底部的 Undo 可立即還原。
-點標題顏色旁的路線圖（或 More → Explore → Atlas），查看棋譜總分、結構輪廓與分支路線。個人訓練熟悉度另列為 Imprint；未訓練時顯示破折號。
+點標題顏色旁的路線圖（或 More → Explore → Atlas），選擇 Whole repertoire 或 Current position，查看路線圖、Preparation index 與 Replies、Reach、Depth、Consistency、Ease 五項雷達圖；切換範圍會立即更新。Consistency、Ease 沒有可比較局面時顯示破折號。個人訓練熟悉度另列為 Imprint；未訓練時顯示破折號。
 註解或改名儲存失敗時，可在原對話框重試。
 
 ![棋盤、分支與 Explorer](assets/repertoire-desktop.png)

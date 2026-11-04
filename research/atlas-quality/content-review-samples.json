@@ -1,0 +1,2022 @@
+[
+  {
+    "id": "2EaSmZtz",
+    "title": "London System Repertoire",
+    "role": "repertoire",
+    "chapters": 18,
+    "nonempty": 16,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 2,
+        "title": "London System Basics",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 24,
+        "forks": 3,
+        "leaves": 5,
+        "max_plies": 15,
+        "mainline": "d4 d5 Bf4 Nf6 e3 e6 c3 c5 Nd2 Nc6 Ngf3 Bd6 Bg3 O-O Bd3",
+        "mainline_plies": 15,
+        "first_mainline_fork": {
+          "after": "d4 d5 Bf4 Nf6 e3 e6 c3 c5 Nd2",
+          "options": [
+            "Nc6",
+            "cxd4"
+          ]
+        },
+        "endpoint": "r1bq1rk1/pp3ppp/2nbpn2/2pp4/3P4/2PBPNB1/PP1N1PPP/R2QK2R b KQ - 7 8",
+        "checkmate": false
+      },
+      {
+        "chapter": 5,
+        "title": "London vs d5 c5 Part 1",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 112,
+        "forks": 10,
+        "leaves": 13,
+        "max_plies": 29,
+        "mainline": "d4 d5 Bf4 Nf6 e3 c5 c3 Nc6 Nd2 e6 Ngf3 Be7 Bd3 O-O h4 Nh5 Bxh7+ Kxh7 Ng5+ Kg6 Be5 f6 Qc2+ f5",
+        "mainline_plies": 29,
+        "first_mainline_fork": {
+          "after": "d4 d5",
+          "options": [
+            "Bf4",
+            "Nf3"
+          ]
+        },
+        "endpoint": "r1bq1r2/pp2b1p1/4p2k/2ppPpNP/7P/2P1P3/PPQN1P2/R3K2R b KQ - 0 15",
+        "checkmate": false
+      },
+      {
+        "chapter": 18,
+        "title": "Anti-Londons Part 5",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 4,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 4,
+        "mainline": "d4 Nf6 Bf4 c5",
+        "mainline_plies": 4,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkb1r/pp1ppppp/5n2/2p5/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 0 3",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "artuehhC",
+    "title": "The London System (Lifetime Repertoire)",
+    "role": "repertoire-and-exercises",
+    "chapters": 22,
+    "nonempty": 20,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 2,
+        "title": "London line #1",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 20,
+        "forks": 2,
+        "leaves": 4,
+        "max_plies": 17,
+        "mainline": "d4 d5 Bf4 Nf6 e3 c5 c3 Nc6 Nd2 Qb6 Qb3 Qxb3 axb3",
+        "mainline_plies": 13,
+        "first_mainline_fork": {
+          "after": "d4 d5 Bf4 Nf6 e3 c5",
+          "options": [
+            "c3",
+            "Nf3",
+            "Bb5+"
+          ]
+        },
+        "endpoint": "r1b1kb1r/pp2pppp/2n2n2/2pp4/3P1B2/1PP1P3/1P1N1PPP/R3KBNR b KQkq - 0 7",
+        "checkmate": false
+      },
+      {
+        "chapter": 11,
+        "title": "Variation #9 of line #1",
+        "start": "r2q1rk1/ppp1ppb1/2n5/1B1p1bpQ/3P3B/2P1P3/PP1N1PPP/R3K2R b KQ - 0 12",
+        "moves": 2,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 2,
+        "mainline": "gxh4 Qxf5",
+        "mainline_plies": 2,
+        "first_mainline_fork": null,
+        "endpoint": "r2q1rk1/ppp1ppb1/2n5/1B1p1Q2/3P3p/2P1P3/PP1N1PPP/R3K2R b KQ - 0 13",
+        "checkmate": false
+      },
+      {
+        "chapter": 15,
+        "title": "Variation #1 of line #2",
+        "start": "rnbqkbnr/pp2pppp/8/2pp4/3P1B2/2P5/PP2PPPP/RN1QKBNR b KQkq - 0 3",
+        "moves": 42,
+        "forks": 4,
+        "leaves": 6,
+        "max_plies": 27,
+        "mainline": "Qb6 Qc2 Nf6 e3 Nc6 Nf3 g6 Nbd2 Bg7 Be2 O-O O-O",
+        "mainline_plies": 12,
+        "first_mainline_fork": {
+          "after": "Qb6",
+          "options": [
+            "Qc2",
+            "b3",
+            "Qb3"
+          ]
+        },
+        "endpoint": "r1b2rk1/pp2ppbp/1qn2np1/2pp4/3P1B2/2P1PN2/PPQNBPPP/R4RK1 b - - 5 9",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "D8QPC8Zr",
+    "title": "A Gambit Repertoire for White",
+    "role": "repertoire",
+    "chapters": 9,
+    "nonempty": 7,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 2,
+        "title": "Line overview",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 26,
+        "forks": 2,
+        "leaves": 8,
+        "max_plies": 5,
+        "mainline": "e4 c5 d4 cxd4 f4",
+        "mainline_plies": 5,
+        "first_mainline_fork": {
+          "after": "e4",
+          "options": [
+            "c5",
+            "c5",
+            "e5",
+            "e6",
+            "c6",
+            "d5",
+            "Nf6"
+          ]
+        },
+        "endpoint": "rnbqkbnr/pp1ppppp/8/8/3pPP2/8/PPP3PP/RNBQKBNR b KQkq - 0 3",
+        "checkmate": false
+      },
+      {
+        "chapter": 6,
+        "title": "The Ulysses Gambit",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 248,
+        "forks": 17,
+        "leaves": 23,
+        "max_plies": 57,
+        "mainline": "e4 c6 d4 d5 Nf3 dxe4 Ng5 Nf6 Bc4 e6 Nc3 Bb4 O-O Bxc3 bxc3 h6 Nh3 Qa5 Qe1 O-O f3 c5 fxe4 Nxe4",
+        "mainline_plies": 49,
+        "first_mainline_fork": {
+          "after": "e4 c6 d4 d5 Nf3 dxe4 Ng5",
+          "options": [
+            "Nf6",
+            "Bf5"
+          ]
+        },
+        "endpoint": "r2k1Q2/pp1b4/4p2p/2P5/2B5/2q4N/P1P3PP/6K1 b - - 3 25",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "ACmyH8gC",
+    "title": "King's Gambit | Full Repertoire",
+    "role": "repertoire-and-model-games",
+    "chapters": 38,
+    "nonempty": 37,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "♔ Introduction ♔",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 3,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 3,
+        "mainline": "e4 e5 f4",
+        "mainline_plies": 3,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 15,
+        "title": "KGA: Kieseritzky Gambit 5. Ne5 Nf6",
+        "start": "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2",
+        "moves": 115,
+        "forks": 9,
+        "leaves": 11,
+        "max_plies": 38,
+        "mainline": "exf4 Nf3 g5 h4 g4 Ne5 Nf6 Nxg4 Nxe4 d3 Ng3 Bxf4 Qe7+ Be2 Nxh1 Bg5 Qb4+ c3 Qxb2 Nf6+ Kd8 Nd5+ Be7 Bxe7+",
+        "mainline_plies": 36,
+        "first_mainline_fork": {
+          "after": "exf4 Nf3 g5 h4 g4 Ne5 Nf6 Nxg4 Nxe4 d3 Ng3 Bxf4",
+          "options": [
+            "Qe7+",
+            "Nxh1"
+          ]
+        },
+        "endpoint": "rnb4r/ppNp3p/8/4k3/3P3P/B1P2Q2/q5P1/1N2K2n b - - 0 20",
+        "checkmate": true
+      }
+    ]
+  },
+  {
+    "id": "NGpnogsw",
+    "title": "The Sicilian",
+    "role": "repertoire-and-model-games",
+    "chapters": 9,
+    "nonempty": 9,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Sicilian and Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 2,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 2,
+        "mainline": "e4 c5",
+        "mainline_plies": 2,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 7,
+        "title": "Game 3: Almasi vs Watson",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 82,
+        "forks": 2,
+        "leaves": 3,
+        "max_plies": 71,
+        "mainline": "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 Bg7 f3 O-O Qd2 Nc6 O-O-O d5 exd5 Nxd5 Nxc6 bxc6 Bd4 e5",
+        "mainline_plies": 71,
+        "first_mainline_fork": {
+          "after": "e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 g6 Be3 Bg7 f3 O-O Qd2 Nc6 O-O-O d5 exd5 Nxd5 Nxc6 bxc6 Bd4 e5 Bc5 Be6",
+          "options": [
+            "Ne4",
+            "Bxf8"
+          ]
+        },
+        "endpoint": "5rk1/6Q1/5Pp1/p1p4p/P6P/1P6/1KP2q2/8 b - - 3 36",
+        "checkmate": true
+      }
+    ]
+  },
+  {
+    "id": "8Uztu7Xx",
+    "title": "Greatest Caro Kann: Living Repertoire",
+    "role": "repertoire-and-model-games",
+    "chapters": 64,
+    "nonempty": 64,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction: Caro-Kann Complete Repertoire & Author's Acknowledgements",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 140,
+        "forks": 8,
+        "leaves": 12,
+        "max_plies": 23,
+        "mainline": "e4 c6 d4 d5 e5 Bf5 Nf3 e6 Be2 c5 Be3 cxd4 Nxd4 Ne7 c4 Nbc6 Qa4 a6 Nc3 dxc4 O-O-O Qa5 Qxa5",
+        "mainline_plies": 23,
+        "first_mainline_fork": {
+          "after": "e4 c6",
+          "options": [
+            "d4",
+            "Nf3",
+            "Nc3"
+          ]
+        },
+        "endpoint": "r3kb1r/1p2nppp/p1n1p3/Q3Pb2/2pN4/2N1B3/PP2BPPP/2KR3R b kq - 0 12",
+        "checkmate": false
+      },
+      {
+        "chapter": 5,
+        "title": "Chapter #1: Exchange Variation, Rubinstein Variation (I)",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 1875,
+        "forks": 94,
+        "leaves": 120,
+        "max_plies": 80,
+        "mainline": "e4 c6 d4 d5 exd5 cxd5 Bd3 Nc6 c3 Nf6 Bf4 g6 Nf3 Bg7 Nbd2 O-O O-O Bf5 Bxf5 gxf5 Ne5 e6 Nxc6 bxc6",
+        "mainline_plies": 80,
+        "first_mainline_fork": {
+          "after": "e4 c6 d4 d5 exd5",
+          "options": [
+            "cxd5",
+            "Qxd5",
+            "Nf6"
+          ]
+        },
+        "endpoint": "6k1/5prq/p1p1p3/3pP3/P4Pp1/2P5/1P3QRP/7K w - - 0 41",
+        "checkmate": false
+      },
+      {
+        "chapter": 64,
+        "title": "Closing: Where to Go From Here",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 5,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 5,
+        "mainline": "e4 c6 d4 d5 e5",
+        "mainline_plies": 5,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pp2pppp/2p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "8c8bmUfy",
+    "title": "♦ All about the Sicilian Defense ♦",
+    "role": "opening-guide",
+    "chapters": 21,
+    "nonempty": 21,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 8,
+        "forks": 1,
+        "leaves": 3,
+        "max_plies": 5,
+        "mainline": "e4 c5",
+        "mainline_plies": 2,
+        "first_mainline_fork": {
+          "after": "e4",
+          "options": [
+            "c5",
+            "e5",
+            "a6"
+          ]
+        },
+        "endpoint": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 12,
+        "title": "Closed Sicilian part 2",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 1663,
+        "forks": 171,
+        "leaves": 333,
+        "max_plies": 42,
+        "mainline": "e4 c5 Nc3 Nc6 g3 g6 Bg2 Bg7 d3 d6 Be3 Rb8 Qd2 b5 Nge2 Nd4 O-O h5 Nd1 h4",
+        "mainline_plies": 20,
+        "first_mainline_fork": {
+          "after": "e4 c5 Nc3 Nc6",
+          "options": [
+            "g3",
+            "g4",
+            "Bc4",
+            "d3",
+            "f4",
+            "Nge2",
+            "Nf3",
+            "Bb5"
+          ]
+        },
+        "endpoint": "1rbqk1nr/p3ppb1/3p2p1/1pp5/3nP2p/3PB1P1/PPPQNPBP/R2N1RK1 w k - 0 11",
+        "checkmate": false
+      },
+      {
+        "chapter": 21,
+        "title": "Concluding ideas",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 2,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 2,
+        "mainline": "e4 c5",
+        "mainline_plies": 2,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "fTpa2qZW",
+    "title": "English Opening Repertoire",
+    "role": "repertoire",
+    "chapters": 34,
+    "nonempty": 31,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "📖 1: Reversed Sicilian Variations",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 2,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 2,
+        "mainline": "c4 e5",
+        "mainline_plies": 2,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pppp1ppp/8/4p3/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 26,
+        "title": "Komplette Theorie (Reversed Sicil)",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 3000,
+        "forks": 241,
+        "leaves": 300,
+        "max_plies": 169,
+        "mainline": "c4 e5 Nc3 Nf6 Nf3 Nc6 g3 d5 cxd5 Nxd5 Bg2 Nb6 O-O Be7 a3 O-O b4 Be6 Rb1 f6 d3 a5 b5 Nd4",
+        "mainline_plies": 169,
+        "first_mainline_fork": {
+          "after": "c4 e5",
+          "options": [
+            "Nc3",
+            "g3",
+            "d3",
+            "Nf3",
+            "e3",
+            "b3"
+          ]
+        },
+        "endpoint": "8/5k2/2R3p1/6P1/2p1K3/8/8/5r2 b - - 3 85",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "CfSYkcMp",
+    "title": "Crush the Caro-Kann! White Repertoire",
+    "role": "repertoire",
+    "chapters": 17,
+    "nonempty": 16,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 6,
+        "forks": 1,
+        "leaves": 4,
+        "max_plies": 3,
+        "mainline": "e4 c6 d4",
+        "mainline_plies": 3,
+        "first_mainline_fork": {
+          "after": "e4 c6",
+          "options": [
+            "d4",
+            "d4",
+            "Nf3",
+            "c4"
+          ]
+        },
+        "endpoint": "rnbqkbnr/pp1ppppp/2p5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 12,
+        "title": "Section 1: 4...Qxd5",
+        "start": "rnbqkbnr/pp2pppp/8/3P4/8/8/PP1P1PPP/RNBQKBNR b KQkq - 0 4",
+        "moves": 166,
+        "forks": 16,
+        "leaves": 23,
+        "max_plies": 30,
+        "mainline": "Qxd5 d4 Nc6 Nf3 Bg4 Nc3 Bxf3 Nxd5 Bxd1 Nc7+ Kd7 Nxa8",
+        "mainline_plies": 12,
+        "first_mainline_fork": {
+          "after": "Qxd5 d4",
+          "options": [
+            "Nc6",
+            "Nf6",
+            "e5"
+          ]
+        },
+        "endpoint": "N4bnr/pp1kpppp/2n5/8/3P4/8/PP3PPP/R1BbKB1R b KQ - 0 10",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "yteYURRC",
+    "title": "My Repertoire Against e4: The Caro Kann Defense",
+    "role": "repertoire-and-model-games",
+    "chapters": 11,
+    "nonempty": 10,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "The Advanced Variation",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 113,
+        "forks": 5,
+        "leaves": 7,
+        "max_plies": 95,
+        "mainline": "e4 c6 d4 d5 e5 Bf5 h4 h5 Bd3 Bxd3 Qxd3 Qa5+ Nd2 e6 Nf3 Nh6 O-O Nf5 Nb3 Qa6 Qd1 Nd7 Bf4 Be7",
+        "mainline_plies": 95,
+        "first_mainline_fork": {
+          "after": "",
+          "options": [
+            "e4",
+            "Nf3"
+          ]
+        },
+        "endpoint": "3Q2kr/1p3p2/p3p1p1/P2pP2P/1P1P4/1R1R4/4qPK1/r7 b - - 10 48",
+        "checkmate": false
+      },
+      {
+        "chapter": 6,
+        "title": "Exchange Variation Panov Attack",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 75,
+        "forks": 4,
+        "leaves": 6,
+        "max_plies": 64,
+        "mainline": "e4 c6 d4 d5 exd5 cxd5 c4 Nf6 Nc3 Nc6 Nf3 Bg4 cxd5 Nxd5 Qb3 Bxf3 gxf3 e6 Qxb7 Nxd4 Bb5+ Nxb5 Qc6+ Ke7",
+        "mainline_plies": 64,
+        "first_mainline_fork": {
+          "after": "e4 c6 d4 d5 exd5 cxd5 c4 Nf6 Nc3 Nc6",
+          "options": [
+            "Nf3",
+            "Bg5"
+          ]
+        },
+        "endpoint": "8/8/3k4/pr1p1ppp/R7/1P2PP1P/P2K4/8 w - - 9 33",
+        "checkmate": false
+      },
+      {
+        "chapter": 8,
+        "title": "Two Knights Variation",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 216,
+        "forks": 12,
+        "leaves": 19,
+        "max_plies": 62,
+        "mainline": "e4 c6 Nc3 d5 Nf3 Nf6 e5 Ne4 Ne2 Qb6 d4 e6 Ng3 c5 Bd3 Nxg3 hxg3 cxd4 Ng5 Nc6 Nxh7 Bd7 Nf6+ gxf6",
+        "mainline_plies": 62,
+        "first_mainline_fork": {
+          "after": "e4 c6 Nc3 d5 Nf3 Nf6",
+          "options": [
+            "e5",
+            "Qe2"
+          ]
+        },
+        "endpoint": "2k5/pp1b1p2/6n1/1PbQ4/4p1P1/P1P1qB2/1B4P1/2R2K2 w - - 3 32",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "vPqdbuqZ",
+    "title": "Hippopotamus Defense",
+    "role": "repertoire-and-model-games",
+    "chapters": 9,
+    "nonempty": 7,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 3,
+        "title": "Petrosian - Spassky  World Championship Match (1966) rd 12",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 77,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 77,
+        "mainline": "Nf3 g6 c4 Bg7 d4 d6 Nc3 Nd7 e4 e6 Be2 b6 O-O Bb7 Be3 Ne7 Qc2 h6 Rad1 O-O d5 e5 Qc1 Kh7",
+        "mainline_plies": 77,
+        "first_mainline_fork": null,
+        "endpoint": "r4r2/p1pb2Rk/1p5p/3PB2P/2P2p2/8/PPp2P1P/7K b - - 10 39",
+        "checkmate": false
+      },
+      {
+        "chapter": 5,
+        "title": "Boris Spassky vs Maximilian Ujtelky Chigorin Memorial (1964)",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 49,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 49,
+        "mainline": "e4 g6 d4 Bg7 Nc3 a6 Nf3 d6 Bc4 e6 Bg5 Ne7 a4 h6 Be3 b6 O-O Nd7 Re1 O-O Qd2 Kh7 Rad1 Bb7",
+        "mainline_plies": 49,
+        "first_mainline_fork": null,
+        "endpoint": "r1q5/1bp1n2k/pp2n1pp/4b2Q/P6P/N1P5/1PB2PP1/2BRR1K1 b - - 0 25",
+        "checkmate": false
+      },
+      {
+        "chapter": 7,
+        "title": "Pickard vs Gardner  Lone Star Open 1988",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 122,
+        "forks": 15,
+        "leaves": 18,
+        "max_plies": 73,
+        "mainline": "g3 d5 Bg2 Nf6 d3 e6 Nd2 b6 b3 Bb7 Bb2 Nbd7 e3 Bd6 Ne2 Qe7 a3 O-O-O b4 e5 c3 c5 d4 exd4",
+        "mainline_plies": 73,
+        "first_mainline_fork": {
+          "after": "g3 d5 Bg2 Nf6 d3 e6 Nd2 b6 b3 Bb7 Bb2 Nbd7 e3 Bd6 Ne2 Qe7 a3 O-O-O b4 e5",
+          "options": [
+            "c3",
+            "c4"
+          ]
+        },
+        "endpoint": "5r2/p5p1/1p6/1P6/P1kPB3/4P3/5P2/R5K1 b - - 0 37",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "2XxhfIAJ",
+    "title": "Complete Repertoire",
+    "role": "repertoire",
+    "chapters": 31,
+    "nonempty": 31,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Fried Liver (W/B)",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 3000,
+        "forks": 288,
+        "leaves": 366,
+        "max_plies": 101,
+        "mainline": "e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 d5 exd5 Nd4 c3 b5 Bf1 Nxd5 cxd4 Qxg5 Bxb5+ Kd8 Qf3 Bb7 O-O Rb8 dxe5 Ne3",
+        "mainline_plies": 85,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3",
+          "options": [
+            "Nc6",
+            "f6",
+            "d6"
+          ]
+        },
+        "endpoint": "8/6p1/3k2p1/8/3PbN2/4B2P/1b3P1K/8 b - - 4 43",
+        "checkmate": false
+      },
+      {
+        "chapter": 9,
+        "title": "Evan's Gambit (W)",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 3000,
+        "forks": 300,
+        "leaves": 383,
+        "max_plies": 100,
+        "mainline": "e4 e5 Nf3 Nc6 Bc4 Bc5 b4 Bxb4 c3 Ba5 d4 exd4 O-O Nge7 Ng5 d5 exd5 Ne5 Qxd4 f6 Re1 Bb6 Qh4 Nxc4",
+        "mainline_plies": 48,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3 Nc6 Bc4",
+          "options": [
+            "Bc5",
+            "Nf6"
+          ]
+        },
+        "endpoint": "8/pp2k1pp/2p5/b3r3/4N3/2P2P2/P5PP/2R2K2 w - - 0 25",
+        "checkmate": false
+      },
+      {
+        "chapter": 11,
+        "title": "Elephant Gambit (W)",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 26,
+        "forks": 2,
+        "leaves": 3,
+        "max_plies": 19,
+        "mainline": "e4 e5 Nf3 d5 exd5 e4 Qe2 Qe7 Nd4 Nf6 Nc3",
+        "mainline_plies": 11,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3 d5 exd5 e4 Qe2",
+          "options": [
+            "Qe7",
+            "Nf6"
+          ]
+        },
+        "endpoint": "rnb1kb1r/ppp1qppp/5n2/3P4/3Np3/2N5/PPPPQPPP/R1B1KB1R b KQkq - 5 6",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "oBsew7N6",
+    "title": "🏆 Opening Systems YOU can USE in your games",
+    "role": "opening-guide",
+    "chapters": 8,
+    "nonempty": 8,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 1,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 1,
+        "mainline": "d4",
+        "mainline_plies": 1,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+        "checkmate": false
+      },
+      {
+        "chapter": 2,
+        "title": "London System",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 47,
+        "forks": 11,
+        "leaves": 23,
+        "max_plies": 25,
+        "mainline": "d4 d5 Bf4 Nf6 Nf3 e6 e3 Bb4+ c3 Be7 Bd3 O-O O-O c5 Nbd2 cxd4 exd4 Nc6 Re1 Bd7 Qe2 Rc8 h3 Nh5",
+        "mainline_plies": 25,
+        "first_mainline_fork": {
+          "after": "d4 d5",
+          "options": [
+            "Bf4",
+            "e3",
+            "Nf3",
+            "c4",
+            "Nc3"
+          ]
+        },
+        "endpoint": "2rq1rk1/pp1bbppp/2n1p3/3p3n/3P4/2PB1N1P/PP1NQPPB/R3R1K1 b - - 2 13",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "tU7Nq5nE",
+    "title": "The Alien and Martian Gambits",
+    "role": "repertoire",
+    "chapters": 10,
+    "nonempty": 8,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 2,
+        "title": "🛸 Alien Gambit 7. ...Bg4??",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 25,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 25,
+        "mainline": "e4 c6 d4 d5 Nc3 dxe4 Nxe4 Nf6 Ng5 h6 Nxf7 Kxf7 Nf3 Bg4 Ne5+ Kg8 Bc4+ Kh7 Qd3+ Ne4 Qxe4+ Bf5 Qxf5+ g6",
+        "mainline_plies": 25,
+        "first_mainline_fork": null,
+        "endpoint": "rn1q1b1r/pp2p2k/2p3Qp/4N3/2BP4/8/PPP2PPP/R1B1K2R b KQ - 0 13",
+        "checkmate": true
+      },
+      {
+        "chapter": 5,
+        "title": "🛸 Alien Gambit 7. ...Bf5",
+        "start": "rnbq1b1r/pp2pkp1/2p2n1p/8/3P4/5N2/PPP2PPP/R1BQKB1R b KQ - 1 7",
+        "moves": 4,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 4,
+        "mainline": "Bf5 g4 Bg6 Ne5+",
+        "mainline_plies": 4,
+        "first_mainline_fork": null,
+        "endpoint": "rn1q1b1r/pp2pkp1/2p2nbp/4N3/3P2P1/8/PPP2P1P/R1BQKB1R b KQ - 2 9",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "rZyGzD67",
+    "title": "Smash the QGD with the Queen ATTACK!",
+    "role": "repertoire",
+    "chapters": 9,
+    "nonempty": 8,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "The Queen attack",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 7,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 7,
+        "mainline": "d4 d5 c4 e6 Nf3 dxc4 Qa4+",
+        "mainline_plies": 7,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4",
+        "checkmate": false
+      },
+      {
+        "chapter": 2,
+        "title": "QA - Bishop's defence, 5... Nc6, Main line",
+        "start": "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4",
+        "moves": 19,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 19,
+        "mainline": "Bd7 Qxc4 Nc6 Nc3 Nf6 e4 Bb4 Bd3 O-O a3 Bxc3+ Qxc3 a6 Bg5 h6 Bh4 g5 Bg3 Re8",
+        "mainline_plies": 19,
+        "first_mainline_fork": null,
+        "endpoint": "r2qr1k1/1ppb1p2/p1n1pn1p/6p1/3PP3/P1QB1NB1/1P3PPP/R3K2R w KQ - 2 14",
+        "checkmate": false
+      },
+      {
+        "chapter": 5,
+        "title": "QA - Knight's defence",
+        "start": "rnbqkbnr/ppp2ppp/4p3/8/Q1pP4/5N2/PP2PPPP/RNB1KB1R b KQkq - 1 4",
+        "moves": 4,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 4,
+        "mainline": "Nc6 Qxc4 Nf6 Nc3",
+        "mainline_plies": 4,
+        "first_mainline_fork": null,
+        "endpoint": "r1bqkb1r/ppp2ppp/2n1pn2/8/2QP4/2N2N2/PP2PPPP/R1B1KB1R b KQkq - 2 6",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "ztgulNGx",
+    "title": "CRUSH the Ruy Lopez and Italian!",
+    "role": "repertoire",
+    "chapters": 12,
+    "nonempty": 10,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 2,
+        "title": "🎱 Rousseau Gambit Accepted 5. Ng1?",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 17,
+        "forks": 1,
+        "leaves": 2,
+        "max_plies": 16,
+        "mainline": "e4 e5 Nf3 Nc6 Bc4 f5 exf5 e4 Ng1 Nf6 d3 d5 Bb5 Bxf5 dxe4 Bxe4",
+        "mainline_plies": 16,
+        "first_mainline_fork": {
+          "after": "e4",
+          "options": [
+            "e5",
+            "e6"
+          ]
+        },
+        "endpoint": "r2qkb1r/ppp3pp/2n2n2/1B1p4/4b3/8/PPP2PPP/RNBQK1NR w KQkq - 0 9",
+        "checkmate": false
+      },
+      {
+        "chapter": 5,
+        "title": "🎱 Rousseau Gambit Declined 4. d3",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 14,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 14,
+        "mainline": "e4 e5 Nf3 Nc6 Bc4 f5 d3 Nf6 Bg5 Bb4+ c3 fxe4 dxe4 Bc5",
+        "mainline_plies": 14,
+        "first_mainline_fork": null,
+        "endpoint": "r1bqk2r/pppp2pp/2n2n2/2b1p1B1/2B1P3/2P2N2/PP3PPP/RN1QK2R w KQkq - 1 8",
+        "checkmate": false
+      },
+      {
+        "chapter": 9,
+        "title": "🥳 Schilemann Defense 4. d3",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 21,
+        "forks": 1,
+        "leaves": 2,
+        "max_plies": 20,
+        "mainline": "e4 e5 Nf3 Nc6 Bb5 f5 d3 fxe4 dxe4 Nf6 Nc3 Bb4 O-O Bxc3 bxc3 d6 Bg5 O-O h3 Qe8",
+        "mainline_plies": 20,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3 Nc6 Bb5 f5",
+          "options": [
+            "d3",
+            "exf5"
+          ]
+        },
+        "endpoint": "r1b1qrk1/ppp3pp/2np1n2/1B2p1B1/4P3/2P2N1P/P1P2PP1/R2Q1RK1 w - - 1 11",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "AKbQXhWw",
+    "title": "White Repertoire",
+    "role": "repertoire",
+    "chapters": 13,
+    "nonempty": 13,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "White Repertoire - Overview",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 716,
+        "forks": 25,
+        "leaves": 56,
+        "max_plies": 46,
+        "mainline": "d4 d5 c4 e6 Nc3 Nf6 cxd5 exd5 Bg5 Be7 e3 c6 Qc2 Nbd7 Bd3 O-O Nge2 Re8 O-O Nf8 f3",
+        "mainline_plies": 21,
+        "first_mainline_fork": {
+          "after": "d4",
+          "options": [
+            "d5",
+            "Nf6",
+            "c5",
+            "f5",
+            "e5"
+          ]
+        },
+        "endpoint": "r1bqrnk1/pp2bppp/2p2n2/3p2B1/3P4/2NBPP2/PPQ1N1PP/R4RK1 b - - 0 11",
+        "checkmate": false
+      },
+      {
+        "chapter": 11,
+        "title": "Englund Gambit",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 27,
+        "forks": 1,
+        "leaves": 2,
+        "max_plies": 21,
+        "mainline": "d4 e5 dxe5 Nc6 Nf3 Qe7 Bf4 Qb4+ Bd2 Qxb2 Nc3 Bb4 Rb1 Qa3 Nd5 Ba5 Rb5 Bxd2+ Qxd2 Kd8 e4",
+        "mainline_plies": 21,
+        "first_mainline_fork": {
+          "after": "d4 e5 dxe5 Nc6 Nf3 Qe7 Bf4 Qb4+ Bd2 Qxb2 Nc3",
+          "options": [
+            "Bb4",
+            "Nb4"
+          ]
+        },
+        "endpoint": "r1bk2nr/pppp1ppp/2n5/1R1NP3/4P3/q4N2/P1PQ1PPP/4KB1R b K - 0 11",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "2MMWpcNI",
+    "title": "List of Openings from Beginner to Grandmaster",
+    "role": "opening-guide",
+    "chapters": 9,
+    "nonempty": 7,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 2,
+        "title": "Italian Opening (Beginner 1100-1499)",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 5,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 5,
+        "mainline": "e4 e5 Nf3 Nc6 Bc4",
+        "mainline_plies": 5,
+        "first_mainline_fork": null,
+        "endpoint": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+        "checkmate": false
+      },
+      {
+        "chapter": 4,
+        "title": "Dutch Opening (Beginner 1100-1499)",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 2,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 2,
+        "mainline": "f4 d5",
+        "mainline_plies": 2,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/ppp1pppp/8/3p4/5P2/8/PPPPP1PP/RNBQKBNR w KQkq - 0 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 7,
+        "title": "London System (Advanced 1700-1900)",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 17,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 17,
+        "mainline": "d4 d5 Bf4 Nf6 e3 e6 Nd2 g6 Bd3 Bg7 Ngf3 c5 c3 cxd4 cxd4 O-O O-O",
+        "mainline_plies": 17,
+        "first_mainline_fork": null,
+        "endpoint": "rnbq1rk1/pp3pbp/4pnp1/3p4/3P1B2/3BPN2/PP1N1PPP/R2Q1RK1 b - - 2 9",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "sEo8o4Rm",
+    "title": "🌵  1. e4 Nc6 - A Nice Defense 🏆",
+    "role": "opening-guide",
+    "chapters": 16,
+    "nonempty": 16,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 1,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 1,
+        "mainline": "e4",
+        "mainline_plies": 1,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+        "checkmate": false
+      },
+      {
+        "chapter": 8,
+        "title": "Scotch Lines",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 151,
+        "forks": 9,
+        "leaves": 13,
+        "max_plies": 36,
+        "mainline": "e4 Nc6 d4 e5 Nf3 exd4 Nxd4 Bc5 Be3 Qf6 c3 Nge7 Bc4 O-O O-O d6",
+        "mainline_plies": 16,
+        "first_mainline_fork": {
+          "after": "e4 Nc6 d4 e5 Nf3 exd4",
+          "options": [
+            "Nxd4",
+            "Bc4"
+          ]
+        },
+        "endpoint": "r1b2rk1/ppp1nppp/2np1q2/2b5/2BNP3/2P1B3/PP3PPP/RN1Q1RK1 w - - 0 9",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "GNlZ2WKx",
+    "title": "London System Master Games!",
+    "role": "repertoire-and-model-games",
+    "chapters": 30,
+    "nonempty": 30,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 3,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 3,
+        "mainline": "d4 d5 Bf4",
+        "mainline_plies": 3,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/ppp1pppp/8/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq - 1 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 7,
+        "title": "~ Carlsen - Tomashevsky",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 162,
+        "forks": 8,
+        "leaves": 11,
+        "max_plies": 60,
+        "mainline": "d4 Nf6 Bf4 e6 e3 b6 Nf3 Bb7 h3 Be7 Bd3 O-O O-O c5 c3 Nc6 Nbd2 d5 Qe2 Bd6 Rfe1 Ne7 Rad1 Ng6",
+        "mainline_plies": 60,
+        "first_mainline_fork": {
+          "after": "",
+          "options": [
+            "d4",
+            "a3"
+          ]
+        },
+        "endpoint": "b4rk1/r4p2/4p1p1/P1R5/2N1p2R/2P1P2P/P5P1/6K1 w - - 0 31",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "KjivNw7F",
+    "title": "🍄 Ideas in the London System 🍄",
+    "role": "opening-guide",
+    "chapters": 16,
+    "nonempty": 16,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 3,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 3,
+        "mainline": "d4 d5 Bf4",
+        "mainline_plies": 3,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/ppp1pppp/8/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq - 1 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 14,
+        "title": "Anti-London For Black",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 110,
+        "forks": 10,
+        "leaves": 14,
+        "max_plies": 27,
+        "mainline": "d4 Nf6 Bf4 c5 d5 d6 Nc3 e5 Bd2 Bf5 f3 e4",
+        "mainline_plies": 12,
+        "first_mainline_fork": {
+          "after": "d4",
+          "options": [
+            "Nf6",
+            "d5",
+            "c5"
+          ]
+        },
+        "endpoint": "rn1qkb1r/pp3ppp/3p1n2/2pP1b2/4p3/2N2P2/PPPBP1PP/R2QKBNR w KQkq - 0 7",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "1gqDv9cx",
+    "title": "Stafford Gambit",
+    "role": "repertoire-and-traps",
+    "chapters": 23,
+    "nonempty": 23,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Stafford Gambit accepted : Overview",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 85,
+        "forks": 10,
+        "leaves": 18,
+        "max_plies": 20,
+        "mainline": "e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6 d3 Bc5 Be2 Ng4 Bxg4 Qh4 O-O Bxg4 Qe1 O-O-O Be3 Bd6",
+        "mainline_plies": 20,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3 Nf6",
+          "options": [
+            "Nxe5",
+            "Bc4"
+          ]
+        },
+        "endpoint": "2kr3r/ppp2ppp/2pb4/8/4P1bq/3PB3/PPP2PPP/RN2QRK1 w - - 4 11",
+        "checkmate": false
+      },
+      {
+        "chapter": 18,
+        "title": "Stafford Gambit : Magic line (can it be defeated ?) 5. d3 Bc5 6 Be2 h5 7. c3 Ng4",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 333,
+        "forks": 38,
+        "leaves": 51,
+        "max_plies": 44,
+        "mainline": "e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6 d3 Bc5 Be2 h5 c3 Ng4 d4 Qh4 g3 Qf6 f3 h4 fxg4 hxg3 Be3 Rxh2",
+        "mainline_plies": 37,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6 d3 Bc5 Be2 h5",
+          "options": [
+            "c3",
+            "h3",
+            "Nc3"
+          ]
+        },
+        "endpoint": "2kr4/ppp2pp1/2p1b3/N7/3PP1Pq/2P1BBb1/PP1KQ2p/R7 b - - 11 19",
+        "checkmate": false
+      },
+      {
+        "chapter": 19,
+        "title": "Stafford Gambit : 5. d3 Bc5 6. Be2 Ng4",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 23,
+        "forks": 2,
+        "leaves": 3,
+        "max_plies": 19,
+        "mainline": "e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6 d3 Bc5 Be2 Ng4 Bxg4 Qh4 Qf3 Bxg4 Qg3 Qxg3 hxg3",
+        "mainline_plies": 19,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6 d3 Bc5 Be2 Ng4 Bxg4 Qh4",
+          "options": [
+            "Qf3",
+            "O-O"
+          ]
+        },
+        "endpoint": "r3k2r/ppp2ppp/2p5/2b5/4P1b1/3P2P1/PPP2PP1/RNB1K2R b KQkq - 0 10",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "8eyxyvBh",
+    "title": "Jerome Gambit",
+    "role": "repertoire-and-exercises",
+    "chapters": 14,
+    "nonempty": 13,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 7,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 7,
+        "mainline": "e4 e5 Nf3 Nc6 Bc4 Bc5 Bxf7+",
+        "mainline_plies": 7,
+        "first_mainline_fork": null,
+        "endpoint": "r1bqk1nr/pppp1Bpp/2n5/2b1p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 4",
+        "checkmate": false
+      },
+      {
+        "chapter": 2,
+        "title": "Line 1 : Kf6",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 21,
+        "forks": 1,
+        "leaves": 2,
+        "max_plies": 19,
+        "mainline": "e4 e5 Nf3 Nc6 Bc4 Bc5 Bxf7+ Kxf7 Nxe5+ Nxe5 Qh5+ Kf6 Qf5+ Ke7 Qxe5+ Kf8 Qxc5+",
+        "mainline_plies": 17,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3 Nc6 Bc4 Bc5 Bxf7+ Kxf7 Nxe5+ Nxe5 Qh5+ Kf6 Qf5+ Ke7 Qxe5+",
+          "options": [
+            "Kf8",
+            "Kf7"
+          ]
+        },
+        "endpoint": "r1bq1knr/pppp2pp/8/2Q5/4P3/8/PPPP1PPP/RNB1K2R b KQ - 0 9",
+        "checkmate": false
+      },
+      {
+        "chapter": 11,
+        "title": "Line 4 : Exercise 1",
+        "start": "r1bq2nr/pppp1kpp/8/2b1n2Q/4P3/8/PPPP1PPP/RNB1K2R b KQ - 1 4",
+        "moves": 2,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 2,
+        "mainline": "Kf8 Qxe5",
+        "mainline_plies": 2,
+        "first_mainline_fork": null,
+        "endpoint": "r1bq1knr/pppp2pp/8/2b1Q3/4P3/8/PPPP1PPP/RNB1K2R b KQ - 0 5",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "dgUQNQ2B",
+    "title": "Full Black Repertoire 1. d4 Nf6",
+    "role": "repertoire",
+    "chapters": 19,
+    "nonempty": 19,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Intro",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 11,
+        "forks": 2,
+        "leaves": 5,
+        "max_plies": 6,
+        "mainline": "d4 Nf6 c4 e6 Nc3 Bb4",
+        "mainline_plies": 6,
+        "first_mainline_fork": {
+          "after": "d4 Nf6",
+          "options": [
+            "c4",
+            "Bf4",
+            "Nf3"
+          ]
+        },
+        "endpoint": "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+        "checkmate": false
+      },
+      {
+        "chapter": 9,
+        "title": "Colle",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 290,
+        "forks": 30,
+        "leaves": 44,
+        "max_plies": 36,
+        "mainline": "d4 Nf6 Nf3 d5 e3 c5 dxc5 e6 b4 a5 c3 axb4 cxb4 b6 Bb5+ Bd7 Bxd7+ Nbxd7 a4 bxc5 b5 g5 Bb2 Bd6",
+        "mainline_plies": 26,
+        "first_mainline_fork": {
+          "after": "d4 Nf6 Nf3 d5 e3 c5",
+          "options": [
+            "dxc5",
+            "c3",
+            "c4",
+            "Bd3",
+            "Be2"
+          ]
+        },
+        "endpoint": "r2qk1r1/3n1p1p/3bpn2/1Ppp2p1/P7/4PN1P/1B3PP1/RN1QK2R w KQq - 1 14",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "whCVdUeM",
+    "title": "Stafford Gambit Traps",
+    "role": "repertoire-and-traps",
+    "chapters": 10,
+    "nonempty": 10,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 8,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 8,
+        "mainline": "e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6",
+        "mainline_plies": 8,
+        "first_mainline_fork": null,
+        "endpoint": "r1bqkb1r/ppp2ppp/2p2n2/8/4P3/8/PPPP1PPP/RNBQKB1R w KQkq - 0 5",
+        "checkmate": false
+      },
+      {
+        "chapter": 3,
+        "title": "Oh no my knight!",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 34,
+        "forks": 4,
+        "leaves": 5,
+        "max_plies": 20,
+        "mainline": "e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6 e5 Ne4 d3 Bc5 dxe4 Bxf2+ Kxf2 Qxd1",
+        "mainline_plies": 16,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3 Nf6 Nxe5 Nc6 Nxc6 dxc6 e5 Ne4",
+          "options": [
+            "d3",
+            "d4"
+          ]
+        },
+        "endpoint": "r1b1k2r/ppp2ppp/2p5/4P3/4P3/8/PPP2KPP/RNBq1B1R w kq - 0 9",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "OnPMlzHT",
+    "title": "🇷🇺 Petrov Defense 🇷🇺",
+    "role": "repertoire",
+    "chapters": 8,
+    "nonempty": 7,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 4,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 4,
+        "mainline": "e4 e5 Nf3 Nf6",
+        "mainline_plies": 4,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+        "checkmate": false
+      },
+      {
+        "chapter": 6,
+        "title": "Modern Attack",
+        "start": "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1",
+        "moves": 7,
+        "forks": 1,
+        "leaves": 2,
+        "max_plies": 6,
+        "mainline": "d4 Nxe4 Nxe5 d6 Nf3 d5",
+        "mainline_plies": 6,
+        "first_mainline_fork": {
+          "after": "d4",
+          "options": [
+            "Nxe4",
+            "exd4"
+          ]
+        },
+        "endpoint": "rnbqkb1r/ppp2ppp/8/3p4/3Pn3/5N2/PPP2PPP/RNBQKB1R w KQkq - 0 4",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "PDVt7Kbh",
+    "title": "Caro-Kann Defense Repertoire",
+    "role": "repertoire",
+    "chapters": 38,
+    "nonempty": 33,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Caro Kann Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 2,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 2,
+        "mainline": "e4 c6",
+        "mainline_plies": 2,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 13,
+        "title": "Nf3 + Nc3",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 56,
+        "forks": 4,
+        "leaves": 6,
+        "max_plies": 22,
+        "mainline": "e4 c6 Nc3 d5 Nf3 Bg4 h3 Bxf3 Qxf3 e6 d3 Nf6 Bd2 Qb6 O-O-O d4 Ne2 c5 g4 Nc6 g5 Nd7",
+        "mainline_plies": 22,
+        "first_mainline_fork": {
+          "after": "e4 c6 Nc3 d5 Nf3 Bg4 h3 Bxf3 Qxf3 e6",
+          "options": [
+            "d3",
+            "d4"
+          ]
+        },
+        "endpoint": "r3kb1r/pp1n1ppp/1qn1p3/2p3P1/3pP3/3P1Q1P/PPPBNP2/2KR1B1R w kq - 1 12",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "jtlLwUvh",
+    "title": "🏰 Caro-Kann Defense🔥",
+    "role": "repertoire",
+    "chapters": 7,
+    "nonempty": 7,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 4,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 4,
+        "mainline": "e4 c6 d4 d5",
+        "mainline_plies": 4,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3",
+        "checkmate": false
+      },
+      {
+        "chapter": 2,
+        "title": "Advance Variation",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 12,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 12,
+        "mainline": "e4 c6 d4 d5 e5 c5 c3 Nc6 Nf3 cxd4 cxd4 Bg4",
+        "mainline_plies": 12,
+        "first_mainline_fork": null,
+        "endpoint": "r2qkbnr/pp2pppp/2n5/3pP3/3P2b1/5N2/PP3PPP/RNBQKB1R w KQkq - 1 7",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "A4EBp7Ds",
+    "title": "French Defense Repertoire",
+    "role": "repertoire",
+    "chapters": 40,
+    "nonempty": 35,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "French Defense Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 4,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 4,
+        "mainline": "e4 e6 d4 d5",
+        "mainline_plies": 4,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3",
+        "checkmate": false
+      },
+      {
+        "chapter": 15,
+        "title": "Second move sidelines",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 46,
+        "forks": 4,
+        "leaves": 6,
+        "max_plies": 18,
+        "mainline": "e4 e6 c4 d5 exd5 exd5 cxd5 Nf6 Nc3 Nxd5",
+        "mainline_plies": 10,
+        "first_mainline_fork": {
+          "after": "e4 e6",
+          "options": [
+            "c4",
+            "b3",
+            "Qe2"
+          ]
+        },
+        "endpoint": "rnbqkb1r/ppp2ppp/8/3n4/8/2N5/PP1P1PPP/R1BQKBNR w KQkq - 0 6",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "UzKIIAtz",
+    "title": "🇫🇷  French Defense 🇫🇷",
+    "role": "repertoire",
+    "chapters": 6,
+    "nonempty": 6,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 4,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 4,
+        "mainline": "e4 e6 d4 d5",
+        "mainline_plies": 4,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3",
+        "checkmate": false
+      },
+      {
+        "chapter": 2,
+        "title": "Exchange Variation",
+        "start": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+        "moves": 24,
+        "forks": 1,
+        "leaves": 4,
+        "max_plies": 21,
+        "mainline": "e6 d4 d5 exd5 exd5 Nf3 Nf6 Bd3 Bd6 O-O O-O Bg5 Bg4 h3 Bh5 Nbd2 Nbd7 c3 c6 Qc2 Qc7",
+        "mainline_plies": 21,
+        "first_mainline_fork": {
+          "after": "e6 d4 d5 exd5 exd5 Nf3 Nf6 Bd3 Bd6 O-O O-O Bg5 Bg4 h3",
+          "options": [
+            "Bh5",
+            "Be6",
+            "Bd7",
+            "Bc8"
+          ]
+        },
+        "endpoint": "r4rk1/ppqn1ppp/2pb1n2/3p2Bb/3P4/2PB1N1P/PPQN1PP1/R4RK1 w - - 2 12",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "bbxmDYZV",
+    "title": "🏆What is your Ideal Opening? 🤔",
+    "role": "opening-guide",
+    "chapters": 19,
+    "nonempty": 13,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 3,
+        "title": "Level of Play, Beginner: 1- Italian Opening",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 6,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 6,
+        "mainline": "e4 e5 Nf3 Nc6 Bc4 Bc5",
+        "mainline_plies": 6,
+        "first_mainline_fork": null,
+        "endpoint": "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+        "checkmate": false
+      },
+      {
+        "chapter": 9,
+        "title": "Little time to study: 1- London System",
+        "start": "4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1",
+        "moves": 13,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 13,
+        "mainline": "d4 Kd8 Bf4 Ke8 e3 Kd8 Nd2 Ke8 c3 Kd8 Ngf3 Ke8 Bd3",
+        "mainline_plies": 13,
+        "first_mainline_fork": null,
+        "endpoint": "4k3/8/8/8/3P1B2/2PBPN2/PP1N1PPP/R2QK2R b KQ - 4 7",
+        "checkmate": false
+      },
+      {
+        "chapter": 14,
+        "title": "Openings for Tactical Players: 3- Sicilian Dragon",
+        "start": "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R b KQkq - 0 1",
+        "moves": 1,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 1,
+        "mainline": "g6",
+        "mainline_plies": 1,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkb1r/pp2pp1p/3p1np1/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 2",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "nRiq9SZx",
+    "title": "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖",
+    "role": "repertoire-and-model-games",
+    "chapters": 13,
+    "nonempty": 11,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "🏴‍☠️ Introduction 🏴‍☠️",
+        "start": "rnbqkb1r/pp2pppp/2pp1n2/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 2 4",
+        "moves": 8,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 8,
+        "mainline": "f4 Qa5 Bd3 e5 Nf3 Bg4 Be3 Nbd7",
+        "mainline_plies": 8,
+        "first_mainline_fork": null,
+        "endpoint": "r3kb1r/pp1n1ppp/2pp1n2/q3p3/3PPPb1/2NBBN2/PPP3PP/R2QK2R w KQkq - 4 8",
+        "checkmate": false
+      },
+      {
+        "chapter": 8,
+        "title": "Bread and Butter: The Main ideas against e4 🍞🍞🍞 Toasty  Sliced-lines",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 106,
+        "forks": 10,
+        "leaves": 16,
+        "max_plies": 16,
+        "mainline": "e4 d6 d4 Nf6 Nc3 c6 Nf3 Qa5 e5 Ne4 Bd2 Nxd2 Qxd2 dxe5 dxe5 Bg4",
+        "mainline_plies": 16,
+        "first_mainline_fork": {
+          "after": "",
+          "options": [
+            "e4",
+            "Nf3",
+            "c4",
+            "b4",
+            "g4",
+            "d4",
+            "f4"
+          ]
+        },
+        "endpoint": "rn2kb1r/pp2pppp/2p5/q3P3/6b1/2N2N2/PPPQ1PPP/R3KB1R w KQkq - 1 9",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "HHZpRszr",
+    "title": "Openings",
+    "role": "opening-guide",
+    "chapters": 32,
+    "nonempty": 27,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 3,
+        "title": "London System",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 42,
+        "forks": 4,
+        "leaves": 5,
+        "max_plies": 29,
+        "mainline": "d4 d5 Bf4 Nf6 e3 e6 Nf3 Bd6 Ne5 c5 c3 Qc7 Nd2 Nbd7 Ndf3 Ne4 Bd3 O-O O-O f6 Nxd7 Bxd7 Bxe4 dxe4",
+        "mainline_plies": 29,
+        "first_mainline_fork": {
+          "after": "",
+          "options": [
+            "d4",
+            "c4"
+          ]
+        },
+        "endpoint": "r4rk1/pp1b2pp/4pp2/2P5/4p3/2P1PN2/PP3PPP/R2R2K1 b - - 0 15",
+        "checkmate": false
+      },
+      {
+        "chapter": 20,
+        "title": "French Defense: Advanced Variation",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 38,
+        "forks": 5,
+        "leaves": 6,
+        "max_plies": 24,
+        "mainline": "e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 cxd4 cxd4 Bb4+ Bd2 Qb6 Bxb4 Qxb4+ Nc3 Qxb2 Rc1 Nge7",
+        "mainline_plies": 20,
+        "first_mainline_fork": {
+          "after": "e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 cxd4 cxd4 Bb4+ Bd2",
+          "options": [
+            "Qb6",
+            "Qc7"
+          ]
+        },
+        "endpoint": "r1b1k2r/pp2nppp/2n1p3/3pP3/3P4/2N2N2/Pq3PPP/2RQKB1R w Kkq - 2 11",
+        "checkmate": false
+      },
+      {
+        "chapter": 23,
+        "title": "Sicillian Defense",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 2,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 2,
+        "mainline": "e4 c5",
+        "mainline_plies": 2,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "bmWAylqe",
+    "title": "🏆Repertoire for the D4 PLAYER 🏆",
+    "role": "repertoire",
+    "chapters": 50,
+    "nonempty": 50,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 2,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 2,
+        "mainline": "d4 Nf6",
+        "mainline_plies": 2,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkb1r/pppppppp/5n2/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 1 2",
+        "checkmate": false
+      },
+      {
+        "chapter": 21,
+        "title": "W: Englund Gambit",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 70,
+        "forks": 5,
+        "leaves": 8,
+        "max_plies": 27,
+        "mainline": "d4 e5 dxe5 Nc6 Nf3 Qe7 Nc3 Nxe5 e4 Nf6 Bf4 d6 Qd4 Nxf3+ gxf3 Bd7 O-O-O",
+        "mainline_plies": 17,
+        "first_mainline_fork": {
+          "after": "d4 e5 dxe5",
+          "options": [
+            "Nc6",
+            "d6"
+          ]
+        },
+        "endpoint": "r3kb1r/pppbqppp/3p1n2/8/3QPB2/2N2P2/PPP2P1P/2KR1B1R b kq - 2 9",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "nYAJ7Km3",
+    "title": "🔥🔥Pirc Defense Repertoire🔥🔥",
+    "role": "repertoire",
+    "chapters": 6,
+    "nonempty": 6,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Pirc Defense: Set-up",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 6,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 6,
+        "mainline": "e4 d6 d4 Nf6 Nc3 g6",
+        "mainline_plies": 6,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkb1r/ppp1pp1p/3p1np1/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4",
+        "checkmate": false
+      },
+      {
+        "chapter": 2,
+        "title": "Pirc Defense: Austrian Attack i",
+        "start": "rnbqkb1r/ppp1pp1p/3p1np1/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4",
+        "moves": 4,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 4,
+        "mainline": "f4 c6 Nf3 d5",
+        "mainline_plies": 4,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkb1r/pp2pp1p/2p2np1/3p4/3PPP2/2N2N2/PPP3PP/R1BQKB1R w KQkq - 0 6",
+        "checkmate": false
+      },
+      {
+        "chapter": 3,
+        "title": "Pirc Defense: Austrian Attack ii",
+        "start": "rnbqkb1r/ppp1pp1p/3p1np1/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4",
+        "moves": 16,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 16,
+        "mainline": "f4 Nc6 Nf3 Bg7 Bd3 O-O O-O e5 fxe5 dxe5 dxe5 Nxe5 Nxe5 Qd4+ Kh1 Qxe5",
+        "mainline_plies": 16,
+        "first_mainline_fork": null,
+        "endpoint": "r1b2rk1/ppp2pbp/5np1/4q3/4P3/2NB4/PPP3PP/R1BQ1R1K w - - 0 12",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "FwXo3Qhq",
+    "title": "Pirc Defense: Opening Repertoire for Black",
+    "role": "repertoire-and-traps",
+    "chapters": 10,
+    "nonempty": 10,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Pirc Defense: Classical",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 83,
+        "forks": 6,
+        "leaves": 10,
+        "max_plies": 50,
+        "mainline": "e4 d6 d4 Nf6 Nc3 g6 Nf3 Bg7 Bc4 O-O O-O Bg4 h3 Bxf3 Qxf3 Nc6 Be3 e5 dxe5 Nxe5 Qe2 Nxc4 Qxc4 Re8",
+        "mainline_plies": 50,
+        "first_mainline_fork": {
+          "after": "e4 d6 d4 Nf6 Nc3 g6 Nf3 Bg7",
+          "options": [
+            "Bc4",
+            "Be2",
+            "Bd3"
+          ]
+        },
+        "endpoint": "6k1/5p1p/6p1/2Q3q1/P2p4/7P/5PPb/3R2K1 w - - 1 26",
+        "checkmate": false
+      },
+      {
+        "chapter": 3,
+        "title": "Pirc Defense: Versus Austrian Attack",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 105,
+        "forks": 12,
+        "leaves": 20,
+        "max_plies": 30,
+        "mainline": "e4 d6 d4 Nf6 Nc3 g6 f4 Bg7 Nf3 c5 dxc5 Qa5 Bd3 Qxc5 Qe2 Bg4 Be3 Qa5 O-O O-O h3 Bxf3 Qxf3 Nc6",
+        "mainline_plies": 24,
+        "first_mainline_fork": {
+          "after": "e4 d6 d4 Nf6 Nc3 g6 f4 Bg7",
+          "options": [
+            "Nf3",
+            "e5"
+          ]
+        },
+        "endpoint": "r4rk1/pp2ppbp/2np1np1/q7/4PP2/2NBBQ1P/PPP3P1/R4RK1 w - - 1 13",
+        "checkmate": false
+      },
+      {
+        "chapter": 9,
+        "title": "Pirc Defense: Versus Shy 150 Attack",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 26,
+        "forks": 1,
+        "leaves": 2,
+        "max_plies": 25,
+        "mainline": "e4 d6 d4 Nf6 Nc3 g6 Be3 c6 Qd2 b5 Bd3 Nbd7 Nf3 Qc7 O-O Bg7 Bh6 O-O Bxg7 Kxg7 a4 b4 Ne2 c5",
+        "mainline_plies": 25,
+        "first_mainline_fork": {
+          "after": "e4 d6 d4 Nf6 Nc3 g6 Be3 c6 Qd2 b5 Bd3 Nbd7 Nf3",
+          "options": [
+            "Qc7",
+            "Qa5"
+          ]
+        },
+        "endpoint": "r1b2r2/p1qnppkp/3p1np1/2P5/Pp2P3/3B1N2/1PPQNPPP/R4RK1 b - - 0 13",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "LLNDy032",
+    "title": "répertoire 1500 élo avec les blancs (solide)",
+    "role": "repertoire",
+    "chapters": 9,
+    "nonempty": 9,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 1,
+        "title": "Introduction au répertoire",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 143,
+        "forks": 16,
+        "leaves": 32,
+        "max_plies": 23,
+        "mainline": "e4 e5 Nf3 Nc6 Bc4 Bc5",
+        "mainline_plies": 6,
+        "first_mainline_fork": {
+          "after": "e4",
+          "options": [
+            "e5",
+            "c5",
+            "e6",
+            "Nf6",
+            "d5",
+            "c6",
+            "d6",
+            "b6",
+            "Nc6"
+          ]
+        },
+        "endpoint": "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+        "checkmate": false
+      },
+      {
+        "chapter": 7,
+        "title": "Défense McConnell",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 5,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 5,
+        "mainline": "e4 e5 Nf3 Qf6 Bc4",
+        "mainline_plies": 5,
+        "first_mainline_fork": null,
+        "endpoint": "rnb1kbnr/pppp1ppp/5q2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+        "checkmate": false
+      }
+    ]
+  },
+  {
+    "id": "e01yoGqe",
+    "title": "Punishing 👊 Bad 😱 Openings ✌️",
+    "role": "repertoire-and-traps",
+    "chapters": 14,
+    "nonempty": 13,
+    "sample_rule": "first nonempty, most branching, shortest nonempty chapter; overlaps collapsed",
+    "samples": [
+      {
+        "chapter": 2,
+        "title": "Damiano Defense",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 38,
+        "forks": 3,
+        "leaves": 4,
+        "max_plies": 23,
+        "mainline": "e4 e5 Nf3 f6 Nxe5 fxe5 Qh5+ Ke7 Qxe5+ Kf7 Bc4+ d5 Bxd5+ Kg6 h4 h6 Bxb7 Bd6 Qa5 Nf6 Bxa8",
+        "mainline_plies": 21,
+        "first_mainline_fork": {
+          "after": "e4 e5 Nf3 f6 Nxe5",
+          "options": [
+            "fxe5",
+            "Qe7"
+          ]
+        },
+        "endpoint": "Bnbq3r/p1p3p1/3b1nkp/Q7/4P2P/8/PPPP1PP1/RNB1K2R b KQ - 0 11",
+        "checkmate": false
+      },
+      {
+        "chapter": 13,
+        "title": "King's Head Opening",
+        "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "moves": 3,
+        "forks": 0,
+        "leaves": 1,
+        "max_plies": 3,
+        "mainline": "e4 e5 f3",
+        "mainline_plies": 3,
+        "first_mainline_fork": null,
+        "endpoint": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5P2/PPPP2PP/RNBQKBNR b KQkq - 0 2",
+        "checkmate": false
+      }
+    ]
+  }
+]

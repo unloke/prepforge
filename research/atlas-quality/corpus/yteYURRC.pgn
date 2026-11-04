@@ -1,0 +1,203 @@
+[Event "My Repertoire Against e4: The Caro Kann Defense: The Advanced Variation"]
+[Date "2020.08.04"]
+[White "Jones, G"]
+[Black "Xiong Jeffery"]
+[Result "1/2-1/2"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Tal Variation"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "The Advanced Variation"]
+[ChapterURL "https://lichess.org/study/yteYURRC/vuFVYCPs"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.04"]
+[UTCTime "18:44:53"]
+
+{ Before starting, please view the study pinned comment. }
+1. e4 (1. Nf3) 1... c6 { Officially the Caro Kann, your shield against 1 e4. } 2. d4 { This is the most common reply and so most of the chapters/variations will be based on it. } 2... d5 3. e5 { This is the advanced variation, and is the most popular AND testing line against the Caro, but I feel like this variation is better for black and that the game is real comfortable after this. The top level gms have won with black 3/4 times in this position. } 3... Bf5 { [%csl Rc8,Gf5][%cal Be7e6] } 4. h4 { A tricky try to cause black problems, and prevent e6, the solidifying move. } 4... h5 (4... e6 { [%cal Rg2g4,Rh4h5,Rf2f3] } 5. g4 Be4 6. f3 Bg6 7. h5 { Trapped bishops are bad!! } { [%csl Rg6,Rf5,Re4,Rd3][%cal Rc2d3,Rf3e4,Rg4f5,Rh5g6] }) (4... h6) 5. Bd3 Bxd3 6. Qxd3 { These are a few critical engine tries, so you have to be careful. Here, e6 is NOT the way to go. } 6... Qa5+ { This move has seen a lot of success for black. } 7. Nd2 { This move is a strategic success for black because the bishop is blocked, and can not utilize g5. } { [%csl Rd2,Gg5][%cal Rc1d2,Gc2c4,Gd2c4,Gd3c4] } (7. Bd2 Qa6 { [%cal Gd3a6,Gb8a6] } 8. e6 Qxd3 9. exf7+ Kxf7 10. cxd3 { If the queens are EVER traded, on d3 or a6, then black is really comfortable and the endgame is favorable for him because of all of white's weaknesses. And white doesn't have a proper way to avoid the trade, so the natural Bd2 is BAD. }) 7... e6 (7... Qa6 8. c4 { [%csl Ra6,Gc4][%cal Ra6c4,Gd3c4,Gd2c4] }) 8. Nf3 Nh6 { And now you just continue with natural development and try to grind down white's center into smithereens. The following is a game that just fizzles out into a draw. } { [%csl Bf5,Yd4,Yh4][%cal Gf5h4,Gf5d4] } 9. O-O (9. c3) 9... Nf5 { [%csl Yh4,Yd4][%cal Gf5d4,Gf5h4] } 10. Nb3 Qa6 11. Qd1 { This move now works because the King will no longer be stuck on d1 because it is already castled. } { [%csl Re1][%cal Ga6f1,Re1g1] } 11... Nd7 { [%csl Gc5][%cal Gd7c5,Gf8c5,Gc6c5] } 12. Bf4 Be7 { [%csl Yh4][%cal Gf5h4,Ge7h4] } 13. g3 { [%cal Gg3h4] } 13... Rc8 { [%csl Gc5][%cal Gc6c5,Gd7c5,Ge7c5] } 14. c3 c5 { A signature and powerful move in the advanced variation because it now strikes in the center. The rest of the game may prove to be instructive, but it is no longer about the opening, so I'll leave it without comment } { [%cal Gc5d4,Ge7a3,Ge7h4,Gc8c1,Bf5h4,Bf5d4,Ba6f1,Yd7b6,Yb6a4,Yb6c4] } 15. a4 Qb6 16. Ra2 a6 17. dxc5 Bxc5 18. Kg2 Nf8 19. a5 Qb5 20. Nxc5 Rxc5 21. Re1 Ng6 22. Be3 Rc8 23. Bb6 Nge7 24. Nd4 Qd7 25. Ra3 Rc4 26. Qf3 Qc8 27. Rd1 g6 28. b4 O-O 29. Bc5 Re8 30. Bxe7 Nxe7 31. Rb3 Nc6 32. Qe3 Qc7 33. Re1 Rc8 34. Qf4 Nxd4 35. cxd4 Rc3 36. Re3 Rc1 37. Rf3 Rf8 38. g4 hxg4 39. Qxg4 Qc4 40. Rfd3 Ra1 41. Qf4 Qc2 42. Qe3 Kg7 43. h5 Rh8 44. Qf4 Qe2 45. Qf6+ Kg8 46. Qd8+ Kg7 47. Qf6+ Kg8 48. Qd8+ { Jones, G. - Xiong, Jeffery, 1/2-1/2, St Louis Summer A, 2019, https://lichess.org/peUnUhjc } 1/2-1/2
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: The Advanced Variation Continued"]
+[Date "2020.08.04"]
+[White "Alexei Shirov"]
+[Black "Anatoly Karpov"]
+[Result "0-1"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Short Variation"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "The Advanced Variation Continued"]
+[ChapterURL "https://lichess.org/study/yteYURRC/OokooQoV"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.04"]
+[UTCTime "19:38:19"]
+
+1. e4 c6 2. d4 d5 3. e5 Bf5 4. Nf3 { This is the most natural move, and it just sort of fizzles out into a game after natural development. I don't think I need to cover it, let alone give it a few WHOLE chapter, but I think the top move in the database does deserve a full chapter. } 4... e6 { Black really has no problems here, and gets a nice edge. } 5. Be2 c5 (5... Nd7 6. O-O Ne7) 6. O-O (6. Be3 { This prevents Nc6 indirectly, by putting pressure on c5. } 6... Qb6 (6... cxd4 7. Nxd4 Ne7) 7. Nc3 { If you want to accept that poisoned pawn, you have my best of luck, but it gets risky and complex so do your own homework on it. } 7... Nc6 { This next game is a nice example of what could happen in this variation. } 8. Na4 (8. O-O Qxb2 (8... c4) 9. Nb5 c4 10. Nc7+ Kd7 11. Nxa8 Bxc2 12. Qc1 Ba3 13. Ne1 Bf5 14. Qd1 Nge7 15. Bd3 (15. Rc1 Rxa8 16. g4 Be4 17. f3 Bg6 18. h4 h5 19. gxh5 Nf5) 15... Bxd3 16. Nxd3 Qc3 17. Nc5+ Bxc5 18. Rc1 (18. dxc5 Rxa8) 18... Qd3 19. Qxd3) 8... Qa5+ 9. c3 c4 10. O-O b5 11. Nc5 Bxc5 12. dxc5 Nge7 13. Nd4 a6 14. f4 Be4 15. Qd2 O-O 16. Bf3 Bxf3 17. Rxf3 b4 18. Rh3 bxc3 19. bxc3 Rab8 20. Qc2 h6 21. Nxc6 Nxc6 22. Rf1 Qa3 23. f5 Rb2 24. Qd1 Qxc3 25. Bc1 Qc2 26. Bxb2 Qxb2 27. f6 Qd4+ 28. Qxd4 Nxd4 29. fxg7 Kxg7 30. Rg3+ Kh7 31. Ra3 Nc6 32. Rxa6 Nxe5 33. Rxe6 fxe6 34. Rxf8 c3 35. Rf1 d4 36. a4 d3 37. Kf2 Ng4+ 38. Ke1 Ne3 39. Rf2 Nc2+ 40. Kd1 Nd4 41. c6 c2+ 42. Rxc2 dxc2+ 43. Kc1 Nxc6 44. Kxc2 Kg6 45. Kd3 Kf5 46. Ke3 e5 47. h3 e4 { Jakovenko, Dmitrij - Eljanov, Pavel, 0-1, RUS-chT 17th, 2010, https://lichess.org/iC2MM1Df }) 6... Nc6 { [%csl Gd4] } 7. c3 { [%csl Gd4][%cal Gc3d4] } 7... cxd4 8. cxd4 Nge7 9. a3 Nc8 { [%cal Gc8b6,Gf8e7,Gc8a7,Gb6c4,Gb7b5] } 10. Nbd2 Be7 11. b3 { [%cal Gb3c4] } 11... a5 { [%cal Ga5b4,Gc6b4,Ge7b4] } 12. Bb2 N8a7 13. Re1 O-O 14. Nf1 Rc8 15. Ng3 Bg6 16. Qd2 Qb6 17. Bd1 Rc7 18. h4 h6 19. Re2 Rfc8 20. Qf4 Nb8 21. Re3 Nb5 22. Ne2 Nd7 23. Nh2 Rc6 24. Ng4 Qd8 25. Rh3 Qf8 26. a4 Na3 27. Bxa3 Bxa3 28. Rg3 h5 29. Ne3 Bb2 30. Ra2 Bc1 31. Qg5 Qb4 32. Nf4 Bxe3 33. fxe3 Rc1 34. Nxg6 Rxd1+ 35. Kh2 fxg6 36. Qxg6 Qe7 37. Rf2 Qxh4+ 38. Rh3 Qxf2 { Shirov, Alexei - Karpov, Anatoly, 0-1, Las Palmas, 1994, https://lichess.org/6IRFW4O6 } 0-1
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: Advance Variation Shirov Attack"]
+[Date "2020.08.04"]
+[White "Alexander Grishuk"]
+[Black "Evgeny Bareev"]
+[Result "0-1"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Advance Variation, Van der Wiel Attack"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "Advance Variation Shirov Attack"]
+[ChapterURL "https://lichess.org/study/yteYURRC/YGsXI7V7"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.04"]
+[UTCTime "21:56:09"]
+
+1. e4 c6 2. d4 d5 3. e5 Bf5 4. Nc3 e6 5. g4 Bg6 6. Nge2 (6. h4 h5 7. g5 { White's kingside is on lockdown since black has control over f5, the only pawn break. } { [%csl Gg4,Gh3,Gf4,Ge4,Bf5] }) 6... c5 { White is striking with all his might on the kingside, so you RETALIATE on the queenside and center. } 7. h4 h5 8. Nf4 Bh7 9. Nxh5 cxd4 { The pawn is compensated by white's weak center } 10. Nb5 { Queen takes is fine, but Nb5 is considered to be an improvement. } 10... Nc6 11. Nxd4 Nge7 12. Rh3 { The rest of this is the middle game which is good to study. } 12... a6 13. Bg5 Qb6 14. Nxc6 Nxc6 15. Bd3 Bxd3 16. Rxd3 Qb4+ 17. c3 Qe4+ { [%cal Be4e5] } 18. Re3 Qg2 19. Rc1 Qg1+ { [%cal Ge1e2,Gg1g4,Gg4h5] } 20. Kd2 Qxf2+ 21. Re2 Qc5 22. Qa4 Rc8 23. Rf1 Rc7 24. Kc1 d4!! 25. Rd1 Rd7 26. Red2 Qxe5 27. cxd4 Qe4 28. Rc2 f6 29. Bd2 b5 30. Qxa6 Nxd4 31. Rc8+ Kf7 32. Ng3 Qxg4 33. Rg1 Ne2+ 34. Nxe2 Qxe2 35. Rd1 Bb4 36. Qc6 Bxd2+ 37. Kc2 Ba5+ 38. Kb3 Qxd1+ { Grischuk, Alexander - Bareev, Evgeny, 0-1, Corus, 2003, https://lichess.org/GaodV30w } { We now have completed our repertoire against the ADVANCED VARIATION, and shall continue to learn more variations. } 39. Qc2 Rd3+ 40. Rc3 Qg4 41. a3 Qc4# { That's a smothered mate without a knight. } 0-1
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: Classical Variation"]
+[Date "2020.08.05"]
+[White "Smirin Illa"]
+[Black "Evgeny Bareev"]
+[Result "0-1"]
+[Variant "Standard"]
+[ECO "B19"]
+[Opening "Caro-Kann Defense: Classical Variation, Lobron System"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "Classical Variation"]
+[ChapterURL "https://lichess.org/study/yteYURRC/iqeiv4vt"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.05"]
+[UTCTime "04:46:54"]
+
+1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 5. Ng3 Bg6 6. h4 { h5 is not the go-to move here since the Bishop is on g6, so fighting for control over g4 is pointless. } 6... h6 7. Nf3 (7. Nh3 { Honorable mention to this move as white scores quite well with it. } { [%cal Gh3f4,Gf4g6] } 7... Nf6 8. Nf4 Bh7 9. Bc4 e6 { Solid control over d5 white having an excellent bishop on h7 keeps black's position solid, and potential plans are there such as on the screen. Basically, you stay solid while improving your pieces, and if you want, utilizing the d file or maybe preparing a c5 push to weaken white's center. } { [%csl Gd5,Rd4][%cal Yb8d7,Yd7b6,Yb6d5,Yf6d5,Yd8d5,Yc6d5,Ye6d5,Bh7b1,Gf8e7,Ge8g8,Bd8d1,Rc6c5] }) 7... Nd7 { [%cal Gf3e5,Gd7e5] } 8. h5 Bh7 9. Bd3 Bxd3 10. Qxd3 e6 11. Bd2 Ngf6 { As you can see, d4 can be a potential weakness, and that by preventing white's only tricky tries, Ne5 and Sacs on g6, white really has nothing, and that black is solid and can find play on the weak square d5, weak pawn e4, and semi-open d file. } { [%csl Rd4,Gd5][%cal Gd7b6,Gc6c5] } 12. O-O-O { Middlegame } 12... Be7 13. Ne4 O-O 14. Kb1 c5 15. dxc5 Qc7 16. Nxf6+ Nxf6 17. Qe2 Qxc5 18. Ne5 Rac8 19. Bc1 Rfd8 20. g4 Rxd1 21. Rxd1 Bd6 22. Nd3 Qb5 23. f3 Nd5 24. Bd2 a5 25. Nc1 Qb6 26. c4 Qa6 27. b3 a4 28. Qe4 Nf6 29. Qe2 axb3 30. axb3 b5 31. g5 hxg5 32. Bxg5 bxc4 33. Bxf6 gxf6 34. Rd2 Bf4 35. Rc2 Bxc1 36. Rxc1 Ra8 37. Qb2 cxb3 38. Rd1 Kh7 39. Qxb3 Qa1+ 40. Kc2 Rc8+ 41. Kd3 Qxd1+ { Smirin, Ilia - Bareev, Evgeny, 0-1, FIDE GP, 2002, https://lichess.org/m3IBZzcv } 42. Qxd1 Rd8+ 43. Ke2 Rxd1 44. Kxd1 { [%cal Gh7h6,Gh6h5] } 0-1
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: Exchange Variation, Another type of Game"]
+[Date "2020.08.05"]
+[White "Jiri Nun"]
+[Black "Ian Rogers"]
+[Result "0-1"]
+[Variant "Standard"]
+[ECO "B13"]
+[Opening "Caro-Kann Defense: Exchange Variation"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "Exchange Variation, Another type of Game"]
+[ChapterURL "https://lichess.org/study/yteYURRC/3iUQhP0z"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.05"]
+[UTCTime "19:21:36"]
+
+1. e4 c6 2. d4 d5 3. exd5 cxd5 4. Bd3 { This is a Bobby Fischer variation. Each of white's choices pose a specific problem to black, and you need to solve it. } 4... Nc6 5. c3 (5. Nf3 { White's play is wasted after } 5... Bg4 { The bishop is now developed } { [%csl Gg4][%cal Rd1f3] } 6. c3 Qc7) 5... Nf6 (5... Qc7 { This is also an option.... } { [%csl Rc1] }) 6. h3 (6. Bf4 Bg4 7. Qb3 Qc8 8. Nd2 e6 { White gets a bit more active play, but black is solid } { [%csl Gc4][%cal Gf8e7,Ge8g8,Gc6a5,Ga5c4,Ga8c8,Gc8c4] }) (6. Nf3 Bg4 { [%cal Gg4d1] }) 6... g6 7. Nf3 Bg7 8. O-O Bf5! { It seems as though white can just capture, and the pawns in front of your king are doubled. Well, this is inevitable,but } 9. Bxf5 (9. Bf4 Bxd3 10. Qxd3 O-O { Black has no more issues, and white lost is major attempt to create imbalances. Black has chances now, expect a minority attack. https://www.expert-chess-strategies.com/minority-attack.html
+This is some random link I found that might explain what minority attack is. } { [%csl Gc4,Ge4,Rb2][%cal Ga8c8,Gc8c4,Ga7a6,Gb7b5,Gb5b4] }) 9... gxf5 { Through the lichess database (please have it on, click the book), it seems black has done the best in these lines. Obviously the kingside is shaky, but e5 more than compensates. } { [%csl Ge4][%cal Bd5e4,Bf5e4,Bf6e4] } 10. Bf4 O-O 11. Ne5 e6 12. Nd2 Ne7 { The following is a game by Ian Rogers, it will serve as extra instruction, so you view it and learn the MIDDLEGAME plans. } 13. Re1 Ng6 14. Bh2 Ne4 15. Nd3 Bh6 16. Nf3 f6 17. Re2 b6 18. Qb3 Rc8 19. Kh1 Qd7 20. Rae1 Kh8 21. Ng1 Rfe8 22. f3 Nd2 23. Qd1 Nc4 24. f4 Nd6 25. Nf3 Ne4 26. g4 fxg4 27. hxg4 Bg7 28. Rg2 Rf8 29. Reg1 a5 30. Qe1 Qb5 31. Nf2 f5 32. gxf5 exf5 33. Nxe4 dxe4 34. Ng5 Rf6 35. Qd1 Bh6 36. Nh3 Nh4 37. Re2 Qd5 38. Re3 Nf3 39. Rg2 Rg6 40. Rxg6 hxg6 41. a3 Kg7 42. Bg3 b5 43. Ng1 Ne5 44. Qf1 Rh8 45. Kg2 Ng4 46. Re1 Rc8 47. Qe2 Kg8 48. Nh3 Bg7 49. Ng5 Bf6 50. Bh4 Rc7 51. Kg3 Bxg5 52. Bxg5 Rh7 53. a4 e3 54. Bh4 g5 55. fxg5 Qd6+ 56. Kh3 Nf2+ 57. Kg2 Rxh4 58. Qxe3 Qh2+ 59. Kf1 Ne4 { Nun, Jiri - Rogers, Ian, 0-1, CZE-chT 9495, 1995, https://lichess.org/nGSVXeml } 0-1
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: Exchange Variation Panov Attack"]
+[Date "2020.08.05"]
+[White "Vasyl Ivanchuk"]
+[Black "Evgeny Najer"]
+[Result "1/2-1/2"]
+[Variant "Standard"]
+[ECO "B13"]
+[Opening "Caro-Kann Defense: Panov Attack, Modern Defense, Mieses Line"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "Exchange Variation Panov Attack"]
+[ChapterURL "https://lichess.org/study/yteYURRC/wrcG4fCt"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.05"]
+[UTCTime "20:23:04"]
+
+1. e4 c6 2. d4 d5 3. exd5 cxd5 4. c4 Nf6 5. Nc3 Nc6 6. Nf3 { And this is an invitation to an endgame, and the forcing line I mentioned in the previous chapter. } (6. Bg5 Be6) 6... Bg4 (6... g6 { This move avoids the endgame line. But I won't cover this... You can do your own digging on this, but you should take the forcing variation into consideration against a weaker opponent who might not know this, or if you just want a draw. }) 7. cxd5 Nxd5 8. Qb3 { After Qb3, the forcing line begins (actually, Qb3 is the best move because it keeps white's position active. Other tries give black too much so the line actually starts at 7cxd5. } { [%csl Rd5][%cal Yb3d5,Yc3d5] } 8... Bxf3 { [%csl Gd5][%cal Gf3d5] } 9. gxf3 e6 10. Qxb7 Nxd4 11. Bb5+ Nxb5 12. Qc6+ Ke7 (12... Qd7 13. Qxa8+ { Whoops, that would be embarrassing. }) 13. Qxb5 Qd7 14. Nxd5+ Qxd5 15. Qxd5 exd5 { 8 forced moves, you better remember this properly. But it is pretty logical.
+1. He attacks your knight, you take his and defend yours. And then you defend yours again.
+2. He takes your pawn, you take his. He checks you with his bishop, you take it.
+3. He doesn't take your knight and checks you, you move the king. Everything else is basic. } 16. Be3 (16. Bf4 Ke6 { You respond to everything (well not everything, but most of white's tries) with Ke6. }) (16. O-O Ke6 17. Re1+ Kf5 { Nothing scary. } { [%cal Gf3f4,Gf7f6] }) 16... Ke6 { The following game fizzles out into a draw. Basically:
+You place your king on an active square like e6.
+You place your bishop on b4 to guard e1.
+And you protect d5 and develop your rooks. } 17. O-O-O Bb4 18. Rd3 Rhc8+ 19. Kb1 Bc5 20. Rc1 Bxe3 21. fxe3 g5 22. Ra3 Rxc1+ 23. Kxc1 a5 24. Kd1 Rb8 25. b3 Rb5 26. Ra4 h5 27. Ke1 f5 28. h3 Kd6 29. Ke2 Rc5 30. Kd2 Rb5 31. Ke2 Rc5 32. Kd2 Rb5 { Ivanchuk, V. - Najer, E., 1/2-1/2, TCh-TUR Super League 2017, https://lichess.org/BIJJfPm7 } 1/2-1/2
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: Exchange Variation Finished"]
+[Date "2020.08.07"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B13"]
+[Opening "Caro-Kann Defense: Panov Attack, Modern Defense"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "Exchange Variation Finished"]
+[ChapterURL "https://lichess.org/study/yteYURRC/3t193M3t"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.07"]
+[UTCTime "15:36:53"]
+
+1. e4 c6 2. d4 d5 3. exd5 cxd5 4. c4 Nf6 5. Nc3 Nc6 6. Bg5 dxc4 7. Bxc4 (7. d5 Ne5 8. Bxc4 Nxc4 9. Qa4+ Bd7 10. Qxc4 h6 11. Bh4 g5 12. Bg3 Bg7 { A solid and advanced set up with a weakness on d5, black should be quite happy with the opening. } { [%csl Rd5,Gg7,Gh6,Gg5,Gf6][%cal Ge8h8,Bc8c1,Bd8d1] }) 7... h6 { This move before accepting the pawn. } 8. Bh4 Qxd4 9. Qxd4 Nxd4 10. O-O-O { Now be wary of checkmate ideas as illustrated on the screen. } { [%cal Yd1d8,Yc3b5,Yb5c7,Rd4c6] } 10... e5 11. f4 (11. Nf3 Nxf3 12. Bxf6 gxf6 13. Bb5+ Ke7 14. Nd5+ Kd8 { Recapturing the black knight is now forced or white will be down a piece. } 15. gxf3 Bd6 16. Nxf6 (16. Rd2 Be6 17. Rhd1 Bc5 18. Nb6+ Ke7 19. Nxa8 Rxa8 { The Bishops compensate for the exchange. }) 16... Ke7 17. Nd5+ Kf8) 11... Bg4 { We are now planning Rc8 with that attack on the pieces, and the pin. White has to prevent this so... } { [%csl Gd1][%cal Gg4d1] } 12. Nf3 Bxf3 13. gxf3 Rc8 14. fxe5 (14. Bf1 Nd5 { Utilizing the pin and getting out of any attack that may arise from fxe5. } { [%cal Gd5c3] } 15. fxe5 Nxc3 16. bxc3 { The following is an example continuation of how the game might turn out. } 16... Ba3+ 17. Kb1 Nxf3 18. Bh3 { Stay on the back rank! } { [%csl Gd8][%cal Gh4d8,Gd1d8] } 18... Ra8 19. Bd7+ Kf8 20. Bg3 Ng5 21. e6) 14... Rxc4 15. exf6 Ne6 *
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: Two Knights Variation"]
+[Date "2020.08.06"]
+[White "Fang, Yan"]
+[Black "Ding Liren"]
+[Result "0-1"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense: Two Knights Attack"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "Two Knights Variation"]
+[ChapterURL "https://lichess.org/study/yteYURRC/6VhlfBiy"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.06"]
+[UTCTime "05:25:59"]
+
+1. e4 c6 2. Nc3 d5 3. Nf3 Nf6 { Obviously, you can transpose into other Caro like positions by playing Bg4, and if you're looking for a quick way to play this opening without studying too much, you can play the slightly weaker Bg4 for the sake of time. The major reason these moves are slightly weaker is because the white d pawn is not yet committed to anything. } 4. e5 { Only critical try, sidelines are simple. } (4. Qe2 d4) 4... Ne4 { View the sidelines and one partially critical line as well. Knowing all the sidelines instead of the mainline will help you more so check those out (the big gray box with all the lines). } 5. Ne2 { Time is of the essence, if black goes for something slow, then the knight on e4 could be proven to be a bit misplaced. Fortunately for us, the knight is a GOOD piece (my favorite after the queen and pawn), and we must make use of the fact that it hits f2. } { [%csl Ye4] } (5. d4 Qa5 6. Bd3 (6. Bd2 Nxd2 7. Qxd2 Bf5 8. Nh4 Bd7 9. Bd3 e6 10. Nf3 c5 { And you have a game here, view the game in the database or caleb's video for more info. }) 6... Bg4 { [%cal Ga5e1,Gg4d1,Gd3e4,Gd5e4] } 7. O-O Nxc3 8. bxc3 e6 9. Bd2) (5. Nxe4 dxe4 6. Ng5 Qd5 { [%cal Gd5e5,Gd2d4,Ge4d3] } 7. Qe2 Bf5 8. g4 Bg6 9. Bg2 Qxe5 10. Nxe4 h5 11. g5 { And, black is clearly NOT worse, I will have you know that Bxe4 is fine, but this stuff is now an interesting game, not knowledge of theory/openings. } { [%csl Gg4,Gf5,Gh3] }) (5. Qe2 Nxc3 6. dxc3 Bg4 7. h3 Bxf3 8. Qxf3 e6 { The theme: White goes for a kingside attack (this is the most consistent theme in the Caro), black develops and utilizes the queenside space he has. }) (5. h3 { [%csl Gg4][%cal Gh3g4] } 5... e6 { White wasted a tempo to keep our bishop locked in, so we just do our stuff and try to utilize the tempo. } 6. Qe2 Nxc3 7. dxc3 c5 { And this is similar to previous sidelines. }) (5. d3 Nxc3 6. bxc3 Bg4 7. h3 Bxf3 8. Qxf3 e6 9. d4 { And, I feel like going forward is pointless, if you paid good attention to previous lines, you should know the ideas and plans and this variation is nothing special here. }) (5. Be2 Nxc3 6. dxc3 Bg4 7. Nd4 Bxe2 8. Qxe2 e6 9. O-O { It's going to turn into a game. }) 5... Qb6!! { Mate on f2, this forces white to finally commit the pawn to d4. } { [%csl Gf2][%cal Bb6f2,Be4f2] } (5... e6 6. d3 Nc5 7. d4 Ncd7 { And you'd reach this french like structure, down a few tempi, which is NOT good. Note if you head to e4, you reach the same position, but now white got d4 in, therefore you lost a tempo. }) 6. d4 { d3 is no longer an option. } 6... e6 (6... Bg4 7. Nfg1 { Quite awkward. } { [%csl Gf3][%cal Gf2f3] }) 7. Ng3 (7. Nfg1 f6 { We are giving a square for our knight on g5, AND, threatening to take on e5 because the d pawn is pinned so white cannot do something like h4. } 8. f3 Ng5 9. exf6 gxf6 { Note taking on g5 weakens b2. } 10. f4 Ne4 11. Ng3 Bd7 12. Nxe4 dxe4 13. c3 { [%cal Gc6c5,Gb8a6] } 13... c5 14. d5 exd5 15. Qxd5 Nc6 16. Qh5+ (16. Qxe4+ Ne7 { [%cal Ge8c8] }) 16... Kd8 { [%csl Gd7,Gc6,Gb6,Gf8,Rh1,Rg1,Rf1,Re1,Rc1,Ra1][%cal Gd8c7,Ga8d8] }) 7... c5 8. Bd3 (8. Nxe4 dxe4 9. Ng5 cxd4) 8... Nxg3 9. hxg3 cxd4 { [%csl Gh7,Ge7,Gc5,Gc6,Gd7][%cal Gd3h7,Gh1h7,Gb8c6,Gc8d7,Gf8e7,Ge7c5] } 10. Ng5 (10. a3 { [%csl Gb4][%cal Ga3b4,Gb2b4] } 10... Nc6 11. b4 Bd7 12. Bf4 h6 { [%cal Gg7g5] } 13. g4 O-O-O { [%cal Rg4g5,Rh6g5,Yh1h8,Yf8b4] } 14. O-O { [%cal Gg7g5,Gh6h5] } (14. g5 hxg5 15. Rxh8 Bxb4+)) (10. Nxd4 { [%cal Rb6d4,Gd3b5,Bd1d4] } 10... Bc5 11. c3 Nc6 12. Nxc6 (12. Be3 Bd7 { White is falling. }) 12... Bxf2+ 13. Kf1 bxc6 { The white king is a clear weakness, white's development is not the best. }) 10... Nc6 11. Nxh7 Bd7 12. Nf6+ gxf6 13. Rxh8 O-O-O { [%cal Gf8b4,Rd8h8] } 14. Kf1 (14. Qh5 { Another nice game follows. } 14... fxe5 15. Bg5 Qxb2 16. Rd1 Bb4+ 17. Kf1 Rxh8 18. Qxh8+ Kc7 19. c3 dxc3 20. Rb1 Qa3 21. Rb3 Qa5 22. Qg7 b6 23. a3 Bxa3 24. Qxf7 Bb2 25. Kg1 Qa1+ 26. Kh2 Qd1 27. Rxb2 cxb2 28. Qh7 e4 29. Bf4+ e5 { Ponkratov, Pavel - Shimanov, Alexandr, 0-1, Khanty-Mansiysk Governor Cup 8th, 2012, https://lichess.org/YTaTWa6d } { The power of an impenetrable center. }) 14... fxe5!! $17 $44 { NO REVERSE!! One of the greatest centers in chess history. } { [%csl Gf7,Ge5,Gd5,Gd4,Ge6][%cal Ge5e4,Gf7f5,Ge6e5] } 15. Qh5 { The following is a game by 2020 Candidate, Ding Liren, played in 2013. } 15... e4 16. Be2 Bd6 17. a3 e3 18. Rxd8+ Nxd8 19. Qf3 exf2 20. Qxf2 Be8 21. b4 Qc7 22. Bb2 Nc6 23. b5 Ne7 24. g4 e5 25. Rc1 Bc5 26. Qf6 Ng6 27. c3 d3 28. Qf5+ Bd7 29. Qxd3 e4 30. Qxd5 Qf4+ 31. Bf3 Qe3 { Fang, Yan - Ding, Liren, 0-1, CHN-chT, 2013, https://lichess.org/ZfLSEyZn } 0-1
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: Fantasy/Tartakower Variation"]
+[Date "2020.08.06"]
+[White "Oleksienko Mikhailo"]
+[Black "Samuel Shankland"]
+[Result "1/2-1/2"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense: Maróczy Variation"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "Fantasy/Tartakower Variation"]
+[ChapterURL "https://lichess.org/study/yteYURRC/mZ8Q1RcW"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.06"]
+[UTCTime "21:19:18"]
+
+1. e4 c6 2. d4 d5 3. f3 { This sort of move is counter intuitive, and will rarely occur in your games, however, because of the fact that it has some critical lines, I suggest powerful players who may face preparation view this. } 3... dxe4 (3... e6 4. Nc3 Bb4 5. Bd2 Ne7 6. Bd3 O-O { I like this line too... if you're like me and is too lazy to learn all the lines, then consider this as your choice against the Fantasy Variation! }) 4. fxe4 { Two central pawns, has the Caro-Kann been refuted? } 4... e5 { This is probably one of the only moves that does best to survive this weird strategy. We have to strike in the center, and lay claims to it. This move's goal is to neutralize white's central advantage. } 5. Nf3 (5. dxe5 Qh4+ { A neat tactic, and the other threat is hitting d4. So Nc3 would lose to exd4. Basically, Nf3 is the only move that survives BOTH threats. An unaware opponent might do something weird, and grant you the point(s). } { [%cal Gh4e4] }) 5... Bg4 6. Bc4 (6. c3 { The following is another tricky variation that you might face as preparation. } 6... Nd7 7. Bd3 { This move is basically signaling that white wants to bust open the h7-b1 diagonal, how are you going to deal with it? } 7... Bd6 8. O-O Ngf6 9. a4 { A move that prevents b5, and at first it may seem unclear why white would do such a thing. The answer is to maneuver the knight to c4, and tear down e5. This falls with white's plan of tearing down e5 and opening the diagonal. } { [%csl Ye5][%cal Yb1d2,Yd2c4,Yc4e5] } 9... O-O 10. Nbd2 Re8 11. Nc4 { [%csl Ge5,Gd6][%cal Gc4d6,Gc4e5] } 11... Bc7 { The black queen looks awkward. } 12. Qc2 { Popilski, G. - Nakamura, Hi, 1/2-1/2, Millionaire Chess Op 2015, https://lichess.org/V2U577ui } { View the game that I have given a link to, the only game in opening explorer. We have been following it now, for quite some moves. If you're curious about this line, view Caleb's video. }) 6... Nd7 { Of course, the white player also has chances and so if you do something peculiar, you're going to get crushed by a tactic. } (6... Nf6 7. Bxf7+ Kxf7 8. Nxe5+ Kg8 9. Nxg4) 7. O-O (7. c3 { This move prepares the sneaky Qb3, guaranteeing the loss of a pawn. So you have to respond to it properly. } 7... Bh5 { But, at the end of the day, it's just a different move order and you should reach the positions from our mainline. } (7... b5)) 7... Ngf6 8. c3 Bd6 { You have to hold the strongpoint on e5. } { [%csl Ge5] } 9. Bg5 (9. Qb3 O-O 10. Qxb7 Rb8 11. Qxc6 Bxf3 12. Rxf3 Rb6 13. Qa4 exd4 14. cxd4 Rb4 { The b7 pawn isn't worth these complications for white has he/she abandons all their chances at a advantage. Plus, white's center is falling after this so you should be content if this happens. } 15. Qc2 Qb6 { [%csl Re4,Rd4][%cal Bf6e4,Bb6d4,Bd4g1] }) 9... O-O 10. Nbd2 Qc7 { [%csl Ye5][%cal Gd6e5,Bd7e5,Bc7e5] } 11. Qe1 { [%cal Ge1h4] } 11... Bh5 12. Qh4 Bg6 { I've inputted a nice game that goes with the theme of this variation, and as always, Caleb's video is available. } 13. Kh1 { Getting the king out of nasty Qb6+ ideas (obviously you have to be on a lookout for these as black). } 13... Rae8 { [%cal Ge5d4,Gc3d4,Gf6e4,Gg6e4,Ge8e4] } 14. Rae1 b5 15. Bb3 { As I've stressed on in the chapter pinned comment, this seldom occurs, but if you miraculously get into such a position, you should know that white's major plan is to tear down e5, and he does with setting up a battery on the f6 knight, to overwork the d7 one. That makes life uncomfortable for black. } 15... Nh5 (15... a6 16. dxe5 Bxe5 (16... Nxe5 17. Bxf6 gxf6 18. Nd4 { White is better here. } 18... Be7 19. Re2 Kh8 20. Nf5) 17. Nxe5 Qxe5 { Now, this position is practically equal, except for two things.
+1. The e5 strongpoint has crumbled and white's pieces come to life for that.
+2. The Bishop pair is lost, something I don't care about, but is something most players care about more than principles, so I do have to include it. }) (15... c5 { Nh5 is for players who prefer more complex positions, c5 leads to simpler stuff. } { [%csl Gb5][%cal Gc5c4,Ga7a6] } 16. dxe5 Nxe5 17. Bxf6 gxf6 18. Re3 { And now, we've reached this awesome position full of imbalances. } (18. Qxf6 Nd3 19. Re3 c4) 18... c4 { We have a slightly worse pawn structure, BUT we have a nice HOLE on d3 for our knight (something it can use to out perform rooks) and a lot of queenside play. } { [%csl Bd3][%cal Ya7a5,Yb5b4] }) 16. dxe5 { The idea of Nh5 is to make Bxf6 illegal, because there is no more knight on f6. Also, keep in mind c5 is usually a useful asset. Note if white ever inserted this exchange earlier, the semi-open e file will prove to be quite an asset for black, bearing down on that isolated e pawn. But of course, if white ever got in the move e5, then black will face problems. } 16... Nxe5 17. Nxe5 Bxe5 18. Nf3 Bf6 (18... a5 { Bishop pairs have to be conceded, but this concession is not that crucial because you get a lot of queenside play and that knight does quite a nice job of controlling f4, limiting white's attacking potential. Also, you can target the weakness on e5. } 19. Nxe5 Rxe5 20. Bd1 h6 21. Bc1 Rfe8 { [%cal Ge8e4] }) 19. Bxf6 Nxf6 20. e5 { That is an edge for white, but we get the d5 square. } 20... Nd5 21. Qd4 Rd8 (21... c5 { A tricky move Sam Shankland missed. } 22. Qxd5 Rd8 { [%csl Rc6,Rb7,Ra8,Re4,Rc4,Rd1,Rd2,Rd3,Rd4,Rd6,Rd7,Rd8,Gd5,Re6][%cal Rd8d1,Rg6e4,Rb5c4,Rc7c6,Rc7b7,Rd8a8,Rf7e6] }) 22. Qc5 Qb6 23. Qxb6 axb6 24. Nd4 c5 25. Nc6 c4 26. Nxd8 cxb3 27. axb3 Rxd8 28. Rd1 Bc2 29. c4 Bxd1 30. Rxd1 bxc4 31. bxc4 Ra8 32. cxd5 Kf8 33. Kg1 Ke7 34. Kf2 f6 35. e6 Kd6 36. Ke3 g6 37. b3 Rc8 38. g4 Rc3+ 39. Kd4 Rc5 40. Ke4 Rc2 41. h3 Re2+ 42. Kd3 Re5 43. Kc4 f5 44. gxf5 gxf5 45. Kb5 Re3 46. Ka6 f4 47. b4 Rxh3 48. Kxb6 Re3 49. b5 f3 50. Ka7 f2 51. b6 h5 52. b7 Ra3+ 53. Kb8 Rf3 54. Ka8 Ra3+ 55. Kb8 Rf3 56. Rf1 h4 57. Ka7 Ra3+ 58. Kb6 Rb3+ 59. Ka6 Ra3+ 60. Kb6 Rb3+ 61. Ka6 Ra3+ 62. Kb5 Rb3+ 63. Kc4 Rxb7 64. Rxf2 h3 65. Rh2 { Oleksienko, Mikhailo - Shankland, Samuel L, 1/2-1/2, Dresden ZMDI op 22nd, 2013, https://lichess.org/Jw6uI0ua } 1/2-1/2
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: Sidelines"]
+[Date "2020.08.06"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense: Breyer Variation, Stein Attack"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "Sidelines"]
+[ChapterURL "https://lichess.org/study/yteYURRC/OyWY0qS6"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.06"]
+[UTCTime "21:24:45"]
+
+1. e4 c6 2. d3 (2. c4 d5 3. exd5 cxd5 4. cxd5 Nf6 5. Nc3 (5. Qa4+ Nbd7 6. Nc3 g6 7. Nf3 Bg7 { [%csl Rd5] } 8. Bc4 O-O { And you'll regain the weak pawn soon enough. } 9. d3 a6 10. Qa3 b6 { [%csl Gd5,Bc8][%cal Yc8b7,Yb7d5,Yf6d5] }) 5... Nxd5 6. Nf3 Nc6 7. Bb5 { Obviously, you could transpose into the Panov earlier, but after Bb5, you cannot. This means we have to play e6, blocking our Bishop, but white's Bishop is also on a ''sub-optimal square'' like NM Caleb Denby phrased it. } 7... e6) (2. Bc4 d5 3. Bb3 dxe4 4. Qh5 { And there's Mate_on_f7. Please don't get Scholared on move 5. } { [%csl Rf7][%cal Bb3f7,Bh5f7] } 4... e6 5. Nc3 Nf6 { Now, I'm pretty sure such a position doesn't need to be analyzed, it's like playing against an offbeat opening, you play chess, not opening prep. }) 2... d5 3. Nd2 (3. Nf3 { g6 is an option or } { [%cal Gg7g6] } 3... dxe4 4. dxe4 Qxd1+ 5. Kxd1 { Absolute equality... }) 3... g6 4. Ngf3 Bg7 5. g3 e5 6. Bg2 Ne7 { [%csl Ge5][%cal Gg7e5] } 7. O-O O-O 8. b4 { A game the famous Teimour Radjabov lost. } { [%csl Gc5][%cal Gb4c5] } (8. Re1 { [%csl Ge5][%cal Ge4d5,Ge1e5,Gf3e5] } 8... d4 9. a4 { This is now a reversed Kings Indian Defense (KID), or the King's Indian Attack (KIA). } (9. Nc4 b5 10. Ncxe5 f6) 9... c5 { [%cal Gc5d4,Ge5d4] } 10. Nc4 Nbc6 { White has never won in the 11 games this position has been reached, so you can continue to play the King's Indian with reversed colors, I don't want to dwell more on sidelines, as you should be fine, view Caleb's video for a LOT more info on this variation. }) 8... a5 9. bxa5 (9. c3 axb4 10. cxb4 Na6 { [%csl Rb4,Rc3,Re3][%cal Gd5d4,Gc6c5,Ba8a1,Ya6b4] }) 9... Qxa5 { White gets a lot of rapid development. } 10. Bb2 d4 11. Nb3 Qc7 { White aims to tear down the center by challenging the head of it. } 12. c3 dxc3 { One brilliant move refutes the other. } 13. Bxc3 { [%csl Gb7,Gc6,Rd3,Ra2] } 13... c5 14. Nfd2 b5 15. Qc2 Na6 16. Rfc1 Be6 17. Nf1 Nc6 18. Ne3 c4 19. dxc4 bxc4 20. Nd5 cxb3 21. Nxc7 bxc2 22. Nxa8 Nd4 23. Nb6 Rb8 24. Ba5 Bh6 25. Bf1 Bxc1 26. Rxc1 Nc6 27. Rxc2 Nxa5 28. Nd5 Nb4 29. Rc5 Nbc6 30. a4 Kg7 31. Kg2 Rb7 32. h4 Ra7 33. Nc3 Bd7 34. Bb5 Nb3 35. Rd5 Nbd4 36. f4 exf4 37. gxf4 Nxb5 38. axb5 Ne7 39. Rc5 Rb7 40. h5 Nc8 41. hxg6 hxg6 42. Kg3 Na7 43. f5 Nxb5 { Radjabov, Teimour - Cheparinov, Ivan, 0-1, Baku FIDE GP, 2008, https://lichess.org/4tIVRq9b } *
+
+
+[Event "My Repertoire Against e4: The Caro Kann Defense: Collaboration of Sources"]
+[Date "2020.08.05"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "My Repertoire Against e4: The Caro Kann Defense"]
+[ChapterName "Collaboration of Sources"]
+[ChapterURL "https://lichess.org/study/yteYURRC/P3xiZuc5"]
+[Annotator "https://lichess.org/@/Flyingjat"]
+[UTCDate "2020.08.05"]
+[UTCTime "22:35:32"]
+
+{ I won't show any moves here, but will take a chapter to credit my sources AND to recommend other videos you should watch to learn this opening (all the variations). View the Study pinned comment. }
+ *
+
+

@@ -9,7 +9,7 @@ do not establish live engine output or production service availability.
 | --- | --- | --- | --- |
 | `repertoire-desktop.png` | 1440 × 900 | 2026-11-02 | Isolated real API account, Open games · White, 21 moves / 5 lines, selected Bb5 |
 | `repertoire-mobile.png` | 390 × 844 | 2026-11-02 | Same account and tree at Bb5; occasional actions in More |
-| `repertoire-atlas.png` | 1440 × 900 | 2026-11-02 | Same tree, Atlas overview; route paths derive from actual nodes |
+| `repertoire-atlas.png` | 1440 × 900 | 2026-11-03 | Isolated real API account, London System Repertoire · White, 643 moves / 79 routes; move-only Preparation profile |
 | `repertoire-discussion.png` | 1440 × 900 | 2026-11-02 | Same tree, Morgan/Alex discussion at Bb5 |
 | `repertoire-undo.png` | 1440 × 900 | 2026-10-30 | Same fixture, deleted branch and compact Undo |
 | `train-session.png` | 1440 × 900 | 2026-10-30 | Same fixture, live Due queue session |
@@ -20,6 +20,23 @@ and `Cross-Origin-Embedder-Policy: require-corp`. The November captures use the
 in-app browser against an isolated FastAPI/SQLite server, with a completed
 training run and a saved analysis in the account. They do not verify Stockfish
 inside that browser. Do not hide banners or alter the app DOM to prepare screenshots.
+
+The November 3 five-axis Atlas capture uses headless Chromium and an isolated
+FastAPI/SQLite account with a branched repertoire, saved analyzed game and completed
+training run. Before and after use the same London System Repertoire · White,
+643 moves / 79 routes, at 1440 × 900, 1000 × 650 and 390 × 844. The previous five-axis image is retained in Git at `bab295f5`; the current
+documentation image uses the calibrated move-content formulas on the same data. Desktop header height stays 47 CSS pixels and phone header 61;
+there are no console errors or horizontal overflow. The large index, compact
+metric rows, route map and type/layout styling remain; only metric data and on-demand tooltips change. Mobile body scrolling accommodates the fifth metric.
+
+The fixture derives from saved Lichess study `2EaSmZtz`: its sixteen nonempty
+standard-start chapters are merged by move prefix, all annotations omitted, then
+imported through the real API. The raw corpus remains unchanged. The displayed
+Preparation index is 81; Replies / Reach / Depth / Consistency / Ease round to
+85 / 82 / 86 / 79 / 60. Prefix merging produces one selected plan per occurrence,
+so this fixture is not identical to the research converter's separate chapter
+occurrences; its index is not the raw study's report value. Imprint is personal
+training data. Neither annotation quantity nor an engine contributes to scoring.
 
 ## Refresh
 

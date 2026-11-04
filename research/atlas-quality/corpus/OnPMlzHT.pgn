@@ -1,0 +1,183 @@
+[Event "🇷🇺 Petrov Defense 🇷🇺: Introduction"]
+[Date "2021.02.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C42"]
+[Opening "Petrov's Defense"]
+[StudyName "🇷🇺 Petrov Defense 🇷🇺"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/OnPMlzHT/QLnnOGzF"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.02.11"]
+[UTCTime "00:45:15"]
+[ChapterMode "gamebook"]
+
+{ Hi all! I wanted to thank you for all the love you have been giving me to all my studies, also thank you for all your positive comments in each of them and in private, this motivates me to continue doing more studies!
+
+One of the strongest and safest options to play Black against the king's pawn is the Petrov Defense, that's why today we are going to talk about it :)
+
+The Petrov Defense, or Russian, is one of the most effective defenses when it comes to achieving equality, but it is also true that it is very difficult to win with it. This fame of tablífera has relegated this opening in the masterful practice, and therefore, in the consideration of the fans. However, if a few draws are enough to get a good result, this is the safest defense.
+
+Press the space button to start this wonderful and fun study: D }
+1. e4 { Play 1.e5 } { [%csl Ge5][%cal Ge7e5] } 1... e5 { By doing this move you are starting the ''open openings'' } 2. Nf3 { Here you can play 2.Nc6, but the move of the Petrov Defense is 2.Nf6 (you can do it right now) } { [%csl Rc6,Gf6][%cal Gg8f6,Rb8c6] } 2... Nf6 { This is the position of the Petrov Defense.
+The curious thing is that this defense was previously considered incorrect, being Alexander Petrov's analyzes at the beginning of the 19th century that revitalized the defense, and it bears his name in his honor.
+In this study I will show you the most common variants so that you can play this defense at the highest level! } *
+
+
+[Event "🇷🇺 Petrov Defense 🇷🇺: Nimzowitsch Attack"]
+[Date "2021.02.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C42"]
+[Opening "Petrov's Defense: Nimzowitsch Attack"]
+[StudyName "🇷🇺 Petrov Defense 🇷🇺"]
+[ChapterName "Nimzowitsch Attack"]
+[ChapterURL "https://lichess.org/study/OnPMlzHT/oG7xbZFE"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[UTCDate "2021.02.11"]
+[UTCTime "00:54:33"]
+[ChapterMode "gamebook"]
+
+1. e4 { Do you remember the movements from the previous chapter? I hope so, because you should do them now :D } 1... e5 { That's! } 2. Nf3 { And now? } 2... Nf6 { Great job! } 3. Nxe5 { You will find this frequently in your games with this defense. That is, the most common in move 3 is that the white player takes the pawn.
+How can you drive the white knight of e5? } 3... d6 { Very well! } { [%csl Re5][%cal Rd6e5] } 4. Nf3 { You know what you have to do now, right? } 4... Nxe4 { Excellent, you get the pawn back!
+The blue arrows represent all the options the white player has to play now. } { [%cal Bd2d3,Bd3d4,Bb1c3,Bd1e2] } 5. Nc3 { This is the Nimzowitsch Attack!
+Change the knights } { [%cal Re4c3,Rc3e4] } 5... Nxc3 6. dxc3 { The white player must deal with the doubled pawns on the c column
+Develop your bishop } { [%csl Gf8] } 6... Be7 7. Be3 { What would you play now?
+(Psst, your king is in the center) } 7... O-O 8. Qd2 { White wants the queenside castling
+Now you must take your knight to f3, what is the shortest route? } { [%csl Gc1,Gf6,Gb8][%cal Ge1c1] } 8... Nd7 { That's! } 9. O-O-O { This is really the Nimzowitsch Attack.
+White castles long to plan a battle of attacks on opposite flanks!
+Where should this knight go? } { [%csl Gd7] } 9... Nf6 10. Bd3 { Play 10.c5 } { [%csl Gc5][%cal Gc7c5] } 10... c5 { Very well! Now the white player wants to attack your king with the pawns on the queenside.
+You must play as I indicate with the arrows, that is, attack the weak point a2 and improve your towers. } { [%csl Ra2][%cal Ba8c8,Bf8e8,Yc8e6,Yd8a5] } *
+
+
+[Event "🇷🇺 Petrov Defense 🇷🇺: Classical Attack"]
+[Date "2021.02.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C42"]
+[Opening "Petrov's Defense: Classical Attack, Marshall Variation"]
+[StudyName "🇷🇺 Petrov Defense 🇷🇺"]
+[ChapterName "Classical Attack"]
+[ChapterURL "https://lichess.org/study/OnPMlzHT/FRBJOVXl"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkb1r/ppp2ppp/3p4/8/4n3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.02.11"]
+[UTCTime "01:15:29"]
+[ChapterMode "gamebook"]
+
+1. d4 { 5.d4 is the move of the Classical Attack.
+Play 5.d5 } { [%cal Bd2d4] } 1... d5 { This move seems strange but it is the best now, also the most common. } 2. Bd3 { Develop your bishop } { [%csl Gf8] } 2... Bd6 { Very well! } 3. O-O { Your king is in the center... } 3... O-O *
+
+
+[Event "🇷🇺 Petrov Defense 🇷🇺: Cozio Attack"]
+[Date "2021.02.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C42"]
+[Opening "Petrov's Defense: Cozio Attack"]
+[StudyName "🇷🇺 Petrov Defense 🇷🇺"]
+[ChapterName "Cozio Attack"]
+[ChapterURL "https://lichess.org/study/OnPMlzHT/8swC4z0q"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkb1r/ppp2ppp/3p4/8/4n3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.02.11"]
+[UTCTime "01:21:06"]
+[ChapterMode "gamebook"]
+
+1. Qe2 { This is the Cozio or Lasker attack.
+The knight on e4 cannot move, what should you play? } { [%cal Bd1e2] } 1... Qe7 { Very well! } 2. d3 { What is the best box for this knight now? } { [%csl Re4][%cal Rd3e4] } 2... Nf6 { Very well!
+Now the queen's can change } { [%cal Be2e7,Be7e2] } 3. Qxe7+ { Normally the white player accepts the exchange of queens, but if he does not, neither should you, since the one who changes will normally lose.
+Capture the queen } 3... Bxe7 4. Be2 O-O { The petrov defense is perfect to even the game with the white player, but now you have the advantage. } *
+
+
+[Event "🇷🇺 Petrov Defense 🇷🇺: French Attack"]
+[Date "2021.02.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C42"]
+[Opening "Petrov's Defense: French Attack"]
+[StudyName "🇷🇺 Petrov Defense 🇷🇺"]
+[ChapterName "French Attack"]
+[ChapterURL "https://lichess.org/study/OnPMlzHT/x6PQcxXu"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkb1r/ppp2ppp/3p4/8/4n3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.02.11"]
+[UTCTime "01:27:49"]
+[ChapterMode "gamebook"]
+
+1. d3 { This is the French Attack
+Now you should move the knight on e4... } { [%cal Bd2d3] } 1... Nf6 2. d4 { This is the strategy of the white player! He really wants the pawn on d4
+Play 6.d5 } { [%csl Gd5][%cal Gd6d5] } 2... d5 { Now you have a symmetrical game } 3. Bd3 { How do we continue in this symmetrical game? } 3... Bd6 { That's! } 4. O-O { You know what to do now, right? } 4... O-O { Very well! Now you must continue the game by developing your queenside pieces on the best squares. } { [%cal Gd8a8,Ga8d8] } *
+
+
+[Event "🇷🇺 Petrov Defense 🇷🇺: Modern Attack"]
+[Date "2021.02.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C42"]
+[Opening "Petrov's Defense: Classical Attack"]
+[StudyName "🇷🇺 Petrov Defense 🇷🇺"]
+[ChapterName "Modern Attack"]
+[ChapterURL "https://lichess.org/study/OnPMlzHT/KsXPAn1X"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.02.11"]
+[UTCTime "01:41:00"]
+[ChapterMode "gamebook"]
+
+1. d4 { This is the modern attack.
+Capture the pawn } 1... Nxe4 { Very well! } (1... exd4 { This is not the only pawn catch you have :) }) 2. Nxe5 { The white knight on e5 is very comfortable.
+How can you drive the horse out of that square? } 2... d6 { That's! } { [%csl Re5][%cal Rd6e5] } 3. Nf3 { Play d5 } { [%csl Gd5][%cal Gd6d5] } 3... d5 { This position is the same that I showed you in the previous chapter, so I will not go into detail. } *
+
+
+[Event "🇷🇺 Petrov Defense 🇷🇺: Urusov Gambit"]
+[Date "2021.02.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C42"]
+[Opening "Petrov's Defense: Italian Variation"]
+[StudyName "🇷🇺 Petrov Defense 🇷🇺"]
+[ChapterName "Urusov Gambit"]
+[ChapterURL "https://lichess.org/study/OnPMlzHT/lNeXtVv4"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.02.11"]
+[UTCTime "01:48:36"]
+[ChapterMode "gamebook"]
+
+{ Make the first movements pls :D }
+1... e5 2. Nf3 Nf6 3. Bc4 { This is the Urusov Gambit.
+Should you accept the gambit and capture the e4 pawn? } { [%cal Bf1c4] } 3... Nxe4 { Yes! } 4. Nxe5 { Play 4.d5 } { [%csl Gd5][%cal Gd7d5] } 4... d5 { [%csl Rc4][%cal Rd5c4] } 5. Bb3?? { This move is a mistake.
+What you will see next is a very frequent error that occurs after 4.d5, and that is that Bb3 is a mistake, but it is also the most common move!
+Play Qg5 } { [%csl Gg5][%cal Rc4b3,Gd8g5] } 5... Qg5 { Double attack! } { [%csl Re5,Rg2][%cal Rg5e5,Rg5g2] } 6. O-O { What should you do now? } 6... Qxe5 *
+
+
+[Event "🇷🇺 Petrov Defense 🇷🇺: Conclusion"]
+[Date "2021.02.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "🇷🇺 Petrov Defense 🇷🇺"]
+[ChapterName "Conclusion"]
+[ChapterURL "https://lichess.org/study/OnPMlzHT/pN0OHocE"]
+[Annotator "https://lichess.org/@/LeninPerez"]
+[FEN "rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2021.02.11"]
+[UTCTime "01:56:01"]
+[ChapterMode "gamebook"]
+
+{ I hope you liked this study! If so, don't forget to support me by pressing the heart that is under the h1 square.
+
+Remember, use this defense when you need a draw, as it is perfect for quickly matching your opponent.
+
+Soon more and more studies are coming, thank you very much for watching and see you in the next study! }
+ *
+
+

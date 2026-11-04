@@ -89,21 +89,14 @@ async function runViewport(vp) {
 
   async function openTrain(target) {
     await target.goto(base, { waitUntil: "domcontentloaded" });
-    await target.waitForTimeout(1000);
-    if (vp.width > 760) {
-      // The rail is a 60px icon rail that expands on hover (overlay). Mousemove,
-      // pause for the 60ms+transition, then click while the label is still up.
-      await target.mouse.move(30, 300);
-      await target.waitForTimeout(400);
-      const row = await target.locator('[data-testid="nav-train"]').boundingBox();
-      await target.mouse.move(row.x + row.width / 2, row.y + row.height / 2);
-      await target.waitForTimeout(120);
-      await target.mouse.down();
-      await target.mouse.up();
-    } else {
-      await target.evaluate(() => document.querySelector('[data-testid="bottom-train"]').click());
-    }
-    await target.waitForTimeout(800);
+    const nav = target.locator(vp.width > 760 ? '[data-testid="nav-train"]' : '[data-testid="bottom-train"]');
+    await nav.click();
+    await target.locator('#train-home').waitFor({ state: 'visible' });
+    // Home becomes visible before its entry/phone-pane animations finish.
+    await target.evaluate(async () => {
+      await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => {})));
+    });
   }
 
   // Empty queue: Due's Start becomes the fix, History stays reachable, and a
@@ -140,7 +133,7 @@ async function runViewport(vp) {
       body: JSON.stringify({ next_session: { cards: 1, weak: 0, due: 0, new: 1, polish: 0, resumed: 0, left: 1 }, outlook: { now: 0, today: 0, week: 0, next: new Date(Date.now() + 3 * 86400000).toISOString() } }),
     }));
     await openTrain(quietPage);
-    await quietPage.waitForFunction(() => !document.getElementById("train-outlook").hidden, null, { timeout: 2500 }).catch(() => {});
+    await quietPage.locator("#train-outlook .train-outlook-quiet").waitFor();
     const quiet = await quietPage.evaluate(() => ({
       cells: document.querySelectorAll("#train-outlook .train-outlook-lead, #train-outlook .train-outlook-rest").length,
       text: document.getElementById("train-outlook").textContent.trim(),
@@ -151,7 +144,7 @@ async function runViewport(vp) {
   }
 
   await openTrain(page);
-  await page.waitForFunction(() => !document.getElementById("train-outlook").hidden, null, { timeout: 2500 }).catch(() => {});
+  await page.waitForFunction(() => document.getElementById("train-due-meta").textContent.trim() === "4 cards");
   const shot = async (state) => {
     if (process.env.UI_V2_SHOTS) {
       await page.mouse.move(vp.width - 4, vp.height - 4); // park the pointer so the hover-expand rail is collapsed
@@ -272,7 +265,8 @@ async function runViewport(vp) {
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(startPayload(`2026-10-21T07:0${startBodies.length}:00+00:00`)) });
   });
   await page.locator("#start-train").click();
-  await page.waitForTimeout(1500);
+  await page.waitForFunction(() => document.getElementById("train-line-label").textContent.trim() === "1 / 4"
+    && !document.getElementById("train-skip").disabled);
   const session = await page.evaluate(() => ({
     screen: document.getElementById("view-train").dataset.trainScreen,
     panel: !document.getElementById("train-progress-panel").hidden,
@@ -295,12 +289,16 @@ async function runViewport(vp) {
   check(!startToasts.some((t) => /Queue ready|Resumed queue/.test(t)), `starting a queue should not toast its size, got ${JSON.stringify(startToasts)}`);
 
   // Result: play the whole 4-card queue.
-  for (const [from, to] of [["c7", "c6"], ["g1", "f3"], ["e7", "e6"], ["f1", "b5"]]) {
-    for (const sq of [from, to]) {
-      await page.evaluate((name) => document.querySelector(`#train-board .square[data-square="${name}"]`).click(), sq);
-      await page.waitForTimeout(250);
-    }
-    await page.waitForTimeout(2600);
+  for (const [index, [from, to]] of [["c7", "c6"], ["g1", "f3"], ["e7", "e6"], ["f1", "b5"]].entries()) {
+    await page.waitForFunction((count) => document.getElementById("train-line-label").textContent.trim() === `${count} / 4`
+      && !document.getElementById("train-skip").disabled, index + 1);
+    await page.evaluate(([from, to]) => {
+      document.querySelector(`#train-board .square[data-square="${from}"]`).click();
+      document.querySelector(`#train-board .square[data-square="${to}"]`).click();
+    }, [from, to]);
+    await page.waitForFunction((count) => count === 4
+      ? document.getElementById("view-train").dataset.trainScreen === "result"
+      : document.getElementById("train-line-label").textContent.trim() === `${count + 1} / 4`, index + 1);
   }
   check(await screenOf(page) === "result", "finishing the last card shows the Result");
   check(await page.locator("#train-recent").evaluate((el) => el.hidden), "Recent never lists the run on the card (a first run has none before it)");
@@ -310,8 +308,11 @@ async function runViewport(vp) {
     for (const f of done.fails) check(false, f);
   }
   await checkTrainingHistory(page, check, shot);
+  const restarted = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/train/smart/start" && r.request().method() === "POST");
   await page.locator("#train-summary-new").click();
-  await page.waitForTimeout(600);
+  await restarted;
+  await page.waitForFunction(() => document.getElementById("train-line-label").textContent.trim() === "1 / 4"
+    && !document.getElementById("train-skip").disabled);
   const first = startBodies[0] || {};
   const restart = startBodies[startBodies.length - 1] || {};
   check(startBodies.length >= 2, `Again should post a start, got ${JSON.stringify(startBodies)}`);
@@ -319,7 +320,7 @@ async function runViewport(vp) {
     `Again keeps the finished queue's scope, got ${JSON.stringify({ first, restart })}`);
   check(await screenOf(page) === "session", "Again opens the next Session");
   await page.locator("#train-back").click();
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => document.getElementById("view-train").dataset.trainScreen === "home");
   check(await screenOf(page) === "home", "Back returns Home");
   check(await page.locator("#train-summary").evaluate((el) => el.hidden), "Home clears the Result");
   const homeAgain = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);

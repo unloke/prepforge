@@ -1,0 +1,336 @@
+[Event "Crush the Caro-Kann! White Repertoire: Introduction"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B12"]
+[Opening "Caro-Kann Defense"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/MbZBHdrl"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+{ Hello everyone! Today I am going to show you my repertoire against the Caro-Kann! The Caro-Kann is an increasingly popular opening, so you will face it a lot in your games.
+
+Abbreviation I will use some in my study:
+IQP=Isolated Queen's Pawn
+
+READ THIS
+
+This study will be completely different from my other studies. Instead of giving you one repertoire, I will give you three choices. Your style and preferences are what matters! So, you can decide to play all three repertoires, taking turns, or sticking to one repertoire. However, that does not mean you should only look at one part of my study. Instead, the other repertoires you don't look at could be very helpful at understanding the positions you encounter in the repertoire you chose.
+
+This Study was made for beginner-intermediate players, circa 1200-1900. }
+1. e4 { In this study, I will look at three different repertoires from which you can choose. I will call them the "Open," "Half-Open," and "IQP" repertoires. } 1... c6 { With this move, black prepares d5 while also keeping the light-squared-bishop free to go to f5. The main downside of this move is that c5 takes an extra tempo to play. We will not go into this in detail, but then you know why some moves are played.
+Here, we will look at our 3 possible repertoires. The "Open" repertoire will start with d4, the "Half-Open" repertoire will start with Nf3, and the "IQP" repertoire will start with c4.
+You will also need to choose on the basis of how much time you have. If you are a beginning player or just want to keep it simple, I recommend choosing Repertoire 1 or 2, though Repertoire 2 is pretty complex for beginning players. If you have a lot of time to study and good at attacking, Repertoire 3 will be good for you.
+Join our team for more studies! lichess.org/team/study-creators--friends } { [%cal Gc2c4,Gd2d4,Gg1f3,Gd7d5,Gc8f5,Rc7c6,Rc6c5] } 2. d4 { "Open" repertoire } { [%cal Gc2c3] } (2. d4 { "Open" repertoire } { [%cal Gc2c3] }) (2. Nf3 { "Half-Open" repertoire } { [%cal Gb1c3] }) (2. c4 { "IQP" repertoire } { [%cal Gc4d5,Ge4d5] }) *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Repertoire 1: \"Open\""]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B13"]
+[Opening "Caro-Kann Defense: Exchange Variation"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Repertoire 1: \"Open\""]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/5TBLqn1J"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+2. d4 { In the Open repertoire, we will play d4, taking hold of the center. Black has to respond to this by playing d5. } { [%cal Gd7d5] } 2... d5 { [%cal Ge4d5] } 3. exd5 { We take. Obviously black takes back with the pawn. } 3... cxd5 4. c3 { This marks the beginning of the Exchange Variation of the Caro-Kann. There are a few different setups black can go for. He can play the g6 setup, he can play e6-Bd6, but there is one universal truth in the Caro-Kann Exchange Variation: the bishop goes to f5. Often black waits to show his cards and plays a waiting move like Nf6 or Nc6.
+GENERAL PLANS:
+We will play Bd3, Bf4, Nf3, and castle kingside. The other knight usually goes to d2, though sometimes it can also go a3-c2. } { [%cal Gc8f5,Gf1d3,Gc1f4,Gg1f3,Gb1d2] } 4... Bf5 (4... Bf5) (4... Nc6) (4... Nf6) *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Section 1: 4...Bf5"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Section 1: 4...Bf5"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/DtQHkJaj"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp2pppp/8/3p4/3P4/2P5/PP3PPP/RNBQKBNR b KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+4... Bf5 { Black immediately develops. This chapter will be a foundation for the rest of Repertoire 1, so I decided to put this chapter before the more popular moves. } 5. Bd3 { Not the best move, since Qb3 is better. However, it is very practical, since it exchanges off the bishop on f5, which is one of black's main strengths in the Caro-Kann.
+Here it will be black's turn to show his cards. There are 2 different moves here: Bxd3 and Bg6. } { [%cal Gd1b3] } 5... Bxd3 { To my surprise, the best and most played move. } (5... Bg6 { A move very typical of e4-e5 positions, but in the Caro-Kann it is less accurate. } 6. Bxg6! { The best move! Normally this is good for black, but here it is more weakening than that it is good. } 6... hxg6 7. Nf3 { Our plan is very simple. We just castle kingside, play Bf4, our knight goes to d2, and we can play h3 to restrict black's rook. A very nice square for our knight could be e5, with the possibility to sacrifice on g6 or f7 later. } { [%csl Gf4,Gg1,Re5,Rg6,Rf7,Bh3][%cal Gc1f4,Ge1g1,Rf3e5,Re5g6,Re5f7,Gb1d2,Bh2h3] }) 6. Qxd3 { Our general plans are the same in almost all positions. We just play Nf3, Bf4, sometimes there are aggressive ideas with Qb5. The position is approximately equal, but white is definitely freer to do what he wants to do. } { [%csl Gf4,Gf3,Rb5,Rb7][%cal Gc1f4,Gg1f3,Rd3b5,Rb5b7] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Section 2: 4...Nc6"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B13"]
+[Opening "Caro-Kann Defense: Exchange Variation, Rubinstein Variation"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Section 2: 4...Nc6"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/rlr462uK"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp2pppp/8/3p4/3P4/2P5/PP3PPP/RNBQKBNR b KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+4... Nc6 { A simple and useful waiting move, just developing material. We will do the same.
+The downside of waiting like this is that we can prevent Bf5. } 5. Bd3! { A very effective move. Bf5 is now not possible for black, and f5 is the only good square. Black's best try in these kinds of positions is to either keep the bishop on c8 and activate it in the middle- or endgame, or playing Bg4 and exchanging it off for the knight that will go to f3. } { [%csl Gf3,Gc8][%cal Gd3f5,Gg1f3,Gc8g4,Gg4f3,Rc8f5] } 5... Nf6 6. Bf4! { We wait with playing Nf3! Otherwise black could play Bg4 and exchange material. Black is a little bit tied up after this move. } 6... Bg4 { The most popular try to activate the bishop. } (6... e6 { With the idea of keeping the bishop on c8. A downside of this move, however, is that the rook cannot come to c8 in the middlegame. } { [%csl Gc8] } 7. Nd2 $14 { We just continue to develop normally. We play Ngf3, castle short, and Bb5 and Ne5 follow in the middlegame. } { [%csl Gf3,Gg1,Bb5,Be5][%cal Gg1f3,Ge1g1,Bd3b5,Bf3e5] }) (6... g6 { Playing with a different plan - Black wants to play Bf5, but puts the other bishop on g7. However, there's a big downside. I can just chop the bishop off the board and enter the middlegame with a far superior pawn structure and black's kingside being weakened a lot. } { [%cal Gc8f5,Gf8g7] } 7. Nf3 Bg7 8. O-O O-O 9. Nbd2 Bg4 (9... Bf5?! 10. Bxf5 gxf5 11. Ne5! { We have a far superior position. Just as I said, the kingside is very weak. There are a lot of attacking ideas for white here. } { [%csl Rf5,Rf7][%cal Gg3g8,Gf1e1,Ge1e3,Ge3g3] }) 10. h3 { We have no problems. }) 7. Qb3! { Black's in some trouble now. We just develop with tempo while the black pieces can't seem to find any good squares! Next up, we play Nd2 and then Ngf3. } { [%csl Rb7,Gd2][%cal Rb3b7,Gb1d2,Gg1f3] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Section 3: 4...Nf6"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Section 3: 4...Nf6"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/mfbvyH30"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp2pppp/8/3p4/3P4/2P5/PP3PPP/RNBQKBNR b KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+4... Nf6 5. Bd3 { Again, the same as last chapter, except for one extra possibility for black. } { [%cal Rd3f5,Rc8f5] } 5... Bg4 (5... Nc6 { We have seen this exact position in Section 2 of this Repertoire 1 (Chapter 4). }) 6. Qb3! { Remember? :) } 6... Qc7 { However, it is slightly different. The black queen has access to c7 because our bishop is not yet on f4. But now we cannot play Bf4, because the Queen is on c7. } { [%csl Rf4][%cal Rc7f4] } 7. h3! { And where can the bishop go? } 7... Bh5 (7... Bd7 8. Nf3 { We can very simply develop our pieces. Our bishop goes to g5 instead of f4, but that's ok. } { [%csl Gg1,Gg5][%cal Ge1g1,Gc1g5] }) 8. g4! { Very aggressive! } 8... Bg6 9. Bxg6 hxg6 10. g5! { Winning the pawn on d5. However, the position remains to be very sharp. Black definitely has a bit of counterplay, so be ready to sometimes have to defend a little bit. } { [%csl Rf6][%cal Rg5f6] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Repertoire 2: \"Half-Open\""]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense: Two Knights Attack"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Repertoire 2: \"Half-Open\""]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/HszONLZI"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+2. Nf3 { We enter Repertoire 2. We are not intending to play d4 right away, but first let black exchange on e4 and then play d4. } 2... d5 3. Nc3 { The idea is to take back on e4, and then play d4. Black's plans are very similar - Bf5 and Bd6, Nf6, Nbd7.
+We will look at 4 different moves from black in this repertoire.
+GENERAL PLANS:
+We would love to play Ng3 and kick the black bishop away. We will also play d4, Bd3, Bf4, and sometimes c3. h4-h5 is a very common pattern. } { [%csl Rf5][%cal Gc3e4,Ge4g3,Rg3f5,Gd2d4,Gc2c3,Gc1f4] } 3... dxe4 (3... dxe4) (3... Bg4) (3... d4) (3... Nf6) *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Section 1: 3...dxe4"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Section 1: 3...dxe4"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/mluuzWsD"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp2pppp/2p5/3p4/4P3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq - 1 3"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+3... dxe4 { By far the most common move. Black enters the Mainline of the Two Knights Attack. Of course, there is the crazy 4.Ng5!!? but I'm not going to cover it since we will keep it simple. So, we take on e4. } 4. Nxe4 Bf5 (4... Nf6 { This is actually the most common move. Black just wants to simplify and gain some center himself. } 5. Nxf6+ { We exchange. } 5... exf6 6. d4 { We have a nice center and a small lead in development. Our bishop usually cannot go to f4, but that's fine. Ideally, we keep the bishop on c1 to come into action in the middlegame. So, we play Bd3, castle kingside, and solidify the center with c3. } { [%cal Gf1d3,Ge1g1,Gc2c3] }) (4... Bg4 5. h3! { Simple. } 5... Bh5 (5... Bxf3 6. Qxf3 { We have a good position. We play Bc4, d3, and Be3/f4. } { [%csl Gc4,Gd3,Ge3,Gf4][%cal Gf1c4,Gd2d3,Gc1f4,Gc1e3] }) 6. Ng3 Bg6? (6... Bxf3 7. Qxf3 { Again, we just play simple moves and get a good position. }) 7. h4! { This position is also in the mainline, so check out that. } { [%csl Rh5][%cal Rh4h5] }) (4... Nd7 5. d4 { [%csl Gd4] } 5... Ngf6 6. Nxf6+ Nxf6 7. c3 { We have a nice lead in development and a good center. } { [%csl Gd3,Gf4][%cal Gf1d3,Gc1f4] }) 5. Ng3! { Kicking the bishop. 5...Bg4 is the only good move, but for 88% of people, it's over now. } { [%csl Rf5][%cal Rg3f5] } 5... Bg6?? 6. h4! { Black has 2 choices to save his bishop - h6 and h5. } { [%csl Rh5][%cal Rh4h5] } 6... h6 { 6...h5 fails, but as we will see, this move also fails to save the game. } (6... h5 { Blocking the pawn fails. } 7. Ne5! { If Bh7, the pawn on h5 hangs. } { [%csl Rg6,Rh5][%cal Re5g6,Rd1h5] } 7... Qd6 { [%cal Rd6g6] } 8. d4 $16 { We are dominating. }) 7. Ne5 { The queen infiltrates with decisive effect. } { [%csl Rg6,Rg4,Rh5][%cal Re5g6,Rd1g4,Rd1h5] } 7... Bh7?? { This allows us to basically get into a won position. } (7... Qd6 8. d4 { [%csl Re5][%cal Rd4e5] } 8... Nd7 { The only way to try to save the game. } 9. Nxg6 Qxg6 10. c3! { Black's queen is misplaced, the kingside pieces are still on its starting squares - we can just solidify our position. } { [%csl Rd4,Rf8,Rg8,Rh8,Rg6][%cal Rc3d4] }) 8. Qh5!! { We simply go for f7. } { [%csl Rf7][%cal Rh5f7] } 8... g6 (8... Qd5 { An interesting defensive try, but it fails. } 9. Bc4! { We're crushing. We win at least a pawn, with a winning position. } { [%csl Rf7][%cal Rc4f7] }) 9. Bc4! { We sac our queen for mate! Obviously, e6 is forced. } { [%csl Rf7][%cal Rc4f7] } 9... e6 10. Qe2! { We have a big threat of Nxf7! Black's bishop is locked in, almost all his pieces are on his back rank, while we are just attacking already. Let me show you how the attack works: } { [%csl Rf7,Rh7,Rh8,Rg8,Rf8,Re8,Rd8,Rb8,Ra8][%cal Re5f7] } 10... Nf6 (10... Qe7 { Best, but we are far better anyways. } 11. d4 $18) 11. Nxf7!! $18 { There are too many threats to deal with! We win massive amounts of material or mate. } { [%csl Rd8,Rh8,Re6][%cal Rf7d8,Rf7h8,Re2e6] } 11... Kxf7 12. Qxe6+ Kg7 13. Qf7# *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Section 2: 3...Bg4"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B11"]
+[Opening "Caro-Kann Defense: Two Knights Attack, Mindeno Variation, Exchange Line"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Section 2: 3...Bg4"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/89db8vUx"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp2pppp/2p5/3p4/4P3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq - 1 3"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+3... Bg4 { The Mindeno Variation. This move is played about 25% of the time and is not very easy to refute, as there is a lot of theory. However, we will get an advantage. } 4. h3 { [%csl Rg4][%cal Rh3g4] } 4... Bxf3 { The mainline. } (4... Bh5 5. exd5 cxd5 6. g4! Bg6 7. d4 { We are doing great. } { [%csl Rh5,Re5][%cal Rh3h4,Rh4h5,Rf3e5] }) 5. Qxf3 { [%csl Rd5][%cal Rf3d5,Rc3d5] } 5... e6 { Reinforcing the pawn. Other moves are also possible. } { [%csl Gd5][%cal Ge6d5] } (5... Nf6 { [%csl Rd5][%cal Rf6d5] } 6. d3! (6. e5? { Don't do this! } 6... Nfd7 7. d4 e6 { Black has a surprisingly solid position which is almost impossible to break through. }) 6... e6 7. Be2 { We keep the tension in the center. Black has equality, but the position can take turns fast. } { [%csl Gd5,Ge4][%cal Ge4d5,Gd5e4] }) (5... dxe4 6. Nxe4 { Once again, there's a split path. } 6... e6 (6... Nf6 7. Nxf6+! exf6 8. c3! { Preparing d4. Now our bishop does go to c4. } { [%csl Rd4,Gc4][%cal Rd2d4,Gf1c4] }) (6... Nd7 7. Qe2 { Surprisingly, the trap works pretty well as a normal move too. } 7... e6 { Of course black avoids it. } (7... Ngf6?? { The well-known trap... } 8. Nd6#! { [%csl Re8][%cal Rd6e8] }) 8. g3! { We develop our bishop on g2. The other bishop goes to f4. } { [%cal Gf1g2,Ge1g1,Gd2d4,Gc1f4] }) 7. d3 { The bishop won't do much on c4, so we can go to e2. } { [%csl Ge2,Gf4][%cal Gf1e2,Gc1f4] }) (5... d4?! { This doesn't work that well because of a surprising refutation: } 6. Bc4! { [%csl Rf7][%cal Rf3f7] } 6... e6 (6... dxc3?? { I will include this to show the attack: } 7. Qxf7+ Kd7 8. dxc3 { There is absurd compensation for the piece. We have two pawns, an unstoppable attack starting with Bf4, and much more. } { [%csl Rf4][%cal Rc1f4] }) (6... Nf6? 7. e5! dxc3 8. exf6 { Material is equal, but our position is far better. }) 7. Ne2 c5 8. Qb3 { There can also be potential sacrifices on e6. We are better. } { [%csl Rb7,Be6][%cal Rb3b7,Bb3e6] }) 6. Be2 { Once again, some different moves black can play. } { [%csl Gd5,Ge4,Gg1][%cal Ge4d5,Gd5e4,Ge1g1] } 6... Nf6 (6... Nd7 7. d4 { We finally play d4. Next, we play exd5 and Bf4. } { [%csl Gf4,Gd5][%cal Gc1f4,Ge4d5] }) 7. O-O { [%csl Ge4,Gd5][%cal Ge4d5,Gd5e4] } 7... Be7 (7... Nbd7 8. d4 { We simply play d4. }) (7... dxe4 8. Nxe4 Nxe4 9. Qxe4 Nd7 10. b3! { A very surprising move, with a 65% winrate! We just play d4, Bb2, and get our rooks ready for the attack. } { [%csl Gb2,Gd4,Gd1,Ge1][%cal Gc1b2,Gd2d4,Ga1d1,Gf1e1] }) (7... Bb4? 8. e5! { We advance. } 8... Nfd7 9. d4 $14) 8. d3 { We develop our bishop on the normal squares. It's a positional game, both sides have chances. } { [%csl Rf4,Rg5][%cal Rc1f4,Rc1g5] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Section 3: 3...d4?"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Section 3: 3...d4?"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/uzMlazRu"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp2pppp/2p5/3p4/4P3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq - 1 3"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+3... d4? { Surprisingly, a mistake. Played around 10% of the time, mostly at the level 14-1700. So you will now learn how to refute this move! } 4. Ne2 { Obvious. Black now has to defend his pawn, and there's only 1 way of doing that. } { [%csl Rd4][%cal Re2d4,Rf3d4] } 4... c5 5. c3! { [%csl Rd4][%cal Rc3d4] } 5... Nc6 (5... dxc3 6. Nxc3 { Usually, our next move is d4. } { [%csl Rd4][%cal Rd2d4] }) (5... d3? 6. Nf4! { The pawn has to be defended... } { [%csl Rd3][%cal Rf4d3,Rf1d3] } 6... c4? 7. Qa4+ { It's over now. White wins 2 pawns, without compensation for black. } { [%csl Re8,Rc4,Rd3][%cal Ra4e8,Ra4c4,Rf1d3,Rf4d3] }) 6. cxd4 cxd4 (6... Nxd4 7. Nexd4 cxd4 8. Qa4+! { Winning a pawn. } { [%csl Rd4,Re8][%cal Ra4d4,Rf3d4,Ra4e8] }) 7. Qa4 { Simultaneously pinning the knight and attacking the pawn. } { [%csl Re8][%cal Ra4e8] } 7... Bd7 { [%csl Ra4][%cal Rd7a4] } (7... d3 8. Ned4! { [%csl Rc6][%cal Rd4c6,Ra4e8] } 8... Bd7 9. Bxd3 { Same here - we won a pawn, now we should win. } 9... Nxd4 10. Qxd4) (7... e5 8. Nxe5! { We are winning. } { [%csl Rd4,Rc6][%cal Re2d4,Ra4d4,Re5c6,Ra4e8] } 8... Bd7 9. Nxc6! Bxc6 10. Qxd4 Qxd4 11. Nxd4 Bxe4 12. Bb5+ { We should easily win. }) 8. Nexd4! Nxd4 9. Qxd4 { We have simply won a pawn. Now we just complete our development, castle, and we should win easily. } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Section 4: 3...Nf6"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Section 4: 3...Nf6"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/DDM11me6"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp2pppp/2p5/3p4/4P3/2N2N2/PPPP1PPP/R1BQKB1R b KQkq - 1 3"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+3... Nf6 { Black plays aggressive immediately. We respond in Alekhine-style. } { [%csl Re4][%cal Rf6e4] } 4. e5 Ne4 (4... Nfd7 5. e6! fxe6 6. Ng5 { Black has to be very careful here. } { [%csl Re6,Rh5][%cal Rg5e6,Rd1h5] }) 5. Ne2! { Surprise! We don't want to exchange knights (yet). } 5... Qb6 { [%csl Rf2][%cal Rb6f2] } (5... Bg4 6. Nfg1!! { Threatening a simple fork. This is one of the craziest lines of opening theory I've ever seen. We just move everything backwards! } { [%csl Rf3][%cal Rf2f3,Gb1c3,Gc3e2] } 6... Bxe2 (6... Bh5 7. f3 Nc5 8. d4 { Our simple plan is to play Nf4/g3 to exchange the bishop off. } { [%csl Rf4,Rg3][%cal Re2f4,Re2g3] }) (6... Qb6 { [%csl Rf2][%cal Rb6f2] } 7. d4 Bxe2 8. Nxe2 { We simply play f3 to chase away the knight. } { [%csl Rf3][%cal Rf2f3] }) 7. Nxe2 e6 8. d4 { We are definitely doing great! }) 6. d4 e6 (6... Bg4 7. Nfg1! { [%csl Rf3][%cal Rf2f3] } 7... Bxe2 8. Nxe2 { Simple. } { [%csl Rf3][%cal Rf2f3] }) 7. Ng3 { The best move. } 7... c5 (7... Nxg3 8. fxg3! c5 9. Bd3! { transposes back to the mainline. }) 8. Bd3! { Very simple, threatening to win a pawn. } { [%csl Re4][%cal Rd3e4,Rg3e4] } 8... Nxg3 9. fxg3! cxd4 10. O-O { Our bishop stands solid in blocking the pawn. Once we've played Kh1, we can move the bishop and win the pawn back. } { [%csl Rd3] } 10... Nc6 11. a3! { Again, absolutely necessary! The knight wants to go to b4 and exchange our bishop, which would not be fantastic for us. We have a good advantage. } { [%csl Rb4,Rd3][%cal Rc6b4,Rb4d3] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Repertoire 3: \"IQP\""]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense: Accelerated Panov Attack, Modern Variation"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Repertoire 3: \"IQP\""]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/4CBcNzDP"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+2. c4 { Entering Repertoire 3. The main idea is to force an IQP position and play aggressively. } 2... d5 3. exd5 cxd5 4. cxd5 { Here we enter the splitup. Nf6 is the best move, getting back into normal Caro-Kann theory. But Qxd5 is the most common move online, and the game starts to look more like an Alapin Sicilian with 2...d5 (1.e4 c5 2.c3 d5 3.exd5 Qxd5 4.d4 cxd4 5.cxd4, which is the same position as 1.e4 c6 2.c4 d5 3.exd5 cxd5 4.cxd5 Qxd5 5.d4, which we will look at in this study).
+GENERAL PLANS:
+We want to play d4, plant a knight on e5 and attack on the kingside with your pieces.
+WARNING: This repertoire requires a lot of study and practice to play well. You need to use a lot of your time just studying and playing games. In the beginning, you will lose quite some games. I recommend playing some casual games 'From Position' with your friends. But once you get better at this and start to remember all the lines, your rating will start to increase. Because this repertoire has a lot of lines to study, I only recommend it to 1800+ players or players with more than enough time. } { [%csl Gd4,Re5,Gc3][%cal Gd2d4,Rg1f3,Rf3e5,Gb1c3] } 4... Nf6 (4... Nf6) (4... Qxd5) *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Section 1: 4...Qxd5"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B22"]
+[Opening "Sicilian Defense: Alapin Variation, Barmen Defense, Central Exchange"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Section 1: 4...Qxd5"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/t4y0mQGT"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp2pppp/8/3P4/8/8/PP1P1PPP/RNBQKBNR b KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+4... Qxd5 { Most common online, the game now transposes into an Alapin Sicilian. } 5. d4 Nc6 { By far the most common move, attacking the d4-pawn. } { [%csl Rd4][%cal Rd5d4] } (5... Nf6 6. Nc3 { We will simply develop. Black does not have an ideal position. The plans are similar to Scandinavian structures. I've shown the normal moves with arrows. } { [%csl Re5][%cal Gf1c4,Gc1e3,Gg1f3,Rf3e5,Gc1f4] }) (5... e5 6. Nf3 { Simply developing and defending the pawn. } 6... exd4 (6... e4? 7. Nc3! Bb4 { Is forced to not lose a pawn. } 8. Ne5 Nc6 9. Nxc6 { We're doing great! }) 7. Qxd4) 6. Nf3 { Defending the pawn and preparing to chase away the queen. } { [%csl Rc3][%cal Gf3d4,Rb1c3] } 6... Bg4 { Again, by far the most common move you'll see. } (6... e5 7. Nc3 { [%csl Rd5][%cal Rc3d5] } 7... Bb4 8. Bd2 Bxc3 9. Bxc3 e4 10. Ne5 Nxe5 11. dxe5 { Simple. Black's knight cannot go to f6, and the queen is undefended. So, 2 choices. After Qxd1 we obviously take back with the rook. } { [%csl Rd1,Rf6,Ge7][%cal Ra1d1,Re5f6,Rg8f6,Gg8e7,Ge7d5,Gd5d1] } 11... Ne7 12. Be2 { We don't trade, as that would help black. Instead we castle, and then play Rc1. } { [%csl Gg1,Gc1][%cal Ge1g1,Ga1c1,Rc1c8] }) (6... Nf6?? 7. Nc3! Qd8 (7... Qa5 8. d5 Nb4 9. a3 Nbxd5 10. Bb5+! Bd7 11. Bxd7+ Kxd7 12. b4 $18 { Forcing the queen away and we win the knight. } { [%csl Rd5][%cal Rc3d5,Rd1d5] }) 8. d5 Nb8 (8... Nb4?? 9. Qa4+ { Picks up the knight. } { [%csl Rb4][%cal Ra4b4] }) 9. Bc4 $18 { Our position is crushing. } { [%csl Ra8,Rb8,Rc8,Rd8,Re8,Rf8,Rh8,Gd5][%cal Ge1g1,Gc1f4] }) (6... e6 7. Nc3 { [%cal Rc3d5] } 7... Bb4 (7... Qd8 8. Bd3 Nf6 9. O-O Be7 10. Re1 { We will just play simple moves and we'll have a good middlegame. } { [%csl Re5][%cal Gc1f4,Rf3e5] }) (7... Qa5 8. Bb5 Bd7 (8... Bb4 { [%csl Rc3,Rb5][%cal Rb4c3,Ra5b5] } 9. O-O Bxc3 10. Bxc6+ bxc6 11. bxc3 Qxc3 12. Qa4!! { No explanation needed. The arrows tell everything. } { [%csl Rc6,Ra8,Re8][%cal Ra4c6,Rc6a8,Rc6e8] } 12... Bd7 13. Ba3 { We are crushing. Down a pawn, but more than enough compensation. } { [%csl Rf8][%cal Ra3f8] } 13... Nf6 14. Rac1! Qd3 15. Rxc6 Bxc6?? 16. Qxc6+ Kd8 17. Qxa8+ Kc7 18. Qxh8 Qxa3 19. Qxg7 { 1-0. It's basically over. }) 9. O-O { We're doing great. }) 8. Bd3 Nf6 9. O-O { We once again threaten to take the queen. } { [%csl Rd5][%cal Rc3d5] } 9... Bxc3 10. bxc3 O-O 11. Re1 { We're planting our knight on e5, and we have a far superior position. } { [%csl Re5][%cal Rf3e5] }) 7. Nc3! { We can attack the queen anyways. } { [%csl Rd5][%cal Rc3d5] } 7... Bxf3 { Forced, but played only 33% of the time!! We can easily crush other moves. } (7... Qa5?? 8. d5! { And now everything loses: } 8... Ne5 (8... O-O-O?? 9. Qb3 { Here we need to play slightly differently. } 9... Bxf3 10. gxf3 Nd4?? (10... Ne5 11. Be3 Nxf3+?? 12. Ke2 { [%csl Rc8,Rh4,Rg5][%cal Rb3c4,Rc4c8,Rc4h4,Re3g5] } 12... Ne5 13. Nb5! { It's basically over here. } { [%csl Rc1,Rf4,Rb8,Rc8][%cal Ra1c1,Re3f4,Rf4b8,Rc1c8] }) 11. Qc4+ { We win the knight. } { [%csl Rd4,Rc8][%cal Rc4d4,Rc4c8] }) (8... Rd8?? 9. Bd2 { Now we threaten to take the knight again. } { [%csl Rc6][%cal Rd5c6] } 9... Nd4 (9... Ne5?? 10. Nxe5!! Bxd1 11. Bb5+ Rd7 (11... Qxb5 12. Nxb5 { It's mate or the loss of a piece. } { [%csl Rd1,Rc7][%cal Ra1d1,Rb5c7] }) 12. Bxd7+ Kd8 13. Rxd1 { We have a big attack, and should be able to win even more material. } { [%csl Rf7,Rc8][%cal Re5f7,Rd1c1,Rc1c8] }) 10. Nb5!! { Winning on the spot! The queen is attacked, the white queen comes to a4 with a deadly discovered check, Nc7 is also gameover, it's just too much. White wins a lot of material. } { [%csl Ra5,Ra4,Rc7][%cal Rd2a5,Rd1a4,Rb5c7] } 10... Bxf3 (10... Qb6 11. Qa4!! { A deadly threat of Nc7#. } { [%csl Re8,Rc7][%cal Ra4e8,Rb5c7] } 11... Nxf3+ (11... Nxb5 12. Bxb5+ Bd7 13. Bxd7+ Rxd7 14. Rc1 { There's too much. Rc8, Ba5, Ne5, it's simply over. } { [%csl Rc8,Ra5,Re5][%cal Rc1c8,Rd2a5,Rf3e5] }) 12. gxf3 Bd7 { Forced to try to defend. } 13. Be3! { Black loses his queen because it has to defend c7. 1-0. } { [%csl Rc7][%cal Rb5c7] }) 11. gxf3 { Simple. The same threats are still there. } { [%csl Ra5,Ra4,Rc7][%cal Rd2a5,Rd1a4,Rb5c7] }) 9. Qb3!! { Now it's too much to handle. } { [%csl Rb7,Re5][%cal Rb3b7,Rf3e5] } 9... Nxf3+ (9... Bxf3? 10. Qxb7! { Wins on the spot. } 10... Rd8 (10... Bxd5 11. Bb5+ Kd8 12. Qxd5+ { And it's over now. Feel free to try to find the mate in 8. }) 11. Bb5+ Nd7 12. gxf3 { A pawn up, having a good attack, and more. Black can resign if he wants to. }) 10. gxf3 { There's too much. We win the b7-pawn, we can get a strong attack with Bb5, and black's bishop is hanging at the moment. } { [%csl Rb7,Rg4,Rb5][%cal Rb3b7,Rf3g4,Rf1b5] }) (7... Qd8?? 8. d5! { [%csl Rc6][%cal Rd5c6] } 8... Ne5 9. Nxe5! Bxd1 10. Bb5+ Qd7 11. Bxd7+ Kd8 12. Kxd1 f6 13. Nf7+ Kxd7 14. Nxh8 { The awkward placement of the queen left us up a rook. }) 8. Nxd5 Bxd1 9. Nc7+ Kd7 10. Nxa8 { The position is 0.0 (!!!) according to the computer, but it's absolutely a mess. We have to play Bf4 to free our knight. At the same time, our pawn is hanging with the potential threat of Nc2+, our knight is stuck in the corner (for now at least), black's pieces on the kingside are not yet developed, and white is up an exchange.
+Absolute madness.
+I will continue this line in the next chapters, as black can respond in a few different ways. } { [%csl Rd1,Rc2,Rf8,Rg8,Rh8][%cal Re1d1,Rc6d4,Rd4c2,Rc1f4,Ra8c7,Gf4c7] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: 10...Bh5"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "10...Bh5"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/rWcHyu3p"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "N4bnr/pp1kpppp/2n5/8/3P4/8/PP3PPP/R1BbKB1R b KQ - 0 10"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+10... Bh5 { The best move according to the computer and the most played one. } 11. d5! { An important in-between move! It would be intuitive to play 11.Bf4 Nxd4 12.Kd2 to not block your own bishop, but it's bad. } { [%csl Rc6][%cal Rd5c6] } 11... Nd4 12. Bf4! Nc2+? { Most obvious and also the most played move, but it's a huge mistake. } (12... e5!! { An absolutely excellent defensive move! } 13. dxe6+ fxe6 14. Rc1 { Black's the one pressing, but we're up an exchange. } 14... Bb4+ 15. Bd2 Bxd2+ 16. Kxd2 Nf6 (16... Nc6 17. b4! { We need to free our knight. } { [%csl Rb5,Rc7][%cal Rb4b5,Ra8c7] } 17... Nf6 18. Nc7! Kxc7 19. b5 { We have a nice position. }) 17. Nc7 { We should be able to convert this. } 17... a6 18. Bd3 Nc6 19. Rxc6! { We end up a pawn. }) 13. Kd2 Nxa1 14. Bb5+!! { All of a sudden there are problems! } { [%csl Rd7][%cal Rb5d7] } 14... Kd8 (14... Kc8?? { Mate in 7! } 15. Rc1+! Kd8 (15... Nc2 16. Rxc2+ Kd8 17. Bc7+ Kc8 18. Nb6+! axb6 19. Bxb6+ Kb8 20. Bd7 { It's over. } { [%csl Rc8][%cal Rc2c8] }) 16. Bc7+ Kc8 17. Nb6+! axb6 18. Bxb6+ Kb8 19. Bd7 { The only thing black can do is delay the mate. } { [%csl Rc8][%cal Rc1c8] }) 15. Bc7+ Kc8 16. Rc1 { Big threats. At the moment black is up a knight, but we have sufficient compensation. } { [%csl Rc8][%cal Rc1c8] } 16... Nf6 { The best defensive try. } (16... b6?? 17. Bxb6+! Kb8 (17... Kb7 18. Rc7+ Kxa8 19. Bxa7 { [%csl Rc6,Ra8][%cal Rb5c6,Rc6a8] } 19... Nb3+ 20. axb3 e6 21. Bc6#) 18. Bc7+ Kc8 (18... Kb7 19. Be5! { There's nothing that can be done. } { [%csl Rc7][%cal Re5c7,Rc1c7] } 19... h6 20. Rc7+ Kb8 (20... Kxa8 21. Rc8+ Kb7 22. Rb8#! { [%csl Rb7][%cal Rb8b7] }) 21. Rc6+ Kb7 22. Ba6+ Kxa8 23. Rc8#) (18... Kxa8 19. Bc6#) 19. Ba5+ Kb8 (19... Kb7 20. Rc7+ Kb8 (20... Kxa8 21. Bc6+ Kb8 22. Rb7+ Kc8 (22... Ka8 23. Rb5#) 23. Rxa7 { Next move is Ra8#. } { [%csl Ra8][%cal Ra7a8] }) 21. Ba6! { A very simple threat of Rc8#. } { [%csl Rc8][%cal Rc7c8] } 21... Bg4 { [%cal Gg4c8] } 22. Rb7+ Kc8 (22... Kxa8 23. Bc7 { It's over. } { [%csl Rb8][%cal Rb7b8] }) 23. Rxe7+ Kb8 24. Re8+ Bc8 25. Rxc8#) 20. Nc7! { Black can do nothing to avoid being mated! } 20... a6 21. Nxa6+ Ka8 22. Rc8+ Ka7 23. Rc7+ Ka8 24. Bc6#) 17. Be5+ Kd8 18. Rc7! { Black's busted. Your attacking and tactical skills should do the rest. } { [%csl Rb7][%cal Rc7b7] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: 10...Bg4"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "10...Bg4"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/ejHOmbxv"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "N4bnr/pp1kpppp/2n5/8/3P4/8/PP3PPP/R1BbKB1R b KQ - 0 10"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+10... Bg4 { The second most played move, but it's not very good. } 11. f3! Bf5 12. d5! Nd4 13. Kf2!! { This is simply how absurd computer chess is! This crazy prophylactic move kills all of black's intentions. } 13... Nc2 { Logical. } 14. Bb5+! Kc8 15. Bf4! Nxa1 16. Rxa1 { We're attacking and have a nice advantage! Rc1 is a big threat. } { [%csl Rc1][%cal Ra1c1] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: 10...Ba4"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "10...Ba4"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/hLjI5BgD"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "N4bnr/pp1kpppp/2n5/8/3P4/8/PP3PPP/R1BbKB1R b KQ - 0 10"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+10... Ba4?? { Almost the worst move black could play! Played 14% of the time. } 11. b3! { The bishop is trapped! :) } { [%csl Ra4][%cal Rb3a4] } 11... Nxd4 12. bxa4! Nc2+ 13. Kd2 Nxa1 14. Bb5+ Kc8 15. Bb2 { The knight is trapped, Rc1 is coming, it's a disaster. } { [%csl Ra1,Rc1,Rc8,Rf8,Rg8,Rh8][%cal Rb2a1,Rh1c1,Rc1c8] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Section 2: 4...Nf6"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B10"]
+[Opening "Caro-Kann Defense: Accelerated Panov Attack, Modern Variation"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Section 2: 4...Nf6"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/XQuI6Icm"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp2pppp/8/3P4/8/8/PP1P1PPP/RNBQKBNR b KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+4... Nf6 { The main line. } 5. d4 Nxd5 6. Nc3 { We just enter the mainlines of the Panov. } 6... e6 (6... Nc6 7. Nf3 Bg4 8. Qb3! { [%csl Rb7,Rd5][%cal Rb3b7,Rb3d5,Rc3d5] } 8... Bxf3 9. gxf3 e6 10. Qxb7 Nxd4 11. Bb5+ Nxb5 12. Qc6+! { An intermediate move to force the black king to e7! } 12... Ke7 13. Qxb5 { We have a great position. }) 7. Bd3 Bb4 (7... Nc6 8. Nf3 Be7 9. O-O O-O 10. Re1) (7... Be7 8. Nf3 O-O 9. O-O Nc6 10. Re1 { These two are the same position, we have a slight edge. Our knight will jump into e5 soon, with a potential rook-lift. With a bishop on c4, there are sacrifices on f7 too. Sometimes a Greek gift sacrifice is also available, let's make some careless moves for black. } { [%csl Re5,Bg3,Bh3,Yf7,Yc4,Rh7][%cal Rf3e5,Be1e3,Be3h3,Rg3g8,Rh3h8,Ye5f7,Yd3c4,Yc4f7,Rd3h7] } 10... Bd7?! 11. Ne5 Re8? 12. Bxh7+! Kxh7 13. Qh5+ Kg8 14. Qxf7+ Kh8 15. Re4 { [%csl Rg6,Rg4,Rh4][%cal Re5g6,Re4g4,Re4h4] } 15... Rc8?! 16. Rg4 { [%csl Rg7][%cal Rg4g7,Rf7g7] } 16... Bf6 17. Bh6! { Black can only delay the mate. } { [%csl Rg7][%cal Rh6g7] } 17... Rg8 18. Qh5! { [%csl Rh8][%cal Rh5h8] } 18... g6 { [%csl Rh5][%cal Rg6h5] } 19. Bg7+ { Double check is important. } { [%csl Rh8][%cal Rg7h8,Rh5h8] } 19... Kxg7 20. Qxg6+ Kf8 21. Qf7#) 8. Ne2 { We will play a simple, strategic middlegame. We play a3 to kick the bishop away, castle kingside, Re1, and Bf4 to play aggressively. } { [%csl Gc3,Gd4,Ga3,Gf4][%cal Ge2c3,Ge2d4,Ga2a3,Gh1e1,Gc1f4] } *
+
+
+[Event "Crush the Caro-Kann! White Repertoire: Outro"]
+[Date "2024.01.30"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "Crush the Caro-Kann! White Repertoire"]
+[ChapterName "Outro"]
+[ChapterURL "https://lichess.org/study/CfSYkcMp/5SDX3yqS"]
+[Annotator "https://lichess.org/@/Jisu101"]
+[FEN "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2024.01.30"]
+[UTCTime "10:44:49"]
+
+{ Thank you for viewing my study! I hope you can use this a lot in your games! As I said at the start, choose the repertoire that suites you best. (Or, as Jeremy Silman said, choose the repertoire that suits you least, so you can learn more.)
+
+If you liked the study, press the heart button around 2 centimeters or an inch below the h1-square, and share it with your friends!
+
+If you want to have more of our studies or maybe want to get your own studies to the top of the list, join our team! https://lichess.org/team/study-creators--friends
+
+Thanks to Bosburp for checking this study for errors! }
+ *
+
+

@@ -1,0 +1,509 @@
+[Event "London System Master Games!: Introduction"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "Introduction"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/oCqqAgqn"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+{ Welcome to my collection of instructive London System games. I hope you learn something from these games and comments. The London System is not just a simple opening for beginners- it can be very interesting, even in the GM levels!
+
+If you enjoyed this study and would like to see more games added, please click the HEART button to share the love! ❤ Thank you! :D }
+1. d4 { Continue into the next chapters (in the top left area)
+- Please do not underestimate or hate on the London System or its players
+- Please be respectful and kind in the chat
+- Please join our London System Club: https://lichess.org/team/london-system-club-of-lichess Let's go for 300 members!! :D
+Thank you!! :) } 1... d5 { If you have any suggestions for games we could add to this study, please join our London System Club and post your suggestion in our new forum thread! Thanks!
+https://lichess.org/forum/team-london-system-club-of-lichess/new-london-system-master-games-study } 2. Bf4 { I will put a symbol at the start of each chapter title to say whether it is a positional or attacking game.
+~ Positional
+* Attacking } *
+
+
+[Event "London System Master Games!: ~ Carlsen - So"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System, Steinitz Countergambit"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Carlsen - So"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/rK2OiiwP"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+{ If you enjoy this study, please click the heart button under the h1 square! }
+1. d4 d5 2. Bf4 { Bf4 is the most accurate London System move order, as opposed to Nf3 on move 2 or 3. If you play Nf3 too early, you can run into some major move order issues, and also, early Nf3 interrupts the d1-h5 diagonal. Magnus Carlsen won this game for this reason. } { [%csl Gf4][%cal Bg1f3,Yd1h5] } 2... c5 3. e3 Nc6 4. c3 { White completes the London Pyramid, which is an extremely good, solid base in the center of the board. } { [%csl Rb2,Rc3,Rd4,Re3,Rf2][%cal Rf2d4,Rb2d4] } 4... Qb6 { [%cal Rb6b2] } 5. Qb3 { Black doesn't tend to take here because of white getting the a-file } { [%csl Ga1][%cal Gb6b3,Ga2b3] } 5... Nf6 { It's important that you play Nd2 here instead of Nf3, because if you play Nf3 you will run into some nasties with Bf5. See the sideline to see the move order. } { [%csl Gd2,Rf3][%cal Gb1d2,Rg1f3,Rc8f5] } 6. Nd2 (6. Nf3 c4 7. Qc2 Bf5 { [%csl Rb2,Ra1][%cal Bc2f5,Rb6b2,Rb2a1] } 8. Qc1 { And here white is a bit worse. This is why it's important to delay Nf3. }) 6... c4 (6... Bf5 7. dxc5 Qxb3 8. axb3) 7. Qc2 { Black has fixed the pawn structure passively, so the way white needs to play is to later on break the structure with e4 or b3, as he does in the game } { [%csl Bc4,Bd5][%cal Rb2b3,Rb3c4,Re3e4,Re4d5] } 7... Nh5 { Black wants the dark squared bishop } { [%cal Rh5f4] } 8. Bg5 h6 9. Bh4 g5 { g5 weakens more light squares. And now we see the point of why white delayed Nf3 to keep this diagonal open. } { [%csl Gg6,Gf5,Gg4,Gh5,Gh7,Rg1][%cal Gd1h5,Rg1f3] } 10. Be2 { White doesn't have to play Bg3. } { [%csl Rh5][%cal Re2h5,Gh4g3] } 10... Ng7 11. Bg3 { And now, this dark squared bishop remains on the board, hitting hard that diagonal. } { [%csl Gg3][%cal Gg3b8] } 11... Bf5 12. Qc1 e6 13. Ngf3 { The knight waited for good; now it's time to bring him into the game. } { [%csl Gf3] } 13... Qa5 { A slightly dubious move. It's not clear what black is doing. } { [%csl Ra5] } (13... Nh5 { This would have been a better move, but white still has a small edge. } 14. Be5 f6 15. Nh4 { [%cal Rh4f5,Re2h5] }) 14. e4 { There we go, white plays e4 in the center. If dxe4 then Nxc4. } { [%cal Rd5e4,Rd2c4] } 14... Bh7 15. O-O { [%csl Gg1] } 15... Be7 16. Re1 { [%csl Ge1] } 16... O-O 17. Ne5 { And now a great central move, and a key one in the London System as a whole: Ne5! Not only putting his piece on a great square, but vacating f3 for the bishop! } { [%csl Ge5,Gf3][%cal Ge2f3,Gf3d5] } 17... Nxe5 18. Bxe5 f6 19. Bg3 Rfe8 20. h4 { Now white is going to undermine black's exploitable pawn chains. } { [%csl Rg5,Rd5][%cal Rh4g5,Re4d5] } 20... b5 21. b4 Qd8 22. a4 { White is attacking black's pawn chains. Black can't afford to play a passive move like a6 } { [%csl Rb5,Rd5,Rg5,Ba6][%cal Ra4b5,Re4d5,Rh4g5,Ba7a6] } 22... a5 (22... a6 23. Bf3 { [%csl Gf3,Rd5][%cal Gf3d5] }) 23. axb5 axb4 24. Rxa8 Qxa8 25. exd5 exd5 26. Bf3 { With a threat of Nxc4 } { [%cal Rd2c4,Yf3a8] } 26... Qd8 { Look at how strong those "raking bishops" are } { [%csl Gf3,Gg3][%cal Gg3b8,Gf3a8] } 27. hxg5 hxg5 28. b6 { Distracting the queen } { [%csl Bb6,Rd5,Rc4,Gb8][%cal Bd8b6,Rf3d5,Gb6b7,Gb7b8] } 28... bxc3 29. Qxc3 Qxb6 30. Bxd5+ Kf8 31. Nxc4 { Take with the knight to bring a new piece into the center } { [%csl Gc4][%cal Gd2c4] } 31... Qb5 32. Ne3 { White has excellent control of the center of the board; this is what you must do in chess } { [%csl Ge3,Gd4,Gd5,Gc3,Ge1,Gg3][%cal Gg3c7,Ge1e7] } 32... Rd8 33. Qc7 Qd7 34. Qa5 Nh5 { [%cal Rh5g3] } 35. Bc7 Rc8 36. Bh2 { That knight is not having this bishop!! } { [%csl Rh5,Gh2] } 36... Nf4 37. Bxf4 gxf4 38. Nc4 { Some threats } { [%cal Rc4b6,Rd5e6] } 38... Qf5 39. Qa7 { And now white is coming in on the 7th rank } { [%csl Re7,Rf7,Rh7][%cal Ya7h7,Ye1e7,Yd5f7] } 39... Qxd5 40. Qxe7+ Kg8 41. Nb6 { Black resigned. That was a very instructive game on how to play the London System in the opening by putting care into your move order, the middlegame by using your minor pieces to pressurize the center, and even the endgame, by showing us how to activate and coordinate our pieces. } { [%cal Rb6d5,Rb6c8] } *
+
+
+[Event "London System Master Games!: ~ Kamsky - Potkin"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Kamsky - Potkin"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/7ysU1UlG"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+{ Gata Kamsky, one of the best advocates of the London System, plays white in this game. This game teaches us a lot about the London System and the type of chess it brings, from the opening stages and development, to the middlegame pawn structures, to the end stages where white's pieces come to life superbly. }
+1. d4 Nf6 2. Bf4 d5 3. e3 c5 4. c3 Nc6 5. Nd2 Bf5 { This may be one of the best ways for black to fight the London System. But white isn't bad here. } { [%csl Gf5] } 6. Qb3 { I have done some research on this variation and I think that Qb3 is white's best try. } { [%csl Gd7][%cal Gd8d7,Rb7b6,Rd8b6,Rd8c8] } 6... Qd7 { This is the best way for black to defend the pawn. I put sidelines for other ways black can play. } { [%csl Gb7][%cal Gd7b7] } (6... Qc8 7. Ngf3 e6 8. Nh4 c4 9. Qd1 Be7 10. Nxf5 exf5 11. h3 b5 12. Be2 { This is following another Kamsky game. White has a pleasant position here. }) (6... b6 { b6 is a poor, passive move. It's not developing any pieces, creates weaknesses and commits to passive defense. } { [%csl Rb7,Rc6,Rb5,Ra6] } 7. Ngf3 e6 8. Bb5 { For example, this is the kind of danger black can fall into if he's foolish like this. } { [%csl Rc6][%cal Rf3e5] }) (6... Qb6 7. dxc5 Qxb3 8. axb3 e5 9. Bg3 Bxc5 10. Ngf3 Nd7 11. b4 Bd6 12. Be2 O-O 13. O-O f6 14. e4 Bxe4 15. Nxe4 dxe4 16. Rfd1 exf3 17. Bxf3 Bxb4 18. Rxd7 Bc5 19. Rxb7 { For example this is the way you can play if your opponent plays Qb6 }) 7. Ngf3 c4 8. Qd1 { Although white wasted a few moves with his queen and black seems to have equalized in development, white has managed to fix black's pawn structure and can now work towards the central pawn break e4. } { [%csl Rc4,Rd5][%cal Bd1b3,Bb3d1,Re3e4] } 8... e6 9. Be2 h6 10. O-O Be7 11. Ne5 { A key move in the London System } { [%csl Ge5] } 11... Nxe5 12. Bxe5 O-O 13. Bf3 { Preparing to go Re1 and then e4 } { [%csl Ge1,Ge4][%cal Gf1e1,Ge3e4] } 13... b5 14. a3 a5 15. Re1 Ne4 16. Bxe4 dxe4 { The d pawn left the queenside which makes this chain weaker, so white exploits this } { [%csl Rc4,Rb5][%cal Rd5e4] } 17. a4 { Kamsky is undermining black's pawn chain, which is what happens when the pawn structure for black gets fixed in the center } { [%csl Rb5,Rc4][%cal Rb5c4,Yd2c4,Ya4b5] } 17... Rfc8 18. axb5 Qxb5 19. Qa4 Qd5 { [%csl Gc4][%cal Gd5c4] } (19... Qxb2 20. Nxc4 Qxc3 21. Nb6 { [%csl Rc8,Ra8][%cal Rb6c8,Rb6a8] }) 20. Bg3 h5 21. h3 h4 22. Bh2 f6 23. f3 { [%csl Re4][%cal Rf3e4] } 23... Qb7 24. Qc2 exf3 25. e4 f2+ 26. Kxf2 Bh7 27. Kg1 Ra6 28. Ra4 { Attacking the weaknesses } { [%csl Ra5,Rc4][%cal Ra4c4,Ra4a5] } 28... Qb5 29. Kh1 e5 30. Nf3 exd4 31. Nxd4 Qb7 32. Qe2 { Still attacking the weak pawn, which is now impossible to defend } { [%csl Rc4,Yd6,Yc7,Yb8,Yb5,Yc6][%cal Re2c4,Ra4c4,Yd4b5,Yd4c6,Yh2b8] } 32... Bf8 33. Rxc4 Re8 34. Rc7 { And now we see the painful power of the London Bishop. It was so strong at this point in the game that black resigned. } { [%csl Rc7][%cal Rh2c7,Yc7a7,Yc7h7] } *
+
+
+[Event "London System Master Games!: * Velazsquez - Acosta"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Velazsquez - Acosta"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/9OGtLtcN"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 e6 3. e3 Nf6 4. Nf3 c5 5. c3 { [%csl Rb2,Rc3,Rd4,Re3,Rf2] } 5... Nc6 6. Nbd2 Be7 { Be7 may be slightly worse than Bd6, because when Bd6 happens and white meets it with Bg3, black has gained a bit of time by tempting white's bishop to move. This doesn't happen with Be7. } { [%csl Re7,Gd6] } 7. Bd3 { Here, moves like 0-0 or Nh5 are good moves. } { [%cal Ge8g8,Gf6h5] } 7... c4 { But c4 is not a very good move, and you will probably see it occasionally in your London System games.
+The reason why it is not very good is because it is passively removing the tension from the center, it gives white the active pawn breaks like b3 and e4, and by closing the center, it allows white to attack on the wings very well, as he does in the game. } { [%csl Bb3,Be4][%cal Rc5c4,Bb2b3,Be3e4] } 8. Bc2 { Maintaining the bishop on that very nice diagonal, and also not clogging up the back rank. } { [%csl Gc2][%cal Yb1h7] } 8... O-O (8... Nh5 9. Ng5 (9. Bg3 Nxg3 10. hxg3)) 9. Ne5 { A very good move! Not only putting the knight on a great central square, but also freeing up the queen's diagonal.
+If you play the London System, this Ne5 move is a key move to know. } { [%csl Ge5][%cal Yf6h5,Gd1h5] } 9... Nxe5 10. dxe5 { It is always better to take with the pawn on e5 because we force the black knight to move from f6, thereby weakening some of black's critical kingside squares. } { [%csl Rf6,Re5,Gg4,Gh5,Gh7][%cal Re5f6,Rd4e5] } 10... Nd7 11. h4 { Here come the pawns!! The white pawns are going to rush up to attack black's king.
+If the pawn is captured it will immediately open up white's file for his rook. } { [%csl Rh4,Rg4,Rg5,Rh5][%cal Gh1h7,Rg2g4,Rg4g5,Rh4h5] } 11... f5 { Black tried to block this bishop's diagonal. } { [%csl Rf5][%cal Rc2h7] } (11... Bxh4 12. Bxh7+ Kxh7 13. Qh5+ Kg8 14. Rxh4) 12. Nf3 { The d4 square is a gaping hole for white to put a knight on. } { [%csl Gd4][%cal Gf3d4] } (12. exf6 Nxf6 13. Nf3 { This is also good for white- the dark squares are very well controlled } { [%csl Gd4,Ge5][%cal Gf3d4,Gf3e5,Gf4e5,Gc3d4,Gd1d4] }) 12... Nc5 13. Qe2 { Preparing to possibly castle queenside and bring the other rook to the kingside attack. } { [%csl Ga1][%cal Ge1c1] } 13... a5 14. Nd4 { [%csl Bd4] } 14... h6 { Black played this move with the idea of closing the h-file, but it backfired. } { [%csl Rh6][%cal Rh1h8] } (14... Bxh4 15. Qh5 g5) 15. g4 Bxh4 { Again, capturing this one pawn for black is a huge mistake- for the cost of one pawn, white activates a piece worth 5. } { [%csl Gh4][%cal Gh1h8] } 16. gxf5 exf5 17. O-O-O { [%csl Gg1,Gh1][%cal Gd1g1,Yg1g8,Yh1h8] } 17... Ne4 { The e4 knight is black's best piece on the board, so white eliminates it for the measly bishop. } { [%csl Ge4,Rc2][%cal Rc2e4] } 18. Bxe4 fxe4 19. Rdg1 { Black is in big trouble. } { [%csl Rg1,Rh1,Rf4,Rh6][%cal Yg1g8,Yh1h8,Rf4h6,Ye2h5,Yd4e6,Ye5e6] } 19... Bg5 20. Bxg5 hxg5 21. Qh5 { Black resigns. The pawn on g5 is falling next, along with the black king. } { [%csl Rg8,Bg5,Bg7,Bh7][%cal Bg1g5,Bg5g7,Bh5h7] } 21... Qe8 22. Qh7+ Kf7 23. Rxg5 { [%csl Rg7][%cal Rg5g7] } 23... Rg8 { [%csl Gg7][%cal Gg8g7,Gf7g7] } 24. Rhg1 { [%csl Rg7][%cal Rg1g7,Rh7g7] } 24... Qf8 { [%csl Gg7][%cal Gf8g7,Gg8g7,Gf7g7] } 25. e6+ { [%csl Rf7][%cal Gf7g7,Re6f7] } 25... Ke8 26. Rxg7 { [%csl Gg7] } 26... Rxg7 27. Rxg7 { For example, this could be one continuation. } { [%csl Gg8,Rf8,Re8][%cal Gg7g8,Gg8e8] } *
+
+
+[Event "London System Master Games!: ~ Ginger_GM - druv2005"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Ginger_GM - druv2005"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/Oc4Zj5gH"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+{ This was an online rapid game played by GM Simon Williams, also known as "GingerGM". }
+1. d4 d5 2. Bf4 Nf6 3. e3 e6 4. Nf3 c5 5. c3 Nc6 6. Nbd2 Bd6 7. Bg3 O-O 8. Bd3 b6 { Here, the two main moves are e4 and Qe2. They're both quite good. Note that Ne5 here is not a very good move. } { [%cal Bd1e2,Be3e4] } 9. e4 (9. Qe2 { Here white's idea is to go Rd1 and then e4. } { [%cal Ga1d1,Ge3e4] } 9... Bb7 10. Rd1 Re8 11. e4 Be7 12. e5 Nh5 13. a3 { White has a decent position here. }) 9... dxe4 10. Nxe4 Nxe4 11. Bxe4 Bb7 12. dxc5 Bxc5 13. O-O h6 14. Ne5 Qc8 15. Qd7 Na5 16. Bxb7 Qxb7 17. b4 Qxd7 18. Nxd7 Rfd8 19. Nxc5 bxc5 20. bxa5 Rd3 21. Rfc1 Rad8 22. h4 Rd2 23. a4 Re2 24. Rd1 Red2 25. Rxd2 Rxd2 26. a6 Rb2 27. a5 { Black resigns } *
+
+
+[Event "London System Master Games!: * Puebla - Albertoni"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Puebla - Albertoni"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/YMPMYwg1"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 Nc6 5. Nd2 e6 6. Ngf3 Be7 7. Bd3 O-O { [%anno "Dat_Das", dat_das] This is the London player's ideal position. } 8. h4 Nh5 { [%csl Rf4] } 9. Bxh7+ Kxh7 (9... Kh8 10. Bc2) 10. Ng5+ { [%anno "Dat_Das", dat_das] In this position, both natural looking moves for black lose. } 10... Kg6 { [%anno "Dat_Das", dat_das] Only move.. } { [%csl Gh5][%cal Gg6h5,Rd1h5] } (10... Kg8 11. Qxh5 Bxg5 12. hxg5 f5 13. g6 { [%csl Rh8][%cal Rh5h8] }) (10... Bxg5 11. hxg5 g6 12. g4 Kg7 13. gxh5) 11. Be5 f6 { [%anno "Dat_Das", dat_das] This looks winning, but after Qc2, black has to secede the fork in order to protect his king. } 12. Qc2+ f5 13. g4 { [%csl Rh5,Rf5,Rg6][%cal Rg4h5,Rg4f5,Rc2g6] } 13... Nxe5 14. gxh5+ Kh6 15. dxe5 Qe8 { [%cal Re8h5] } 16. O-O-O Qxh5 17. Rdg1 Qe2 18. Nh3 Bd7 19. Rg6+ Kh7 20. Rhg1 { [%csl Rg7][%cal Rg1g7] } 20... Rf7 21. R6g2 d4 22. Nf4 Qa6 23. Qd1 dxc3 (23... Rh8) 24. Qh5+ Kg8 25. Ng6 { [%csl Rh8][%cal Rh5h8] } *
+
+
+[Event "London System Master Games!: ~ Carlsen - Tomashevsky"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Carlsen - Tomashevsky"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/WVc5ykxb"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 (1. a3 { Change your sound setting to "Pentatonic" and then hold the right arrow key. It sounds very nice. :) } 1... a6 2. b3 b6 3. c3 c6 4. d3 d6 5. e3 e6 6. f3 f6 7. g3 g6 8. h3 h6 9. h4 h5 10. g4 g5 11. f4 f5 12. e4 e5 13. d4 d5 14. c4 c5 15. b4 b5 16. a4 a5 17. Na3 Na6 18. Nb1 Nb8 19. Nc3 Nc6 20. Qd3 Qd6 21. Be3 Be6 22. Nf3 Nf6 23. Ng1 Ng8 24. Bh3 Bh6) 1... Nf6 2. Bf4 e6 3. e3 { If black plays d5 it transposes back into a normal London System position } { [%cal Bd7d5] } 3... b6 { In this game black starts off with a Queen's Indian, which doesn't pose a problem for white either } { [%csl Bb6,Be6,Bf6] } 4. Nf3 { Developing the knight to the best square } { [%csl Gf3] } 4... Bb7 5. h3 { Carlsen played this just in case Tomashevsky decides to hunt white's dark squared bishop } { [%csl Gh3][%cal Rf6h5,Gf4h2] } 5... Be7 6. Bd3 O-O 7. O-O { Normal, correct developing moves. White's being flexible- not deciding whether to play c3 or c4 } { [%cal Gc2c4,Gc2c3] } 7... c5 8. c3 { White played c3 here because black played c5 first. } { [%csl Gd4][%cal Rc7c5,Gc3d4] } 8... Nc6 9. Nbd2 { Maybe white wants to play e3-e4-e5. } { [%cal Be3e4,Be4e5] } 9... d5 { Here I think is a key moment in the game- black played d5 to discourage e4, but he blocked in his light squared bishop and it's now a bad piece. Since the center is closed, this gives white a chance to attack on the kingside later on. } { [%csl Rd5,Re4][%cal Rb7d5,Rd5e4] } 10. Qe2 { But first white needs to complete major piece development. } { [%csl Ge2][%cal Ga1d1,Gf1e1] } 10... Bd6 11. Rfe1 { If black takes the f4 bishop then white gets great control of the e5 square } { [%csl Ge5][%cal Rd6f4,Re3f4] } 11... Ne7 { [%cal Ge7g6] } (11... Bxf4 12. exf4 cxd4 13. Nxd4 Nxd4 14. cxd4 Qd6 15. g3 { White has great control of the e5 square and white has the better bishop. } { [%csl Ge5,Rb7][%cal Gf4e5,Gd4e5,Ge1e5,Gd2f3,Gf3e5] } 15... Rac8 16. Rac1 Qd7 17. Kg2 Rxc1 18. Rxc1 Rc8 19. Rxc8+ Qxc8) 12. Rad1 Ng6 { Now white decides to simplify into a game where black will be stuck with this bad piece. } { [%csl Rb7][%cal Rd3g6,Rf4d6] } 13. Bxg6 hxg6 14. Bxd6 Qxd6 15. Ne5 { A typical attacking London System position- white is going to increase his space on the kingside and bring more pieces over to the black king } { [%csl Rb7,Ge5][%cal Gf2f4] } 15... g5 { Black played g5 with the intention of discouraging f4. } { [%csl Rf4][%cal Rg5f4] } (15... a5 16. f4 Qe7 17. Qf2 Rac8 18. Qh4 Qe8 19. Ndf3 { [%csl Be5,Bf3,Bh4,Rh7,Rf6][%cal Bf3g5,Be5g4] }) 16. f4 { But an f4 is played here! } 16... gxf4 17. Rf1 { A very amazing move with pawn sacrifice! Using the f-file to bring the rooks into the attack } { [%csl Gf1] } 17... Nd7 (17... fxe3 18. Rxf6 { [%csl Rf6][%cal Rg7f6,Ge3d2] } 18... exd2 (18... gxf6 19. Qg4+ Kh7 20. Rf1 exd2 21. Rf4) 19. Rxd2 { [%cal Gd6e7,Rg7f6] } 19... Qe7 (19... gxf6 20. Qg4+ Kh8 21. Rf2 fxe5 22. Rf6 { [%cal Rf6h6] } 22... Kh7 23. Qg5 { [%csl Rh6][%cal Rf6h6] }) 20. Rf4 { This is the best line black could go for here, but still white is much better. } { [%csl Ge5,Rb7] }) 18. Qh5 { A great move! White is using both the f and h files } { [%csl Gf7][%cal Gh5f7,Gf1f7,Rf1f4,Rf4h4,Ge5f7,Rh4h8] } 18... Nf6 19. Qh4 Qd8 20. Rxf4 { [%csl Be3,Bd4,Bc3][%cal Rd1f1] } 20... Ne4 { For some reason, black was really felling pressurized and went into an endgame which is superior for white } (20... cxd4 { Each recapture has its own good idea } { [%cal Gc3d4,Ge3d4,Gf4d4] } 21. exd4 (21. cxd4) (21. Rxd4 Ne8)) (20... Re8 21. Rdf1 Nd7 22. Qh5 { [%cal Gh5f7] }) 21. Nxe4 Qxh4 22. Rxh4 dxe4 23. dxc5 { And now white's rook has been opened up and can come crashing to the 7th rank } { [%csl Gd1][%cal Gd1d7,Ga1d1] } 23... bxc5 24. Rd7 { [%csl Rb7,Rf7][%cal Rd7b7,Rd7f7] } 24... Rab8 { Black is on the defensive } 25. b3 { That unkickable knight on e5 is causing this to be a "knightmare" scenario for black! } { [%csl Ge5][%cal Rf7f6] } 25... a5 26. Rc7 { [%cal Rc7c5] } 26... a4 27. bxa4 Ba8 28. a5 { [%csl Ga5] } 28... Rb7 29. Rxc5 { [%csl Gc3,Ga2,Ga5] } 29... Ra7 30. Nc4 { White is threatening Rh45-h8 mate! Along with moves like Nb6, black is two pawns down and resigned here! } { [%csl Rh8,Rh5,Ga2,Ga5][%cal Rc5h5,Rh5h8,Gc4b6] } 30... g6 { For example, a possible continuation } *
+
+
+[Event "London System Master Games!: * Sielecksi - Tolstrup"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Sielecksi - Tolstrup"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/Np6xxM23"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 e6 3. e3 Bd6 { [%cal Rd6f4] } 4. Bg3 { When your London Bishop is met with Bd6, you usually just want to retreat it to g3. } { [%csl Gg3][%cal Gf8d6] } 4... Nf6 5. Nd2 b6 6. c3 { White completes the London Pyramid } { [%csl Rb2,Rc3,Rd4,Re3,Rf2][%cal Rf2d4,Rb2d4] } 6... Bb7 7. Ngf3 Nbd7 8. Bd3 { White has completed the basic development } { [%csl Gd3,Gd2,Gf3,Gg3,Rf2,Re3,Rd4,Rc3,Rb2][%cal Rb2d4,Rf2d4] } 8... O-O 9. Ne5 { Now white is starting to look for center and kingside attacking possibilities, because black's bishop on b7 is cut out from the kingside which will make white's attack more dangerous. } { [%csl Be5,Rb7][%cal Bf3e5] } 9... Re8 10. f4 { White converted the Pyramid into a Stonewall } { [%csl Rb2,Rc3,Rd4,Re3,Rf4][%cal Rb2d4,Re3d4,Re3f4] } 10... Nf8 11. O-O N6d7 12. Qh5 f6 13. Bxh7+ Nxh7 14. Qf7+ Kh8 15. Ng6# *
+
+
+[Event "London System Master Games!: ~ Carlsen - Giri"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Carlsen - Giri"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/7a4yCfNj"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 Bf5 3. e3 e6 4. Bd3 Bxd3 5. Qxd3 c6 6. Nd2 Nf6 7. Ngf3 Be7 8. O-O O-O 9. h3 Nbd7 10. a4 c5 11. a5 c4 12. Qe2 b5 13. axb6 axb6 14. Ne5 Nxe5 15. dxe5 Nd7 16. Qg4 Re8 17. h4 { Black can't take the pawn because of Rxa8 } { [%cal Re7h4,Ra1a8] } 17... f5 (17... Rxa1 18. Rxa1 Bxh4 19. Bh6 g6 20. Nf3) 18. Qh3 Rxa1 19. Rxa1 c3 20. bxc3 Qc7 21. c4 Nxe5 22. Qg3 Bd6 23. cxd5 (23. c5 bxc5 24. Ra6 { Threatening Rxd6 and then Bxe5 with an advantage to white } { [%csl Rd6,Re5][%cal Ra6d6,Rf4e5] }) 23... exd5 24. Nb3 Qxc2 25. Nd4 Qc8 26. h5 Qd7 27. Rb1 Bc7 28. f3 Qf7 29. Ra1 Bd6 30. Ra6 Qxh5 31. Rxb6 Nc4 32. Rxd6 Nxd6 33. Bxd6 Rxe3 34. Be5 Qg6 35. Qf4 Re1+ 36. Kf2 Ra1 37. Qd2 Ra8 38. Nxf5 Qe6 39. Qg5 g6 40. Nh6+ Kf8 41. Ng4 Ke8 42. Nf6+ Kf7 43. Nxh7 Ra4 44. Qd8 Ra2+ 45. Kg1 { Carlsen, M. - Giri, A., 1-0, 9th Masters Final 2016, https://lichess.org/751DRMPG } *
+
+
+[Event "London System Master Games!: * Jelic - NN"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D02"]
+[Opening "Queen's Pawn Game: London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Jelic - NN"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/9hAtBr5l"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 Nf6 2. Bf4 d5 3. Nf3 e6 4. e3 Be7 5. Bd3 O-O 6. O-O c5 7. c3 Nc6 8. Nbd2 { [%csl Gd2,Gd3,Gf3,Gf4,Re3,Rf2,Rd4,Rc3,Rb2] } 8... Nh5 { Black wants to eliminate white's active bishop. } { [%csl Rf4][%cal Rh5f4] } 9. Be5 { White cannot save the bishop, so he decided to do it in a central fashion. } { [%csl Ge5] } 9... Nxe5 10. Nxe5 { [%csl Ge5][%cal Yd1h5] } 10... Nf6 11. f4 { White converts the Pyramid into a Stonewall } { [%csl Rb2,Rc3,Rd4,Re3,Rf4][%cal Rb2d4,Re3d4,Re3f4] } 11... cxd4 12. exd4 b6 13. Qf3 Qc7 { If you notice, all of white's pieces are aiming to the kingside. That's where white will attack! } { [%cal Gc2h7,Gf3h5,Gf1f7,Gf3h3,Ga1e1,Gd2f3,Gf3e5,Gf3g5,Ge5f7,Ge5g6,Gf4e5,Gf4g5] } 14. g4 { White wants to disturb black's kingside defender } { [%csl Rg5,Rf6][%cal Rg4g5] } 14... Bb7 { Black spent two moves to develop this bishop, but to what effect? The bishop is blocked. } { [%csl Bb7,Bd5][%cal Bb7d5] } 15. g5 Nd7 16. Qh5 { [%cal Rd3h7,Rh5h7] } 16... g6 { Here white chose to sacrifice two pieces to attack black's king! } (16... f5) 17. Nxg6 fxg6 18. Bxg6 hxg6 19. Qxg6+ Kh8 20. Rf3 { White is going to slide the rook across and checkmate black. It's unstoppable! } { [%csl Rh3][%cal Rf3h3] } 20... Qxc3 21. bxc3 Rxf4 22. Rh3+ Rh4 23. Rxh4# *
+
+
+[Event "London System Master Games!: ~ Alonso - Mindeguia"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Alonso - Mindeguia"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/q8AoAYCi"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 Nf6 2. Bf4 d5 3. e3 e6 4. Nf3 Bd6 5. Bg3 Bxg3 6. hxg3 Nbd7 { [%cal Bc7c5] } 7. c4 { This looks like a Queen's Gambit Declined, but the dark squared bishops were traded, which favors white. } { [%csl Gf1,Rc8] } 7... b6 { [%csl Gb7][%cal Gc8b7] } 8. cxd5 exd5 { Now black's light squared bishop will be blocked when it comes to b7. } { [%csl Rd5][%cal Rc8b7,Rb7d5] } 9. Nc3 Bb7 10. Bd3 { Developing the pieces to their best squares. We don't have to get fancy! } { [%csl Gd3,Gc3,Gf3] } 10... Ne4 { Rh4 was played- Qc2 maybe gives white an even better game } { [%cal Gd1c2,Rh1h4] } 11. Rh4 (11. Qc2 { Putting more pressure on the e4 square } { [%csl Gc2][%cal Gc2e4,Gc3e4] } 11... Nxc3 12. Qxc3 { And, white still retains the open c file. } { [%cal Gc1c8] } 12... Rc8 { [%csl Bc5][%cal Bc7c5] } 13. b4 { [%csl Gc5][%cal Gb4c5,Gd4c5,Gc3c5,Rc7c5] } 13... h6 14. g4 Nf6 15. Bf5 Ne4 16. Qc2 Ra8 17. Rc1 { [%csl Rc7][%cal Rc1c7] } 17... O-O 18. Ne5 { In this case, all of white's pieces are happy and active. } { [%csl Ge5,Gf5,Gc2,Gc1,Gh1,Rf8,Rd8,Rb7,Ra8][%cal Gf5c8,Gc2h7,Gh1h8,Gc1c8] }) 11... Nxc3 12. bxc3 Qe7 13. Qa4 { [%cal Ba4e8] } 13... c6 { [%csl Gc6] } 14. c4 { White is attacking black's pawn structure } { [%csl Gc4,Rd5,Rc6][%cal Rc4d5] } 14... Qd6 15. cxd5 Qxd5 (15... cxd5 16. Ne5 Ke7 17. Rc1 { White still has an advantage here }) 16. Bc4 { Now another white piece gets even more active } { [%csl Gc4][%cal Gc4g8] } 16... Qd6 17. Ng5 { [%cal Rc4f7,Rg5f7] } 17... O-O { Now black's king is really } { [%csl Rg8] } (17... Rf8 18. Re4+ Kd8 19. Nxf7+ { [%cal Rf7d8,Rf7d6] } 19... Rxf7 20. Bxf7 Kc7 21. Rc1 { [%csl Gc1,Ge4,Ga4,Gf7,Rc7][%cal Gc1c7,Ga4d7,Ge4e8,Gf7d5,Gf7e8] }) 18. Qc2 { [%csl Rh7,Rg8][%cal Rc2h7] } 18... g6 19. Rxh7 { [%csl Rf7][%cal Rh7f7,Rg5f7,Rc4g8] } 19... Qf6 20. f4 b5 21. Bxf7+ { Black resigns } *
+
+
+[Event "London System Master Games!: * Rinaldi - Kaminskas"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Rinaldi - Kaminskas"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/48XrWGnL"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 { [%csl Rb2,Rc3,Rd4,Re3,Rf2][%cal Rf2d4,Rb2d4] } 4... e6 5. Nd2 Nbd7 6. Bd3 Be7 7. Ngf3 { Control of center and development complete } { [%csl Gf3,Gf4,Gd3,Gd2,Rc3,Rd4,Re3,Rf2,Rb2] } 7... O-O 8. Ne5 Ne8 { Perhaps black was intending to kick the knight with f6. } { [%cal Rf7f6] } 9. h4 { We saw this same idea in chapter 3. } 9... Nxe5 10. dxe5 Bd7 { Does white have all the ingredients for the Greek Gift? Let's see
+-We have a pawn on e5
+-h7 is protected and can be only by king
+-Queen has access to h5 } { [%csl Re5][%cal Rd3h7,Rd1h5] } 11. Bxh7+ { Greek Gift!! } 11... Kxh7 12. Qh5+ Kg8 13. Nf3 f6 14. Ng5 fxg5 15. hxg5 Bxg5 (15... Rf5 16. Qh7+ Kf8 17. g6) 16. Bxg5 Qb6 17. Qh7+ Kf7 18. Rh4 Nf6 19. exf6 { Black resigns. } { [%csl Rg7][%cal Rh7g7] } 19... Rg8 20. Qh5+ Kf8 21. fxg7+ Rxg7 22. Qh8+ Rg8 23. Rf4+ Ke8 24. Qxg8# *
+
+
+[Event "London System Master Games!: ~ Sielecksi - Hopper"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Sielecksi - Hopper"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/dppgIrE4"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+{ This was a blitz game played on the ICC Server }
+1. d4 d5 2. Bf4 Bf5 3. e3 Nf6 4. c4 e6 5. Nc3 c6 6. Qb3 { White has a slight advantage. } { [%csl Rf5,Rb7][%cal Rc8f5] } 6... Qc8 (6... Qb6 7. c5 Qxb3 8. axb3) 7. Rc1 { It is very natural to put your rook against your opponent's queen } { [%csl Bc8][%cal Bc1c8,Yc4d5] } 7... Nbd7 (7... a6 { This is another possible variation } 8. Nf3 Nbd7 9. h3 { [%csl Gf4] } 9... Be7 10. Be2 O-O 11. Nh4 Bg6 12. O-O dxc4 13. Nxg6 { [%csl Re7][%cal Rg6e7,Re7g8,Re7c8] } 13... hxg6 14. Bxc4 { White has the bishop pair, better central control and a central space advantage. } { [%csl Gc4,Gf4,Be3,Bd4] }) 8. Nf3 { [%csl Gf3] } 8... Be7 9. Be2 { White is completing development, a great idea in the London System (and in every other opening as well)
+In the opening, develop your pieces! } { [%csl Gf3,Ge2,Gf4,Gc3,Gc1,Gb3][%cal Ge1g1] } 9... O-O 10. O-O Nb6 11. c5 Nbd7 { White went on to win this game, with the idea of b4-b5 increasing space on the queenside
+This position is very easy to play for white, we have a slight edge with more space, very active pieces and clear plans. This is exactly the kind of position we want out of the London System! } { [%csl Rf5][%cal Gb2b4,Gb4b5,Rf3h4] } *
+
+
+[Event "London System Master Games!: * Bruno - Opacic"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Bruno - Opacic"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/DRnac4Kw"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 Nf6 3. e3 e6 4. Nf3 Be7 5. Bd3 c5 6. c3 { [%csl Rc3,Rd4,Re3,Rf2,Rb2] } 6... Nc6 7. Nbd2 { [%csl Gd2,Gd3,Gf4,Gf3,Re3,Rf2,Rd4,Rc3,Rb2] } 7... O-O { Some normal moves in this position are Ne5 or h3. But in this game, white played a novelty!! } { [%cal Bf3e5,Bh2h3] } 8. h4 { [%csl Rh4] } 8... Ng4 { This move is a blunder } { [%csl Rg4] } 9. Bxh7+ Kxh7 10. Ng5+ Bxg5 (10... Kg8 11. Qxg4 e5 12. Qh5 { [%csl Rh7][%cal Rh5h7] } 12... Bf5 13. dxe5 Qb6 14. O-O-O) 11. hxg5+ { [%cal Rh1h7] } 11... Kg6 12. Qxg4 Rh8 13. Rh6+ { Very amazing move!! Black is getting checkmated by force! } { [%cal Rg7h6,Rh8h6] } 13... gxh6 (13... Rxh6 14. gxh6+ { [%cal Bg6h7,Bg6f6] } 14... Kf6 (14... Kh7 15. Qxg7#) 15. Qg5# { [%cal Bg5e7,Bg5g7,Bg5e5] }) 14. gxh6+ { [%cal Bg6f6,Bg6h7] } 14... Kf6 (14... Kh7 15. Qg7#) 15. Qg5# { [%cal Bg5e7,Bg5g7,Bg5e5] } *
+
+
+[Event "London System Master Games!: * Johnsen - Kristiansen"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Johnsen - Kristiansen"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/NoExjIUj"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 Nf6 2. Bf4 d5 3. e3 e6 4. Nd2 Be7 5. Bd3 O-O 6. Ngf3 c5 7. c3 Nc6 8. Ne5 Qb6 9. Rb1 Rd8 10. Qf3 Bd7 11. Qh3 { [%csl Rh7,Gf6][%cal Rd3h7,Rh3h7,Gf6h7] } 11... Rac8 12. g4 g6 { [%csl Rg6,Rh7][%cal Rd3h7] } 13. Ndf3 cxd4 14. exd4 Ne8 (14... Nxe5 15. dxe5 Ne4 16. Be3 Qc7 17. O-O) 15. Nxf7 { Black resigns. } 15... Kxf7 16. Qxh7+ Kf8 (16... Ng7 17. Bxg6+ Kf6 (17... Kf8 18. Qh8#) 18. g5#) (16... Kf6 17. g5#) 17. Bxg6 { [%csl Rf7,Rh8][%cal Rh7f7,Rh7h8] } 17... Ng7 18. Qh8# *
+
+
+[Event "London System Master Games!: ~* Kovacevic - O'Donnell"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~* Kovacevic - O'Donnell"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/ybN2Q5h3"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 e6 3. e3 Nf6 4. Nf3 Be7 5. Bd3 { Maybe it's best to wait playing c3 - in some cases you may want to play c4 and play a more Queen's Gambit Declined type game with better development. } { [%csl Gc4][%cal Gc2c4,Rc2c3] } 5... O-O 6. Nbd2 b6 7. Ne5 Bb7 8. Qf3 Nbd7 9. h4 { White wants to attack! } { [%csl Rh4] } 9... Nxe5 10. dxe5 Nd7 11. O-O-O Nc5 { [%csl Rd3][%cal Rc5d3] } 12. Bxh7+ { Greek Gift!! } 12... Kxh7 (12... Kh8 13. Qh5 g6 14. Bxg6+ Kg8 15. Qh7#) 13. Qh5+ Kg8 14. Nf3 { [%csl Gg5][%cal Gf3g5] } 14... f6 15. Ng5 { [%csl Rg5] } 15... fxg5 16. hxg5 { The h-file has been opened up! } { [%csl Gg6][%cal Gh1h8,Gg5g6] } 16... Rf5 (16... Bxg5 17. Bxg5 Qd7 18. Bf6 Rac8 19. Qh7+ Kf7 20. Bxg7 Ke8 21. Bxf8 Qxh7 22. Rxh7 Kxf8 23. Rdh1 { [%csl Gf2,Gg2,Rc5,Rb7,Gh7] }) 17. g4 { [%csl Rf5][%cal Rg4f5] } 17... Rxg5 18. Bxg5 Bxg5 19. f4 Bh6 20. g5 Qe8 { [%csl Bh5] } 21. Qh4 Kh7 22. Rdg1 Ne4 23. Rg4 d4 24. gxh6 g5 25. fxg5 Qg6 26. exd4 Nf2 27. Rf1 Nxg4 28. Qxg4 Rg8 29. Rf6 Qxg5+ 30. Qxg5 Rxg5 31. Rxe6 Be4 32. Re7+ Kxh6 33. Rxc7 a5 34. c4 Rg2 35. b3 Kg6 36. e6 Kf6 (36... Rxa2 37. d5 Rc2+ 38. Kd1 Rc3) 37. d5 Rg8 38. Rb7 Ke5 39. Rxb6 Kd4 40. e7 Kc3 41. Kd1 Kd3 42. Ke1 Ke3 43. Rf6 a4 44. b4 a3 45. b5 Rc8 46. Ra6 Rh8 47. Rxa3+ Bd3 48. Rxd3+ Kxd3 49. Kf2 { Kovacevic, Vlatko - O'Donnell, Tom, 1-0, Toronto1, 1990, https://lichess.org/TXi5ix5h } 49... Re8 50. d6 Kxc4 51. d7 Rxe7 52. d8=Q *
+
+
+[Event "London System Master Games!: * Tseitlin - Liesmann"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Tseitlin - Liesmann"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/99JeLO2Y"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 Nf6 2. Bf4 e6 3. e3 d5 4. Nf3 Be7 5. Nbd2 c5 6. c3 Nc6 7. Bd3 O-O 8. O-O b6 9. Ne5 Bb7 10. Qf3 Rc8 11. Rad1 Nb8 { [%csl Gd7][%cal Gb8d7] } 12. Rfe1 Nbd7 13. Qh3 { [%cal Bd3h7,Bh3h7] } 13... Re8 14. Ndf3 h6 15. Bxh6 gxh6 16. Qg3+ (16. Qxh6 { This would not be the best game. } 16... Bf8 17. Qf4 Nxe5 18. dxe5 Nd7) 16... Kf8 17. Nxf7 Kxf7 18. Qg6+ Kf8 19. Qxh6+ Kg8 20. Ng5 { Black resigns. } 20... Ne5 21. dxe5 Rf8 22. exf6 Rxf6 23. Qh7+ Kf8 24. Qh8# *
+
+
+[Event "London System Master Games!: ~ Kramnik - Sjugirov"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Kramnik - Sjugirov"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/kztx5goa"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 cxd4 5. exd4 Bf5 6. Nf3 Nc6 7. Nbd2 e6 8. Qb3 Qc8 9. Nh4 Bg6 10. Nxg6 hxg6 11. Bd3 Nh5 12. Be3 Bd6 13. O-O-O a6 14. Kb1 b5 15. Qc2 Na5 16. Nf3 Nc4 17. Bc1 Qc7 18. Ng5 Nf4 19. Bf1 O-O-O 20. a4 Qb7 21. axb5 axb5 22. b3 Na5 23. Qa2 Nc6 24. g3 Nh5 25. Bd3 Kb8 26. Qe2 Na7 27. Bd2 Rc8 28. Kb2 Rc6 29. Ra1 Rf8 30. Ra2 Ra6 31. Rxa6 Qxa6 32. Ra1 Qb7 33. b4 Nf6 34. Ra5 Bc7 35. Bf4 Bxf4 36. gxf4 Qc7 37. Bxb5 Qxf4 38. Nf3 Ne4 39. Ne5 Rh8 40. Nc6+ Nxc6 41. Bxc6 Nxc3 42. Kxc3 Rh3+ 43. Kc2 Qxd4 44. Qb5+ Kc7 45. Qb7+ Kd6 46. Qb8+ Ke7 47. Qa7+ Qxa7 48. Rxa7+ Kd6 49. Ba4 Rh4 50. Kb3 Rh3+ 51. Kb2 Rh4 52. Rd7+ Ke5 53. Ka3 Kd4 54. Rxf7 Rxh2 55. b5 Kc5 56. Rc7+ { Kramnik, V. - Sjugirov, S., 1-0, Qatar Masters Open 2015, https://lichess.org/Z3VMQkkX } *
+
+
+[Event "London System Master Games!: * Boyle - Lane"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Boyle - Lane"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/F8b238iP"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 Nf6 3. e3 e6 4. Nd2 c5 5. c3 Nc6 6. Ngf3 Bd7 7. Bd3 a6 (7... Qb6 8. Rb1) 8. a4 Be7 9. Ne5 cxd4 10. exd4 O-O 11. Qf3 Re8 12. g4 g6 13. h4 Bf8 14. h5 Bg7 15. hxg6 { [%csl Gh1][%cal Gh1h8] } 15... hxg6 16. Bg5 Nb8 { [%cal Gd7c6,Gb8d7] } 17. Qh3 Bc6 18. Ndf3 Qb6 19. Bxf6 Bxf6 (19... Qxb2 20. Qh8+ Bxh8 21. Rxh8#) 20. Qh7+ Kf8 21. Qxf7# *
+
+
+[Event "London System Master Games!: ~ Danielsen - ???"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Danielsen - ???"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/ySVlX0tB"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 d5 2. Bf4 Nf6 3. e3 Bg4 4. f3 Bf5 5. c4 c6 6. Nc3 e6 7. Qb3 Qb6 8. c5 Qxb3 9. axb3 Nbd7 (9... Be7 { Another possibility } 10. b4 O-O 11. b5 Rc8 12. g4 Bg6 13. h4 h5 14. g5 Nfd7 15. Nge2 { White has a decent advantage here }) 10. b4 Be7 11. g4 Bg6 12. b5 O-O 13. bxc6 bxc6 14. Ba6 *
+
+
+[Event "London System Master Games!: ~ Staniszewski - Balutescu"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Staniszewski - Balutescu"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/61hojXFK"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:09:40"]
+
+1. d4 Nf6 2. Bf4 d5 3. e3 Bf5 4. c4 c6 5. Nc3 e6 6. Qb3 { [%cal Rd8b6,Rc4c5] } 6... b6 7. Nf3 Bd6 8. Ne5 O-O 9. Be2 Qe7 10. O-O { [%csl Rc6][%cal Rb8d7,Gf6d7] } 10... Nfd7 { [%cal Bd7e5,Bd6e5] } *
+
+
+[Event "London System Master Games!: ~ Carlsen - Caruana"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Carlsen - Caruana"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/Ux1JNr8b"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:46:22"]
+
+{ Thanks to @Dat_Das for suggesting this very interesting game! }
+1. d4 d5 2. Bf4 Nf6 3. e3 e6 4. Nf3 c5 5. c3 Nc6 6. Nbd2 Bd6 7. Bg3 O-O 8. Bb5 { Here Carlsen played a very interesting Bb5, as opposed to the normal Bd3. } { [%cal Gf1b5] } (8. Bd3 { [%csl Gd3] }) 8... Bxg3 9. hxg3 { [%cal Rh1h7] } 9... Qb6 { [%csl Gc6,Rb5][%cal Gb6c6,Rb6b5] } 10. a4 h6 (10... a6 { If black spends a move here, it won't be good } 11. Bxc6 bxc6 12. Qc2 Rb8 13. Rb1 h6 14. b4 cxb4 15. cxb4 { Everything is secure for white. } { [%csl Gb4][%cal Ge1g1] }) 11. O-O Ne7 12. Qb3 Qc7 13. a5 Bd7 14. Be2 Ng6 { Black is trying to avoid releasing the tension for as long as possible. } { [%csl Rc5][%cal Rc5c4,Rc5d4] } 15. Qa3 c4 { Oh! Caruana released the tension and played c4. This gives Carlsen a better result when playing e4 or b3 in the future. } { [%csl Rc4,Ge4,Gb3][%cal Ge3e4,Rc5c4,Gb2b3] } 16. b3 cxb3 17. Nxb3 Ne4 (17... Qxc3 18. Rfc1 { Queen is trapped } { [%csl Rc3] }) 18. Rfc1 Bc6 (18... Nxc3 19. Rxc3 Qxc3 20. Rc1 { Queen is trapped again } { [%csl Rc3] }) 19. c4 { Now white needs to play in the center to try and get an advantage. } 19... dxc4 20. Rxc4 Qd8 21. Nc5 Nd6 22. Rc2 Bd5 23. Bd3 { All white's pieces are homing in around the center, which is fanastic } { [%csl Gc5,Gc2,Gd3,Gf3,Gd4,Ge3][%cal Ge3e4] } 23... b6 24. e4 bxc5 25. exd5 exd5 26. dxc5 Ne4 27. c6 { [%csl Gc6] } 27... Qc7 28. Qb3 Rfd8 29. Qb7 Rac8 (29... Qxb7 30. cxb7 Rab8 31. a6 { Monster pawns } { [%csl Gb7,Ga6] }) 30. Rb1 Qxa5 31. c7 Rf8 32. Qb5 Qa3 33. Qxd5 { [%csl Gd5,Re4][%cal Rd3e4] } 33... Nc3 34. Rxc3 Qxc3 35. Bxg6 Rxc7 36. Ne5 Qc5 37. Bxf7+ Rfxf7 38. Rb8+ { Black resigns. Everything is falling apart. } *
+
+
+[Event "London System Master Games!: * So - Kramnik"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System, Steinitz Countergambit"]
+[StudyName "London System Master Games!"]
+[ChapterName "* So - Kramnik"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/AgSsgtYu"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "19:50:59"]
+
+1. d4 d5 2. Bf4 c5 3. e3 { [%anno "Dat_Das", dat_das] Here's that basic idea of meeting c5 with e3. } 3... Nc6 4. Nf3 Bg4 5. Nbd2 e6 6. h3 Bxf3 7. Nxf3 Bd6 8. dxc5 Bxf4 9. exf4 Qa5+ 10. c3 Qxc5 11. Bd3 Nf6 12. O-O O-O-O 13. b4 Qd6 14. b5 Na5 15. Ne5 Qc7 16. Qa4 Rhf8 17. Rfe1 Kb8 18. Qb4 Rc8 19. Rac1 Nc4 20. a4 Nxe5 21. fxe5 Nd7 22. a5 Qc5 23. Qf4 Ka8 24. a6 f5 25. c4 Nb6 26. cxd5 Nxd5 27. Qg3 Qxc1 28. Rxc1 Rxc1+ 29. Kh2 Rc7 30. Be2 h6 31. Bf3 Rd8 32. Qg6 Re7 33. Qh5 Kb8 34. Qh4 Red7 35. axb7 Kxb7 36. Qa4 Kb8 37. Qa6 Nb6 38. Qa2 Nd5 39. Bxd5 Rxd5 40. Qa6 Rxe5 41. b6 axb6 42. Qxb6+ Kc8 43. Qa6+ Kb8 44. Qb6+ Kc8 45. Qc6+ Kb8 46. Qb6+ { So, W. - Kramnik, V., 1/2-1/2, 5th Norway Blitz 2017, https://lichess.org/jfH3pc6f } *
+
+
+[Event "London System Master Games!: ~ Carlsen - Anand"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Carlsen - Anand"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/OCNxgxWy"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "20:04:34"]
+
+1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 Nc6 5. Nd2 e6 6. Ngf3 Bd6 7. Bg3 O-O 8. Bb5 { [%anno "Dat_Das", dat_das] Carlson seems to prefer developing the bishop to b5 rather than d3, perhaps because it attacks the knight that would support the pawn push e5 in the future. } { [%csl Rc6][%cal Rb5c6,Rb7c6] } 8... a6 9. Bxc6 { [%anno "Dat_Das", dat_das] What other reason would he have for capturing the knight on c6? } { [%cal Ye6e5] } 9... bxc6 10. Qa4 { Black's pawn structure is not the greatest. } { [%csl Rc6][%cal Ra4c6] } 10... Rb8 11. Qa3 Bxg3 12. hxg3 cxd4 13. cxd4 a5 14. O-O Qb6 15. b3 Ba6 16. Rfc1 Nd7 17. Qd6 Qa7 18. Rxc6 Bb5 19. Rc7 Rb7 20. Rac1 a4 21. Rxb7 Qxb7 22. Rc7 Qb8 23. Rxd7 Bxd7 24. Qxd7 { Carlsen, M. - Anand, V., 1-0, World Blitz 2016, https://lichess.org/OIb1JcmF } 24... axb3 25. Nxb3 { For example here, white has two knights and a pawn for the rook, and white should win this ending } { [%csl Gb3,Gf3,Ga2,Rf8] } *
+
+
+[Event "London System Master Games!: ~ Karjakin - Nakamura"]
+[Date "2018.05.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Karjakin - Nakamura"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/hpXAY8iM"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.14"]
+[UTCTime "21:22:56"]
+
+1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 e6 5. Nf3 Nc6 6. Nbd2 cxd4 7. exd4 Nh5 8. Bg5 { [%anno "Dat_Das", dat_das] This was a slight inaccuracy, allowing black's queen to develop while getting out of the way, leaving white with a rather misplaced bishop. } 8... f6 { [%anno "Dat_Das", dat_das] Nakamura, however, decided to move, his f-pawn instead, thus allowing his weakened kingside structure to make up for Karjakin's wasted move. e5 is a future plan stemming from f6. } { [%cal Gf6e5,Re6e5] } 9. Be3 Bd6 10. Bb5 O-O 11. O-O a6 12. Ba4 Bd7 13. Ne1 Nf4 14. g3 { [%anno "Dat_Das", dat_das] g3 is probably a mistake. } 14... Nh3+ 15. Kg2 e5 { [%anno "Dat_Das", dat_das] Because of the weakness of the h3 square created by playing g3, the knight becomes a fairly permanent institution for most of the game. } { [%cal Gd7h3] } 16. Bb3 Ne7 17. dxe5 fxe5 18. Ne4 Be6 19. Nd3 Bc7 20. Nec5 Bc8 21. Nb4 Kh8 22. Nxd5 Nf5 23. Ne4 b6 24. Nxc7 Qxc7 25. Bd5 Rb8 26. c4 Qe7 27. Qb3 Nd4 28. Bxd4 exd4 29. Qa3 Qd8 30. Rae1 Bf5 31. f4 b5 32. Qd3 bxc4 33. Qxd4 c3 34. bxc3 Rb2+ 35. Nd2 Qf6 36. Re2 Bg4 37. Qxf6 gxf6 38. Bf3 Bd7 39. Ne4 Rb6 { [%anno "Dat_Das", dat_das] This is a very interesting point in the game, in which Karjakin could have won a full piece, but blundered and instead only got two minors for a rook. } 40. Rd1 { [%anno "Dat_Das", dat_das] Blunder. Karjakin did not notice the tactics that could occur with Rg8 pinning the g-pawn: Notice what happens next. } 40... Rg8 { [%anno "Dat_Das", dat_das] Before the knight was trapped, but now he has an escape by capturing f4 with a fork against the other white rook. If Karjakin had moved the other rook to the d-file, Rg8 would have been impotent as there would be no fork. Notice that if the king side steps the pin and fork, the black bishop move, with tempo on the rook, and the king would not be there to attack the trapped knight. } { [%csl Ye2][%cal Rg8g2,Ge2d2,Bh3f4,Bf4e2,Bf4g2] } 41. Rxd7 Nxf4+ { [%cal Rg8g2,Bf4e2,Bf4g2] } 42. Kf2 Nxe2 43. Bxe2 f5 44. Nc5 Rb2 45. a4 Rc8 46. Ne6 Ra2 47. c4 Rxa4 48. c5 Re4 49. Rd6 a5 50. c6 Kg8 51. c7 Kf7 52. Rd8 { Karjakin, Sergey - Nakamura, Hi, 1-0, 5th Norway Blitz 2017, https://lichess.org/SWSF1UUp } *
+
+
+[Event "London"]
+[Site "London ENG"]
+[Date "1899.06.30"]
+[Round "23"]
+[White "Joseph Henry Blackburne"]
+[Black "Wilhelm Steinitz"]
+[Result "0-1"]
+[Variant "Standard"]
+[ECO "D02"]
+[Opening "Queen's Pawn Game: London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "* Blackburne - Steinitz"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/iRN8vSrf"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+
+{ This is a game white lost, but it's pretty nice. Thanks to @Water_Flame for suggesting this game! }
+1. d4 d5 2. Nf3 { Bf4 is better. Nf3 is a common misconception on the way to play the London System. } 2... Nf6 3. Bf4 c5 4. e3 Nc6 5. c3 Qb6 6. Qc1 (6. Qb3 c4 7. Qc2 Bf5 8. Qc1 { This would have been better than what white played in the game. At least the tension in the center has been removed. } (8. Qxf5 Qxb2)) 6... Bf5 7. dxc5 Qxc5 8. Nbd2 Rc8 9. Nb3 Qb6 10. Nbd4 Be4 11. Nxc6 bxc6 12. Nd2 Bf5 13. Be2 Nd7 14. O-O e5 15. Bg3 h5 16. h3 g5 17. e4 Be6 18. b4 g4 19. h4 Bh6 20. a4 dxe4 21. a5 Qc7 22. Qc2 f5 23. Nc4 Bd5 24. Rfd1 f4 25. Bh2 Nf6 26. g3 O-O 27. gxf4 exf4 28. Bf1 Qg7 29. Kh1 e3+ 30. Rxd5 cxd5 31. Nd6 Ne4 32. Nxe4 dxe4 33. fxe3 g3 34. Bh3 Rxc3 35. Qa2+ Kh8 36. Rg1 Qf6 37. Rd1 gxh2 38. b5 Rxe3 39. b6 axb6 40. a6 f3 41. a7 f2 42. Rf1 Re1 43. Qc4 e3 44. Qe4 e2 45. a8=Q Rxa8 46. Kxh2 Qd6+ { 0-1 White resigns. } 0-1
+
+
+[Event "London System Master Games!: ~ Carlsen - Wojtaszek"]
+[Date "2018.05.15"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Carlsen - Wojtaszek"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/5IhxoWZq"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.15"]
+[UTCTime "14:09:16"]
+
+1. d4 Nf6 2. Bf4 d5 3. e3 c5 4. c3 Nc6 5. Nd2 cxd4 6. exd4 Bf5 7. Qb3 Qc8 8. Ngf3 e6 9. Nh4 Be4 10. Nxe4 Nxe4 11. Nf3 Bd6 12. Bxd6 Nxd6 13. Bd3 Qc7 14. Qc2 O-O-O { [%anno "Dat_Das", dat_das] Note that if white were to take on h7 here, g7 would trap the bishop. } 15. O-O (15. Bxh7 g6) 15... h6 16. a4 { [%anno "Dat_Das", dat_das] This move is a bit of an inaccuracy, because b3 is now a hole, and also, it doesn't really do anything. Rc1 would have been more productive, preparing a future c4 move. } 16... Kb8 17. Rfe1 Rc8 { [%anno "Dat_Das", dat_das] This mistake immediately gave white (Carlsen) a decisive advantage, probably because it is simply a rather unproductive move. White is preparing a forceful queenside attack, and thus black should have tried to develop a counter attack on the kingside. Additionally, when forming batteries, the queen rarely likes to be in the front of the group. } { [%csl Rb4][%cal Rb2b4,Gc6b4,Yc3b4,Bc8c2] } 18. Qd1 { [%anno "Dat_Das", dat_das] This move exists mostly to prepare b4, as playing it immediately would lose to 18. ... Nxb4 19. cxb4 Qxc2 20. Bxc2 Rxc2 } 18... Rhe8 { [%anno "Dat_Das", dat_das] Looking to play e5, but this is easily negated with Ne5, which is actually one of the key ideas in the London System. } 19. Bf1 { [%anno "Dat_Das", dat_das] I understand this is Carlsen here, but this move seems rather useless and gives away much of his advantage.. Ne5 is better. The chess engine suggests h3, possibly to negate future kingside counter-play. } 19... Re7 20. Rc1 Rd8 21. Re2 { [%anno "Dat_Das", dat_das] This is simply a mistake. White has committed atrocities to his bishop, first backing into f2 and then blocking it up with the rook. This gives black immediate equality, if not a slight advantage. } { [%csl Rf1] } 21... Ne4 { [%anno "Dat_Das", dat_das] Black responds with his own mistake, by not taking advantage of whites bad move with immediate kingside counter-play. g5 would have been infinitely better. The knight looks powerful, but it doesn't actually do anything. } { [%cal Re4c3,Gb2c3,Re4d2,Gc1c3,Re4f2,Re4g3,Ge2f2,Gg1f2] } 22. b4 { [%anno "Dat_Das", dat_das] The rest of the game continues with Carlsen continuing his powerful queenside attack, and Wojtaszek resigns soon thereafter. } 22... Ng5 23. Ne1 e5 24. b5 Na5 25. Rxe5 Rxe5 26. dxe5 Qxe5 27. c4 Ne6 28. Nf3 Qf4 29. cxd5 Rxd5 30. Qxd5 Qxc1 31. g3 Qc5 32. Qd7 Qf8 33. Ne5 Nc5 34. Qd5 Kc7 35. Nxf7 Nxa4 36. Qe5+ Kb6 37. Nd6 Nc5 38. Ne8 { Carlsen, M. - Wojtaszek, R., 1-0, 20th European Teams, 2015, https://lichess.org/4Y0qan8k } 38... Qf7 39. Qd6+ Nc6 40. bxc6 bxc6 (40... Qxf2+ 41. Kxf2 Ne4+ 42. Ke3 Nxd6 43. Nxd6 Kxc6 44. Nf5) 41. Qd8+ *
+
+
+[Event "London System Master Games!: ~ Williams - Rozentalis"]
+[Date "2018.05.16"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Williams - Rozentalis"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/DR3dXBUr"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.16"]
+[UTCTime "11:05:12"]
+
+{ Another game played by Simon Williams, also known as GingerGM. }
+1. d4 Nf6 2. Bf4 e6 3. e3 b6 { This setup with Nf6, e6 and b6 is very common if you're playing someone who plays the Nimzo/Queen's Indian Defense } 4. Nf3 Bb7 5. Nbd2 Be7 { In this variation, as soon as the bishop moves to e7, it's time for white to play h3. } 6. h3 O-O 7. Bd3 c5 8. c3 { White waits to play c3 only after black plays c5. Now white completed his pyramid and basic development . } 8... d6 9. O-O Nbd7 10. Bh2 { This is just a prophylactic move - the bishop gets out of the way of any attakcing e5 move or knight move that might happen later. } 10... cxd4 11. exd4 { In a post-game analysis, Mr. Williams pointed out that he regretted capturing with the e pawn, because if you capture with the c pawn then you still have the option of putting your e pawn to e4.
+I think both recaptures have their merits. } (11. cxd4 Re8 12. Qe2 Bf8 13. Rfd1 e5 14. dxe5 dxe5 15. e4 a6 16. Bc4 b5 17. Bb3 Qb6) 11... Re8 12. Re1 Bf8 13. Qc2 h6 14. a4 { Williams reported that when he played a4 he didn't have much of a plan.
+It's better to have a bad plan then to have no plan. } 14... Qc7 15. Re2 Bc6 16. Rae1 Qb7 17. b4 Rac8 18. Qb3 a5 19. b5 Bxf3 20. Nxf3 Nd5 21. Rc1 N7f6 22. Bb1 Qc7 23. c4 Qb7 24. Ne1 Nb4 25. Nd3 d5 26. Nxb4 Bxb4 27. Qf3 Qe7 28. Rec2 Ba3 29. Rd1 dxc4 30. Qe2 c3 31. Qd3 Bb4 32. Be5 g6 33. Re2 Nd5 34. Qg3 Kh7 35. h4 h5 36. Bc2 Red8 37. Qf3 f5 38. g4 hxg4 39. Qg3 Bd6 40. h5 Bxe5 41. hxg6+ Kg7 42. Rxe5 Qf6 43. Rde1 Nc7 44. Bxf5 exf5 45. Re7+ Kxg6 46. Rxc7 c2 47. d5 Rxc7 48. Qxc7 Rxd5 49. Qxc2 g3 50. fxg3 Qd6 51. Qb3 Rd3 52. Qg8+ Kf6 53. Kh2 Rd2+ 54. Kh3 Rh2+ 55. Kxh2 Qd2+ 56. Kh3 Qxe1 { At this point, the two players agreed a draw. But on further analysis, white seems to be better here after Qd8+! } 57. Qd8+ Kg7 (57... Kf7) 58. Qg5+ Kh8 59. Qxf5 { [%csl Gg3,Rb6,Ra5] } *
+
+
+[Event "London System Master Games!: ~ Carlsen - Topalov"]
+[Date "2018.05.16"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System, Steinitz Countergambit"]
+[StudyName "London System Master Games!"]
+[ChapterName "~ Carlsen - Topalov"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/8bvLtg4O"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.16"]
+[UTCTime "15:05:45"]
+
+1. d4 d5 2. Bf4 c5 3. e3 Nc6 4. c3 e6 5. Nf3 Bd6 6. Bg3 Nge7 7. Bd3 h6 8. dxc5 Bxc5 9. Nbd2 O-O 10. O-O Nf5 11. Bxf5 exf5 12. Nb3 Bb6 13. Qd3 Be6 14. Rfd1 Qf6 15. Qb5 Qe7 16. a4 Rfc8 17. a5 Bd8 18. a6 Bb6 19. axb7 Qxb7 20. Nc5 Qe7 21. Nd3 g5 22. Nde5 Nd8 23. h4 f6 24. Nd3 Nc6 25. Ra6 Qe8 26. Rda1 f4 27. exf4 g4 28. f5 Bxf5 29. Nd2 Qf7 30. Nf4 Ne7 31. Re1 Re8 32. c4 Rad8 33. c5 Bd7 34. Qb4 Nc6 35. Rxe8+ Rxe8 36. Qc3 d4 37. Qc1 Bd8 38. Nc4 Bc7 39. Nd6 Bxd6 40. cxd6 d3 41. Nxd3 Nd4 42. Nf4 Bb5 43. Ra3 a6 44. Kh2 Nf5 45. Qc7 Nd4 46. Rc3 Ne6 47. Nxe6 Qxe6 48. Bf4 Qf5 49. Kg3 h5 50. Rc5 Qd3+ 51. Kh2 Qg6 52. d7 { Carlsen, M. - Topalov, V., 1-0, GCT Blitz Paris 2017, https://lichess.org/1DUU3NNz } *
+
+
+[Event "London System Master Games!: Chapter 30"]
+[Date "2018.05.21"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A45"]
+[Opening "Indian Defense: Accelerated London System"]
+[StudyName "London System Master Games!"]
+[ChapterName "Chapter 30"]
+[ChapterURL "https://lichess.org/study/GNlZ2WKx/GEptVIGP"]
+[Annotator "https://lichess.org/@/FunnyAnimatorJimTV"]
+[UTCDate "2018.05.21"]
+[UTCTime "15:28:31"]
+
+1. d4 Nf6 2. Bf4 d5 3. e3 c5 4. c3 Nc6 5. Nd2 Bf5 6. Qb3 Qb6 7. dxc5 Qxb3 8. axb3 e5 9. Bg3 Bxc5 10. Ngf3 *
+
+

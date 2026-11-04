@@ -1,0 +1,729 @@
+[Event "🏆 French Defense Repertoire 🏆: French Defense Introduction"]
+[Site "https://lichess.org/study/xSou7xMc/BDDVM8Be"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "French Defense Introduction"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/fO7KPKZY"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+{ This is a full repertoire on the French Defense. My twin brother, NM @Teho120, is a big believer in the French, and he contributed a lot in creating this opening repertoire with me.
+
+❤️Please give this study a like (Heart) and share with others! }
+1. e4 e6 2. d4 d5 { The French defense is a very solid opening. Some key points to remember:
+1) c7-c5 is a common pawn break in the opening to challenge white's center.
+2) the c8 bishop is frequently the worst piece.
+3) The best way to attack a pawn chain is at it's base. More on this later.
+4) Pawn structures will frequently be very closed, so there will be a lot of slow strategic maneuvering of pieces. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: ** Sample Game **"]
+[Site "https://lichess.org/study/xSou7xMc/T8i0GcWb"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "** Sample Game **"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/HOSABROn"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+ *
+
+
+[Event "13th olm final A"]
+[Site "Munich FRG"]
+[Date "1958.10.19"]
+[Round "8.4"]
+[White "Peter Hugh Clarke"]
+[Black "Tigran Vartanovich Petrosian"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C02"]
+[Opening "French Defense: Advance Variation, Main Line"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Peter Hugh Clarke - Tigran Vartanovich Petrosian"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/HZhTFFRV"]
+
+1. e4 e6 2. d4 d5 3. e5 c5 4. c3 Nc6 5. Nf3 Qb6 6. a3 c4 { This c5-c4 advance is very common in the Advance variation. Black hopes to block up the queenside in hopes of taking advantage of the light squares in white's position with his minor pieces. Black also hopes closing up the queenside would allow his king to O-O-O safely. } 7. g3 Bd7 8. Bg2 O-O-O 9. O-O Na5 { This knight maneuver looks to fill the hole on b3, but also prevents white from ever chipping away at the center with b2-b3. Black's goal here is to restrict any activity from white on the queenside. } 10. Nbd2 h6 11. Re1 Ne7 12. Nf1 Nf5 13. Ne3 Nxe3 14. Rxe3 Be7 15. Re1 Qb3 16. Qe2 Ba4 { The queenside is plugged up and completely in control by black. This also means his king is very safely placed on the queenside with no harm from white. Now black can turn his attention fully to the kingside. } 17. Be3 Kb8 18. Rad1 Qc2 19. Rd2 Qf5 20. Rf1 g5 21. h3 h5 22. Nh2 Rdg8 { Black's pieces are shuffling to the kingside where the action will take place for the remainder of the game. } 23. g4 Qg6 24. Bf3 hxg4 25. Bxg4 Nc6 { The knight has done it's duty restricting play on the queenside and now joins the other pieces in the attack on the white king. It's important to note that black cannot be too careless - such as also retreating the bishop on a4 towards the kingside as well - as white can strike with b2-b3, opening up the b-file towards black's king. } 26. f3 Bd8 27. Bf2 Ne7 28. Re1 Rh6 29. Nf1 Rgh8 30. Bg3 Rxh3 { Strong exchange sacrifice, which Petrosian was very fond of doing at the right moments. } 31. Bxh3 Rxh3 32. Qg2 Qh7 33. Ne3 Ng6 34. Ng4 Nf4 35. Bxf4 gxf4 36. Kf1 Rg3 37. Qf2 Qh3+ 38. Ke2 Rg2 39. Rg1 Rxf2+ 40. Nxf2 Qh7 41. Rh1 Qg6 { 0-1 White resigns. } 0-1
+
+
+[Event "🏆 French Defense Repertoire 🏆: *** Important Themes ***"]
+[Site "https://lichess.org/study/xSou7xMc/I98lgcxU"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "*** Important Themes ***"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/n4zxmnI4"]
+[FEN "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+ *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Theme #1"]
+[Site "https://lichess.org/study/xSou7xMc/ALcBWsq0"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Theme #1"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/zk1whRCY"]
+[FEN "r1bqkbnr/pp3ppp/2n1p3/2ppP3/3P4/2P2N2/PP3PPP/RNBQKB1R b KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+{ Due to the relatively closed nature of the French Defense, understanding of pawn structure is extremely important. The first theme is "Attack the pawn chain at its base because it is the weakest". }
+1... Qb6 { Hitting the current base of the chain (b2) } 2. Be2 Nge7 3. Na3 (3. O-O { White is clearly oblivious of what's coming up next. } 3... cxd4 4. cxd4 Nf5 { There is a new base of the pawn chain: d4! Now either the d4 pawn or b2 pawn is lost for White. }) 3... cxd4 4. cxd4 Nf5 { Hitting the new base of the pawn chain, the d4 pawn. White can defend it with Nc2 though, and the game continues. However, this principle regarding pawn chains drives many of Black's middlegame plans. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Theme #2"]
+[Site "https://lichess.org/study/xSou7xMc/fb13TLtk"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Theme #2"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/Lrn77O4k"]
+[FEN "rnbqkb1r/pp1n1ppp/4p3/2ppP3/3P4/2PB4/PP1N1PPP/R1BQK1NR b KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+{ In contrast to Theme #1, attacking a pawn chain at its head can be beneficial to disrupt the chain and create open files and diagonals as a result of the pawn break. }
+1... Nc6 2. Ne2 cxd4 3. cxd4 f6 { The f6 pawn break is ideal when White cannot comfortably keep up the pawn chain with f4. As a result, this forces White to concede with exf6 or enter some tactical complications as seen below. } 4. f4 (4. exf6 Nxf6 { Qxf6 is also playable. This leads to a theoretical main line of the French Tarrasch with 3. Nf6. This is not my recommendation in this repertoire, but it is sound and quite popular at all levels. }) 4... fxe5 5. fxe5 (5. dxe5 { Creating a new chain, but at the cost of severely weakening the g1-a7 diagonal, which Black can easily take advantage of with Bc5 and Qb6 in the near future }) 5... Nxd4 6. Nxd4 Qh4+ { Picking up a pawn in the process after Qxd4. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Theme #3"]
+[Site "https://lichess.org/study/xSou7xMc/RfzMcv7Q"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Theme #3"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/Mp0qXS78"]
+[FEN "r1bq1k1r/pp1n1pp1/4p2p/3pP3/2pP4/2P2N2/P1PQBPPP/R3K2R b KQ - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+{ This is a typical pawn structure in the MacCutcheon French, which I recommend against the Classical Variation. White's doubled c-pawns is their only weakness, so naturally, Black's plan is to target them. }
+1... Qa5 2. g4 Nb6 3. Qe3 Qa3 4. g5 Na4 { Pieces are piling up on c3, forcing the White king to walk to defend it. } 5. Kd2 b5 { It is now a race for Black's queenside play versus White's attempt to break open the kingside. See Romanov - Nepomniachtchi for the complete game. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Theme #4"]
+[Site "https://lichess.org/study/xSou7xMc/n74P0X3l"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Theme #4"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/TQzl4LLh"]
+[FEN "r1bqk2r/pp2bppp/2n1pn2/2pp4/4P3/3P1NP1/PPPN1PBP/R1BQK2R w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+{ This is one of the defining setups of the Kings Indian Attack. The theme here is to delay castling in order to maintain flexibility for a potential kingside pawn storm. It can be quite deadly if White is not prepared for it }
+1. O-O b6 { Intentionally delaying kingside castling. As a friendly note: Castling is totally fine. This is just an interesting idea worth mentioning! } 2. Re1 Bb7 3. e5 Nd7 4. Nf1 { White is unaware of any of Black's ambitions and continues playing Kings Indian attack style. This is where the surprise attack comes in. } 4... g5 { A kingside pawn storm with h5 + g4 or h4 will break open the h- and g-files. Black typically follows up with 0-0-0 and utilizing the open files for an attack. Black scores quite well in practice. } 5. h3 h5 *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Theme #5"]
+[Site "https://lichess.org/study/xSou7xMc/ZIrEApSj"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Theme #5"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/C4fLu2fT"]
+[FEN "r1bq1rk1/pp1nbppp/2n1p3/3pPP2/2pP4/2N1BN2/PPPQ2PP/2KR1B1R b - - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+{ This position arises in the Classical variation with 4. e5, where White castles long really early on. Here, you can punish White's early commitment of the king to the queenside with a nifty move: }
+1... b5 { Gambiting a pawn to get a quick attack going. White has no good option. Accepting the gambit will give a strong initiative for Black after Rb8, while declining the gambit will just allow b4 next move. } 2. Nxb5 Rb8 3. Nd6 Bxd6 4. exd6 Nf6 { With a dominating position. It's quite surprising to me how common this mistake is in practice. See Classical Variation with 4. e5 part 2 below for a more detailed analysis. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Theme #6"]
+[Site "https://lichess.org/study/xSou7xMc/pyOBHgLK"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "From Position"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Theme #6"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/2st2AeY1"]
+[FEN "r1bqkb1r/pp1n1ppp/2n1p3/2ppP3/3P1P2/2N2N2/PPP3PP/R1BQKB1R w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+{ Here is a must-know trap commonly seen in the Classical Variation, but it is prevalent in many of these setups. }
+1. Be2 { Seemingly normal, but it is a mistake since White's pawn structure falls real quick, and tactics favor Black. } 1... cxd4 2. Nxd4 Ndxe5 3. fxe5 (3. Nxc6 Nxc6 { The boomerang knight snatches a pawn in the process }) 3... Qh4+ { Picking up a pawn and White's e5 pawn will soon fall as well. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: ***  Sidelines  ***"]
+[Site "https://lichess.org/study/xSou7xMc/Vi0f7boS"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "*** Sidelines ***"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/bePrmi3T"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+ *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Wing Gambit attempt"]
+[Site "https://lichess.org/study/xSou7xMc/OW1PKbDT"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense: Wing Gambit"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Wing Gambit attempt"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/fHrHzz7m"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+1. e4 e6 2. Nf3 d5 3. e5 c5 4. b4 { The French Wing Gambit. White offers the b-pawn in order to establish firm control over the central pawn chain. } 4... b6 { NM Teho120 recommends b6 to avoid all of the sharp Wing Gambit theory and maintains the c5 pawn and makes White's b4 move quite awkward. } (4... cxb4 5. a3 bxa3 6. d4 { This is the ideal structure White is aiming for. At the expense of some queenside pawns, White gets a stable pawn chain and easy development in preparation for a kingside attack. }) 5. bxc5 bxc5 6. c3 Nc6 7. d4 Qa5 { You can argue that removing the b-pawns favor Black since now the base of the pawn chain for White is c3, which is more vulnerable. Meanwhile, Black's b-pawn did not contribute to his pawn chain. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Kings Indian Attack"]
+[Site "https://lichess.org/study/xSou7xMc/zLH13rxX"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense: King's Indian Attack"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Kings Indian Attack"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/ctpHU3q3"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+1. e4 e6 2. d3 { 2. d3 signals a Kings Indian Attack, a very popular choice by Fischer in his prime. My suggestion for Black is to be wary of when to kingside castle and when to possibly delay it. Often times, your king is very safe where it is on e8. The typical plan is to expand on the queenside with pawn storms while White does so on the kingside. } 2... d5 3. Nd2 (3. Qe2 { Qe2 is another way to play the Kings Indian Attack to later place the knight to c3 instead of d2. } 3... Nf6 4. Nf3 Be7 5. g3 b5 { Delaying castling and rushing the bishop to the f1-a6 diagonal to annoy the White queen. I've faced this as White before and it is quite frustrating to play against so naturally here is the recommendation for Black. } 6. Bg2 b4 7. O-O dxe4 8. Ne5 (8. dxe4 Ba6) 8... O-O { Comfortable position for Black }) 3... c5 4. Ngf3 Nc6 5. g3 Nf6 6. Bg2 Be7 7. O-O b6 { This is the topic of Theme #4 above to delay castling in order to maintain flexibility. } 8. Re1 Bb7 9. e5 (9. c3 Qc7 10. a3 dxe4 11. dxe4 Rd8 { Still delaying castling and playing actively in the center and queenside. }) 9... Nd7 10. Nf1 g5 11. h3 h5 *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Nf3 + Nc3"]
+[Site "https://lichess.org/study/xSou7xMc/pysEh5qO"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense: Two Knights Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Nf3 + Nc3"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/SawGLn48"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+1. e4 e6 2. Nc3 d5 3. Nf3 { Double knight development is common but harmless in my opinion. It is rare to see knights developed to f3 and c3 in any main line French since White usually wants to build a pawn chain with either c3 or f4. These early knight moves hinders both plans. } 3... Nf6 4. e5 Nfd7 5. d4 c5 { Now White cannot keep the pawn chain with c3. } 6. dxc5 Nc6 7. Bf4 Nxc5 8. Bd3 Be7 9. O-O (9. h4 { White could also anticipate a g5 push and stop it first. Here, I suggest just switching gears and go for queenside play with the b2 pawn as the main target. } 9... Bd7 10. h5 h6 11. Rh3 Qb6) 9... g5 { Again, we see a thematic plan of g5! h5 follows and a nice kingside attack has been started. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Second move sidelines"]
+[Site "https://lichess.org/study/xSou7xMc/trdlbMIH"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C00"]
+[Opening "French Defense: Steiner Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Second move sidelines"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/vyEmwB7f"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+1. e4 e6 2. c4 { 2. c4 is likely the most serious second move sideline, since I play it myself (although through a different move order: 1. c4 e6 2. e4) } (2. b3 { An attempted gambit line which can lead to difficult defense positions if accepted. My solution is the same as the Wing Gambit: Decline the gambit and make White's gambit attempt look out of place. } 2... d5 3. Bb2 Nc6 4. exd5 exd5 5. Nf3 Bg4 6. Be2 { Hard to say if the fianchetto White Bb2 is strong here. You can castle long to avoid its scope. }) (2. Qe2 { Likely transposes back to the Qe2 Kings Indian Attack. See above chapter } 2... Be7 3. Nf3 d5 4. d3 Nf6 5. g3 b5 6. Bg2 b4 7. O-O dxe4 8. Ne5 (8. dxe4 Ba6) 8... O-O) 2... d5 3. exd5 exd5 4. cxd5 (4. d4 { Transposes back to the French Exchange 4. c4 line below. }) 4... Nf6 5. Nc3 (5. Bb5+ Nbd7 6. Nc3 a6 7. Ba4 b5 8. Bb3 b4 9. Nce2 Bd6 { Black will ultimately regain the pawn and have a comfortable middlegame. }) 5... Nxd5 *
+
+
+[Event "🏆 French Defense Repertoire 🏆: ***  Main Lines  ***"]
+[Site "https://lichess.org/study/xSou7xMc/z1aTbLQC"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "*** Main Lines ***"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/sGp28XXt"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+ *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Draw Please? No. French Exchange"]
+[Site "https://lichess.org/study/xSou7xMc/iInd2vCN"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C01"]
+[Opening "French Defense: Exchange Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Draw Please? No. French Exchange"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/XObMEkZE"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+1. e4 e6 2. d4 d5 3. exd5 { Often the plan of a lower rated player in order to simplify into a drawn endgame. With this in mind, my repertoire will involve a setup that avoids symmetry. } 3... exd5 4. Nf3 Nc6 { Already deviating from symmetry on move 4 } 5. Bd3 Bd6 6. O-O Nge7 7. c3 Bg4 8. Bg5 (8. Re1 Qd7 9. b4 O-O { 0-0-0 would be just too risky since it walks right into White's queenside pawn storm. } 10. Bg5 Ng6 { Although the position is still somewhat symmetrical in terms of pawn structure, the piece imbalance allows for creative attacking play. }) 8... f6 9. Bh4 Qd7 10. Nbd2 O-O-O { 0-0-0 if White has played Bg5-h4 since you can speed up your kingside pawn storm while chasing the white Bishop. Otherwise White's queenside pawn storm will be faster. } 11. b4 Nf5 12. Bg3 Nxg3 13. hxg3 h5 14. Qa4 Kb8 *
+
+
+[Event "🏆 French Defense Repertoire 🏆: French Exchange - 4. c4"]
+[Site "https://lichess.org/study/xSou7xMc/nsguN1lh"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C01"]
+[Opening "French Defense: Exchange Variation, Monte Carlo Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "French Exchange - 4. c4"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/ZvHpDlE2"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+1. e4 e6 2. d4 d5 3. exd5 exd5 4. c4 Nf6 5. Nc3 Be6 { This somewhat rare move always bugs me when I play on the White side. It really forces the c-pawn to make a commitment right away. } 6. c5 { Logical move to maintain a pawn chain and hem in the Be6. However, the pawn chain will be undermined next, which leads to no advantage at all for White } (6. cxd5 Nxd5 7. Nf3 Be7 8. Bd3 O-O 9. O-O Nc6 10. Re1 Re8 { Typical isolated queen pawn position. The game can get dynamic from here, but the positino is more or less equal. }) 6... b6 7. cxb6 (7. b4 a5 { The classic dilemma for White since a3 is not possible due to the undefended Ra1, and b5 drops the c5 pawn. }) 7... axb6 { Black gets a comfortable position with an open a-file. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Classical Variation with 4. e5"]
+[Site "https://lichess.org/study/xSou7xMc/CsbJ94Pp"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C11"]
+[Opening "French Defense: Steinitz Variation, Boleslavsky Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Classical Variation with 4. e5"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/3XglZLZC"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. e5 Nfd7 5. f4 c5 6. Nf3 Nc6 7. Be3 (7. Be2 { Of course Be2 loses a pawn. See Theme #6 above for a refresher. } 7... cxd4 8. Nxd4 Ndxe5) 7... Be7 { I recommend this move due to its flexibility. It does not reveal any of your future plans and can be quite sneaky... } 8. Qd2 O-O 9. dxc5 Qa5 10. a3 (10. O-O-O b6 11. Bb5 Nb4 12. a3 bxc5) 10... Bxc5 11. Bxc5 Nxc5 12. O-O-O (12. b4 Nxb4 { Taking advantage of the undefended Ra1 }) 12... Bd7 13. Kb1 Rfc8 14. Be2 (14. b4 { b4 is still not possible } 14... Qxa3 15. bxc5 Nb4 { And White's pieces are far too tangled up to stop against Black's rather simple plan of Rxc5 and Ra5 }) 14... b5 { Sacrificing a pawn to open up the b-file. The attack is rolling fast. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Classical with 4. e5 part 2"]
+[Site "https://lichess.org/study/xSou7xMc/QuR2yYuD"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C11"]
+[Opening "French Defense: Steinitz Variation, Boleslavsky Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Classical with 4. e5 part 2"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/oMWvxoEg"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:52:17"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. e5 Nfd7 5. f4 c5 6. Nf3 Nc6 7. Be3 Be7 8. Qd2 O-O 9. O-O-O { Premature castling signals a queenside pawn storm coming up } 9... c4 10. f5 (10. g4 b5 11. Kb1 b4 12. Ne2 { With the same idea as the main variation }) 10... b5 { We reach the same position as seen in Theme #5 above } 11. f6 { An interesting attempt to scrape together some counterplay, but it's harmless in comparison with Black's attack. } (11. Nxb5 Rb8 12. Nd6 Bxd6 13. exd6 Nf6) 11... gxf6 12. Bh6 fxe5 13. dxe5 Ndxe5 14. Bxf8 Bxf8 { Sacrificing the exchange here is wise since the dark squared bishop will now be a menace along the c1-h6 and a1-h8 diagonals while White can barely make use of both rooks. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Classical with 4. e5 part 3"]
+[Site "https://lichess.org/study/xSou7xMc/0QVnxUpR"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C11"]
+[Opening "French Defense: Steinitz Variation, Boleslavsky Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Classical with 4. e5 part 3"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/5JVSzvN2"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. e5 Nfd7 5. f4 c5 6. Nf3 Nc6 7. Be3 Be7 8. Qd2 O-O 9. Be2 b6 10. O-O { The wiser and safer side to castle on } (10. O-O-O { Again, like in the previous chapter, 0-0-0 leads to c4 still. } 10... c4) 10... f5 { Forcing White to make a decision here: Capture en passant and allow some opening of the position or keep it closed forever. } 11. exf6 (11. Nd1 { Declining the en passant offer, which gives Black no trouble now. } 11... cxd4 { Capturing before White can fix the pawn chain with c3 } 12. Nxd4 Nxd4 13. Bxd4 Nc5 { Black can easily finish development from here, with higher priority on the development of the bad bishop on c8. }) 11... Nxf6 12. Kh1 Bb7 13. Rad1 Qe8 14. Ne5 Rc8 { This middlegame is still quite sharp with lots of tension in the center, but Black should not have too much to worry about. The only weakness of the position is the backwards e6 pawn but it is far from vulnerable at the moment. Meanwhile, BLack should aim to pressure White's d4 pawn and hop in to the outpost with Ne4 when best. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Classical with 4. e5 part 4"]
+[Site "https://lichess.org/study/xSou7xMc/XHQQslur"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C11"]
+[Opening "French Defense: Classical Variation, Shirov-Anand Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Classical with 4. e5 part 4"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/RRVIqgjS"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. e5 Nfd7 5. Nce2 { The Nce2 lines are a sideline in the Classical Variation. The perk is to still aim for the standard pawn chain while developing the knights on e2 and f3 to further maintain it. The drawback is the Bf1 is blocked temporarily. } 5... c5 6. c3 Nc6 7. f4 (7. Nf3 Be7 8. g3 (8. a3 O-O 9. Nf4 Qa5 { This move messes with White's head with the threat of cxd4. } 10. Bd2 Qb6 { Now both d4 and b2 pawns are hanging. }) 8... b5 { Gaining space aggressively on the queenside } 9. Bg2 b4 10. O-O Ba6 { Active queenside play here }) 7... Qb6 8. Nf3 f6 { I suggest poking at the pawn chain with f6 in hopes of blasting open the position. White's Bf1 is still undeveloped and the king is in the center, so you should try to punish White by going all out in the center. } 9. a3 Be7 10. b4 cxd4 11. cxd4 O-O 12. exf6 Nxf6 13. Nc3 Bd7 { I will argue that Black has an easier position for humans to play just because development is almost complete and White's pawns are all sort of weak. But in theory, the position is around equal. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Classical with 4. Bg5: MacCutcheon"]
+[Site "https://lichess.org/study/xSou7xMc/IGOnNLYI"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C12"]
+[Opening "French Defense: McCutcheon Variation, Lasker Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Classical with 4. Bg5: MacCutcheon"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/P54ntKqx"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. Bg5 Bb4 { My recommendation is the MacCutcheon, which is defined by the 4. Bb4 move. This line could be considered a sideline to the more common 4. Be7, but I believe it is underrated. } 5. e5 h6 { There are many moves played here in practice: Bd2, exf6, Be3, Bh4, and Bc1. In this chapter, we will review Bd2, the most common response. } 6. Bd2 Bxc3 7. bxc3 Ne4 8. Qg4 (8. Bd3 Nxd2 9. Qxd2 c5 10. f4 Nc6 11. Nf3 Qa5 { The aim is to take advantage of the White's weak doubled c-pawns. }) 8... Kf8 { It is fine to play Kf8 since the position is fairly closed and White cannot easily exploit the king position } 9. Bd3 Nxd2 10. Kxd2 c5 11. h4 { White often attempts a rook lift to either g3 or f3 to line up against the Black king. } 11... c4 12. Be2 Nc6 13. Rh3 Ne7 14. Rf3 Bd7 15. Nh3 b5 16. Nf4 Nf5 { The knight on f5 acts as a huge roadblock for White's attack, while also improving his own queenside expansion. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Classical with 4. Bg5 part 2"]
+[Site "https://lichess.org/study/xSou7xMc/8rCidvsQ"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C12"]
+[Opening "French Defense: McCutcheon Variation, Chigorin Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Classical with 4. Bg5 part 2"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/riOzwKuS"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. Bg5 Bb4 5. e5 h6 6. exf6 { The most demanding response because it allows a White pawn to safely land on g7 for a move. But in reality, it can easily be dealt with. } 6... hxg5 7. fxg7 Rg8 { White has many tries in attempt to seize the initiative to utilize the pawn on g7, but they all fail to a simple Qf6 followed by Qxg7. } 8. Qd3 (8. Qh5 Qf6 { Qxg7 next, just in time. }) (8. h4 { A sneaky try to use the rook to exert pressure. } 8... gxh4 { The file is closed for 1 more move at least! } 9. Qh5 Qf6 10. Qxh4 Qxg7 { Black regains the pawn and the position is balanced here. }) 8... Qf6 9. O-O-O Qxg7 10. Nf3 Bd7 11. Ne5 Bd6 { Black is fine here, with 0-0-0 usually on the horizon } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Classical with 4. Bg5 part 3"]
+[Site "https://lichess.org/study/xSou7xMc/oZuf0Y5s"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C12"]
+[Opening "French Defense: McCutcheon Variation, Janowski Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Classical with 4. Bg5 part 3"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/Xe9sVMSv"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. Bg5 Bb4 5. e5 h6 6. Be3 (6. Bh4 g5 7. Bg3 { Hard to see the prospects of the bishop here. } 7... Ne4 8. Ne2 c5 9. a3 Bxc3+ 10. Nxc3 Nxc3 11. bxc3 Qa5 12. Qd2 Nc6 { Threatening cxd4 cxd4 Qxd2+ Kxd2 Nxd4. Black is doing well here }) (6. Bc1 Ne4 7. Qg4 Kf8 8. a3 Bxc3+ 9. bxc3 c5 10. Bd3 Nxc3 11. dxc5 Nc6 12. Nf3 f5 13. exf6 Qxf6 14. Qh5 e5 { This position is quite dynamic and imbalanced. Black has a nice pawn center while White has the bishop pair and a safer king. }) 6... Ne4 7. Qg4 Kf8 { Thematic slide of the king in this variation } 8. a3 Bxc3+ 9. bxc3 Nxc3 10. Bd3 b6 11. Nf3 Ba6 { Trading off the bad French bishop is generally the right plan here } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: 3. e5 Advance French"]
+[Site "https://lichess.org/study/xSou7xMc/XeSbS4J1"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C02"]
+[Opening "French Defense: Advance Variation, Paulsen Attack"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "3. e5 Advance French"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/SeVLvbMS"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. e5 c5 4. c3 Nc6 5. Nf3 Nge7 { Considered a sideline to the more standard Qb6 or Bd7, but this line can be quite tricky. } 6. Bd3 cxd4 7. cxd4 Nf5 { Giving White the difficult decision of whether or not to play Bxf5. } 8. Bxf5 exf5 9. O-O Be6 { Black has a bad bishop on e6, but in exchange for stealing White's light squared bishop. A tricky plan is to use the doubled f-pawns for a surprise kingside pawn storm. } 10. Nc3 Be7 11. a3 g5 12. b4 f4 { Notice how one f-pawn acts as a contributor to the pawn storm and the other acts as a shield to the king. Doubled pawns are strong if you make them to be. And look! The Be6 is now good } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: 3. e5 part 2"]
+[Site "https://lichess.org/study/xSou7xMc/6JeOesLG"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C02"]
+[Opening "French Defense: Advance Variation, Paulsen Attack"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "3. e5 part 2"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/o2p2miqX"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. e5 c5 4. c3 Nc6 5. Nf3 Nge7 6. a3 Nf5 7. b4 cxd4 8. cxd4 Bd7 9. g4 (9. Bb2 b5 10. Bxb5 Nxe5 { Windmill technique at play }) 9... Nh4 { The perks of not playing Qb6 is Nh4 is now playable, making g4 an awkward move for White. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Tarrasch Variation"]
+[Site "https://lichess.org/study/xSou7xMc/DU59tBVV"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C07"]
+[Opening "French Defense: Tarrasch Variation, Chistyakov Defense"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Tarrasch Variation"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/xGIpepSn"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. Nd2 c5 { c5 takes advantage of White's knight not being at its more centralized c3 square. Black can develop the queen out early and it will be harder to punish. } 4. exd5 Qxd5 5. Ngf3 cxd4 6. Bc4 Qd7 { There are multiple squares for the queen to retreat to, with the most popular being Qd6. But Qd7 has been trendy lately, with the idea of not blocking in the Bf8. } 7. O-O Nc6 8. Nb3 Nf6 9. Nbxd4 Nxd4 10. Nxd4 (10. Qxd4 { An early queen trade simplifies into a completely equal endgame. Not the most exciting, but as Black, this should be considered a win. } 10... Qxd4 11. Nxd4 Bc5 12. Nb3 Bb6) 10... a6 { The light squared bishop gets developed to b7 after a6 + b5. } 11. Re1 b5 12. Bb3 Bb7 13. Bg5 Ne4 14. Be3 (14. Bh4 { A common mistake, which allows Black to take the bishop pair in a wide open positioni } 14... g5 15. Bg3 Nxg3 16. hxg3 O-O-O 17. c3 h5 { The h5 file will soon be open after the pawn break and White's king is in big danger. }) 14... Nc5 15. Qh5 Nxb3 16. axb3 g6 17. Qe5 Qd5 { White cannot take the rook due to Qxg2#. Black has a comfortable position with the bishop pair. } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Tarrasch part 2"]
+[Site "https://lichess.org/study/xSou7xMc/oJjHSYsF"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C07"]
+[Opening "French Defense: Tarrasch Variation, Chistyakov Defense"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Tarrasch part 2"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/2WEWSRtW"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. Nd2 c5 4. exd5 Qxd5 5. Ngf3 cxd4 6. Bc4 Qd7 7. O-O Nc6 8. Nb3 Nf6 9. Nbxd4 Nxd4 10. Nxd4 a6 11. a4 { a4 stops Black's plan of b5 right away. While you can still play b6 to fianchetto your bishop, it is just worse off since you don't get the tempo on the bishop nor the space advantage on the queenside. With this in mind, I recommend switching gears. } 11... Qc7 { Notice how your a6 pawn also stops Nb5. So the insertion of both a6 for Black and a4 for White favors you since White's a4 has the sole purpose of stopping your b5 push. } 12. b3 Bd6 13. h3 O-O 14. Bb2 e5 15. Nf3 e4 { Black gets a nice space advantage in the center and your light squared bishop is ready to develop next. } 16. Nd2 (16. Bxf6 exf3 { And White's kingside pawn structure will soon be ruined. }) 16... Bf5 *
+
+
+[Event "🏆 French Defense Repertoire 🏆: Tarrasch part 3"]
+[Site "https://lichess.org/study/xSou7xMc/KgMgIVVk"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C07"]
+[Opening "French Defense: Tarrasch Variation, Open System, Euwe-Keres Line"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Tarrasch part 3"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/lmUTZFME"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+1. e4 e6 2. d4 d5 3. Nd2 c5 4. Ngf3 { Ngf3 is a popular move these days, often transposing to the 4. exd5 lines } 4... cxd4 5. Nxd4 Nf6 6. e5 (6. exd5 Qxd5 7. Nb5 Qd8 { White's Nd2 is blocking his own development, making this position not dynamic enough to get any initiative. a6 next to kick the Nb5 out and you've reached equality }) 6... Nfd7 7. N2f3 (7. f4 Nxe5 { Same tactic as in Theme #6 above }) 7... Nc6 8. Nxc6 bxc6 9. Bd3 Qc7 { Equality reached } *
+
+
+[Event "🏆 French Defense Repertoire 🏆: ** Top Grandmaster Games in the French **"]
+[Site "https://lichess.org/study/xSou7xMc/NuI7gZ16"]
+[Date "2020.08.12"]
+[Result "*"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "** Top Grandmaster Games in the French **"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/xOda5bKS"]
+[UTCDate "2020.08.12"]
+[UTCTime "20:53:05"]
+
+ *
+
+
+[Event "Millionaire Chess"]
+[Site "Las Vegas, NV USA"]
+[Date "2015.10.10"]
+[Round "5.3"]
+[White "Andrey Stukopin"]
+[Black "Hikaru Nakamura"]
+[Result "0-1"]
+[WhiteElo "2587"]
+[BlackElo "2814"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C12"]
+[Opening "French Defense: McCutcheon Variation, Bernstein Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Andrey Stukopin - Hikaru Nakamura"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/jnJoHCJb"]
+
+{ This game by US Champion Hikaru Nakamura is a good example of playing patiently and punishing the opponent for overextending. }
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. Bg5 Bb4 5. e5 h6 6. Bh4 g5 7. Bg3 Ne4 8. Ne2 h5 9. f3 Nxg3 10. hxg3 Bd7 11. Qd2 Be7 12. g4 h4 13. g3 c5 { The Be7 is a wonderful piece with duties on all sides of the board. } 14. gxh4 Nc6 15. Qe3 Qb8 16. O-O-O (16. dxc5 Qxe5 { White is being punished for the massive overextension of his pawns. Now, there are weak and hanging pawns all around. }) 16... cxd4 { Evidently, White's pawn chain is falling apart from its base. } 17. Nxd4 Qxe5 18. Qxe5 Nxe5 19. h5 a6 20. Bd3 Bc5 21. Nce2 O-O-O 22. c3 Rdg8 23. Bc2 Rh6 24. Rhe1 Rf6 25. Ng1 Nc6 26. Rf1 Kc7 27. Kb1 Ne5 28. a4 Kd8 29. b3 Ke7 30. Nge2 b5 { Nakamura is doing a great job of paralyzing all of his opponent's pieces. Now, it's simple undermining of the queenside structure to exploit an open file there. } 31. b4 Bxd4 32. Nxd4 bxa4 33. Rde1 Kd6 34. Kb2 Bb5 { 0-1 White resigns. } 0-1
+
+
+[Event "Potsdam"]
+[Site "Potsdam"]
+[Date "1988.??.??"]
+[White "Ralf Lau"]
+[Black "Wolfgang Uhlmann"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "A08"]
+[Opening "King's Indian Attack: Sicilian Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Ralf Lau - Wolfgang Uhlmann"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/JGETm12w"]
+
+{ Wolfgang Uhlmann is likely the most famous French Defense fan, who has played this opening for all of his life. This game illustrates the common queenside expansion plan in the Kings Indian Attack. }
+1. e4 e6 2. d3 d5 3. Nd2 Nf6 4. Ngf3 c5 5. g3 Nc6 6. Bg2 Be7 7. O-O O-O 8. Re1 b5 { The common plans in the Kings Indian Attack involve White expanding on the kingside while Black on the queenside. } 9. e5 Nd7 10. Nf1 a5 11. h4 Ba6 12. N1h2 b4 13. Ng4 Nd4 14. c3 Nxf3+ 15. Bxf3 Rb8 16. Bf4 a4 17. Qd2 (17. Qxa4 Bxd3 { White cannot give up the important d3 pawn }) 17... a3 { Attacking the pawn chain at its base } 18. b3 bxc3 19. Qxc3 Rb4 20. Rad1 { Missing Black's tactical shot } 20... Bxh4 21. Bc1 Be7 22. Bxa3 Bb7 23. Qc2 (23. Bxb4 d4 { Wisely allowing an exchange sacrifice since the h1-a8 diagonal would be tremendous play for black to rush an attack on with the queen and bishop battery }) 23... d4 24. Be4 Rb6 25. Bc1 Bxe4 26. Rxe4 Ra6 27. Qe2 Re8 28. Kg2 Nf8 { A great resource to have a knight on f8 to have permanent defense on the weak h7 pawn. } 29. Rh1 Ng6 30. Rh5 Qa8 31. a3 Rb6 32. Kh2 Rxb3 33. Bh6 Qa6 34. Bxg7 Qxd3 35. Qxd3 (35. Qe1 Rb1 { White cannot escape a queen trade here }) 35... Rxd3 36. Bf6 Bf8 37. Re1 Rf3 { Making room for the deadly connected passers! } 38. Kg2 Rf5 39. Rh3 h5 40. Reh1 c4 41. Rxh5 Rxh5 42. Rxh5 c3 43. Kf3 d3 44. Bg5 Bg7 45. Ke3 d2 46. Ke2 Rc8 47. Rh1 Nxe5 48. Nf6+ Kf8 49. Nh7+ Ke8 50. Nf6+ Bxf6 51. Bxf6 Rc5 52. f4 Nf3 { 0-1 White resigns. } 0-1
+
+
+[Event "European Individual Championship"]
+[Site "Dresden GER"]
+[Date "2007.04.05"]
+[Round "3"]
+[White "Evgeny Romanov"]
+[Black "Ian Nepomniachtchi"]
+[Result "0-1"]
+[WhiteElo "2501"]
+[BlackElo "2587"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C12"]
+[Opening "French Defense: McCutcheon Variation, Lasker Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Evgeny Romanov - Ian Nepomniachtchi"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/8x9JcskJ"]
+
+{ A model game in the French MacCutcheon played by Russian super-GM Nepomniachtchi when he was on the rise. }
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. Bg5 Bb4 5. e5 h6 6. Bd2 Bxc3 7. bxc3 Ne4 8. Qg4 Kf8 9. Qf4 c5 10. Bd3 Nxd2 11. Qxd2 c4 12. Be2 Nd7 13. Nf3 { This is the starting position of Theme #3 above. } 13... Qa5 14. g4 Nb6 15. Qe3 Qa3 16. g5 Na4 17. Kd2 b5 18. Rab1 Bd7 19. Rhg1 Be8 (19... a5 { Sometimes it isn't always best to ignore the opponent's threats. Here, White's g6 allows a bit too much counterplay. Stopping it with Be8 first is a wise decision to save time, especially in opposite sides king positions. } 20. g6) 20. gxh6 Rxh6 21. Rg3 Rb8 22. Ng5 (22. Rbg1 { White would love to play Rbg1, but it is too slow. } 22... b4 23. Rxg7 bxc3+ 24. Ke1) 22... b4 23. cxb4 Qxa2 24. Rc1 Rxb4 25. Rh3 c3+ 26. Kd1 Rxh3 27. Qxh3 Rb1 { Black is dominating on the queenside, so as long as there's no perpetual or counterplay for White on the kingside, he's got the win in the bag. } 28. Nxe6+ (28. Qh8+ Ke7) 28... Kg8 29. Bd3 Rxc1+ 30. Ke2 Rxc2+ 31. Ke3 g6 32. Ng5 Re2+ { If Bxe2, Qd2+ picks up the knight and Black is up too much material. } { 0-1 White resigns. } 0-1
+
+
+[Event "M-Tel Masters"]
+[Site "Sofia BUL"]
+[Date "2008.05.09"]
+[Round "2"]
+[White "Veselin Topalov"]
+[Black "Vassily Ivanchuk"]
+[Result "0-1"]
+[WhiteElo "2767"]
+[BlackElo "2740"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C11"]
+[Opening "French Defense: Steinitz Variation, Boleslavsky Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Veselin Topalov - Vassily Ivanchuk"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/IfVsyVtn"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. e5 Nfd7 5. f4 c5 6. Nf3 Nc6 7. Be3 a6 8. a3 cxd4 9. Nxd4 Bc5 10. Be2 O-O 11. Qd2 Qc7 12. Bf3 Nxd4 13. Bxd4 Nb6 14. Ne2 Bxd4 15. Qxd4 Bd7 16. b3 Bb5 17. Nc3 Rfc8 18. Nxb5 axb5 19. Be2 Nd7 20. Ra2 Nb8 { A brilliant move by Ivanchuk. I have seen this move featured in many books including How to Reassess your Chess. The idea is to retreat the knight in order to aim for Nc6, kicking the White queen away from its ideal d4 spot. } (20... Nc5 { Nc5 is definitely more intuitive, but once the knight does reach its "dream" outpost on e4, White can easily swap it off with his bishop. }) 21. O-O Nc6 22. Qd2 Qb6+ 23. Kh1 Qa5 24. Qxa5 Rxa5 25. Raa1 Rca8 26. Rad1 Rxa3 27. Bxb5 Nb4 28. c4 R8a5 29. f5 exf5 30. g4 Rxb3 31. gxf5 Re3 32. Rb1 Nd3 33. e6 d4 34. Be8 Nc5 35. Bxf7+ Kf8 36. f6 gxf6 37. Rxf6 Ke7 38. Rh6 d3 39. Rxh7 d2 40. Rg1 Re1 41. Bh5+ Kxe6 42. Rg7 Ne4 43. Rg6+ Ke5 { 0-1 White resigns. } 0-1
+
+
+[Event "Curacao Candidates"]
+[Site "Willemstad CUW"]
+[Date "1962.05.23"]
+[Round "13"]
+[White "Robert James Fischer"]
+[Black "Tigran Vartanovich Petrosian"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C12"]
+[Opening "French Defense: McCutcheon Variation, Lasker Variation"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Robert James Fischer - Tigran Vartanovich Petrosian"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/N9OCmmQ3"]
+
+1. e4 e6 2. d4 d5 3. Nc3 Nf6 4. Bg5 Bb4 5. e5 h6 6. Bd2 Bxc3 7. Bxc3 Ne4 8. Ba5 { A strange move, likely to prevent the thematic c5 from Black. But it's hard to see why Black cannot just play b6 followed by c5? } 8... O-O 9. Bd3 Nc6 10. Bc3 Nxc3 11. bxc3 f6 { The f6 pawn break comes into play since White cannot comfortably play f4 to maintain the chain. } 12. f4 { Fischer is bold and goes for f4 anyways, arguing that the open f-file doesn't do Black much good. } 12... fxe5 13. fxe5 Ne7 14. Nf3 c5 15. O-O Qa5 16. Qe1 Bd7 17. c4 Qxe1 18. Rfxe1 dxc4 19. Be4 cxd4 20. Bxb7 Rab8 21. Ba6 Rb4 22. Rad1 { Black is still up a pawn now, so he could give the d-pawn back and get some other resource in exchange. } 22... d3 23. cxd3 cxd3 24. Rxd3 Bc6 25. Rd4 Rxd4 26. Nxd4 Bd5 27. a4 Rf4 28. Rd1 Ng6 29. Bc8 Kf7 30. a5 Nxe5 31. a6 Rg4 32. Rd2 Nc4 33. Rf2+ Ke7 34. Nb5 Nd6 35. Nxd6 Kxd6 36. Bb7 Bxb7 37. axb7 Kc7 38. h3 Rg5 39. Rb2 Kb8 40. Kf2 Rd5 41. Ke3 Rd7 42. Ke4 Rxb7 43. Rf2 { 0-1 White resigns. } 0-1
+
+
+[Event "Rapid 2019"]
+[Site "Moscow"]
+[Date "2019.12.28"]
+[Round "12"]
+[White "Can, Emre"]
+[Black "Vitiugov, Nikita"]
+[Result "0-1"]
+[WhiteElo "2600"]
+[BlackElo "2747"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C07"]
+[Opening "French Defense: Tarrasch Variation, Chistyakov Defense"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Can, Emre - Vitiugov, Nikita"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/EbKT7deZ"]
+
+1. e4 e6 2. d4 d5 3. Nd2 c5 4. exd5 Qxd5 5. dxc5 Nf6 6. Ngf3 Bxc5 7. Bc4 Qc6 { A strange move, but as typical in this Tarrasch line, Black has multiple squares for the queen to retreat to. Just don't get your queen pinned with Bb5... } 8. Qe2 O-O 9. O-O a6 10. Nb3 Bd6 11. Bg5 b5 12. Bd3 Nbd7 13. Rad1 Re8 14. Rfe1 Qc7 15. Bh4 Bb7 { The ordinary two bishops lined up against the White king, and Black has finished development. } 16. Bg3 Bxg3 17. hxg3 e5 { This e-pawn will act as a huge thorn in White's position. e5 is just the start of its unstoppable journey up the board } 18. Bf5 e4 19. Ng5 Nf8 20. Nd2 Re5 21. g4 Rae8 22. Nh3 g6 23. g5 e3 { As you can see, quite difficult for White to deal with this pesky pawn. } 24. fxe3 Nd5 25. Be4 Rxe4 26. Nxe4 Rxe4 27. Qd3 Qe5 28. Rd2 Qg3 29. Rf2 Nxe3 30. Ree2 Qe5 31. Qc3 Qxc3 32. bxc3 Ne6 33. Rd2 Nd5 34. Rf1 Rg4 { Two minors for a rook is clearly superior here. The rest is cleanup crew. } 35. Nf2 Rc4 36. Nd1 Nxg5 37. Re1 Re4 38. Rf1 f5 39. Nf2 Re7 40. c4 bxc4 41. Rb1 Nc3 42. Rb4 Bd5 43. Rb8+ Kg7 44. Rd8 Re1+ 45. Kh2 Rf1 46. Nh3 Nxh3 47. Kxh3 Rh1+ 48. Kg3 Ne4+ { 0-1 White resigns. } 0-1
+
+
+[Event "PRO League KO Stage 2020"]
+[Site "chess.com INT"]
+[Date "2020.3.2"]
+[Round "1"]
+[White "Harikrishna, P."]
+[Black "Christiansen, Johan-Sebastian"]
+[Result "0-1"]
+[WhiteElo "2719"]
+[BlackElo "2609"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C07"]
+[Opening "French Defense: Tarrasch Variation, Chistyakov Defense"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Harikrishna, P. - Christiansen, Johan-Sebastian"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/RjXqev3q"]
+
+1. e4 e6 2. d4 d5 3. Nd2 c5 4. exd5 Qxd5 5. dxc5 Nf6 6. Ngf3 Qxc5 7. Bd3 Be7 8. O-O Qc7 9. Qe2 b6 10. Ne4 Bb7 11. Nxf6+ Bxf6 12. Ng5 Nd7 { Voluntarily "gambiting" the h7 pawn. But it is far too risky for White due to the deadly threat of Qxh2# not too far away. } 13. Rd1 (13. Nxh7 O-O-O { Threat of g6 is deadly and gives Black too much counterplay even if checkmate is prevented. }) (13. Bxh7 Nf8 { The bishop is outright lost. }) 13... h6 14. Ne4 Be5 15. Bb5 O-O-O 16. Ng3 Nf6 17. Be3 h5 { A very common way to punish a knight on g3/g6: Rush the h-pawn up the board! } 18. c4 h4 19. Nf1 Kb8 20. h3 Ne4 21. Rac1 f5 22. f3 Rxd1 23. Rxd1 Nd6 24. c5 bxc5 25. Bd3 Rc8 26. b3 Bf6 27. Ba6 c4 28. Bxb7 Nxb7 29. bxc4 Qxc4 30. Qf2 Qa4 31. Qd2 { White blunders in a slightly worse position. } 31... Rd8 { 0-1 White resigns. } 0-1
+
+
+[Event "Alekhine Memorial"]
+[Site "Moscow URS"]
+[Date "1956.10.13"]
+[Round "4"]
+[White "Victor Ciocaltea"]
+[Black "Wolfgang Uhlmann"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C02"]
+[Opening "French Defense: Advance Variation, Main Line"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Victor Ciocaltea - Wolfgang Uhlmann"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/aYDRsFk7"]
+
+1. e4 e6 2. d4 d5 3. e5 c5 4. c3 Nc6 5. Nf3 Qb6 6. a3 c4 7. Ng5 h6 8. Nh3 Bd7 9. Nf4 O-O-O 10. g3 Na5 11. Nd2 Ne7 12. Bg2 Nf5 13. O-O Be7 14. Rb1 g6 15. Re1 Kb8 16. Nf1 Bxa3 17. b4 Bxc1 18. Qxc1 Nb3 19. Qb2 Rc8 20. Bh3 Nbxd4 { Sacrificing a knight for two connected passed pawns. The position blasts open and the chaos begins! I am optimistic about Black's chances since White does not have much activity at the moment. } 21. cxd4 c3 22. Qc1 Nxd4 23. Bg2 Bb5 { The threat is g5 followed by Ne2+ } 24. Qe3 g5 25. Nh5 Nc2 { Can't escape all the forks! } 26. Qc1 Nxe1 27. Qxe1 Bd3 28. Nf6 Rhd8 29. Ra1 d4 30. Ne4 Bxe4 31. Bxe4 d3 32. Ne3 Qd4 { 0-1 White resigns. } 0-1
+
+
+[Event "Reggio Emilia 9192"]
+[Site "Reggio Emilia ITA"]
+[Date "1991.12.28"]
+[Round "2"]
+[White "Garry Kasparov"]
+[Black "Viswanathan Anand"]
+[Result "0-1"]
+[Annotator "https://lichess.org/@/Mr_Penings"]
+[Variant "Standard"]
+[ECO "C07"]
+[Opening "French Defense: Tarrasch Variation, Chistyakov Defense"]
+[StudyName "French Defense Repertoire"]
+[ChapterName "Garry Kasparov - Viswanathan Anand"]
+[ChapterURL "https://lichess.org/study/A4EBp7Ds/O0aPnU2t"]
+
+1. e4 e6 2. d4 d5 3. Nd2 c5 4. exd5 Qxd5 5. dxc5 Bxc5 6. Ngf3 Nf6 7. Bd3 O-O 8. Qe2 Nbd7 9. Ne4 b6 10. Nxc5 Qxc5 11. Be3 Qc7 12. Bd4 Bb7 13. O-O-O Nc5 14. Be5 Nxd3+ 15. Rxd3 Qc4 16. Nd4 Be4 { The typical strategy in opposite colored bishop middlegames is to be aggressive on your color. Here, both players are following the principle by attacking their opponent's kings. } 17. Re3 Qxa2 18. Bxf6 Bg6 { A nice in-between move which maintains the threats of gxf6 and Qa1+, picking up the rook on h1 next. } 19. Ra3 Qd5 20. h4 (20. Be5 f6 { Ultimately, a minor piece still falls. }) 20... gxf6 21. h5 Qxd4 22. hxg6 hxg6 23. Rah3 f5 { Anand is happy to go into a two rook for a queen endgame due to his king safety and the scattered nature of White's pawns. } 24. Rh4 f4 25. Qf3 Rac8 26. Rxf4 Qc5 27. c3 Kg7 28. Rhh4 Qe5 29. g3 Qe1+ 30. Kc2 Rcd8 31. Rd4 Qe5 32. Rhf4 Qc7 33. Qe3 e5 34. Rxd8 Rxd8 35. Re4 Rd5 36. g4 b5 37. g5 Qd6 38. f3 a5 39. Qe2 Qe6 40. Qh2 Qf5 41. Qg3 (41. Qh6+ Kg8 { Qh6+ leads nowhere since there's no follow up with the white rook. Now the queen is just misplaced and has to retreat in order to defend. }) 41... Qd7 42. Qe1 b4 { Forcing open some files to ensure activity for the major pieces. } 43. cxb4 Qa4+ 44. b3 Qa2+ 45. Kc3 a4 46. bxa4 Qa3+ 47. Kc2 Qxa4+ 48. Kc3 Qa3+ 49. Kc2 Rd3 { 0-1 White resigns. } 0-1
+
+

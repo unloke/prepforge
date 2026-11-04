@@ -1,0 +1,425 @@
+[Event "The London System (Lifetime Repertoire): Before we start"]
+[Date "2025.12.03"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Before we start"]
+[ChapterURL "https://lichess.org/study/artuehhC/efJ0YwNR"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkbnr/pppppppp/8/8/3P1B2/2PBPN2/PPQN1PPP/R4RK1 b Qkq - 1 6"]
+[SetUp "1"]
+[UTCDate "2025.12.03"]
+[UTCTime "21:57:33"]
+[ChapterMode "gamebook"]
+
+{ This is the position you want to get every time. } { [%cal Gf1d3,Gg1f3,Gc1f4,Gc2c3,Ge2e3,Gd2d4,Gd1c2,Gb1d2,Ge1g1,Gh1f1] }
+ *
+
+
+[Event "The London System (Lifetime Repertoire): London line #1"]
+[Date "2025.12.01"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "London line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/BOsMGGU7"]
+[Annotator "https://lichess.org/@/Carrul"]
+[UTCDate "2025.12.01"]
+[UTCTime "20:44:04"]
+[ChapterMode "gamebook"]
+
+{ Playing this will give you many enemies in chess. It is hated because it’s such a solid opening and black can’t really counter it. Let’s Push d4. }
+1. d4 d5 { Now we play the move that distinguishes the London. Bf4. } 2. Bf4 Nf6 { We should solidify our position by playing pawn to e3, which defends our d pawn from aggressive attacks. } 3. e3 c5 { Now we play what is known at the London wedge. it’s hard to break through, so let’s solidify our d pawn by protecting it even more with our c pawn. } 4. c3 { [%csl Gc3,Gd4,Ge3,Gf2,Gb2] } (4. Nf3 { Pushing our knight to f3 is wrong as even though solidifies our d pawn, it allows for aggressive counter play to the London, which we don’t want. }) (4. Bb5+ { This is wrong as now they have agressive play, which we don’t want. }) 4... Nc6 5. Nd2 Qb6 { This move goes for our pawn immediately, so we defend the pawn with Qb3 (obviously). } 6. Qb3 Qxb3 { This move is the most common, trading queens. } { [%cal Ga2b3,Gd2b3] } 7. axb3 { Now we have a very strong attacking position. c4 is coming and they can threaten us very little. } { [%csl Rc4,Gf8][%cal Ga1a6,Rc3c4,Gg1f3,Gf1e2,Ge1g1,Gh1f1] } (7. Nxb3 { This move recaptures also but they can lock down their position and get aggressive play by pushing their pawn to c4. } 7... c4 8. Nd2 b5 9. Ngf3) *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #1 of line #1"]
+[Date "2025.12.01"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #1 of line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/JcURnN6b"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "r1b1kb1r/pp2pppp/1qn2n2/2pp4/3P1B2/1QP1P3/PP1N1PPP/R3KBNR b KQkq - 4 6"]
+[SetUp "1"]
+[UTCDate "2025.12.01"]
+[UTCTime "21:07:12"]
+[ChapterMode "gamebook"]
+
+6... g6 { This is apparently the best move for black. Let’s trade. } 7. Qxb6 axb6 $14 { This isn’t the smartest-looking idea, as we allow there rook an open file. Still, it’s the best move and was the best I could do without showing, like, 28 different lines. Now we simply develop like norm (not too aggressive) and castle connecting the rooks and getting (hopefully) into a winning endgame. } { [%cal Ga8a3] } *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #2 of line #1"]
+[Date "2025.12.01"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #2 of line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/z35vSd8D"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "r1b1kb1r/pp2pppp/1qn2n2/2pp4/3P1B2/1QP1P3/PP1N1PPP/R3KBNR b KQkq - 4 6"]
+[SetUp "1"]
+[UTCDate "2025.12.01"]
+[UTCTime "21:34:55"]
+[ChapterMode "gamebook"]
+
+6... c4 { Sometimes our opponent pushes to c4 anyway. We just simply retreat our queen to c2. } 7. Qc2 { [%cal Ge3e4,Gg1f3,Gg2g3,Gf1g2,Ge1g1,Gh1f1] } (7. Nxc4 { no } 7... dxc4 8. Qxb6 axb6 9. Bxc4) *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #3 of Line #1"]
+[Date "2025.12.10"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #3 of Line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/1EqFoRU6"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 2 3"]
+[SetUp "1"]
+[UTCDate "2025.12.10"]
+[UTCTime "22:07:41"]
+[ChapterMode "gamebook"]
+
+{ Let’s push our e pawn again. }
+3. e3 (3. e4 { You seriously need to get better at chess. } { [%csl Ge4][%cal Gf6e4,Gd5e4] } 3... Nxe4 4. Bd3 Nf6 5. Nf3 Bg4 6. h3 Bxf3 7. Qxf3 e6 8. O-O Bd6 9. Bxd6 Qxd6) 3... e6 { This looks absolutely ridiculous, since it blocks their bishop. However, it’s one of the most common moves and one of the best moves according to stockfish. Do not overthink this move because of that, and simply form our wedge. } { [%cal Gc8h3] } 4. c3 Bd6 { This is one of the most popular moves, again. We should take their bishop, since it’s too powerful in its current position. } { [%cal Gd6f8,Gd6a3,Gd6h2] } 5. Bxd6 (5. Bg3 { Well... we're going to castle kingside. This would weaken it. We don't want that. }) 5... Qxd6 { Now we move our bishop into that powerful square shown in the first chapter. } { [%csl Gd3,Gf1] } 6. Bd3 c5 { Let’s continue following the golden moves, moving the knight on b1. } 7. Nd2 O-O { Develop the knight to f3 } { [%csl Gg1] } 8. Ngf3 { This is good. } 8... c4 { Just retreat to c2. } 9. Bc2 { [%cal Gd1e2,Ge1g1,Gh1f1] } *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #4 of line #1"]
+[Date "2025.12.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #4 of line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/crruJ3SY"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 2 3"]
+[SetUp "1"]
+[UTCDate "2025.12.11"]
+[UTCTime "12:31:07"]
+[ChapterMode "gamebook"]
+
+{ Let’s push e3 }
+3. e3 Bf5 { Sometimes they move symetrically. We just push c3 as regular. } 4. c3 e6 { Simply develop our knight to f3 } { [%csl Gg1] } 5. Nf3! { [%cal Gf3h4,Gh4f5] } 5... c6 { They also create the wedge, and so let’s attack their bishop. } { [%csl Gc6,Gd5,Ge6,Gf7,Gb7] } 6. Nh4! Be4!? { Attack their bishop again. } 7. Nd2 { [%cal Gd2e4] } (7. f3 { Also works but the computer says it is -0.9 advantage. We want to stay accurate. Apparently there is } 7... Bxb1 8. Rxb1 Nh5 9. Bxb8 Qxh4+ 10. g3 Qd8 11. g4 (11. Bf4 g5 { [%cal Gg5f4] } 12. Be5 f6 { [%cal Gf6e5] } 13. g4 fxe5 14. gxh5) 11... Qh4+ 12. Kd2 Rxb8 13. gxh5 Qxh5) 7... Qb6 { Now we attack again with the pawn } { [%csl Gf2] } 8. f3 { This does weaken our kingside, but it's ok since they don't have their queen pointing at it. Plus, we can castle very soon. } 8... Bg6 { Let’s trade. } { [%cal Gh4g6] } 9. Nxg6 hxg6 { Let’s defend aggressively. } { [%cal Gd1b3] } 10. Qb3 Qxb3 { [%cal Ga2b3] } 11. axb3 { This is a good position. } { [%cal Ga1a6,Gc3c4,Ge3e4,Gf1e2,Ge1g1,Gh1f1] } *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #5 of line #1"]
+[Date "2025.12.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #5 of line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/gooZQ6fn"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rn1qkb1r/ppp1pppp/5n2/3p1b2/3P1B2/2P1P3/PP3PPP/RN1QKBNR b KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2025.12.11"]
+[UTCTime "12:42:40"]
+[ChapterMode "gamebook"]
+
+4... c6 { This time they defend with their c pawn. Develop our knight to f3 } { [%csl Gg1] } 5. Nf3 Nbd7 { Let’s develop our other knight to d2 } { [%csl Gb1] } 6. Nbd2 { They have 2 logical moves here. Nh5 and Qb6. Let’s say they play Nh5. } { [%csl Gb6,Gh5][%cal Gd8b6,Gf6h5] } 6... Nh5 { We counterattack with Nh4. } { [%csl Gf3] } 7. Nh4 Nxf4 { Take their bishop } { [%csl Gh4] } 8. Nxf5 Ng6 { And let’s play Bd3, moving our bishop to that powerful square shown in the first chapter. } 9. Bd3 e6 { Retreat. } { [%cal Gf5g3] } 10. Ng3 (10. Nh4 { are u kidding me.... }) *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #6 of line #1"]
+[Date "2025.12.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #6 of line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/5oKvEHgr"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "r2qkb1r/pp1npppp/2p2n2/3p1b2/3P1B2/2P1PN2/PP1N1PPP/R2QKB1R b KQkq - 3 6"]
+[SetUp "1"]
+[UTCDate "2025.12.11"]
+[UTCTime "15:45:05"]
+[ChapterMode "gamebook"]
+
+{ Let’s say they play Qb6 instead. }
+6... Qb6 { First things first, let’s play the obvious aggressive defense. } 7. Qb3 $132 Qxb3 { [%cal Ga2b3,Gd2b3] } 8. axb3 { Now we have an open file, and this should be solid for us. } { [%csl Gc4][%cal Ga1a6,Gc3c4,Gf1e2,Ge1g1,Gh1f1] } *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #7 of line #1"]
+[Date "2025.12.11"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #7 of line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/OEZpuY5X"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq - 2 3"]
+[SetUp "1"]
+[UTCDate "2025.12.11"]
+[UTCTime "15:41:17"]
+
+3... g6 { This time they play 3. g6. We should work on creating our wedge. } 4. e3 Bg7 { This was obvious. Our solidity is enough that we can neglect to develop pieces for now. Let’s make the wedge again. } 5. c3 { [%csl Gc3,Gd4,Ge3,Gf2,Gb2] } 5... O-O { Develop our knight to d2. } 6. Nd2 { They have 3 different moves that are logical. Bf5, c5, and Nc6. } { [%cal Gc7c5,Gb8c6,Gc8f5] } 6... c5 { In this case they play c5. Let’s develop our knight to f3. } { [%csl Gg1] } 7. Ngf3 { (Note: Qb6 is easily met with Qb3). } 7... Nc6 { They develop logically. Let’s play be2. (You could also do Nb1, undeveloping your knight completely. Then something could happen like Bf5 c4 dxc4 Bxc4 cxd4 exd4, however I don’t recommend this. } 8. Be2 Nh5 { They attack our bishop, let’s put it on g5 } 9. Bg5 h6 { Retreat again to h4 } 10. Bh4 $44 g5!? { Retreat. } 11. Bg3 { This look bad for us, but they have cleared a long diagonal near their king that our bishop will poke holes in, causing many problems for black. For Example. } { [%cal Gb1h7] } 11... f5 { [%cal Gg3e5] } 12. Be5 g4 { [%cal Ge5g7] } 13. Bxg7 Kxg7 { [%cal Gf3e5] } 14. Ne5 Nxe5 { [%cal Gd4e5] } 15. dxe5 d4 { [%cal Gc3d4] } 16. cxd4 { [%cal Gc5d4] } 16... cxd4 { [%cal Gd2b3] } 17. Nb3 dxe3 18. fxe3 Qxd1+ { [%cal Ga1d1] } 19. Rxd1 { We’ve got an open file and their king’s out in the open. The best move is literally Kg6 for black. } { [%cal Ge1h1,Gh1f1,Gd1d8] } 19... Kg6 *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #8 of line #1"]
+[Date "2025.12.12"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #8 of line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/7X4PRnLE"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbq1rk1/ppp1ppbp/5np1/3p4/3P1B2/2P1P3/PP1N1PPP/R2QKBNR b KQ - 2 6"]
+[SetUp "1"]
+[UTCDate "2025.12.12"]
+[UTCTime "21:17:06"]
+[ChapterMode "gamebook"]
+
+6... Bf5 { This time they play Bf5. Let’s develop our knight to f3 } { [%cal Gc8f5] } 7. Ngf3 Nc6 { Let’s move our bishop to the best square, setting up castle and attacking positions. } { [%csl Gf1] } 8. Bb5 Nh5 { Let’s move our bishop to g5. } 9. Bg5 h6 { This may look bad for us, but we simply retreat to h4. } 10. Bh4 { You might think that there is g5 but this is a blunder. This repertoire is not supposed to be about blunders, since they usually aren’t played, but this is a common one I wanted to point out. } 10... g5?? { Take the pawn. } { [%csl Gf3] } 11. Nxg5!! hxg5 $16 { Now we take their hanging knight. } { [%csl Gh5][%cal Gd1h5] } 12. Qxh5! { We’re attacking the g pawn, and the top computer move is actually f6. } { [%csl Gg5][%cal Gh5g5,Gh4g5] } 12... f6 { Counterattack with g4 } { [%csl Gg2] } 13. g4 Bh7 { Now we have a strong attacking position, and the computer rates us up +2.5.Just don't forget to retreat you bishop to g3! (its hanging) } 14. Bg3 $18 { Nice! } *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #9 of line #1"]
+[Date "2025.12.12"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #9 of line #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/4Ljdve7a"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "r2q1rk1/ppp1ppb1/2n5/1B1p1bpQ/3P3B/2P1P3/PP1N1PPP/R3K2R b KQ - 0 12"]
+[SetUp "1"]
+[UTCDate "2025.12.12"]
+[UTCTime "21:43:24"]
+[ChapterMode "gamebook"]
+
+{ You may think they can just take our bishop. } { [%cal Gg5h4] }
+12... gxh4?! { Take their bishop. } { [%cal Gh5f5] } 13. Qxf5 $18 { We’re completely winning. } *
+
+
+[Event "The London System (Lifetime Repertoire): London line #2"]
+[Date "2025.12.01"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System, Steinitz Countergambit"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "London line #2"]
+[ChapterURL "https://lichess.org/study/artuehhC/0LmuUo8Q"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkbnr/ppp1pppp/8/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq - 1 2"]
+[SetUp "1"]
+[UTCDate "2025.12.01"]
+[UTCTime "21:38:53"]
+[ChapterMode "gamebook"]
+
+2... c5 { This time they strike immediately. Let’s defend with our c pawn. } 3. c3 Nc6 { Now they play Nc6. Let’s create the wedge again. } 4. e3 { [%csl Gd4,Gc3,Gb2,Ge3,Gf2] } 4... Qb6 { The play Qb6. Of course, we defend with our queen by moving it to c2. } 5. Qc2 Nf6 { Now play Nf3, simply developing. } 6. Nf3 { This is a good position for us. } { [%cal Gf1e2,Gf1d3,Gb1d2,Ge1g1,Gh1f1] } 6... g6 { Develop the knight to the best square. } { [%csl Gb1] } 7. Nbd2 Bg7 { Where is the best square for our bishop? } { [%csl Gf1] } 8. Be2 O-O { Castle. } 9. O-O { We’re pretty dominant and have ok winning chances. } *
+
+
+[Event "The London System (Lifetime Repertoire): Another playing Style instead of 2. c3"]
+[Date "2025.12.04"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Another playing Style instead of 2. c3"]
+[ChapterURL "https://lichess.org/study/artuehhC/KWduewEv"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkbnr/pp2pppp/8/2pp4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 4 6"]
+[SetUp "1"]
+[UTCDate "2025.12.04"]
+[UTCTime "20:50:03"]
+[ChapterMode "gamebook"]
+
+{ Another way you can play instead is defending with our e pawn, setting up the wedge formation again }
+6. e3 cxd4 { They took, because, well, they want space. } 7. exd4 Nc6 { Defend with the c pawn. } 8. c3 Bf5 { Develop your g knight to a more active square. } { [%csl Gg1] } 9. Nf3 e6 { Let’s move our c bishop to a more active square. } { [%csl Gc1] } 10. Bf4 (10. Bg5 { This doesn’t work since they can get aggressive with us and play pawn f6 } 10... f6 { and there’s stuff like } 11. Be3 e5) 10... Nf6 { Let’s develop our d knight, partially setting up the position in the chapter at the start. } 11. Nbd2 Bd6 { Trade } 12. Bxd6 Qxd6 { Let’s get aggressive, Bb5. } 13. Bb5 O-O { Here it transitions from the opening to the middle game. This is all the theory you need to know. } { [%cal Gd1b3,Gb3b7,Gb5e2,Ge1h1,Gh1f1] } *
+
+
+[Event "The London System (Lifetime Repertoire): More in depth on 2. e3"]
+[Date "2025.12.09"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System, Steinitz Countergambit"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "More in depth on 2. e3"]
+[ChapterURL "https://lichess.org/study/artuehhC/35tiZHPS"]
+[Annotator "https://lichess.org/@/Carrul"]
+[UTCDate "2025.12.09"]
+[UTCTime "22:12:37"]
+[ChapterMode "gamebook"]
+
+{ Let’s Play the London! }
+1. d4 d5 { Let’s play the London! } 2. Bf4 c5 { Let’s play the London! } 3. e3 Nc6 { Obviously we make the wedge. } 4. c3 { [%csl Gc3,Gb2,Gd4,Ge3,Gf2] } 4... Qb6 { calmly defend with Qc2 } 5. Qc2 Nf6 { Develop your g knight according to the golden moves. } { [%csl Gg1] } 6. Nf3 g6 { Develop your other knight. } 7. Nbd2 Bg7 { In this variation you have 2 choices, bd3 or be2. Bd3 loses tempo, so I will show Be2. } { [%cal Gf1d3,Gf1e2] } 8. Be2 { (Note: Nh5 is easily met with bBe5, destroying their fianchetto.) In this case, they play 0-0. } 8... O-O { Copy black. } 9. O-O Nh5 { Destroy their fianchetto. } { [%csl Ge5][%cal Gf4e5] } 10. Be5 Nxe5 { [%csl Gf3,Ge5] } 11. Nxe5 f6?? { Here they play a nonchalant attacking move, but this is a blunder. Their knight has no safe squares to go to, and soon we will capture it. } { [%csl Gh5,Gd4][%cal Gd4c5] } 12. dxc5 Qxc5 { [%csl Ge5,Gd3] } 13. Nd3 { [%cal Gd3c5] } 13... Qc7 { And now we play the crazy move,... g4! } 14. g4! { This looks bad since our kings safety is being exposed, but all our pieaces are protecting places around our king. We will get the knight on the next move. } 14... e5 { Take. } 15. gxh5 gxh5 { We need all the material advantage we can get. :) } { [%csl Ge2] } 16. Bxh5 { They’re completely losing. All you need to do is mitigate their pawn storm in the center and you should definitely win. } { [%csl Gd5,Ge5,Gf6][%cal Gd5d1,Ge5e1,Gf6f1] } *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #1 of line #2"]
+[Date "2025.12.03"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #1 of line #2"]
+[ChapterURL "https://lichess.org/study/artuehhC/HHnAXFVd"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkbnr/pp2pppp/8/2pp4/3P1B2/2P5/PP2PPPP/RN1QKBNR b KQkq - 0 3"]
+[SetUp "1"]
+[UTCDate "2025.12.03"]
+[UTCTime "21:49:50"]
+[ChapterMode "gamebook"]
+
+3... Qb6 { Now they play Qb6, and we respond by protecting our pawn. } 4. Qc2 (4. b3 { This move just downright sucks. }) (4. Qb3 { This also works, but they have c4. } 4... c4 5. Qxb6 axb6 { [%csl Gf1,Gg1,Gb1,Ga1,Gh1][%cal Ga8a3] }) 4... Nf6 { And now we finish the wedge } 5. e3 { [%csl Ge3,Gc3,Gd4,Gb2,Gf2] } 5... Nc6 { Now let’s simply develop our knight to f3 } 6. Nf3 g6 { Develop our knight to d2. } 7. Nbd2 Bg7 { Develop to e2. } { [%cal Gf1e2] } 8. Be2 (8. Ke2? { Not your king, bozo. }) 8... O-O { Let’s get our king to safety too. } 9. O-O (9. O-O-O?! { This castles right into black’s pawn storm. } 9... c4 10. h3 Bf5 11. Qa4 Bd7 12. Qa3 (12. Qc2 Qa5 13. b4 Qb6 14. Ne5 a5 15. b5 Qxb5) 12... Rfc8 13. h4 a5 14. h5 Qd8 15. Nxc4 b5 16. Ng5 dxc4 { and we’re losing. These pawns are a nuisance and are scary for our king. } { [%cal Gb5b1,Ga5a1,Gc4c1,Ga8a1,Gd8a5,Gc8c1] }) *
+
+
+[Event "The London System (Lifetime Repertoire): Variation #2 of line #2"]
+[Date "2025.12.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Variation #2 of line #2"]
+[ChapterURL "https://lichess.org/study/artuehhC/t7jIJWBx"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "r1b1kb1r/pp2pppp/1qn2n2/2pp4/3P1B2/2P1PN2/PPQ2PPP/RN2KB1R b KQkq - 4 6"]
+[SetUp "1"]
+[UTCDate "2025.12.02"]
+[UTCTime "20:57:04"]
+[ChapterMode "gamebook"]
+
+{ Here they Play Nh5, attacking the bishop. } { [%cal Gd4c5,Gf4e5,Ge5d4,Gf6h5] }
+6... Nh5 { We must trade with their c pawn so we can get a square for our bishop to move to. } 7. dxc5 Qxc5 { Obviously they took back. } 8. Be5 f6 { Here they played pawn f6, attacking our bishop, move it to the powerful d4 square. } { [%cal Gf6e5] } 9. Bd4 Nxd4 { They took, and now we take back with our pawn. } 10. exd4 (10. cxd4 { This doesn’t work since hang our queen. }) 10... Qc6 { We have successfully stopped the knights attack. :) } *
+
+
+[Event "The London System (Lifetime Repertoire): London Line #3"]
+[Date "2025.12.14"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "London Line #3"]
+[ChapterURL "https://lichess.org/study/artuehhC/JahO5SNe"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkbnr/ppp1pppp/8/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq - 1 2"]
+[SetUp "1"]
+[UTCDate "2025.12.14"]
+[UTCTime "19:13:32"]
+[ChapterMode "gamebook"]
+
+{ They play Nc6. }
+2... Nc6 { Honestly, I have 0 idea why 24% play this. They silence their own attack of ...c5 and ...Qb6 and are ultimately are really passive. Maybe their idea is something like ...f6 ... e5. Honestly, I don’t know. They’re handing us a good game with rarely any threats. c3 } 3. c3 { This gives our queen more space and we are preparing ...Qb6 if their c bishop moves. } 3... Nf6?! { Again, so passive! They block their own threat of f6 themselves, usually played 36% of the time! First things first, the wedge should be made. We have the threat ...c4 looming, and this is very pleasant for us. } 4. e3 Bf5 { Another common move, played 36% of the time. WE should trade with their powerful bishop, since they’re taking us out of our comfort zone. Bd3. } { [%csl Gf1] } 5. Bd3 Bxd3 { Recapture, of course. } 6. Qxd3 e6 { That’s played 76% of the TIME!!!! We’ve got ideas of ...Qb5, but it's too early for aggressive play, not when you're not finished developing. The order doesn’t really matter right now, but stockfish prefers Nf3, leaving our queen more space to retreat of attacked, also threatening ...Ne5. } { [%cal Rd3b5,Rb5e8,Rb5b7] } 7. Nf3 (7. Qb5) 7... Bd6 { Usually we don’t want to trade since Bxd6 Qxd6 get’s their queen into the game and allows them to connect rooks on the next move. This also leaves the option of O-O-O for black, setting up a pawn storm they can attack our king with. It’s better to avoid all these problems and retreat our bishop to g3 } 8. Bg3 Bxg3 { You have the choice of hxg3 or fxg3. The computer likes hxg3, but that already creates a very clear passed pawn for black. I prefer fxg3. However, since fxg3 is -0.5 and hxg3 is +0.3, I cannot blame you if you play hxg3. I also like fxg3 since it opens up the f file for the rook when you play ...O-O. } 9. fxg3 O-O { Nd2 finishes our development and there is no problem with it. } 10. Nbd2 $13 { This is good for us. (Did you know that playing 10. Ne5 wins 71% of the time for white?!) } { [%cal Rd3b5,Rb5b7] } *
+
+
+[Event "The London System (Lifetime Repertoire): London Review #1"]
+[Date "2025.12.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "London Review #1"]
+[ChapterURL "https://lichess.org/study/artuehhC/0MQJrF35"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 2 3"]
+[SetUp "1"]
+[UTCDate "2025.12.02"]
+[UTCTime "23:17:54"]
+[ChapterMode "gamebook"]
+
+{ What’s the best move? }
+3. e3 c5 { What’s the best move? } 4. c3 Qb6 { What’s the best move? } 5. Qb3 c4 { What’s the best move? } 6. Qc2 *
+
+
+[Event "The London System (Lifetime Repertoire): London Review #2"]
+[Date "2025.12.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "London Review #2"]
+[ChapterURL "https://lichess.org/study/artuehhC/EjrtpkcE"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkbnr/pp2pppp/8/2pp4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 0 3"]
+[SetUp "1"]
+[UTCDate "2025.12.02"]
+[UTCTime "23:21:00"]
+[ChapterMode "gamebook"]
+
+{ What’s the best move? }
+3. c3 Nc6 { What’s the best move? } 4. e3 { [%csl Ge3,Gd4,Gc3,Gb2,Gf2] } 4... Qb6 { What’s the best move? } 5. Qc2 $13 { [%cal Gg1f3,Gg2g3,Gf1g2,Ge1g1,Gh1f1,Gb1d2] } *
+
+
+[Event "The London System (Lifetime Repertoire): London Review #3"]
+[Date "2025.12.02"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "London Review #3"]
+[ChapterURL "https://lichess.org/study/artuehhC/IWQHUtxE"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "r1b1kb1r/pp2pppp/1qn2n2/2pp4/3P1B2/2P1PN2/PPQ2PPP/RN2KB1R b KQkq - 4 6"]
+[SetUp "1"]
+[UTCDate "2025.12.02"]
+[UTCTime "23:22:05"]
+[ChapterMode "gamebook"]
+
+6... Nh5 { What’s the best move? } 7. dxc5 Qxc5 { What’s the best move? } 8. Be5 f6 { What’s the best move? } 9. Bd4 Nxd4 { What’s the best move? } 10. exd4 Qc6 *
+
+
+[Event "The London System (Lifetime Repertoire): Quick Quiz"]
+[Date "2025.12.13"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Quick Quiz"]
+[ChapterURL "https://lichess.org/study/artuehhC/Ym11IjEs"]
+[Annotator "https://lichess.org/@/Carrul"]
+[UTCDate "2025.12.13"]
+[UTCTime "14:37:29"]
+[ChapterMode "gamebook"]
+
+{ What do you play? }
+1. d4 d5 { What do you play? } 2. Bf4 Nf6 { Excellent! } 3. e3 *
+
+
+[Event "The London System (Lifetime Repertoire): Outro"]
+[Date "2026.01.06"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "The London System (Lifetime Repertoire)"]
+[ChapterName "Outro"]
+[ChapterURL "https://lichess.org/study/artuehhC/mzNjcyio"]
+[Annotator "https://lichess.org/@/Carrul"]
+[FEN "rnbqkbnr/ppp1pppp/8/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 0 1"]
+[SetUp "1"]
+[UTCDate "2026.01.06"]
+[UTCTime "22:32:19"]
+[ChapterMode "gamebook"]
+
+{ Overall, the London is an essential, suitable opening for anyone, and I hope this helps you in your games! 100 likes and I'll make 20 more chapters! Bye }
+ *
+
+

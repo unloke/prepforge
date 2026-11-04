@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { modalDialog, openModal } from "../core/dialog.js";
+import { startAtlasPreparation } from "../atlas-preparation-client.js";
 
 export function indexTree(nodes) {
   const children = new Map();
@@ -93,28 +94,21 @@ export function atlasAnalysis(nodes, color) {
     deepest: Math.max(0, ...depths.keys()) };
 }
 
-// A structural fingerprint, not engine accuracy. Saturating depth and breadth
-// prevent one long line or many shallow forks from dominating the index.
-export function atlasProfile(data, color) {
-  const depths = data.leaves.map((n) => Math.max(0, Number(n.ply) || 0) / 2);
-  const mean = depths.length ? depths.reduce((a, b) => a + b, 0) / depths.length : 0;
-  const max = Math.max(0, ...depths);
-  const values = [
-    100 * (1 - Math.exp(-mean / 12)),
-    100 * Math.max(0, depths.length - 1) / (depths.length + 3),
-    max ? 100 * mean / max * Math.min(1, mean / 8) : 0,
-    depths.length ? 100 * data.leaves.filter((n) => n.move_side === color).length / depths.length * (1 - Math.exp(-mean / 8)) : 0,
-  ];
-  const scores = values.map((n) => Math.round(n));
-  return { scores, index: depths.length ? (values[0] * 0.35 + values[1] * 0.25 + values[2] * 0.2 + values[3] * 0.2).toFixed(1) : null };
-}
+const numerals = ["I", "II", "III", "IV", "V"];
 
-function profileGlyph(scores) {
+export function profileGlyph(scores) {
   const point = (i, scale) => {
-    const angle = (i * 90 - 90) * Math.PI / 180;
+    const angle = (i * 360 / scores.length - 90) * Math.PI / 180;
     return `${(150 + Math.cos(angle) * 100 * scale).toFixed(2)},${(150 + Math.sin(angle) * 100 * scale).toFixed(2)}`;
   };
-  return html`<svg class="atlas-fingerprint" viewBox="0 0 300 300" aria-hidden="true"><circle class="atlas-orbit" cx="150" cy="150" r="126"/>${[0.25, 0.5, 0.75, 1].map((s) => html`<polygon class="atlas-grid" points="${scores.map((_, i) => point(i, s)).join(" ")}"/>`)}<path class="atlas-axis" d="M150 24V276M24 150H276"/><polygon class="atlas-envelope" points="${scores.map((s, i) => point(i, s / 100)).join(" ")}"/>${scores.map((s, i) => { const [cx, cy] = point(i, s / 100).split(","); return html`<circle class="atlas-vertex" cx="${cx}" cy="${cy}" r="3"/>`; })}<text x="150" y="13" text-anchor="middle">I</text><text x="292" y="154" text-anchor="middle">II</text><text x="150" y="295" text-anchor="middle">III</text><text x="8" y="154" text-anchor="middle">IV</text></svg>`;
+  const known = scores.map((value, i) => value == null ? null : { i, value }).filter(Boolean);
+  return html`<svg class="atlas-fingerprint" viewBox="0 0 300 300" aria-hidden="true"><circle class="atlas-orbit" cx="150" cy="150" r="126"/>${[0.25, 0.5, 0.75, 1].map((s) => html`<polygon class="atlas-grid" points="${scores.map((_, i) => point(i, s)).join(" ")}"/>`)}<path class="atlas-axis" d="${scores.map((_, i) => `M150,150L${point(i, 1.26)}`).join("")}"/>${known.length >= 3 ? html`<polygon class="atlas-envelope" points="${known.map(({ i, value }) => point(i, value / 100)).join(" ")}"/>` : ""}${known.map(({ i, value }) => { const [cx, cy] = point(i, value / 100).split(","); return html`<circle class="atlas-vertex" cx="${cx}" cy="${cy}" r="3"/>`; })}${scores.map((_, i) => { const [x, y] = point(i, 1.4).split(","); return html`<text x="${x}" y="${Number(y) + 4}" text-anchor="middle">${numerals[i]}</text>`; })}</svg>`;
+}
+
+const percent = (value) => value == null ? "—" : String(Math.round(value));
+
+export function atlasScoreText(result) {
+  return result?.score == null ? "—" : percent(result.score);
 }
 
 export function openBuildAtlas({ appState }) {
@@ -124,18 +118,41 @@ export function openBuildAtlas({ appState }) {
   if (!root) return;
   const dialog = modalDialog("lineage-modal atlas-modal");
   dialog.innerHTML = html`<header class="modal-header"><h2 class="modal-title">Repertoire atlas</h2><button type="button" class="btn icon" data-close aria-label="Close">×</button></header><div class="lineage-body"></div>`;
+  let cancelCalculation = () => {};
+  dialog.addEventListener("close", () => cancelCalculation(), { once: true });
   const close = openModal(dialog);
   dialog.querySelector("[data-close]").onclick = () => close();
   const body = dialog.querySelector(".lineage-body");
-  const data = atlasAnalysis(build.nodes, build.color), profile = atlasProfile(data, build.color);
+  const children = indexTree(build.nodes);
+  const selected = atlasAnalysis(build.nodes, build.color).nodes.find((node) => node.id === appState.buildCurrentNodeId);
   const personal = !appState.sharedToken && !build.shared;
-  const names = ["Reach", "Weave", "Poise", "Resolve"];
-  const numerals = ["I", "II", "III", "IV"];
-  const moveCount = data.nodes.filter((n) => n.parent_id).length;
-  body.innerHTML = html`<div class="atlas-identity"><div><span class="atlas-kicker">Opening dossier</span><h3>${build.name}</h3></div><span class="atlas-side"><i class="${build.color === "black" ? "is-black" : ""}"></i>${build.color === "black" ? "Black" : "White"}</span></div>
-    <div class="atlas-portrait"><section class="atlas-index" aria-label="Atlas index" title="A structural repertoire profile, not an engine evaluation."><span class="atlas-kicker">Atlas index</span><div class="atlas-index-number"><strong>${profile.index ?? "—"}</strong><span>/ 100</span></div><div class="atlas-index-rule"><i style="--value:${profile.index ?? 0}%"></i></div><span class="atlas-classification">${profile.index === null ? "Uncharted" : Number(profile.index) < 30 ? "Emergent" : Number(profile.index) < 60 ? "Composed" : "Intricate"}</span></section>
-    <div class="atlas-seal">${profileGlyph(profile.scores)}</div>
-    <section class="atlas-facets" aria-label="Repertoire profile">${names.map((name, i) => html`<div class="atlas-facet"><span class="atlas-facet-id">${numerals[i]}</span><span>${name}</span><b>${profile.index === null ? "—" : profile.scores[i]}</b><div class="atlas-facet-track"><i style="--value:${profile.scores[i]}%;--delay:${i * 70}ms"></i></div></div>`)}</section></div>
-    <section class="atlas-map" aria-label="Repertoire routes"><div class="atlas-section-head"><h4>Lineage</h4><span>${String(data.leaves.length).padStart(2, "0")} ${data.leaves.length === 1 ? "route" : "routes"}</span></div>${routeGlyph(data.nodes, root.id, appState.buildCurrentNodeId)}</section>
-    <footer class="atlas-foot"><span><b>${moveCount}</b> moves</span><span><b>${data.forks}</b> forks</span><span><b>${data.deepest}</b> depth</span>${personal ? html`<span class="atlas-imprint" title="Personal training imprint"><span>Imprint</span><b>${data.score ?? "—"}</b></span>` : ""}</footer>`;
+  body.innerHTML = html`<div class="atlas-identity"><h3>${build.name}</h3><span class="atlas-side"><i class="${build.color === "black" ? "is-black" : ""}"></i>${build.color === "black" ? "Black" : "White"}</span></div>
+    <div class="atlas-tools"><label>Scope <select data-scope aria-label="Atlas scope"><option value="${root.id}">Whole repertoire</option>${selected && selected.id !== root.id ? html`<option value="${selected.id}">Current position · ${selected.san || "Position"}</option>` : ""}</select></label></div>
+    <div data-atlas-content></div>`;
+  const paint = () => {
+    cancelCalculation();
+    const scope = body.querySelector("[data-scope]").value;
+    const start = build.nodes.find((node) => node.id === scope);
+    const scoped = subtreeNodes(start, children);
+    const data = atlasAnalysis(scoped, build.color);
+    const moveCount = data.nodes.filter((node) => node.id !== scope).length;
+    const content = body.querySelector("[data-atlas-content]");
+    const render = (result, error = null) => {
+      const pending = !result && !error;
+      const profile = result || { score: null, facets: ["Replies", "Reach", "Depth", "Consistency", "Ease"].map((label) => ({ label, value: null, numerator: 0, denominator: 0, definition: error || "Calculating" })) };
+      content.setAttribute("aria-busy", String(pending));
+      content.innerHTML = html`<div class="atlas-portrait"><section class="atlas-index" aria-label="Atlas preparation index" title="${error || "Calibrated estimate of supported opponent plans and opening handover, based on move-content review of 38 studies. Consistency and Ease describe learning load. Unrecorded moves and author intent remain unknown; this is not engine strength."}"><span class="atlas-kicker" role="status">${pending ? "Calculating…" : error ? "Unavailable" : "Preparation"}</span><div class="atlas-index-number"><strong>${atlasScoreText(profile)}</strong><span>/ 100</span></div><div class="atlas-index-rule"><i style="--value:${profile.score ?? 0}%"></i></div></section>
+      <div class="atlas-seal">${profileGlyph(profile.facets.map((facet) => facet.value))}</div>
+      <section class="atlas-facets" aria-label="Preparation profile">${profile.facets.map((facet, i) => html`<div class="atlas-facet" title="${facet.definition}"><span class="atlas-facet-id">${numerals[i]}</span><span>${facet.label}</span><b>${percent(facet.value)}</b><div class="atlas-facet-track"><i style="--value:${facet.value ?? 0}%;--delay:${i * 70}ms"></i></div></div>`)}</section></div>
+      <section class="atlas-map" aria-label="Repertoire routes"><div class="atlas-section-head"><h4>Lineage</h4><span>${String(data.leaves.length).padStart(2, "0")} ${data.leaves.length === 1 ? "route" : "routes"}</span></div>${routeGlyph(data.nodes, scope, appState.buildCurrentNodeId)}</section>
+      <footer class="atlas-foot"><span><b>${moveCount}</b> moves</span><span><b>${data.forks}</b> forks</span><span><b>${data.deepest}</b> depth</span>${personal ? html`<span class="atlas-imprint" title="Personal training imprint"><span>Imprint</span><b>${data.score ?? "—"}</b></span>` : ""}</footer>`;
+    };
+    render(null);
+    cancelCalculation = startAtlasPreparation({ nodes: build.nodes, myColor: build.color, rootNodeId: scope }, {
+      onResult: (result) => { if (dialog.open) render(result); },
+      onError: (error) => { if (dialog.open) render(null, `${error.message}. Reopen Atlas to retry.`); },
+    });
+  };
+  body.querySelector("[data-scope]").onchange = paint;
+  paint();
 }

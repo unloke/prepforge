@@ -1,0 +1,162 @@
+[Event "List of Openings from Beginner to Grandmaster: Intro"]
+[Date "2021.03.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "List of Openings from Beginner to Grandmaster"]
+[ChapterName "Intro"]
+[ChapterURL "https://lichess.org/study/2MMWpcNI/nVAYoju3"]
+[Annotator "https://lichess.org/@/Lucah873268"]
+[UTCDate "2021.03.20"]
+[UTCTime "05:18:58"]
+[ChapterMode "gamebook"]
+
+{ Hello and welcome to my study! Please enjoy! }
+ *
+
+
+[Event "List of Openings from Beginner to Grandmaster: Italian Opening (Beginner 1100-1499)"]
+[Date "2021.03.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C50"]
+[Opening "Italian Game"]
+[StudyName "List of Openings from Beginner to Grandmaster"]
+[ChapterName "Italian Opening (Beginner 1100-1499)"]
+[ChapterURL "https://lichess.org/study/2MMWpcNI/McnTPhe6"]
+[Annotator "https://lichess.org/@/Lucah873268"]
+[UTCDate "2021.03.20"]
+[UTCTime "05:21:04"]
+[ChapterMode "gamebook"]
+
+{ This is a very basic opening that is good for starters and sometimes used by Grandmasters. Move to the most common square e4. }
+1. e4 { Black retaliates. } 1... e5 { Move Knf3 } { [%csl Gg1] } 2. Nf3 { This move makes the e5 pawn weak. And also it develops a knight that also fights for the center. } { [%csl Bf3,Re5,Ye4,Yd4,Yd5][%cal Bf3e5,Bf3d4] } 2... Nc6 { Black fights back while defends the e5 pawn from the f3 knight. Move Bc4 } 3. Bc4 { This is the Italian opening! This move targets the f7 weak pawn. TIP: If you want, you can take that pawn, for a positional advantage because now black can’t castle, and Knf5 can check the king early } { [%csl Rc4,Rg5,Gg1][%cal Rc4f7,Ge8f7,Rf3g5,Rg5f7,Ge1g1,Gh1f1,Gb1c3] } *
+
+
+[Event "List of Openings from Beginner to Grandmaster: Scottish Game (Beginner 1100-1499)"]
+[Date "2021.03.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C44"]
+[Opening "Scotch Game"]
+[StudyName "List of Openings from Beginner to Grandmaster"]
+[ChapterName "Scottish Game (Beginner 1100-1499)"]
+[ChapterURL "https://lichess.org/study/2MMWpcNI/0PM909mj"]
+[Annotator "https://lichess.org/@/Lucah873268"]
+[UTCDate "2021.03.20"]
+[UTCTime "05:29:08"]
+[ChapterMode "gamebook"]
+
+{ This Opening is also good for beginners. It is very simple and easy to learn! Move to e4. }
+1. e4 { Black fights back. } 1... e5 { Remember, Always try to take control of the the center, or change it into a death trap. (Chapter 6) By moving to Nf3, we take control. } { [%csl Yd5,Yd4,Ye4,Ye5,Gg1][%cal Gg1f3] } 2. Nf3 Nc6 { This is like the Italian opening, The two knights are fighting for the pawns. move to d4. } { [%csl Bf3,Bc6,Gd2] } 3. d4 { This move pressures the pawn of e5. If accepted, you simply take with Knxd4. With the queen defending this is a win for the center so far. This opening is also good for Beginners. } { [%csl Bf3,Bd1,Rc6,Re5][%cal Bd1d4,Bf3d4] } *
+
+
+[Event "List of Openings from Beginner to Grandmaster: Dutch Opening (Beginner 1100-1499)"]
+[Date "2021.03.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "A03"]
+[Opening "Bird Opening: Dutch Variation"]
+[StudyName "List of Openings from Beginner to Grandmaster"]
+[ChapterName "Dutch Opening (Beginner 1100-1499)"]
+[ChapterURL "https://lichess.org/study/2MMWpcNI/NWrgpxkH"]
+[Annotator "https://lichess.org/@/Lucah873268"]
+[UTCDate "2021.03.20"]
+[UTCTime "05:39:10"]
+[ChapterMode "gamebook"]
+
+{ This is a Opening for Beginners and used by a few Grandmasters. Move to f4. } { [%csl Gf2][%cal Gf2f4] }
+1. f4 { This move makes Black not move to e4 and claim the d4 } 1... d5 { This is an opening that forces your opponent to make do with the e pawn. This gives you much more flexibility. (You can combine this with a few other openings) } { [%csl Bf4,Rd5][%cal Bf4e5,Rd5e4] } *
+
+
+[Event "List of Openings from Beginner to Grandmaster: Sicilian Defense (Intermediate 1500-1699)"]
+[Date "2021.03.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "B54"]
+[Opening "Sicilian Defense: Modern Variations, Main Line"]
+[StudyName "List of Openings from Beginner to Grandmaster"]
+[ChapterName "Sicilian Defense (Intermediate 1500-1699)"]
+[ChapterURL "https://lichess.org/study/2MMWpcNI/ZWZa7Zbu"]
+[Annotator "https://lichess.org/@/Lucah873268"]
+[UTCDate "2021.03.20"]
+[UTCTime "05:46:34"]
+[ChapterMode "gamebook"]
+
+{ The Sicilian Defense is one of the most solid defenses in chess. }
+1. e4 { Move to c5 } 1... c5 { This blocks the move d4 to try to role the center. Much like the Dutch opening. } { [%csl Bc5][%cal Bc5d4,Bc7c5] } 2. Nf3 { Move to d6 } 2... d6 { This stakes claim with the square e5 and takes control over the center. } 3. d4 { The c4 pawn is getting pressured. Do cxd4 } { [%cal Rd1d4,Rf3d4] } 3... cxd4 { Nice } 4. Nxd4 { How can you put pressure on the e4 pawn? } { [%csl Re4,Bg8] } 4... Nf6 5. Nc3 { This is the Sicilian Defense. There are many variations, such as the dragon (Green), or the Najdorf (Red) which puts white in uncomfortable positions. } { [%csl Gf7,Gg6,Gh7][%cal Rb7b5,Ra7a6,Re7e5,Rf8e7,Rc8e6,Rd8c7,Rb8c6,Gf8g7,Gg7g6,Ge8g8,Gh8f8] } *
+
+
+[Event "List of Openings from Beginner to Grandmaster: Kings Gambit (Intermediate  1500-1699)"]
+[Date "2021.03.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: MacLeod Defense"]
+[StudyName "List of Openings from Beginner to Grandmaster"]
+[ChapterName "Kings Gambit (Intermediate  1500-1699)"]
+[ChapterURL "https://lichess.org/study/2MMWpcNI/gmrKi9Xb"]
+[Annotator "https://lichess.org/@/Lucah873268"]
+[UTCDate "2021.03.20"]
+[UTCTime "06:00:18"]
+[ChapterMode "gamebook"]
+
+{ This is a VERY risky Gambit. It includes a sacrifice of a pawn. The King's Gambit is a chess opening that begins with the moves: 1. e4 e5 2. f4 White offers a pawn to divert the black e-pawn. If Black accepts the gambit, White has two main plans. The first is to play d4 and Bxf4, regaining the gambit pawn with central domination. Move to e4. } { [%csl Be2] }
+1. e4 { [%csl Be4][%cal Be2e4] } 1... e5 { f4 } { [%csl Gf4][%cal Gf2f4] } 2. f4 { [%csl Rf4][%cal Re5f4] } 2... exf4 { Move to Knf3 } 3. Nf3 { We sacrifice a Pawn For central domination. It also leaves the f4 pawn weak. } { [%csl Be4][%cal Be4d5,Bf3d4,Bf3e5] } 3... Nc6 { Black wants to develop and abandon the pawn on f4. How can you reinforce the e4 pawn while threatening the f4 pawn? } { [%csl Rd3][%cal Rd2d3] } 4. d3 { Good job! This is the Kings Gambit. And.... You have great control of the center. } { [%csl Rc1,Bd3][%cal Rc1f4,Bd3e4] } *
+
+
+[Event "List of Openings from Beginner to Grandmaster: London System (Advanced 1700-1900)"]
+[Date "2021.03.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "D00"]
+[Opening "Queen's Pawn Game: Accelerated London System"]
+[StudyName "List of Openings from Beginner to Grandmaster"]
+[ChapterName "London System (Advanced 1700-1900)"]
+[ChapterURL "https://lichess.org/study/2MMWpcNI/1m85Q3me"]
+[Annotator "https://lichess.org/@/Lucah873268"]
+[UTCDate "2021.03.20"]
+[UTCTime "06:11:18"]
+[ChapterMode "gamebook"]
+
+{ This is the London system, it is sort of complicated But it is one of the best Defenses ever. Move to d4. } { [%csl Yd2] }
+1. d4 { This move makes the Black Bishop have a better file. } { [%csl Bd4][%cal Bd4e5,Bc1h6] } 1... d5 { Black goes with the same idea. Move to Bf4 } { [%csl Gc1][%cal Rd5e4,Rc8h3] } 2. Bf4 { Now the bishop has even better diagonals. } { [%cal Bf4h2,Bf4b8,Bf4c1,Bf4h6] } 2... Nf6 { Move to e3 } { [%csl Ge2] } 3. e3 { This move enforces the d4 pawns position. And it gives the queen a better diagonal by stopping the move Knh5. } 3... e6 { If Black does not play c5, then move Nd2. } { [%csl Gd2][%cal Gb1d2,Rc7c5] } 4. Nd2 g6 { Next play Bd3 to make way for castling. } { [%csl Gf1,Gd3][%cal Gf1d3] } 5. Bd3 Bg7 { Now play Nf3 to take control of the e5 and g5 squares, and to castle } { [%cal Gg1f3] } 6. Ngf3 { Black most commonly plays the Zwischenzug c5 before castling. } { [%cal Rc7c5] } 6... c5 { WHENEVER BLACK PLAYS c5, you MUST play c3 to replace the d4 pawn } { [%cal Gc2c3] } 7. c3 cxd4 { [%cal Gc3d4] } 8. cxd4 O-O { Castle } 9. O-O { White has more pieces developed while black has an idle knight and bishop. The rest of the main lines are to attack via bishops. } *
+
+
+[Event "List of Openings from Beginner to Grandmaster: Fried Liver attack Opening. (Master 2000-2300)"]
+[Date "2021.03.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C44"]
+[Opening "King's Knight Opening: Normal Variation"]
+[StudyName "List of Openings from Beginner to Grandmaster"]
+[ChapterName "Fried Liver attack Opening. (Master 2000-2300)"]
+[ChapterURL "https://lichess.org/study/2MMWpcNI/T3XDP7YC"]
+[Annotator "https://lichess.org/@/Lucah873268"]
+[UTCDate "2021.03.20"]
+[UTCTime "06:30:29"]
+[ChapterMode "gamebook"]
+
+{ This is my personal favorite attack. Move to e4 }
+1. e4 e5 { Move to knf3 } 2. Nf3 { This attacks this pawn, but that isnt our goal. } { [%csl Bf3][%cal Bf3e5] } 2... Nc6 { Move to Kng5 } 3. Ng5 { This targets the f7 pawn. } { [%cal Rg5f7] } 3... d6 { Black develops. Move Bc4 } 4. Bc4 Nf6 { Just look at this massive blunder black just did. You have 2 options. It is your choice, Knxf7 to win a rook, or Bxf7 for a positional advantage. because black can't castle. This is one of the best attacks to play against people who are too busy developing. } { [%cal Rc4f7,Rg5f7] } *
+
+
+[Event "List of Openings from Beginner to Grandmaster: Conclusion"]
+[Date "2021.03.20"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "List of Openings from Beginner to Grandmaster"]
+[ChapterName "Conclusion"]
+[ChapterURL "https://lichess.org/study/2MMWpcNI/VNxg9yM5"]
+[Annotator "https://lichess.org/@/Lucah873268"]
+[UTCDate "2021.03.20"]
+[UTCTime "06:37:08"]
+[ChapterMode "gamebook"]
+
+{ Thanks for using this study, I hoped you learned :D! }
+ *
+
+

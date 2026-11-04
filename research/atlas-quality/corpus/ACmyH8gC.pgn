@@ -1,0 +1,719 @@
+[Event "King's Gambit | Full Repertoire: ♔ Introduction ♔"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C30"]
+[Opening "King's Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "♔ Introduction ♔"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/hqDzaCZy"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+[ChapterMode "gamebook"]
+
+{ Hello everyone, welcome to another study! This study will be about the King's Gambit. The King's Gambit is one of the oldest recorded chess openings in history and was one of the most popular openings until the late 19th century. It is very aggressive and leads to many tactical positions.
+
+Even today the King's Gambit is still being played regularly by some of the world's best grandmasters.
+
+Feel free to use the engine and the Lichess database, and don't forget to look at the variations :)
+
+Let's start!
+
+play 1.e4 }
+1. e4 e5 { Can you find a way to sacrifice a pawn? } 2. f4 { This is the beginning of the King's Gambit! Black has two options:
+1. Accept the gambit by taking f4
+2. Decline it by playing something else
+I have divided this study into these two sections.
+There are many defenses for black, but hopefully I have covered most of them :)
+Note: my lines will not always be the absolute top engine move, they are rather based on which one is more comfortable to play as a human and have a decent winrate.
+KGA = King's Gambit Accepted
+KGD = King's Gambit Declined
+LSB = Light squared bishop
+DSB = Dark squared bishop
+Go to the next chapter! :) } *
+
+
+[Event "King's Gambit | Full Repertoire: ✦ Section 1: King's Gambit Accepted ✦"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: King's Knight's Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "✦ Section 1: King's Gambit Accepted ✦"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/unOg8kSy"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+1. e4 e5 2. f4 { The King's Gambit! } 2... exf4 { This is the King's Gambit Accepted. The immediate threat right now from black is Qh4+, and white's in a bit of trouble because the poor king will be forced to bongcloud to e2. So to avoid any trouble, white can stop black's queen from going to h4 with 3. Nf3! 3. Bc4 is also a popular option, but it's brings white quite a few complications. } { [%csl Rh4] } 3. Nf3! { The knight is now controlling the important h4 square. } { [%csl Gh4][%cal Gf3h4] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Fischer Defense 3...d6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: Fischer Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Fischer Defense 3...d6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/lLHwjwGS"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 { [%csl Rh4][%cal Gf3h4] } 3... d6! { The Fischer Defense, named after the 11th world champion: Robert Fischer.
+This is also Stockfish's favorite option for black. Fischer called 3... d6 "a high-class waiting move." The idea of it is to free up the LSB and take away the e5 square for the white knight. } { [%csl Gc8] } 4. Bc4 { Developing and getting ready to castle. } { [%csl Bg1][%cal Be1g1] } 4... h6! { This move might look weird at first, but it actually makes a lot of sense, because it prepares for g5 on the next move. The most popular move for white is to castle, but black's going to get a very comfy position after g5. } { [%csl Rg5][%cal Bg7g5,Rh6g5] } 5. h4! { This is an important move because g5 is no longer possible for black. } { [%csl Bg5][%cal Bh4g5] } 5... Nf6 { A developing move. } (5... Nc6 6. d4 { Taking the center } { [%csl Ge4,Gd4] } 6... Nf6 7. Nc3 { Protecting e4. } { [%csl Ge4][%cal Gc3e4] } 7... Nh5 { [%csl Gc3] } 8. d5! { Kicking away the knight and freeing up the d4 square for our f3 knight. } { [%csl Gc6][%cal Gd5c6] } 8... Ne7 (8... Ne5?? { The most popular move, but this simply loses a piece. } 9. Nxe5! { [%csl Gh5][%cal Gd1h5] } 9... dxe5 10. Qxh5 $18) (8... Nb8 9. Ne2 $13 { A very sharp position again. } { [%csl Gg3,Gf4][%cal Ge2g3,Gc1f4] }) 9. Nd4 $13 { A very sharp position. Stockfish likes black more slightly, but white is the one with an 80% winrate. } { [%csl Gd4] }) 6. Nc3! { The only good move, white protect e4. Now it's definitely not great to castle kingside, that would be suicide because black would do a massive pawnstorm. White should now focus on trying to castle queenside. } 6... Bg4 (6... Be7 { [%csl Bg8][%cal Be8g8] } 7. d4 { Taking the center. } { [%csl Gd4,Ge4,Gf3,Gc3,Gc4] } 7... Nh5 { Black wants to hop a knight to g3. We have a nice counter: } { [%csl Rg3][%cal Rh5g3] } 8. Ne2! { Controlling g3 } { [%csl Gg3][%cal Ge2g3] } 8... O-O 9. Bxf4 Bg4 10. Qd2 Nd7 11. O-O-O $14 { Material is equal, white has a massive center, fully developed, and good piece placement. The engine-o-meter says it's equal, but I think most people prefer white here ;) } { [%csl Ge4,Gd4,Gf4,Gf3,Ge2,Gc4,Rh5,Re7] }) (6... Nc6 { [%csl Gd4] } 7. d4 { Taking the center } { [%csl Gd4,Ge4] } 7... Nh5 { [%csl Rg3][%cal Rh5g3] } 8. Nd5! Ng3 9. Bxf4 Nxh1 10. Qd2 Be7 11. O-O-O) 7. d4 { Dominating the center and attacking f4, there's no way to stop white from winning that pawn. } { [%csl Gc5,Gd5,Ge5,Gf5,Rf4][%cal Gd4c5,Ge4d5,Gd4e5,Ge4f5] } 7... Be7 { Preparing to O-O } (7... Nh5? { The most popular move, but it's a mistake because of this brilliant sequence! :D } 8. Ne5!! { Sacrificing the QUEEEEEEN! } { [%csl Rd1] } 8... Bxd1?? (8... dxe5 9. Qxg4 { [%csl Gh5][%cal Gg4h5] } 9... Nf6 10. Qf5 { [%csl Ge5][%cal Gf5e5] } 10... Qxd4 (10... exd4 11. Nd5 Nc6 12. Bxf4 $16 { White's position is really great. } { [%csl Gd5,Gc4,Gf4,Gf5,Re8] }) 11. Qc8+ Qd8?? 12. Bxf7+! { Forcing the king away from the queen. If black takes the bishop, we just grab the free queen. } 12... Ke7 13. Qe6# { Checkmate! } { [%csl Ge8,Ge7,Gf7,Rf8,Rd8,Rf6,Gd7,Gd6][%cal Ge6e8,Ge6f7,Ge6d7,Ge6d6] }) 9. Bxf7+ { [%csl Ge8][%cal Gf7e8] } 9... Ke7 $7 10. Nd5# { A nice legal's mate! } { [%csl Ge7,Gf6,Yd7,Yf7,Be6,Be8,Rd8,Rf8,Rd6][%cal Gd5e7,Gd5f6,Ye5d7,Ye5f7,Bf7e6,Bf7e8] }) 8. Bxf4 O-O (8... Nh5 9. Be3 Ng3 10. Rg1 Bxh4 11. Bf2 { White's ok, just castle queenside. Mr. Fish gives +1 } { [%csl Gc4,Bd5,Bb5,Bc1][%cal Bc3d5,Bc3b5,Bd1d2,Be1c1] }) 9. Qd2 $14 { Next up is O-O-O and white gets a pretty comfortable position. } { [%csl Bc1,Rh6][%cal Be1c1] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: MacLeod Defense 3...Nc6?!"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: MacLeod Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: MacLeod Defense 3...Nc6?!"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/28KgogES"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 Nc6?! { This is the MacLeod Defense, it is the most popular move at under-2000 level. It's not great because it allows white to gain the center with 4. d4! } 4. d4! { These pawns control a lot of squares! Also f4 is left undefended. } { [%csl Gc5,Gd5,Ge5,Gf5,Rf4][%cal Gd4c5,Ge4d5,Gd4e5,Ge4f5] } 4... d5 { The most popular move from black. } (4... g5 { Protecting f4. } { [%csl Gf4][%cal Gg5f4] } 5. h4! { [%csl Gg5][%cal Gh4g5] } 5... g4 (5... f6?? { A common beginner mistake. } 6. Nxg5! { Opening up the diagonal for the queen. } { [%csl Gh5][%cal Gd1h5] } 6... fxg5 7. Qh5+ Ke7 8. Qxg5+ Nf6 (8... Ke8 9. Qh5+ Ke7 10. Bxf4 { With lot's of compensation for white. The engine gives +4.2. } { [%csl Gh5,Gf4,Re7,Ge4,Gd4] }) 9. e5 $18 { the engine gives +2.4 } { [%csl Gf6][%cal Ge5f6] }) 6. Ne5 Nxe5 7. dxe5 $10 { It's equal. White will pick up some pawns later on. } { [%csl Rf4,Rg4][%cal Bb1c3,Bf1c4] }) 5. exd5 Qxd5 { White can now gain tempo by kicking the queen away. } 6. Nc3! { [%csl Gd5][%cal Gc3d5] } 6... Bb4 { Black pins the knight so that that the queen is no longer under attack. } { [%csl Re1,Rc3][%cal Rb4e1] } (6... Qe6+? { The most popular move. This is no problem for us, white wants to castle anyway. } 7. Be2! { We can castle on the next move, most of black's pieces haven't even left the 8th rank. Surprisingly, 70% blunders the basic fork tactic :) } { [%csl Bg1,Rf8,Rg8,Rh8,Re8,Rc8][%cal Be1g1] } 7... Qf6 (7... Bb4?? 8. d5 { We win a free piece! } { [%cal Gd5e6,Gd5c6] }) (7... Nf6?? 8. d5 { Same thing! }) (7... Bd6?? 8. d5 { And again! }) 8. O-O { White is almost fully developed, meanwhile black's king is still in the center, queen is awkwardly placed, and most pieces are undeveloped. The engine gives +1.7 } { [%csl Gf1,Ge2,Gf3,Gd1,Gc3,Rf6,Rf8,Rg8,Rh8,Re8] }) 7. Bd3! { Getting ready to castle. } { [%csl Bg1][%cal Be1g1] } 7... Bg4 (7... Nxd4?? { Another common beginner mistake, we can go ahead and happily take it. } 8. Nxd4! Qxd4 9. Bb5+! { Giving a check and now the black queen is left undefended. We can grab it on the next move. } { [%csl Yd4,Ge8][%cal Yd1d4,Gb5e8] }) 8. O-O $16 { White is a bit better, Stockfish gives +0.9 for white. } { [%csl Rf4,Gg1,Gf3,Gc3,Gd3] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Modern Defense 3...d5 with 4...Qxd5?!"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C36"]
+[Opening "King's Gambit Accepted: Modern Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Modern Defense 3...d5 with 4...Qxd5?!"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/ehicX2so"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 d5!? { An interesting option from black. Black intends to immediately open up the position. } 4. exd5 Qxd5?! { This is the Modern Defense, although it ain't great because white gets tempo by kicking the queen around. A much better move would be 4...Nf6!: the Abbazia Defense, covered in the next chapter. } 5. Nc3! { Hitting the queen while developing. } { [%csl Gd5][%cal Gc3d5] } 5... Qe6+ (5... Qd8 6. d4 Bd6 7. Bc4 Ne7?? { A common blunder. White has only one winning move. } (7... Nf6 8. Qe2+ Qe7 9. Qxe7+ Kxe7 10. O-O $14 { White is ahead in development, also black's f4 pawn is very weak. Stockfish gives +0.5 for white. } { [%csl Gc4,Gc3,Gd4,Gf3,Rc8,Rb8] }) 8. Ng5! { double attacking f7. } { [%csl Gf7][%cal Gg5f7,Gc4f7] } 8... O-O 9. Qh5 { A fork. } { [%csl Gf7,Gh7][%cal Gh5f7,Gh5h7] } 9... h6 10. Nxf7 Rxf7 11. Qxf7+ Kh8 12. Bxf4 Bxf4 13. Qxf4 $18 { White is up an exchange. }) 6. Be2 { Blocking the check but also preparing to castle kingside. } { [%csl Bg1][%cal Be1g1] } 6... Bd6 7. O-O { Bringing the king out of the center. } 7... Ne7 { Black prepares to castle too. } { [%csl Bg8][%cal Be8g8] } 8. d4 $14 { Giving the DSB some space to breathe. Stockfish gives +0.2. Black is a bit behind in development and the queen is awkwardly placed. } { [%csl Gc1,Rc8,Rb8] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Abbazia Defense 3...d5 with 4...Nf6!"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C36"]
+[Opening "King's Gambit Accepted: Abbazia Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Abbazia Defense 3...d5 with 4...Nf6!"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/nDwV5ty3"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/ppp2ppp/8/3P4/5p2/5N2/PPPP2PP/RNBQKB1R b KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+4... Nf6 { This is the Abbazia Defense, black doesn't immediately recapture the d pawn, instead continues developing, and our d pawn is still hanging. It's very easy to go wrong here for white. } 5. Bc4 { This is the most popular move at master level. Preparing to castle. } { [%csl Bg1][%cal Be1g1] } 5... Nxd5 6. O-O { [%csl Gg1] } 6... Be6 (6... Be7 7. d4 { Striking the center. } 7... O-O 8. Bxd5 { Removing the defender of the f pawn. } 8... Qxd5 9. Bxf4 $10) 7. Bb3 { Bringing the bishop to a safer square, where it's protected. } { [%cal Ga2b3] } 7... Bd6 { [%csl Bg8][%cal Be8g8] } 8. c4 { Gaining space in the center. } 8... Nf6 9. d4 { [%csl Gd4,Gc4] } 9... O-O 10. Nc3 $10 { It's an equal game with chances for either side. } { [%csl Gf3,Gc3,Gc4,Gd4,Gg1,Gf1] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Schallopp Defense 3...Nf6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: Schallopp Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Schallopp Defense 3...Nf6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/2UmOnMWv"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 Nf6! { This is the Schallopp Defense. It's one of the better options for black. } 4. e5 { Kicking away the horse. } 4... Nh5 (4... Nd5? 5. Nc3! Nxc3 6. dxc3 { Opening up the d file and freeing the DSB. } { [%csl Bc1,Bd1] } 6... d5 7. Bxf4 Be7 8. Qd2 O-O 9. O-O-O $14 { Material is equal, our king is safe, and 2 pieces are developed. Next up is to start a pawn storm on the kingside with h4. } { [%csl Gd2,Gd1,Gf4,Gf3,Ge5,Rc8,Rb8,Ra8] }) (4... Ne4? 5. d3 { [%csl Ge4][%cal Gd3e4] } 5... Nc5 (5... Ng5 6. Bxf4 Nxf3+ 7. Qxf3 $14 { [%csl Bc3,Bc1][%cal Bb1c3,Be1c1] }) 6. d4 { Supporting the e pawn and hitting the knight. } { [%csl Ge5,Gd4][%cal Gd4e5] } 6... Ne4 7. Bd3 $16 { [%csl Bg1,Rf4,Re4,Gd4,Ge5,Gf3][%cal Be1g1] }) (4... Qe7? { black pins the pawn. } 5. Qe2! { Breaking the pin. } 5... Nd5 6. c4 Nb4 7. d4 $16 { We control the center. White has a +1.4 advantage. } { [%csl Rf4,Rb4,Gc4,Gd4,Ge5][%cal Ba2a3,Bb1c3] }) (4... Ng4? 5. h3! { [%csl Gg4][%cal Gh3g4] } 5... Nh6 6. d4 $16 { [%csl Gd4,Ge5,Gf3,Rf4,Rh6,Rf8,Re8,Rd8,Rc8,Rb8,Ra8,Rh8] }) 5. Qe2 Be7 6. d4 { Taking the center. } { [%csl Ge5,Gd4][%cal Gd4e5] } 6... O-O 7. Bd2 d6 8. Nc3 Bg4 9. O-O-O $15 { White castles queenside, securing the king's safety. Stockfish says black is slightly better, but both sides have chances. It 's still a double edged position. You can't always get the advantage every time \('-')/. } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Cunningham Defense 3...Be7"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C35"]
+[Opening "King's Gambit Accepted: Cunningham Defense, Bertin Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Cunningham Defense 3...Be7"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/t9A6aG5Y"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 Be7 { This is the Cunningham Defense, it gets seen much more often at +1800 level. Black just wants to castle as fast as possible } { [%cal Bg8f6,Be8g8] } 4. Bc4! { Aiming at f7. } 4... Bh4+ { You will see this pretty much every time. Black forces white to move the king if he doesn't want to lose more pawns from his army. White has 2 options: Play Kf1 and you get an 'ok' game, or spice things up a bit with g3! } 5. g3!? { White's winrate immediately spikes up to 56%! This is the Bertin Gambit, one of the most craziest gambits in the King's Gambit. We'll sac 3 pawns! } 5... fxg3 6. O-O! { The absolute best move! } 6... gxh2+ 7. Kh1! { Black is up "3 pawns"! But we can take h2 anytime we want. For now we'll use it as an 'umbrella pawn'. } 7... d6? (7... d5 { The best move from black. Blocking white from getting any action on f7. But many players might miss this, and then white gets the advantage. } 8. exd5 Bg4 9. Qe2+ Ne7 10. d6 Qxd6 (10... cxd6?? 11. Bxf7+ Kxf7 (11... Kf8 12. Be6 $18) 12. Nxh4+ Kg8 13. Qxg4 $18) 11. Bxf7+ Kxf7?? (11... Kd8 12. Qg2 $13 { It's an unclear position, black is a bit better, but both sides get chances. }) 12. Nxh4+ Ke8 13. Qxg4 $16) (7... Nh6? 8. d4! { White has full compensation for the 3 pawns. Next we want to grab the knight on h6 (if it doesn't move away). } { [%csl Ge4,Gd4,Gc1] }) (7... Bg3? 8. Bxf7+ Kxf7 9. d4! Nf6 (9... Ke8 10. Bg5 Nf6 (10... Ne7 11. Nh4 $16) 11. e5) 10. Ng5+ Kf8 11. e5) (7... Be7?? { this leads to checkmate. } 8. Bxf7+!! Kxf7 9. Ne5+! { Opening up the rook. } { [%csl Gf7][%cal Ge5f7] } 9... Ke8 10. Qh5+ g6 11. Nxg6 Nf6 12. Rxf6!! Bxf6 13. Ne5+! { Now just give checks. } { [%csl Gf7][%cal Ge5f7] } 13... Ke7 14. Qf7+ Kd6 15. Nc4+ Kc5 16. Qd5+ Kb4 17. a3+ Ka4 18. b3# { [%csl Ga4,Gb4,Ya5,Yb5][%cal Gb3a4,Ga3b4,Yd5a5] }) 8. Bxf7+! { Bringing the king to the f file. } 8... Kxf7 9. Ng5+! Kg6 (9... Ke8 10. Qh5+ { A fork. } { [%csl Gh4,Ge8][%cal Gh5h4,Gh5e8] } 10... g6 11. Qxh4 { Black's king is exposed, cannot castle, and completely not developed. } { [%csl Gh4,Gg5,Gf1,Re8,Rg8,Rh8,Rd8,Rc8,Rb8,Ra8] } 11... h6?? { Another fun variation I want to show. } 12. Rf8+!! Kxf8 13. Ne6+ { White wins the queen!! } { [%csl Gf8,Gd8][%cal Ge6f8,Ge6d8,Yh4d8] }) 10. Nf7 { The best move from black is 10...Nh6! temporarily sacrificing the queen, but black wins it back later on. } { [%csl Gd8,Gh8][%cal Gf7d8,Gf7h8] } 10... Qe7?? (10... Nh6!! 11. Nxd8 Bg4 12. Rf3 Rf8 13. Rxf8 Bxd1 14. Ne6 $10 { With perfect play, it's equal. But it's really easy for black to mess up. } { [%csl Rg6,Ra8,Rb8,Gf8] }) 11. Nxh8+! Kh6 12. d4+ g5 13. Nc3! { Black's king is way too weak. White has a +2 advantage. } { [%csl Rh6,Rc8,Rb8,Ra8,Gh8][%cal Bh8f7] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Becker Defense 3...h6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: Becker Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Becker Defense 3...h6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/DlRbGOaL"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 h6!? { This is the Becker Defense. The idea of 3...h6 is to prepare for g5. } { [%csl Bg5][%cal Bg7g5,Bh6g5] } 4. Nc3 { Simply developing and supporting e4. } { [%csl Ge4][%cal Gc3e4] } 4... g5 5. d4 { Taking the center and freeing up the bishop. } { [%csl Gd4,Ge4] } 5... Bg7 { The bishop is most active here. } { [%csl Gg7] } (5... g4? 6. Bxf4! { The top engine move! } 6... gxf3 7. Qxf3 { White has more than enough compensation for the knight. Stockfish give +2.6 for white. } { [%csl Gf3,Gf4,Ge4,Gd4,Gc3,Gf1,Bc1,Ra8,Rb8,Rc8,Re8,Rd8,Rf8,Rg8,Rh8][%cal Be1c1,Bf1c4] }) 6. g3! { Trying to get rid of black's annoying f pawn. } 6... fxg3 { Here we're gonna play a much rarer move: } (6... g4 { Black absolutely doesn't want to trade the f4 pawn. This is no problem, we just move away. } 7. Nh4! { Rerouting to f5 } { [%csl Bf5][%cal Bh4f5] } 7... f3 8. Nf5 $16 { White has pawns in the center and 2 well placed knights. Black has 2 overextended pawns, and only a bishop developed. Stockfish gives +1.2 for white. } { [%csl Gf5,Gc3,Bf4,Gd4,Ge4,Rg4,Rf3][%cal Bc1f4] }) 7. Qe2! { There is no need to take the pawn right away, development comes first! } 7... gxh2 8. Be3! { Again, just keep developing. We can grab h2 any time we want. } 8... d6 9. O-O-O $13 { White is fully developed (except the LSB, but we can develop that soon enough), All of black's pieces are still on the 8th rank except the bishop. It's about equal with perfect play. } { [%csl Gc1,Gd4,Ge4,Gf3,Gc3,Ge3,Ge2,Rg7,Rh2,Rh6,Rg5,Ra8,Rb8,Rc8,Rd8,Re8,Rg8,Rh8] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Bonsch-Osmolovsky Variation 3...Ne7"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: Bonsch-Osmolovsky Variation"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Bonsch-Osmolovsky Variation 3...Ne7"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/v6SG3r7B"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 Ne7 { Preparing for a flexible development. The game takes a strategic turn. Black plans to reroute to g6. This is called the Bonsch-Osmolovsky Variation, It's pretty rare so you won't face it so often :) } { [%csl Bg6][%cal Be7g6] } 4. Nc3 Ng6 { Controlling e5 and supporting f4. } { [%csl Gf4,Ge5][%cal Gg6f4,Gg6e5] } 5. d4 Bb4 { The bishop enters the game, pinning the knight. } { [%csl Bg8][%cal Be8g8] } 6. h4! { White injects energy with a pawn storm. } { [%cal Bh4h5] } 6... d5 { Black opts for a solid central break. } (6... h5 { Stopping white from pushing further. } 7. Bc4 d6? { A common mistake. } 8. Ng5! { Double attacking f7. } { [%csl Gf7][%cal Gg5f7,Gc4f7] } 8... Be6 { Castling doesn't work because it would leave the h pawn hanging. } 9. Bxe6 fxe6 10. O-O $16 { [%csl Rf4,Re6,Re8] }) 7. h5 { Pushing further into black's territory. } { [%csl Gg6][%cal Gh5g6] } 7... Ne7 8. e5 $14 { White advances, clamping down on the center. White is slightly better. } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: 3...Bc5?"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: King's Knight's Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: 3...Bc5?"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/Fese2HVt"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 Bc5? { A common beginner mistake, this doesn't do anything for black. White can now continue developing while hitting the bishop. } 4. d4! { Kicking the bishop and freeing up the DSB to grab the f pawn. } { [%csl Gc5,Gd5,Ge5,Gf5,Rf4,Bc1][%cal Gd4c5,Ge4d5,Ge4f5,Gd4e5] } 4... Bb6 5. Bxf4 $16 { White has a massive center, material is equal, two pieces developed, and an open f file for the rook. Meanwhile black has only a bishop on b6 chilling. } { [%csl Gf4,Ge4,Gd4,Gf3,Rb6,Rb8,Ra8,Rc8,Rd8,Re8,Rg8,Rh8] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Wagenbach Defense 3...h5"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C34"]
+[Opening "King's Gambit Accepted: Wagenbach Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Wagenbach Defense 3...h5"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/M0XFaH3s"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 h5?! { This is the Wagenbach Defense. You'll probably never face this, but I included it anyway. :) } 4. d4 { Taking control of the center. } { [%csl Gf5,Ge5,Gd5,Gc5][%cal Ge4f5,Gd4e5,Ge4d5,Gd4c5] } 4... g5 { Gaining space on the kingside. } 5. h4 { Challenging the g pawn. } 5... g4 { [%cal Rg4f3] } 6. Ng5 { You might think; Wait, black traps the knight after f6!, and yes, you are correct, but we'll get some compensation for it. } 6... f6 { [%csl Rg5][%cal Rf6g5] } 7. Bxf4! { This is the King's Gambit, sacrifices are normal ;)
+This is the top engine move. White will get enough compensation for it. } 7... fxg5 8. Bxg5 Be7 (8... Ne7 9. Nc3 d6 10. Bc4 $16 { Mr. Fish gives +2.4 for white. Next we'll castle and black will have HUGE problems along the f file. } { [%csl Re8,Rf7,Rf8,Rd8,Ra8,Rb8,Rc8,Re7,Rh8,Gg5,Gc4,Gc3][%cal Be1g1] }) 9. Qd2! { The only move that keeps the advantage, white supports the bishop on g5. } 9... Bxg5 10. hxg5 { We're down material, we don't want to take the queens off the board. } { [%csl Gh1] } 10... d6 11. Nc3 Nc6 (11... Be6 12. Bd3 Ne7 13. O-O-O $16 { The next step is to break through the center with d5 or e5. Stockfish gives black a +1.5 advantage. } { [%csl Gd1,Gc1,Gd2,Gd3,Gc3,Gd4,Ge4,Gh1,Gg5] } 13... Qd7 14. d5 Bf7 15. e5 dxe5 16. Qe3) 12. Bc4 { Next up is O-O and black will have HUGE problems along the f file! It's +2.2 for white! } { [%csl Rf7][%cal Be1g1] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Classical Variation with 4...d5"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C39"]
+[Opening "King's Gambit Accepted: King's Knight's Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Classical Variation with 4...d5"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/JvZUH9do"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 g5 { The pawns advance, and the battle for space begins. This is called the Classical Variation from the KGA. It's the most popular move. } 4. h4 { Challenging the g pawn. } 4... d5! { Black begins to open files and challenge the center. } 5. exd5 g4 { Gaining space on the kingside. } 6. Ne5 Qxd5 7. d4 { Supporting the knight and opening up the DSB. } 7... Nc6 8. Nxc6 Qxc6 9. Bxf4 { Finally recapturing. } 9... Bf5 10. Qd2 $10 { White plans to castle queenside. Note: white isn't giving away the c pawn, black's will be hanging too. The position is equal. } { [%cal Bb1c3,Be1c1] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Punish 4...f6??"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C39"]
+[Opening "King's Gambit Accepted: King's Knight's Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Punish 4...f6??"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/hryv87g2"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/8/4Pp2/8/PPPP2PP/RNBQKBNR w KQkq - 0 3"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+3. Nf3! g5 4. h4 f6?? { A VERYYY common blunder, made over 120,000 times! :D
+It's good to be prepared for this, because you'll probably face this from time to time. Now white has a nice move: } 5. Nxg5! { Clearing the way for the queen. } { [%csl Yh5][%cal Yd1h5] } 5... fxg5 6. Qh5+ { Forcing the king to bongloud } { [%csl Ge8][%cal Gh5e8] } 6... Ke7 $7 { The only move } 7. Qxg5+ { just keep checking! } 7... Ke8? { It's now +10 already! } (7... Nf6 8. e5 $18 { This is very winning for white, the engine gives +5.2 }) 8. Qh5+! { The only move that secures the win } 8... Ke7 9. Qe5+ { Now we just want to bring the black king closer to us. } { [%csl Gh8,Ge8,Ge7][%cal Ge5h8,Ge5e8] } 9... Kf7 $7 10. Bc4+! { There's no need to grab the rook, we just bring the king closer to us. } 10... Kg6 11. h5+ Kh6 $7 { the only move } 12. Qxf4+ Qg5 (12... Kg7 13. h6+ Nxh6 14. Qxh6# { [%csl Gf8,Gg7,Gf6,Bg8,Bf7,Rh8,Rh7,Gg6,Yh6][%cal Gh6f8,Gh6f6,Bc4g8,Yh1h6] }) 13. Qxf8+ Qg7 $7 14. d4# { Checkmate! } { [%csl Gh6,Gg5,Yg6,Rh7,Rg7][%cal Gc1h6,Yh5g6,Bf8h6] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Kieseritzky Gambit 5. Ne5 Nf6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C39"]
+[Opening "King's Gambit Accepted: Kieseritzky Gambit, Berlin Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Kieseritzky Gambit 5. Ne5 Nf6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/DQSuGfni"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+2... exf4 3. Nf3 g5 4. h4 g4 5. Ne5 { This marks the beginning of the Kieseritzsky Gambit. } 5... Nf6 6. Nxg4 { White takes g4, but black can now grab e4. } 6... Nxe4 7. d3 { Kicking away the knight from the center. } 7... Ng3 { Attacking the rook, but white has a really brilliant response: } 8. Bxf4!! { The only good move! Rh3/Rg1 would be responded with with Qe7+!, which will be a nightmare for white. } 8... Qe7+ { The most popular move. } (8... Nxh1 { This line leads to a pretty drawish position. } 9. Qe2+!! Qe7 (9... Be7?? { A HUGE blunder! It blunders mate in 2! } 10. Nf6+ Kf8 $7 11. Bh6# { Checkmate! } { [%csl Bf8,Bg7,Yg8,Ye8,Rf7,Re7][%cal Bh6f8,Yf6g8,Yf6e8] }) 10. Nf6+! { The only move that doesn't lose! } 10... Kd8 11. Bxc7+!! { Forcing the king to come out. } 11... Kxc7 $7 12. Nd5+ { Forking the king and queen. } { [%csl Gc7,Ge7][%cal Gd5c7,Gd5e7] } 12... Kd8 13. Nxe7 Bxe7 $10 { Black's still up a bit of material, but it's still 0.0, although good to note that white has a 54% winrate :D }) 9. Be2 Nxh1?? { The most popular move, but it loses due to this brilliant sequence: } (9... Rg8! { The best move for black. } 10. Bxg3! Rxg4! { The queen is pinning the LSB, so black is able to pick up this piece. } 11. Bf2! Rxg2 12. Nc3 $13 { Stockfish says 0.0, but it's still dangerous for either side. This position has been reached a dozen of times in the masters database, most of them ended in a draw. } { [%csl Bc1][%cal Bd1d2,Be1c1] }) 10. Bg5! { Controlling e7 and d8. White prepares for Nf6+ } 10... Qb4+ { The most popular move, it just postpones black's downfall. } (10... Qe6 11. Nf6+! { Forcing black's king to move to the dark squares, where he will meet with our monster dark-squared bishop. } { [%csl Ge8][%cal Gf6e8] } 11... Kd8 12. Nd5+! { [%csl Gd8][%cal Gg5d8] } 12... f6 (12... Be7 13. Bxe7+ Ke8 14. Nxc7+ Kxe7 15. Nxe6 Kxe6 $18 { White's up material }) 13. Bxf6+ Ke8 14. Nxc7+ Kf7 15. Nxe6 Kxf6 16. Nxf8 Rxf8 $18 { White's up 3 points of material. Also, all black's pieces placement are really trash. Stockfish says +7 for white. } { [%csl Rh1,Rf8,Rc8,Rb8,Ra8] }) (10... Qd6 11. Nf6+ Kd8 12. Ne4+ $18) 11. c3! { Kicking the queen. There really isn't anything black can do. the Nf6+ threat is still there. } 11... Qxb2 12. Nf6+! Kd8 (12... Ke7 13. Qa4!! { The queen is going to e4, the } 13... Qxa1 (13... Ng3 { Controlling the e4 square. } { [%csl Re4] } 14. Nd5+ Kd6 15. Qf4+ Kxd5 16. Bf3+ Kc5 17. Qd4+ Kb5 18. c4+ Ka6 19. Qxb2 $18 { White is totally winning, the king is really weak. }) 14. Qe4+ Kd6 15. Qd5+ Ke7 16. Qe5+ Kd8 17. Qe8# { [%csl Bc8,Bd8,Be7,Ye8,Rc7,Rd7][%cal Be8c8,Be8e7,Yf6e8] }) 13. Nd5+ Be7 (13... Ke8 14. Nxc7# { Checkmate! }) 14. Bxe7+ Ke8 15. Ba3! Qxa1 16. Bh5!! { An absolutely BRILLIANT move! Every other move loses! The LSB Prepares to sacrifice himself on f7 to bring the king out. } 16... Qxa2 (16... Kd8 17. Be7+ Ke8 18. Bxf7+ Kxf7 19. Qf3+ Ke6 20. Qf6+ Kxd5 21. c4#) 17. Bxf7+ Kxf7 18. Qf3+ { Now white just gives checks to lure the king forward. } 18... Ke6 19. Nxc7+ Ke5 20. d4# { An absolutely astonishing checkmate! White checkmates black while being down 10 points of material!! } { [%csl Ge5,Be6,Bd5,Yf6,Yf5,Yf4,Ye4,Rd6][%cal Gd4e5,Bc7e6,Bc7d5,Yf3f6,Yf3e4,Ra3d6] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Kieseritzky Gambit 5. Ne5 h5"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C39"]
+[Opening "King's Gambit Accepted: Kieseritzky Gambit, Long Whip"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Kieseritzky Gambit 5. Ne5 h5"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/7nY6dK6I"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1p1p/8/4N3/4PppP/8/PPPP2P1/RNBQKB1R b KQkq - 1 5"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:29"]
+
+5... h5 { This variation of the Kieseritzsky Gambit is called the "Long Whip" :)
+Black defends the g pawn. } 6. Bc4 Nh6 { Black protects f7. } (6... Rh7 { Another way to protect f7. } 7. d4 { Taking the center. } 7... d6 8. Bxf7+! { It's ok, to sacrifice 2 pieces for the rook, usually don't do it, but this position is an exception, because black gets a weaker king. } 8... Rxf7 9. Nxf7 Kxf7 10. Bxf4 $13 { It's equal, but white has a 65% winrate! } { [%csl Ra8,Rb8,Rc8,Rd8,Rf8,Rg8,Rf7,Ge4,Gd4,Gf4][%cal Be1g1,Bb1c3] }) 7. d4 { Taking the center. } { [%csl Ge5][%cal Gd4e5] } 7... d6 8. Nd3 $14 { Retreating the knight. It's well placed here. We'll win back the sacrificed pawn on the next move, white is slightly better. } { [%csl Gd3,Rf4][%cal Be1g1] } *
+
+
+[Event "King's Gambit | Full Repertoire: ✦ Section 1.5: KGA, hyper-aggressive style after 4...g4 ✦"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C37"]
+[Opening "King's Gambit Accepted: King's Knight's Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "✦ Section 1.5: KGA, hyper-aggressive style after 4...g4 ✦"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/bsKFmeDH"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+1. e4 e5 2. f4 exf4 3. Nf3 g5 { This is the Classical Variation, usually white plays h4 and you get a good game (shown in the previous chapters). But some of you folks find that stuff boring, no worries, I got just the thing for you! } 4. Bc4!? *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Single Muzio Gambit"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C37"]
+[Opening "King's Gambit Accepted: Muzio Gambit, Sarratt Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Single Muzio Gambit"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/CcrvhcZJ"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1p1p/8/6p1/2B1Pp2/5N2/PPPP2PP/RNBQK2R b KQkq - 1 4"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+4... g4 5. O-O! { You have to play this move, trust me. Moving the knight away, would be responded with Qh4+, and you don't want to deal with that. Black didn't develop a single piece yet and he has made his kingside weaker. So, the sacrificed knight is justified for white. } 5... gxf3 6. Qxf3 Qf6 7. d3!? { Okay, I'm first showing this line, for people that are not a huge fan of sacrificing 7 points worth of material to be a show-off to their opponent. This is the safe line of the Muzio Gambit, it's not even close to the chaos of the Double Muzio Gambit. } 7... Bh6 { Protecting f4. } 8. Bxf4 { White willingly trades material for an attacking position. } 8... Bxf4 9. Qxf4 Qxf4 10. Rxf4 { A symphony of exchanges. The material count narrows, but White's rook looms ominously. } 10... Nh6 { Defending the f7 pawn. } { [%csl Rf7][%cal Rh6f7] } 11. Nc3 { [%csl Gd5,Gb5][%cal Gc3d5,Gc3b5] } 11... c6 { Preparing for a solid fortress. White's knight can no longer go to d5/b5. } { [%cal Rc6d5,Rc6b5] } 12. Raf1 $13 { Stockfish gives black a slight edge (0.5), considering that white is down a horse, that ain't bad! Also, white is the one with a whopping 55% winrate! :D } { [%csl Gc4,Gf4,Gf1,Gc3,Rb8,Ra8,Rc8,Re8,Rh8,Rh6,Rf7] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Double Muzio Gambit"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C37"]
+[Opening "King's Gambit Accepted: Double Muzio Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Double Muzio Gambit"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/Uqn6KF39"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1p1p/8/6p1/4Pp2/5N2/PPPP2PP/RNBQKB1R w KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+4. Bc4 { Now I'm going to show you the most INSANE, the most AGGRESSIVE, the most CHAOTIC gambit; presenting....The Double Muzio Gambit!! } 4... g4 5. O-O! { There goes the first piece! } 5... gxf3 6. Qxf3 Qf6 { You'll see this move pretty much every time, it's the Sarratt Defense. } 7. e5!? { We sacrifices the e5 pawn, bringing black into a labyrinth of threats! } 7... Qxe5 8. Bxf7+!! { A bishop sacrifice! The king is forced to dance amid the chaos! This is top engine btw. } 8... Kxf7 9. d4!! Qxd4+?! { The engine gives 1.8 in favor for black, but considering that white is down 7 points in material, that's not bad at all!! } (9... Qf5! { The top engine move! This will be the perfect line for black, if black plays this at the end black gets the advantage. } 10. Bxf4 Nf6! { All other moves lead the an equal position. } (10... d6?? 11. Qe3 Nf6 12. Bg5 { [%csl Rf6,Rf5][%cal Rf1f6] } 12... Qxf1+ 13. Kxf1 $16) 11. Nc3 Bg7 12. Qe3 $17 { Black has a 2.3 advantage, that's not that bad, the position is still very doubled-edged, but it's easy for white to make a mistake too. This is the drawback of the Double Muzio Gambit, if black's well prepared, they get the advantage. }) 10. Be3! { The only good move! The f pawn is pinned. } 10... Qf6? { By far the most popular move. It's crazy how black is up 7 points of material but the engine says 0.0! :D } (10... Qxb2? { Fails immediately: } 11. Qxf4+ Nf6 (11... Qf6 12. Qc4+ $18 { [%csl Rf7,Rf6][%cal Gc4f7,Rf1f7] } 12... d5 13. Qxc7+! $18 { [%csl Rf7,Rf6,Rc8][%cal Rf1f7] }) 12. Bd4 $18 { [%csl Ga1,Gb2,Yf6,Rf7][%cal Gd4a1,Gd4f6,Yf1f6,Bf1f7] }) (10... Qg7! { A much rarer move, but the only good move for black! } 11. Nc3 $13 { A very double edged position, black can go wrong very soon. I won't be covering more, because it's much too complex and in-dept, I recommend practicing this position a few times with a training bot. }) 11. Nc3 c6?? { A very natural looking move and also the most popular, black prevents white from bringing the knight to d5, but there's one problem...we can hop to e4. } { [%csl Gd5][%cal Gc6d5] } (11... fxe3?? { The second most popular move. White has a simple response: } 12. Qh5+! { We pick up the queen next, and because black's king is super weak, white is totally winning. } { [%csl Rf7,Rf6][%cal Rf1f7,Gh5f7] }) (11... Ne7 { This move leads to a draw. } 12. Nd5! Qf5 { The only good move. Every other move leads to a huge advantage for white. } 13. Rad1! $13 { The only good move for white. } 13... Na6 (13... d6 14. Bxf4! Na6 15. Ne3 Qf6 16. Nd5 Qf5 17. Ne3 $10) 14. Bxf4 d6 15. Ne3 Qf6 16. Nd5 Qf5 17. Ne3 { A draw by repetition. Any other move leads to the other side getting an advantage. }) 12. Ne4! { The only winning move. It's done for black now. } 12... Qf5 (12... Qg6 13. Qxf4+ Nf6 14. Nxf6 Kg7 15. Nh5+ Qxh5 16. Qf6+ Kg8 17. Qxf8# { [%csl Bh8,Bg8,Bg7,Rh7,Bf7][%cal Bf8h8,Bf8g7,Bf8f7] }) (12... Qh6 13. Bxf4! Qg6 14. Be5+ Nf6 15. Bxf6 $18) 13. g4! { Forcing the queen away. } { [%csl Gf5][%cal Gg4f5] } 13... Qg6 (13... Qe5 14. Bxf4! { The only winning move. } 14... Qd5 15. Bg5+ Ke6 16. Qf7+ Ke5 17. Bf6+ Kxe4 18. Rae1# { [%csl Be4,Be3,Yd4,Ye5,Gf5,Gf4,Gf3,Rd3,Rd5][%cal Be4e5,Be1e5,Yf6d4,Gf1f5,Rc2d3] }) 14. Qxf4+ $18 { There is nothing black can do, it's over, all white's pieces come flowing in. Also, notice how all black's pieces are still stuck on the backrank. It doesn't matter if you're up a bunch of material if you haven't developed yet. :) } { [%csl Yf6,Rf7,Rf8,Rg8,Rh8,Rc8,Rb8,Ra8][%cal Gf1f7,Ye4f6] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Triple Muzio Gambit"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C37"]
+[Opening "King's Gambit Accepted: Double Muzio Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Triple Muzio Gambit"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/7LfBaIBQ"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1p1p/8/6p1/4Pp2/5N2/PPPP2PP/RNBQKB1R w KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+4. Bc4 g4 5. O-O! gxf3 { There goes the first piece! } 6. Qxf3 Qf6 7. e5 Qxe5 8. Bxf7+!! { ...the second! } 8... Kxf7 9. d4! Qxd4+?! 10. Be3 { We can't always play a "Triple Muzio Gambit". It's not really sacrificing a third piece because we win the queen back. } 10... Qg7! { We can now grab the free f pawn. } 11. Qxf4+ Nf6 12. Nc3 { Bringing an extra piece into action. } 12... Rg8?! { Threatening checkmate on g2. } { [%csl Rg2][%cal Rg8g2] } (12... Be7 13. Nd5! d6 14. Nxc7 Nc6 15. Qc4+ Kf8 16. Nxa8 $13) 13. Qe4! { Defending g2. } 13... d6 14. Rxf6+! { The third!....but we win the queen now. } 14... Qxf6 15. Rf1 { A skewer. } { [%csl Rf6,Rf7][%cal Bf1f7] } 15... Qxf1+ 16. Kxf1 $13 { Black is still up 4 points of material, but because of black's weak king and undeveloped army, it's almost equal. } { [%csl Ra8,Rb8,Rc8,Rg8,Rf8,Rf7,Ge4,Ge3,Gc3] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: Traditional Variation 4...Bg7"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C38"]
+[Opening "King's Gambit Accepted: Traditional Variation"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: Traditional Variation 4...Bg7"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/DCH1Uo4O"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1p1p/8/6p1/4Pp2/5N2/PPPP2PP/RNBQKB1R w KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+4. Bc4 Bg7 { Not always does black go into the Muzio lines, this is one of them. This is called the Traditional Variation. Black decides to just castle as soon as possible. Although it's still hard for black to castle because if the Knight goes to f6 or e7 we just grab g5. } 5. Nc3 { A developing move. } 5... h6 (5... d6 6. h4 { Striking the kingside. } 6... h6 7. d4 Bg4 8. Qd3 $13 { Next up is Bd2 and O-O-O. } { [%cal Bc1d2,Be1c1] }) 6. g3 fxg3 7. d4! { We grab the center. Developing comes first! } 7... gxh2 (7... d6 8. Be3! { Next up is Qe2 and O-O-O! } { [%csl Bc1][%cal Bd1d2,Be1c1] } 8... g4 { Something you have to be ready for. } 9. O-O! { Saving the knight would lead to black getting the advantage. } 9... gxf3 10. Qxf3! { We triple up on f7! } { [%csl Gf7][%cal Gf1f7,Gc4f7] } 10... gxh2+ 11. Kh1! { Using it as an umbrella pawn. } 11... Qd7! { The only surviving move. } (11... Nf6? 12. e5! { Every thing falls apart. }) 12. Rf2! { Getting ready to stack the next piece! White has more than enough compensation for the 5 points of material sacrificed. If you want you can dig deeper into this position, but I won't go to in-dept in this. }) 8. Rxh2 $14 { Stockfish gives a slight edge for white. } *
+
+
+[Event "King's Gambit | Full Repertoire: KGA: 4...d6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C37"]
+[Opening "King's Gambit Accepted: King's Knight's Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGA: 4...d6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/fNe7sK0B"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1p1p/8/6p1/4Pp2/5N2/PPPP2PP/RNBQKB1R w KQkq - 0 4"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+4. Bc4 d6?! { The third most popular move. } 5. h4! { The only good move!, we now get something very similar to the Wagenbach Defense. } 5... g4 6. Ng5 { Double attacking f7. } 6... Nh6 { The only way to protect f7. } 7. d4 { Taking the center. Although this does allow black to trap our knight, but that's okay :) } 7... f6? 8. Bxf4!! { The only good move! We get more than enough compensation. } 8... fxg5 9. Bxg5 Qd7 (9... Be7 10. Bxh6 Bxh4+ 11. Ke2!! { The only move that keeps most of the advantage! We keep the f file open. Kd2?? would be met with Qf6, which is really annoying }) 10. O-O $18 { Black gets lots of problems along the f file, so it's really hard to develop. White has a +3.6 advantage and a 69% winrate. :D } *
+
+
+[Event "Import"]
+[Site "https://lichess.org/bruYd8Gd"]
+[Date "2016.03.09"]
+[White "Shirov, Alexei"]
+[Black "Lapinski, J."]
+[Result "1-0"]
+[WhiteElo "2500"]
+[WhiteTitle "GM"]
+[BlackElo "2200"]
+[TimeControl "-"]
+[Termination "Normal"]
+[Variant "Standard"]
+[ECO "C37"]
+[Opening "King's Gambit Accepted: Double Muzio Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "A Stunning Double Muzio Game at 2500 level!"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/4sT7Yk1P"]
+[Annotator "https://lichess.org/@/Bosburp"]
+
+{ Alexei Shirov is a Latvian and Spanish chess player. Shirov was ranked number two in the world in 1994. }
+1. e4 e5 2. f4 exf4 3. Nf3 g5 4. Bc4 g4 5. O-O! gxf3 6. Qxf3 Qf6 7. e5!? Qxe5 8. Bxf7+! Kxf7 9. d4! Qxd4+?! { Inaccuracy. Qf5 was best. } 10. Be3 Qf6 11. Bxf4 Ke8?! { Inaccuracy. Ne7 was best. } (11... Ne7 12. Nc3) 12. Nc3 Nc6?? { Blunder. Ne7 was best. } (12... Ne7 13. Rae1) 13. Nd5! Qg6 14. Rae1+? { Mistake. Bg3 was best. } (14. Bg3) 14... Be7?? { Blunder. Nge7 was best. } (14... Nge7 15. Qc3 (15. Bxc7 d6 16. Nf6+ Kf7 17. Nd7+ Ke8 18. Nf6+) 15... Bg7 16. Qxc6!! dxc6 17. Rxe7+ Kf8 18. Bh6+ Bf5 19. Bxg7+ Qxg7 20. Rxf5+ Kg8 21. Nf6+ Kf8 22. Nd5+ Kg8 23. Nf6+) 15. Bd6!! Kd8?? { Checkmate is now unavoidable. Nf6 was best. } (15... Nf6 16. Bxe7 Nxe7 17. Nxe7 Qf7 18. Ng6+ Kd8 19. Nxh8 Qf8 20. Qxf6+ Qxf6 21. Rxf6 c6 22. Nf7+) 16. Qf8+!! Bxf8 17. Bxc7# { 1-0 White wins by checkmate. } { In this breathtaking game, Alexei Shirov showcases the power of sacrifice and aggression in the King's Gambit. The battle unfolds with tactical fireworks, culminating in a brilliant checkmate. A true masterpiece! } { [%csl Gd8,Yc7,Be8,Be7,Rc8,Rd7][%cal Gc7d8,Yd5c7,Be1e8] } 1-0
+
+
+[Event "King's Gambit | Full Repertoire: ✦ Section 2: King's Gambit Declined ✦"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C30"]
+[Opening "King's Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "✦ Section 2: King's Gambit Declined ✦"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/XtlMoGn0"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+1. e4 e5 2. f4 { In the next section I'll cover all the moves if black refuses to accept the gambit. There are several reasons why players might decline the King's Gambit. Accepting the gambit can lead to open, tactical positions where both sides have chances, but it also involves risks for Black. By declining the gambit, Black aims to avoid the complications associated with the open files and potential attacks that can arise in the King's Gambit. } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Falkbeer Countergambit 2...d5 with 3...exf4"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C36"]
+[Opening "King's Gambit Accepted: Modern Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Falkbeer Countergambit 2...d5 with 3...exf4"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/vakZq2Cn"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... d5!? { This is the Falkbeer Countergambit, it's one of the most popular responses to the King's Gambit. There are lot's of options for black, so the next few chapters will still be about this opening. } 3. exd5 exf4 4. Nf3 { We have transposed to the same position as chapter 5 and 6. } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Falkbeer Countergambit 2...d5 with 3...e4"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C32"]
+[Opening "King's Gambit Declined: Falkbeer Countergambit, Charousek Gambit, Main Line"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Falkbeer Countergambit 2...d5 with 3...e4"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/kMf9znVb"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/ppp2ppp/8/3Pp3/5P2/8/PPPP2PP/RNBQKBNR b KQkq - 0 3"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+3... e4!? { This is the most popular move. The idea of this move is to take away the f3 square from the knight, making it harder for white to develop. This is called the Staunton line. } { [%csl Rf3][%cal Re4f3] } 4. d3! { Trying to get rid of that annoying pawn. } 4... Nf6 (4... exd3 5. Bxd3 Nf6 6. Nf3 Bc5 7. Qe2+ Qe7 8. Nc3 Qxe2+ 9. Bxe2 O-O 10. Bd2 Re8 11. O-O-O $16 { White is up a clean pawn }) 5. dxe4! Nxe4 6. Nf3! { Controlling the h4 square. } { [%csl Rh4] } 6... Bc5 (6... Be7 7. c4 $14 { Next up is Bd3 and O-O. } { [%csl Gd5,Gc4][%cal Gc4d5,Bf1d3,Be1g1] }) 7. Qe2 Bf5 (7... O-O 8. Qxe4! Re8 9. Ne5 f6 10. Bd3 { [%csl Gh7][%cal Gd3h7] } 10... g6 11. Nc3 fxe5 12. fxe5 $16 { White is simply up 2 pawns } { [%csl Gd5,Ge5,Ge4,Gc3,Gd3] }) 8. Nc3 Qe7 9. Be3 Nxc3 10. Bxc5 Qxe2+ 11. Bxe2 Nxe2 12. Kxe2 $16 { White is up a clean pawn. The next step is to bring the h1 rook to e1 and get the king to f1. } { [%cal Bh1e1,Be2f1] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Falkbeer Countergambit 2...d5 with 3...c6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C31"]
+[Opening "King's Gambit Declined: Falkbeer Countergambit, Nimzowitsch-Marshall Countergambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Falkbeer Countergambit 2...d5 with 3...c6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/0LPMs9LM"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/ppp2ppp/8/3pp3/4PP2/8/PPPP2PP/RNBQKBNR w KQkq - 0 3"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+3. exd5 c6!? { This something King's Gambit players struggle with a LOT. The winrates for black are insane. Example: fxe5 loses on the spot because of Qh4+ - Qe4 fork. This is called the Nimzowitsch-Marshall countergambit. } 4. Qe2! { The only move that keeps the advantage! } 4... cxd5 5. fxe5 { We can safely grab the e pawn. Qh4+ is nothing to worry about anymore because our queen controls the e4 square. } 5... Nc6 6. Nf3! Bg4 7. Nc3 Nd4? { The most popular move. But it doesn't do anything. } (7... Bc5? 8. Qb5 Bxf3 (8... Bb6 9. Qxd5 Bxf3 10. Qxf3 $16) 9. Qxc5 Qh4+ (9... d4 10. gxf3 Qh4+ 11. Kd1 dxc3 12. Ba6! $18) 10. Qf2 $18) (7... d4 8. Ne4 Qd5 9. c4! { [%csl Gd5][%cal Gc4d5] } 9... dxc3 10. bxc3 $16 Nxe5 11. d4 Nxf3+ 12. gxf3 Be6 13. Rb1 $16 { [%cal Gb1b8] }) (7... a6 { the top engine move. } 8. Qf2! { Getting out of the pin and controlling d4. The plan now is to try to castle queenside. }) 8. Qd3! Nxf3+ 9. gxf3 Qh4+ 10. Kd1 { We just move over. } 10... Be6 11. Qb5+ { [%csl Gb7,Ge8][%cal Gb5b7,Gb5e8] } 11... Bd7 12. Qxb7 { White is up 2 pawns. } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: 2...d6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: 2...d6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/3xR1nJVH"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... d6 { Another popular option for solid players. } 3. d3 { Building a solid pawn chain. } { [%csl Ge4,Gd3,Gc2][%cal Gd3e4,Gc2d3] } 3... Nc6 4. Nf3 { We just continue developing. } 4... Bg4 (4... f5 5. Nc3 Nf6 6. g3 g6 7. Bg2 Bg7 8. O-O $10 { It's an equal game, with chances for either side. }) (4... Nf6 5. Nc3 g6 6. Be2 Bg7 7. O-O O-O 8. Qe1! { [%csl Bh4,Bg3][%cal Be1g3,Bg3h4] }) 5. Be2 { Breaking the pin. } { [%csl Gf3][%cal Ge2f3] } 5... Nf6 6. O-O Be7 7. Nc3 O-O 8. Kh1! { Preparing to get some activity along the g file. White can later try something like h3 followed by g4, and then bring the rook over to g1. White has a 59% winrate :) } { [%cal Bh2h3,Bg2g4,Bf1g1] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Queen's Knight Defense 2...Nc6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C30"]
+[Opening "King's Gambit Declined: Queen's Knight Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Queen's Knight Defense 2...Nc6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/Du3dCbrM"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... Nc6 { Black decides to simply protect the pawn. This is the Queen's Knight Defense, it's the second most popular move from black after 2. f4. } { [%csl Ge5][%cal Gc6e5] } 3. Nf3 { [%csl Rh4,Gf3] } 3... d5 (3... d6 4. d3 { We have transposed to the same position as chapter 27. }) (3... g5!? { The Zilbermints Double Gambit, this is good for white, but often times white messes up. } 4. fxg5! { We can just grab it, it's free. } 4... h6 { Grabbing h6 would lose most of the advantage. } 5. Nc3 { A develoing move } 5... hxg5 6. d4 $16 { White gets a good game. } { [%csl Gd4,Ge4,Gf3,Gc3,Rg5,Re5] }) 4. exd5 Qxd5 5. Nc3 Qe6 (5... Qd8? { This hangs e5. } 6. fxe5! { White's up a clean pawn. Black got absolutely 0 compensation for that gambit. } { [%csl Ge5,Gf3,Gc3,Bb5,Bc4][%cal Bd2d4,Bf1c4,Bc4b5] }) (5... Qa5?! { The second most popular move. White has a nice response. } 6. Bb5! { Pinning the knight and obstructing the queen from defending e5. } { [%csl Rc6,Re5,Ra5] } 6... Bd7 { We can now go grab that juicy pawn. } (6... exf4 { Black grabs the f pawn in order not to lose the pawn. } 7. Ne5! { We start building up pressure on the c6 knight. } { [%csl Rc6] } 7... Ne7 8. Qf3! { Adding more pressure. } { [%csl Rc6][%cal Yf3c6,Be5c6,Gb5c6] } 8... Bd7 (8... Qb6 9. d4! $16 { The queen is unable to take d4 because it would have to leave the knight. White gets a great game. } { [%csl Rf4][%cal Be1g1,Bc1f4,Bd4d5] }) 9. Nxd7 Kxd7 10. d4! $16 { Next up is O-O, grab the f pawn, and white has a sweet advantage. } { [%csl Rd7,Rf4,Ra5,Rc6,Rf8,Re7][%cal Be1g1,Bc1f4,Bd4d5] }) 7. fxe5 O-O-O 8. O-O $14) 6. Bb5 exf4+ 7. Kf2 Bc5+?? { The most popular move for unknown reasons. \|'-'|/
+This move is total trash, because of our very simple response: } (7... Be7?! { The second most popular move. Black avoids getting skewered on the e file with Re1. } { [%csl Ge7] } 8. Re1 Qd6 (8... Qf5 9. d4 $16 { [%csl Gd4,Gf3,Gd1,Ge1,Gc1,Gc3,Gb5,Rf4,Rf5][%cal Bf2g1] }) (8... Qh6 9. d4 $14 { White gets a good game! } { [%csl Ge1,Gd1,Rf4,Rh6,Gd4,Gb5,Gc3][%cal Bf2g1,Bd4d5] }) 9. Ne4! { d4 works too, but let's have some fun kicking the queen around :) } { [%csl Gd6][%cal Ge4d6] } 9... Qb4 (9... Qg6 10. Ne5 { [%csl Gg6,Gc6][%cal Ge5g6,Ge5c6] } 10... Qf5 11. d4 $14 { We got two horsies in the center. Stockfish gives + 0.6 } { [%csl Ge5,Ge4,Gb5,Ge1,Gd1][%cal Bf2g1,Bc2c3] }) (9... Qh6 10. d4 { everything's nicely placed. } { [%csl Gd4,Ge4,Gb5,Ge1,Gd1,Rf4][%cal Bc2c3,Bf2g1] }) 10. Qe2 { Black's been dancing the queen around for the past few moves. White's completely fine. The king has just artificially castled and is now safe. } { [%csl Gb5,Gf3,Gf2,Ge1,Ge2,Ge4,Rb4,Rf4][%cal Ge2b5,Bd2d4,Bc2c3,Bf2g1] }) (7... Bd7?? { The third mos popular move. It completely ignores our main threat. } 8. Re1! $18 { We pick up the queen on the next move. } { [%csl Ge8,Re6][%cal Ye1e8] }) (7... Qh6! { The best move, being played 2% of the time lol. } 8. d4! { The position is equal, you get a good game. }) (7... Ne7 8. d4! $14 { Threatening an immediate d5. You get a good game, white's slightly better. } { [%csl Rf4][%cal Bd4d5,Bh1e1] }) 8. d4! { Black is in big trouble. White has 3 threats: 1. Re1, skewering the queen 2. simply taking the bishop on c5 3. d5, forking the queen and horse. So, white wins in all lines, it's gg. } { [%cal Bd4d5,Bh1e1,Bd4c5] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Petrov's Defense 2...Nf6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C30"]
+[Opening "King's Gambit Declined: Petrov's Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Petrov's Defense 2...Nf6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/8160VNRk"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... Nf6!? { The Petrov's Defense, putting pressure on the e4 pawn early on. This move aims to create imbalances and disturb White's initial plans. } 3. fxe5! Nxe4 4. Nf3 { [%csl Ge5][%cal Gf3e5] } 4... Be7 { Preparing to castle. } (4... d5?! 5. d3 Nc5 6. d4 Ne6 7. Nc3 $16 { White gets a good game. Next up is Bd3 and O-O and white gets some activity along the f file. } { [%cal Bf1d3,Be1g1] }) (4... Bc5? { This allows white to gain tempo with d4. } 5. d4! { [%csl Gd4,Ge5] } 5... Bb6 6. Bd3 $16 { [%csl Bg1][%cal Be1g1] }) 5. d3 { Kicking the knight around. } { [%csl Ge4,Gc1][%cal Gd3e4] } 5... Ng5 6. d4 { Solidifying the center. } { [%csl Ge5,Gd4][%cal Gd4e5] } 6... O-O { Black responds by castling kingside, securing the king's safety. } (6... Nxf3+ 7. Qxf3 O-O 8. Bd3 $14 { White controls the center. } { [%csl Gd4,Ge5][%cal Be1g1,Bc2c3,Bc1f4,Bb1d2] }) 7. Bd3 Nxf3+ 8. Qxf3 d6 9. Bf4 $10 { It's an equal game. } { [%cal Be1g1,Bb1d2,Bc2c3] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Classical Variation 2...Bc5"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C30"]
+[Opening "King's Gambit Declined: Classical Variation"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Classical Variation 2...Bc5"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/mHeGgO4f"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... Bc5 { The Classical Variation. Black develops his kingside bishop and already make it a bit harder for white to castle. Keep in mind that the e5 pawn ain't hanging, because of Qh4+, which completely wins for black. } { [%csl Rg1] } 3. Nf3 { Controlling the h4 square. } { [%csl Gh4][%cal Gf3h4] } 3... d6 (3... exf4? 4. d4 $16 { Transposing to the same position as chapter 11. } { [%csl Gd4,Ge4,Rf4] }) 4. c3! { White plays c3, preparing for d4 and creating a pathway for the queen to come into play. This move strengthens the center and sets the stage for dynamic pawn play. } { [%cal Bd2d4,Bc3d4,Bd1b3] } 4... Nc6 (4... Qe7 { A fun trap arises from this move. } 5. d4! exd4 6. cxd4! Qxe4+?? 7. Kf2!! { the only winning move! } { [%csl Rc5][%cal Rd4c5] } 7... Bb6 8. Bb5+! Kd8 9. Re1! { [%csl Ge8,Ge4][%cal Ge1e8] } 9... Qf5 10. Re8# { Checkmate! } { [%csl Gc8,Gd8,Ye8,Yd7,Ge7][%cal Ge8c8,Yb5e8,Ge8e7] }) 5. d4 { White executes a central pawn advance, gaining space. Black responds by developing the bishop to b6, maintaining the tension in the center. } 5... exd4 6. cxd4 Bb6 { Black retreats the bishop to b6, maintaining the tension in the center. } 7. Nc3 Bg4 (7... f5 8. exf5 Bxf5 9. Bb5 $13 { Make sure to play Kf2 after Qe7+! } { [%csl Bg1,Bc6][%cal Be1g1,Bb5c6] }) 8. Bb5 a6 9. Bxc6+ bxc6 10. Be3 $14 { White has a nice big center and is ready to castle. Black, on the other hand, has doubled c pawns, an isolated a pawn, and no real active piece. White has a 55% winrate! } { [%csl Gd4,Ge4,Gf4,Rc7,Rc6,Ra6,Re8,Rg8,Gc3,Gf3,Ge3,Rb6,Bb3,Ba4][%cal Be1g1,Bd1a4,Bd1b3] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Norwalde Variation 2...Qf6?"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C30"]
+[Opening "King's Gambit Declined: Norwalde Variation, Bücker Gambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Norwalde Variation 2...Qf6?"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/MXdj5GNL"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... Qf6?! { The Nordewalde Variation. Black maximizes pressure on f4. Make sure not to take e5! } { [%csl Rf4] } 3. Nf3! $10 { Attacking e5. } { [%csl Ge5] } (3. fxe5?? { An immediate throw. } 3... Qh4+! { [%csl Re4][%cal Rh4e4] } 4. g3 Qxe4+ $19 { Black picks up a full rook. } { [%csl Gh1,Ge1][%cal Ge4h1,Ge4e1] }) 3... Qxf4 4. Nc3 Bb4?? { By far the most popular move, it leads to a really cool line! } (4... Qf6 5. Bc4 $18 { Next up is O-O and white gets a great game. Black just has an akward queen on f6 chilling. } { [%csl Bg1,Gc3,Gf3,Gc4,Ge4,Rf6,Ra8,Rb8,Rc8,Re8,Rf8,Rg8,Rh8][%cal Be1g1] }) (4... Qg4 5. Bc4 Qxg2 6. Rg1 Qh3 7. Bxf7+!! Kxf7 (7... Kd8 8. Rg3 Qh6 9. d4 $18) 8. Ng5+ { [%csl Gf7,Gh3][%cal Gg5f7,Gg5h3] }) 5. Bc4! { The absolute best move. } 5... Bxc3 6. O-O!! { The only good move! Every other move results in black gaining the advantage. White lines the rook up with the queen and the bishop is still under attack. } { [%csl Rf4,Rc3,Rf7] } 6... Ba5?? { Black thinks he just picked up a free piece, but blacks up for a disappointment. It's +5.5 for white btw. Here's a cool sample game played by two masters: https://lichess.org/IZLPqeyQ#40 } (6... Bd4+ { This move just gives the piece back and lets white get an amazing position. } 7. Nxd4 { Simply picking up the free piece. Also black attacks both the queen and f7. } { [%csl Gd4,Gf4,Rf7] } 7... Qxe4 8. Bxf7+ Kd8 9. Nf5 $18 { A completely dominating position. } { [%csl Rg7,Rd8,Re4,Re5,Gf7,Gf5,Gf1] }) (6... Qxe4? 7. Bxf7+! Kxf7 (7... Kd8 8. dxc3 $18 { [%csl Gf3,Gf7,Gf1,Gd1] }) 8. Ng5+ { [%csl Ge4,Gf7][%cal Gg5e4,Gg5f7] }) 7. d4! { The only move that wins. White frees up the bishop. } { [%csl Gc1,Rf4] } 7... Qxe4 8. Bxf7+!! Kxf7 (8... Kd8 9. Bxg8 { Getting rid of the knight. We can now play Bg5+, and black can't block the check with the knight. } 9... Rxg8 10. Bg5+! Ke8 11. Nxe5 { There's way to much threats for black to stop. It's +6 for white. } { [%csl Gg5,Ye5,Rh5,Bf1][%cal Rd1h5,Bc2c3,Ba1e1] }) 9. Ng5+ { A royal fork. } { [%csl Ge4,Gf7][%cal Gg5e4,Gg5f7] } 9... Ke8 10. Nxe4 $18 { White has a great position, it's +7 :D } { [%csl Gf1,Gd1,Gc1,Ge4] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Naroditsky Defense 2...c6"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Naroditsky Defense 2...c6"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/tEqMlhT5"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... c6! { This move is actually really good, it has been popularized by GM Daniel Naroditsky. This opening doesn't actually have a name (correct me if I'm wrong), so I'll just name it the Naroditsky Defense for now. I first heard of this opening from this study: https://lichess.org/study/Ql5bksBa } 3. Nc3 exf4 (3... d6 4. d4 exd4 5. Qxd4 Nf6 6. Be3 $16 { White gets a good game. } { [%csl Bc1][%cal Be1c1] }) 4. Qf3! { The top-engine move! It's really rare. } 4... g5? { The most popular move, but it's bad because of the following move: } (4... d5 5. d4 dxe4 6. Qxe4+ Qe7 7. Bxf4 Qxe4+ 8. Nxe4 { It's an equal game. } { [%cal Be1c1,Bf1c4,Bg1f3] }) 5. h4! { Challenging g5. } 5... h6 (5... f6?? 6. Qh5+! { Forcing the king to bongcloud. } 6... Ke7 7. hxg5 $18 { We win the pawn back. }) (5... h5 { [%csl Gd4] } 6. d4 $16 { Black has some trouble keeping those kingside pawns intact. White should just keep developing now. } { [%csl Ge4,Gd4,Rg5,Rf4][%cal Bf1c4,Bc1d2,Be1c1] }) (5... gxh4 6. d4 $16 { Black has double h pawns and we're about to grab f4. } { [%csl Rf7,Rf4,Rh4,Rh7][%cal Bc1f4,Bf3f4,Bf1d3] }) 6. hxg5 Qxg5 7. d4 { Freeing up the bishop and taking the center. } { [%csl Ge4,Gd4,Rf4] } 7... Qg3+ 8. Qxg3 fxg3 9. Bf4 $16 { g3 is undefended, we got an open rook, and the king's ready to castle. } { [%csl Gh1][%cal Be1c1,Bf4g3,Bf1c4,Bg1e2] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Punish the stupid 2...f6?"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Punish the stupid 2...f6?"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/ogKqzeIf"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... f6? { A really bad move. We now have a trap similar to the notorious Damiano Trap. } 3. fxe5 fxe5?? { Played 92% of the time. We win immediately now. } (3... Nc6 { The Soller-Zilbermints Gambit. } 4. Bb5 fxe5 (4... Nxe5 5. d4 Ng6 6. h4 $16) (4... Bc5 5. Bxc6 dxc6 6. Nc3 $16 { [%cal Bd2d3,Bg1f3] }) 5. Bxc6 dxc6 6. Qh5+ $16) 4. Qh5+ { Winning the e pawn and much more later on. } { [%csl Ge5,Ge8][%cal Gh5e5,Gh5e8] } 4... g6 { Opening the diagonal to the rook. } { [%csl Rh8] } (4... Ke7 5. Qxe5+ Kf7 6. Bc4+ { Giving checks. Forcing the king farther away from his camp. Mate will come very soon. } { [%csl Gf7][%cal Gc4f7] }) 5. Qxe5+ { Giving a check and winning the rook. } { [%csl Ge8,Gh8][%cal Ge5e8,Ge5h8] } 5... Qe7 6. Qxh8 $18 { White is completely winning. It's +9 :D } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: 2...Bd6?"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: 2...Bd6?"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/mq7cbfn9"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... Bd6? { A mouse slip or a beginner mistake? Don't put you pieces in front of you central pawns ;D } 3. Nf3! { Controlling h4. } { [%csl Rh4] } (3. fxe5?? { White can always go wrong :) } 3... Qh4+ 4. g3 Qxe4+ 5. Qe2 Qxe2+ 6. Nxe2 Bxe5 $16 { Black wins a pawn and is a bit better. }) 3... exf4 4. d4 $16 { White is obviously better. White enjoys a 69% winrate. } { [%csl Ge4,Gd4,Gf3,Rf4,Rd6][%cal Bf1c4] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Panteldakis Countergambit 2...f5?!"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C30"]
+[Opening "King's Gambit Declined: Panteldakis Countergambit"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Panteldakis Countergambit 2...f5?!"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/KrdMjqL3"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... f5?! { The Panteldakis Countergambit, it's not that great. } 3. exf5! Qe7 (3... exf4? { Black has missed our threat of Qh5+ } 4. Qh5+ g6 5. fxg6 { [%csl Rh8,Re8,Rg6][%cal Rh5h8,Rh5e8] } 5... Qe7+ 6. Be2 Kd8 7. Nc3 $16 { White is up a pawn with a great position. }) 4. Nf3! { Castling is white's top priority. } 4... exf4+ 5. Be2 { Blocking the check. } 5... Nc6 6. O-O $16 { White's king is safe and it's easy to develop. } { [%csl Gg1,Gf3,Ge2,Ra8,Rc8,Re8,Rf8,Rg8,Rh8,Re7][%cal Bb1c3] } *
+
+
+[Event "King's Gambit | Full Repertoire: KGD: Keene's Defense 2...Qh4+?!"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "C30"]
+[Opening "King's Gambit Declined: Keene Defense"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "KGD: Keene's Defense 2...Qh4+?!"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/pcVYvodJ"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+
+2... Qh4+?! { The Keene's Defense. This move doesn't achieve anything except damage white's pawn structure a bit. } 3. g3 Qe7 4. Nc3! { Simply developing. } { [%csl Ge4][%cal Gc3e4] } 4... exf4 5. d4! { Taking the center. gxf4? would be bad because of Qh4+. } { [%csl Gd4,Ge4] } 5... fxg3 6. hxg3 $16 { White's a pawn down but has lot's of compensation. A falf-open file for the rook, A big fat center, and a developed knight. } { [%csl Gh1,Gd4,Ge4,Re7,Re8,Rc8,Rb8,Ra8,Rf8,Rg8,Rh8,Gc3,Bc4,Bb5,Bd3][%cal Bc1f4,Bf1b5,Bf1c4,Bf1d3,Bg1f3] } *
+
+
+[Event "King's Gambit | Full Repertoire: ♔ Outro ♔"]
+[Date "2023.12.17"]
+[Result "*"]
+[Variant "Standard"]
+[ECO "?"]
+[Opening "?"]
+[StudyName "King's Gambit | Full Repertoire"]
+[ChapterName "♔ Outro ♔"]
+[ChapterURL "https://lichess.org/study/ACmyH8gC/iDgxkEQD"]
+[Annotator "https://lichess.org/@/Bosburp"]
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2"]
+[SetUp "1"]
+[UTCDate "2023.12.17"]
+[UTCTime "12:56:30"]
+[ChapterMode "gamebook"]
+
+{ Thank you for making it to the end of this study! If you liked this study please click the heart button under the h1 square <3
+
+Please feel free to write feedback or add some corrections in the chat room.
+If you want to see some more of my studies you can check them out here:
+
+lichess.org/study/by/Bosburp/popular
+
+Join this team to be updated for new studies, advertise your study, and join tournaments!
+
+lichess.org/team/study-creators--friends
+
+[EDIT] Thank you all for 600 likes! :D }
+ *
+
+

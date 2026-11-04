@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
 import { Chess } from "chess.js";
 import { checkAnalyzeStability } from "./analyze-stability.mjs";
+import { openAnalysisHistory as openGamesSheet } from "./analyze-history.mjs";
 
 // Explicit test PGN — the browser engine
 // evaluates these REAL positions, so the prepare stub derives real FENs.
@@ -110,24 +111,6 @@ const arrives = (promise, label, ms = 20000) => Promise.race([
   promise,
   new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${ms / 1000}s waiting for ${label}`)), ms).unref()),
 ]);
-
-// Recent analyses starts collapsed on a phone, so recalling a saved game from
-// it means opening it first. Phones raise the sources as a sheet, where one row
-// opens the list in place; a wide panel has the drawer inline.
-async function openGamesSheet(page) {
-  const button = page.locator('#view-analyze [data-sheet-open="analyze-open"]');
-  if (await button.isVisible() && (await button.getAttribute("aria-expanded")) !== "true") await button.click();
-  const reveal = page.locator('#analyze-open [data-reveal="#history-drawer"]');
-  if (await reveal.isVisible() && (await reveal.getAttribute("aria-expanded")) !== "true") await reveal.click();
-  // Opening the drawer reloads the list (its toggle event), replacing every row:
-  // a row focused before that reload lands is gone, and Enter recalls nothing.
-  // So wait for the toggle, then for the reloaded rows.
-  await page.locator("#history-drawer").evaluate((d) => (d.open ? null : new Promise((resolve) => {
-    d.addEventListener("toggle", () => resolve(), { once: true });
-    d.open = true;
-  })));
-  await page.waitForFunction(() => document.querySelector('#analysis-history[aria-busy="false"] .history-item[data-game-id]'), null, { timeout: 10000 });
-}
 
 // A short or narrow panel, and a phone, show one pillar at a time behind tabs.
 async function showPane(page, pane, probe) {

@@ -108,7 +108,7 @@ jobs:
           tests/test_repositories.py::test_list_repertoires_postgres
           tests/test_build_sql_counts.py::test_list_repertoires_statement_count_postgres
 
-  js:
+  js-unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -126,18 +126,48 @@ jobs:
         run: npm run build
       - name: Bundle-size gate
         run: node scripts/check-bundle-size.mjs
-      # UI v2 viewport + states smoke (scripts/smoke/ui-v2/run-all.mjs) serves
-      # the static tree built above through the same Playwright Chromium the
-      # stockfish / e2e jobs use.
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: UI v2 smoke
-        # Each smoke is killed at 4 min (run-all.mjs); this bounds the step itself.
-        timeout-minutes: 20
-        run: npm run smoke:ui-v2
       - name: Lazy-chunk smoke
         timeout-minutes: 5
         run: npm run smoke:lazy-chunks
+
+  ui-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build SPA
+        run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: UI v2 smoke
+        timeout-minutes: 8
+        env:
+          UI_V2_SMOKE_SHARD: ${{ matrix.shard }}/4
+          UI_V2_SMOKE_CONCURRENCY: "2"
+        run: npm run smoke:ui-v2
+
+  # Keep the existing required check: every shard and the unit/build job must pass.
+  js:
+    if: always()
+    needs: [js-unit, ui-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all JS checks
+        env:
+          UNIT_RESULT: ${{ needs.js-unit.result }}
+          UI_RESULT: ${{ needs.ui-smoke.result }}
+        run: test "$UNIT_RESULT" = success && test "$UI_RESULT" = success
 
   stockfish:
     runs-on: ubuntu-latest

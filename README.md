@@ -26,9 +26,10 @@ or consult the engine. Generate continuations from a position and use Coverage
 to find missing replies, preview them and add the ones you want to prepare.
 Branch choices float over the move tree. Deleted moves disappear immediately;
 the compact Undo control restores the branch without shifting the workspace.
-Click the route map beside the repertoire color to open Atlas: a repertoire
-dossier with a structural index, four profile scores, an animated fingerprint
-and the branching routes. Personal training appears as a separate Imprint.
+Click the route map beside the repertoire color to open Atlas. Choose the whole
+repertoire or current position to explore its branching route map, Preparation
+index and five-part radar: Replies, Reach, Depth, Consistency and Ease. Opening
+completion bounds the preparation score; personal training appears separately as Imprint.
 
 ![Repertoire atlas with the current tree's branching routes](docs/assets/repertoire-atlas.png)
 

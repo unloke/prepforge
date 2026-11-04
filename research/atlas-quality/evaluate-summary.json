@@ -1,0 +1,332 @@
+{
+  "generatedUtc": "2026-11-03T23:32:00.649Z",
+  "sourceStudies": 38,
+  "studySideUnits": 45,
+  "auditedDecisions": 1070,
+  "severeConfirmed": 12,
+  "auditLabels": {
+    "audited-clean": 23,
+    "contains-severe-error": 8,
+    "mixed-or-insufficient": 14
+  },
+  "coreSha256": "3555aa058c85d6b50b345b027050de3652c35f6b279ebd78c0056dae4a039dbb",
+  "coreHashStillCurrent": true,
+  "failures": [],
+  "wholeStudyComparison": [
+    {
+      "split": "all",
+      "units": 45,
+      "clean": 23,
+      "severe": 8,
+      "uniqueStudies": 38,
+      "cleanStudies": 22,
+      "severeStudies": 7,
+      "cleanMeanLower": 10.242009794997804,
+      "severeMeanLower": 15.784876083415464,
+      "aucLowerBound": 0.43478260869565216,
+      "medianLower": 6.409615530394649,
+      "unitsBelow1": 4
+    },
+    {
+      "split": "development",
+      "units": 27,
+      "clean": 16,
+      "severe": 4,
+      "uniqueStudies": 23,
+      "cleanStudies": 15,
+      "severeStudies": 4,
+      "cleanMeanLower": 9.11315778368832,
+      "severeMeanLower": 11.895959315328318,
+      "aucLowerBound": 0.453125,
+      "medianLower": 5.751944884914656,
+      "unitsBelow1": 3
+    },
+    {
+      "split": "holdout",
+      "units": 18,
+      "clean": 7,
+      "severe": 4,
+      "uniqueStudies": 15,
+      "cleanStudies": 7,
+      "severeStudies": 3,
+      "cleanMeanLower": 12.822242963705202,
+      "severeMeanLower": 19.67379285150261,
+      "aucLowerBound": 0.35714285714285715,
+      "medianLower": 9.20356604343771,
+      "unitsBelow1": 1
+    }
+  ],
+  "localDecisionComparison": [
+    {
+      "split": "all",
+      "clean": 38,
+      "severe": 12,
+      "cleanMeanScore": 93.83480214472384,
+      "severeMeanScore": 32.203468309066665,
+      "auc": 1
+    },
+    {
+      "split": "development",
+      "clean": 23,
+      "severe": 6,
+      "cleanMeanScore": 94.89741130605711,
+      "severeMeanScore": 46.510391328665044,
+      "auc": 1
+    },
+    {
+      "split": "holdout",
+      "clean": 15,
+      "severe": 6,
+      "cleanMeanScore": 92.20546809734611,
+      "severeMeanScore": 17.896545289468268,
+      "auc": 1
+    }
+  ],
+  "chapterCount": 135,
+  "exactScoreChapters": 100,
+  "unknownScoreChapters": 35,
+  "chapterScoresBelow1": 40,
+  "soundnessConditionedOnReferenceCoverage30": [
+    {
+      "label": "audited-clean",
+      "chapters": 10,
+      "meanSoundness": 83.06613530726811
+    },
+    {
+      "label": "contains-severe-error",
+      "chapters": 6,
+      "meanSoundness": 75.62766641217412
+    }
+  ],
+  "controls": [
+    {
+      "kind": "generated-deletion",
+      "studyId": "NGpnogsw",
+      "side": "black",
+      "before": 52.231136325591464,
+      "after": 0,
+      "beforeLower": 52.231136325591464,
+      "afterLower": 0,
+      "cpLoss": null,
+      "split": null
+    },
+    {
+      "kind": "generated-deletion",
+      "studyId": "NGpnogsw",
+      "side": "black",
+      "before": 52.231136325591464,
+      "after": 0,
+      "beforeLower": 52.231136325591464,
+      "afterLower": 0,
+      "cpLoss": null,
+      "split": null
+    },
+    {
+      "kind": "generated-deletion",
+      "studyId": "8c8bmUfy",
+      "side": "black",
+      "before": 35.59063745238416,
+      "after": 29.924835334338812,
+      "beforeLower": 35.59063745238416,
+      "afterLower": 29.924835334338812,
+      "cpLoss": null,
+      "split": null
+    },
+    {
+      "kind": "generated-deletion",
+      "studyId": "8c8bmUfy",
+      "side": "black",
+      "before": 39.8502174313585,
+      "after": 0,
+      "beforeLower": 39.8502174313585,
+      "afterLower": 0,
+      "cpLoss": null,
+      "split": null
+    },
+    {
+      "kind": "generated-deletion",
+      "studyId": "vPqdbuqZ",
+      "side": "black",
+      "before": 36.05047602044366,
+      "after": 0,
+      "beforeLower": 36.05047602044366,
+      "afterLower": 0,
+      "cpLoss": null,
+      "split": null
+    },
+    {
+      "kind": "generated-blunder",
+      "studyId": "2XxhfIAJ",
+      "side": "white",
+      "before": 87.45039221724214,
+      "after": 8.97084379432158,
+      "beforeLower": 87.45039221724214,
+      "afterLower": 8.97084379432158,
+      "cpLoss": 448,
+      "split": null
+    },
+    {
+      "kind": "generated-deletion",
+      "studyId": "2XxhfIAJ",
+      "side": "white",
+      "before": null,
+      "after": 35.08177442131665,
+      "beforeLower": 35.08177442131665,
+      "afterLower": 35.08177442131665,
+      "cpLoss": null,
+      "split": null
+    },
+    {
+      "kind": "generated-deletion",
+      "studyId": "2XxhfIAJ",
+      "side": "white",
+      "before": 88.14167470402587,
+      "after": 0,
+      "beforeLower": 88.14167470402587,
+      "afterLower": 0,
+      "cpLoss": null,
+      "split": null
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "D8QPC8Zr",
+      "side": "white",
+      "before": 53.8634811173089,
+      "after": 98.36917462917401,
+      "beforeLower": 53.8634811173089,
+      "afterLower": 98.36917462917401,
+      "cpLoss": null,
+      "split": "development"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "NGpnogsw",
+      "side": "black",
+      "before": 14.671537733375528,
+      "after": 100,
+      "beforeLower": 14.671537733375528,
+      "afterLower": 100,
+      "cpLoss": null,
+      "split": "holdout"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "fTpa2qZW",
+      "side": "white",
+      "before": 17.751651359991342,
+      "after": 100,
+      "beforeLower": 17.751651359991342,
+      "afterLower": 100,
+      "cpLoss": null,
+      "split": "holdout"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "oBsew7N6",
+      "side": "black",
+      "before": 44.587770130980374,
+      "after": 93.5652633178766,
+      "beforeLower": 44.587770130980374,
+      "afterLower": 93.5652633178766,
+      "cpLoss": null,
+      "split": "development"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "tU7Nq5nE",
+      "side": "white",
+      "before": 59.259719737577385,
+      "after": 100,
+      "beforeLower": 59.259719737577385,
+      "afterLower": 100,
+      "cpLoss": null,
+      "split": "development"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "tU7Nq5nE",
+      "side": "white",
+      "before": 49.11797868431607,
+      "after": 98.52727448800673,
+      "beforeLower": 49.11797868431607,
+      "afterLower": 98.52727448800673,
+      "cpLoss": null,
+      "split": "development"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "tU7Nq5nE",
+      "side": "white",
+      "before": 42.115169702234624,
+      "after": 95.9907942981115,
+      "beforeLower": 42.115169702234624,
+      "afterLower": 95.9907942981115,
+      "cpLoss": null,
+      "split": "development"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "2MMWpcNI",
+      "side": "white",
+      "before": 9.968326973204455,
+      "after": 98.53515255543581,
+      "beforeLower": 9.968326973204455,
+      "afterLower": 98.53515255543581,
+      "cpLoss": null,
+      "split": "holdout"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "2MMWpcNI",
+      "side": "white",
+      "before": 18.114504932034816,
+      "after": 88.99847031750927,
+      "beforeLower": 18.114504932034816,
+      "afterLower": 88.99847031750927,
+      "cpLoss": null,
+      "split": "holdout"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "2MMWpcNI",
+      "side": "black",
+      "before": 46.873250738203474,
+      "after": 96.39958348057584,
+      "beforeLower": 46.873250738203474,
+      "afterLower": 96.39958348057584,
+      "cpLoss": null,
+      "split": "holdout"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "2MMWpcNI",
+      "side": "black",
+      "before": 0,
+      "after": 100,
+      "beforeLower": 0,
+      "afterLower": 100,
+      "cpLoss": null,
+      "split": "holdout"
+    },
+    {
+      "kind": "generated-repair-of-natural-error",
+      "studyId": "8eyxyvBh",
+      "side": "white",
+      "before": 30.118228599572934,
+      "after": 99.63207307532092,
+      "beforeLower": 30.118228599572934,
+      "afterLower": 99.63207307532092,
+      "cpLoss": null,
+      "split": "development"
+    }
+  ],
+  "holdoutPositionOverlap": {
+    "decisions": 424,
+    "seenInDevelopment": 48,
+    "note": "Study-level split does not enforce opening-position novelty."
+  },
+  "queryCounts": {
+    "audit": 1413,
+    "score": 1518
+  }
+}

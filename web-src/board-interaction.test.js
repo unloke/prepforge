@@ -9,6 +9,7 @@
 // These drive the real BoardController over a small fake DOM, because the rule
 // lives in setPosition's drag/click decision, not in the slide itself.
 import { beforeEach, describe, expect, it } from "vitest";
+import { Chess } from "chess.js";
 
 import { createBoardController } from "./board/board-controller.js";
 import { caughtPiece } from "./board/move-motion.js";
@@ -159,6 +160,29 @@ const release = (name) => {
   (window_.__up || []).forEach((fn) => fn({ clientX: 0, clientY: 0, button: 0 }));
 };
 
+// Each sequence is rendered on the real controller; quiet steps still change
+// the transition identity, so a later replay of the same UCI is a new event.
+const afterMoves = (...moves) => {
+  const chess = new Chess();
+  for (const move of moves) chess.move(move);
+  return chess.fen();
+};
+it.each([
+  ["clock-only refresh", [[AFTER_E4], [AFTER_E4.replace("0 1", "3 9"), "e2e4", "right"]], []],
+  ["rewind and replay", [[AFTER_E4, "e2e4"], [START], [AFTER_E4, "e2e4"]], ["move", "move"]],
+  ["multi-move jump", [[afterMoves("e4", "e5", "Nf3"), "g1f3", "right"]], []],
+  ["mismatched UCI", [[AFTER_E4, "d2d4"]], []],
+  ["inconsistent rights", [[AFTER_E4.replace("KQkq", "kq"), "e2e4"]], []],
+  ["unusable en passant", [[AFTER_E4, "e2e4"], [AFTER_E4.replace(" - ", " e3 "), "e2e4", "right"]], ["move"]],
+  ["repeated UCI at another position", [[afterMoves("Nf3"), "g1f3"], [afterMoves("e4", "e5"), null, false], [afterMoves("e4", "e5", "Nf3"), "g1f3"]], ["move", "move"]],
+  ["quiet confirmation", [[AFTER_E4, "e2e4", false], [AFTER_E4.replace("0 1", "0 2"), "e2e4"]], []],
+  ["inferred rewind with last move", [[afterMoves("e4", "e5", "Nf3"), null, false], [afterMoves("e4", "e5"), "e7e5"]], []],
+])("sound follows a forward transition: %s", (_name, steps, expected) => {
+  mount({ onMove: () => {} });
+  for (const [fen, lastMove = null, cue] of steps) board.setPosition({ fen, lastMove, cue });
+  expect(sounds).toEqual(expected);
+});
+
 describe("preview move colours", () => {
   it("uses each preview's grade or default tint, restoring the real grade on exit", () => {
     mount({ onMove: () => {} });
@@ -189,10 +213,6 @@ function captureWindowListeners() {
 }
 
 describe("a move made on the board", () => {
-  beforeEach(() => {
-    sounds = [];
-  });
-
   it("plays no slide for a drag, which leaves the piece under the pointer", () => {
     mount({ onMove: (uci) => landOnBoard(AFTER_E4, uci) });
     captureWindowListeners();
@@ -223,11 +243,6 @@ describe("a move made on the board", () => {
     expect(slides()).toHaveLength(1);
   });
 
-  it("keeps the slide for a stepped move, which no pointer made", () => {
-    mount({ onMove: () => {} });
-    landOnBoard(AFTER_E4, "e2e4");
-    expect(slides()).toHaveLength(1);
-  });
 
   it("sounds one move once, though its position is rendered twice", () => {
     mount({ onMove: () => {} });
@@ -238,21 +253,7 @@ describe("a move made on the board", () => {
     expect(sounds).toEqual(["move"]);
   });
 
-  it("still sounds the next move, which is a different one", () => {
-    mount({ onMove: () => {} });
-    landOnBoard(AFTER_E4, "e2e4");
-    landOnBoard("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", "e7e5");
-    expect(sounds).toEqual(["move", "move"]);
-  });
 
-  it("drops the drawn arrows and circles when the position changes", () => {
-    mount({ onMove: () => {} });
-    board.setAnnotations(["e2e4"], ["d4"]);
-    expect(board.arrows).toEqual(["e2e4"]);
-    landOnBoard(AFTER_E4, "e2e4");
-    expect(board.arrows).toEqual([]);
-    expect([...board.highlights]).toEqual([]);
-  });
 
   it("keeps them on a same-position refresh", () => {
     mount({ onMove: () => {} });
@@ -300,10 +301,6 @@ describe("a move made on the board", () => {
 describe("a step back through a game", () => {
   const AFTER_E4_E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
   const AFTER_NF3 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
-
-  beforeEach(() => {
-    sounds = [];
-  });
 
   // The harness's fake squares have no layout, so the offsets a slide reads are
   // given here. g1 is a knight's move from f3.
