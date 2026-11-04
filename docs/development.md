@@ -143,3 +143,9 @@ docker run --rm -p 8000:8000 prepforge-chess
 For production, follow [Deployment](DEPLOYMENT.md) for PostgreSQL, secrets,
 allowed origins, model assets, persistent data and backups. The full application
 needs an API server; GitHub Pages can only host static content.
+
+The UI smoke runner runs three browsers at a time locally. CI partitions the full
+suite across four runners; `UI_V2_SMOKE_SHARD=1/4` selects one partition and
+`UI_V2_SMOKE_CONCURRENCY=2` sets its local concurrency. Omit the shard to run
+every smoke. The required `js` check waits for all UI partitions and the
+unit, lint, build, bundle and lazy-chunk checks.
