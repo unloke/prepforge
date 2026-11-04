@@ -27,13 +27,9 @@ to find missing replies, preview them and add the ones you want to prepare.
 Branch choices float over the move tree. Deleted moves disappear immediately;
 the compact Undo control restores the branch without shifting the workspace.
 Click the route map beside the repertoire color to open Atlas. Choose the whole
-repertoire or current position to see its Documentation score immediately: the equal
-mean of applicable Decision notes, Fork signposts, Endpoint notes and Starting
-notes ratios. Tooltips show each ratio's counts; unavailable values show a dash.
-These indicators describe documented structure; they do not automatically judge
-overall content quality. Sparse notes do not imply weak chess or a poor personal
-reference. Engines and public likes do not enter the formula.
-Personal training appears separately as Imprint.
+repertoire or current position to explore its branching route map, Preparation
+index and four-part radar: Replies, Reach, Depth and Move orders. The index
+summarizes stored-route preparation; personal training appears separately as Imprint.
 
 ![Repertoire atlas with the current tree's branching routes](docs/assets/repertoire-atlas.png)
 

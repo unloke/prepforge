@@ -1,6 +1,6 @@
 import { html } from "../html.js";
 import { modalDialog, openModal } from "../core/dialog.js";
-import { atlasClarity } from "../atlas-quality.js";
+import { startAtlasPreparation } from "../atlas-preparation-client.js";
 
 export function indexTree(nodes) {
   const children = new Map();
@@ -99,8 +99,8 @@ function profileGlyph(scores) {
     const angle = (i * 90 - 90) * Math.PI / 180;
     return `${(150 + Math.cos(angle) * 100 * scale).toFixed(2)},${(150 + Math.sin(angle) * 100 * scale).toFixed(2)}`;
   };
-  const known = scores.every((value) => value !== null);
-  return html`<svg class="atlas-fingerprint" viewBox="0 0 300 300" aria-hidden="true"><circle class="atlas-orbit" cx="150" cy="150" r="126"/>${[0.25, 0.5, 0.75, 1].map((s) => html`<polygon class="atlas-grid" points="${scores.map((_, i) => point(i, s)).join(" ")}"/>`)}<path class="atlas-axis" d="M150 24V276M24 150H276"/>${known ? html`<polygon class="atlas-envelope" points="${scores.map((s, i) => point(i, s / 100)).join(" ")}"/>${scores.map((s, i) => { const [cx, cy] = point(i, s / 100).split(","); return html`<circle class="atlas-vertex" cx="${cx}" cy="${cy}" r="3"/>`; })}` : ""}<text x="150" y="13" text-anchor="middle">I</text><text x="292" y="154" text-anchor="middle">II</text><text x="150" y="295" text-anchor="middle">III</text><text x="8" y="154" text-anchor="middle">IV</text></svg>`;
+  const known = scores.map((value, i) => value == null ? null : { i, value }).filter(Boolean);
+  return html`<svg class="atlas-fingerprint" viewBox="0 0 300 300" aria-hidden="true"><circle class="atlas-orbit" cx="150" cy="150" r="126"/>${[0.25, 0.5, 0.75, 1].map((s) => html`<polygon class="atlas-grid" points="${scores.map((_, i) => point(i, s)).join(" ")}"/>`)}<path class="atlas-axis" d="M150 24V276M24 150H276"/>${known.length >= 3 ? html`<polygon class="atlas-envelope" points="${known.map(({ i, value }) => point(i, value / 100)).join(" ")}"/>` : ""}${known.map(({ i, value }) => { const [cx, cy] = point(i, value / 100).split(","); return html`<circle class="atlas-vertex" cx="${cx}" cy="${cy}" r="3"/>`; })}<text x="150" y="13" text-anchor="middle">I</text><text x="292" y="154" text-anchor="middle">II</text><text x="150" y="295" text-anchor="middle">III</text><text x="8" y="154" text-anchor="middle">IV</text></svg>`;
 }
 
 const percent = (value) => value == null ? "—" : String(Math.round(value));
@@ -116,6 +116,8 @@ export function openBuildAtlas({ appState }) {
   if (!root) return;
   const dialog = modalDialog("lineage-modal atlas-modal");
   dialog.innerHTML = html`<header class="modal-header"><h2 class="modal-title">Repertoire atlas</h2><button type="button" class="btn icon" data-close aria-label="Close">×</button></header><div class="lineage-body"></div>`;
+  let cancelCalculation = () => {};
+  dialog.addEventListener("close", () => cancelCalculation(), { once: true });
   const close = openModal(dialog);
   dialog.querySelector("[data-close]").onclick = () => close();
   const body = dialog.querySelector(".lineage-body");
@@ -126,23 +128,29 @@ export function openBuildAtlas({ appState }) {
     <div class="atlas-tools"><label>Scope <select data-scope aria-label="Atlas scope"><option value="${root.id}">Whole repertoire</option>${selected && selected.id !== root.id ? html`<option value="${selected.id}">Current position · ${selected.san || "Position"}</option>` : ""}</select></label></div>
     <div data-atlas-content></div>`;
   const paint = () => {
+    cancelCalculation();
     const scope = body.querySelector("[data-scope]").value;
     const start = build.nodes.find((node) => node.id === scope);
     const scoped = subtreeNodes(start, children);
-    const result = atlasClarity({ nodes: build.nodes, myColor: build.color, rootNodeId: scope,
-      notes: scope === root.id ? build.notes : "" });
     const data = atlasAnalysis(scoped, build.color);
     const moveCount = data.nodes.filter((node) => node.id !== scope).length;
-    const definitions = ["Own decision positions with a local prose note. Notes measure documentation, not whether its advice is correct.",
-      "Forks where every alternative has a local prose note or descriptive tag. Parent notes alone do not distinguish alternatives.",
-      "Ending positions with a local prose note. A note is not automatically a verified plan.",
-      "Starting positions with a local prose note or repertoire notes."];
     const numerals = ["I", "II", "III", "IV"];
-    body.querySelector("[data-atlas-content]").innerHTML = html`<div class="atlas-portrait"><section class="atlas-index" aria-label="Atlas documentation score" title="Equal mean of the applicable documentation ratios. This heuristic measures documented structure, not engine accuracy, popularity or verified teaching quality."><span class="atlas-kicker">Documentation</span><div class="atlas-index-number"><strong>${atlasScoreText(result)}</strong><span>/ 100</span></div><div class="atlas-index-rule"><i style="--value:${result.score ?? 0}%"></i></div></section>
-      <div class="atlas-seal">${profileGlyph(result.facets.map((facet) => facet.value))}</div>
-      <section class="atlas-facets" aria-label="Documentation profile">${result.facets.map((facet, i) => html`<div class="atlas-facet" title="${definitions[i]} ${facet.numerator}/${facet.denominator}"><span class="atlas-facet-id">${numerals[i]}</span><span>${facet.label}</span><b>${percent(facet.value)}</b><div class="atlas-facet-track"><i style="--value:${facet.value ?? 0}%;--delay:${i * 70}ms"></i></div></div>`)}</section></div>
+    const content = body.querySelector("[data-atlas-content]");
+    const render = (result, error = null) => {
+      const pending = !result && !error;
+      const profile = result || { score: null, facets: ["Replies", "Reach", "Depth", "Move orders"].map((label) => ({ label, value: null, numerator: 0, denominator: 0, definition: error || "Calculating" })) };
+      content.setAttribute("aria-busy", String(pending));
+      content.innerHTML = html`<div class="atlas-portrait"><section class="atlas-index" aria-label="Atlas preparation index" title="${error || "Mean of available move-structure measures at 16 plies. Stored opponent moves receive equal weight; omitted moves are not assessed. This is not engine strength or a validated overall quality grade."}"><span class="atlas-kicker" role="status">${pending ? "Calculating…" : error ? "Unavailable" : "Preparation"}</span><div class="atlas-index-number"><strong>${atlasScoreText(profile)}</strong><span>/ 100</span></div><div class="atlas-index-rule"><i style="--value:${profile.score ?? 0}%"></i></div></section>
+      <div class="atlas-seal">${profileGlyph(profile.facets.map((facet) => facet.value))}</div>
+      <section class="atlas-facets" aria-label="Preparation profile">${profile.facets.map((facet, i) => html`<div class="atlas-facet" title="${facet.definition} ${facet.numerator}/${facet.denominator}"><span class="atlas-facet-id">${numerals[i]}</span><span>${facet.label}</span><b>${percent(facet.value)}</b><div class="atlas-facet-track"><i style="--value:${facet.value ?? 0}%;--delay:${i * 70}ms"></i></div></div>`)}</section></div>
       <section class="atlas-map" aria-label="Repertoire routes"><div class="atlas-section-head"><h4>Lineage</h4><span>${String(data.leaves.length).padStart(2, "0")} ${data.leaves.length === 1 ? "route" : "routes"}</span></div>${routeGlyph(data.nodes, scope, appState.buildCurrentNodeId)}</section>
       <footer class="atlas-foot"><span><b>${moveCount}</b> moves</span><span><b>${data.forks}</b> forks</span><span><b>${data.deepest}</b> depth</span>${personal ? html`<span class="atlas-imprint" title="Personal training imprint"><span>Imprint</span><b>${data.score ?? "—"}</b></span>` : ""}</footer>`;
+    };
+    render(null);
+    cancelCalculation = startAtlasPreparation({ nodes: build.nodes, myColor: build.color, rootNodeId: scope }, {
+      onResult: (result) => { if (dialog.open) render(result); },
+      onError: (error) => { if (dialog.open) render(null, `${error.message}. Reopen Atlas to retry.`); },
+    });
   };
   body.querySelector("[data-scope]").onchange = paint;
   paint();

@@ -23,7 +23,7 @@ Stockfish 在你的裝置上評估局面；Maia3 依指定棋力預測人類的�
 在 Explorer 查看 Masters、Players 的對局資料與引擎候選，從目前局面產生延伸路線。
 Coverage 會找出缺少的回應；先預覽，再選擇要加入的準備。
 分支選擇浮在走法樹上方；刪除走法會立即更新畫面，底部的小型 Undo 可立即還原整個分支。
-點標題顏色旁的路線圖即可開啟 Atlas，選擇整份棋譜或目前局面，立即查看 Documentation score：Decision notes、Fork signposts、Endpoint notes、Starting notes 四項適用註記比例的等權平均。提示框顯示各項的分子／分母，不適用時顯示破折號。這些指標描述註記結構，不會自動判定整體內容好壞；少註記不代表棋力弱或個人備忘棋譜不好，引擎與公開按讚數也不參與計算。個人訓練紀錄另列為 Imprint。
+點標題顏色旁的路線圖即可開啟 Atlas，選擇整份棋譜或目前局面，查看分支路線圖、Preparation index，以及 Replies、Reach、Depth、Move orders 四項雷達圖。指數呈現已儲存路線的準備程度；個人訓練紀錄另列為 Imprint。
 
 ![開局圖譜：實際棋譜的分支路線](assets/repertoire-atlas.png)
 

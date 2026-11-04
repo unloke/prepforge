@@ -1,5 +1,5 @@
 {
-  "interpretation": "Manual instructional judgments independent of documentation scores, engines and likes. Null confidence means not explicitly specified by reviewer.",
+  "interpretation": "Manual, role-dependent instructional clarity judgments from direct PGN reading, independent of engines and popularity. High likes are positive-unlabeled reception evidence; low/missing likes are unknown. Null confidence means not explicitly specified by reviewer. No automatic quality grade.",
   "sources": [
     {
       "file": "research/atlas-quality/review-a.md",
@@ -25,7 +25,12 @@
       "confidence": null,
       "evidence": "review-a.md#0--london-system-repertoire--high-with-a-localized-placeholder",
       "evidenceHeading": "0 — London System Repertoire — high, with a localized placeholder",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "London System Repertoire",
+      "sourceUrl": "https://lichess.org/study/2EaSmZtz",
+      "likes": 2615,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "artuehhC",
@@ -37,7 +42,12 @@
       "confidence": null,
       "evidence": "review-a.md#1--the-london-system-lifetime-repertoire--medium",
       "evidenceHeading": "1 — The London System (Lifetime Repertoire) — medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "The London System (Lifetime Repertoire)",
+      "sourceUrl": "https://lichess.org/study/artuehhC",
+      "likes": 10,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "D8QPC8Zr",
@@ -49,7 +59,12 @@
       "confidence": null,
       "evidence": "review-a.md#2--a-gambit-repertoire-for-white--medium",
       "evidenceHeading": "2 — A Gambit Repertoire for White — medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "A Gambit Repertoire for White",
+      "sourceUrl": "https://lichess.org/study/D8QPC8Zr",
+      "likes": 14,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "ACmyH8gC",
@@ -61,7 +76,12 @@
       "confidence": null,
       "evidence": "review-a.md#3--kings-gambit--full-repertoire--high",
       "evidenceHeading": "3 — King's Gambit | Full Repertoire — high",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "King's Gambit | Full Repertoire",
+      "sourceUrl": "https://lichess.org/study/ACmyH8gC",
+      "likes": 955,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "NGpnogsw",
@@ -73,7 +93,12 @@
       "confidence": null,
       "evidence": "review-a.md#4--the-sicilian--medium-overall-clear-dragon-lessons",
       "evidenceHeading": "4 — The Sicilian — medium overall; clear Dragon lessons",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "The Sicilian",
+      "sourceUrl": "https://lichess.org/study/NGpnogsw",
+      "likes": 462,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "8Uztu7Xx",
@@ -85,7 +110,12 @@
       "confidence": null,
       "evidence": "review-a.md#5--greatest-caro-kann-living-repertoire--high-organization-editorial-caveat",
       "evidenceHeading": "5 — Greatest Caro Kann: Living Repertoire — high organization, editorial caveat",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Greatest Caro Kann: Living Repertoire",
+      "sourceUrl": "https://lichess.org/study/8Uztu7Xx",
+      "likes": 1484,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "8c8bmUfy",
@@ -97,7 +127,12 @@
       "confidence": null,
       "evidence": "review-a.md#6---all-about-the-sicilian-defense---medium",
       "evidenceHeading": "6 — ♦ All about the Sicilian Defense ♦ — medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "♦ All about the Sicilian Defense ♦",
+      "sourceUrl": "https://lichess.org/study/8c8bmUfy",
+      "likes": 34172,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "fTpa2qZW",
@@ -109,7 +144,12 @@
       "confidence": null,
       "evidence": "review-a.md#7--english-opening-repertoire--medium",
       "evidenceHeading": "7 — English Opening Repertoire — medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "English Opening Repertoire",
+      "sourceUrl": "https://lichess.org/study/fTpa2qZW",
+      "likes": 7,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "CfSYkcMp",
@@ -121,7 +161,12 @@
       "confidence": null,
       "evidence": "review-a.md#8--crush-the-caro-kann-white-repertoire--high",
       "evidenceHeading": "8 — Crush the Caro-Kann! White Repertoire — high",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Crush the Caro-Kann! White Repertoire",
+      "sourceUrl": "https://lichess.org/study/CfSYkcMp",
+      "likes": 194,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "yteYURRC",
@@ -133,7 +178,12 @@
       "confidence": null,
       "evidence": "review-a.md#9--my-repertoire-against-e4-the-caro-kann-defense--medium",
       "evidenceHeading": "9 — My Repertoire Against e4: The Caro Kann Defense — medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "My Repertoire Against e4: The Caro Kann Defense",
+      "sourceUrl": "https://lichess.org/study/yteYURRC",
+      "likes": 11,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "vPqdbuqZ",
@@ -145,7 +195,12 @@
       "confidence": null,
       "evidence": "review-a.md#10--hippopotamus-defense--medium",
       "evidenceHeading": "10 — Hippopotamus Defense — medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Hippopotamus Defense",
+      "sourceUrl": "https://lichess.org/study/vPqdbuqZ",
+      "likes": 35,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "2XxhfIAJ",
@@ -157,7 +212,12 @@
       "confidence": null,
       "evidence": "review-a.md#11--complete-repertoire--low-instructional-clarity-for-a-newcomer",
       "evidenceHeading": "11 — Complete Repertoire — low instructional clarity for a newcomer",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Complete Repertoire",
+      "sourceUrl": "https://lichess.org/study/2XxhfIAJ",
+      "likes": 36,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "oBsew7N6",
@@ -169,7 +229,12 @@
       "confidence": null,
       "evidence": "review-a.md#12---opening-systems-you-can-use-in-your-games--high-as-a-primer",
       "evidenceHeading": "12 — 🏆 Opening Systems YOU can USE in your games — high as a primer",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "🏆 Opening Systems YOU can USE in your games",
+      "sourceUrl": "https://lichess.org/study/oBsew7N6",
+      "likes": 691,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "tU7Nq5nE",
@@ -181,7 +246,12 @@
       "confidence": "medium",
       "evidence": "review-b.md#index-13--tu7nq5ne--the-alien-and-martian-gambits",
       "evidenceHeading": "Index 13 — tU7Nq5nE — The Alien and Martian Gambits",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "The Alien and Martian Gambits",
+      "sourceUrl": "https://lichess.org/study/tU7Nq5nE",
+      "likes": 2899,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "rZyGzD67",
@@ -193,7 +263,12 @@
       "confidence": "high",
       "evidence": "review-b.md#index-14--rzygzd67--queen-attack-guide",
       "evidenceHeading": "Index 14 — rZyGzD67 — Queen Attack guide",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Smash the QGD with the Queen ATTACK!",
+      "sourceUrl": "https://lichess.org/study/rZyGzD67",
+      "likes": 12,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "ztgulNGx",
@@ -205,7 +280,12 @@
       "confidence": "medium",
       "evidence": "review-b.md#index-15--ztgulngx--ruy-lopez--italian-response-guide",
       "evidenceHeading": "Index 15 — ztgulNGx — Ruy Lopez / Italian response guide",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "CRUSH the Ruy Lopez and Italian!",
+      "sourceUrl": "https://lichess.org/study/ztgulNGx",
+      "likes": 3989,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "AKbQXhWw",
@@ -217,7 +297,12 @@
       "confidence": "high",
       "evidence": "review-b.md#index-16--akbqxhww--white-repertoire",
       "evidenceHeading": "Index 16 — AKbQXhWw — White Repertoire",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "White Repertoire",
+      "sourceUrl": "https://lichess.org/study/AKbQXhWw",
+      "likes": 12,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "2MMWpcNI",
@@ -229,7 +314,12 @@
       "confidence": "high",
       "evidence": "review-b.md#index-17--2mmwpcni--beginner-to-grandmaster-opening-sampler",
       "evidenceHeading": "Index 17 — 2MMWpcNI — Beginner-to-Grandmaster opening sampler",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "List of Openings from Beginner to Grandmaster",
+      "sourceUrl": "https://lichess.org/study/2MMWpcNI",
+      "likes": 235,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "sEo8o4Rm",
@@ -241,7 +331,12 @@
       "confidence": "medium",
       "evidence": "review-b.md#index-18--seo8o4rm--nimzowitsch-defense-guide",
       "evidenceHeading": "Index 18 — sEo8o4Rm — Nimzowitsch Defense guide",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "🌵  1. e4 Nc6 - A Nice Defense 🏆",
+      "sourceUrl": "https://lichess.org/study/sEo8o4Rm",
+      "likes": 122,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "GNlZ2WKx",
@@ -253,7 +348,12 @@
       "confidence": "medium",
       "evidence": "review-b.md#index-19--gnlz2wkx--london-model-games",
       "evidenceHeading": "Index 19 — GNlZ2WKx — London model games",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "London System Master Games!",
+      "sourceUrl": "https://lichess.org/study/GNlZ2WKx",
+      "likes": 1425,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "KjivNw7F",
@@ -265,7 +365,12 @@
       "confidence": "high",
       "evidence": "review-b.md#index-20--kjivnw7f--london-ideas",
       "evidenceHeading": "Index 20 — KjivNw7F — London ideas",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "🍄 Ideas in the London System 🍄",
+      "sourceUrl": "https://lichess.org/study/KjivNw7F",
+      "likes": 26623,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "1gqDv9cx",
@@ -277,7 +382,12 @@
       "confidence": "high",
       "evidence": "review-b.md#index-21--1gqdv9cx--stafford-investigation",
       "evidenceHeading": "Index 21 — 1gqDv9cx — Stafford investigation",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Stafford Gambit",
+      "sourceUrl": "https://lichess.org/study/1gqDv9cx",
+      "likes": 33,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "8eyxyvBh",
@@ -289,7 +399,12 @@
       "confidence": "medium",
       "evidence": "review-b.md#index-22--8eyxyvbh--jerome-exercises",
       "evidenceHeading": "Index 22 — 8eyxyvBh — Jerome exercises",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Jerome Gambit",
+      "sourceUrl": "https://lichess.org/study/8eyxyvBh",
+      "likes": 22,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "dgUQNQ2B",
@@ -301,7 +416,12 @@
       "confidence": "high",
       "evidence": "review-b.md#index-23--dguqnq2b--black-d4-repertoire",
       "evidenceHeading": "Index 23 — dgUQNQ2B — Black d4 repertoire",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Full Black Repertoire 1. d4 Nf6",
+      "sourceUrl": "https://lichess.org/study/dgUQNQ2B",
+      "likes": 7,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "whCVdUeM",
@@ -313,7 +433,12 @@
       "confidence": "medium",
       "evidence": "review-b.md#index-24--whcvduem--stafford-traps",
       "evidenceHeading": "Index 24 — whCVdUeM — Stafford traps",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Stafford Gambit Traps",
+      "sourceUrl": "https://lichess.org/study/whCVdUeM",
+      "likes": 13621,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "OnPMlzHT",
@@ -325,7 +450,12 @@
       "confidence": "medium",
       "evidence": "review-b.md#index-25--onpmlzht--petrov-guide",
       "evidenceHeading": "Index 25 — OnPMlzHT — Petrov guide",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "🇷🇺 Petrov Defense 🇷🇺",
+      "sourceUrl": "https://lichess.org/study/OnPMlzHT",
+      "likes": 3331,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "PDVt7Kbh",
@@ -337,7 +467,12 @@
       "confidence": null,
       "evidence": "review-c.md#26--pdvt7kbh--caro-kann-defense-repertoire--high",
       "evidenceHeading": "26 — PDVt7Kbh — Caro-Kann Defense Repertoire — High",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Caro-Kann Defense Repertoire",
+      "sourceUrl": "https://lichess.org/study/PDVt7Kbh",
+      "likes": 9724,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "jtlLwUvh",
@@ -349,7 +484,12 @@
       "confidence": null,
       "evidence": "review-c.md#27--jtllwuvh--caro-kann-defense--medium",
       "evidenceHeading": "27 — jtlLwUvh — Caro-Kann Defense — Medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "🏰 Caro-Kann Defense🔥",
+      "sourceUrl": "https://lichess.org/study/jtlLwUvh",
+      "likes": 50151,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "A4EBp7Ds",
@@ -361,7 +501,12 @@
       "confidence": null,
       "evidence": "review-c.md#28--a4ebp7ds--french-defense-repertoire--high",
       "evidenceHeading": "28 — A4EBp7Ds — French Defense Repertoire — High",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "French Defense Repertoire",
+      "sourceUrl": "https://lichess.org/study/A4EBp7Ds",
+      "likes": 3682,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "UzKIIAtz",
@@ -373,7 +518,12 @@
       "confidence": null,
       "evidence": "review-c.md#29--uzkiiatz--french-defense--medium",
       "evidenceHeading": "29 — UzKIIAtz — French Defense — Medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "🇫🇷  French Defense 🇫🇷",
+      "sourceUrl": "https://lichess.org/study/UzKIIAtz",
+      "likes": 23669,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "bbxmDYZV",
@@ -385,7 +535,12 @@
       "confidence": null,
       "evidence": "review-c.md#30--bbxmdyzv--what-is-your-ideal-opening--medium",
       "evidenceHeading": "30 — bbxmDYZV — What is your Ideal Opening? — Medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "🏆What is your Ideal Opening? 🤔",
+      "sourceUrl": "https://lichess.org/study/bbxmDYZV",
+      "likes": 12862,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "nRiq9SZx",
@@ -397,7 +552,12 @@
       "confidence": null,
       "evidence": "review-c.md#31--nriq9szx--pircczech-system--medium",
       "evidenceHeading": "31 — nRiq9SZx — Pirc/Czech System — Medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "✨Pirc/Czech System for Black: Lifetime Repertoire⁉️✨ 👀 🦾💖",
+      "sourceUrl": "https://lichess.org/study/nRiq9SZx",
+      "likes": 59,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "HHZpRszr",
@@ -409,7 +569,12 @@
       "confidence": null,
       "evidence": "review-c.md#32--hhzprszr--openings--medium",
       "evidenceHeading": "32 — HHZpRszr — Openings — Medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Openings",
+      "sourceUrl": "https://lichess.org/study/HHZpRszr",
+      "likes": 538,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "bmWAylqe",
@@ -421,7 +586,12 @@
       "confidence": null,
       "evidence": "review-c.md#33--bmwaylqe--repertoire-for-the-d4-player--high-with-diagram-caveat",
       "evidenceHeading": "33 — bmWAylqe — Repertoire for the D4 PLAYER — High, with diagram caveat",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "🏆Repertoire for the D4 PLAYER 🏆",
+      "sourceUrl": "https://lichess.org/study/bmWAylqe",
+      "likes": 5860,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "nYAJ7Km3",
@@ -433,7 +603,12 @@
       "confidence": null,
       "evidence": "review-c.md#34--nyaj7km3--pirc-defense-repertoire--medium",
       "evidenceHeading": "34 — nYAJ7Km3 — Pirc Defense Repertoire — Medium",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "🔥🔥Pirc Defense Repertoire🔥🔥",
+      "sourceUrl": "https://lichess.org/study/nYAJ7Km3",
+      "likes": 752,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "FwXo3Qhq",
@@ -445,7 +620,12 @@
       "confidence": null,
       "evidence": "review-c.md#35--fwxo3qhq--pirc-defense-opening-repertoire-for-black--high-for-companion-notes-standalone-completeness-uncertain",
       "evidenceHeading": "35 — FwXo3Qhq — Pirc Defense: Opening Repertoire for Black — High for companion notes; standalone completeness uncertain",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Pirc Defense: Opening Repertoire for Black",
+      "sourceUrl": "https://lichess.org/study/FwXo3Qhq",
+      "likes": 52,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     },
     {
       "studyId": "LLNDy032",
@@ -457,7 +637,13 @@
       "confidence": null,
       "evidence": "review-c.md#36--llndy032--répertoire-1500-élo-avec-les-blancs--low-for-self-contained-teaching-personal-reference-usefulness-uncertain",
       "evidenceHeading": "36 — LLNDy032 — répertoire 1500 élo avec les blancs — Low for self-contained teaching; personal-reference usefulness uncertain",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "répertoire 1500 élo avec les blancs (solide)",
+      "sourceUrl": "https://lichess.org/study/LLNDy032",
+      "likes": 15,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed",
+      "targetCorrection": "Prior low label concerns self-contained teaching only. Direct reinspection found developed Alapin and French branching; repertoire usefulness cannot be rated low from missing prose. Specific Elephant/Latvian branches remain unfinished in this snapshot."
     },
     {
       "studyId": "e01yoGqe",
@@ -469,7 +655,17 @@
       "confidence": null,
       "evidence": "review-c.md#37--e01yogqe--punishing-bad-openings--high-for-its-tactical-teaching-purpose",
       "evidenceHeading": "37 — e01yoGqe — Punishing Bad Openings — High for its tactical-teaching purpose",
-      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated."
+      "qualification": "Single qualitative review of inspected content; role-dependent, not exhaustive or calibrated.",
+      "title": "Punishing 👊 Bad 😱 Openings ✌️",
+      "sourceUrl": "https://lichess.org/study/e01yoGqe",
+      "likes": 127,
+      "likesInterpretation": "High likes may support usefulness; low/missing likes are unknown, not negative.",
+      "labelScope": "instructional clarity within reviewed role; whole-repertoire quality not assessed"
     }
-  ]
+  ],
+  "receptionSource": {
+    "file": "corpus/stars.json",
+    "sha256": "c73586cffbd4e648e54113975fbeba088ca012957d364c403571c5bc2af3da29"
+  },
+  "targetLimitation": "Labels describe inspected instructional clarity, not overall repertoire content quality. Lack of explanations does not establish poor move-tree content. Not suitable as content-quality training labels as-is."
 }

@@ -9,7 +9,7 @@ do not establish live engine output or production service availability.
 | --- | --- | --- | --- |
 | `repertoire-desktop.png` | 1440 × 900 | 2026-11-02 | Isolated real API account, Open games · White, 21 moves / 5 lines, selected Bb5 |
 | `repertoire-mobile.png` | 390 × 844 | 2026-11-02 | Same account and tree at Bb5; occasional actions in More |
-| `repertoire-atlas.png` | 1440 × 900 | 2026-11-03 | Isolated real API account, imported London System Basics · White, 24 moves / 5 routes; actual documentation ratios |
+| `repertoire-atlas.png` | 1440 × 900 | 2026-11-03 | Isolated real API account, London System Repertoire · White, 643 moves / 79 routes; move-only Preparation profile |
 | `repertoire-discussion.png` | 1440 × 900 | 2026-11-02 | Same tree, Morgan/Alex discussion at Bb5 |
 | `repertoire-undo.png` | 1440 × 900 | 2026-10-30 | Same fixture, deleted branch and compact Undo |
 | `train-session.png` | 1440 × 900 | 2026-10-30 | Same fixture, live Due queue session |
@@ -26,11 +26,19 @@ account with a branched repertoire, saved analyzed game and completed training r
 The same account and tree were captured before and after at 1440 × 900,
 1000 × 650 and 390 × 844. Desktop header height changed from 78 to 47 CSS pixels;
 phone header height changed from 77 to 61. No horizontal overflow was measured.
-The documentation image is a separate annotated example imported through the real
-API from chapter 2 of saved Lichess study `2EaSmZtz`. Its root introduction and
-variation comments survive import; the measured score is 73, with facets
-91 / 0 / 100 / 100. It is not a before/after comparison with the Anti-Sicilian tree.
-No engine or popularity value enters the documentation score.
+The final documentation image is a separate move-only example derived from saved
+Lichess study `2EaSmZtz`: its 16 nonempty standard-start chapters are merged by
+move prefix, all annotations omitted, then imported through the real API. The
+raw source corpus remains unchanged. It has 643 moves / 79 routes and a displayed
+Preparation index of 73, with Replies / Reach / Depth / Move orders rounded to
+90 / 41 / 86 / 75. These are stored-route structure measures, not note rates or a
+validated overall quality grade. Imprint is personal training data.
+
+This full-tree image is not a before/after pair with the Anti-Sicilian or London
+Basics trees. The London Basics refresh was separately checked on the same
+24-move / 5-route data at all three viewports. Both London captures have no console
+errors or horizontal overflow. Desktop header height is 47 CSS pixels and phone
+header height is 61; the original four-facet/radar/index arrangement is retained.
 
 ## Refresh
 

@@ -44,51 +44,42 @@ the repertoire query dropped from 3.09 ms with a message scan to 0.15 ms with
 was added.
 
 Atlas opens from the route map beside the repertoire color, or More → Explore.
-It synchronously computes documentation ratios from the current in-memory tree.
-Scope selects the repertoire root (Whole repertoire) or the selected Current
-position; switching scope updates the score, routes and counts immediately.
-Disabled subtrees are excluded. There is no Assess action or horizon setting.
+It presents a branching route map, Preparation index, a four-facet radar and raw
+move, route, fork and depth counts. Whole repertoire selects the repertoire root;
+Current position selects the current subtree. Scope changes recalculate the profile.
+Disabled subtrees are excluded; the current path is highlighted.
 
-`atlasClarity` in `web-src/atlas-quality.js` computes four ratios:
+Preparation is computed locally from legal moves and canonical positions, merging
+position-equivalent continuations only inside the selected scope. It ignores all
+annotations and uses no engine, LLM or network. A dedicated worker keeps legal
+replay off the UI thread; changing scope or closing Atlas cancels the worker.
+Only move/position fields are sent to it. The horizon is 16 plies from the
+selected root. At own decisions, the deterministic preference is enabled prepared
+mainline, then prepared, then mainline, then lexicographic UCI. Multiple candidates
+within a preference use the deterministic UCI order.
 
-- **Decision notes:** own-side decision positions with prose on the position or
-  its selected reply. Reply selection prefers an enabled prepared mainline,
-  then the first prepared child, then an enabled mainline, then the first child.
-  This selects note context; it does not establish author intent.
-- **Fork signposts:** forks where every enabled alternative has local prose or
-  a descriptive tag. A parent note alone does not distinguish the alternatives.
-- **Endpoint notes:** ending positions with local prose.
-- **Starting notes:** the selected starting position has local prose. Whole
-  repertoire scope can also use repertoire notes; subtree scope uses its local
-  starting-position notes.
-
-Local prose can come from a comment, typical plan, strategic idea or tactical
-warning. Bare URLs, drawing/evaluation tags and move notation alone do not
-qualify. This checks note presence, not meaning, correctness or length. Each
-ratio counts canonical positions once, with board, turn, castling and legal
-en-passant state in the key. Repeated occurrences must all satisfy the relevant
-condition. Copies and extra notes do not add weight to a position.
-
-The Documentation score is the equal mean of applicable ratios. A ratio with no
-eligible positions is excluded and displays a dash; a scope with no moves has
-no score. Facet title tooltips expose definitions and numerator/denominator
-counts. The fingerprint remains open when a facet is unavailable. Engines and
-public likes do not enter the formula.
+The facets are Replies (stored own-response availability), Reach (stored-route
+survival to the horizon), Depth (survival accumulated across the horizon), and
+Move orders (shared response availability across own-position occurrences with
+at least two canonical incoming edges or distinct reply sets, including empty
+sets). Identical copies add neither arrivals nor reply sets; Move orders displays
+a dash when no groups qualify.
+Checkmate/stalemate absorb survival regardless of winner. Repeated positions
+stop traversal rather than adding artificial depth. Opponent
+choices receive equal weight over unique stored moves: this is a reference over
+the saved graph, not empirical encounter probability. Omitted alternatives are
+not assessed. Preparation index is the equal mean of applicable facets, a product
+convention rather than a validated holistic quality measure. Method and corpus
+results live in [Atlas research](../research/atlas-quality/README.md).
 
 Tree PGN import/export preserves starting-position prose and drawings. Variation
 introductions are retained with the corresponding branch's move note, using the
-existing single annotation field, so structural evidence is not lost on import.
+existing single annotation field, so those annotations are retained on import.
 
-These are factual indicators of documented structure, not an automatic good/bad
-classifier for overall content quality. Note presence does not establish semantic
-clarity, chess strength, teaching quality or personal-reference usefulness. A
-sparse move notebook is not automatically a poor repertoire. Content-quality
-research uses direct manual reviews of organization, explanations and intended
-audience, including whether mistakes are teaching examples. Those judgments
-remain separate from the formula. High public likes provide external
-positive-unlabeled evidence of reader reception; low likes remain unknown, not
-negative labels. Neither these ratios nor that external evidence establish a
-validated cross-study quality ranking.
+The research also retains source PGNs, move-tree examples, direct instructional
+reviews and observed likes. Earlier course-clarity labels are not repertoire
+quality labels and cannot validate this move-only profile. High likes are
+positive-unlabeled reception evidence; low or missing likes remain unknown.
 
 Imprint separately reports the percentage of enabled own-side moves marked
 mastered, with no score before training. Shared views omit Imprint. A 2,000-node

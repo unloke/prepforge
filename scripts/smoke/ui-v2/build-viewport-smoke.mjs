@@ -183,39 +183,63 @@ async function fixturePage(options) {
 }
 
 async function checkAtlas(atlas, check, empty = false) {
-  const expectedScore = empty ? "—" : "0";
-  check(await atlas.locator(".atlas-index-number strong").textContent() === expectedScore, "Atlas computes documentation immediately; empty repertoires have no score");
-  const facets = await atlas.locator(".atlas-facet > span:nth-child(2)").allTextContents();
-  check(JSON.stringify(facets) === JSON.stringify(["Decision notes", "Fork signposts", "Endpoint notes", "Starting notes"]), `four documentation facets render: ${facets.join(", ")}`);
-  const readFacets = () => atlas.locator(".atlas-facet").evaluateAll((rows) => rows.map((row) => ({
-    value: row.querySelector("b").textContent, title: row.title,
-  })));
-  const checkEvidence = async () => {
-    const rows = await readFacets();
-    check(rows.every((row) => row.value === "0" || row.value === "—"), "comment-free fixtures have zero or inapplicable documentation facets");
-    check(rows.every((row) => /\d+\s*\/\s*\d+/.test(row.title)), "each documentation facet exposes its numerator/denominator in a tooltip");
-    if (rows.some((row) => row.value === "—")) {
-      check(await atlas.locator(".atlas-envelope").count() === 0, "inapplicable evidence must not draw a fully measured envelope");
-    }
-    return rows;
+  const checkProfile = async () => {
+    await atlas.locator('[data-atlas-content][aria-busy="false"]').waitFor();
+    check((await atlas.locator(".atlas-kicker").textContent()).trim() === "Preparation",
+      "Atlas calculation completes successfully rather than becoming unavailable");
+    check(await atlas.locator(".atlas-index").count() === 1, "Atlas retains its total score layout");
+    check(await atlas.locator(".atlas-fingerprint").count() === 1, "Atlas retains its radar");
+    const labels = await atlas.locator(".atlas-facet > span:nth-child(2)").allTextContents();
+    check(JSON.stringify(labels) === JSON.stringify(["Replies", "Reach", "Depth", "Move orders"]),
+      `four move-graph facets render: ${labels.join(", ")}`);
+    const score = (await atlas.locator(".atlas-index-number strong").textContent()).trim();
+    const inRange = (value) => /^\d+$/.test(value) && Number(value) >= 0 && Number(value) <= 100;
+    check(empty ? score === "—" : inRange(score), `Atlas total is ${empty ? "unknown" : "within 0–100"}, got ${score}`);
+    const facets = await atlas.locator(".atlas-facet b").allTextContents();
+    check(facets.every((value) => empty ? value === "—" : value === "—" || inRange(value)),
+      "facets expose bounded diagnostics or an inapplicable dash");
+    check(!/documentation|decision notes|fork signposts|endpoint notes|starting notes/i.test(
+      await atlas.textContent()), "Atlas has no documentation-score labels");
+    const known = facets.filter((value) => value !== "—").length;
+    check(await atlas.locator(".atlas-envelope").count() === (known >= 3 ? 1 : 0),
+      "radar draws a polygon only with at least three known facets");
+    check(await atlas.locator(".atlas-vertex").count() === known,
+      "radar has exactly one measured vertex per known facet");
+    return JSON.stringify({ score, facets });
   };
-  const whole = await checkEvidence();
+  const checkTree = async (moves, routes, forks, depth) => {
+    await checkProfile();
+    const foot = atlas.locator(".atlas-foot");
+    for (const [label, value] of Object.entries({ moves, forks, depth })) {
+      check(await foot.locator("span").filter({ hasText: new RegExp(`^${value} ${label}$`) }).count() === 1,
+        `Atlas shows ${value} ${label}`);
+    }
+    const routeLabel = (await atlas.locator(".atlas-section-head > span").textContent()).trim();
+    check(routeLabel === `${String(routes).padStart(2, "0")} ${routes === 1 ? "route" : "routes"}`,
+      `Atlas shows ${routes} actual routes, got ${routeLabel}`);
+    const glyph = atlas.locator(".route-glyph");
+    check(await glyph.count() === 1, "Atlas renders its actual tree SVG");
+    const edges = await glyph.locator("path:not(.route-dots)").evaluateAll((paths) =>
+      paths.reduce((sum, path) => sum + (path.getAttribute("d").match(/C/g) || []).length, 0));
+    check(edges === moves, `tree SVG has ${moves} edges, got ${edges}`);
+  };
   check(await atlas.locator("button, select").count() === 2, "Atlas has only close and scope controls");
   check(await atlas.locator("[data-assess], [data-depth]").count() === 0, "Atlas has no engine assessment or horizon controls");
   check(await atlas.getByRole("button", { name: "Close", exact: true }).isVisible(), "Atlas close is available");
   const scope = atlas.getByRole("combobox", { name: "Atlas scope", exact: true });
-  check(await scope.isVisible() && await scope.isEnabled(), "documentation scope is available");
+  check(await scope.isVisible() && await scope.isEnabled(), "Atlas scope is available");
   check(await scope.locator("option").count() === (empty ? 1 : 2), "scope offers the whole repertoire and an available current position");
+  await checkTree(empty ? 0 : 7, empty ? 0 : 2, empty ? 0 : 1, empty ? 0 : 3);
+  const whole = await checkProfile();
   if (!empty) {
     await scope.selectOption("n5");
     check(await scope.inputValue() === "n5", "current-position scope can be selected");
-    check(await atlas.locator(".atlas-index-number strong").textContent() === "0", "current-position documentation score computes immediately");
-    const current = await checkEvidence();
-    check(JSON.stringify(current) !== JSON.stringify(whole), "scope changes recompute documentation fractions");
+    await checkTree(2, 2, 1, 3);
+    check(await checkProfile() !== whole, "scope recomputes the move-graph diagnostics immediately");
     await scope.selectOption("n0");
-    check(JSON.stringify(await readFacets()) === JSON.stringify(whole), "whole-repertoire scope restores its original fractions");
+    await checkTree(7, 2, 1, 3);
+    check(await checkProfile() === whole, "whole-repertoire scope restores its diagnostics");
   }
-  check(await atlas.locator(".atlas-index-number strong").textContent() === expectedScore, "scope changes preserve the comment-free fixture's documentation score");
 }
 
 async function runViewport(vp) {
@@ -342,7 +366,7 @@ async function runViewport(vp) {
     await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `repertoire-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
   }
 
-  // Direct Atlas entry, synchronous documentation, scope and keyboard dismissal.
+  // Direct Atlas entry, actual routes, scope and keyboard dismissal.
   const atlasEntry = page.getByRole("button", { name: "Open repertoire atlas", exact: true });
   await atlasEntry.click();
   const atlas = page.locator(".atlas-modal[open]");

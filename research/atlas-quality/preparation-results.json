@@ -1,0 +1,4150 @@
+{
+  "algorithm_version": "stored-route-preparation-v1",
+  "scorer_sha256": "57ecc3073fbbabb74c0f77e9bd0816ce0ebb64b02c1ddc7a4ae78398032ab4b6",
+  "method": {
+    "horizon_plies": 16,
+    "root": "single standard initial position",
+    "scope": "Exact structural chapter duplicates removed and canonical signatures sorted by canonical start position and ordered UCI tree including mainline flags before attachment. All non-diagram chapter trees rooted at standard or directed-reachable custom starts; disconnected starts excluded and reported. Standard chapter roots collapse into one root; connected custom roots attach to their first existing occurrence in that canonical order.",
+    "own_policy": "PGN first variation sets is_mainline/is_prepared=true; alternatives false. This is structural selection, not a declared recommendation. All moves enabled.",
+    "interpretation": "Descriptive stored-route preparation diagnostics, not validated holistic quality. No annotations, engines, network, likes or manual labels enter scorer. Uniform opponent stored branches are not empirical opponent probabilities.",
+    "likes": "Observed source likes shown only as external positive-unlabeled context: high may support usefulness; low/missing unknown. No threshold, fitting, negative label or validation claim.",
+    "invariance": "Original versus empty/1 annotation fields and PGN mutation conversion; exact assembled tree copied under the same root, excluding occurrence count only.",
+    "custom_attachment_limitation": "First-occurrence custom attachment is an explicit import convention, not author intent. Structural chapter deduplication and sorting make exact raw copies and raw chapter reordering inert. Different scope composition may affect occurrence reply sets; study indices are not scope-equivalent quality comparisons."
+  },
+  "totals": {
+    "studies": 38,
+    "side_reports": 45,
+    "index": {
+      "applicable": 45,
+      "unavailable": 0,
+      "min": 26.23355263157895,
+      "median": 70.18994836182337,
+      "mean": 67.66781492051493,
+      "max": 100
+    },
+    "facets": {
+      "replies": {
+        "applicable": 45,
+        "unavailable": 0,
+        "min": 64.42307692307692,
+        "median": 94.33962264150944,
+        "mean": 92.47890277475942,
+        "max": 100
+      },
+      "reach": {
+        "applicable": 45,
+        "unavailable": 0,
+        "min": 0,
+        "median": 54.16666666666667,
+        "mean": 56.553500279655765,
+        "max": 100
+      },
+      "depth": {
+        "applicable": 45,
+        "unavailable": 0,
+        "min": 29.166666666666664,
+        "median": 87.14409722222224,
+        "mean": 82.9388221548854,
+        "max": 100
+      },
+      "moveOrders": {
+        "applicable": 43,
+        "unavailable": 2,
+        "min": 0,
+        "median": 28.571428571428573,
+        "mean": 36.307760328634984,
+        "max": 100
+      }
+    },
+    "original_scoring_ms": 15901.439099999996,
+    "invariance_scoring_ms": 73934.34050000002,
+    "wall_seconds": 115.33246279999999,
+    "all_annotation_invariant": true,
+    "all_duplicate_graph_invariant": true,
+    "all_reversed_chapter_inputs_exact": true,
+    "raw_chapter_reimport_changed_reports": 0
+  },
+  "by_role": {
+    "opening-guide": {
+      "side_reports": 11,
+      "index": {
+        "applicable": 11,
+        "unavailable": 0,
+        "min": 26.23355263157895,
+        "median": 59.553664017096786,
+        "mean": 59.94876575240652,
+        "max": 97.94520547945206
+      },
+      "facets": {
+        "replies": {
+          "applicable": 11,
+          "unavailable": 0,
+          "min": 64.42307692307692,
+          "median": 90,
+          "mean": 85.28628238178973,
+          "max": 97.11340206185567
+        },
+        "reach": {
+          "applicable": 11,
+          "unavailable": 0,
+          "min": 0,
+          "median": 47.398148148148145,
+          "mean": 49.29719650205761,
+          "max": 100
+        },
+        "depth": {
+          "applicable": 11,
+          "unavailable": 0,
+          "min": 29.166666666666664,
+          "median": 79.26750578703702,
+          "mean": 74.21959905770669,
+          "max": 100
+        },
+        "moveOrders": {
+          "applicable": 11,
+          "unavailable": 0,
+          "min": 0,
+          "median": 0,
+          "mean": 30.991985068072026,
+          "max": 100
+        }
+      }
+    },
+    "repertoire": {
+      "side_reports": 20,
+      "index": {
+        "applicable": 20,
+        "unavailable": 0,
+        "min": 47.523148148148145,
+        "median": 72.84762931954108,
+        "mean": 72.04198683934248,
+        "max": 100
+      },
+      "facets": {
+        "replies": {
+          "applicable": 20,
+          "unavailable": 0,
+          "min": 86.5625,
+          "median": 96.04037267080746,
+          "mean": 95.08233022533051,
+          "max": 100
+        },
+        "reach": {
+          "applicable": 20,
+          "unavailable": 0,
+          "min": 20,
+          "median": 58.110119047619044,
+          "mean": 60.26398738334067,
+          "max": 100
+        },
+        "depth": {
+          "applicable": 20,
+          "unavailable": 0,
+          "min": 59.11458333333333,
+          "median": 90.01553005642361,
+          "mean": 87.89164438399058,
+          "max": 100
+        },
+        "moveOrders": {
+          "applicable": 19,
+          "unavailable": 1,
+          "min": 0,
+          "median": 48.56115107913669,
+          "mean": 42.03156354179808,
+          "max": 100
+        }
+      }
+    },
+    "repertoire-and-exercises": {
+      "side_reports": 2,
+      "index": {
+        "applicable": 2,
+        "unavailable": 0,
+        "min": 80.26785714285715,
+        "median": 87.15952305796057,
+        "mean": 87.15952305796057,
+        "max": 94.05118897306397
+      },
+      "facets": {
+        "replies": {
+          "applicable": 2,
+          "unavailable": 0,
+          "min": 92.92929292929293,
+          "median": 94.67893217893217,
+          "mean": 94.67893217893217,
+          "max": 96.42857142857143
+        },
+        "reach": {
+          "applicable": 2,
+          "unavailable": 0,
+          "min": 50,
+          "median": 68.05555555555556,
+          "mean": 68.05555555555556,
+          "max": 86.11111111111111
+        },
+        "depth": {
+          "applicable": 2,
+          "unavailable": 0,
+          "min": 94.37500000000001,
+          "median": 95.76967592592594,
+          "mean": 95.76967592592594,
+          "max": 97.16435185185186
+        },
+        "moveOrders": {
+          "applicable": 1,
+          "unavailable": 1,
+          "min": 100,
+          "median": 100,
+          "mean": 100,
+          "max": 100
+        }
+      }
+    },
+    "repertoire-and-model-games": {
+      "side_reports": 7,
+      "index": {
+        "applicable": 7,
+        "unavailable": 0,
+        "min": 54.4248583105491,
+        "median": 68.58192695948136,
+        "mean": 68.23208515955518,
+        "max": 82.336309101713
+      },
+      "facets": {
+        "replies": {
+          "applicable": 7,
+          "unavailable": 0,
+          "min": 93.30143540669856,
+          "median": 96.73405909797823,
+          "mean": 96.58192435708497,
+          "max": 99.12739965095986
+        },
+        "reach": {
+          "applicable": 7,
+          "unavailable": 0,
+          "min": 19.64285714285714,
+          "median": 54.71677965167551,
+          "mean": 58.71328676146385,
+          "max": 100
+        },
+        "depth": {
+          "applicable": 7,
+          "unavailable": 0,
+          "min": 43.02269345238095,
+          "median": 79.37877190806879,
+          "mean": 80.00615555466979,
+          "max": 100
+        },
+        "moveOrders": {
+          "applicable": 7,
+          "unavailable": 0,
+          "min": 20,
+          "median": 38.095238095238095,
+          "mean": 37.626973965002136,
+          "max": 66.66666666666667
+        }
+      }
+    },
+    "repertoire-and-traps": {
+      "side_reports": 5,
+      "index": {
+        "applicable": 5,
+        "unavailable": 0,
+        "min": 46.74252717391305,
+        "median": 48.06547619047619,
+        "mean": 58.56637382540863,
+        "max": 76.64554876682561
+      },
+      "facets": {
+        "replies": {
+          "applicable": 5,
+          "unavailable": 0,
+          "min": 83.92857142857143,
+          "median": 94.15584415584415,
+          "mean": 91.26471586008361,
+          "max": 97.46835443037975
+        },
+        "reach": {
+          "applicable": 5,
+          "unavailable": 0,
+          "min": 8.620370370370367,
+          "median": 33.33333333333333,
+          "mean": 50.050896990740725,
+          "max": 99.99999999999997
+        },
+        "depth": {
+          "applicable": 5,
+          "unavailable": 0,
+          "min": 67.1875,
+          "median": 75,
+          "mean": 81.28321578414352,
+          "max": 100
+        },
+        "moveOrders": {
+          "applicable": 5,
+          "unavailable": 0,
+          "min": 0,
+          "median": 0,
+          "mean": 11.666666666666668,
+          "max": 33.333333333333336
+        }
+      }
+    }
+  },
+  "highest_likes_context": {
+    "selection": "Five most-liked studies within this convenience sample, descriptive positive-unlabeled context only; remaining studies are not negatives.",
+    "study_ids": [
+      "jtlLwUvh",
+      "8c8bmUfy",
+      "KjivNw7F",
+      "UzKIIAtz",
+      "whCVdUeM"
+    ],
+    "side_reports": 5,
+    "index": {
+      "applicable": 5,
+      "unavailable": 0,
+      "min": 59.553664017096786,
+      "median": 74.36708860759492,
+      "mean": 78.04840891899046,
+      "max": 100
+    },
+    "facets": {
+      "replies": {
+        "applicable": 5,
+        "unavailable": 0,
+        "min": 86.01760745727603,
+        "median": 97.46835443037975,
+        "mean": 95.56511690583304,
+        "max": 100
+      },
+      "reach": {
+        "applicable": 5,
+        "unavailable": 0,
+        "min": 42.718235596707814,
+        "median": 50,
+        "mean": 68.0232767489712,
+        "max": 100
+      },
+      "depth": {
+        "applicable": 5,
+        "unavailable": 0,
+        "min": 78.2288130144033,
+        "median": 89.0625,
+        "mean": 89.31176376028807,
+        "max": 100
+      },
+      "moveOrders": {
+        "applicable": 4,
+        "unavailable": 1,
+        "min": 0,
+        "median": 48.233695652173914,
+        "mean": 49.11684782608695,
+        "max": 100
+      }
+    }
+  },
+  "studies": [
+    {
+      "study_id": "2EaSmZtz",
+      "raw_sha256": "9e855cfa1c7e9b18938310deee9ab31f101f8933ae589e26e0572d1217883dc0",
+      "role": "repertoire",
+      "likes": 2615,
+      "scope": {
+        "raw_chapter_count": 18,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 18,
+        "included_chapters": 16,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 36,
+        "exact_chapter_duplicates_removed": 18,
+        "distinct_structural_chapters": 18,
+        "included_chapters": 16,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.33617829997092485,
+      "reports": [
+        {
+          "color": "white",
+          "score": 72.17199830217942,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 90.06622516556291,
+              "numerator": 272,
+              "denominator": 302
+            },
+            {
+              "key": "reach",
+              "value": 41.08072916666666,
+              "numerator": 0.4108072916666666,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 86.11246744791667,
+              "numerator": 13.777994791666668,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 71.42857142857143,
+              "numerator": 10,
+              "denominator": 14
+            }
+          ],
+          "counts": {
+            "positions": 600,
+            "occurrences": 706,
+            "moves": 610,
+            "ownPositions": 302,
+            "answeredPositions": 272,
+            "repeatedGroups": 14,
+            "commonGroups": 10
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 108.0265,
+            "invariance": 378.24670000000003
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "artuehhC",
+      "raw_sha256": "0aae8e7dc77caff03f38aa5e35d017e19f3ade0eb1c13448e69396110ee1d96e",
+      "role": "repertoire-and-exercises",
+      "likes": 10,
+      "scope": {
+        "raw_chapter_count": 22,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 22,
+        "included_chapters": 16,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 4,
+        "excluded_custom_root_keys": [
+          "r2q1rk1/ppp1ppb1/2n5/1B1p1bpQ/3P3B/2P1P3/PP1N1PPP/R3K2R b KQ -",
+          "rnbq1rk1/ppp1ppbp/5np1/3p4/3P1B2/2P1P3/PP1N1PPP/R2QKBNR b KQ -",
+          "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq -",
+          "rnbqkbnr/pp2pppp/8/2pp4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -"
+        ],
+        "attached_custom_chapters": 13
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 44,
+        "exact_chapter_duplicates_removed": 22,
+        "distinct_structural_chapters": 22,
+        "included_chapters": 16,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 4,
+        "excluded_custom_root_keys": [
+          "r2q1rk1/ppp1ppb1/2n5/1B1p1bpQ/3P3B/2P1P3/PP1N1PPP/R3K2R b KQ -",
+          "rnbq1rk1/ppp1ppbp/5np1/3p4/3P1B2/2P1P3/PP1N1PPP/R2QKBNR b KQ -",
+          "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq -",
+          "rnbqkbnr/pp2pppp/8/2pp4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -"
+        ],
+        "attached_custom_chapters": 13
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.1663227000972256,
+      "reports": [
+        {
+          "color": "white",
+          "score": 94.05118897306397,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 92.92929292929293,
+              "numerator": 92,
+              "denominator": 99
+            },
+            {
+              "key": "reach",
+              "value": 86.11111111111111,
+              "numerator": 0.8611111111111112,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 97.16435185185186,
+              "numerator": 15.546296296296298,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 7,
+              "denominator": 7
+            }
+          ],
+          "counts": {
+            "positions": 207,
+            "occurrences": 254,
+            "moves": 208,
+            "ownPositions": 99,
+            "answeredPositions": 92,
+            "repeatedGroups": 7,
+            "commonGroups": 7
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 30.894999999999982,
+            "invariance": 149.9462000000001
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "D8QPC8Zr",
+      "raw_sha256": "e218d94e03db3f4440205c64826ddf56a9eefb058e88be9d9d9b752647b76b15",
+      "role": "repertoire",
+      "likes": 14,
+      "scope": {
+        "raw_chapter_count": 9,
+        "exact_chapter_duplicates_removed": 1,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 7,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 18,
+        "exact_chapter_duplicates_removed": 10,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 7,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.36355409992393106,
+      "reports": [
+        {
+          "color": "white",
+          "score": 66.22990038029101,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 96.42857142857143,
+              "numerator": 297,
+              "denominator": 308
+            },
+            {
+              "key": "reach",
+              "value": 53.17129629629629,
+              "numerator": 0.5317129629629629,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 90.3197337962963,
+              "numerator": 14.451157407407408,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 25,
+              "numerator": 1,
+              "denominator": 4
+            }
+          ],
+          "counts": {
+            "positions": 615,
+            "occurrences": 808,
+            "moves": 620,
+            "ownPositions": 308,
+            "answeredPositions": 297,
+            "repeatedGroups": 4,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation",
+            "repetition"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 80.5625,
+            "invariance": 375.39920000000006
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "ACmyH8gC",
+      "raw_sha256": "da06527c326f792fc530814e274da0599bb24782527c996158794df86186c7a4",
+      "role": "repertoire-and-model-games",
+      "likes": 955,
+      "scope": {
+        "raw_chapter_count": 38,
+        "exact_chapter_duplicates_removed": 1,
+        "distinct_structural_chapters": 37,
+        "included_chapters": 36,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 32
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 76,
+        "exact_chapter_duplicates_removed": 39,
+        "distinct_structural_chapters": 37,
+        "included_chapters": 36,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 32
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.5594334000488743,
+      "reports": [
+        {
+          "color": "white",
+          "score": 57.22881585189341,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 99.12739965095986,
+              "numerator": 568,
+              "denominator": 573
+            },
+            {
+              "key": "reach",
+              "value": 22.458333333333336,
+              "numerator": 0.22458333333333336,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 78.75810185185186,
+              "numerator": 12.601296296296297,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 28.571428571428573,
+              "numerator": 2,
+              "denominator": 7
+            }
+          ],
+          "counts": {
+            "positions": 1144,
+            "occurrences": 1242,
+            "moves": 1152,
+            "ownPositions": 573,
+            "answeredPositions": 568,
+            "repeatedGroups": 7,
+            "commonGroups": 2
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 121.6715999999999,
+            "invariance": 583.9668000000001
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "NGpnogsw",
+      "raw_sha256": "472fd949dde489dda901631386827e7e5ed7c32e780c1a130bc9d51839ed21d9",
+      "role": "repertoire-and-model-games",
+      "likes": 462,
+      "scope": {
+        "raw_chapter_count": 9,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 9,
+        "included_chapters": 9,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 18,
+        "exact_chapter_duplicates_removed": 9,
+        "distinct_structural_chapters": 9,
+        "included_chapters": 9,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.17361509997863322,
+      "reports": [
+        {
+          "color": "black",
+          "score": 79.46428571428571,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 97.85714285714286,
+              "numerator": 137,
+              "denominator": 140
+            },
+            {
+              "key": "reach",
+              "value": 99.99999999999999,
+              "numerator": 0.9999999999999999,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 16,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 20,
+              "numerator": 1,
+              "denominator": 5
+            }
+          ],
+          "counts": {
+            "positions": 285,
+            "occurrences": 382,
+            "moves": 285,
+            "ownPositions": 140,
+            "answeredPositions": 137,
+            "repeatedGroups": 5,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 37.601700000000164,
+            "invariance": 171.72360000000026
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "8Uztu7Xx",
+      "raw_sha256": "33047de89d7bddf5f3dc5fc24c8b124b65b9a7dbb3107a2042c0997d0b7b61ae",
+      "role": "repertoire-and-model-games",
+      "likes": 1484,
+      "scope": {
+        "raw_chapter_count": 64,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 64,
+        "included_chapters": 64,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 128,
+        "exact_chapter_duplicates_removed": 64,
+        "distinct_structural_chapters": 64,
+        "included_chapters": 64,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 9.156388400006108,
+      "reports": [
+        {
+          "color": "black",
+          "score": 68.58192695948136,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.63121731104502,
+              "numerator": 9325,
+              "denominator": 9751
+            },
+            {
+              "key": "reach",
+              "value": 54.71677965167551,
+              "numerator": 0.5471677965167551,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 79.37877190806879,
+              "numerator": 12.700603505291006,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 44.60093896713615,
+              "numerator": 95,
+              "denominator": 213
+            }
+          ],
+          "counts": {
+            "positions": 19539,
+            "occurrences": 22200,
+            "moves": 19672,
+            "ownPositions": 9751,
+            "answeredPositions": 9325,
+            "repeatedGroups": 213,
+            "commonGroups": 95
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 2486.111499999999,
+            "invariance": 11385.210899999998
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "8c8bmUfy",
+      "raw_sha256": "b280adec7902c2159953ee1ecbf188925a68b3d1d7fe11f084bb42072fbc7e72",
+      "role": "opening-guide",
+      "likes": 34172,
+      "scope": {
+        "raw_chapter_count": 21,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 21,
+        "included_chapters": 21,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 42,
+        "exact_chapter_duplicates_removed": 21,
+        "distinct_structural_chapters": 21,
+        "included_chapters": 21,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 1.8064568999689072,
+      "reports": [
+        {
+          "color": "black",
+          "score": 59.553664017096786,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 86.01760745727603,
+              "numerator": 1661,
+              "denominator": 1931
+            },
+            {
+              "key": "reach",
+              "value": 42.718235596707814,
+              "numerator": 0.42718235596707815,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 78.2288130144033,
+              "numerator": 12.516610082304528,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 31.25,
+              "numerator": 15,
+              "denominator": 48
+            }
+          ],
+          "counts": {
+            "positions": 3887,
+            "occurrences": 4161,
+            "moves": 3899,
+            "ownPositions": 1931,
+            "answeredPositions": 1661,
+            "repeatedGroups": 48,
+            "commonGroups": 15
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 549.2016999999978,
+            "invariance": 2584.2605000000003
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "fTpa2qZW",
+      "raw_sha256": "a24f5b8fe81ea4f80324e6d438aaf473ca13df3e7411a2acfa1ef73b01ebbcf4",
+      "role": "repertoire",
+      "likes": 7,
+      "scope": {
+        "raw_chapter_count": 34,
+        "exact_chapter_duplicates_removed": 2,
+        "distinct_structural_chapters": 32,
+        "included_chapters": 31,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 68,
+        "exact_chapter_duplicates_removed": 36,
+        "distinct_structural_chapters": 32,
+        "included_chapters": 31,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 4.598432099912316,
+      "reports": [
+        {
+          "color": "white",
+          "score": 74.7646231130513,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 87.80725237284011,
+              "numerator": 3608,
+              "denominator": 4109
+            },
+            {
+              "key": "reach",
+              "value": 70.13888888888886,
+              "numerator": 0.7013888888888885,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 87.14409722222224,
+              "numerator": 13.943055555555558,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 53.96825396825397,
+              "numerator": 68,
+              "denominator": 126
+            }
+          ],
+          "counts": {
+            "positions": 8227,
+            "occurrences": 11394,
+            "moves": 8309,
+            "ownPositions": 4109,
+            "answeredPositions": 3608,
+            "repeatedGroups": 126,
+            "commonGroups": 68
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 1322.5986999999986,
+            "invariance": 6486.998099999997
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "CfSYkcMp",
+      "raw_sha256": "0e9a7c4c2b03dd79a74e088dfdcca9f497cc403c7b7725566a8c67d3fc5a77f6",
+      "role": "repertoire",
+      "likes": 194,
+      "scope": {
+        "raw_chapter_count": 17,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 17,
+        "included_chapters": 16,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 15
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 34,
+        "exact_chapter_duplicates_removed": 17,
+        "distinct_structural_chapters": 17,
+        "included_chapters": 16,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 15
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.26777169993147254,
+      "reports": [
+        {
+          "color": "white",
+          "score": 67.03504404797157,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 99.6742671009772,
+              "numerator": 306,
+              "denominator": 307
+            },
+            {
+              "key": "reach",
+              "value": 66.66666666666666,
+              "numerator": 0.6666666666666666,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 92.70833333333334,
+              "numerator": 14.833333333333334,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 9.090909090909092,
+              "numerator": 1,
+              "denominator": 11
+            }
+          ],
+          "counts": {
+            "positions": 612,
+            "occurrences": 637,
+            "moves": 617,
+            "ownPositions": 307,
+            "answeredPositions": 306,
+            "repeatedGroups": 11,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 79.25920000000042,
+            "invariance": 376.6759999999995
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "yteYURRC",
+      "raw_sha256": "828c3e0142c117bef340cd5d7cf9b2d5defc2f51f50be40a5bff2991512c7d4d",
+      "role": "repertoire-and-model-games",
+      "likes": 11,
+      "scope": {
+        "raw_chapter_count": 11,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 11,
+        "included_chapters": 10,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 22,
+        "exact_chapter_duplicates_removed": 11,
+        "distinct_structural_chapters": 11,
+        "included_chapters": 10,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.5748568999115378,
+      "reports": [
+        {
+          "color": "black",
+          "score": 56.817908375685036,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 96.73405909797823,
+              "numerator": 622,
+              "denominator": 643
+            },
+            {
+              "key": "reach",
+              "value": 20.84821428571429,
+              "numerator": 0.2084821428571429,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 43.02269345238095,
+              "numerator": 6.883630952380952,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 66.66666666666667,
+              "numerator": 4,
+              "denominator": 6
+            }
+          ],
+          "counts": {
+            "positions": 1286,
+            "occurrences": 1344,
+            "moves": 1289,
+            "ownPositions": 643,
+            "answeredPositions": 622,
+            "repeatedGroups": 6,
+            "commonGroups": 4
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 163.35929999999644,
+            "invariance": 819.3372999999992
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "vPqdbuqZ",
+      "raw_sha256": "ed73917a8d99a4fe9a98bcc1eb4ce81d4187b6b59c9940596d6205dda3e18e24",
+      "role": "repertoire-and-model-games",
+      "likes": 35,
+      "scope": {
+        "raw_chapter_count": 9,
+        "exact_chapter_duplicates_removed": 1,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 7,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 18,
+        "exact_chapter_duplicates_removed": 10,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 7,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.27815420005936176,
+      "reports": [
+        {
+          "color": "black",
+          "score": 78.77049180327869,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.08196721311475,
+              "numerator": 290,
+              "denominator": 305
+            },
+            {
+              "key": "reach",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 16,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 20,
+              "numerator": 1,
+              "denominator": 5
+            }
+          ],
+          "counts": {
+            "positions": 611,
+            "occurrences": 628,
+            "moves": 614,
+            "ownPositions": 305,
+            "answeredPositions": 290,
+            "repeatedGroups": 5,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 79.46180000000459,
+            "invariance": 379.03020000000106
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "2XxhfIAJ",
+      "raw_sha256": "252f2a76de68cbb4c1a315a6b7d8498b0326e125a4fa6e429eb5f6b2ddb923be",
+      "role": "repertoire",
+      "likes": 36,
+      "scope": {
+        "raw_chapter_count": 31,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 31,
+        "included_chapters": 31,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 62,
+        "exact_chapter_duplicates_removed": 31,
+        "distinct_structural_chapters": 31,
+        "included_chapters": 31,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 12.370717599987984,
+      "reports": [
+        {
+          "color": "white",
+          "score": 57.24270741315153,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 89.70918749574338,
+              "numerator": 13172,
+              "denominator": 14683
+            },
+            {
+              "key": "reach",
+              "value": 29.166666666666664,
+              "numerator": 0.29166666666666663,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 59.11458333333333,
+              "numerator": 9.458333333333332,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 50.98039215686274,
+              "numerator": 130,
+              "denominator": 255
+            }
+          ],
+          "counts": {
+            "positions": 29375,
+            "occurrences": 30746,
+            "moves": 29569,
+            "ownPositions": 14683,
+            "answeredPositions": 13172,
+            "repeatedGroups": 255,
+            "commonGroups": 130
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 3880.8377000000037,
+            "invariance": 18939.3205
+          }
+        },
+        {
+          "color": "black",
+          "score": 73.75242344637729,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 88.68608148755811,
+              "numerator": 12973,
+              "denominator": 14628
+            },
+            {
+              "key": "reach",
+              "value": 68.05113490226339,
+              "numerator": 0.6805113490226339,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 89.71132631655094,
+              "numerator": 14.35381221064815,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 48.56115107913669,
+              "numerator": 135,
+              "denominator": 278
+            }
+          ],
+          "counts": {
+            "positions": 29375,
+            "occurrences": 30746,
+            "moves": 29569,
+            "ownPositions": 14628,
+            "answeredPositions": 12973,
+            "repeatedGroups": 278,
+            "commonGroups": 135
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation",
+            "terminal"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 4206.761200000008,
+            "invariance": 18400.21250000001
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "oBsew7N6",
+      "raw_sha256": "378afc5ec5b1d74e7f3a92bee39650b4c09e1750c72e6a8ddde9096418daab19",
+      "role": "opening-guide",
+      "likes": 691,
+      "scope": {
+        "raw_chapter_count": 8,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 8,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 16,
+        "exact_chapter_duplicates_removed": 8,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 8,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.08867309999186546,
+      "reports": [
+        {
+          "color": "white",
+          "score": 97.94520547945206,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 91.78082191780823,
+              "numerator": 67,
+              "denominator": 73
+            },
+            {
+              "key": "reach",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 16,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 177,
+            "occurrences": 186,
+            "moves": 177,
+            "ownPositions": 73,
+            "answeredPositions": 67,
+            "repeatedGroups": 1,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 31.350699999995413,
+            "invariance": 112.22030000000086
+          }
+        },
+        {
+          "color": "black",
+          "score": 66.10576923076923,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 64.42307692307692,
+              "numerator": 67,
+              "denominator": 104
+            },
+            {
+              "key": "reach",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 16,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 4
+            }
+          ],
+          "counts": {
+            "positions": 177,
+            "occurrences": 186,
+            "moves": 177,
+            "ownPositions": 104,
+            "answeredPositions": 67,
+            "repeatedGroups": 4,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 21.609400000001187,
+            "invariance": 106.06029999999737
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "tU7Nq5nE",
+      "raw_sha256": "404764edbafbd9c60940239c7408cdd6459deb62829ebd172f457c265f8561de",
+      "role": "repertoire",
+      "likes": 2899,
+      "scope": {
+        "raw_chapter_count": 10,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 10,
+        "included_chapters": 8,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 6
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 20,
+        "exact_chapter_duplicates_removed": 10,
+        "distinct_structural_chapters": 10,
+        "included_chapters": 8,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 6
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.05108379991725087,
+      "reports": [
+        {
+          "color": "white",
+          "score": 100,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 50,
+              "denominator": 50
+            },
+            {
+              "key": "reach",
+              "value": 99.99999999999999,
+              "numerator": 0.9999999999999999,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 16,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 100,
+            "occurrences": 109,
+            "moves": 100,
+            "ownPositions": 50,
+            "answeredPositions": 50,
+            "repeatedGroups": 1,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 14.129200000010314,
+            "invariance": 66.58070000000589
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "rZyGzD67",
+      "raw_sha256": "d2616ca71d818245ffcd3c882521a5567e5c579aefaaf36ae902c88ce029702f",
+      "role": "repertoire",
+      "likes": 12,
+      "scope": {
+        "raw_chapter_count": 9,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 9,
+        "included_chapters": 8,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 7
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 18,
+        "exact_chapter_duplicates_removed": 9,
+        "distinct_structural_chapters": 9,
+        "included_chapters": 8,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 7
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.03158319997601211,
+      "reports": [
+        {
+          "color": "white",
+          "score": 47.523148148148145,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 92.5925925925926,
+              "numerator": 25,
+              "denominator": 27
+            },
+            {
+              "key": "reach",
+              "value": 20,
+              "numerator": 0.2,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 77.49999999999999,
+              "numerator": 12.399999999999999,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 52,
+            "occurrences": 59,
+            "moves": 52,
+            "ownPositions": 27,
+            "answeredPositions": 25,
+            "repeatedGroups": 1,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 7.509099999995669,
+            "invariance": 35.34420000000682
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "ztgulNGx",
+      "raw_sha256": "1f7c55fa9c05fb2792152f8bb59caf1ad74be42211361ba1bdec4cea654664e2",
+      "role": "repertoire",
+      "likes": 3989,
+      "scope": {
+        "raw_chapter_count": 12,
+        "exact_chapter_duplicates_removed": 1,
+        "distinct_structural_chapters": 11,
+        "included_chapters": 10,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 24,
+        "exact_chapter_duplicates_removed": 13,
+        "distinct_structural_chapters": 11,
+        "included_chapters": 10,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.07724439993035048,
+      "reports": [
+        {
+          "color": "black",
+          "score": 74.14641203703704,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.14814814814815,
+              "numerator": 53,
+              "denominator": 54
+            },
+            {
+              "key": "reach",
+              "value": 54.16666666666667,
+              "numerator": 0.5416666666666667,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 94.27083333333333,
+              "numerator": 15.083333333333332,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 50,
+              "numerator": 1,
+              "denominator": 2
+            }
+          ],
+          "counts": {
+            "positions": 112,
+            "occurrences": 171,
+            "moves": 111,
+            "ownPositions": 54,
+            "answeredPositions": 53,
+            "repeatedGroups": 2,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 19.596799999999348,
+            "invariance": 92.58110000001034
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "AKbQXhWw",
+      "raw_sha256": "198a3ee02d99ac25a82e1a458ce4ca420dd615352b9a6074a2cc53b2b42f473b",
+      "role": "repertoire",
+      "likes": 12,
+      "scope": {
+        "raw_chapter_count": 13,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 13,
+        "included_chapters": 13,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 26,
+        "exact_chapter_duplicates_removed": 13,
+        "distinct_structural_chapters": 13,
+        "included_chapters": 13,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 1.340019700000994,
+      "reports": [
+        {
+          "color": "white",
+          "score": 76.29365193917252,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.12372634643377,
+              "numerator": 1307,
+              "denominator": 1374
+            },
+            {
+              "key": "reach",
+              "value": 89.91666666666659,
+              "numerator": 0.8991666666666659,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 97.05729166666664,
+              "numerator": 15.529166666666663,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 23.076923076923077,
+              "numerator": 12,
+              "denominator": 52
+            }
+          ],
+          "counts": {
+            "positions": 2684,
+            "occurrences": 3385,
+            "moves": 2713,
+            "ownPositions": 1374,
+            "answeredPositions": 1307,
+            "repeatedGroups": 52,
+            "commonGroups": 12
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 413.2267000000138,
+            "invariance": 1981.4017999999924
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "2MMWpcNI",
+      "raw_sha256": "269b604af17dc78594ebb49c7591c87df8aa9d86e31dad58e530c472e788a0ec",
+      "role": "opening-guide",
+      "likes": 235,
+      "scope": {
+        "raw_chapter_count": 9,
+        "exact_chapter_duplicates_removed": 1,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 7,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 18,
+        "exact_chapter_duplicates_removed": 10,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 7,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.02854289999231696,
+      "reports": [
+        {
+          "color": "white",
+          "score": 72.5,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 90,
+              "numerator": 18,
+              "denominator": 20
+            },
+            {
+              "key": "reach",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 16,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 2
+            }
+          ],
+          "counts": {
+            "positions": 43,
+            "occurrences": 54,
+            "moves": 42,
+            "ownPositions": 20,
+            "answeredPositions": 18,
+            "repeatedGroups": 2,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 10.46459999999206,
+            "invariance": 31.637199999997392
+          }
+        },
+        {
+          "color": "black",
+          "score": 41.96105072463768,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 78.26086956521739,
+              "numerator": 18,
+              "denominator": 23
+            },
+            {
+              "key": "reach",
+              "value": 33.33333333333333,
+              "numerator": 0.3333333333333333,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 56.25,
+              "numerator": 9,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 43,
+            "occurrences": 54,
+            "moves": 42,
+            "ownPositions": 23,
+            "answeredPositions": 18,
+            "repeatedGroups": 1,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 6.062999999994645,
+            "invariance": 28.229800000000978
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "sEo8o4Rm",
+      "raw_sha256": "19acab8465ab9999367f1920c3286408fdd5f480821ff578654a7c5704c63b30",
+      "role": "opening-guide",
+      "likes": 122,
+      "scope": {
+        "raw_chapter_count": 16,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 16,
+        "included_chapters": 14,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 2,
+        "excluded_custom_root_keys": [
+          "r1bqkbnr/ppppnppp/8/3Pp3/4P3/8/PPP2PPP/RNBQKBNR w Kk -",
+          "r1bqkbnr/ppppp1pp/2n5/5p2/4P3/5N2/PPPP1PPP/RNBQKB1R w Kk -"
+        ],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 32,
+        "exact_chapter_duplicates_removed": 16,
+        "distinct_structural_chapters": 16,
+        "included_chapters": 14,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 2,
+        "excluded_custom_root_keys": [
+          "r1bqkbnr/ppppnppp/8/3Pp3/4P3/8/PPP2PPP/RNBQKBNR w Kk -",
+          "r1bqkbnr/ppppp1pp/2n5/5p2/4P3/5N2/PPPP1PPP/RNBQKB1R w Kk -"
+        ],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.47029760002624243,
+      "reports": [
+        {
+          "color": "black",
+          "score": 70.96997377935281,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 97.11340206185567,
+              "numerator": 471,
+              "denominator": 485
+            },
+            {
+              "key": "reach",
+              "value": 63.81944444444443,
+              "numerator": 0.6381944444444443,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 78.50260416666667,
+              "numerator": 12.560416666666667,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 44.44444444444444,
+              "numerator": 4,
+              "denominator": 9
+            }
+          ],
+          "counts": {
+            "positions": 965,
+            "occurrences": 1063,
+            "moves": 967,
+            "ownPositions": 485,
+            "answeredPositions": 471,
+            "repeatedGroups": 9,
+            "commonGroups": 4
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 131.9667000000045,
+            "invariance": 636.0195999999996
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "GNlZ2WKx",
+      "raw_sha256": "dc44c109ce181d09ff79977f0e82decd7ee5b557ab195ff700ffaa6e75a3dc4a",
+      "role": "repertoire-and-model-games",
+      "likes": 1425,
+      "scope": {
+        "raw_chapter_count": 30,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 30,
+        "included_chapters": 30,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 60,
+        "exact_chapter_duplicates_removed": 30,
+        "distinct_structural_chapters": 30,
+        "included_chapters": 30,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.9774477999890223,
+      "reports": [
+        {
+          "color": "white",
+          "score": 82.336309101713,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.34024896265561,
+              "numerator": 948,
+              "denominator": 964
+            },
+            {
+              "key": "reach",
+              "value": 93.32682291666669,
+              "numerator": 0.9332682291666669,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 99.58292643229166,
+              "numerator": 15.933268229166666,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 38.095238095238095,
+              "numerator": 8,
+              "denominator": 21
+            }
+          ],
+          "counts": {
+            "positions": 1929,
+            "occurrences": 2178,
+            "moves": 1952,
+            "ownPositions": 964,
+            "answeredPositions": 948,
+            "repeatedGroups": 21,
+            "commonGroups": 8
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 268.7644999999902,
+            "invariance": 1270.4979000000021
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "KjivNw7F",
+      "raw_sha256": "ac846cb0c10a8d3cbc312ee62237e68a81a7a61258c0931a722bcd650b971878",
+      "role": "opening-guide",
+      "likes": 26623,
+      "scope": {
+        "raw_chapter_count": 16,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 16,
+        "included_chapters": 16,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 32,
+        "exact_chapter_duplicates_removed": 16,
+        "distinct_structural_chapters": 16,
+        "included_chapters": 16,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.3739834000589326,
+      "reports": [
+        {
+          "color": "white",
+          "score": 71.5556669702606,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 94.33962264150944,
+              "numerator": 350,
+              "denominator": 371
+            },
+            {
+              "key": "reach",
+              "value": 47.398148148148145,
+              "numerator": 0.47398148148148145,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 79.26750578703702,
+              "numerator": 12.682800925925925,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 65.21739130434783,
+              "numerator": 15,
+              "denominator": 23
+            }
+          ],
+          "counts": {
+            "positions": 745,
+            "occurrences": 878,
+            "moves": 754,
+            "ownPositions": 371,
+            "answeredPositions": 350,
+            "repeatedGroups": 23,
+            "commonGroups": 15
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 107.71549999999115,
+            "invariance": 510.5289000000048
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "1gqDv9cx",
+      "raw_sha256": "9727be00c9b574b10ce03adf22a0a1e170738e6fb942e611902a78cbbc949487",
+      "role": "repertoire-and-traps",
+      "likes": 33,
+      "scope": {
+        "raw_chapter_count": 23,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 23,
+        "included_chapters": 23,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 46,
+        "exact_chapter_duplicates_removed": 23,
+        "distinct_structural_chapters": 23,
+        "included_chapters": 23,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.6982647000113502,
+      "reports": [
+        {
+          "color": "black",
+          "score": 47.01122838823337,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 85.9882005899705,
+              "numerator": 583,
+              "denominator": 678
+            },
+            {
+              "key": "reach",
+              "value": 8.620370370370367,
+              "numerator": 0.08620370370370367,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 68.43634259259261,
+              "numerator": 10.949814814814816,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 25,
+              "numerator": 5,
+              "denominator": 20
+            }
+          ],
+          "counts": {
+            "positions": 1333,
+            "occurrences": 1698,
+            "moves": 1336,
+            "ownPositions": 678,
+            "answeredPositions": 583,
+            "repeatedGroups": 20,
+            "commonGroups": 5
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation",
+            "terminal"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 210.9759999999951,
+            "invariance": 1004.7370999999985
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "8eyxyvBh",
+      "raw_sha256": "9cbe94378f1d7af22b964e9c66749c5217b1a0daf19bff932248c9da81785914",
+      "role": "repertoire-and-exercises",
+      "likes": 22,
+      "scope": {
+        "raw_chapter_count": 14,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 14,
+        "included_chapters": 13,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 11
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 28,
+        "exact_chapter_duplicates_removed": 14,
+        "distinct_structural_chapters": 14,
+        "included_chapters": 13,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 11
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.050615500076673925,
+      "reports": [
+        {
+          "color": "white",
+          "score": 80.26785714285715,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 96.42857142857143,
+              "numerator": 27,
+              "denominator": 28
+            },
+            {
+              "key": "reach",
+              "value": 50,
+              "numerator": 0.5,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 94.37500000000001,
+              "numerator": 15.100000000000001,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": null,
+              "numerator": 0,
+              "denominator": 0
+            }
+          ],
+          "counts": {
+            "positions": 55,
+            "occurrences": 107,
+            "moves": 54,
+            "ownPositions": 28,
+            "answeredPositions": 27,
+            "repeatedGroups": 0,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 13.95910000000731,
+            "invariance": 57.43340000000899
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "dgUQNQ2B",
+      "raw_sha256": "5ea87bc55e98fe5563f4df4089f52fe83429f2829069943ab18bb4bab040477c",
+      "role": "repertoire",
+      "likes": 7,
+      "scope": {
+        "raw_chapter_count": 19,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 19,
+        "included_chapters": 19,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 38,
+        "exact_chapter_duplicates_removed": 19,
+        "distinct_structural_chapters": 19,
+        "included_chapters": 19,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.7133832999970764,
+      "reports": [
+        {
+          "color": "black",
+          "score": 73.52326033690277,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 98.24120603015075,
+              "numerator": 782,
+              "denominator": 796
+            },
+            {
+              "key": "reach",
+              "value": 51.34960317460314,
+              "numerator": 0.5134960317460314,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 82.59747023809526,
+              "numerator": 13.215595238095242,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 61.904761904761905,
+              "numerator": 13,
+              "denominator": 21
+            }
+          ],
+          "counts": {
+            "positions": 1588,
+            "occurrences": 1738,
+            "moves": 1603,
+            "ownPositions": 796,
+            "answeredPositions": 782,
+            "repeatedGroups": 21,
+            "commonGroups": 13
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation",
+            "repetition"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 219.84649999999965,
+            "invariance": 1024.6863999999914
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "whCVdUeM",
+      "raw_sha256": "7fcb1314baafa68e011cf36badd03339790bd34a765b2bdc29210d1b0d7b520b",
+      "role": "repertoire-and-traps",
+      "likes": 13621,
+      "scope": {
+        "raw_chapter_count": 10,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 10,
+        "included_chapters": 10,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 20,
+        "exact_chapter_duplicates_removed": 10,
+        "distinct_structural_chapters": 10,
+        "included_chapters": 10,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.10864900005981326,
+      "reports": [
+        {
+          "color": "black",
+          "score": 74.36708860759492,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 97.46835443037975,
+              "numerator": 77,
+              "denominator": 79
+            },
+            {
+              "key": "reach",
+              "value": 99.99999999999997,
+              "numerator": 0.9999999999999998,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 16,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 156,
+            "occurrences": 250,
+            "moves": 157,
+            "ownPositions": 79,
+            "answeredPositions": 77,
+            "repeatedGroups": 1,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon",
+            "terminal"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 30.89560000000347,
+            "invariance": 141.69510000001173
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "OnPMlzHT",
+      "raw_sha256": "d01a750fd0f43e94a16917a5159207e5b44a16675a61a4719d7cdc1a0528d38c",
+      "role": "repertoire",
+      "likes": 3331,
+      "scope": {
+        "raw_chapter_count": 8,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 7,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 5
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 16,
+        "exact_chapter_duplicates_removed": 8,
+        "distinct_structural_chapters": 8,
+        "included_chapters": 7,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 5
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.03356059989891946,
+      "reports": [
+        {
+          "color": "black",
+          "score": 77.86458333333333,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 27,
+              "denominator": 27
+            },
+            {
+              "key": "reach",
+              "value": 25,
+              "numerator": 0.25,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 86.45833333333333,
+              "numerator": 13.833333333333332,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 56,
+            "occurrences": 65,
+            "moves": 56,
+            "ownPositions": 27,
+            "answeredPositions": 27,
+            "repeatedGroups": 1,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 8.144700000004377,
+            "invariance": 37.505099999994854
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "PDVt7Kbh",
+      "raw_sha256": "59be6d7a548a52448f4c1cf80de53bcbd126649c9b3f14a0aceae648741dc5d2",
+      "role": "repertoire",
+      "likes": 9724,
+      "scope": {
+        "raw_chapter_count": 38,
+        "exact_chapter_duplicates_removed": 3,
+        "distinct_structural_chapters": 35,
+        "included_chapters": 33,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 5
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 76,
+        "exact_chapter_duplicates_removed": 41,
+        "distinct_structural_chapters": 35,
+        "included_chapters": 33,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 5
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.7112896000035107,
+      "reports": [
+        {
+          "color": "black",
+          "score": 70.18994836182337,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 99.002849002849,
+              "numerator": 695,
+              "denominator": 702
+            },
+            {
+              "key": "reach",
+              "value": 75.6388888888889,
+              "numerator": 0.756388888888889,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 92.78472222222223,
+              "numerator": 14.845555555555556,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 13.333333333333334,
+              "numerator": 2,
+              "denominator": 15
+            }
+          ],
+          "counts": {
+            "positions": 1411,
+            "occurrences": 1666,
+            "moves": 1420,
+            "ownPositions": 702,
+            "answeredPositions": 695,
+            "repeatedGroups": 15,
+            "commonGroups": 2
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 201.03340000000026,
+            "invariance": 963.6823000000004
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "jtlLwUvh",
+      "raw_sha256": "0993f7c7b6ffc514d621328de16e4b42dfc306ee933b64d84ae8cbbb9755493f",
+      "role": "repertoire",
+      "likes": 50151,
+      "scope": {
+        "raw_chapter_count": 7,
+        "exact_chapter_duplicates_removed": 1,
+        "distinct_structural_chapters": 6,
+        "included_chapters": 6,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 3
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 14,
+        "exact_chapter_duplicates_removed": 8,
+        "distinct_structural_chapters": 6,
+        "included_chapters": 6,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 3
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.034646299900487065,
+      "reports": [
+        {
+          "color": "black",
+          "score": 84.765625,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 25,
+              "denominator": 25
+            },
+            {
+              "key": "reach",
+              "value": 50,
+              "numerator": 0.5,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 89.0625,
+              "numerator": 14.25,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 51,
+            "occurrences": 61,
+            "moves": 51,
+            "ownPositions": 25,
+            "answeredPositions": 25,
+            "repeatedGroups": 1,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 10.45339999999851,
+            "invariance": 39.736900000003516
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "A4EBp7Ds",
+      "raw_sha256": "4f6d65d33e883689fef6edd28c88084ed9cbff8e1de45b189a8990e735fc19be",
+      "role": "repertoire",
+      "likes": 3682,
+      "scope": {
+        "raw_chapter_count": 40,
+        "exact_chapter_duplicates_removed": 3,
+        "distinct_structural_chapters": 37,
+        "included_chapters": 34,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 1,
+        "excluded_custom_root_keys": [
+          "rnbqkb1r/pp1n1ppp/4p3/2ppP3/3P4/2PB4/PP1N1PPP/R1BQK1NR b KQkq -"
+        ],
+        "attached_custom_chapters": 5
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 80,
+        "exact_chapter_duplicates_removed": 43,
+        "distinct_structural_chapters": 37,
+        "included_chapters": 34,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 1,
+        "excluded_custom_root_keys": [
+          "rnbqkb1r/pp1n1ppp/4p3/2ppP3/3P4/2PB4/PP1N1PPP/R1BQK1NR b KQkq -"
+        ],
+        "attached_custom_chapters": 5
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.669752600020729,
+      "reports": [
+        {
+          "color": "black",
+          "score": 63.18840440270935,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 99.01477832512315,
+              "numerator": 603,
+              "denominator": 609
+            },
+            {
+              "key": "reach",
+              "value": 62.053571428571416,
+              "numerator": 0.6205357142857142,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 91.68526785714285,
+              "numerator": 14.669642857142856,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 8
+            }
+          ],
+          "counts": {
+            "positions": 1220,
+            "occurrences": 1510,
+            "moves": 1223,
+            "ownPositions": 609,
+            "answeredPositions": 603,
+            "repeatedGroups": 8,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 189.28979999999865,
+            "invariance": 870.9927000000025
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "UzKIIAtz",
+      "raw_sha256": "cc6c554d5f9f4cd767637fb842abed550cad207f9e5ace42b7a2a0e5ed89c227",
+      "role": "repertoire",
+      "likes": 23669,
+      "scope": {
+        "raw_chapter_count": 6,
+        "exact_chapter_duplicates_removed": 1,
+        "distinct_structural_chapters": 5,
+        "included_chapters": 4,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 1,
+        "excluded_custom_root_keys": [
+          "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPPN1PPP/R1BQKBNR b KQkq -"
+        ],
+        "attached_custom_chapters": 1
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 12,
+        "exact_chapter_duplicates_removed": 7,
+        "distinct_structural_chapters": 5,
+        "included_chapters": 4,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 1,
+        "excluded_custom_root_keys": [
+          "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPPN1PPP/R1BQKBNR b KQkq -"
+        ],
+        "attached_custom_chapters": 1
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.04165220004506409,
+      "reports": [
+        {
+          "color": "black",
+          "score": 100,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 100,
+              "numerator": 25,
+              "denominator": 25
+            },
+            {
+              "key": "reach",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 16,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": null,
+              "numerator": 0,
+              "denominator": 0
+            }
+          ],
+          "counts": {
+            "positions": 54,
+            "occurrences": 65,
+            "moves": 53,
+            "ownPositions": 25,
+            "answeredPositions": 25,
+            "repeatedGroups": 0,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 9.39890000000014,
+            "invariance": 37.82369999999355
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "bbxmDYZV",
+      "raw_sha256": "5fee442dc3da2c32435a8b07225e9563b3918c05e250627f783c43c01a0a5e30",
+      "role": "opening-guide",
+      "likes": 12862,
+      "scope": {
+        "raw_chapter_count": 19,
+        "exact_chapter_duplicates_removed": 5,
+        "distinct_structural_chapters": 14,
+        "included_chapters": 10,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 2,
+        "excluded_custom_root_keys": [
+          "4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ -",
+          "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R b KQkq -"
+        ],
+        "attached_custom_chapters": 4
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 38,
+        "exact_chapter_duplicates_removed": 24,
+        "distinct_structural_chapters": 14,
+        "included_chapters": 10,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 2,
+        "excluded_custom_root_keys": [
+          "4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ -",
+          "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R b KQkq -"
+        ],
+        "attached_custom_chapters": 4
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.03933050006162375,
+      "reports": [
+        {
+          "color": "white",
+          "score": 26.23355263157895,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 73.6842105263158,
+              "numerator": 14,
+              "denominator": 19
+            },
+            {
+              "key": "reach",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 31.25,
+              "numerator": 5,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 2
+            }
+          ],
+          "counts": {
+            "positions": 38,
+            "occurrences": 48,
+            "moves": 37,
+            "ownPositions": 19,
+            "answeredPositions": 14,
+            "repeatedGroups": 2,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 4.885699999998906,
+            "invariance": 23.7216999999946
+          }
+        },
+        {
+          "color": "black",
+          "score": 52.02850877192982,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 78.94736842105263,
+              "numerator": 15,
+              "denominator": 19
+            },
+            {
+              "key": "reach",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 29.166666666666664,
+              "numerator": 4.666666666666666,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 38,
+            "occurrences": 48,
+            "moves": 37,
+            "ownPositions": 19,
+            "answeredPositions": 15,
+            "repeatedGroups": 1,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 5.123699999996461,
+            "invariance": 23.531600000002072
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "nRiq9SZx",
+      "raw_sha256": "bdc381d73d88592215238a50bed8bc9d416b8091bbbe62e9acea2c941125671f",
+      "role": "repertoire-and-model-games",
+      "likes": 59,
+      "scope": {
+        "raw_chapter_count": 13,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 13,
+        "included_chapters": 11,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 1
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 26,
+        "exact_chapter_duplicates_removed": 13,
+        "distinct_structural_chapters": 13,
+        "included_chapters": 11,
+        "diagram_only_chapters": 2,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 1
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.22792320000007749,
+      "reports": [
+        {
+          "color": "black",
+          "score": 54.4248583105491,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 93.30143540669856,
+              "numerator": 195,
+              "denominator": 209
+            },
+            {
+              "key": "reach",
+              "value": 19.64285714285714,
+              "numerator": 0.1964285714285714,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 59.300595238095234,
+              "numerator": 9.488095238095237,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 45.45454545454545,
+              "numerator": 5,
+              "denominator": 11
+            }
+          ],
+          "counts": {
+            "positions": 427,
+            "occurrences": 495,
+            "moves": 431,
+            "ownPositions": 209,
+            "answeredPositions": 195,
+            "repeatedGroups": 11,
+            "commonGroups": 5
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 63.0283999999956,
+            "invariance": 279.97110000000976
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "HHZpRszr",
+      "raw_sha256": "d072bf99bd0f7448b6bf6e7ad55cb9d0a2e839346bf12d01ef134bec50456599",
+      "role": "opening-guide",
+      "likes": 538,
+      "scope": {
+        "raw_chapter_count": 32,
+        "exact_chapter_duplicates_removed": 4,
+        "distinct_structural_chapters": 28,
+        "included_chapters": 27,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 64,
+        "exact_chapter_duplicates_removed": 36,
+        "distinct_structural_chapters": 28,
+        "included_chapters": 27,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.20715359994210303,
+      "reports": [
+        {
+          "color": "white",
+          "score": 42.849445812807886,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 90.14778325123153,
+              "numerator": 183,
+              "denominator": 203
+            },
+            {
+              "key": "reach",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 81.25,
+              "numerator": 13,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 7
+            }
+          ],
+          "counts": {
+            "positions": 401,
+            "occurrences": 472,
+            "moves": 400,
+            "ownPositions": 203,
+            "answeredPositions": 183,
+            "repeatedGroups": 7,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 56.0170999999973,
+            "invariance": 268.2884999999951
+          }
+        },
+        {
+          "color": "black",
+          "score": 57.73358585858586,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 93.43434343434343,
+              "numerator": 185,
+              "denominator": 198
+            },
+            {
+              "key": "reach",
+              "value": 55.00000000000001,
+              "numerator": 0.55,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 82.5,
+              "numerator": 13.200000000000001,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 7
+            }
+          ],
+          "counts": {
+            "positions": 401,
+            "occurrences": 472,
+            "moves": 400,
+            "ownPositions": 198,
+            "answeredPositions": 185,
+            "repeatedGroups": 7,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 55.42029999999795,
+            "invariance": 261.1637999999948
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "bmWAylqe",
+      "raw_sha256": "8753a1574b9608d39c49b21c786996e68b97b9f5a57dee83d90a84c2a7d4e28b",
+      "role": "repertoire",
+      "likes": 5860,
+      "scope": {
+        "raw_chapter_count": 50,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 50,
+        "included_chapters": 49,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 1,
+        "excluded_custom_root_keys": [
+          "4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ -"
+        ],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 100,
+        "exact_chapter_duplicates_removed": 50,
+        "distinct_structural_chapters": 50,
+        "included_chapters": 49,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 1,
+        "excluded_custom_root_keys": [
+          "4k3/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ -"
+        ],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.6715357000939548,
+      "reports": [
+        {
+          "color": "white",
+          "score": 76.22954651706404,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 91.58485273492286,
+              "numerator": 653,
+              "denominator": 713
+            },
+            {
+              "key": "reach",
+              "value": 100,
+              "numerator": 1,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 100,
+              "numerator": 16,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 13.333333333333334,
+              "numerator": 2,
+              "denominator": 15
+            }
+          ],
+          "counts": {
+            "positions": 1422,
+            "occurrences": 1577,
+            "moves": 1428,
+            "ownPositions": 713,
+            "answeredPositions": 653,
+            "repeatedGroups": 15,
+            "commonGroups": 2
+          },
+          "stop_reasons": [
+            "horizon"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 193.16709999999148,
+            "invariance": 902.1263999999937
+          }
+        },
+        {
+          "color": "black",
+          "score": 68.0422891619519,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 93.35219236209335,
+              "numerator": 660,
+              "denominator": 707
+            },
+            {
+              "key": "reach",
+              "value": 70.9047619047619,
+              "numerator": 0.7090476190476189,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 93.62648809523807,
+              "numerator": 14.980238095238093,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 14.285714285714286,
+              "numerator": 2,
+              "denominator": 14
+            }
+          ],
+          "counts": {
+            "positions": 1422,
+            "occurrences": 1577,
+            "moves": 1428,
+            "ownPositions": 707,
+            "answeredPositions": 660,
+            "repeatedGroups": 14,
+            "commonGroups": 2
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 188.99520000000484,
+            "invariance": 935.5984000000026
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "nYAJ7Km3",
+      "raw_sha256": "d2fe00cedd60dd4050fd4dbc7397d6bb598959a02a77429f1e722827ac7d05b9",
+      "role": "repertoire",
+      "likes": 752,
+      "scope": {
+        "raw_chapter_count": 6,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 6,
+        "included_chapters": 6,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 5
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 12,
+        "exact_chapter_duplicates_removed": 6,
+        "distinct_structural_chapters": 6,
+        "included_chapters": 6,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 5
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.02396919997408986,
+      "reports": [
+        {
+          "color": "black",
+          "score": 57.116168478260875,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 95.65217391304348,
+              "numerator": 22,
+              "denominator": 23
+            },
+            {
+              "key": "reach",
+              "value": 50,
+              "numerator": 0.5,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 82.8125,
+              "numerator": 13.25,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 47,
+            "occurrences": 48,
+            "moves": 46,
+            "ownPositions": 23,
+            "answeredPositions": 22,
+            "repeatedGroups": 1,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 7.439100000003236,
+            "invariance": 28.823000000003958
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "FwXo3Qhq",
+      "raw_sha256": "0194e0aa19ebb585ceb8cd055403f49927e176b59e986117b01db83ef0d37162",
+      "role": "repertoire-and-traps",
+      "likes": 52,
+      "scope": {
+        "raw_chapter_count": 10,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 10,
+        "included_chapters": 10,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 20,
+        "exact_chapter_duplicates_removed": 10,
+        "distinct_structural_chapters": 10,
+        "included_chapters": 10,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.27588949992787093,
+      "reports": [
+        {
+          "color": "black",
+          "score": 76.64554876682561,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 94.15584415584415,
+              "numerator": 290,
+              "denominator": 308
+            },
+            {
+              "key": "reach",
+              "value": 83.30078124999997,
+              "numerator": 0.8330078124999998,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 95.79223632812501,
+              "numerator": 15.326757812500002,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 33.333333333333336,
+              "numerator": 1,
+              "denominator": 3
+            }
+          ],
+          "counts": {
+            "positions": 612,
+            "occurrences": 674,
+            "moves": 612,
+            "ownPositions": 308,
+            "answeredPositions": 290,
+            "repeatedGroups": 3,
+            "commonGroups": 1
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 88.81909999999334,
+            "invariance": 422.40009999999893
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "LLNDy032",
+      "raw_sha256": "26eb56735abacd705c7921cfc94a63160379a6e687e0ff2e3c7a95b24a382ee7",
+      "role": "repertoire",
+      "likes": 15,
+      "scope": {
+        "raw_chapter_count": 9,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 9,
+        "included_chapters": 9,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 18,
+        "exact_chapter_duplicates_removed": 9,
+        "distinct_structural_chapters": 9,
+        "included_chapters": 9,
+        "diagram_only_chapters": 0,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.2965673999860883,
+      "reports": [
+        {
+          "color": "white",
+          "score": 60.760002367424235,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 86.5625,
+              "numerator": 277,
+              "denominator": 320
+            },
+            {
+              "key": "reach",
+              "value": 27.974206349206337,
+              "numerator": 0.2797420634920634,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 64.86693948412699,
+              "numerator": 10.378710317460317,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 63.63636363636363,
+              "numerator": 7,
+              "denominator": 11
+            }
+          ],
+          "counts": {
+            "positions": 625,
+            "occurrences": 704,
+            "moves": 631,
+            "ownPositions": 320,
+            "answeredPositions": 277,
+            "repeatedGroups": 11,
+            "commonGroups": 7
+          },
+          "stop_reasons": [
+            "horizon",
+            "missing-continuation"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 87.80070000000705,
+            "invariance": 407.4875999999931
+          }
+        }
+      ]
+    },
+    {
+      "study_id": "e01yoGqe",
+      "raw_sha256": "5b482ca4ee3e2ca9beb7afaa151927462b1352394f24ff7aba961e265829b021",
+      "role": "repertoire-and-traps",
+      "likes": 127,
+      "scope": {
+        "raw_chapter_count": 14,
+        "exact_chapter_duplicates_removed": 0,
+        "distinct_structural_chapters": 14,
+        "included_chapters": 13,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "duplicate_scope": {
+        "raw_chapter_count": 28,
+        "exact_chapter_duplicates_removed": 14,
+        "distinct_structural_chapters": 14,
+        "included_chapters": 13,
+        "diagram_only_chapters": 1,
+        "excluded_disconnected_chapters": 0,
+        "excluded_custom_root_keys": [],
+        "attached_custom_chapters": 0
+      },
+      "annotation_conversion_invariance": {
+        "empty": true,
+        "ones": true
+      },
+      "conversion_seconds": 0.1118590000551194,
+      "reports": [
+        {
+          "color": "white",
+          "score": 46.74252717391305,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 94.78260869565217,
+              "numerator": 109,
+              "denominator": 115
+            },
+            {
+              "key": "reach",
+              "value": 25,
+              "numerator": 0.25,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 67.1875,
+              "numerator": 10.75,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 1
+            }
+          ],
+          "counts": {
+            "positions": 232,
+            "occurrences": 251,
+            "moves": 231,
+            "ownPositions": 115,
+            "answeredPositions": 109,
+            "repeatedGroups": 1,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "missing-continuation",
+            "terminal"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 46.9829000000027,
+            "invariance": 154.6935000000085
+          }
+        },
+        {
+          "color": "black",
+          "score": 48.06547619047619,
+          "facets": [
+            {
+              "key": "replies",
+              "value": 83.92857142857143,
+              "numerator": 94,
+              "denominator": 112
+            },
+            {
+              "key": "reach",
+              "value": 33.33333333333333,
+              "numerator": 0.3333333333333333,
+              "denominator": 1
+            },
+            {
+              "key": "depth",
+              "value": 75,
+              "numerator": 12,
+              "denominator": 16
+            },
+            {
+              "key": "moveOrders",
+              "value": 0,
+              "numerator": 0,
+              "denominator": 2
+            }
+          ],
+          "counts": {
+            "positions": 232,
+            "occurrences": 251,
+            "moves": 231,
+            "ownPositions": 112,
+            "answeredPositions": 94,
+            "repeatedGroups": 2,
+            "commonGroups": 0
+          },
+          "stop_reasons": [
+            "missing-continuation",
+            "terminal"
+          ],
+          "invariance": {
+            "reversed_chapters_exact_input": true,
+            "empty": true,
+            "ones": true,
+            "duplicate_same_graph": true
+          },
+          "raw_chapter_reimport": {
+            "invariant": true
+          },
+          "milliseconds": {
+            "original": 31.017800000001444,
+            "invariance": 146.81179999999586
+          }
+        }
+      ]
+    }
+  ]
+}
