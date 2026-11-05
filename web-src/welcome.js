@@ -1,6 +1,7 @@
 import { html } from "./html.js";
 import { modalDialog, openModal } from "./core/dialog.js";
 import { appState } from "./core/state.js";
+import { api } from "./core/api.js";
 import { hooks } from "./core/hooks.js";
 import { maiaAnalysisEnabled, setPref } from "./core/prefs.js";
 import { fetchLichessProfile } from "./lichess-profile.js";
@@ -190,8 +191,25 @@ function userIsBusy(doc = globalThis.document) {
 }
 
 // The shell's entry: the welcome with this app's own doors.
-export function maybeWelcome({ switchView, setLichessUsername, lichessAccounts, saveSettings }) {
+// An account that already holds work is not a first visit, whatever this
+// browser remembers.
+async function accountHasWork() {
+  if (!appState.signedIn) return false;
+  if (appState.repertoireList.length) return true;
+  try {
+    const counts = await api("/api/dashboard");
+    return counts.repertoires > 0 || counts.games > 0 || counts.training_sessions > 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function maybeWelcome({ switchView, setLichessUsername, lichessAccounts, saveSettings }) {
   if (!shouldWelcome()) return null;
+  if (await accountHasWork()) {
+    try { localStorage.setItem(WELCOME_KEY, "done"); } catch { /* asked again next visit */ }
+    return null;
+  }
   // A visitor already in a dialog (signing in while the workspace loaded) is
   // busy: the welcome waits for the next visit rather than covering it. The
   // account chip's sign-in form is a popover, not a dialog.

@@ -185,10 +185,11 @@ describe("sign-in gate", () => {
   });
 
   function fillForm(overlay) {
+    const input = (value) => ({ value, setAttribute() {}, removeAttribute() {} });
     const fields = {
-      email: { value: "alice@example.com" },
-      password: { value: "longenough" },
-      confirm: { value: "longenough" },
+      email: input("alice@example.com"),
+      password: input("longenough"),
+      confirm: input("longenough"),
       error: { textContent: "" },
     };
     const submit = { disabled: false };

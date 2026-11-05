@@ -20,7 +20,7 @@ describe("Line rehearsal hint", () => {
     const trainHint = compile({
       appState, postJson, smartHint: () => {}, setStatus: () => {}, setStatusError: () => {},
       currentTrainingPrompt: () => appState.training.prompt,
-      boards: { train: { setEngineArrow: vi.fn() } },
+      boards: { train: { setEngineArrow: vi.fn(), selectSquare: vi.fn() } },
       setTrainBanner: (_state, title) => banners.push(title),
     });
     const clicks = [trainHint(), trainHint(), trainHint()];

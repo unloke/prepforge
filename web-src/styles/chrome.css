@@ -211,6 +211,10 @@
 }
 
 
+/* Hover is the same tile: the open page's icon takes the accent too. */
+.tab.is-active .ic { color: var(--accent-strong); }
+
+
 /* Mobile bottom navigation (≤ 760px only; hidden on desktop). */
 .tabbar {
   display: none;

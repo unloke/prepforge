@@ -1064,6 +1064,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 
+/* Rounded shares can sum to 99: the last segment takes the rest, so the bar
+   never shows a sliver of track at its end. */
+.explorer-bar span:last-child { flex-grow: 1; }
+
+
 .explorer-bar-w { background: var(--explorer-white); color: var(--explorer-white-ink); }
 
 

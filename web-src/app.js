@@ -412,6 +412,8 @@ async function handleWorkspacePopstate() {
     return;
   }
   switchView(loc.view, { fromUrl: true });
+  // An unknown route lands on the Library: the address says so too.
+  if (loc.view === "dashboard") syncWorkspaceUrl();
   // Back/forward to an Analyze position puts the board there, the same way boot does.
   // A position off the mainline has no ply, so it is what the URL names; otherwise
   // the ply does. The path is compared against the current position's path, not an

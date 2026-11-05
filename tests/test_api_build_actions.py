@@ -351,7 +351,7 @@ def test_export_tree_pgn(client):
     r = client.get("/api/repertoires/export-pgn", params={"repertoire_id": rep_id})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["filename"] == "tree-rep.tree.pgn"
+    assert body["filename"] == "tree-rep.pgn"
     assert body["mime"] == "application/x-chess-pgn"
     assert "e4" in body["content"]
 

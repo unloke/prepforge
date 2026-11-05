@@ -185,6 +185,11 @@
 .mtree-move.is-current.is-disabled { opacity: 0.8; }
 
 
+/* The mainline's ink would outrank both by specificity. */
+.mtree-line.is-main > .mtree-move.is-opp { color: var(--muted); }
+.mtree-line.is-main > .mtree-move.is-current { color: var(--accent-ink); }
+
+
 /* Per-variation collapse toggle. */
 .mtree-collapse {
   border: 0;
@@ -254,6 +259,8 @@
   :is(.moves-grid, #builder-tree) .mtree-line.is-main, .train-play-trail { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr); column-gap: 0; }
   :is(.moves-grid, #builder-tree) .mtree-line.is-main > :is(.mtree-num, .mtree-move), .train-play-trail > span { display: flex; align-items: center; justify-self: stretch; min-height: 28px; margin: 0; padding: 0 10px; border-radius: 0; font-size: 15px; font-weight: 500; text-align: left; }
   :is(.moves-grid, #builder-tree) .mtree-line.is-main > .mtree-num, .train-play-trail > .pt-n { align-self: stretch; justify-content: center; padding: 0 4px; background: var(--surface-3); color: var(--label); font-size: 13px; }
+  /* A wide panel spreads the sheet's columns apart; a score sheet stays a sheet. */
+  #builder-tree .mtree-line.is-main { max-width: 26rem; }
   #view-train .train-play-trail:not([hidden], :empty) { display: grid; align-content: start; max-height: 50vh; padding: 0; overflow: auto; }
   .train-play-trail > .pt-m.is-last { background: var(--accent); color: var(--accent-ink); }
 }

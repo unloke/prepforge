@@ -35,6 +35,7 @@ import { engineWidget, EXPLORER_EVAL_MAX_LINES } from "../core/engine.js";
 import { invalidateBook } from "../analyze-book-state.js";
 import { renderBuildSync, setBuildSync } from "../train-entry.js";
 import { showInputModal } from "../core/modals.js";
+import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { captureBuildContext, closeRepertoireContextMenu, ensureBuildView, handleRepertoireContextAction,
   hardFlushBuild, openSettingsSection, preloadBuildGen, refreshDashboardRepertoires, renderBuildRepHeader,
   requireSignIn, scheduleBuildFlush, switchView, syncWorkspaceUrl } from "../core/app-context.js";
@@ -714,7 +715,7 @@ function renderExplorerRows(stats, fen) {
         <span class="explorer-san">${m.san}${has ? html`<span class="explorer-inrep" title="In your repertoire">&#9679;</span>` : ""}</span>
       </button>
       <span class="explorer-eval">&hellip;</span>
-      <span class="explorer-games" title="${`${countOf(games, "game")}`}"><b class="explorer-share">${allGames ? `${Math.round((100 * (Number(m.total) || 0)) / allGames)}%` : ""}</b> ${games}</span>
+      <span class="explorer-games" title="${`${countOf(games, "game")}`}"><b class="explorer-share">${explorerShareLabel(m.total, allGames)}</b> ${games}</span>
       <span class="explorer-bar" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span>
     </div>`;
       })}`;
@@ -1051,6 +1052,14 @@ async function onBuildBoardMove(moveUci) {
   scheduleBuildFlush();
 }
 
+// A move played in a few of many games is rare, not absent: "<1%", never "0%".
+function explorerShareLabel(total, allGames) {
+  const games = Number(total) || 0;
+  if (!allGames || !games) return "";
+  const share = Math.round((100 * games) / allGames);
+  return share ? `${share}%` : "<1%";
+}
+
 // One create dialog at a time. The Library offers New repertoire in the page
 // head and the list header, so re-entering while the first dialog is still open
 // would ask twice and, on Enter, send two creates.
@@ -1059,6 +1068,11 @@ let createRepertoireDialog = null;
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
   if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
   if (createRepertoireDialog) return createRepertoireDialog;
+  const full = repertoireLimitMessage();
+  if (full) {
+    setStatusError(full);
+    return null;
+  }
   createRepertoireDialog = showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",

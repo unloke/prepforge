@@ -207,9 +207,16 @@ def logout(
     return response
 
 
-@router.get("/me", response_model=UserOut)
-def me(user: User = Depends(current_user)) -> User:
-    return user
+class MeOut(UserOut):
+    # How many repertoires the account may keep (None: no limit), so the app can
+    # say so before a create instead of after it.
+    repertoire_limit: int | None = None
+
+
+@router.get("/me", response_model=MeOut)
+def me(user: User = Depends(current_user), settings: Settings = Depends(get_settings)) -> dict:
+    limit = None if user.plan == Plan.pro else settings.free_repertoire_limit
+    return {**UserOut.model_validate(user).model_dump(), "repertoire_limit": limit}
 
 
 class ProfileUpdate(BaseModel):

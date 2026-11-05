@@ -100,7 +100,10 @@ const LIMITS = [
   // over the previous ceiling); retain a narrow 178,600 B cap.
   // 2026-11-05 Blitz seconds readout and the guest Build hint add ~275 B over
   // the 178,578 B reviewed sheet; the cap moves to 179,000 B for that delta.
-  { prefix: "index-", suffix: ".css", maxBytes: 179_000, label: "main stylesheet" },
+  // 2026-11-05 QA round 3: invalid sign-in fields, the mainline's muted
+  // opponent moves, the Explorer bar's last segment and Practice hiding the
+  // Drill widgets bring it to 179,199 B; the cap moves to 179,300 B.
+  { prefix: "index-", suffix: ".css", maxBytes: 179_300, label: "main stylesheet" },
 ];
 
 let files;

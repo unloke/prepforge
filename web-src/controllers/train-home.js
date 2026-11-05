@@ -587,6 +587,9 @@ function bind() {
   $("train-hint").addEventListener("click", () => trainHint());
   $("train-skip").addEventListener("click", () => skipTrainingLine());
   $("play-takeback").addEventListener("click", () => takebackPlaySession());
-  $("play-resign").addEventListener("click", () => resignPlaySession());
+  $("play-resign").addEventListener("click", async () => {
+    const ok = await showConfirmModal({ title: "Resign this game?", okLabel: "Resign", cancelLabel: "Keep playing", tone: "danger" });
+    if (ok) resignPlaySession();
+  });
   $("play-analyze").addEventListener("click", () => openPlayInAnalyze());
 }

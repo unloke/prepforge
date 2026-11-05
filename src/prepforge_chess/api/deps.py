@@ -68,3 +68,11 @@ def current_owner(user: User = Depends(current_user)) -> str:
     training progress, and settings directly off this id.
     """
     return user.id
+
+
+def member_name(display_name: str | None, email: str | None) -> str:
+    """How another member sees a user: the chosen name, else the email's name
+    part. Only a deleted account (no user row) is a former member."""
+    if display_name:
+        return display_name
+    return email.split("@")[0] if email else "Former member"

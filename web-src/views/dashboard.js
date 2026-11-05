@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { nounOf } from "../plural.js";
+import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { reveal } from "../list-enter.js";
 import { createLibraryRows } from "./library-rows.js";
@@ -753,6 +754,11 @@ export function createDashboardView({
 
   async function dashboardImportPgn() {
     if (!requireSignIn("Sign in to import a repertoire", "import-pgn")) return;
+    const full = repertoireLimitMessage();
+    if (full) {
+      setStatusError(full);
+      return;
+    }
     const input = document.getElementById("dashboard-import-input");
     input.value = "";
     input.click();

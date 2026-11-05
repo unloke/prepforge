@@ -870,7 +870,7 @@ export async function takebackPlaySession() {
     lastMove: undone.lastMove, back: true, // a takeback: pieces go home, quietly
     banner: yourMove ? "Your move" : "Opponent thinking…",
     sub: yourMove
-      ? "Takeback: play again"
+      ? "Move taken back"
       : playThinkingSub(play),
     label: playBookLabel(play),
     state: yourMove ? "move" : "runin",
@@ -1181,6 +1181,7 @@ export async function trainHint() {
   } else if (level === 2) {
     boards.train.setEngineArrow(null);
     setTrainBanner("move", "Hint 2 · Piece", info.piece || "Find the move");
+    if (info.expected_uci) boards.train.selectSquare(info.expected_uci.slice(0, 2));
   } else {
     setTrainBanner("move", "Hint 3 · Answer", info.expected_san ? `Play ${info.expected_san}` : "Here it is");
     if (info.expected_uci) boards.train.setEngineArrow(info.expected_uci);
@@ -1748,6 +1749,7 @@ function smartHint() {
   } else if (level === 2) {
     boards.train.setEngineArrow(null);
     setTrainBanner("move", "Hint 2 · Piece", prompt.hint.piece || "Find the move");
+    boards.train.selectSquare(prompt.expected_uci.slice(0, 2));
   } else {
     setTrainBanner("move", "Hint 3 · Answer", `Play ${prompt.expected_san}`);
     boards.train.setEngineArrow(prompt.expected_uci);

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, update
 
-from prepforge_chess.api.deps import current_owner, get_repository
+from prepforge_chess.api.deps import current_owner, get_repository, member_name
 from prepforge_chess.api.routers.workspace import _repertoire_access
 from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
@@ -48,7 +48,7 @@ def discussions(repertoire_id: str, owner: str = Depends(current_owner),
     with repo.engine.connect() as conn:
         threads = conn.execute(select(t.position_threads).where(
             t.position_threads.c.repertoire_id == repertoire_id).order_by(t.position_threads.c.created_at)).mappings().all()
-        messages = conn.execute(select(t.position_messages, t.users.c.display_name).select_from(
+        messages = conn.execute(select(t.position_messages, t.users.c.display_name, t.users.c.email).select_from(
             t.position_messages.join(t.position_threads, t.position_threads.c.id == t.position_messages.c.thread_id)
             .outerjoin(t.users, t.users.c.id == t.position_messages.c.author_id)
         ).where(t.position_threads.c.repertoire_id == repertoire_id).order_by(
@@ -56,7 +56,7 @@ def discussions(repertoire_id: str, owner: str = Depends(current_owner),
     by_thread = {}
     for message in messages:
         by_thread.setdefault(message["thread_id"], []).append({
-            "id": message["id"], "author": message["display_name"] or "Former member",
+            "id": message["id"], "author": member_name(message["display_name"], message["email"]),
             "body": message["body"], "created_at": message["created_at"].isoformat(),
         })
     return {"threads": [{

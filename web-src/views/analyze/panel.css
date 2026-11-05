@@ -193,11 +193,9 @@
   gap: 8px;
 }
 .cc-head > b { flex: none; }
-/* The switch's name. On a desktop the head has no room for it beside "Coach"
-   (the switch is named through aria-labelledby, which reads it hidden); on a
-   phone it takes the place of the dropped "Coach", and a tap on it flips the
-   switch too. */
-.cc-switch-label { display: none; }
+/* The switch's name, set apart from "Coach" so the bare switch never reads as
+   part of the title; a tap on it flips the switch too. */
+.cc-switch-label { flex: none; margin-left: 8px; color: var(--muted); font-size: var(--fs-s); white-space: nowrap; cursor: pointer; }
 .phase-chip {
   flex: 0 1 auto;
   min-width: 0;
