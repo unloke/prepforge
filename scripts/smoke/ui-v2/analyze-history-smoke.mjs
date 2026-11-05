@@ -14,7 +14,7 @@ try {
       }
       return route.fulfill({ contentType: "text/html", body: `<!doctype html>
         <div id="view-analyze"><button data-sheet-open="analyze-open" aria-expanded="false" style="display:${phone ? "block" : "none"}">Games</button></div>
-        <div id="analyze-open"><button data-reveal="#history-drawer" style="display:${phone ? "block" : "none"}">Past analyses</button>
+        <div id="analyze-open"><button data-reveal="#history-drawer" style="display:${phone ? "block" : "none"}">Recent analyses</button>
         <details id="history-drawer"><summary>History</summary><div id="analysis-history" aria-busy="false"><div class="history-item" data-game-id="old"><button class="hi-open">Old row</button></div></div></details></div>
         <script>
           const drawer = document.getElementById('history-drawer');

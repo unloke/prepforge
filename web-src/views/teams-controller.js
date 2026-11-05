@@ -595,7 +595,7 @@ async function loadSharedRepertoires() {
         const team = item.team_id ? teamById(item.team_id) : null;
         const via = item.team_id ? `via ${team ? team.name : "a team"}` : item.owner_display_name || "";
         return html`
-          <div class="mem-row shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
+          <div class="mem-row shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}" aria-label="Open ${name}">
             <span class="color-dot ${color}"></span>
             <span class="mem-id">
               <span class="name">${name}</span>

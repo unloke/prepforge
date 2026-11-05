@@ -270,7 +270,7 @@
     border-radius: 12px;
     background: var(--surface-3);
   }
-  /* The sheet's rows are the entry points (Last game / Past analyses / Paste a
+  /* The sheet's rows are the entry points (Last game / Recent analyses / Paste a
      PGN), so a drawer's own summary would name the same action twice. */
   #analyze-open > .drawer > summary { display: none; }
   #analyze-open > .drawer:not([open]) { display: none; }

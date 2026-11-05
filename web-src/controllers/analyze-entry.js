@@ -82,6 +82,12 @@ export async function importLatestGame(game, context = null) {
       setStatus("No recent games found", { severity: "warning" });
       return false;
     }
+    // The review on screen is this game already: running it again would only
+    // wipe its grades while the same game is analyzed a second time.
+    if (appState.analysisSourcePgn && document.getElementById("pgn-input").value.trim() === pgn.trim()) {
+      setStatus("Your latest game is already analyzed here");
+      return true;
+    }
     document.getElementById("pgn-input").value = pgn;
     orientAnalysisForSelf(game.white, game.black, [game.source_account]);
     const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq: handoff.sourceSeq });

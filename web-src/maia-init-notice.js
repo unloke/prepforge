@@ -19,7 +19,7 @@ export function maiaInitMessage({ phase, loaded, total } = {}) {
 export function maiaErrorText(error) {
   const message = String(error?.message || "");
   const status = /weight fetch (\d{3})/.exec(message)?.[1];
-  if (status === "404") return "The Maia model is missing from the model server.";
+  if (status === "404") return "Maia isn't available right now. Try again later.";
   if (status) return `The Maia download failed (HTTP ${status}). Retry.`;
   if (/timed out/i.test(message)) return "Maia did not answer in time. Retry.";
   if (/stalled/i.test(message)) return "The Maia download stopped part-way. Retry.";

@@ -30,6 +30,7 @@ describe("command palette filter", () => {
     expect(labels).toContain("Italian Game");
     expect(PALETTE_ACTIONS.map((a) => a.label)).toEqual([
       "New repertoire",
+      "Import PGN",
       "Start training",
       "Practice game",
       "Random position",

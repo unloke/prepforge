@@ -13,11 +13,11 @@ const chart = cssSource("views/analyze-chart.css");
 
 const sheet = html.slice(html.indexOf('id="analyze-open"'), html.indexOf('id="view-build"'));
 
-it("puts Last game and Past analyses behind the one button", () => {
+it("puts Last game and Recent analyses behind the one button", () => {
   // One control raises the sheet; the two actions are rows inside it.
   expect(html).toContain('data-sheet-open="analyze-open"');
   expect(sheet).toMatch(/data-mirror="#fetch-my-game"[^>]*>.*?Last game/s);
-  expect(sheet).toMatch(/data-reveal="#history-drawer"[^>]*>.*?Past analyses/s);
+  expect(sheet).toMatch(/data-reveal="#history-drawer"[^>]*>.*?Recent analyses/s);
   // Nothing else on the phone raises a game picker.
   expect(html.match(/data-sheet-open="analyze-open"/g)).toHaveLength(1);
 });

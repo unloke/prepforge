@@ -13,7 +13,8 @@ import { averageAccuracy } from "./analyze-accuracy.js";
 import { bindErrorChart, errorChartHtml } from "./analyze-error-chart.js";
 import { gamePhase } from "../coach/material.js";
 import { setPref } from "../core/prefs.js";
-import { downloadState, formatMB } from "../engine/engine-downloads.js";
+import { downloadState, formatMB, startDownload } from "../engine/engine-downloads.js";
+import { setStatusError } from "../core/api.js";
 
 const SIDES = ["white", "black"];
 const START_FEN = new Chess().fen();
@@ -398,7 +399,9 @@ export function renderReportBlock(host, { moves, evalGraph = [], positionEvals =
 
 // A review that ran without Maia offers to run the game again with it. That
 // runs the PGN box again, so it needs a game in the box.
+let findGreatAnalysis = null;
 export function paintFindGreat(analysis) {
+  findGreatAnalysis = analysis;
   const btn = document.getElementById("analysis-find-great");
   if (!btn) return;
   btn.hidden = !(analysis?.quality?.maia?.available === false && document.getElementById("pgn-input")?.value.trim());
@@ -407,7 +410,18 @@ export function paintFindGreat(analysis) {
   btn.textContent = maia.phase === "ready" || !maia.bytes ? "Find great moves" : `Find great moves · ${formatMB(maia.bytes)}`;
   if (btn.dataset.bound) return;
   btn.dataset.bound = "1";
-  btn.addEventListener("click", () => {
+  // Maia loads before the game runs again: a model that cannot load would only
+  // run the same review once more, grades blanked meanwhile, without Maia.
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    btn.textContent = "Loading Maia…";
+    const maia = await startDownload("maia");
+    btn.disabled = false;
+    if (maia.phase !== "ready") {
+      paintFindGreat(findGreatAnalysis);
+      setStatusError(maia.error || "Maia could not start. Retry.");
+      return;
+    }
     setPref("maiaAnalysis", true);
     document.getElementById("run-analysis")?.click();
   });
