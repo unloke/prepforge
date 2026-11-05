@@ -35,6 +35,7 @@ import { boardAfterMove, boardInfo, optimisticBoardMove } from "../board/ui.js";
 import { maiaPhaseCoach } from "../coach/coach-loader.js";
 import { ensureExplorerClient } from "../build-entry.js";
 import { ensureTrainView, renderTrainStats, setTrainSyncState } from "../train-entry.js";
+import { hideBlitzClock, showBlitzClock } from "../train-blitz-clock.js";
 import { accountService, flushTrainSync, hardFlushBuild, loadPgnIntoAnalyze, markTrainPositionDirty, openAuthModal,
   queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn,
   runAnalysis, setTrainBanner, switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge } from "../core/app-context.js";
@@ -1203,25 +1204,12 @@ export function clearBlitzTimer() {
     window.clearTimeout(appState.blitzTimer);
     appState.blitzTimer = null;
   }
-  const fill = document.getElementById("train-blitz-fill");
-  if (fill) {
-    fill.style.transition = "none";
-    fill.style.width = "0%";
-  }
+  hideBlitzClock();
 }
 
 function startBlitzTimer(smart, prompt) {
   clearBlitzTimer();
-  const fill = document.getElementById("train-blitz-fill");
-  if (fill) {
-    // Restart the shrink from full: kill the transition, snap to 100%, reflow,
-    // then let one linear transition spend the whole budget.
-    fill.style.transition = "none";
-    fill.style.width = "100%";
-    void fill.offsetWidth;
-    fill.style.transition = `width ${BLITZ_SECONDS}s linear`;
-    fill.style.width = "0%";
-  }
+  showBlitzClock(BLITZ_SECONDS);
   appState.blitzTimer = window.setTimeout(() => {
     appState.blitzTimer = null;
     const current = appState.smart;

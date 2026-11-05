@@ -235,7 +235,7 @@
                   <details class="drawer an-pane report-pane" id="analysis-report" data-testid="analysis-report" role="tabpanel" aria-labelledby="an-tab-report">
                     <summary>Game report</summary>
                     <div class="report" id="analysis-summary" data-testid="analysis-summary"></div>
-                    <button type="button" class="btn sm" id="analysis-find-great" data-testid="analysis-find-great" title="Downloads Maia 3 (46 MB) and runs the game again" hidden>Find great moves</button>
+                    <button type="button" class="btn sm" id="analysis-find-great" data-testid="analysis-find-great" title="Runs the game again with Maia 3" hidden>Find great moves</button>
                     <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
                       <button
                         class="btn"
@@ -354,7 +354,8 @@
             </div>
             <div class="build-empty empty-state big" id="build-empty">
               <h3>Start a repertoire</h3>
-              <p>Open one from the Library, or play a move.</p>
+              <p class="build-empty-member">Open one from the Library, or play a move.</p>
+              <p class="build-empty-guest">Sign in to save moves to a repertoire.</p>
               <div class="row">
                 <button class="btn primary" id="build-empty-create" type="button">New repertoire</button>
                 <button class="btn" id="build-empty-import" type="button">Import PGN</button>
@@ -434,6 +435,7 @@
             <div class="blitz-bar" id="train-blitz" hidden aria-hidden="true">
               <i id="train-blitz-fill"></i>
             </div>
+            <span class="blitz-secs" id="train-blitz-secs" data-testid="train-blitz-secs" hidden></span>
             <div class="board-stack">
               <div class="chessboard" id="train-board" data-testid="train-board"></div>
               <svg class="annotations" id="train-annotations"></svg>
@@ -584,7 +586,7 @@
               <span class="spacer"></span>
               <div id="replay-summary" class="sum-chips" role="group" aria-label="Filter by outcome" hidden></div>
             </div>
-            <div id="replay-results" class="replay-results"><div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div><div class="ledger-empty empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div></div>
+            <div id="replay-results" class="replay-results"><div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span title="The move where the game left your repertoire">Departure</span></div><div class="ledger-empty empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div></div>
           </section>
           <section class="replay-card-scout scout-panel" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
             <header class="page-head"><h1>Scout</h1></header>

@@ -139,7 +139,7 @@ function resetGamesResults({ keepPanel = false } = {}) {
     // Same shape index.html ships: the ledger's columns with the idle message
     // in the table body, so the page never collapses to a floating sentence.
     results.innerHTML =
-      html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div><div class="ledger-empty empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div>`;
+      html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span title="The move where the game left your repertoire">Departure</span></div><div class="ledger-empty empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div>`;
   }
   paintGamesSource();
   const hint = document.getElementById("games-idle-hint");
@@ -231,7 +231,7 @@ function gamesIdleHint() {
   if (!appState.authKnown) return "";
   if (!appState.signedIn) return "Sign in to check your games against your repertoires.";
   return lichessAccounts().length || selection.external.length
-    ? "Pick a sample size, then run a check."
+    ? "Press Check games to compare your latest games with your repertoires."
     : "Connect a Lichess account, then run a check.";
 }
 

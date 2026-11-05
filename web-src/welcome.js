@@ -85,7 +85,7 @@ export function openWelcome({ hasLichess = () => false, setLichessUsername = () 
 
   function levelStep() {
     const found = answers.lichess;
-    return html`${head("Your level")}<div class="modal-body"><form class="welcome-find" data-welcome="find"><label class="modal-field"><span>Lichess username</span><span class="welcome-find-row"><input type="text" name="lichess" autocomplete="username" autocapitalize="off" spellcheck="false" value="${found?.username || ""}" data-testid="welcome-lichess" /><button type="submit" class="btn">Find</button></span></label></form><p class="welcome-found" data-testid="welcome-found" aria-live="polite">${found?.maiaRating ? html`<b>${found.username}</b> · ${found.ratingPerf ? `${found.ratingPerf[0].toUpperCase()}${found.ratingPerf.slice(1)} ` : ""}${found.maiaRating}` : found?.error || ""}</p><div class="modal-field"><span id="welcome-rating-label">Or pick a rating</span><div class="seg welcome-ratings" role="group" aria-labelledby="welcome-rating-label">${WELCOME_RATINGS.map((r) => html`<button type="button" class="seg-btn${answers.rating === r ? " is-active" : ""}" data-rating="${r}" aria-pressed="${answers.rating === r}">${r === 2400 ? "2400+" : r}</button>`)}</div></div></div><footer class="modal-footer"><button type="button" class="btn ghost" data-welcome="back">Back</button><button type="button" class="btn primary" data-welcome="next" data-testid="welcome-next">${found?.maiaRating || answers.rating ? "Next" : "Not now"}</button></footer>`;
+    return html`${head("Your level")}<div class="modal-body"><form class="welcome-find modal-field" data-welcome="find"><span id="welcome-lichess-label">Lichess username</span><div class="welcome-find-row"><input type="text" aria-labelledby="welcome-lichess-label" name="lichess" autocomplete="off" autocapitalize="off" spellcheck="false" value="${found?.username || ""}" data-testid="welcome-lichess" /><button type="submit" class="btn">Find</button></div></form><p class="welcome-found" data-testid="welcome-found" aria-live="polite">${found?.maiaRating ? html`<b>${found.username}</b> · ${found.ratingPerf ? `${found.ratingPerf[0].toUpperCase()}${found.ratingPerf.slice(1)} ` : ""}${found.maiaRating}` : found?.error || ""}</p><div class="modal-field"><span id="welcome-rating-label">Or pick a rating</span><div class="seg welcome-ratings" role="group" aria-labelledby="welcome-rating-label">${WELCOME_RATINGS.map((r) => html`<button type="button" class="seg-btn${answers.rating === r ? " is-active" : ""}" data-rating="${r}" aria-pressed="${answers.rating === r}">${r === 2400 ? "2400+" : r}</button>`)}</div></div></div><footer class="modal-footer"><button type="button" class="btn ghost" data-welcome="back">Back</button><button type="button" class="btn primary" data-welcome="next" data-testid="welcome-next">${found?.maiaRating || answers.rating ? "Next" : "Not now"}</button></footer>`;
   }
 
   function enginesStep() {
@@ -180,9 +180,22 @@ export function openWelcome({ hasLichess = () => false, setLichessUsername = () 
   return { close };
 }
 
+function userIsBusy(doc = globalThis.document) {
+  if (doc.querySelector("dialog[open]")) return true;
+  try {
+    return !!doc.querySelector("[popover]:popover-open");
+  } catch {
+    return false;
+  }
+}
+
 // The shell's entry: the welcome with this app's own doors.
 export function maybeWelcome({ switchView, setLichessUsername, lichessAccounts, saveSettings }) {
   if (!shouldWelcome()) return null;
+  // A visitor already in a dialog (signing in while the workspace loaded) is
+  // busy: the welcome waits for the next visit rather than covering it. The
+  // account chip's sign-in form is a popover, not a dialog.
+  if (userIsBusy()) return null;
   return openWelcome({
     hasLichess: () => !!appState.lichessUsername || (lichessAccounts() || []).length > 0,
     setLichessUsername,

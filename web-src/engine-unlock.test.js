@@ -54,11 +54,12 @@ describe("unlock rows", () => {
     expect(markup).toContain('role="alert"');
   });
 
-  it("stays away per place once put away, and never shows where the device cannot run it", () => {
-    const away = new Set(["engine-analyze"]);
+  it("stays away for that engine everywhere once put away, and never shows where the device cannot run it", () => {
+    const away = new Set(["stockfish"]);
     const sf = () => ({ id: "stockfish", phase: "absent", bytes: 99e6 });
     expect(unlockView("engine-analyze", { state: sf, dismissed: away })).toBeNull();
-    expect(unlockView("engine-build", { state: sf, dismissed: away }).mode).toBe("offer");
+    expect(unlockView("engine-build", { state: sf, dismissed: away })).toBeNull();
+    expect(unlockView("scout", { state: () => ({ id: "maia", phase: "absent", bytes: 46e6 }), dismissed: away }).mode).toBe("offer");
     expect(unlockView("engine-build", { state: () => ({ phase: "unsupported", bytes: 99e6 }), dismissed: none })).toBeNull();
     expect(unlockView("engine-build", { state: () => ({ phase: "checking", bytes: 99e6 }), dismissed: none })).toBeNull();
   });

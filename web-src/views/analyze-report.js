@@ -13,6 +13,7 @@ import { averageAccuracy } from "./analyze-accuracy.js";
 import { bindErrorChart, errorChartHtml } from "./analyze-error-chart.js";
 import { gamePhase } from "../coach/material.js";
 import { setPref } from "../core/prefs.js";
+import { downloadState, formatMB } from "../engine/engine-downloads.js";
 
 const SIDES = ["white", "black"];
 const START_FEN = new Chess().fen();
@@ -31,6 +32,8 @@ export const REPORT_GRADES = [
 ];
 const GRADE_OF = Object.fromEntries(REPORT_GRADES.flatMap((g) => g.members.map((m) => [m, g.key])));
 export const reportGradeOf = (classification) => GRADE_OF[String(classification || "").toLowerCase()] || null;
+// The move list names a move by the grade the report counts it under.
+export const reportGradeLabel = (classification) => REPORT_GRADES.find((g) => g.key === reportGradeOf(classification))?.label || "";
 const ERRORS = new Set(["inaccuracy", "mistake", "blunder", "missed"]);
 
 const PHASES = [
@@ -399,6 +402,9 @@ export function paintFindGreat(analysis) {
   const btn = document.getElementById("analysis-find-great");
   if (!btn) return;
   btn.hidden = !(analysis?.quality?.maia?.available === false && document.getElementById("pgn-input")?.value.trim());
+  // The download it starts is on the button, not only in its tooltip.
+  const maia = downloadState("maia");
+  btn.textContent = maia.phase === "ready" || !maia.bytes ? "Find great moves" : `Find great moves · ${formatMB(maia.bytes)}`;
   if (btn.dataset.bound) return;
   btn.dataset.bound = "1";
   btn.addEventListener("click", () => {

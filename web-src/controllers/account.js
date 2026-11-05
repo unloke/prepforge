@@ -251,10 +251,10 @@ export function createAccountController({
   // "reset" (opened from that link's ?reset_password=… token) sets the new
   // password.
   const AUTH_MODES = {
-    login: { title: "Sign in", submit: "Sign in" },
-    register: { title: "Create account", submit: "Create account" },
-    forgot: { title: "Reset your password", submit: "Send reset link" },
-    reset: { title: "Choose a new password", submit: "Set password" },
+    login: { title: "Sign in", submit: "Sign in", busy: "Signing in…" },
+    register: { title: "Create account", submit: "Create account", busy: "Creating account…" },
+    forgot: { title: "Reset your password", submit: "Send reset link", busy: "Sending…" },
+    reset: { title: "Choose a new password", submit: "Set password", busy: "Saving…" },
   };
 
   function openAuthModal(mode = "login", { resetToken = null, notice = "", pendingAction = null, pendingData = null, onDismiss = null } = {}) {
@@ -410,7 +410,12 @@ export function createAccountController({
       const isCurrent = () => !closed && seq === renderSeq;
       showError("");
       const submitBtn = overlay.querySelector('[data-action="submit"]');
-      if (submitBtn) submitBtn.disabled = true;
+      const idleLabel = submitBtn?.textContent;
+      // A slow server must not look like a dead button: the label says it is working.
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = AUTH_MODES[currentMode]?.busy || "Working…";
+      }
       try {
         if (currentMode === "forgot") {
           const result = await postJson("/api/auth/password/forgot", { email }, requestOptions);
@@ -449,7 +454,10 @@ export function createAccountController({
         if (isCurrent()) {
           requestController = null;
           submitting = false;
-          if (submitBtn) submitBtn.disabled = false;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = idleLabel;
+          }
         }
       }
     };

@@ -82,6 +82,25 @@
 
 .blitz-bar i { display: block; height: 100%; width: 100%; background: var(--k-due); }
 
+/* The seconds left on the card, over the board's top edge beside the bar. */
+.blitz-secs {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+  min-width: 3ch;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  background: var(--float);
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  pointer-events: none;
+}
+.blitz-secs[hidden] { display: none; }
+.blitz-secs.is-low { color: var(--k-due); }
+
 
 /* Coach banner: a strip under the mode control; data-state tints it. */
 .train-coach {

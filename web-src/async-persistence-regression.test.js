@@ -146,7 +146,9 @@ it("Scout bulk counts only confirmed complete lines and continues after failures
   const write = vi.fn().mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce("node");
   const run = compile("async function runPrepareAll(", {
     scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices,
-    scoutPickRepertoire: async () => "r", scoutWriteLineToRep: write,
+    // Bulk add already holds the Scout busy flag, so it picks without the
+    // guarded scoutPickRepertoire (which would refuse and do nothing).
+    pickRepertoire: async () => "r", scoutWriteLineToRep: write,
   }, "", code);
   await run(["a", "b", "c"].map((uci) => ({ ucis: [uci], sans: [uci] })), "white");
   expect(write).toHaveBeenCalledTimes(3);
