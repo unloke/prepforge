@@ -156,7 +156,8 @@ async function clickTab(page, view) {
   const S = "signed-out";
   const { page, apiCalls, errors } = await openPage({ handler: guestHandler });
   await page.goto(base, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1000);
+  // Wait for the card itself: a fixed sleep raced the boot on slow runners.
+  await page.waitForSelector('[data-testid="library-signed-out"]', { state: "attached", timeout: 15000 }).catch(() => {});
   check(S, (await page.locator('[data-testid="library-signed-out"]').count()) === 1, "Library should render the signed-out onboarding card");
   const libCls = await attr(page.locator("#view-dashboard .lib-list"), "class");
   check(S, /\bis-empty\b/.test(libCls || ""), "signed-out Library should use the is-empty layout");

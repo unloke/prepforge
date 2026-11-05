@@ -2,12 +2,12 @@ import { html } from "../html.js";
 // Analyze tab rendering (lazy-loaded from app.js). Classification bars, eval chart,
 // move tree, and results orchestration.
 
-import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.js";
+import { CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.js";
 import "./analyze-chart.css";
 import "./analyze-report.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
-import { paintFindGreat, renderReportBlock, reportGradeOf } from "./analyze-report.js";
+import { paintFindGreat, renderReportBlock, reportGradeLabel, reportGradeOf } from "./analyze-report.js";
 import { paintSavedLine } from "./analyze-saved-line.js";
 import { createReviewBar } from "./analyze-review.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
@@ -418,7 +418,7 @@ export function createAnalyzeView({
         // A sound move carries no sign: the list marks only what stands out.
         const glyph = group && group !== "good" ? classBadgeSymbol(cls) : "";
         // "unknown" is the absent-grade sentinel: nothing to show or read out.
-        const grade = group ? CLASS_GROUPS.find((g) => g.key === group).label : "";
+        const grade = reportGradeLabel(cls);
         return {
           classes: [`cls-${cls}`, node.side === "black" ? "is-black" : "is-white"],
           suffix: glyph ? html`<i class="mtree-glyph">${glyph}</i>` : "",

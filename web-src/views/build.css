@@ -22,6 +22,7 @@
 
 
 #view-build .build-empty .row { justify-content: flex-start; margin-top: 10px; }
+body.is-guest .build-empty-member, body:not(.is-guest) .build-empty-guest { display: none; }
 
 
 /* With no repertoire open the panel's bands give way to the empty state. The

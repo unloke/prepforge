@@ -24,7 +24,7 @@ const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 // One ledger, one header row: the loading rows, the result rows and every
 // empty state draw the same columns, so the page keeps its shape whether or
 // not a Check has run.
-const LEDGER_HEAD = html`<div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>`;
+const LEDGER_HEAD = html`<div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span title="The move where the game left your repertoire">Departure</span></div>`;
 
 // The ledger with nothing in it: the card and one message in it. Its column
 // labels were dropped here: over a table with no rows they only spread five

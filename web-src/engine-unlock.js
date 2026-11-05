@@ -5,8 +5,9 @@ import "./engine-unlock.css";
 
 // One compact row wherever a local engine would make a feature better and this
 // browser does not have it yet: what it adds here, its size, one tap to fetch it
-// with progress, and the feature takes it in place once it lands. A row can be put
-// away per place; a download already running still shows its progress there.
+// with progress, and the feature takes it in place once it lands. Putting a row away
+// puts that engine's offer away everywhere; a download already running still
+// shows its progress where it was asked for.
 // Slots are plain elements carrying data-unlock-place; paintUnlocks fills them.
 export const UNLOCK_PLACES = {
   "engine-analyze": { engine: "stockfish", gain: "Deeper evaluations and sharper best lines" },
@@ -23,7 +24,7 @@ const DISMISS_KEY = "prepforge.unlock-dismissed";
 // up there even if the row had been put away before.
 const asked = new Set();
 
-function dismissedPlaces(storage = globalThis.localStorage) {
+function dismissedEngines(storage = globalThis.localStorage) {
   try {
     const list = JSON.parse(storage.getItem(DISMISS_KEY) || "[]");
     return new Set(Array.isArray(list) ? list : []);
@@ -33,19 +34,21 @@ function dismissedPlaces(storage = globalThis.localStorage) {
 }
 
 export function dismissUnlock(place, storage = globalThis.localStorage) {
-  const places = dismissedPlaces(storage);
-  places.add(place);
-  try { storage.setItem(DISMISS_KEY, JSON.stringify([...places])); } catch { /* this page only */ }
-  asked.delete(place);
+  const engine = UNLOCK_PLACES[place]?.engine;
+  if (!engine) return;
+  const engines = dismissedEngines(storage);
+  engines.add(engine);
+  try { storage.setItem(DISMISS_KEY, JSON.stringify([...engines])); } catch { /* this page only */ }
+  for (const [other, config] of Object.entries(UNLOCK_PLACES)) if (config.engine === engine) asked.delete(other);
   paintUnlocks();
 }
 
 // What a place shows now: null for nothing, else the row's mode and the engine state.
-export function unlockView(place, { state = downloadState, enabled = maiaAnalysisEnabled, dismissed = dismissedPlaces() } = {}) {
+export function unlockView(place, { state = downloadState, enabled = maiaAnalysisEnabled, dismissed = dismissedEngines() } = {}) {
   const config = UNLOCK_PLACES[place];
   if (!config) return null;
   const s = state(config.engine);
-  const away = dismissed.has(place) && !asked.has(place);
+  const away = dismissed.has(config.engine) && !asked.has(place);
   if (s.phase === "checking" || s.phase === "unsupported") return null;
   if (s.phase === "ready") return config.enable && !enabled() && !away ? { mode: "enable", state: s } : null;
   if (s.phase === "downloading") return away ? null : { mode: "progress", state: s };
@@ -81,7 +84,7 @@ export function unlockHtml(place, view, { inline = false } = {}) {
 // its progress, so a download ticking along does not rebuild the row.
 export function paintUnlocks(root = globalThis.document) {
   if (!root?.querySelectorAll) return;
-  const dismissed = dismissedPlaces();
+  const dismissed = dismissedEngines();
   for (const slot of root.querySelectorAll("[data-unlock-place]")) {
     const place = slot.dataset.unlockPlace;
     const view = unlockView(place, { dismissed });

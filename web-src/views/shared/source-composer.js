@@ -263,6 +263,10 @@ export function positionPopover({ anchor, popover, viewport } = {}) {
   return { top: Math.round(top), left: Math.round(left) };
 }
 
+// A name typed but not added yet outlives the popover: a press outside (say on
+// a banner's ×) closes it, and opening it again brings the name back.
+const drafts = new Map();
+
 export function openSourceComposer({
   document: doc = globalThis.document,
   anchor,
@@ -280,7 +284,7 @@ export function openSourceComposer({
   const linked = Array.isArray(linkedAccounts) ? linkedAccounts : [];
   let sel = sel0;
   // The Add field survives re-renders: what was typed, and why it was refused.
-  let draft = "";
+  let draft = drafts.get(title) || "";
   let addError = "";
   let checking = false;
   const selfState = () => selfGroupState(sel, linked);
@@ -368,6 +372,9 @@ export function openSourceComposer({
   const close = (result) => {
     if (overlay.dataset.closed === "1") return;
     overlay.dataset.closed = "1";
+    const typed = overlay.querySelector("[data-src-add]")?.value.trim() || "";
+    if (typed) drafts.set(title, typed);
+    else drafts.delete(title);
     if (overlay.matches?.(":popover-open")) overlay.hidePopover();
     try {
       globalThis.removeEventListener?.("resize", place);

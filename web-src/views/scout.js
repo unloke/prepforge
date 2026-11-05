@@ -1449,7 +1449,8 @@ export function createScoutView(deps) {
       setStatus("Another job is running");
       return;
     }
-    const repId = await scoutPickRepertoire(oppColor);
+    // scoutPrepareAll already holds actionBusy, so pick without its guard.
+    const repId = await pickRepertoire(oppColor, false);
     if (!repId) return;
     if (notices.isBusy()) {
       setStatus("Another job is running");

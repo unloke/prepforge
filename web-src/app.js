@@ -307,6 +307,12 @@ function holdBootView() {
   bootHold = document.getElementById("boot-hold");
   if (bootHold) bootHold.hidden = false;
   bootHeld = !!bootHold;
+  // A server that was asleep takes a while to answer: past a few seconds the
+  // hold says so, instead of a spinner that reads as stuck.
+  if (bootHeld) globalThis.setTimeout(() => {
+    const text = bootHeld && bootHold?.querySelector?.("p");
+    if (text) text.textContent = "Waking the server. This can take up to a minute.";
+  }, 6000);
 }
 
 function releaseBootView() {
@@ -1468,7 +1474,7 @@ function bindEvents() {
   document.getElementById("build-end").addEventListener("click", buildGoToEnd);
   document.getElementById("build-menu").addEventListener("click", openBuildMenu);
   document.getElementById("build-empty-create").addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" }));
-  document.getElementById("build-empty-import").addEventListener("click", () => document.getElementById("dashboard-import-input").click());
+  document.getElementById("build-empty-import").addEventListener("click", () => document.getElementById("dashboard-import-pgn").click());
   document.getElementById("build-empty-open").addEventListener("click", () => switchView("dashboard"));
 
   createPalette({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
