@@ -98,7 +98,9 @@ const LIMITS = [
   // 2026-11-02 neutral skeleton bars: rounded placeholders, shared pulse and
   // move-tree sizing bring the reviewed stylesheet to 178,578 B (+383 B
   // over the previous ceiling); retain a narrow 178,600 B cap.
-  { prefix: "index-", suffix: ".css", maxBytes: 178_600, label: "main stylesheet" },
+  // 2026-11-05 Blitz seconds readout and the guest Build hint add ~275 B over
+  // the 178,578 B reviewed sheet; the cap moves to 179,000 B for that delta.
+  { prefix: "index-", suffix: ".css", maxBytes: 179_000, label: "main stylesheet" },
 ];
 
 let files;

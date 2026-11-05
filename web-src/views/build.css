@@ -22,9 +22,7 @@
 
 
 #view-build .build-empty .row { justify-content: flex-start; margin-top: 10px; }
-/* A guest's move has nowhere to be saved: the hint says so before they play one. */
-body.is-guest #view-build .build-empty-member,
-body:not(.is-guest) #view-build .build-empty-guest { display: none; }
+body.is-guest .build-empty-member, body:not(.is-guest) .build-empty-guest { display: none; }
 
 
 /* With no repertoire open the panel's bands give way to the empty state. The
