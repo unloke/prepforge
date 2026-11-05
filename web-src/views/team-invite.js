@@ -53,12 +53,19 @@ export function formatDay(iso) {
 //
 // Copy is the primary action whenever there is a link to copy; Revoke is
 // always a secondary (quiet danger) action.
+// When the link stops working is what a sender needs; its day of birth is the fallback.
+function inviteNote(teamId, status) {
+  const expires = formatDay(status?.expires_at);
+  if (expires) return `Invite link active · expires ${expires}`;
+  const since = formatDay(inviteCreatedAt(teamId, status));
+  return since ? `Invite link active · created ${since}` : "Invite link active";
+}
+
 export function inviteDialogModel({ status, url, teamId = null }) {
   if (url) {
-    const since = formatDay(inviteCreatedAt(teamId, status));
     return {
       state: "known",
-      note: since ? `Invite link active · created ${since}` : "Invite link active",
+      note: inviteNote(teamId, status),
       url,
       actions: [
         { id: "revoke", label: "Revoke link", kind: "danger-quiet" },
@@ -69,10 +76,9 @@ export function inviteDialogModel({ status, url, teamId = null }) {
     };
   }
   if (status && status.exists) {
-    const since = formatDay(inviteCreatedAt(teamId, status));
     return {
       state: "hidden",
-      note: since ? `Invite link active · created ${since}` : "Invite link active",
+      note: inviteNote(teamId, status),
       url: null,
       actions: [
         { id: "revoke", label: "Revoke link", kind: "danger-quiet" },

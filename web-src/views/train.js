@@ -60,13 +60,17 @@ export function createTrainView({
     const parts = [];
     if (s.streak) parts.push(`${s.streak} in a row`);
     if (s.mistakes) parts.push(`${s.mistakes} missed`);
-    document.getElementById("train-stats-line").textContent = parts.join(" · ");
+    const line = document.getElementById("train-stats-line");
+    line.textContent = parts.join(" · ");
+    line.title = "This session, first tries only";
   }
 
   // The header's one progress figure and the one bar under it.
-  function paintProgress(done, total) {
+  function paintProgress(done, total, unit) {
     total = Math.max(1, total);
-    document.getElementById("train-line-label").textContent = `${Math.min(done + 1, total)} / ${total}`;
+    const label = document.getElementById("train-line-label");
+    label.textContent = `${Math.min(done + 1, total)} / ${total}`;
+    label.title = `${unit} ${Math.min(done + 1, total)} of ${total}`;
     document.getElementById("train-progress-fill").style.width = `${Math.round((done / total) * 100)}%`;
     const bar = document.getElementById("train-progress");
     bar.setAttribute("aria-valuemin", "0");
@@ -95,7 +99,7 @@ export function createTrainView({
     // Rehearsal has no queue: drop a smart session's "Up next" rows.
     const upnext = document.getElementById("train-upnext");
     if (upnext) upnext.hidden = true;
-    paintProgress(prompt.current_index || 0, prompt.total_lines || 1);
+    paintProgress(prompt.current_index || 0, prompt.total_lines || 1, "Line");
     const name = (appState.training && appState.training.repertoire_name) || "Repertoire";
     const color = (appState.training && appState.training.color) || "white";
     document.getElementById("train-board-label").textContent = `${name} · you play ${color}`;
@@ -182,7 +186,7 @@ export function createTrainView({
       step.hidden = !(prompt.targets_total > 1);
       step.textContent = prompt.targets_total > 1 ? `Move ${(prompt.target_index || 0) + 1} / ${prompt.targets_total}` : "";
     }
-    paintProgress(prompt.card_index, prompt.total_cards);
+    paintProgress(prompt.card_index, prompt.total_cards, "Card");
     paintCardKind(prompt.kind);
     renderUpNext();
   }

@@ -21,6 +21,7 @@ export const PALETTE_VIEWS = [
 
 export const PALETTE_ACTIONS = [
   { id: "new-repertoire", label: "New repertoire", keywords: ["create", "new", "repertoire"] },
+  { id: "import-pgn", label: "Import PGN", keywords: ["import", "pgn", "upload", "file", "repertoire"] },
   { id: "start-training", label: "Start training", keywords: ["train", "practice", "start"] },
   { id: "play-human", label: "Practice game", keywords: ["play", "opponent", "human", "maia"] },
   { id: "feeling-lucky", label: "Random position", keywords: ["lucky", "random", "key", "position"] },

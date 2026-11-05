@@ -36,7 +36,7 @@ export function showInputModal({ title, fields, okLabel = "OK", onInput = null, 
           return html`
             <label class="modal-field">
               <span>${safeLabel}</span>
-              <select name="${safeName}" data-field>${options}</select>
+              <select name="${safeName}" aria-label="${safeLabel}" data-field>${options}</select>
             </label>
           `;
         }

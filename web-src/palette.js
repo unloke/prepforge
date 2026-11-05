@@ -143,6 +143,11 @@ async function runPaletteItem(item) {
     createRepertoirePrompt();
     return;
   }
+  // Library owns the import: its button asks a guest to sign in, or opens the file picker.
+  if (item.action === "import-pgn") {
+    document.getElementById("dashboard-import-pgn")?.click();
+    return;
+  }
   // The same three starts as Train Home's rows; openTrain asks before
   // abandoning a live game.
   if (item.action === "start-training") {

@@ -187,10 +187,10 @@ async function runViewport(vp) {
           rows, covered, overText, captionVisible, captionInStrip, evalShown, moveShown,
           moveText: (moveRow?.textContent || "").trim(), pill: pill.toJSON() };
       });
-      const wantsRows = ["Last game", "Past analyses"];
+      const wantsRows = ["Last game", "Recent analyses"];
       check(phone.inBar && wantsRows.every((label) => phone.rows.includes(label)) &&
         phone.covered.length === 0 && phone.overText.length === 0 && (!phone.captionVisible || phone.captionInStrip),
-        `${state}: Analyze must sit in the thumb bar with no overlap, the caption hidden or one line in the strip over the board when there is no graph, and one sheet carrying Last game and Past analyses: ${JSON.stringify(phone)}`);
+        `${state}: Analyze must sit in the thumb bar with no overlap, the caption hidden or one line in the strip over the board when there is no graph, and one sheet carrying Last game and Recent analyses: ${JSON.stringify(phone)}`);
       return phone.pill;
     }
     const layout = await page.evaluate(() => {
@@ -357,7 +357,7 @@ async function runViewport(vp) {
       };
       const before = sheetShown();
       const out = {};
-      for (const [label, drawer] of [["Past analyses", "history-drawer"], ["Paste a PGN", "pgn-drawer"]]) {
+      for (const [label, drawer] of [["Recent analyses", "history-drawer"], ["Paste a PGN", "pgn-drawer"]]) {
         const button = row(label);
         button.click();
         const target = document.getElementById(drawer);
@@ -375,7 +375,7 @@ async function runViewport(vp) {
       return { before, out };
     });
     check(sheetRows.before, "the games button should show its rows");
-    for (const label of ["Past analyses", "Paste a PGN"]) {
+    for (const label of ["Recent analyses", "Paste a PGN"]) {
       const state = sheetRows.out[label];
       check(state.expanded === "true" && state.open && state.shown && state.sheetUp,
         `"${label}" should open its view in place and leave the sheet up: ${JSON.stringify(state)}`);
