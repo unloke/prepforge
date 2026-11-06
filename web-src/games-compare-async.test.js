@@ -8,7 +8,7 @@ function harness() {
   const appState = { signedIn: true, accountUserId: "owner" };
   let selection = { linkedMode: "none", external: ["first"], accountIds: [] };
   const requests = [];
-  const button = { disabled: false };
+  const button = { disabled: false, textContent: "Check games", setAttribute() {}, removeAttribute() {} };
   const resultsHost = { innerHTML: "" };
   const deps = {
     appState, countOf, MAX_FETCH, requireSignIn: () => true,

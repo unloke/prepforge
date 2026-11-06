@@ -15,7 +15,7 @@ export function bindRailCollapseOnNavigate(rail) {
   const onClick = (event) => {
     if (event.detail === 0) return;
     const target = event.target;
-    const destination = target && typeof target.closest === "function" ? target.closest(".tab[data-view], #open-palette") : null;
+    const destination = target && typeof target.closest === "function" ? target.closest(".tab[data-view], #open-palette, #account-chip") : null;
     if (!destination) return;
     rail.classList.add(RAIL_COLLAPSED_CLASS);
   };

@@ -433,6 +433,11 @@
 
 /* No reserved blank line under "Forgot password?"; the dialog is top-anchored,
    so an error appearing only grows it downward. */
+.auth-modal input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+
 .auth-error:empty {
   display: none;
 }

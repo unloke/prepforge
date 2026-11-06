@@ -24,6 +24,9 @@ def _register(client: TestClient, email: str = "a@example.com") -> str:
 
 
 def _login(client: TestClient, email: str = "a@example.com") -> None:
+    # A sign-in replaces the session this browser already holds, so drop it:
+    # each login here stands for another device.
+    client.cookies.delete("pf_session")
     r = client.post(
         "/api/auth/login",
         json={"email": email, "password": "longpassword1"},

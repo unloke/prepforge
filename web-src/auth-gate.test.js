@@ -109,6 +109,10 @@ describe("pending action allowlist", () => {
     expect(takePendingAction({ storage }).data).toEqual({ pgn: "1. e4 *", mode: "single", selectIndex: 0 });
     savePendingAction("analyze-game", { storage, data: { pgn: {} } });
     expect(takePendingAction({ storage })).not.toHaveProperty("data");
+    savePendingAction("new-repertoire", { storage, data: { moveUci: "e2e4" } });
+    expect(takePendingAction({ storage }).data).toEqual({ moveUci: "e2e4" });
+    savePendingAction("new-team", { storage, data: { name: "  Club Team  " } });
+    expect(takePendingAction({ storage }).data).toEqual({ name: "Club Team" });
   });
 });
 

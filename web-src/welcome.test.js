@@ -10,7 +10,7 @@ vi.mock("./core/prefs.js", () => ({ maiaAnalysisEnabled: vi.fn(() => false), set
 vi.mock("./welcome.css", () => ({}));
 vi.mock("./engine-unlock.css", () => ({}));
 
-const { shouldWelcome, offeredEngines, defaultPicks, WELCOME_KEY } = await import("./welcome.js");
+const { shouldWelcome, offeredEngines, defaultPicks, accountHasWork, WELCOME_KEY } = await import("./welcome.js");
 
 const storage = (value = null) => ({ getItem: (k) => (k === WELCOME_KEY ? value : null) });
 const at = (hash = "", search = "") => ({ hash, search });
@@ -44,5 +44,17 @@ describe("first-visit welcome", () => {
     expect([...defaultPicks("analyze", { type: "wifi" })]).toEqual(["stockfish"]);
     expect([...defaultPicks("practice", { type: "cellular" })]).toEqual([]);
     expect([...defaultPicks("build", { saveData: true })]).toEqual([]);
+  });
+
+  it("skips accounts that already have repertoires or training runs, and does not assume empty on API error", async () => {
+    const fetchApi = vi.fn();
+    expect(await accountHasWork({ state: { signedIn: true, account: { repertoireCount: 5 }, repertoireList: [] }, fetchApi })).toBe(true);
+    expect(fetchApi).not.toHaveBeenCalled();
+
+    fetchApi.mockResolvedValueOnce({ repertoires: 0, games: 0, training_sessions: 25 });
+    expect(await accountHasWork({ state: { signedIn: true, account: { repertoireCount: 0 }, repertoireList: [] }, fetchApi })).toBe(true);
+
+    fetchApi.mockRejectedValueOnce(new Error("offline"));
+    expect(await accountHasWork({ state: { signedIn: true, account: { repertoireCount: 0 }, repertoireList: [] }, fetchApi })).toBeNull();
   });
 });

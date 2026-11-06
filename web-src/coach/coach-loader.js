@@ -1,5 +1,6 @@
 import { notices } from "../core/state.js";
 import { effectiveMaiaRating, maiaAnalysisEnabled } from "../core/prefs.js";
+import { downloadState } from "../engine/engine-downloads.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { watchMaiaInit } from "../maia-init-notice.js";
 
@@ -32,6 +33,7 @@ export async function maiaPhaseCoach({ fen, expectedUci, expectedSan, playedUci 
       const provider = getSharedMaia3Provider();
       const maiaNotice = watchMaiaInit(provider, {
         notices,
+        stockfishState: () => downloadState("stockfish"),
         onRetry: () => void maiaPhaseCoach({ fen, expectedUci, expectedSan, playedUci }),
       });
       try {

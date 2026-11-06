@@ -235,14 +235,14 @@ select.team-role-select {
 }
 /* Detail-head and member-row icon actions are ghost: no border or fill until
    hover; delete turns red only on hover. */
-.teams .card-head .btn.icon,
-.team-remove {
+.teams .card-head .btn.icon:not(:disabled),
+.team-remove:not(:disabled) {
   border-color: transparent;
   background: transparent;
   color: var(--muted);
 }
-.teams .card-head .btn.icon:hover { background: var(--surface-3); color: var(--text); }
-.teams .card-head .btn.icon.danger:hover { background: var(--danger-soft); color: var(--danger); }
+.teams .card-head .btn.icon:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+.teams .card-head .btn.icon.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
 .team-remove {
   min-width: var(--control-h);
   height: var(--control-h);

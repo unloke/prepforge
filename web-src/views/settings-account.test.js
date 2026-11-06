@@ -52,7 +52,9 @@ describe("Settings → Account", () => {
     const { section, body, calls } = setup({ appState: { signedIn: false } });
     await section.refresh();
     expect(String(body.innerHTML)).toContain('data-acct="signin"');
+    expect(String(body.innerHTML)).toContain("Sign in to PrepForge");
     expect(String(body.innerHTML)).toContain('data-acct="register"');
+    expect(String(body.innerHTML)).toContain("Create PrepForge account");
     expect(String(body.innerHTML)).not.toContain('data-acct="delete"');
     expect(calls).toEqual([]);
   });

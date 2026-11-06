@@ -52,10 +52,18 @@ describe("rail collapse after navigation", () => {
     expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(false);
   });
 
-  it("gates every hover-expansion rule on the collapse class", () => {
+  it("gates every hover-expansion rule on the collapse class and snaps closed without transition delay", () => {
     const css = eagerCss;
     expect(css).not.toMatch(/\.rail:hover/);
     expect(css).toContain(".rail:not(.is-nav-collapsed):hover");
+    expect(css).toMatch(/\.rail\.is-nav-collapsed\s*\{\s*transition:\s*none;\s*\}/);
+  });
+
+  it("tightens the rail foot under Teams while keeping the account chip at the foot and full-ink unselected icons", () => {
+    const css = eagerCss;
+    expect(css).toMatch(/\.rail-foot\s*\{[^}]*flex:\s*1;/);
+    expect(css).toMatch(/\.rail-foot \.account-btn\s*\{\s*margin-top:\s*auto;\s*\}/);
+    expect(css).toMatch(/\.tab\s*\{[^}]*color:\s*var\(--text\);/);
   });
 
   it("names every rail destination without duplicating the expanding label in native tooltips", () => {

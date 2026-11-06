@@ -16,7 +16,7 @@ import smtplib
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
@@ -25,6 +25,7 @@ from prepforge_chess.api.deps import current_user
 from prepforge_chess.api.middleware import CSRF_COOKIE
 from prepforge_chess.api.models import AuthSession, PasswordResetToken, User
 from prepforge_chess.api.session_cookie import set_session_cookie
+from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.security import (
@@ -120,7 +121,19 @@ def _purge_spent_reset_tokens(db: Session) -> None:
     )
 
 
-def _open_session(db: Session, response: Response, settings: Settings, user: User) -> None:
+def _open_session(
+    db: Session, request: Request, response: Response, settings: Settings, user: User
+) -> None:
+    # A browser holds one session: signing in again replaces the cookie it
+    # sends, so its old row must go too or repeated sign-ins fill the cap and
+    # evict the user's other devices.
+    previous = request.cookies.get(settings.session_cookie_name)
+    if previous:
+        db.execute(
+            delete(AuthSession)
+            .where(AuthSession.token_hash == hash_session_token(previous))
+            .execution_options(synchronize_session=False)
+        )
     token = new_session_token()
     db.add(AuthSession(token_hash=hash_session_token(token), user_id=user.id))
     db.flush()
@@ -154,7 +167,7 @@ def register(
     db.add(user)
     db.commit()
     db.refresh(user)
-    _open_session(db, response, settings, user)
+    _open_session(db, request, response, settings, user)
     return user
 
 
@@ -176,7 +189,7 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid email or password"
         )
-    _open_session(db, response, settings, user)
+    _open_session(db, request, response, settings, user)
     return user
 
 
@@ -207,9 +220,28 @@ def logout(
     return response
 
 
-@router.get("/me", response_model=UserOut)
-def me(user: User = Depends(current_user)) -> User:
-    return user
+class MeOut(UserOut):
+    # How many repertoires the account may keep (None: no limit), and how many it
+    # currently holds, so the app can say so before a create instead of after it.
+    repertoire_limit: int | None = None
+    repertoire_count: int = 0
+
+
+@router.get("/me", response_model=MeOut)
+def me(
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    limit = None if user.plan == Plan.pro else settings.free_repertoire_limit
+    count = db.scalar(
+        select(func.count()).select_from(t.repertoires).where(t.repertoires.c.owner_user_id == user.id)
+    ) or 0
+    return {
+        **UserOut.model_validate(user).model_dump(),
+        "repertoire_limit": limit,
+        "repertoire_count": count,
+    }
 
 
 class ProfileUpdate(BaseModel):

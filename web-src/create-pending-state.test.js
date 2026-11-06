@@ -297,6 +297,7 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
     const postJson = vi.fn(create);
     const prompt = compileFunctionRange("async function createRepertoirePrompt(", {
       requireSignIn: () => true,
+      repertoireLimitMessage: () => null,
       // Like the real dialog: it resolves with what close() was given; a submit
       // that never closes leaves it open, which the user then cancels (null).
       showInputModal: (options) => new Promise((resolve) => {
@@ -377,6 +378,7 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
     const h = repHarness(async () => ({ repertoire_id: "rep-1", selected_node_id: "root-1", revision: 1, nodes: [] }));
     const prompt = compileFunctionRange("async function createRepertoirePrompt(", {
       requireSignIn: () => true,
+      repertoireLimitMessage: () => null,
       showInputModal: () => { opens += 1; return new Promise((resolve) => { close = resolve; }); },
       repertoireColorField: () => ({ name: "color", type: "select", options: ["white", "black"] }),
     });

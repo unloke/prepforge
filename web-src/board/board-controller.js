@@ -89,6 +89,11 @@ class BoardController {
     );
   }
 
+  // A hint: pick up the piece that moves, as if the player had clicked it.
+  selectSquare(squareName) {
+    if (this.hasLegalFrom(squareName)) this._setSelected(squareName);
+  }
+
   setEngineArrow(uci) {
     const next = uci || null;
     if (this.engineArrow === next) return;

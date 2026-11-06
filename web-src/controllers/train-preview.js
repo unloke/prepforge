@@ -36,8 +36,8 @@ export function createTrainPreview(api) {
         dataKey = key;
         at = Date.now();
         return result;
-      }).catch(() => {
-        if (pending === request) {
+      }).catch((error) => {
+        if (pending === request && error?.status !== 401) {
           errorKey = key;
           at = 0;
         }

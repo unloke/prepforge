@@ -276,3 +276,18 @@ def test_session_cap_evicts_the_least_recently_used_session(client, monkeypatch)
     assert client.get("/api/auth/me").status_code == 200
     assert newest.get("/api/auth/me").status_code == 200
     assert idle.get("/api/auth/me").status_code == 401
+
+
+def test_signing_in_again_replaces_this_browsers_session(client):
+    from sqlalchemy import func, select
+    from sqlalchemy.orm import Session
+    from prepforge_chess.api.db import get_engine
+    from prepforge_chess.api.models import AuthSession
+
+    creds = {"email": "again@example.com", "password": "longpassword1"}
+    client.post("/api/auth/register", json=creds, headers=csrf_headers(client))
+    for _ in range(3):
+        assert client.post("/api/auth/login", json=creds, headers=csrf_headers(client)).status_code == 200
+    with Session(get_engine()) as db:
+        assert db.scalar(select(func.count()).select_from(AuthSession)) == 1
+    assert client.get("/api/auth/me").status_code == 200

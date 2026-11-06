@@ -36,7 +36,7 @@ function optionHtml(item, selected, multi) {
   const on = selected.has(item.id);
   return html`<button type="button" class="train-pick${on ? " is-on" : ""}" role="option" aria-selected="${String(on)}" data-id="${item.id}" ${item.disabled ? "disabled" : ""}>
     ${multi ? html`<span class="train-pick-box" aria-hidden="true"></span>` : ""}
-    ${item.color ? html`<span class="color-dot ${item.color}"></span>` : ""}
+    ${item.color ? html`<span class="color-dot ${item.color}" title="${item.color === "black" ? "You play Black" : "You play White"}"></span>` : ""}
     <span class="train-pick-label">${item.label}</span>
     ${item.sub ? html`<span class="train-pick-sub">${item.sub}</span>` : ""}
   </button>`;

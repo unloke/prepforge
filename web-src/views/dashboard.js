@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { nounOf } from "../plural.js";
+import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { reveal } from "../list-enter.js";
 import { createLibraryRows } from "./library-rows.js";
@@ -621,6 +622,7 @@ export function createDashboardView({
     if (status) status.hidden = true;
     appState.repertoireList = payload.repertoires || [];
     appState.sharedRepertoireList = payload.shared || [];
+    if (appState.account) appState.account.repertoireCount = appState.repertoireList.length;
     const visible = (payload.repertoires || []).filter(
       (item) => !appState.pendingRepDeletes.has(String(item.id)),
     );
@@ -753,14 +755,26 @@ export function createDashboardView({
 
   async function dashboardImportPgn() {
     if (!requireSignIn("Sign in to import a repertoire", "import-pgn")) return;
-    const input = document.getElementById("dashboard-import-input");
-    input.value = "";
-    input.click();
+    const full = repertoireLimitMessage();
+    if (full) {
+      setStatusError(full);
+      return;
+    }
+    try {
+      await promptImportRepertoireFromPgn("");
+    } catch (_) {
+      /* status already set */
+    }
   }
 
   async function handleImportPgnFile(file) {
     if (!requireSignIn("Sign in to import a repertoire", "import-pgn")) return;
     if (!file) return;
+    const full = repertoireLimitMessage();
+    if (full) {
+      setStatusError(full);
+      return;
+    }
     let text;
     try {
       text = await file.text();

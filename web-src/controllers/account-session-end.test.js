@@ -106,4 +106,29 @@ describe("session ended", () => {
     expect(api).not.toHaveBeenCalled();
     expect(onReload).not.toHaveBeenCalled();
   });
+
+  it("ignores straggling 401s after sign-in succeeds so the modal stays closed", async () => {
+    const postJson = vi.fn().mockResolvedValue({ id: "u1", display_name: "Alice" });
+    const onReload = vi.fn();
+    const appState = { signedIn: false, accountUsername: null, accountUserId: null };
+    const controller = createAccountController({
+      appState, api: vi.fn(), postJson, setStatus: vi.fn(), showConfirmModal: vi.fn(),
+      refreshAutoMaiaRating: vi.fn(), onReload,
+    });
+    controller.handleAuthRequired();
+    expect(overlays).toHaveLength(1);
+    const fields = {
+      email: { value: "alice@example.com", setAttribute() {}, removeAttribute() {} },
+      password: { value: "longenough", setAttribute() {}, removeAttribute() {} },
+      error: { textContent: "" },
+    };
+    const submit = { disabled: false, textContent: "Sign in" };
+    overlays[0].querySelector = (sel) =>
+      sel === '[data-action="submit"]' ? submit : fields[sel.match(/data-auth="([^"]+)"/)?.[1]] || null;
+    overlays[0].listeners.click({ target: { dataset: { action: "submit" } } });
+    await vi.waitFor(() => expect(onReload).toHaveBeenCalledTimes(1));
+    expect(overlays[0].removed).toBe(true);
+    controller.handleAuthRequired();
+    expect(overlays).toHaveLength(1);
+  });
 });

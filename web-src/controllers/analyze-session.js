@@ -24,6 +24,7 @@ import { clearPeek } from "../line-preview.js";
 import { analysisTextContext } from "../move-links.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
+import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { clearReturnState, saveReturnState } from "../handoff-context.js";
 import { createAnalysisSelection } from "./analyze-selection.js";
 
@@ -1224,7 +1225,11 @@ async function runAnalysis(options = {}) {
     }
     // The loaded tree also holds lines explored while the engine was working.
     // Replace its mainline grades, keeping those branches and the current move.
-    const nodePath = selectedNodePath() || ANALYSIS_ROOT_PATH;
+    const userSelectedPath = selectedNodePath();
+    const finalMainlinePly = payload.moves?.length || 0;
+    const nodePath = (!userSelectedPath || userSelectedPath === ANALYSIS_ROOT_PATH) && finalMainlinePly > 0
+      ? null
+      : (userSelectedPath || ANALYSIS_ROOT_PATH);
     appState.analysis = payload;
     appState.analysisTree = null;
     engineLifecycleMark("analyze-render-start", tAnalyze);
@@ -1233,7 +1238,11 @@ async function runAnalysis(options = {}) {
       complete();
       return;
     }
-    await selectAnalysisNodePath(nodePath);
+    if (nodePath) {
+      await selectAnalysisNodePath(nodePath);
+    } else {
+      await showAnalysisPly(finalMainlinePly);
+    }
     notices.updateJob({
       current: positions.length,
       total: positions.length,
@@ -1483,10 +1492,13 @@ async function updateAnalysisHandoff() {
 async function onCreateRepertoireFromGameClick() {
   const pgn = (appState.analysisSourcePgn || "").trim();
   if (!pgn || !appState.signedIn) return;
+  const full = repertoireLimitMessage();
   const btn = document.getElementById("create-repertoire-from-game");
   const meta = await showInputModal({
     title: "Turn this game into a repertoire",
     okLabel: "Create",
+    disabled: Boolean(full),
+    error: full || "",
     fields: [
       { name: "name", label: "Repertoire name", default: defaultRepertoireNameFromPgn(pgn) },
       repertoireColorField("white"),

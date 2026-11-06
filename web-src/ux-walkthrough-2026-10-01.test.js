@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
-import { authInputError, authReasonFor, isOpeningKeystroke } from "./controllers/account.js";
+import { authInputError, authReasonFor, isOpeningKeystroke } from "./auth-form.js";
 import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
 import { syncChipVariant } from "./sync-chip.js";
 import { nodeMenuHeading } from "./node-menu.js";

@@ -106,6 +106,10 @@ export function renderPieceStylePicker() {
 export function renderPrefsToggles() {
   const host = document.getElementById("board-prefs");
   if (!host) return;
+  if (host.closest?.("[hidden]")) {
+    host.innerHTML = "";
+    return;
+  }
   host.innerHTML = html`${Object.keys(PREF_LABELS)
     .map((key) => {
       const on = pref(key) ? " is-on" : "";

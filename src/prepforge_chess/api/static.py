@@ -265,14 +265,9 @@ def _dev_maia3_fallback(rel_path: str) -> Path | None:
     return target if target.is_file() else None
 
 
-def _render_index(request: Request) -> Response:
-    index = STATIC_DIR / "index.html"
-    try:
-        stat_result = index.stat()
-        body = _inject_asset_base(index.read_bytes())
-    except OSError:
-        return Response("app shell not found", status_code=404)
-    cache_control = _cache_control(index)
+def _render_html(request: Request, target: Path) -> Response:
+    stat_result = target.stat()
+    cache_control = _cache_control(target)
     etag = _file_etag(stat_result)
     # The injected asset-base globals are env-derived, so a process that restarts
     # with different bases serves a different body for an unchanged file. Fold the
@@ -282,17 +277,30 @@ def _render_index(request: Request) -> Response:
         etag = '"' + hashlib.md5(
             (etag + script_body).encode(), usedforsecurity=False
         ).hexdigest() + '"'
+    # A 304 replaces the cached response's Content-Security-Policy (RFC 9110 §15.4.5):
+    # it must carry the document CSP (with the inline bootstrap script's sha256 hash)
+    # or SecurityHeadersMiddleware stamps the hashless default CSP onto the 304 and the
+    # browser blocks window.__MAIA3_ASSET_BASE on every reload.
+    doc_headers = {"Content-Security-Policy": _document_csp(), **_DOCUMENT_ISOLATION}
     if _not_modified(request, etag, stat_result.st_mtime):
-        return _not_modified_response(etag, cache_control, _DOCUMENT_ISOLATION)
+        return _not_modified_response(etag, cache_control, doc_headers)
+    body = _inject_asset_base(target.read_bytes())
     return HTMLResponse(
         content=body,
         headers={
             "Cache-Control": cache_control,
             **_validator_headers(etag, stat_result.st_mtime),
-            "Content-Security-Policy": _document_csp(),
-            **_DOCUMENT_ISOLATION,
+            **doc_headers,
         },
     )
+
+
+def _render_index(request: Request) -> Response:
+    index = STATIC_DIR / "index.html"
+    try:
+        return _render_html(request, index)
+    except OSError:
+        return Response("app shell not found", status_code=404)
 
 
 def _serve_asset(request: Request, rel_path: str) -> Response:
@@ -312,22 +320,9 @@ def _serve_asset(request: Request, rel_path: str) -> Response:
     # HTML documents (the app shell, served via /static too) get the runtime
     # asset-base injection and the document isolation headers; everything else
     # streams via FileResponse (range requests, sendfile) with CORP.
-    cache_control = _cache_control(target)
     if target.suffix.lower() == ".html":
-        stat_result = target.stat()
-        etag = _file_etag(stat_result)
-        if _not_modified(request, etag, stat_result.st_mtime):
-            return _not_modified_response(etag, cache_control, _DOCUMENT_ISOLATION)
-        body = _inject_asset_base(target.read_bytes())
-        return HTMLResponse(
-            content=body,
-            headers={
-                "Cache-Control": cache_control,
-                **_validator_headers(etag, stat_result.st_mtime),
-                "Content-Security-Policy": _document_csp(),
-                **_DOCUMENT_ISOLATION,
-            },
-        )
+        return _render_html(request, target)
+    cache_control = _cache_control(target)
     # FileResponse carries an ETag of its own, but nothing checks it: only
     # StaticFiles answers conditionals, and this route is hand-rolled. Hashed
     # names are immutable so they never re-ask; the revalidating files (the two

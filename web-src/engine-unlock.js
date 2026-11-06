@@ -60,11 +60,21 @@ function percent(fraction) {
   return fraction == null ? null : Math.round(fraction * 100);
 }
 
+export function combinedProgress(state = downloadState) {
+  const m = state("maia"), s = state("stockfish");
+  if (!m || !s || m.id === s.id || m.phase !== "downloading" || s.phase !== "downloading") return null;
+  const bytes = (m.bytes || 0) + (s.bytes || 0);
+  const loaded = (m.fraction || 0) * (m.bytes || 0) + (s.fraction || 0) * (s.bytes || 0);
+  const fraction = m.fraction == null && s.fraction == null ? null : bytes ? loaded / bytes : 0;
+  return { mode: "progress", name: "Maia 3 & Full Stockfish", engine: "both", state: { bytes, fraction } };
+}
+
 export function unlockHtml(place, view, { inline = false } = {}) {
-  const { engine, gain } = UNLOCK_PLACES[place];
+  const { gain } = UNLOCK_PLACES[place];
+  const engine = view.engine || UNLOCK_PLACES[place].engine;
   const { mode, state } = view;
   const cls = inline ? "unlock is-inline" : "unlock";
-  const name = ENGINE_NAMES[engine];
+  const name = view.name || ENGINE_NAMES[engine];
   const size = formatMB(state.bytes);
   const close = html`<button type="button" class="unlock-x" data-unlock-act="dismiss" aria-label="Not now" title="Not now"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>`;
   if (mode === "progress") {
@@ -80,23 +90,40 @@ export function unlockHtml(place, view, { inline = false } = {}) {
   return html`<div class="${cls}" data-mode="${mode}" data-engine="${engine}" title="${gain}"><span class="unlock-text"><b>${name}</b></span><button type="button" class="btn sm" data-unlock-act="get" data-testid="unlock-get-${place}">${action}</button>${close}</div>`;
 }
 
-// Fill every slot under `root`. A slot whose row did not change mode only moves
-// its progress, so a download ticking along does not rebuild the row.
-export function paintUnlocks(root = globalThis.document) {
-  if (!root?.querySelectorAll) return;
-  const dismissed = dismissedEngines();
-  for (const slot of root.querySelectorAll("[data-unlock-place]")) {
+const MODE_RANK = { progress: 3, error: 2, offer: 1, enable: 1 };
+
+// Fill every slot under `root`. Within one `.view`, at most one banner shows so
+// Maia and Stockfish never stack on top of each other over the Review results.
+export function paintUnlocks(root = globalThis.document, { state = downloadState, enabled = maiaAnalysisEnabled, dismissed = dismissedEngines() } = {}) {
+  const scope = root?.closest?.(".view") || root;
+  if (!scope?.querySelectorAll) return;
+  const both = combinedProgress(state);
+  const allSlots = [...scope.querySelectorAll("[data-unlock-place]")];
+  const entries = allSlots.map((slot) => {
     const place = slot.dataset.unlockPlace;
-    const view = unlockView(place, { dismissed });
+    return { slot, place, host: slot.closest?.(".view") || scope, view: unlockView(place, { state, enabled, dismissed }) };
+  });
+  const winnerByHost = new Map();
+  for (const entry of entries) {
+    if (!entry.view) continue;
+    const prev = winnerByHost.get(entry.host);
+    if (!prev || (MODE_RANK[entry.view.mode] || 0) > (MODE_RANK[prev.view.mode] || 0)) {
+      winnerByHost.set(entry.host, entry);
+    }
+  }
+  for (const entry of entries) {
+    const { slot, place, host } = entry;
+    const view = winnerByHost.get(host) === entry ? (both || entry.view) : null;
     if (!view) {
       slot.hidden = true;
       if (slot.unlockMarkup) slot.innerHTML = slot.unlockMarkup = "";
       continue;
     }
     slot.hidden = false;
+    const engine = view.engine || UNLOCK_PLACES[place].engine;
     const row = slot.firstElementChild;
     const pct = percent(view.state.fraction);
-    if (view.mode === "progress" && row?.dataset.mode === "progress" && row.dataset.engine === UNLOCK_PLACES[place].engine && pct != null && !row.querySelector(".is-busy")) {
+    if (view.mode === "progress" && row?.dataset.mode === "progress" && row.dataset.engine === engine && pct != null && !row.querySelector(".is-busy")) {
       row.querySelector(".unlock-bar i").style.width = `${pct}%`;
       row.querySelector(".unlock-bar").setAttribute("aria-valuenow", String(pct));
       slot.unlockMarkup = null;

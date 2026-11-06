@@ -3,8 +3,15 @@
 // do not, so this keeps the download visible and retryable in one place.
 export const MAIA_INIT_NOTICE_KEY = "maia-init";
 
-export function maiaInitMessage({ phase, loaded, total } = {}) {
+export function maiaInitMessage({ phase, loaded, total } = {}, stockfish = null) {
   if (phase === "download") {
+    if (stockfish?.phase === "download" || stockfish?.phase === "downloading") {
+      const sfTotal = stockfish.total || stockfish.bytes || 0;
+      const sfLoaded = stockfish.loaded ?? (stockfish.fraction != null ? stockfish.fraction * sfTotal : 0);
+      const sumTotal = (total || 0) + sfTotal;
+      const pct = sumTotal ? Math.min(100, Math.round((((loaded || 0) + sfLoaded) / sumTotal) * 100)) : 0;
+      return `Downloading Maia & Stockfish · ${pct}%`;
+    }
     const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
     return `Downloading Maia model · ${pct}%`;
   }
@@ -36,13 +43,15 @@ export function maiaErrorText(error) {
 
 // `quietFail`: the caller shows the failure itself (Train's Result card), so a
 // failure only clears the progress notice.
-export function watchMaiaInit(provider, { notices, onRetry, quietFail = false } = {}) {
+export function watchMaiaInit(provider, { notices, onRetry, onProgress, stockfishState, quietFail = false } = {}) {
   if (!provider || typeof provider.subscribeInitProgress !== "function") return () => {};
   let failed = false;
   let card = null;
   const stop = provider.subscribeInitProgress((progress) => {
-    const message = maiaInitMessage(progress);
+    const message = maiaInitMessage(progress, stockfishState?.());
     if (message) {
+      onProgress?.(message, progress);
+      if (notices?.active?.dock) return;
       card = notices?.show(message, {
         key: MAIA_INIT_NOTICE_KEY,
         tone: "info",

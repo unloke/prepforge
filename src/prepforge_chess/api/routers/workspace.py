@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 
 import base64
 import hmac
@@ -535,9 +536,11 @@ def _reassign_ids(repertoire) -> None:
 
 def _safe_filename(name: str) -> str:
     """Slugify a repertoire name into a download-safe filename stem."""
-    return "".join(
+    stem = "".join(
         char if char.isalnum() or char in {"-", "_"} else "-" for char in name.lower()
-    ).strip("-") or "repertoire"
+    )
+    # "Najdorf / English Attack" is one dash, not one per dropped character.
+    return re.sub(r"-{2,}", "-", stem).strip("-") or "repertoire"
 
 
 class CreateRepertoireBody(BaseModel):
@@ -1180,7 +1183,7 @@ def export_tree_pgn(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
     content = RepertoireExportService().export_tree_pgn(repertoire)
     return {
-        "filename": "{0}.tree.pgn".format(_safe_filename(repertoire.name)),
+        "filename": "{0}.pgn".format(_safe_filename(repertoire.name)),
         "mime": "application/x-chess-pgn",
         "content": content,
     }

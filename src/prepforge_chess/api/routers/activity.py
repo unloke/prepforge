@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, update
 
-from prepforge_chess.api.deps import current_owner, get_repository
+from prepforge_chess.api.deps import current_owner, get_repository, member_name
 from prepforge_chess.api.routers.workspace import _repertoire_access, _payload
 from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
@@ -22,7 +22,7 @@ def activity(repertoire_id: str, owner: str = Depends(current_owner),
     meta = _repertoire_access(repo, repertoire_id, owner)
     seen = repo.get_user_setting(owner, f"activity.seen.{repertoire_id}", 0)
     with repo.engine.connect() as conn:
-        rows = conn.execute(select(t.repertoire_ops, t.users.c.display_name).select_from(
+        rows = conn.execute(select(t.repertoire_ops, t.users.c.display_name, t.users.c.email).select_from(
             t.repertoire_ops.outerjoin(t.users, t.users.c.id == t.repertoire_ops.c.actor_user_id)
         ).where(t.repertoire_ops.c.repertoire_id == repertoire_id).order_by(
             t.repertoire_ops.c.revision.desc()
@@ -37,7 +37,7 @@ def activity(repertoire_id: str, owner: str = Depends(current_owner),
         delta = op.get("delta", {})
         entries.append({
             "revision": row["revision"], "kind": row["kind"],
-            "actor": row["display_name"] or ("Former member" if row["actor_user_id"] else "PrepForge"),
+            "actor": member_name(row["display_name"], row["email"]) if row["actor_user_id"] else "PrepForge",
             "created_at": row["created_at"].isoformat(), "unread": unread,
             "nodes": op.get("nodes", []), "removed": op.get("removed", []),
             "added": sum(change["before"] is None for change in delta.values()),

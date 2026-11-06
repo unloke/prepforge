@@ -46,6 +46,8 @@ async function runLichessCompare() {
   const count = Math.max(1, Math.min(MAX_FETCH, Number(countInput.value) || 10));
   const button = document.getElementById("lichess-compare-btn");
   button.disabled = true;
+  button.textContent = "Checking…";
+  button.setAttribute("aria-busy", "true");
   setStatus("Fetching games from Lichess");
   // Paint the ledger's own rows as bars while the fetch runs, so the panel
   // shows what it will fill instead of the flat pre-check text.
@@ -93,6 +95,8 @@ async function runLichessCompare() {
     }
   } finally {
     if (appState.replayCheckToken === token) button.disabled = false;
+    button.textContent = "Check games";
+    button.removeAttribute("aria-busy");
   }
 }
 

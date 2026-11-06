@@ -433,13 +433,13 @@ async function fetchPlayExplorer(fen) {
 // tell the two apart: "the opponent has no legal move" is only true when the move
 // generator really came back empty, while an engine failure owes the user the
 // actual reason and a retry, not a misleading book message.
-async function fetchPlayMaia(fen) {
+async function fetchPlayMaia(fen, onProgress) {
   // Train Play opponent fallback is Maia-by-design (thin Explorer positions
   // fall back to human-like replies), independent of the Analyze-layer switch.
   try {
     const provider = getSharedMaia3Provider();
     // The Result card names the failure and owns the retry (Play again).
-    const maiaNotice = watchMaiaInit(provider, { notices, quietFail: true });
+    const maiaNotice = watchMaiaInit(provider, { notices, onProgress, quietFail: true });
     try {
       const predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
       maiaNotice.succeed();
@@ -688,7 +688,9 @@ async function playOpponentReply() {
   });
   if (!reply.uci) {
     if (play.book !== "maia" && !explorer.unavailable) play.explorerOff = "out-of-book";
-    const maia = await fetchPlayMaia(fen);
+    const maia = await fetchPlayMaia(fen, (text) => {
+      if (isCurrent()) setTrainBanner("runin", "Opponent thinking…", text);
+    });
     if (!isCurrent()) return;
     // Maia could not start at all: the Result card names the reason instead of
     // blaming the book, and Play again retries.
@@ -870,7 +872,7 @@ export async function takebackPlaySession() {
     lastMove: undone.lastMove, back: true, // a takeback: pieces go home, quietly
     banner: yourMove ? "Your move" : "Opponent thinking…",
     sub: yourMove
-      ? "Takeback: play again"
+      ? "Move taken back"
       : playThinkingSub(play),
     label: playBookLabel(play),
     state: yourMove ? "move" : "runin",
@@ -1181,6 +1183,7 @@ export async function trainHint() {
   } else if (level === 2) {
     boards.train.setEngineArrow(null);
     setTrainBanner("move", "Hint 2 · Piece", info.piece || "Find the move");
+    if (info.expected_uci) boards.train.selectSquare(info.expected_uci.slice(0, 2));
   } else {
     setTrainBanner("move", "Hint 3 · Answer", info.expected_san ? `Play ${info.expected_san}` : "Here it is");
     if (info.expected_uci) boards.train.setEngineArrow(info.expected_uci);
@@ -1748,6 +1751,7 @@ function smartHint() {
   } else if (level === 2) {
     boards.train.setEngineArrow(null);
     setTrainBanner("move", "Hint 2 · Piece", prompt.hint.piece || "Find the move");
+    boards.train.selectSquare(prompt.expected_uci.slice(0, 2));
   } else {
     setTrainBanner("move", "Hint 3 · Answer", `Play ${prompt.expected_san}`);
     boards.train.setEngineArrow(prompt.expected_uci);

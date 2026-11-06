@@ -1,6 +1,7 @@
 import { html } from "./html.js";
 import { modalDialog, openModal } from "./core/dialog.js";
 import { appState } from "./core/state.js";
+import { api } from "./core/api.js";
 import { hooks } from "./core/hooks.js";
 import { maiaAnalysisEnabled, setPref } from "./core/prefs.js";
 import { fetchLichessProfile } from "./lichess-profile.js";
@@ -12,9 +13,9 @@ import "./welcome.css";
 // then the page the answer points at. It is shown once per browser.
 export const WELCOME_KEY = "prepforge.welcome";
 
-export function shouldWelcome({ storage = globalThis.localStorage, location = globalThis.location, navigator = globalThis.navigator } = {}) {
+export function shouldWelcome({ storage = globalThis.localStorage, location = globalThis.location, navigator = globalThis.navigator, ownerId = appState.accountUserId } = {}) {
   try {
-    if (storage.getItem(WELCOME_KEY)) return false;
+    if (storage.getItem(WELCOME_KEY) || (ownerId && storage.getItem(`${WELCOME_KEY}:${ownerId}`))) return false;
   } catch {
     return false;
   }
@@ -181,7 +182,7 @@ export function openWelcome({ hasLichess = () => false, setLichessUsername = () 
 }
 
 function userIsBusy(doc = globalThis.document) {
-  if (doc.querySelector("dialog[open]")) return true;
+  if (doc.querySelector("dialog[open], dialog.auth-modal")) return true;
   try {
     return !!doc.querySelector("[popover]:popover-open");
   } catch {
@@ -190,12 +191,53 @@ function userIsBusy(doc = globalThis.document) {
 }
 
 // The shell's entry: the welcome with this app's own doors.
-export function maybeWelcome({ switchView, setLichessUsername, lichessAccounts, saveSettings }) {
+// An account that already holds work is not a first visit, whatever this
+// browser remembers.
+export async function accountHasWork({ state = appState, fetchApi = api, lichessAccounts = () => [] } = {}) {
+  if (!state.signedIn) return false;
+  if (
+    (state.account?.repertoireCount || 0) > 0 ||
+    (state.repertoireList?.length || 0) > 0 ||
+    (state.sharedRepertoireList?.length || 0) > 0 ||
+    (state.dayStreak?.best || 0) > 0 ||
+    (state.dayStreak?.current || 0) > 0 ||
+    Boolean(state.lichessUsername) ||
+    (lichessAccounts?.() || []).length > 0
+  ) {
+    return true;
+  }
+  try {
+    const counts = await fetchApi("/api/dashboard");
+    return (
+      counts.repertoires > 0 ||
+      counts.games > 0 ||
+      counts.training_sessions > 0 ||
+      (counts.streak?.best || 0) > 0 ||
+      (counts.streak?.current || 0) > 0 ||
+      (counts.recap?.reviews_7d || 0) > 0 ||
+      (counts.recap?.mastered_now || 0) > 0
+    );
+  } catch {
+    return null;
+  }
+}
+
+export async function maybeWelcome({ switchView, setLichessUsername, lichessAccounts, saveSettings }) {
+  if (appState.authKnown === false) return null;
   if (!shouldWelcome()) return null;
+  const work = await accountHasWork({ lichessAccounts });
+  if (work === true) {
+    try {
+      localStorage.setItem(WELCOME_KEY, "done");
+      if (appState.accountUserId) localStorage.setItem(`${WELCOME_KEY}:${appState.accountUserId}`, "done");
+    } catch { /* asked again next visit */ }
+    return null;
+  }
+  if (work === null) return null;
   // A visitor already in a dialog (signing in while the workspace loaded) is
   // busy: the welcome waits for the next visit rather than covering it. The
   // account chip's sign-in form is a popover, not a dialog.
-  if (userIsBusy()) return null;
+  if (!shouldWelcome() || userIsBusy()) return null;
   return openWelcome({
     hasLichess: () => !!appState.lichessUsername || (lichessAccounts() || []).length > 0,
     setLichessUsername,

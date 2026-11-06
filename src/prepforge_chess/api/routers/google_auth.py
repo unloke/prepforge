@@ -129,6 +129,6 @@ def callback(
 
     # 303 so the browser issues a GET to the SPA shell after the OAuth round-trip.
     response = RedirectResponse("/?signed_in=1", status_code=status.HTTP_303_SEE_OTHER)
-    _open_session(db, response, settings, user)
+    _open_session(db, request, response, settings, user)
     response.delete_cookie(_FLOW_COOKIE, path="/")
     return response

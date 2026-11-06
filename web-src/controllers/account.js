@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { authInputError, authReasonFor, isOpeningKeystroke, markInvalidFields, SLOW_SERVER_NOTE } from "../auth-form.js";
 import { isPopoverOpen, menuKeys, modalDialog, openPopover } from "../core/dialog.js";
 import {
   AUTH_REQUIRED_MESSAGE,
@@ -16,48 +17,6 @@ const AUTH_PROMPT_COOLDOWN_MS = 10_000;
 // The API caps passwords at 200 characters (ResetPasswordRequest). Mirroring it on
 // the input keeps a long passphrase from being rejected as an opaque 422.
 const PASSWORD_MAX = 200;
-
-// The gate reasons are phrased for the sign-in screen ("Sign in to start
-// training"); on the create-account screen the same reason reads as an account
-// invitation instead of telling a new user to sign in.
-export function authReasonFor(mode, reason) {
-  const text = String(reason || "");
-  if (mode !== "register") return text;
-  return text.replace(/^Sign in to /, "Create an account to ");
-}
-
-// Shape the server's EmailStr accepts: a local part, "@", and a dotted domain.
-// `type="email"` alone lets "abc@x" through, which only fails after a round trip.
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Client-side check before posting; returns the error line or "" when the form
-// may be sent.
-export function authInputError(mode, { email = "", password = "", confirm = "" } = {}) {
-  if (mode === "forgot") {
-    if (!email) return "Enter your email.";
-    if (!EMAIL_SHAPE.test(email)) return "Enter a valid email address.";
-    return "";
-  }
-  if (mode === "reset") {
-    if (password.length < 8) return "Password must be at least 8 characters.";
-    if (password !== confirm) return "The two passwords don't match.";
-    return "";
-  }
-  if (!email || !password) return "Enter your email and password.";
-  if (mode === "register") {
-    if (!EMAIL_SHAPE.test(email)) return "Enter a valid email address.";
-    if (password.length < 8) return "Password must be at least 8 characters.";
-  }
-  return "";
-}
-
-// The key press that opened the modal (Enter in the command palette) is still
-// bubbling to the document when the modal registers its own keydown listener.
-// Events stamped before the modal opened belong to whatever opened it.
-export function isOpeningKeystroke(event, openedAt) {
-  const stamp = Number(event && event.timeStamp);
-  return Number.isFinite(stamp) && stamp > 0 && stamp < openedAt;
-}
 
 // Account/auth and Lichess connection UI live behind this controller so app.js
 // does not also own the session boundary. The controller deliberately receives
@@ -129,20 +88,21 @@ export function createAccountController({
     const name = appState.accountUsername || appState.lichessUsername;
     const sub = document.getElementById("account-sub");
     const initial = name ? String(name).trim().charAt(0).toUpperCase() : "";
+    const activeSession = appState.signedIn && !appState.sessionExpired;
     const paintAvatar = (el) => {
       if (!el) return;
-      el.classList.toggle("is-guest", !appState.signedIn);
-      if (appState.signedIn && initial) el.textContent = initial;
+      el.classList.toggle("is-guest", !activeSession);
+      if (activeSession && initial) el.textContent = initial;
     };
     // Page-level guest marker for copy that only applies signed out (the Games
     // empty state cannot invite a guest to "run a check"). Until the session is
     // read it is UNKNOWN, so the marker stays off — see the boot hold above.
-    document.body?.classList.toggle("is-guest", appState.authKnown === true && !appState.signedIn);
+    document.body?.classList.toggle("is-guest", appState.authKnown === true && !activeSession);
     paintAvatar(document.getElementById("account-avatar"));
     paintAvatar(document.getElementById("sheet-account-avatar"));
     const sheetLabel = document.getElementById("sheet-account-label");
     const sheetItem = document.getElementById("sheet-account");
-    if (appState.signedIn) {
+    if (activeSession) {
       chip.classList.add("is-connected");
       label.textContent = name || "Account";
       if (sub) sub.textContent = appState.lichessUsername ? `Lichess · ${appState.lichessUsername}` : "Account";
@@ -152,6 +112,18 @@ export function createAccountController({
       if (sheetItem) {
         sheetItem.setAttribute("aria-haspopup", "menu");
         if (!sheetItem.hasAttribute("aria-expanded")) sheetItem.setAttribute("aria-expanded", "false");
+      }
+    } else if (appState.sessionExpired) {
+      chip.classList.remove("is-connected");
+      label.textContent = "Sign in";
+      if (sub) sub.textContent = "Session ended";
+      if (sheetLabel) sheetLabel.textContent = "Sign in";
+      chip.removeAttribute("aria-haspopup");
+      chip.setAttribute("aria-expanded", "false");
+      chip.title = "Session ended — sign in again";
+      if (sheetItem) {
+        sheetItem.removeAttribute("aria-haspopup");
+        sheetItem.removeAttribute("aria-expanded");
       }
     } else if (!appState.authKnown) {
       // The session is still being read. `!signedIn` here means UNKNOWN, not
@@ -199,12 +171,18 @@ export function createAccountController({
   // inside it — instead of a cryptic 401. `pendingActionId` (allowlisted in
   // auth-gate.js) lets the action resume once the sign-in completes.
   function requireSignIn(reason = "Sign in (or create an account) to continue", pendingActionId = null, pendingData = null) {
-    if (appState.signedIn) return true;
-    openAuthModal("login", { notice: reason, pendingAction: pendingActionId, pendingData });
+    if (appState.signedIn && !appState.sessionExpired) return true;
+    openAuthModal("login", {
+      notice: reason,
+      pendingAction: pendingActionId,
+      pendingData,
+      onDismiss: appState.signedIn ? endExpiredSession : null,
+    });
     return false;
   }
 
   let authDismissedAt = 0;
+  let authSignedInPendingReload = false;
 
   function isAuthModalOpen() {
     return typeof document !== "undefined" && !!document.querySelector?.("dialog.auth-modal");
@@ -213,18 +191,29 @@ export function createAccountController({
   // An API call answered 401: show the sign-in modal with an explanation
   // instead of the backend's "not authenticated". Never stacks a second modal
   // and backs off right after the user closed one.
-  function handleAuthRequired(reason = "") {
-    if (isAuthModalOpen()) return;
+  function handleAuthRequired(reason = "", { pendingAction = null, pendingData = null } = {}) {
+    if (isAuthModalOpen() || authSignedInPendingReload) return;
+    const wasSignedIn = appState.signedIn;
+    if (wasSignedIn && !appState.sessionExpired) {
+      appState.sessionExpired = true;
+      closeAccountMenu();
+      renderAccountChip();
+    }
     const message =
       reason ||
-      (appState.signedIn
+      (wasSignedIn
         ? "Your session has ended — sign in again to continue."
         : AUTH_REQUIRED_MESSAGE);
     if (Date.now() - authDismissedAt < AUTH_PROMPT_COOLDOWN_MS) {
       setStatus(message, { severity: "warning" });
       return;
     }
-    openAuthModal("login", { notice: message, onDismiss: appState.signedIn ? endExpiredSession : null });
+    openAuthModal("login", {
+      notice: message,
+      pendingAction,
+      pendingData,
+      onDismiss: wasSignedIn ? endExpiredSession : null,
+    });
   }
 
   // The user closed the "session has ended" sign-in. Once the server confirms
@@ -232,12 +221,19 @@ export function createAccountController({
   // signed-out shell a sign-out shows. Unkept work keeps the page.
   async function endExpiredSession() {
     const status = await api("/api/auth/me").then(() => 200, (error) => error?.status);
-    if (status !== 401) return;
+    if (status !== 401) {
+      if (status === 200 && appState.sessionExpired) {
+        appState.sessionExpired = false;
+        renderAccountChip();
+      }
+      return;
+    }
     const kept = await Promise.resolve(beforeSessionEnd?.()).then((ok) => ok !== false, () => false);
     if (!kept) {
       setStatus("Session ended. Unsaved changes could not be kept on this device; sign in to save them.", { severity: "error" });
       return;
     }
+    appState.sessionExpired = false;
     appState.signedIn = false;
     appState.accountUserId = null;
     appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
@@ -258,6 +254,7 @@ export function createAccountController({
   };
 
   function openAuthModal(mode = "login", { resetToken = null, notice = "", pendingAction = null, pendingData = null, onDismiss = null } = {}) {
+    if (authSignedInPendingReload) return;
     const existing = document.querySelector("dialog.auth-modal");
     if (existing) {
       // The modal registers a document-level keydown listener on open, so a bare
@@ -266,6 +263,9 @@ export function createAccountController({
       if (typeof existing._closeAuthModal === "function") existing._closeAuthModal({ replaced: true });
       else existing.remove();
     }
+    // An open showModal() <dialog> makes the rest of document.body inert (so an
+    // auth popover on body cannot receive input) and stacks underneath it.
+    document.querySelectorAll?.("dialog[open]:not(.auth-modal)")?.forEach((d) => d.close?.());
     // Remember the interrupted action so it resumes after the sign-in reload
     // (or the Google redirect). Opening without one clears any stale intent.
     if (isPendingActionId(pendingAction)) {
@@ -402,7 +402,11 @@ export function createAccountController({
       const email = value("email").trim();
       const password = value("password");
       const inputError = authInputError(currentMode, { email, password, confirm: value("confirm") });
-      if (inputError) return showError(inputError);
+      markInvalidFields(overlay, inputError, { email, password });
+      if (inputError) {
+        overlay.querySelector('[aria-invalid="true"]')?.focus();
+        return showError(inputError);
+      }
       submitting = true;
       requestController = new AbortController();
       const requestOptions = { signal: requestController.signal };
@@ -416,6 +420,13 @@ export function createAccountController({
         submitBtn.disabled = true;
         submitBtn.textContent = AUTH_MODES[currentMode]?.busy || "Working…";
       }
+      // A server waking from sleep takes up to a minute to answer the first request.
+      const slowNote = setTimeout(() => {
+        const note = overlay.querySelector('[data-auth="notice"]');
+        if (!note || !isCurrent()) return;
+        note.textContent = SLOW_SERVER_NOTE;
+        note.hidden = false;
+      }, 5000);
       try {
         if (currentMode === "forgot") {
           const result = await postJson("/api/auth/password/forgot", { email }, requestOptions);
@@ -440,10 +451,17 @@ export function createAccountController({
           return;
         }
         const endpoint = currentMode === "register" ? "/api/auth/register" : "/api/auth/login";
-        await postJson(endpoint, { email, password }, requestOptions);
+        const me = await postJson(endpoint, { email, password }, requestOptions);
         if (!isCurrent()) return;
+        authSignedInPendingReload = true;
+        appState.sessionExpired = false;
+        appState.signedIn = true;
+        if (me?.id) appState.accountUserId = me.id;
+        if (me?.display_name || me?.email) appState.accountUsername = me.display_name || me.email;
+        authDismissedAt = Date.now();
         markAuthReturn({ href: window.location.href });
         close({ signedIn: true });
+        renderAccountChip();
         // A fresh session changes every owner-scoped view — reload for a clean
         // slate; the pending action (if any) resumes after it.
         onReload();
@@ -451,6 +469,9 @@ export function createAccountController({
         if (!isCurrent()) return;
         showError(error.message || "Something went wrong.");
       } finally {
+        clearTimeout(slowNote);
+        const note = overlay.querySelector('[data-auth="notice"]');
+        if (note?.textContent === SLOW_SERVER_NOTE) note.hidden = true;
         if (isCurrent()) {
           requestController = null;
           submitting = false;
@@ -481,6 +502,7 @@ export function createAccountController({
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onOutsidePointer, true);
+    overlay.addEventListener("input", (event) => event.target.removeAttribute?.("aria-invalid"));
     overlay.addEventListener("click", (event) => {
       const action = event.target?.dataset?.action;
       const currentMode = overlay.dataset.mode;
@@ -583,8 +605,20 @@ export function createAccountController({
   // Guest → the chip is a single sign-in action. Signed in → it toggles the
   // account menu. `trigger` defaults to the rail chip; `anchor` only positions.
   function onAccountChipClick(anchor = null, { trigger = null } = {}) {
-    if (!appState.signedIn) {
-      openAuthModal("login");
+    // Unknown is not signed out: a sign-in form here would ask a signed-in
+    // user to sign in again. Read the session instead.
+    if (!appState.authKnown && !appState.signedIn) {
+      setStatus("Checking your session…");
+      void refreshAuthStatus();
+      return;
+    }
+    if (!appState.signedIn || appState.sessionExpired) {
+      openAuthModal(
+        "login",
+        appState.sessionExpired
+          ? { notice: "Your session has ended — sign in again to continue.", onDismiss: endExpiredSession }
+          : undefined,
+      );
       return;
     }
     toggleAccountMenu(anchor, { trigger });
@@ -655,12 +689,14 @@ export function createAccountController({
     }
   }
 
+  let authRetry = 0;
   async function refreshAuthStatus() {
     const previousOwner = appState.accountUserId;
     // The session is being read right now. Anything that renders "signed out" while
     // this is false is guessing, and a signed-in user sees that guess flash on reload.
     try {
       const me = await api("/api/auth/me");
+      appState.sessionExpired = false;
       appState.signedIn = !!me.id;
       appState.accountUsername = me.display_name || me.email || null;
       appState.accountUserId = me.id || null;
@@ -669,18 +705,28 @@ export function createAccountController({
         displayName: me.display_name || "",
         plan: me.plan || "free",
         hasPassword: !!me.has_password,
+        repertoireLimit: me.repertoire_limit ?? null,
+        repertoireCount: me.repertoire_count ?? null,
       };
     } catch (error) {
       if (error?.status !== 401) {
+        // A server waking up or a dropped request is not an answer: the chip
+        // would sit on "Checking your session…" for good. Ask again, backing off.
         renderAccountChip();
+        if (!appState.authKnown) {
+          authRetry = Math.min(authRetry + 1, 5);
+          setTimeout(() => { if (!appState.authKnown) void refreshAuthStatus(); }, 1000 * 2 ** authRetry);
+        }
         return;
       }
+      appState.sessionExpired = false;
       appState.signedIn = false;
       appState.accountUsername = null;
       appState.accountUserId = null;
       appState.account = null;
     }
     appState.authKnown = true;
+    authRetry = 0;
     if (previousOwner !== appState.accountUserId) {
       appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
       onOwnerChanged();

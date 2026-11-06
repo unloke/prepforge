@@ -35,6 +35,7 @@ import { engineWidget, EXPLORER_EVAL_MAX_LINES } from "../core/engine.js";
 import { invalidateBook } from "../analyze-book-state.js";
 import { renderBuildSync, setBuildSync } from "../train-entry.js";
 import { showInputModal } from "../core/modals.js";
+import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { captureBuildContext, closeRepertoireContextMenu, ensureBuildView, handleRepertoireContextAction,
   hardFlushBuild, openSettingsSection, preloadBuildGen, refreshDashboardRepertoires, renderBuildRepHeader,
   requireSignIn, scheduleBuildFlush, switchView, syncWorkspaceUrl } from "../core/app-context.js";
@@ -714,7 +715,7 @@ function renderExplorerRows(stats, fen) {
         <span class="explorer-san">${m.san}${has ? html`<span class="explorer-inrep" title="In your repertoire">&#9679;</span>` : ""}</span>
       </button>
       <span class="explorer-eval">&hellip;</span>
-      <span class="explorer-games" title="${`${countOf(games, "game")}`}"><b class="explorer-share">${allGames ? `${Math.round((100 * (Number(m.total) || 0)) / allGames)}%` : ""}</b> ${games}</span>
+      <span class="explorer-games" title="${`${countOf(games, "game")}`}"><b class="explorer-share">${explorerShareLabel(m.total, allGames)}</b> ${games}</span>
       <span class="explorer-bar" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span>
     </div>`;
       })}`;
@@ -1051,6 +1052,14 @@ async function onBuildBoardMove(moveUci) {
   scheduleBuildFlush();
 }
 
+// A move played in a few of many games is rare, not absent: "<1%", never "0%".
+function explorerShareLabel(total, allGames) {
+  const games = Number(total) || 0;
+  if (!allGames || !games) return "";
+  const share = Math.round((100 * games) / allGames);
+  return share ? `${share}%` : "<1%";
+}
+
 // One create dialog at a time. The Library offers New repertoire in the page
 // head and the list header, so re-entering while the first dialog is still open
 // would ask twice and, on Enter, send two creates.
@@ -1059,9 +1068,12 @@ let createRepertoireDialog = null;
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
   if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
   if (createRepertoireDialog) return createRepertoireDialog;
+  const full = repertoireLimitMessage();
   createRepertoireDialog = showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
+    disabled: Boolean(full),
+    error: full || "",
     fields: [
       { name: "name", label: "Name", default: defaultName || "New repertoire" },
       repertoireColorField(defaultColor),
@@ -1072,6 +1084,12 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
     // first Build move can play onto the real repertoire.
     dismissOnSubmit: true,
     onSubmit: async (result, close) => {
+      const capError = repertoireLimitMessage();
+      if (capError) {
+        close(null);
+        setStatusError(capError);
+        return;
+      }
       const name = (result.name || "").trim() || "New repertoire";
       const color = normalizeRepertoireColor(result.color);
       // When opening it, show an empty repertoire on the tab's own temp id right away, so the
@@ -1104,6 +1122,7 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
 // empty repertoire with no loading state.
 function optimisticEmptyRepertoire(name, color) {
   const previous = appState.build;
+  const previousView = appState.currentView || null;
   const rootFen = START_FEN;
   const info = localBoardInfo(rootFen);
   const rootId = `tmp-rep-${OUTBOX_TAB_ID}-${Date.now().toString(36)}`;
@@ -1159,11 +1178,11 @@ function optimisticEmptyRepertoire(name, color) {
   renderBuildSync();
   renderBuilderTree();
   syncWorkspaceUrl();
-  return { previous, rootId };
+  return { previous, previousView, rootId };
 }
 
 // Discard an unconfirmed optimistic repertoire and put the previous tree back.
-function rollbackOptimisticRepertoire({ previous, rootId }) {
+function rollbackOptimisticRepertoire({ previous, previousView, rootId }) {
   if (!previous) {
     appState.build = null;
     appState.buildNodeById = new Map();
@@ -1174,6 +1193,9 @@ function rollbackOptimisticRepertoire({ previous, rootId }) {
     // The open tree had selected the optimistic root: the previous repertoire's
     // own node goes back under the cursor, exactly like hydrateBuild does.
     appState.buildCurrentNodeId = previous.selected_node_id || previous.nodes[0]?.id || null;
+  }
+  if (!previous && previousView && previousView !== "build") {
+    switchView(previousView);
   }
   if (boards.build && appState.build) {
     const node = appState.buildNodeById.get(appState.buildCurrentNodeId);

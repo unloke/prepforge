@@ -432,3 +432,10 @@
 
 #train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
 
+
+
+/* A practice game is a game, not a card queue: the card's line, kind, stats,
+   queue and saved-progress chip belong to Drill and Rehearse only. */
+#view-train[data-train-mode="play"] :is(#train-line-path, .train-session-meta, #train-upnext, #train-sync) {
+  display: none;
+}

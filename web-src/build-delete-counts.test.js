@@ -20,7 +20,7 @@ function bodyOf(marker) {
 }
 
 describe("Build delete/undo repaint the repertoire header counts", () => {
-  const del = bodyOf("async function deleteBuildNodeLocal(nodeId) {");
+  const del = bodyOf("async function deleteBuildNodeLocal(nodeId, { isUndo = false } = {}) {");
 
   it("refreshes the panel head after pruning the subtree", () => {
     const prune = del.indexOf("pruneLocalBuildSubtree(nodeId)");

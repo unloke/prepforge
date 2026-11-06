@@ -5,6 +5,7 @@ import { html } from "../html.js";
 import "./scout.css";
 import { createEnrichPipeline } from "../enrich-pipeline.js";
 import { countOf, nounOf } from "../plural.js";
+import { scoutLineText } from "../scout.js";
 
 import {
   applyScoutColorTabs,
@@ -1309,18 +1310,19 @@ export function createScoutView(deps) {
     }
   }
 
-  async function pickRepertoire(oppColor, ownColor) {
+  function formatScoutLinePreview(line) {
+    const text = line?.sans?.length ? scoutLineText(line.sans) : (line?.ucis || []).join(" ");
+    const reply = line?.suggestedReply?.san || line?.suggestedReply?.uci;
+    return reply ? `${text} → ${reply}` : text || "Line";
+  }
+
+  async function pickRepertoire(oppColor, ownColor, lines = null) {
     const myColor = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
     let reps = [];
     try {
       const payload = await api("/api/repertoires");
-      reps = (payload.repertoires || []).filter(
-        (r) => r.is_active !== false && r.color === myColor,
-      );
-    } catch (error) {
-      setStatus(error.message);
-      return null;
-    }
+      reps = (payload.repertoires || []).filter((r) => r.is_active !== false && r.color === myColor);
+    } catch (error) { setStatus(error.message); return null; }
     const createNew = async () => {
       const created = await createRepertoirePrompt({
         title: "New repertoire for scout prep",
@@ -1330,29 +1332,34 @@ export function createScoutView(deps) {
       });
       return created?.repertoire_id || null;
     };
-    // No repertoire of this colour: a picker whose only choice is "Create new"
-    // is a step that decides nothing.
-    if (!reps.length) return createNew();
+    const batchCount = Array.isArray(lines) ? lines.length : 0;
+    if (!reps.length && !batchCount) return createNew();
     const options = [
       ...reps.map((r) => ({ value: r.id, label: `${r.name} (${r.color})` })),
       { value: "__new__", label: "Create new repertoire…" },
     ];
+    const countLabel = batchCount ? countOf(batchCount, "line") : null;
+    const previewGroup = batchCount ? `Lines to add (${batchCount})` : null;
+    const previewNotes = batchCount
+      ? lines.slice(0, 10).map((l) => ({ type: "note", group: previewGroup, label: formatScoutLinePreview(l) }))
+      : [];
+    if (batchCount > 10) previewNotes.push({ type: "note", group: previewGroup, label: `+${batchCount - 10} more` });
     const result = await showInputModal({
-      title: "Add line to prep",
-      okLabel: "Continue",
-      fields: [{ name: "repertoire", label: "Target repertoire", type: "select", default: reps[0].id, options }],
+      title: countLabel ? `Add ${countLabel} to prep` : "Add line to prep",
+      okLabel: countLabel ? `Add ${countLabel}` : "Continue",
+      fields: [
+        { name: "repertoire", label: "Target repertoire", type: "select", default: reps[0]?.id || "__new__", options },
+        ...previewNotes,
+      ],
     });
     if (!result?.repertoire) return null;
-    if (result.repertoire === "__new__") return createNew();
-    return result.repertoire;
+    return result.repertoire === "__new__" ? createNew() : result.repertoire;
   }
 
-  async function scoutWriteLineToRep(line, repId, { reload = true, side = null } = {}) {
+  async function scoutWriteLineToRep(line, repId, { reload = true, flush = true, side = null } = {}) {
     if (!scoutModule) scoutModule = await import("../scout.js");
     const build = getBuildState();
-    if (reload || !build || build.repertoire_id !== repId) {
-      await editRepertoire(repId);
-    }
+    if (reload || !build || build.repertoire_id !== repId) await editRepertoire(repId);
     const freshBuild = getBuildState();
     if (!freshBuild || freshBuild.repertoire_id !== repId) return null;
 
@@ -1361,8 +1368,9 @@ export function createScoutView(deps) {
     if (line.suggestedReply?.uci) ucisToWrite.push(line.suggestedReply.uci);
     const { covered, deepestNodeId } = scoutModule.lineCoverage(lookup, ucisToWrite);
     const remaining = ucisToWrite.slice(covered);
+    const alreadyPresent = ucisToWrite.length > 0 && !remaining.length && !String(deepestNodeId || "").startsWith("tmp-");
     let parentId = deepestNodeId;
-    let parent = getBuildNodeById(parentId);
+    let parent = getBuildNodeById?.(parentId) || freshBuild.nodes.find((n) => n.id === parentId);
     let lastNodeId = parentId;
 
     let complete = true;
@@ -1370,38 +1378,28 @@ export function createScoutView(deps) {
       const existing = freshBuild.nodes.find((n) => n.parent_id === parentId && n.uci === uci);
       if (existing) {
         parentId = existing.id;
-        parent = getBuildNodeById(parentId);
+        parent = getBuildNodeById?.(parentId) || existing;
         lastNodeId = parentId;
         continue;
       }
       if (!parent) { complete = false; break; }
       let after;
-      try {
-        after = await boardAfterMove(parent.fen, uci);
-      } catch (_) {
-        complete = false;
-        break;
-      }
+      try { after = await boardAfterMove(parent.fen, uci); } catch (_) { complete = false; break; }
       const node = buildProvisionalNode(parent, uci, after);
       queueBuildAdd(node);
+      if (!freshBuild.nodes.includes(node)) freshBuild.nodes.push(node);
       parentId = node.id;
       parent = node;
       lastNodeId = node.id;
       setBuildSync("dirty");
     }
 
-    try {
-      await hardFlushBuild();
-    } catch (error) {
-      setStatus(error.message);
-      return null;
+    if (flush) {
+      try { await hardFlushBuild(); } catch (error) { setStatus(error.message); return null; }
     }
     if (!complete || getBuildState()?.repertoire_id !== repId) return null;
     const resolvedId = resolveBuildId(lastNodeId);
-    await selectBuildNode(resolvedId);
-    // F-06: Scout→prep handoff — the scouted line (plus the suggested reply),
-    // the side it is for and the target repertoire travel with the jump; the
-    // same line re-added later is one record (key dedupe), not a duplicate.
+    if (flush) await selectBuildNode(resolvedId);
     rememberHandoff({
       source: "scout",
       reason: "scout-add-to-prep",
@@ -1410,8 +1408,8 @@ export function createScoutView(deps) {
       side,
       repertoireId: repId,
     });
-    switchView("build");
-    return resolvedId;
+    if (flush) switchView("build");
+    return alreadyPresent ? { nodeId: resolvedId, alreadyPresent: true } : resolvedId;
   }
 
   async function scoutAddToPrep(line, oppColor, { ownColor = false } = {}) {
@@ -1425,11 +1423,7 @@ export function createScoutView(deps) {
   async function scoutPrepareAll(lines, oppColor) {
     if (actionBusy) return;
     actionBusy = true;
-    try {
-      await runPrepareAll(lines, oppColor);
-    } finally {
-      actionBusy = false;
-    }
+    try { await runPrepareAll(lines, oppColor); } finally { actionBusy = false; }
   }
 
   async function runPrepareAll(lines, oppColor) {
@@ -1437,25 +1431,13 @@ export function createScoutView(deps) {
     const seen = new Set();
     for (const line of lines) {
       const key = scoutLineKey(line.ucis);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      unique.push(line);
+      if (!seen.has(key)) { seen.add(key); unique.push(line); }
     }
-    if (!unique.length) {
-      setStatus("No lines to add");
-      return;
-    }
-    if (notices.isBusy()) {
-      setStatus("Another job is running");
-      return;
-    }
-    // scoutPrepareAll already holds actionBusy, so pick without its guard.
-    const repId = await pickRepertoire(oppColor, false);
+    if (!unique.length) { setStatus("No lines to add"); return; }
+    if (notices.isBusy()) { setStatus("Another job is running"); return; }
+    const repId = await pickRepertoire(oppColor, false, unique);
     if (!repId) return;
-    if (notices.isBusy()) {
-      setStatus("Another job is running");
-      return;
-    }
+    if (notices.isBusy()) { setStatus("Another job is running"); return; }
 
     const ctrl = new AbortController();
     notices.startJob({
@@ -1465,32 +1447,28 @@ export function createScoutView(deps) {
       total: unique.length,
       onCancel: () => ctrl.abort(),
     });
-    let done = 0;
-    let written = 0;
-    let failed = 0;
+    let done = 0, written = 0, alreadyPresent = 0, failed = 0;
     for (const line of unique) {
       if (ctrl.signal.aborted) break;
-      notices.updateJob({
-        current: done,
-        total: unique.length,
-        message: `${line.sans.at(-1) || "line"} · ${done + 1}/${unique.length}`,
-      });
+      notices.updateJob({ current: done, total: unique.length, message: `Adding ${done + 1}/${unique.length}` });
       try {
-        const nodeId = await scoutWriteLineToRep(line, repId, {
+        const res = await scoutWriteLineToRep(line, repId, {
           reload: done === 0,
+          flush: done === unique.length - 1,
           side: oppColor === "white" ? "black" : "white",
         });
-        if (nodeId) written++;
+        if (res && typeof res === "object" && res.alreadyPresent) alreadyPresent++;
+        else if (res) written++;
         else failed++;
-      } catch (_) {
-        failed++;
-      }
+      } catch (_) { failed++; }
       done++;
     }
+    const message = `Added ${written} line${written === 1 ? "" : "s"} to prep${alreadyPresent ? ` (${alreadyPresent} already present)` : ""}${failed ? ` · ${failed} failed` : ""}`;
     notices.completeJob({
       title: ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
-      message: `Wrote ${written} line${written === 1 ? "" : "s"} into prep${failed ? ` · ${failed} failed` : ""}`,
+      message,
     });
+    setStatus(message);
   }
 
   async function copyScoutReport() {
@@ -2276,6 +2254,7 @@ export function createScoutView(deps) {
   return {
     runScout, handleScoutAction, bindControls,
     __testHandleAddToPrep: scoutAddToPrep,
+    __testHandlePrepareAll: scoutPrepareAll,
     onShow: syncVisibleState,
     // Sources changed under a finished or running report (app.js).
     discardReport: resetScout,

@@ -148,12 +148,15 @@ export async function loadAnalysisHistory() {
       // "? vs ?"; an unfinished one ("*") has no result to show.
       const known = (name) => (name && name !== "?" ? name : "");
       const label = (a) => (known(a.white) || known(a.black) ? `${known(a.white) || "?"} vs ${known(a.black) || "?"}` : "Untitled game");
+      const resultOf = (a) => analysisHistoryResult(a, [appState.lichessUsername, ...(appState.lichessAccounts || []).map((account) => account.username)]);
       const meta = (a) => {
-        const result = analysisHistoryResult(a, [appState.lichessUsername, ...(appState.lichessAccounts || []).map((account) => account.username)]);
-        return html`<span class="hi-result ${result.tone}" title="${result.label}" aria-label="${result.label}">${result.mark}</span><span>${localDayOf(a.analyzed_at)}</span>`;
+        const result = resultOf(a);
+        return html`<span class="hi-result ${result.tone}" title="${result.label}" aria-hidden="true">${result.mark}</span><span aria-hidden="true">${localDayOf(a.analyzed_at)}</span>`;
       };
+      // Read as one sentence, not "Untitled game2026-11-02".
+      const spoken = (a) => [label(a), resultOf(a).label, localDayOf(a.analyzed_at)].filter(Boolean).join(", ");
       host.innerHTML = html`${[...rows.values()].map((a) =>
-        html`<div class="history-item" data-game-id="${a.game_id}"><button class="hi-open" type="button"><span class="hi-players">${label(a)}</span><span class="hi-meta">${meta(a)}</span></button><button class="btn icon sm hi-delete" type="button" data-history-delete="${a.game_id}" data-history-label="${label(a)}" title="Delete this analysis" aria-label="Delete analysis of ${label(a)}"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
+        html`<div class="history-item" data-game-id="${a.game_id}"><button class="hi-open" type="button" aria-label="${spoken(a)}"><span class="hi-players">${label(a)}</span><span class="hi-meta">${meta(a)}</span></button><button class="btn icon sm hi-delete" type="button" data-history-delete="${a.game_id}" data-history-label="${label(a)}" title="Delete this analysis" aria-label="Delete analysis of ${label(a)}"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
       )}` || html`<div class="muted hint">No saved analyses yet.</div>`;
       if (cursor) host.innerHTML += html`<button class="btn sm" data-history-more>Load more</button>`;
       host.scrollTop = scroll;

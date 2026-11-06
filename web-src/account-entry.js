@@ -3,7 +3,7 @@ import { appState, boards, notices } from "./core/state.js";
 import { api, currentOwnerId, postJson, setStatus } from "./core/api.js";
 import { refreshAutoMaiaRating } from "./core/prefs.js";
 import { showConfirmModal } from "./core/modals.js";
-import { setHandoffOwner } from "./handoff-context.js";
+import { loadReturnState, saveReturnState, setHandoffOwner } from "./handoff-context.js";
 import { createAccountController } from "./controllers/account.js";
 import { modalDialog, openModal } from "./core/dialog.js";
 import { pgnHeaderTags as analyzeHeaderTags } from "./analyze-pgn.js";
@@ -75,13 +75,32 @@ export function initAccountController() {
       void openSettingsSection("set-account");
     },
     beforeSignOut: flushAllPendingForSignOut,
-    beforeSessionEnd: () => persistOutbox(),
+    beforeSessionEnd: async () => {
+      const ok = await persistOutbox();
+      if (ok !== false) {
+        const saved = loadReturnState("analyze");
+        const pgn = saved?.pgn || (typeof document !== "undefined" ? document.getElementById("pgn-input")?.value : "") || "";
+        if (pgn.trim()) {
+          appState.keepAnalyzeOnSessionEnd = {
+            pgn,
+            gameId: null,
+            ply: saved?.ply ?? Math.max(0, Number(appState.analysisPly) || 0),
+            node: saved?.node || appState.analysisNodePath || "root",
+          };
+        }
+      }
+      return ok;
+    },
     // No auth-known hook here: restoreWorkspaceLocation switches to the URL's
     // view after the session is read (and switchView reloads Teams), so a Teams
     // load deferred on an unread session is retried there. Doing it here as well
     // ran a second /api/teams on every signed-in boot, on every route.
     onOwnerChanged: () => {
       setHandoffOwner(currentOwnerId());
+      if (appState.keepAnalyzeOnSessionEnd) {
+        saveReturnState("analyze", appState.keepAnalyzeOnSessionEnd);
+        appState.keepAnalyzeOnSessionEnd = null;
+      }
       // Another account's latest game is not this account's: drop the card and
       // the baseline, and let the status refresh re-arm the watch for the new
       // identity (a stale baseline would swallow that account's first game).

@@ -351,7 +351,7 @@ def test_export_tree_pgn(client):
     r = client.get("/api/repertoires/export-pgn", params={"repertoire_id": rep_id})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["filename"] == "tree-rep.tree.pgn"
+    assert body["filename"] == "tree-rep.pgn"
     assert body["mime"] == "application/x-chess-pgn"
     assert "e4" in body["content"]
 
@@ -498,6 +498,7 @@ def test_import_pgn_rejects_oversized_payload(client):
 
 def test_import_pgn_obeys_free_repertoire_quota(client):
     _register(client, "quota-pgn@example.com")
+    assert client.get("/api/auth/me").json()["repertoire_count"] == 0
     for index in range(5):
         response = client.post(
             "/api/repertoires/create",
@@ -505,6 +506,9 @@ def test_import_pgn_obeys_free_repertoire_quota(client):
             headers=csrf_headers(client),
         )
         assert response.status_code == 200, response.text
+    me = client.get("/api/auth/me").json()
+    assert me["repertoire_limit"] == 5
+    assert me["repertoire_count"] == 5
 
     response = client.post(
         "/api/repertoires/import-pgn",

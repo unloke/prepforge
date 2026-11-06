@@ -200,7 +200,7 @@ describe("app boot holds auth-dependent state until the session is known", () =>
     const chip = readFileSync(new URL("./controllers/account.js", import.meta.url), "utf8");
     expect(chip).toMatch(/else if \(!appState\.authKnown\) \{/);
     // The page guest marker is copy that only applies signed out.
-    expect(chip).toMatch(/toggle\("is-guest", appState\.authKnown === true && !appState\.signedIn\)/);
+    expect(chip).toMatch(/toggle\("is-guest", appState\.authKnown === true && !activeSession\)/);
   });
 
   function bootHoldHarness() {
