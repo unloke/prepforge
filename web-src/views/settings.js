@@ -10,6 +10,7 @@ import { subscribeDownloads } from "../engine/engine-downloads.js";
 // Settings tab rendering (lazy-loaded from app.js).
 
 import "./settings.css";
+import { renderPrefsToggles } from "../board/ui.js";
 import { createAccountSection } from "./settings-account.js";
 import { createSettingsRouter } from "./settings-router.js";
 import { createAppearanceSection } from "./settings-appearance.js";
@@ -292,6 +293,7 @@ export function createSettingsView({
       if (linkBtn) {
         linkBtn.hidden = false;
         linkBtn.textContent = "Sign in to link Lichess";
+        linkBtn.title = "Sign in to PrepForge first, then connect your Lichess account";
       }
       // The button already says what to do; no standing explanation.
       list.innerHTML = "";
@@ -302,7 +304,10 @@ export function createSettingsView({
     }
     const accounts = connectionAccounts();
     if (linkBtn) linkBtn.hidden = connectionsError || connectionsLoading;
-    if (linkBtn) linkBtn.textContent = accounts.length ? "Link another Lichess account" : "Link a Lichess account";
+    if (linkBtn) {
+      linkBtn.textContent = accounts.length ? "Link another Lichess account" : "Link a Lichess account";
+      linkBtn.title = "Connect a Lichess account via OAuth";
+    }
     const feedback = connectionsLoading
       ? html`<div class="conn-feedback muted" data-testid="settings-connections-loading" role="status" aria-busy="true">Checking linked accounts…</div>`
       : connectionsError
@@ -367,6 +372,7 @@ export function createSettingsView({
     document.querySelectorAll("#view-settings .settings-content > .card").forEach((card) => {
       card.hidden = card.dataset.area !== area;
     });
+    renderPrefsToggles();
   }
 
   // One info pop is open at most: opening one closes the rest.
@@ -400,6 +406,7 @@ export function createSettingsView({
     if (eventsBound) return;
     eventsBound = true;
     window.addEventListener("hashchange", router.hashChanged);
+    window.addEventListener("popstate", router.hashChanged);
 
     accountSection.bind();
     appearanceSection.bind();

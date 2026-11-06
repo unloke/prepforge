@@ -154,42 +154,29 @@ export function selectionChips(selection, linkedAccounts) {
   const linked = Array.isArray(linkedAccounts) ? linkedAccounts : [];
   const state = selfGroupState(sel, linked);
   const chips = [];
+  const seenNames = new Set();
   if (state === "all" && linked.length) {
-    // Full Self collapses to one chip; Self + external keeps the collapsed
-    // Self chip alongside the external chips so the tray reads as one union,
-    // matching the fetch. The number is named ("2 linked accounts"): a bare
-    // "Self · 2" left the count unexplained.
+    for (const account of linked) {
+      if (account?.username) seenNames.add(String(account.username).toLowerCase());
+    }
     chips.push({
       kind: "self",
       label: `Self · ${linked.length} linked account${linked.length === 1 ? "" : "s"}`,
       count: linked.length,
     });
-  } else if (state === "mixed") {
+  } else if (state === "mixed" || sel.linkedMode === "subset") {
     const byId = new Map(linked.map((a) => [a.id, a]));
     for (const id of sel.accountIds) {
       const account = byId.get(id);
       if (!account) continue;
-      chips.push({
-        kind: "account",
-        id,
-        label: account.username,
-        primary: !!account.is_primary,
-      });
-    }
-  } else if (sel.linkedMode === "subset") {
-    const byId = new Map(linked.map((a) => [a.id, a]));
-    for (const id of sel.accountIds) {
-      const account = byId.get(id);
-      if (!account) continue;
-      chips.push({
-        kind: "account",
-        id,
-        label: account.username,
-        primary: !!account.is_primary,
-      });
+      if (account.username) seenNames.add(String(account.username).toLowerCase());
+      chips.push({ kind: "account", id, label: account.username, primary: !!account.is_primary });
     }
   }
   for (const name of sel.external) {
+    const key = name.toLowerCase();
+    if (seenNames.has(key)) continue;
+    seenNames.add(key);
     chips.push({ kind: "external", id: name, label: name });
   }
   return { chips, selfState: state };
@@ -314,13 +301,15 @@ export function openSourceComposer({
     const selfChecked = linkedCount > 0 && state !== "none";
     // The header counts the sources actually picked (linked + external), not
     // the linked accounts on file: adding an opponent used to leave "1 account".
+    const linkedNames = new Set(linked.map((a) => String(a.username || "").toLowerCase()).filter(Boolean));
+    const visibleExternals = sel.external.filter((name) => !linkedNames.has(name.toLowerCase()));
     const pickedLinked =
       sel.linkedMode === "all"
         ? linked.length
         : sel.linkedMode === "subset"
           ? linked.filter((account) => checkedIds.has(account.id)).length
           : 0;
-    const pickedCount = pickedLinked + sel.external.length;
+    const pickedCount = pickedLinked + visibleExternals.length;
     const linkedRows = linked
       .map((account) => {
         const checked = sel.linkedMode === "all" || checkedIds.has(account.id);
@@ -328,13 +317,13 @@ export function openSourceComposer({
           html`<label class="src-row" data-src-account="${account.id}"><input type="checkbox" data-testid="src-account-checkbox" data-src-checkbox="${account.id}"${checked ? " checked" : ""} /><span class="src-name">${account.username}${account.is_primary ? html` <span class="conn-primary">Primary</span>` : ""}</span></label>`
         );
       });
-    const externalRows = sel.external
+    const externalRows = visibleExternals
       .map(
         (name) =>
           html`<label class="src-row is-external" data-src-external="${name}"><input type="checkbox" data-testid="src-external-checkbox" data-src-external-checkbox="${name}" checked /><span class="src-name">${name} <span class="src-kind">External</span></span><button type="button" class="src-chip-x" data-src-remove-external="${name}" aria-label="Remove ${name}">×</button></label>`
       );
     const listBody =
-      linked.length || sel.external.length
+      linked.length || visibleExternals.length
         ? html`${linkedRows}${externalRows}`
         : html`<p class="muted">No sources yet — add a username below.</p>`;
     overlay.innerHTML =
@@ -406,6 +395,19 @@ export function openSourceComposer({
     if (!name) return;
     draft = name;
     addError = "";
+    const findLinked = (n) => linked.find((a) => String(a.username || "").toLowerCase() === n.toLowerCase());
+    const selectLinked = (account) => {
+      draft = "";
+      sel = removeExternal(sel, account.username);
+      if (sel.linkedMode === "none" || (sel.linkedMode === "subset" && !sel.accountIds.includes(account.id))) {
+        const ids = sel.linkedMode === "subset" ? [...sel.accountIds, account.id] : [account.id];
+        sel = { linkedMode: "subset", accountIds: ids, external: sel.external };
+      }
+      emit();
+      overlay.querySelector("[data-src-add]")?.focus();
+    };
+    const linkedByInput = findLinked(name);
+    if (linkedByInput) return selectLinked(linkedByInput);
     if (sel.external.some((x) => x.toLowerCase() === name.toLowerCase())) {
       draft = "";
       render();
@@ -424,6 +426,8 @@ export function openSourceComposer({
     checking = false;
     if (overlay.dataset.closed === "1") return;
     if (found) {
+      const linkedMatch = findLinked(found);
+      if (linkedMatch) return selectLinked(linkedMatch);
       draft = "";
       sel = addExternal(sel, found);
       emit();

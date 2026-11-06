@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { openSourceComposer, positionPopover } from "./source-composer.js";
+import { openSourceComposer, positionPopover, selectionChips } from "./source-composer.js";
+import { createScoutController } from "../scout-controller.js";
 
 const linked = [
   { id: "a", username: "accountA", is_primary: true },
@@ -349,6 +350,91 @@ describe("source composer popover", () => {
       // One linked account plus the added opponent — the header said "1 account".
       expect(String(overlay.innerHTML)).toContain("2 accounts");
     } finally {
+      restore();
+    }
+  });
+
+  it("shows each source once when a linked account is typed into Add or duplicated in external", async () => {
+    const { doc, overlay, listeners, restore } = makeDoc();
+    const changes = [];
+    try {
+      openSourceComposer({
+        document: doc,
+        selection: { linkedMode: "none", external: [] },
+        linkedAccounts: linked,
+        onChange: (sel) => changes.push(sel),
+        onClose: () => {},
+        lookupUsername: vi.fn(),
+      });
+      overlay._input.value = "accountA";
+      listeners.click({ target: { closest: (sel) => (sel === "[data-src-add-btn]" ? {} : null) } });
+      expect(changes).toHaveLength(1);
+      expect(changes[0]).toEqual({ linkedMode: "subset", accountIds: ["a"], external: [] });
+      expect(String(overlay.innerHTML)).not.toContain("data-src-external");
+      expect(selectionChips({ linkedMode: "subset", accountIds: ["a"], external: ["accountA"] }, linked).chips).toEqual([
+        { kind: "account", id: "a", label: "accountA", primary: true },
+      ]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("hides the Scout chip tray while the source composer popover is open so added sources appear once", async () => {
+    const { doc, overlay, listeners, restore } = makeDoc();
+    const prevDoc = globalThis.document;
+    const prevStorage = globalThis.localStorage;
+    const prevFetch = globalThis.fetch;
+    const store = new Map();
+    const tray = { hidden: false, innerHTML: "", addEventListener: vi.fn() };
+    let openHandler = null;
+    const addBtn = {
+      focus: vi.fn(),
+      addEventListener: (name, fn) => {
+        if (name === "click") openHandler = fn;
+      },
+      getBoundingClientRect: () => ({ left: 10, top: 10, bottom: 30, right: 60 }),
+    };
+    doc.getElementById = (id) => {
+      if (id === "scout-source-chips") return tray;
+      if (id === "scout-source-add") return addBtn;
+      return null;
+    };
+    globalThis.document = doc;
+    globalThis.localStorage = {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)),
+      removeItem: (k) => store.delete(k),
+    };
+    globalThis.fetch = vi.fn(async () => ({
+      status: 200,
+      ok: true,
+      json: async () => ({ id: "hikaru", username: "Hikaru" }),
+    }));
+    try {
+      const ctrl = createScoutController({
+        requireSignIn: () => true,
+        lichessAccounts: () => [],
+      });
+      ctrl.bindScoutSource();
+      openHandler({ currentTarget: addBtn });
+      expect(tray.hidden).toBe(true);
+      expect(String(tray.innerHTML)).toBe("");
+
+      overlay._input.value = "Hikaru";
+      listeners.click({ target: { closest: (sel) => (sel === "[data-src-add-btn]" ? {} : null) } });
+      await vi.waitFor(() => expect(String(overlay.innerHTML)).toContain('data-src-external="Hikaru"'));
+      // While the popover is open, the chip tray stays hidden so Hikaru is only in the popover list.
+      expect(tray.hidden).toBe(true);
+      expect(String(tray.innerHTML)).toBe("");
+
+      // Closing the popover reveals the chip tray with Hikaru shown once.
+      listeners.toggle({ newState: "closed" });
+      expect(tray.hidden).toBe(false);
+      expect(String(tray.innerHTML)).toContain('data-scout-chip="Hikaru"');
+    } finally {
+      globalThis.document = prevDoc;
+      globalThis.localStorage = prevStorage;
+      globalThis.fetch = prevFetch;
       restore();
     }
   });

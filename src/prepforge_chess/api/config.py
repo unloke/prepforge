@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     smtp_username: str = Field(default="")
     smtp_password: str = Field(default="")
     # Cap concurrent sessions per user (oldest pruned on new login). 0 disables.
-    session_max_per_user: int = Field(default=10)
+    session_max_per_user: int = Field(default=25)
 
     # Allowed browser origins for CORS / CSRF origin checks. Comma-separated.
     allowed_origins: str = Field(default="http://localhost:5173,http://localhost:8765")

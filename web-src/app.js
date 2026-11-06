@@ -544,6 +544,7 @@ function switchView(name, { fromUrl = false } = {}) {
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
   if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
+  document.getElementById("app-rail")?.classList.add("is-nav-collapsed");
   if (name !== "analyze") analyzeSession?.positionCoach.cancel();
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
@@ -1476,7 +1477,7 @@ function bindEvents() {
   document.getElementById("build-end").addEventListener("click", buildGoToEnd);
   document.getElementById("build-menu").addEventListener("click", openBuildMenu);
   document.getElementById("build-empty-create").addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" }));
-  document.getElementById("build-empty-import").addEventListener("click", () => document.getElementById("dashboard-import-pgn").click());
+  document.getElementById("build-empty-import").addEventListener("click", () => ensureDashboardView().then(() => document.getElementById("dashboard-import-pgn")?.click()));
   document.getElementById("build-empty-open").addEventListener("click", () => switchView("dashboard"));
 
   createPalette({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,

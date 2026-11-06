@@ -50,15 +50,27 @@ function safeStorage(storage) {
   }
 }
 
-// Only Analyze needs an action payload: keep its source and batch selection
-// with the same once-only, expiring record as the interrupted action.
+const MOVE_UCI_RE = /^[a-h][1-8][a-h][1-8][qrbn]?$/i;
+
+// Action payloads kept with the same once-only, expiring record as the
+// interrupted action: Analyze's PGN/batch selection, Build's first played move,
+// and Create Team's typed team name.
 function pendingActionData(id, data) {
-  if (id !== "analyze-game" || !data || typeof data.pgn !== "string" || !data.pgn.trim()) return null;
-  return {
-    pgn: data.pgn,
-    mode: data.mode === "multi" ? "multi" : "single",
-    selectIndex: Number.isSafeInteger(data.selectIndex) && data.selectIndex >= 0 ? data.selectIndex : 0,
-  };
+  if (!data || typeof data !== "object") return null;
+  if (id === "analyze-game" && typeof data.pgn === "string" && data.pgn.trim()) {
+    return {
+      pgn: data.pgn,
+      mode: data.mode === "multi" ? "multi" : "single",
+      selectIndex: Number.isSafeInteger(data.selectIndex) && data.selectIndex >= 0 ? data.selectIndex : 0,
+    };
+  }
+  if (id === "new-repertoire" && typeof data.moveUci === "string" && MOVE_UCI_RE.test(data.moveUci.trim())) {
+    return { moveUci: data.moveUci.trim().toLowerCase() };
+  }
+  if (id === "new-team" && typeof data.name === "string" && data.name.trim()) {
+    return { name: data.name.trim().slice(0, 120) };
+  }
+  return null;
 }
 
 export function savePendingAction(id, { route = "", data = null, storage, now = Date.now() } = {}) {

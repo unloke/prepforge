@@ -57,7 +57,7 @@ export function createAccountSection({
     if (!el) return;
     if (!appState.signedIn) {
       el.innerHTML =
-        html`<div class="acct-guest"><div class="acct-actions"><button type="button" class="btn sm primary" data-acct="signin">Sign in</button><button type="button" class="btn sm" data-acct="register">Create account</button></div></div>`;
+        html`<div class="acct-guest"><div class="acct-actions"><button type="button" class="btn sm primary" data-acct="signin" title="Sign in to your PrepForge account">Sign in to PrepForge</button><button type="button" class="btn sm" data-acct="register" title="Create a PrepForge account">Create PrepForge account</button></div></div>`;
       if (data) data.innerHTML = "";
       return;
     }

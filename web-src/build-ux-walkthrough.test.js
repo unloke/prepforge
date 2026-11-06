@@ -232,7 +232,7 @@ describe("Coverage uses explicit operation consent", () => {
 
 describe("Move delete shows one notice, beside the tree (P1-1)", () => {
   it("uses the inline Undo card and no extra status toast", () => {
-    const del = extractByMarker("async function deleteBuildNodeLocal(nodeId) {");
+    const del = extractByMarker("async function deleteBuildNodeLocal(nodeId, { isUndo = false } = {}) {");
     expect(del).toContain('host: document.getElementById("build-undo")');
     expect(del).not.toMatch(/setStatus\(`Deleted/);
     expect(html).toContain('id="build-undo"');
@@ -246,7 +246,7 @@ describe("Move delete shows one notice, beside the tree (P1-1)", () => {
     // has to go with it: the path repaint alone left the removed move's comment
     // on screen (and a delete button click stays on the button, so nothing else
     // repainted the trail either).
-    const del = extractByMarker("async function deleteBuildNodeLocal(nodeId) {");
+    const del = extractByMarker("async function deleteBuildNodeLocal(nodeId, { isUndo = false } = {}) {");
     // Parent selection and the view-heads repaint both go through hooks.build
     // (the shell creates them after build-entry.js binds).
     const parentSelect = del.indexOf("await hooks.build.selectBuildNode(parentId);");

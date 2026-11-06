@@ -512,7 +512,7 @@ export async function undoLastBuildAdd() {
     const entry = added.pop();
     const id = resolveBuildId(entry.id);
     if (entry.repertoireId !== appState.build.repertoire_id || !appState.buildNodeById.has(id)) continue;
-    await deleteBuildNodeLocal(id);
+    await deleteBuildNodeLocal(id, { isUndo: true });
     return;
   }
   setStatus("Nothing to undo");
@@ -523,7 +523,7 @@ export async function undoLastBuildAdd() {
 // client tree immediately, cancel any pending adds inside it, and queue the
 // subtree root for the debounced delete flush. A node that never reached the
 // server (its add is still pending) is cancelled outright — no server op at all.
-export async function deleteBuildNodeLocal(nodeId) {
+export async function deleteBuildNodeLocal(nodeId, { isUndo = false } = {}) {
   const node = appState.buildNodeById.get(nodeId);
   if (!node || !appState.build) return;
   if (!node.parent_id) {
@@ -560,9 +560,10 @@ export async function deleteBuildNodeLocal(nodeId) {
   // delete first (see onBuildBoardMove). The slot is freed in both settle paths.
   const undoMoveKey = `${parentId}:${node.uci}`;
   const extra = doomed.size > 1 ? `${doomed.size} moves` : "";
+  const title = isUndo ? `Undid ${node.san || "move"}` : `${node.san || "Move"} deleted`;
   const undoCommit = showUndoToast({
     host: document.getElementById("build-undo"),
-    title: `${node.san || "Move"} deleted`,
+    title,
     message: extra,
     onCommit: () => {
       appState.buildUndoCommitByMove.delete(undoMoveKey);

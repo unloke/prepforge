@@ -1069,13 +1069,11 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
   if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
   if (createRepertoireDialog) return createRepertoireDialog;
   const full = repertoireLimitMessage();
-  if (full) {
-    setStatusError(full);
-    return null;
-  }
   createRepertoireDialog = showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
+    disabled: Boolean(full),
+    error: full || "",
     fields: [
       { name: "name", label: "Name", default: defaultName || "New repertoire" },
       repertoireColorField(defaultColor),
@@ -1086,6 +1084,12 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
     // first Build move can play onto the real repertoire.
     dismissOnSubmit: true,
     onSubmit: async (result, close) => {
+      const capError = repertoireLimitMessage();
+      if (capError) {
+        close(null);
+        setStatusError(capError);
+        return;
+      }
       const name = (result.name || "").trim() || "New repertoire";
       const color = normalizeRepertoireColor(result.color);
       // When opening it, show an empty repertoire on the tab's own temp id right away, so the
@@ -1118,6 +1122,7 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
 // empty repertoire with no loading state.
 function optimisticEmptyRepertoire(name, color) {
   const previous = appState.build;
+  const previousView = appState.currentView || null;
   const rootFen = START_FEN;
   const info = localBoardInfo(rootFen);
   const rootId = `tmp-rep-${OUTBOX_TAB_ID}-${Date.now().toString(36)}`;
@@ -1173,11 +1178,11 @@ function optimisticEmptyRepertoire(name, color) {
   renderBuildSync();
   renderBuilderTree();
   syncWorkspaceUrl();
-  return { previous, rootId };
+  return { previous, previousView, rootId };
 }
 
 // Discard an unconfirmed optimistic repertoire and put the previous tree back.
-function rollbackOptimisticRepertoire({ previous, rootId }) {
+function rollbackOptimisticRepertoire({ previous, previousView, rootId }) {
   if (!previous) {
     appState.build = null;
     appState.buildNodeById = new Map();
@@ -1188,6 +1193,9 @@ function rollbackOptimisticRepertoire({ previous, rootId }) {
     // The open tree had selected the optimistic root: the previous repertoire's
     // own node goes back under the cursor, exactly like hydrateBuild does.
     appState.buildCurrentNodeId = previous.selected_node_id || previous.nodes[0]?.id || null;
+  }
+  if (!previous && previousView && previousView !== "build") {
+    switchView(previousView);
   }
   if (boards.build && appState.build) {
     const node = appState.buildNodeById.get(appState.buildCurrentNodeId);

@@ -87,7 +87,7 @@ describe("Ctrl/Cmd+Z in Repertoire", () => {
     expect(session).toContain("appState.buildAddedIds.push({ repertoireId: appState.build.repertoire_id, id: node.id });");
     const undo = entry.slice(entry.indexOf("export async function undoLastBuildAdd("), entry.indexOf("export async function deleteBuildNodeLocal("));
     expect(undo).toContain("if (entry.repertoireId !== appState.build.repertoire_id || !appState.buildNodeById.has(id)) continue;");
-    expect(undo).toContain("await deleteBuildNodeLocal(id);");
+    expect(undo).toContain("await deleteBuildNodeLocal(id, { isUndo: true });");
   });
 
   it("answers only on the Repertoire view and not while typing", () => {

@@ -6,6 +6,10 @@ import { appState } from "./core/state.js";
 export function repertoireLimitMessage(state = appState) {
   const limit = state.account?.repertoireLimit;
   if (limit == null) return null;
-  const own = state.repertoireList.filter((rep) => !state.pendingRepDeletes.has(String(rep.id))).length;
-  return own >= limit ? `You can keep up to ${limit} repertoires. Delete one to add another.` : null;
+  const list = state.repertoireList || [];
+  const deletes = state.pendingRepDeletes || new Set();
+  const own = list.length || state.account?.repertoireCount == null
+    ? list.filter((rep) => !deletes.has(String(rep.id))).length
+    : Math.max(0, state.account.repertoireCount - deletes.size);
+  return own >= limit ? `${own} / ${limit} repertoires — delete one to add another.` : null;
 }

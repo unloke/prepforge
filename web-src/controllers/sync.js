@@ -6,6 +6,7 @@ import {
 import { classifySyncError, describeSyncError } from "../sync-errors.js";
 
 import { appState } from "../core/state.js";
+import { hooks } from "../core/hooks.js";
 import { OUTBOX_TAB_ID, currentOwnerId, localDateString, postJson, setStatus, setStatusError } from "../core/api.js";
 import { CSRF_HEADER, readCsrfCookie } from "../csrf.js";
 import { commitPendingUndos } from "../undo.js";
@@ -232,6 +233,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         // loadSignedInWorkspace re-arms the flush after sign-in.
         appState.syncPausedForAuth = true;
         setBuildSync("blocked");
+        hooks.authRequired?.();
         return false;
       }
       setBuildSync("error");
@@ -511,6 +513,7 @@ function flushTrainSync(durableCheckpoint, isCurrent) {
     }
     if (info && info.pauseForAuth) {
       // Sign-in re-arms the queue.
+      hooks.authRequired?.();
       return false;
     }
     trainQueue.retry(info);

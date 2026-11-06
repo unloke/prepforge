@@ -1,6 +1,7 @@
 import { appState } from "./core/state.js";
 import { api, postJson, setStatus, setStatusError } from "./core/api.js";
 import { showConfirmModal } from "./core/modals.js";
+import { repertoireLimitMessage } from "./repertoire-limit.js";
 import { buildRole, canCopy, roleLabel } from "./share-roles.js";
 
 // The shared-repertoire viewer (?shared=<token>): a guest-readable, mutation-free
@@ -130,6 +131,11 @@ export async function forkReadableRepertoire() {
   const viaGrant = !!appState.build && buildRole(appState.build) !== "owner";
   if ((!viaToken && !viaGrant) || !canCopy(buildRole(appState.build))) return;
   if (!requireSignIn("Sign in (or create an account) to copy this repertoire")) return;
+  const full = repertoireLimitMessage();
+  if (full) {
+    setStatusError(full);
+    return;
+  }
   try {
     const result = viaToken
       ? await postJson(

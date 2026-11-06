@@ -178,6 +178,30 @@ describe("the Due row", () => {
     expect(doc.getElementById("train-due-next").hidden).toBe(true);
   });
 
+  it("never shows the queue load error to a guest or expired session", async () => {
+    trainRowError("smart", "");
+    const { appState, deps } = setup();
+    deps.localDateString.mockReturnValue("2099-01-05");
+    deps.api.mockImplementationOnce(async () => {
+      appState.sessionExpired = true;
+      const err = new Error("Authentication required");
+      err.status = 401;
+      throw err;
+    });
+    const home = createTrainHome(deps);
+    await home.paintTrainHome();
+    expect(doc.getElementById("train-due-error").hidden).toBe(true);
+    expect(doc.getElementById("train-due-error").textContent).toBe("");
+    expect(doc.getElementById("start-train").textContent).toBe("Sign in to train");
+    expect(doc.getElementById("start-train").dataset.action).toBe("signin");
+
+    appState.signedIn = false;
+    appState.sessionExpired = false;
+    await home.paintTrainHome();
+    expect(doc.getElementById("train-due-error").hidden).toBe(true);
+    expect(doc.getElementById("start-train").textContent).toBe("Sign in to train");
+  });
+
   it("names the action that fits the account", () => {
     expect(dueStartState(null, { signedIn: false, hasRepertoire: false })).toEqual({ label: "Sign in to train", action: "signin" });
     expect(dueStartState(null, { signedIn: true, hasRepertoire: false })).toEqual({ label: "Open Library", action: "library" });

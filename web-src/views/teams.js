@@ -130,7 +130,7 @@ export function createTeamsView({
         ? appState.selectedTeamId
         : !globalThis.matchMedia?.(PHONE_QUERY).matches && appState.teams[0]?.id;
       if (picked) {
-        openTeamDetail(picked);
+        await openTeamDetail(picked);
       } else {
         hideTeamDetail();
       }

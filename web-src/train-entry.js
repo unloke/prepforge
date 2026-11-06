@@ -1,4 +1,5 @@
 import { appState, boards } from "./core/state.js";
+import { hooks } from "./core/hooks.js";
 import { syncChipVariant } from "./sync-chip.js";
 import { isBuildReadOnly } from "./build-entry.js";
 import "./train-shell.css";
@@ -26,7 +27,14 @@ export function renderSyncChip(el, state, scope = "repertoire") {
   el.hidden = false;
   el.className = `build-sync ${v.cls}`;
   el.textContent = v.text;
-  el.title = v.text;
+  el.title = state === "blocked" ? `${v.text} — click to sign in` : v.text;
+  if (el.dataset && !el.dataset.authBound && typeof el.addEventListener === "function") {
+    el.dataset.authBound = "true";
+    el.addEventListener("click", () => {
+      const current = scope === "training" ? appState.trainSyncState : appState.buildSyncState;
+      if (current === "blocked") hooks.authRequired?.();
+    });
+  }
 }
 
 export function renderBuildSync() {

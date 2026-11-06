@@ -336,7 +336,7 @@ def add_member(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
                 f"No PrepForge member has linked the Lichess account '{handle}'. "
-                "Send them an invite link to add them."
+                "Use the team's invite link to add them."
             ),
         )
     if _membership(db, team_id, target_link.user_id) is not None:

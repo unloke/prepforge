@@ -411,7 +411,7 @@
 .btn.is-coming-soon {
   cursor: not-allowed;
   background: var(--surface-3);
-  border-color: var(--line-strong);
+  border-color: var(--line);
   color: var(--muted);
 }
 

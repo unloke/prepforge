@@ -241,13 +241,17 @@ def test_document_csp_has_no_script_hash_when_env_unset(monkeypatch):
 @requires_built_spa
 def test_index_csp_allows_weight_cdn_and_inline_bootstrap(client, monkeypatch):
     # End-to-end on the served shell: connect-src must reach the HF weight CDN (the
-    # worker fetches the ONNX cross-origin) and the inline bootstrap must be hashed in.
+    # worker fetches the ONNX cross-origin) and the inline bootstrap must be hashed in,
+    # including on 304 revalidations (which update the cached document's CSP header).
     monkeypatch.setenv(static_mod.MAIA3_ASSET_BASE_ENV, "https://cdn.example.com/maia3/")
     resp = client.get("/")
     csp = resp.headers["content-security-policy"]
     assert "connect-src 'self' https://huggingface.co" in csp
     assert "https://*.hf.co" in csp
     assert "sha256-" in csp
+    revalidated = client.get("/", headers={"If-None-Match": resp.headers["etag"]})
+    assert revalidated.status_code == 304
+    assert revalidated.headers["content-security-policy"] == csp
 
 
 @requires_built_spa

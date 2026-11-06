@@ -451,4 +451,92 @@ describe("scout view initialization reentrancy", () => {
     expect(staleOnGameCalled).toBe(false);
     expect(elements.get("scout-live-count").textContent).toBe("1");
   });
+
+  it("batches Add all gaps with count + preview dialog, progress, and completion summary", async () => {
+    const showInputModal = vi.fn(async () => ({ repertoire: "rep-b" }));
+    const editRepertoire = vi.fn(async () => {});
+    const hardFlushBuild = vi.fn(async () => {});
+    const selectBuildNode = vi.fn(async () => {});
+    const switchView = vi.fn();
+    const queueBuildAdd = vi.fn();
+    const notices = {
+      isBusy: () => false,
+      startJob: vi.fn(),
+      updateJob: vi.fn(),
+      completeJob: vi.fn(),
+    };
+    const buildState = {
+      repertoire_id: "rep-b",
+      nodes: [
+        { id: "root", depth: 0, parent_id: null, uci: null, fen: "start" },
+        { id: "n-e4", depth: 1, parent_id: "root", uci: "e2e4", fen: "fen-e4" },
+        { id: "n-e5", depth: 2, parent_id: "n-e4", uci: "e7e5", fen: "fen-e5" },
+      ],
+    };
+    let nextTmp = 1;
+    view = createScoutView({
+      setStatus,
+      switchView,
+      api: async () => ({
+        repertoires: [{ id: "rep-b", name: "Black Rep", color: "black", is_active: true }],
+      }),
+      showInputModal,
+      createRepertoirePrompt: vi.fn(),
+      editRepertoire,
+      boardAfterMove: vi.fn(async (fen, uci) => `${fen}:${uci}`),
+      buildProvisionalNode: vi.fn((parent, uci, after) => ({
+        id: `tmp-${nextTmp++}`,
+        parent_id: parent.id,
+        uci,
+        san: uci,
+        fen: after,
+      })),
+      hardFlushBuild,
+      selectBuildNode,
+      resolveBuildId: (id) => id,
+      setBuildSync: vi.fn(),
+      notices,
+      parseFenBoard: vi.fn(() => ({})),
+      pieceSvg: vi.fn(() => ""),
+      getBuildState: () => buildState,
+      getBuildNodeById: (id) => buildState.nodes.find((n) => n.id === id) || null,
+      queueBuildAdd,
+      scoutPickedUsernames: () => pickedUsernames,
+    });
+
+    const lines = [
+      { ucis: ["e2e4", "e7e5"], sans: ["e4", "e5"] }, // already present in buildState.nodes
+      { ucis: ["d2d4"], sans: ["d4"], suggestedReply: { uci: "d7d5", san: "d5" } },
+      { ucis: ["c2c4"], sans: ["c4"], suggestedReply: { uci: "e7e5", san: "e5" } },
+    ];
+    await view.__testHandlePrepareAll(lines, "white");
+
+    expect(showInputModal).toHaveBeenCalledTimes(1);
+    const modalArg = showInputModal.mock.calls[0][0];
+    expect(modalArg.title).toBe("Add 3 lines to prep");
+    expect(modalArg.okLabel).toBe("Add 3 lines");
+    const previewNotes = modalArg.fields.filter((f) => f.type === "note");
+    expect(previewNotes.map((n) => n.label)).toEqual([
+      "1. e4 e5",
+      "1. d4 → d5",
+      "1. c4 → e5",
+    ]);
+
+    expect(editRepertoire).toHaveBeenCalledTimes(1);
+    expect(hardFlushBuild).toHaveBeenCalledTimes(1);
+    expect(selectBuildNode).toHaveBeenCalledTimes(1);
+    expect(switchView).toHaveBeenCalledTimes(1);
+    expect(queueBuildAdd).toHaveBeenCalledTimes(4);
+
+    expect(notices.updateJob.mock.calls.map((c) => c[0].message)).toEqual([
+      "Adding 1/3",
+      "Adding 2/3",
+      "Adding 3/3",
+    ]);
+    expect(notices.completeJob).toHaveBeenCalledWith({
+      title: "Lines added",
+      message: "Added 2 lines to prep (1 already present)",
+    });
+    expect(setStatus).toHaveBeenLastCalledWith("Added 2 lines to prep (1 already present)");
+  });
 });

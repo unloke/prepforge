@@ -75,3 +75,36 @@ describe("share role pill", () => {
     expect(shared).toMatch(/:is\([^)]*\.team-role-badge[^)]*\):empty \{ display: none; \}/);
   });
 });
+
+describe("Teams disabled actions and member/create flows", () => {
+  const controllerSrc = readFileSync(new URL("./teams-controller.js", import.meta.url), "utf8");
+  const teamsSrc = readFileSync(new URL("./teams.js", import.meta.url), "utf8");
+
+  it("keeps disabled icon buttons in the card head styled as disabled and awaits detail load after create/rename", () => {
+    expect(shared).toContain(".teams .card-head .btn.icon:not(:disabled)");
+    expect(shared).toContain(".teams .card-head .btn.icon:hover:not(:disabled)");
+    expect(teamsSrc).toContain("await openTeamDetail(picked);");
+    expect(controllerSrc).toMatch(/async function renameTeam[\s\S]*?onSubmit: async \(result, close\) =>/);
+  });
+
+  it("disables Add after a failed handle until the input changes and offers the invite link action", () => {
+    const addBlock = controllerSrc.slice(
+      controllerSrc.indexOf("async function addTeamMember("),
+      controllerSrc.indexOf("async function updateMemberRole("),
+    );
+    expect(addBlock).toContain("failedHandle !== null && handle === failedHandle");
+    expect(addBlock).toContain('inviteBtn.dataset.action = "invite-link"');
+    expect(addBlock).toContain("if (openInvite) await teamInvite(teamId);");
+  });
+
+  it("preserves the Create-team draft across a 401 auth failure", () => {
+    const createBlock = controllerSrc.slice(
+      controllerSrc.indexOf("async function createTeam("),
+      controllerSrc.indexOf("async function renameTeam("),
+    );
+    expect(createBlock).toContain("default: readCreateTeamDraft()");
+    expect(createBlock).toContain('savePendingAction("new-team", { route: "#/teams" })');
+    expect(createBlock).toContain('if (!created && !failedWithAuth) saveCreateTeamDraft("");');
+  });
+});
+

@@ -16,6 +16,13 @@ let explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel;
 export function createSettingsController(deps) {
   ({ switchView, accountEntry, refreshLichessStatus, startLichessOAuth,
     explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel } = deps);
+  document.querySelector(".settings-nav")?.addEventListener("click", (event) => {
+    const link = event.target?.closest?.(".settings-nav-link");
+    if (!link || event.defaultPrevented) return;
+    event.preventDefault();
+    history.pushState(null, "", link.getAttribute("href"));
+    ensureSettingsView().then((v) => v?.renderSettings?.()).catch(() => {});
+  });
   // The functions below are module-level and hoisted; the factory only binds
   // the state they share.
   return { preloadSettingsView, ensureSettingsView, loadSettings, whenSettingsReady,

@@ -8,37 +8,29 @@ import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.
 import { GRANT_ROLES, canCopy, roleAllows, roleLabel } from "../share-roles.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { clearTeamDetail } from "./teams-loading.js";
+import { isAuthError, savePendingAction } from "../auth-gate.js";
+import { repertoireLimitMessage } from "../repertoire-limit.js";
 
 // Teams: the caller's teams, one team's members and roles, team share links,
 // and the repertoires shared to the caller. Lazy-loaded with the Teams view;
 // the functions stay at module level and createTeamsController binds the
 // shell's state and helpers they share, once.
 
-let switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn;
+let editRepertoire, refreshDashboardRepertoires, requireSignIn;
 
 export function createTeamsController(deps) {
-  ({ switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn } = deps);
-
+  ({ editRepertoire, refreshDashboardRepertoires, requireSignIn } = deps);
 
 const TEAM_ROLE_LABELS = { owner: "Owner", admin: "Admin", member: "Member" };
-
-function teamRoleLabel(role) {
-  return TEAM_ROLE_LABELS[role] || role;
-}
-
-function teamById(teamId) {
-  return appState.teams.find((tm) => tm.id === teamId) || null;
-}
+const teamRoleLabel = (role) => TEAM_ROLE_LABELS[role] || role;
+const teamById = (teamId) => appState.teams.find((tm) => tm.id === teamId) || null;
 
 let teamsModule = null;
 let teamsView = null;
 
 function preloadTeamsView() {
   if (!teamsModule) {
-    teamsModule = import("./teams.js").catch((err) => {
-      teamsModule = null;
-      throw err;
-    });
+    teamsModule = import("./teams.js").catch((err) => { teamsModule = null; throw err; });
   }
   return teamsModule;
 }
@@ -47,21 +39,9 @@ async function ensureTeamsView() {
   const mod = await preloadTeamsView();
   if (!teamsView) {
     teamsView = mod.createTeamsView({
-      appState,
-      api,
-      hideTeamDetail,
-      openTeamDetail,
-      loadSharedRepertoires,
-      editRepertoire,
-      unshareRepertoireFromTeam,
-      changeTeamShareRole,
-      copySharedRepertoire,
-      teamRoleLabel,
-      postJson,
-      setStatus,
-      setStatusError,
-      showConfirmModal,
-      requireSignIn,
+      appState, api, hideTeamDetail, openTeamDetail, loadSharedRepertoires, editRepertoire,
+      unshareRepertoireFromTeam, changeTeamShareRole, copySharedRepertoire, teamRoleLabel,
+      postJson, setStatus, setStatusError, showConfirmModal, requireSignIn,
     });
   }
   return teamsView;
@@ -159,38 +139,19 @@ async function openTeamDetail(teamId) {
   const canManage = myRole === "owner" || myRole === "admin";
   document.getElementById("team-detail-name").textContent = detail.name;
   const roleBadge = document.getElementById("team-detail-role");
-  if (roleBadge) {
-    roleBadge.textContent = teamRoleLabel(myRole);
-    roleBadge.className = `team-role-badge r-${myRole}`;
-  }
+  if (roleBadge) { roleBadge.textContent = teamRoleLabel(myRole); roleBadge.className = `team-role-badge r-${myRole}`; }
   const addBtn = document.getElementById("team-add-member");
-  if (addBtn) {
-    addBtn.hidden = !canManage;
-    addBtn.onclick = () => addTeamMember(teamId);
-  }
+  if (addBtn) { addBtn.hidden = !canManage; addBtn.onclick = () => addTeamMember(teamId); }
   const inviteBtn = document.getElementById("team-detail-invite");
-  if (inviteBtn) {
-    inviteBtn.hidden = !canManage;
-    inviteBtn.onclick = () => teamInvite(teamId);
-  }
+  if (inviteBtn) { inviteBtn.hidden = !canManage; inviteBtn.onclick = () => teamInvite(teamId); }
   // A phone's bottom action: managers invite from the Members tab.
   if (inviteCta) inviteCta.hidden = !canManage;
   const shareBtn = document.getElementById("team-share-rep");
-  if (shareBtn) {
-    // Any member may share one of their OWN repertoires with the team.
-    shareBtn.hidden = false;
-    shareBtn.onclick = () => shareRepertoireIntoTeam(teamId);
-  }
+  if (shareBtn) { shareBtn.hidden = false; shareBtn.onclick = () => shareRepertoireIntoTeam(teamId); }
   const renameBtn = document.getElementById("team-detail-rename");
-  if (renameBtn) {
-    renameBtn.hidden = !canManage;
-    renameBtn.onclick = () => renameTeam(teamId, detail.name);
-  }
+  if (renameBtn) { renameBtn.hidden = !canManage; renameBtn.onclick = () => renameTeam(teamId, detail.name); }
   const deleteBtn = document.getElementById("team-detail-delete");
-  if (deleteBtn) {
-    deleteBtn.hidden = myRole !== "owner";
-    deleteBtn.onclick = () => deleteTeam(teamId, detail.name);
-  }
+  if (deleteBtn) { deleteBtn.hidden = myRole !== "owner"; deleteBtn.onclick = () => deleteTeam(teamId, detail.name); }
   const members = detail.members || [];
   // Tab counts from the real payload (prototype puts them on the tabs) + the
   // manager-only invite footer, both before the member rows render.
@@ -198,52 +159,36 @@ async function openTeamDetail(teamId) {
     teamsView.renderTeamTabCounts({ members: members.length });
     renderTeamInviteFooter(detail.invite);
   }
-  membersEl.innerHTML = html`${members
-    .map((m) => {
-      const name = m.display_name || m.lichess_username || "Member";
-      const sub = m.lichess_username ? html`<span class="sub">${m.lichess_username}</span>` : "";
-      const initial = Array.from(m.display_name || m.lichess_username || "M")[0].toUpperCase();
-      const isMe = m.user_id === appState.accountUserId;
-      const isOwner = m.role === "owner";
-      const uid = m.user_id;
-      const uname = m.display_name || m.lichess_username || "Member";
-      // Owner row is fixed. Managers get an inline role control on every other row
-      // (incl. their own, so an admin can step down) plus remove; a plain member only
-      // sees a read-only badge and a Leave button on their own row. The server
-      // enforces all of this too.
-      let tail;
-      if (isOwner) {
-        tail = html`<span class="team-role-badge r-owner">${teamRoleLabel("owner")}</span>`;
-      } else if (canManage) {
-        const opts = ["member", "admin"]
-          .map(
-            (r) =>
-              html`<option value="${r}"${m.role === r ? " selected" : ""}>${teamRoleLabel(r)}</option>`
-          );
-        const removeBtn = html`<button type="button" class="btn icon team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : html` title="Remove member" aria-label="Remove ${uname}"`}>${isMe ? "Leave" : "×"}</button>`;
-        tail = html`<select class="team-role-select" data-user-id="${uid}" aria-label="Role for ${uname}">${opts}</select>${removeBtn}`;
-      } else {
-        const leaveBtn = isMe
-          ? html`<button type="button" class="btn icon team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
-          : "";
-        tail = html`<span class="team-role-badge r-${m.role}">${teamRoleLabel(m.role)}</span>${leaveBtn}`;
-      }
-      return html`
-        <div class="mem-row team-member-row">
-          <span class="avatar sm" aria-hidden="true">${initial}</span>
-          <span class="mem-id"><span class="name">${name}${isMe ? html` <span class="sub">(you)</span>` : ""}</span>${sub}</span>
-          <span class="team-member-tail">${tail}</span>
-        </div>`;
-    })}`;
+  membersEl.innerHTML = html`${members.map((m) => {
+    const name = m.display_name || m.lichess_username || "Member";
+    const sub = m.lichess_username ? html`<span class="sub">${m.lichess_username}</span>` : "";
+    const initial = Array.from(m.display_name || m.lichess_username || "M")[0].toUpperCase();
+    const isMe = m.user_id === appState.accountUserId;
+    const isOwner = m.role === "owner";
+    const uid = m.user_id;
+    const uname = m.display_name || m.lichess_username || "Member";
+    // Owner row is fixed. Managers get an inline role control on every other row
+    // (incl. their own, so an admin can step down) plus remove; a plain member only
+    // sees a read-only badge and a Leave button on their own row. The server
+    // enforces all of this too.
+    let tail;
+    if (isOwner) {
+      tail = html`<span class="team-role-badge r-owner">${teamRoleLabel("owner")}</span>`;
+    } else if (canManage) {
+      const opts = ["member", "admin"].map((r) => html`<option value="${r}"${m.role === r ? " selected" : ""}>${teamRoleLabel(r)}</option>`);
+      const removeBtn = html`<button type="button" class="btn icon team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : html` title="Remove member" aria-label="Remove ${uname}"`}>${isMe ? "Leave" : "×"}</button>`;
+      tail = html`<select class="team-role-select" data-user-id="${uid}" aria-label="Role for ${uname}">${opts}</select>${removeBtn}`;
+    } else {
+      const leaveBtn = isMe ? html`<button type="button" class="btn icon team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>` : "";
+      tail = html`<span class="team-role-badge r-${m.role}">${teamRoleLabel(m.role)}</span>${leaveBtn}`;
+    }
+    return html`<div class="mem-row team-member-row"><span class="avatar sm" aria-hidden="true">${initial}</span><span class="mem-id"><span class="name">${name}${isMe ? html` <span class="sub">(you)</span>` : ""}</span>${sub}</span><span class="team-member-tail">${tail}</span></div>`;
+  })}`;
   membersEl.querySelectorAll(".team-role-select").forEach((sel) => {
-    sel.addEventListener("change", () =>
-      updateMemberRole(teamId, sel.dataset.userId, sel.value)
-    );
+    sel.addEventListener("change", () => updateMemberRole(teamId, sel.dataset.userId, sel.value));
   });
   membersEl.querySelectorAll(".team-remove").forEach((btn) => {
-    btn.addEventListener("click", () =>
-      removeTeamMember(teamId, btn.dataset.userId, btn.dataset.userName, btn.dataset.self === "1")
-    );
+    btn.addEventListener("click", () => removeTeamMember(teamId, btn.dataset.userId, btn.dataset.userName, btn.dataset.self === "1"));
   });
   renderTeamSharedRepertoires(teamId, detail.shared_repertoires || []);
   syncTeamActions();
@@ -323,70 +268,91 @@ async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
   }
 }
 
+const NEW_TEAM_DRAFT_KEY = "prepforge.new_team_draft";
+let createTeamDraft = "";
+let activeCreateTeamDialog = null;
+
+function readCreateTeamDraft() {
+  if (createTeamDraft) return createTeamDraft;
+  try { return typeof sessionStorage !== "undefined" ? sessionStorage.getItem(NEW_TEAM_DRAFT_KEY) || "" : ""; } catch { return ""; }
+}
+
+function saveCreateTeamDraft(value) {
+  createTeamDraft = String(value || "");
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      if (createTeamDraft) sessionStorage.setItem(NEW_TEAM_DRAFT_KEY, createTeamDraft);
+      else sessionStorage.removeItem(NEW_TEAM_DRAFT_KEY);
+    }
+  } catch { /* storage unavailable */ }
+}
+
 async function createTeam() {
   if (!requireSignIn("Sign in to create a team", "new-team")) return;
-  const created = await showInputModal({
+  if (activeCreateTeamDialog) return activeCreateTeamDialog;
+  let failedWithAuth = false;
+  const run = showInputModal({
     title: "New team",
     okLabel: "Create",
-    fields: [{ name: "name", label: "Team name", default: "" }],
+    fields: [{ name: "name", label: "Team name", default: readCreateTeamDraft() }],
+    onInput: (values) => { failedWithAuth = false; saveCreateTeamDraft(values.name || ""); },
     // The dialog holds its pending state while the request runs, so the click
     // reads as work in progress instead of a dropped click.
     onSubmit: async (result, close) => {
       const name = (result.name || "").trim();
-      if (!name) {
-        setStatus("Team name is empty");
-        return;
-      }
+      if (!name) { setStatus("Team name is empty"); return; }
+      saveCreateTeamDraft(name);
       try {
         const team = await postJson("/api/teams", { name });
+        saveCreateTeamDraft("");
+        appState.teams = [team, ...(appState.teams || []).filter((t) => t.id !== team.id)];
         appState.selectedTeamId = team.id;
-        // A fresh team starts empty: land on the Members tab (the empty Shared
-        // tab would read as a glitch).
         teamsView?.selectTeamPane?.("members");
         setStatus(`Created team "${name}"`, { severity: "success" });
         await loadTeams();
-        close(null);
+        close(team);
         return team;
       } catch (error) {
+        failedWithAuth = isAuthError(error);
         setStatusError(error.message);
+        if (failedWithAuth) savePendingAction("new-team", { route: "#/teams" });
         return null;
       }
     },
-  });
+  }).finally(() => { if (activeCreateTeamDialog === run) activeCreateTeamDialog = null; });
+  activeCreateTeamDialog = run;
+  const created = await run;
+  if (!created && !failedWithAuth) saveCreateTeamDraft("");
   return created || null;
 }
 
 async function renameTeam(teamId, currentName) {
-  const result = await showInputModal({
+  await showInputModal({
     title: "Rename team",
     okLabel: "Save",
     fields: [{ name: "name", label: "Team name", default: currentName }],
+    onSubmit: async (result, close) => {
+      const name = (result.name || "").trim();
+      if (!name) { setStatus("Name is empty"); return; }
+      try {
+        const updated = await api(`/api/teams/${encodeURIComponent(teamId)}`, { method: "PATCH", body: JSON.stringify({ name }) });
+        const existing = appState.teams?.find((team) => team.id === teamId);
+        if (existing) existing.name = updated?.name || name;
+        setStatus(`Renamed to "${name}"`);
+        await loadTeams();
+        close(result);
+      } catch (error) {
+        setStatusError(error.message);
+      }
+    },
   });
-  if (!result) return;
-  const name = (result.name || "").trim();
-  if (!name) {
-    setStatus("Name is empty");
-    return;
-  }
-  try {
-    await api(`/api/teams/${encodeURIComponent(teamId)}`, {
-      method: "PATCH",
-      body: JSON.stringify({ name }),
-    });
-    setStatus(`Renamed to "${name}"`);
-    await loadTeams();
-  } catch (error) {
-    setStatusError(error.message);
-  }
 }
 
 async function deleteTeam(teamId, name) {
   const confirmed = await showConfirmModal({
     title: "Delete team?",
     body: `"${name}" will be removed and all shared repertoires will become private again. Members lose access.`,
-    okLabel: "Delete",
-    cancelLabel: "Cancel",
-    tone: "danger",
+    okLabel: "Delete", cancelLabel: "Cancel", tone: "danger",
   });
   if (!confirmed) return;
   try {
@@ -401,34 +367,51 @@ async function deleteTeam(teamId, name) {
 }
 
 async function addTeamMember(teamId) {
+  let failedHandle = null, openInvite = false, modalOverlay = null;
   await showInputModal({
     title: "Add member",
     okLabel: "Add",
     fields: [
       { name: "lichess_username", label: "Their Lichess username", default: "", hint: "A PrepForge account with Lichess linked is required. Otherwise, use the team's Invite link." },
-      {
-        name: "role",
-        label: "Role",
-        type: "select",
-        default: "member",
-        options: [
-          { value: "member", label: "Member" },
-          { value: "admin", label: "Admin (can manage members)" },
-        ],
-      },
+      { name: "role", label: "Role", type: "select", default: "member", options: [{ value: "member", label: "Member" }, { value: "admin", label: "Admin (can manage members)" }] },
     ],
+    onInput: (values, overlay) => {
+      modalOverlay = overlay;
+      const handle = (values.lichess_username || "").trim().toLowerCase();
+      const okBtn = overlay?.querySelector?.('[data-action="ok"]');
+      if (okBtn) okBtn.disabled = failedHandle !== null && handle === failedHandle;
+      const errorEl = overlay?.querySelector?.("[data-form-error]");
+      if (errorEl && failedHandle !== null && handle !== failedHandle) { errorEl.hidden = true; errorEl.textContent = ""; }
+    },
     onSubmit: async (result, close) => {
       const handle = (result.lichess_username || "").trim();
       if (!handle) throw new Error("Enter a Lichess username.");
-      await postJson(`/api/teams/${encodeURIComponent(teamId)}/members`, {
-        lichess_username: handle,
-        role: result.role || "member",
-      });
+      if (failedHandle !== null && handle.toLowerCase() === failedHandle) return;
+      try {
+        await postJson(`/api/teams/${encodeURIComponent(teamId)}/members`, { lichess_username: handle, role: result.role || "member" });
+      } catch (error) {
+        failedHandle = handle.toLowerCase();
+        Promise.resolve().then(() => Promise.resolve()).then(() => {
+          const dialog = modalOverlay || (typeof document !== "undefined" ? document.querySelector?.("dialog.modal[open]") : null);
+          const okBtn = dialog?.querySelector?.('[data-action="ok"]');
+          if (okBtn) okBtn.disabled = true;
+          const errorEl = dialog?.querySelector?.("[data-form-error]");
+          if (errorEl && /invite link/i.test(String(error?.message || "")) && typeof document !== "undefined" && document.createElement) {
+            const inviteBtn = document.createElement("button");
+            Object.assign(inviteBtn, { type: "button", className: "btn sm", textContent: "Invite link…" });
+            inviteBtn.dataset.action = "invite-link";
+            inviteBtn.addEventListener("click", () => { openInvite = true; close(null); });
+            errorEl.append?.(" ", inviteBtn);
+          }
+        });
+        throw error;
+      }
       close(result);
       setStatus(`Added ${handle}`);
       await loadTeams();
     },
   });
+  if (openInvite) await teamInvite(teamId);
 }
 
 async function updateMemberRole(teamId, userId, role) {
@@ -558,6 +541,11 @@ async function shareRepertoireIntoTeam(teamId) {
 
 // Copy a team-shared repertoire the caller doesn't own into their own account.
 async function copySharedRepertoire(repertoireId) {
+  const full = repertoireLimitMessage();
+  if (full) {
+    setStatusError(full);
+    return;
+  }
   try {
     const result = await postJson("/api/repertoires/fork", { repertoire_id: repertoireId });
     setStatus(`Copied "${result.name}" to your repertoires`);

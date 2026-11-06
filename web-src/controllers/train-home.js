@@ -34,10 +34,14 @@ export function trainRowError(mode, text) {
   paintRowErrors();
 }
 
+function isSignedIn() {
+  return !!appState.signedIn && !appState.sessionExpired;
+}
+
 function paintRowErrors() {
   for (const [mode, id] of Object.entries(ROW_ERROR_IDS)) {
     const el = document.getElementById(id);
-    const text = rowErrors[mode] || (mode === "smart" && appState.signedIn && preview?.failed(previewUrl()) ? "Couldn't load the queue. Start still works." : "");
+    const text = rowErrors[mode] || (mode === "smart" && isSignedIn() && allTrainable().length > 0 && preview?.failed(previewUrl()) ? "Couldn't load the queue. Start still works." : "");
     el.hidden = !text;
     el.textContent = text;
   }
@@ -321,17 +325,22 @@ function paintDueNext(upcoming) {
 
 export async function paintTrainHome() {
   const state = appState;
-  const signedIn = !!state.signedIn;
+  const signedIn = isSignedIn();
+  if (!signedIn) {
+    delete rowErrors.smart;
+    delete rowErrors.all_lines;
+  }
   const reps = allTrainable();
   paintRecent(document.getElementById("train-recent-home"), signedIn ? recentRuns(currentOwnerId(), 3) : [], "No finished runs yet.");
   // Due queue
   setChip("train-due-scope", dueScopeLabel(), !signedIn || !ownActive().length && !reps.length);
   const due = document.getElementById("start-train");
   const paintDue = (next) => {
-    const start = dueStartState(next, { signedIn, hasRepertoire: reps.length > 0 });
+    const activeAuth = isSignedIn();
+    const start = dueStartState(next, { signedIn: activeAuth, hasRepertoire: reps.length > 0 });
     due.textContent = start.label;
     due.dataset.action = start.action;
-    document.getElementById("train-due-meta").textContent = signedIn ? dueMeta(next) : "";
+    document.getElementById("train-due-meta").textContent = activeAuth ? dueMeta(next) : "";
     paintRowErrors();
   };
   const url = previewUrl();
@@ -376,6 +385,11 @@ export async function paintTrainHome() {
   await preview.load(url);
   if (trainScreenOf(state) !== "home" || previewUrl() !== url || !preview.current(url)) return;
   paintTrainPreviewLoading(false);
+  if (!isSignedIn()) {
+    rehearseBtn.textContent = "Sign in to train";
+    rehearseBtn.dataset.action = "signin";
+    rehearseBtn.hidden = false;
+  }
   const resolved = preview.dataFor(url);
   paintDue(resolved?.next_session);
   paintDueNext(resolved?.next_session?.upcoming);

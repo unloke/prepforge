@@ -106,6 +106,20 @@ describe("shared initialization progress", () => {
     expect(second).toEqual(["download", "session"]);
     provider.terminate();
   });
+
+  it("replays the current phase to a subscriber that attaches after warmup started", async () => {
+    const { provider, workers } = makeProvider(() => {});
+    const ready = provider.warmup();
+    await tick();
+    const worker = workers[0], id = worker.idsOf("init")[0];
+    worker.progress(id, { phase: "download", loaded: 23, total: 46 });
+    const seen = [];
+    provider.subscribeInitProgress((p) => seen.push(p));
+    expect(seen).toEqual([{ phase: "download", loaded: 23, total: 46 }]);
+    worker.reply(id, {});
+    await ready;
+    provider.terminate();
+  });
 });
 
 describe("individual inference deadline", () => {

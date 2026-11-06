@@ -433,13 +433,13 @@ async function fetchPlayExplorer(fen) {
 // tell the two apart: "the opponent has no legal move" is only true when the move
 // generator really came back empty, while an engine failure owes the user the
 // actual reason and a retry, not a misleading book message.
-async function fetchPlayMaia(fen) {
+async function fetchPlayMaia(fen, onProgress) {
   // Train Play opponent fallback is Maia-by-design (thin Explorer positions
   // fall back to human-like replies), independent of the Analyze-layer switch.
   try {
     const provider = getSharedMaia3Provider();
     // The Result card names the failure and owns the retry (Play again).
-    const maiaNotice = watchMaiaInit(provider, { notices, quietFail: true });
+    const maiaNotice = watchMaiaInit(provider, { notices, onProgress, quietFail: true });
     try {
       const predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
       maiaNotice.succeed();
@@ -688,7 +688,9 @@ async function playOpponentReply() {
   });
   if (!reply.uci) {
     if (play.book !== "maia" && !explorer.unavailable) play.explorerOff = "out-of-book";
-    const maia = await fetchPlayMaia(fen);
+    const maia = await fetchPlayMaia(fen, (text) => {
+      if (isCurrent()) setTrainBanner("runin", "Opponent thinking…", text);
+    });
     if (!isCurrent()) return;
     // Maia could not start at all: the Result card names the reason instead of
     // blaming the book, and Play again retries.

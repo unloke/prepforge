@@ -206,6 +206,7 @@ class Maia3Provider {
     // Shape: { message, phase, at } where phase is "init" (incl. timeout + worker-reported
     // ORT/weight-fetch errors, which reject the init request) or "crash" (worker died).
     this._lastError = null;
+    this._lastInitProgress = null;
   }
 
   // Observe cold-init progress ({ phase: "cache"|"download"|"verify"|"session", loaded,
@@ -214,6 +215,9 @@ class Maia3Provider {
   subscribeInitProgress(fn) {
     if (typeof fn !== "function") throw new TypeError("Progress subscriber must be a function");
     this._initProgressSubscribers.add(fn);
+    if (this._state === "initializing" && this._lastInitProgress) {
+      try { fn(this._lastInitProgress); } catch (_) { /* an observer cannot break shared initialization */ }
+    }
     return () => this._initProgressSubscribers.delete(fn);
   }
 
@@ -222,6 +226,7 @@ class Maia3Provider {
   }
 
   _setState(state) {
+    if (state !== "initializing") this._lastInitProgress = null;
     this._state = state;
     this._onState?.();
   }
@@ -494,6 +499,7 @@ class Maia3Provider {
     if (msg.progress) {
       if (this._pending.has(msg.id)) {
         const progress = { phase: msg.phase, loaded: msg.loaded, total: msg.total };
+        this._lastInitProgress = progress;
         for (const listener of [...this._initProgressSubscribers]) {
           try { listener(progress); } catch (_) { /* an observer cannot break shared initialization */ }
         }

@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 import { modalDialog, openModal } from "./dialog.js";
 
-export function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmit = null, cancel = true, dismissOnSubmit = false }) {
+export function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmit = null, cancel = true, dismissOnSubmit = false, disabled = false, error = "" }) {
   return new Promise((resolve) => {
     const overlay = modalDialog();
     const fieldHtml = (field) => {
@@ -66,10 +66,10 @@ export function showInputModal({ title, fields, okLabel = "OK", onInput = null, 
     }
     overlay.innerHTML = html`
       <h2 class="modal-title">${title}</h2>
-      <div class="modal-body">${inputsHtml}<p class="auth-error" data-form-error role="alert" hidden></p></div>
+      <div class="modal-body">${inputsHtml}<p class="auth-error" data-form-error role="alert"${error ? "" : " hidden"}>${error || ""}</p></div>
       <div class="modal-footer">
         ${cancel ? html`<button class="btn ghost" data-action="cancel" type="button">Cancel</button>` : ""}
-        <button class="btn primary" data-action="ok" type="button">${okLabel}</button>
+        <button class="btn primary" data-action="ok" type="button"${disabled ? " disabled" : ""}>${okLabel}</button>
       </div>
     `;
     const firstInput = overlay.querySelector("[data-field]");
@@ -104,7 +104,7 @@ export function showInputModal({ title, fields, okLabel = "OK", onInput = null, 
     // click) while onSubmit is still running must not start a second one.
     let submitting = false;
     const submit = () => {
-      if (submitting) return;
+      if (submitting || overlay.querySelector('[data-action="ok"]')?.disabled) return;
       const values = collect();
       if (typeof onSubmit !== "function") {
         close(values);

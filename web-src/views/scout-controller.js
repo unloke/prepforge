@@ -46,8 +46,10 @@ function writeScoutSelection(selection) {
   if (scoutView && !sameFetchSources(before, scoutPickedUsernames())) scoutView.discardReport();
 }
 
+let scoutComposerOpen = false;
+
 function openScoutComposer(anchor) {
-  return openSourceComposer({
+  const handle = openSourceComposer({
     anchor,
     selection: scoutSelection(),
     linkedAccounts: lichessAccounts(),
@@ -58,8 +60,14 @@ function openScoutComposer(anchor) {
       writeScoutSelection(sel);
       paintScoutSource();
     },
-    onClose: () => paintScoutSource(),
+    onClose: () => {
+      scoutComposerOpen = false;
+      paintScoutSource();
+    },
   });
+  scoutComposerOpen = true;
+  paintScoutSource();
+  return handle;
 }
 
 function scoutPickedUsernames() {
@@ -81,17 +89,24 @@ function paintScoutSource() {
     : linked.length && selfState === "all"
       ? [{ kind: "self", label: `Self · ${linked.length} linked account${linked.length === 1 ? "" : "s"}`, count: linked.length }]
       : [];
-  tray.hidden = false;
-  tray.innerHTML = visible.length
-    ? html`${visible
-        .map((c) =>
-          c.kind === "external"
-            ? html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}<button type="button" class="src-chip-x" data-scout-unpick-external="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
-            : c.kind === "self"
-              ? html`<span class="src-chip is-self" data-scout-chip-self>${c.label}</span>`
-              : html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}${c.primary ? html` <span class="conn-primary">Primary</span>` : ""}<button type="button" class="src-chip-x" data-scout-unpick="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
-        )}`
-    : html``;
+  // While the source composer popover is open, it renders the full source list
+  // directly below the toolbar; suppress the chip tray so each source appears once.
+  if (scoutComposerOpen) {
+    tray.hidden = true;
+    tray.innerHTML = html``;
+  } else {
+    tray.hidden = false;
+    tray.innerHTML = visible.length
+      ? html`${visible
+          .map((c) =>
+            c.kind === "external"
+              ? html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}<button type="button" class="src-chip-x" data-scout-unpick-external="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
+              : c.kind === "self"
+                ? html`<span class="src-chip is-self" data-scout-chip-self>${c.label}</span>`
+                : html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}${c.primary ? html` <span class="conn-primary">Primary</span>` : ""}<button type="button" class="src-chip-x" data-scout-unpick="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
+          )}`
+      : html``;
+  }
   // The empty state names the next step for where the user actually is. While the
   // session is unread it says nothing: a guest/signed-in distinction is a guess.
   const hint = document.getElementById("scout-empty-hint");
