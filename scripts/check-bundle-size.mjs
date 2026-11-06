@@ -103,7 +103,9 @@ const LIMITS = [
   // 2026-11-05 QA round 3: invalid sign-in fields, the mainline's muted
   // opponent moves, the Explorer bar's last segment and Practice hiding the
   // Drill widgets bring it to 179,199 B; the cap moves to 179,300 B.
-  { prefix: "index-", suffix: ".css", maxBytes: 179_300, label: "main stylesheet" },
+  // 2026-11-05 QA round 4: the rail foot, closing rail and disabled Teams
+  // icon buttons bring it to 179,454 B; the cap moves to 179,500 B.
+  { prefix: "index-", suffix: ".css", maxBytes: 179_500, label: "main stylesheet" },
 ];
 
 let files;
