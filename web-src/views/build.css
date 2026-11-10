@@ -226,12 +226,12 @@ body.is-guest .build-empty-member, body:not(.is-guest) .build-empty-guest { disp
 .build-tree-region > .tree-wrap { flex: 1 1 auto; min-height: 0; }
 
 
+/* The fork sits under the tree in its own space: floating over the tree, it
+   covered the first rows of the flowing lines. */
 .forkbar {
-  position: absolute;
-  z-index: 8;
-  top: 8px;
-  left: 10px;
-  right: 10px;
+  order: 1;
+  flex: none;
+  margin: 6px 10px 8px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -239,7 +239,6 @@ body.is-guest .build-empty-member, body:not(.is-guest) .build-empty-guest { disp
   padding: 10px 12px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-pop, 0 8px 24px rgb(0 0 0 / 0.16));
   background: var(--panel);
   min-width: 0;
 }
