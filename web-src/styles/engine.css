@@ -256,9 +256,6 @@
 .engine-lines > button[aria-checked="true"] { background: var(--text); color: var(--panel); font-weight: 600; }
 
 
-.engine-lines > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-
-
 .engine-window-close {
   border: 0;
   background: transparent;
