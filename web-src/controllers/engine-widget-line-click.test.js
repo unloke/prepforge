@@ -61,8 +61,7 @@ function harness({ view = "analyze", boardFen = START, lands = true, withSession
   const Widget = new Function(...Object.keys(deps), `return (${code.trim()});`)(...Object.values(deps));
   const widget = new Widget();
   Object.assign(widget, {
-    pvsEl: stubEl(), closeBtn: stubEl(), linesUpBtn: stubEl(), linesDownBtn: stubEl(),
-    linesReadout: stubEl(),
+    pvsEl: stubEl(), closeBtn: stubEl(), linesEl: stubEl(),
   });
   widget._bindControls();
   widget.lastFen = boardFen;

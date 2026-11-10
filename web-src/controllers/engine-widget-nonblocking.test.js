@@ -87,7 +87,7 @@ function harness({ choice = "ask", store = noPassStore(), view = "analyze", pvSa
   Object.assign(widget, {
     unlockEl: row, pvsEl: stubEl(), el: stubEl(),
     depthReadout: stubEl(), evalHead: stubEl(), evalBarText: stubEl(),
-    linesReadout: stubEl(), linesUpBtn: stubEl(), linesDownBtn: stubEl(), closeBtn: stubEl(),
+    linesEl: stubEl(), closeBtn: stubEl(),
   });
   widget._bindControls();
   const sent = [];
@@ -125,7 +125,7 @@ describe("the full-net unlock row never blocks the engine card", () => {
     expect(String(widget.pvsEl.innerHTML)).toContain("e4");
     expect(widget.pvsEl.innerHTML).not.toContain("Calculating…");
     expect(row.hidden).toBe(false);
-    expect(widget.depthReadout.textContent).toBe("12 / 16");
+    expect(widget.depthReadout.textContent).toBe("depth 12");
   });
 
   it("names its place for the view it is in, so each can be put away on its own", async () => {
@@ -167,7 +167,7 @@ describe("a running whole-game pass owns the engine card's numbers", () => {
     // The saved line and its depth, marked as the analysis's own...
     expect(String(widget.pvsEl.innerHTML)).toContain("e4");
     expect(widget.pvsEl.classList.contains("is-analysis-read")).toBe(true);
-    expect(widget.depthReadout.textContent).toBe("20 / 20");
+    expect(widget.depthReadout.textContent).toBe("depth 20");
     // ...and no search was asked for: the pass has the workers.
     expect(sent).toEqual([]);
   });
@@ -363,6 +363,6 @@ describe("SAN is converted for the rows this frame paints", () => {
     widget.multipv = 0; // no rows asked for: the eval chip and arrow still update
     widget._renderSnapshot(snap("board w - - 0 1", [uciLine(["e2e4"])]));
     expect(asked).toEqual([]);
-    expect(widget.depthReadout.textContent).toBe("10 / 16");
+    expect(widget.depthReadout.textContent).toBe("depth 10");
   });
 });

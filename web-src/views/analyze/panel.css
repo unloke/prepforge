@@ -665,53 +665,9 @@
    bar that is stuck. The row keeps its label and its action; the middle stays
    open until there is a number to fill the track with. */
 .ev-head:not(.has-eval) .ev-meter { display: none; }
-/* Search depth as a word plus quiet figures: "Depth 14/20" says how far the
-   search has come without a progress bar under it.
-   min-width: max-content: the card is a grid whose auto tracks shrink when the
-   head row runs out of room, and a 0 minimum let this readout be cut to 34px
-   around 60px of text, and "Depth 16/16" then ran over the Lines stepper
-   (measured at 1024x768, card 379px). Its content is the floor. */
-#analysis-engine-slot .engine-head-depth {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  min-width: max-content;
-  padding: 0 0 2px;
-  border: 0;
-  border-radius: 0;
-  color: var(--muted);
-  font-size: 0;
-}
-#analysis-engine-slot .engine-head-depth::before {
-  content: "Depth";
-  font-size: 11px;
-  font-weight: 400;
-}
-#analysis-engine-slot .engine-head-depth::after {
-  content: attr(data-d);
-  font-size: 11px;
-  font-weight: 500;
-}
-#analysis-engine-slot .engine-head-depth:not([data-d])::after { content: ""; }
-/* Lines: a word before the stepper, so the count has a name. Only in the
-   card - the floating panel keeps its bare − N + cluster and tooltips. */
-#analysis-engine-slot .engine-lines::before {
-  content: "Lines";
-  font-size: 11px;
-  color: var(--muted);
-}
-#analysis-engine-slot .engine-lines { gap: 2px; padding: 0; border: 0; background: none; }
-/* The line stepper is a control: it keeps its own edge (the engine slot is
-   real interface, marked data-ui). */
-#analysis-engine-slot[data-ui] .engine-step {
-  width: 18px;
-  height: 18px;
-  background: none;
-  color: var(--muted);
-  border: 1px solid var(--line);
-}
-#analysis-engine-slot .engine-step:hover { color: var(--text); background: var(--panel-soft); transform: none; }
-#analysis-engine-slot .engine-step:disabled { background: none; opacity: 0.4; }
+/* min-width: max-content: the head row is a grid whose auto tracks shrink when
+   it runs out of room; "depth 16" must not be cut under the line picker. */
+#analysis-engine-slot .engine-head-depth { min-width: max-content; }
 .ev-engine {
   display: inline-flex;
   align-items: center;
@@ -743,39 +699,27 @@
   width: 8px;
   height: 8px;
 }
-/* Engine lines: one 22px row each, eval as muted figures, the move list cut
-   at the edge (a click unfolds it). */
+/* Engine lines: one 28px row each, the eval chip then the line cut at the
+   edge (a click unfolds it). */
 #analysis-engine-slot .engine-window-body { padding-top: 2px; }
 #analysis-engine-slot .engine-window-pvs { padding: 0; gap: 0; }
 #analysis-engine-slot .engine-pv,
 #analysis-engine-slot .engine-pv.is-top {
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 6px;
-  height: 22px;
-  min-height: 22px;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 8px;
+  height: 28px;
+  min-height: 28px;
   padding: 0 4px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: none;
 }
 #analysis-engine-slot .engine-pv:hover { background: var(--panel-soft); }
 #analysis-engine-slot .engine-pv.is-expanded { height: auto; }
-#analysis-engine-slot .engine-pv-eval,
-#analysis-engine-slot .engine-pv.is-top .engine-pv-eval {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-  text-align: right;
-}
-#analysis-engine-slot .engine-pv.is-top .engine-pv-eval { color: var(--text); }
 /* The pass's one line of status has no eval to show, so it takes the whole row
    instead of the 44px eval column (where "Analyze is still running" is cut off). */
 #analysis-engine-slot .engine-pv.is-waiting { grid-template-columns: minmax(0, 1fr); }
-#analysis-engine-slot .engine-pv-line { min-width: 0; line-height: 22px; text-overflow: ellipsis; }
+#analysis-engine-slot .engine-pv-line { min-width: 0; line-height: 24px; text-overflow: ellipsis; }
 #analysis-engine-slot .engine-pv.is-expanded .engine-pv-line { overflow-wrap: anywhere; }
 
 /* Whole-game progress: the graph draws itself as positions finish, with the

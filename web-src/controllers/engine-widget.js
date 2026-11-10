@@ -29,9 +29,7 @@ class EngineWidget {
     this.evalBarWhite = null;
     this.evalBarText = null;
     this.evalHead = null;
-    this.linesReadout = null;
-    this.linesUpBtn = null;
-    this.linesDownBtn = null;
+    this.linesEl = null;
     this.depthReadout = null;
     this.closeBtn = null;
     this.open = false;
@@ -102,9 +100,7 @@ class EngineWidget {
     this.evalBarWhite = document.getElementById("engine-eval-bar-white");
     this.evalBarText = document.getElementById("engine-eval-bar-text");
     this.evalHead = document.getElementById("engine-head-eval");
-    this.linesReadout = document.getElementById("engine-lines-readout");
-    this.linesUpBtn = document.getElementById("engine-lines-up");
-    this.linesDownBtn = document.getElementById("engine-lines-down");
+    this.linesEl = document.getElementById("engine-lines");
     this.depthReadout = document.getElementById("engine-window-depth-readout");
     this.closeBtn = document.getElementById("engine-window-close");
     this._renderLinesReadout();
@@ -281,7 +277,6 @@ class EngineWidget {
     setEngineBestArrow(null);
     if (this.lastFen && this._renderGameOver(this.lastFen)) return;
     this._paintPvs(this._pendingRows(0));
-    if (this.depthReadout) this.depthReadout.textContent = "0 / ?";
     this._paintDepth(0, null);
     if (this.evalBarText) this.evalBarText.textContent = "...";
     if (this.evalHead) {
@@ -317,7 +312,6 @@ class EngineWidget {
           ? "Stalemate, draw"
           : "Draw";
     this._paintPvs(html`<div class="engine-pv is-top is-final"><span class="engine-pv-eval">${over.result}</span><span class="engine-pv-line">${text}</span></div>`);
-    if (this.depthReadout) this.depthReadout.textContent = "0 / 0";
     this._paintDepth(0, 0);
     if (this.evalBarWhite) {
       const share = over.winner === "white" ? 1 : over.winner === "black" ? 0 : 0.5;
@@ -332,34 +326,32 @@ class EngineWidget {
     return true;
   }
 
-  // Depth reads as its own number: "14/20" says how far the search has come
-  // and how far it can go; the tooltip names it.
+  // "depth 14" beside the engine's name; the tooltip adds the ceiling. Nothing
+  // until the search has a depth to report.
   _paintDepth(current, target) {
     const el = this.depthReadout;
     if (!el) return;
-    // Number(null) is 0, so "no depth at all" must be checked before converting.
-    const hasCur = current !== null && current !== undefined && Number.isFinite(Number(current));
     const cur = Number(current);
     const max = Number(target);
-    // Only a real positive ceiling counts as a target.
-    const hasMax = Number.isFinite(max) && max > 0;
-    el.dataset.d = hasCur ? (hasMax ? `${cur}/${max}` : String(cur)) : "";
-    el.title = hasCur ? `Search depth ${cur}${hasMax ? ` of ${max}` : ""}` : "";
-    el.hidden = !hasCur;
+    const has = current !== null && current !== undefined && cur > 0;
+    el.textContent = has ? `depth ${cur}` : "";
+    el.title = has ? `Search depth ${cur}${max > 0 ? ` of ${max}` : ""}` : "";
+    el.hidden = !has;
   }
 
+  // The line count is a 1–5 picker: one press sets any count, up or down.
   _renderLinesReadout() {
-    if (!this.linesReadout) return;
-    this.linesReadout.textContent = `${this.multipv}`;
-    this.linesReadout.title = "Lines shown";
-    if (this.linesDownBtn) this.linesDownBtn.disabled = this.multipv <= this.minMultipv;
-    if (this.linesUpBtn) this.linesUpBtn.disabled = this.multipv >= this.maxMultipv;
+    for (const btn of this.linesEl?.querySelectorAll("[data-n]") || []) {
+      btn.setAttribute("aria-checked", String(Number(btn.dataset.n) === this.multipv));
+    }
   }
 
   _bindControls() {
     this.closeBtn.addEventListener("click", () => setEngineOn(activeViewName(), false));
-    this.linesUpBtn.addEventListener("click", () => this._setMultipv(this.multipv + 1));
-    this.linesDownBtn.addEventListener("click", () => this._setMultipv(this.multipv - 1));
+    this.linesEl.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-n]");
+      if (btn) this._setMultipv(Number(btn.dataset.n));
+    });
     // A line is for the move list: clicking one of its moves plays the line up to
     // that move into the analysis tree, as a variation from the position on the
     // board, and a branch that is already there is selected instead of added
@@ -447,7 +439,6 @@ class EngineWidget {
     if (snapshot?.fen && snapshot.fen !== this.lastFen) return;
     if (!snapshot || !snapshot.session_id) {
       setEngineBestArrow(null);
-      if (this.depthReadout) this.depthReadout.textContent = "0 / 0";
       this._paintDepth(0, 0);
       return;
     }
@@ -461,8 +452,6 @@ class EngineWidget {
       this._unwatch();
       return;
     }
-    const depthText = `${snapshot.current_depth || 0} / ${snapshot.max_depth || "?"}`;
-    if (this.depthReadout) this.depthReadout.textContent = depthText;
     this._paintDepth(snapshot.current_depth, snapshot.max_depth);
     // Render only as many PV slots as the user asked for; engines occasionally
     // emit transient extra ranks while changing multipv. Missing ranks keep a
@@ -492,6 +481,9 @@ class EngineWidget {
   // and a row that did nothing when clicked would be a dead button.
   _renderPv(pv, index, fen) {
     const evalText = formatEngineEval(pv.score_cp, pv.mate_in);
+    // Whose number it is: the chip takes that side's colour, as on the eval bar.
+    const score = pv.mate_in ?? pv.score_cp;
+    const side = score > 0 ? "white" : score < 0 ? "black" : "even";
     // SAN for the rows this frame actually paints, converted once per PV version (see pvSan).
     const sans = pvSan(fen, pv);
     const moves = sans.length
@@ -505,7 +497,7 @@ class EngineWidget {
       ? html` role="button" tabindex="0"`
       : "";
     return (
-      html`<div class="${cls}" data-line="${index}" data-mt="${encodeLine(fen, pv.pv_uci || [])}"${playable}><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
+      html`<div class="${cls}" data-line="${index}" data-mt="${encodeLine(fen, pv.pv_uci || [])}"${playable}><span class="engine-pv-eval" data-side="${side}">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
     );
   }
 

@@ -950,15 +950,13 @@
     <div class="engine-window" id="engine-window" data-testid="engine-window" hidden>
       <header class="engine-window-head" id="engine-window-head">
         <div class="engine-head-meta">
-          <span class="engine-head-label">SF</span>
-          <span class="engine-head-eval" id="engine-head-eval">–</span>
-          <span class="engine-head-depth" id="engine-window-depth-readout" title="Search depth">–</span>
+          <span class="engine-head-label">Stockfish</span>
+          <span class="engine-head-eval" id="engine-head-eval" hidden>–</span>
+          <span class="engine-head-depth" id="engine-window-depth-readout" hidden></span>
         </div>
         <div class="engine-head-tools">
-          <div class="engine-lines" role="group" aria-label="Lines shown">
-            <button class="engine-step" id="engine-lines-down" type="button" title="Fewer lines" aria-label="Fewer lines">−</button>
-            <span class="engine-lines-readout" id="engine-lines-readout" title="Lines shown">1</span>
-            <button class="engine-step" id="engine-lines-up" type="button" title="More lines" aria-label="More lines">+</button>
+          <div class="engine-lines" id="engine-lines" role="radiogroup" aria-label="Engine lines">
+            <button type="button" role="radio" data-n="1" aria-checked="true">1</button><button type="button" role="radio" data-n="2" aria-checked="false">2</button><button type="button" role="radio" data-n="3" aria-checked="false">3</button><button type="button" role="radio" data-n="4" aria-checked="false">4</button><button type="button" role="radio" data-n="5" aria-checked="false">5</button>
           </div>
           <button class="engine-window-close" id="engine-window-close" type="button" title="Close" aria-label="Close">×</button>
         </div>
