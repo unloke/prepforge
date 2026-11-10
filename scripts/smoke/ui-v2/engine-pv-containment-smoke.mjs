@@ -219,6 +219,9 @@ for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.nam
   await page.evaluate(SAMPLER);
 
   // 1. MultiPV 1→5, sampling the raise and the streaming that follows.
+  // A phone folds the picker behind its "N lines" button.
+  const more = page.locator("#engine-lines-more");
+  if (await more.isVisible()) await more.click();
   await page.locator('#engine-lines [data-n="5"]').click();
   await page.waitForTimeout(2500);
   // 2. Two uncached positions: nothing is cached for either, so the pending rows
