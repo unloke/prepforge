@@ -247,12 +247,11 @@ describe("workspace chrome layout", () => {
     expect(html).toContain('role="tablist"');
     expect(html).toContain('id="build-tool-explorer"');
     expect(html).toContain('id="build-tool-coverage"');
-    // The engine lives inside the Explorer (eval column + pinned line), not
-    // in a tab of its own.
+    // The engine sits under the title on every tab, not in a tab of its own.
     expect(html).not.toContain('id="build-tool-engine"');
     expect(html).not.toContain('id="engine-drawer"');
     expect(html).toContain('id="explorer-engine-toggle"');
-    expect(html).toContain('id="explorer-engine-slot"');
+    expect(html).toContain('id="build-engine-slot"');
     expect(html).toContain('aria-controls="explorer-drawer"');
     expect(html).toContain('aria-controls="coverage-drawer"');
     expect(html).not.toContain('<summary>Opening explorer</summary>');

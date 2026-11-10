@@ -42,34 +42,34 @@
      ==================================================================== */
 
   /* -- Surfaces -------------------------------------------------------- */
-  --bg: #f3f3f1;         /* ground: the page */
+  --bg: #f4f2ee;         /* ground: the page */
   --panel: #ffffff;      /* surface: cards and panels */
-  --panel-soft: #f8f8f6; /* quiet fill inside a card */
-  --surface-3: #efefec;  /* active step: hover, pressed, recessed track */
+  --panel-soft: #f9f8f5; /* quiet fill inside a card */
+  --surface-3: #efece6;  /* active step: hover, pressed, recessed track */
   --float: #ffffff;      /* raised: anything that floats over the page */
 
   /* -- Text ------------------------------------------------------------ */
-  --text: #1b1c1e;   /* body */
-  --muted: #55585e;  /* secondary copy */
-  --label: #67696e;  /* small-caps labels, quiet affordances */
+  --text: #1d1b18;   /* body */
+  --muted: #5a554d;  /* secondary copy */
+  --label: #6b665d;  /* small-caps labels, quiet affordances */
 
   /* -- Hairlines (tone steps, not decoration) -------------------------- */
-  --line: #e2e1dc;       /* between surfaces inside a card */
-  --line-soft: #eeeeec;  /* nested / secondary separation */
-  --line-strong: #cfcdc6; /* control outlines */
+  --line: #e4e0d8;       /* between surfaces inside a card */
+  --line-soft: #efece6;  /* nested / secondary separation */
+  --line-strong: #d1ccc2; /* control outlines */
 
   /* -- The one accent -------------------------------------------------- */
-  --accent: #2f5bd3;
-  --accent-soft: #e8eefc;
-  --accent-line: #c9d6f7;
-  --accent-strong: #2447a8;
+  --accent: #c08a3e;
+  --accent-soft: #f7ecdb;
+  --accent-line: #ead3ad;
+  --accent-strong: #8a5a12;
   --on-accent: #ffffff;
 
-  /* Ink on an accent fill: white in light, near-black in dark. */
-  --accent-ink: #ffffff;
+  /* Ink on an accent fill: near-black on the amber in both themes. */
+  --accent-ink: #1c1306;
   /* Text-safe companion for --accent (AA on panel/panel-soft/bg and on
      --accent-soft; pinned by visual-system.test.js). */
-  --accent-text: #2447a8;
+  --accent-text: #7d5210;
   /* Derived from --accent, so an accent preset moves the focus ring with it. */
   --focus-ring: color-mix(in srgb, var(--accent) 35%, transparent);
 
@@ -115,20 +115,20 @@
   --k-polish: #8a9099;
 
   /* -- Board ------------------------------------------------------------
-     Lichess's blue board and last-move tint (measured), the same in both
-     themes: the squares are the board's colours, not the page's. */
-  --square-light: #dee3e6;
-  --square-dark: #8ca2ad;
-  --board-frame: #6f8394;
+     A light wood pair and an amber last-move tint, the same in both themes:
+     the squares are the board's colours, not the page's. */
+  --square-light: #e6dac5;
+  --square-dark: #a98b6d;
+  --board-frame: #8a7056;
   --dot-white: #ffffff; /* the white side's dot/face */
 
   /* Board marks (styles.css "Board marks"): last move, selection, legal
      targets, arrows and the per-grade square tints. */
-  --last-move: rgba(155, 199, 0, 0.41);
-  --highlight: rgba(47, 91, 211, 0.38);
-  --mark-select: rgba(47, 91, 211, 0.3);
+  --last-move: rgba(214, 170, 70, 0.42);
+  --highlight: color-mix(in srgb, var(--accent) 40%, transparent);
+  --mark-select: color-mix(in srgb, var(--accent) 34%, transparent);
   --mark-legal: rgba(22, 36, 58, 0.22);
-  --mark-legal-hover: rgba(47, 91, 211, 0.45);
+  --mark-legal-hover: color-mix(in srgb, var(--accent) 48%, transparent);
   --mark-brilliant: rgba(47, 127, 224, 0.42);
   --mark-great: rgba(74, 127, 181, 0.4);
   --mark-inaccuracy: rgba(232, 172, 64, 0.48);
@@ -149,8 +149,8 @@
   /* Board coordinate labels. */
   /* Lichess sets a square's name in the other square's hue; here that hue,
      deepened to 4.5:1 so a 10px label stays readable. */
-  --coord-on-light: #4a6170;
-  --coord-on-dark: #16232b;
+  --coord-on-light: #5e4a33;
+  --coord-on-dark: #1f160d;
 
   /* -- Explorer result bar ---------------------------------------------- */
   --explorer-white: #f2f2ef;
@@ -171,7 +171,9 @@
      --fs-s used to be 12px: below the legible floor, so every small label in
      the app read smaller than the text around it. It keeps its name because
      the view sheets still address it, but it no longer means "smaller". */
-  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, ui-sans-serif, sans-serif;
+  --font: "Geist Variable", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, ui-sans-serif, sans-serif;
+  /* Names, evals, accuracies and big counts; never running text. */
+  --serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
   --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace; /* taste-skill-ignore: a font token is not a use of it */
   --fs: 13px;
   --fs-s: 13px;
@@ -240,34 +242,34 @@
   color-scheme: dark;
 
   /* Surfaces: ground, then a step up for cards, then a step up for floats. */
-  --bg: #111315;
-  --panel: #191c1f;
-  --panel-soft: #1e2226;
-  --surface-3: #262a2f;
-  --float: #22262a;
+  --bg: #121110;
+  --panel: #181715;
+  --panel-soft: #1d1c19;
+  --surface-3: #24221e;
+  --float: #201e1b;
 
   /* Text */
-  --text: #e8eaec;
-  --muted: #a9aeb4;
-  --label: #a9aeb4;
+  --text: #ece8e1;
+  --muted: #a39b8f;
+  --label: #a39b8f;
 
   /* Hairlines */
-  --line: #2b3035;
-  --line-soft: #25292d;
-  --line-strong: #3a4046;
+  --line: #2a2724;
+  --line-soft: #23211e;
+  --line-strong: #3a3631;
 
   /* The select chevron is an SVG data URL, so it cannot take a var(): it is
      redeclared with the dark --label grey. */
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23a9aeb4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23a39b8f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   /* The accent */
-  --accent: #6d8ff0;
-  --accent-soft: #1f2a48;
-  --accent-line: #2d3c66;
-  --accent-strong: #9db4f7;
-  --accent-text: #93abf2;
+  --accent: #d4a35c;
+  --accent-soft: #2d2416;
+  --accent-line: #4a3a22;
+  --accent-strong: #e8c48c;
+  --accent-text: #e0b46e;
   --on-accent: #ffffff;
-  --accent-ink: #0d1020;
+  --accent-ink: #1c1306;
 
   /* Semantic status */
   --danger: #ef6b5b;
@@ -280,7 +282,7 @@
   --brilliant: #6d9ff0;
   --great: #8db0da;
   --none: #8d939a;
-  --none-soft: #25292d;
+  --none-soft: #23211e;
 
   /* Dark surfaces already clear AA for these hues by a wide margin, so the text
      variants alias the base colours (kept as separate tokens so text and fill
@@ -303,13 +305,10 @@
 
   /* Board */
   --dot-white: #f8f8f6;
-  --board-frame: #5a6c7b;
+  --board-frame: #6f5a45;
 
   /* Board marks */
-  --highlight: rgba(109, 143, 240, 0.42);
-  --mark-select: rgba(109, 143, 240, 0.38);
   --mark-legal: rgba(10, 18, 30, 0.3);
-  --mark-legal-hover: rgba(109, 143, 240, 0.55);
   --mark-brilliant: rgba(80, 150, 240, 0.5);
   --mark-great: rgba(110, 155, 210, 0.48);
   --mark-inaccuracy: rgba(236, 184, 90, 0.5);
@@ -328,23 +327,26 @@
 
   /* Explorer W/D/B bar: the draw grey sits between the two ends and the Black
      end is lifted off the panel so it never melts into the background. */
-  --explorer-white: #e9eaec;
-  --explorer-draw: #7c838c;
-  --explorer-black: #45494f;
-  --explorer-track: #2b3035;
-  --explorer-white-ink: #1b1c1e;
-  --explorer-draw-ink: #111315;
-  --eval-side-white: #e9eaec;
-  --eval-side-black: #0e0f11;
+  --explorer-white: #ebe5da;
+  --explorer-draw: #8a8378;
+  --explorer-black: #46423c;
+  --explorer-track: #2a2724;
+  --explorer-white-ink: #1d1b18;
+  --explorer-draw-ink: #121110;
+  --eval-side-white: #ebe5da;
+  --eval-side-black: #0f0e0c;
 }
 
 
 /* ---- Board colour themes --------------------------------------------------
    The board reads --square-light and --square-dark on <html data-board>, set
-   before first paint by theme.js (applyBoardTheme). `slate` is the default and
+   before first paint by theme.js (applyBoardTheme). `wood` is the default and
    takes the theme values above. A swatch in Settings carries the same pair on
    itself, so the picker shows the board it will make. One pair is the same in
    both themes: the squares are the board's colours, not the page's. */
+:root[data-board="slate"], .board-color-swatch[data-board="slate"] { --square-light: #dee3e6; --square-dark: #8ca2ad; --coord-on-light: #4a6170; --coord-on-dark: #16232b; }
+
+
 :root[data-board="classic"], .board-color-swatch[data-board="classic"] { --square-light: #f0d9b5; --square-dark: #b58863; }
 
 
@@ -357,13 +359,33 @@
 /* ---- Accent presets ------------------------------------------------------
    The user picks the accent (product.md, "Accent is a user choice"). The
    choice is a `data-accent` attribute on <html>, set before first paint by
-   theme.js next to the theme; `blue` is the default and needs no override.
+   theme.js next to the theme; `amber` is the default and needs no override.
    A preset redeclares the six accent tokens only -- everything else keeps its
    value, so a preset cannot drift the surfaces or the text tiers. Each pair
    is measured: --accent-text clears 4.5:1 on --panel, --panel-soft, --bg and
    its own --accent-soft; --accent-ink clears 4.5:1 on --accent. Both themes
    are pinned by visual-system.test.js, so a third preset is added only with
    its measurements. */
+:root[data-accent="blue"] {
+  --accent: #2f5bd3;
+  --accent-soft: #e8eefc;
+  --accent-line: #c9d6f7;
+  --accent-strong: #2447a8;
+  --accent-text: #2447a8;
+  --accent-ink: #ffffff;
+}
+
+
+:root[data-theme="dark"][data-accent="blue"] {
+  --accent: #6d8ff0;
+  --accent-soft: #1f2a48;
+  --accent-line: #2d3c66;
+  --accent-strong: #9db4f7;
+  --accent-text: #93abf2;
+  --accent-ink: #0d1020;
+}
+
+
 :root[data-accent="orange"] {
   --accent: #c2410c;
   --accent-soft: #fdeee3;

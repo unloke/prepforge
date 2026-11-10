@@ -93,7 +93,7 @@ export const engineWidget = {
 // The engine never floats over the board: it lives inside the panel that
 // already answers "which move?" - Build's Explorer (pinned best line + an Eval
 // column per candidate) and Analyze's Evaluation card (game graph + live lines).
-export const ENGINE_VIEW_SLOTS = { build: "explorer-engine-slot", analyze: "analysis-engine-slot" };
+export const ENGINE_VIEW_SLOTS = { build: "build-engine-slot", analyze: "analysis-engine-slot" };
 const ENGINE_VIEW_PREFS = { build: "engineBuild", analyze: "engineAnalyze" };
 // Most Explorer rows the eval worker scores (the most-played ones). More lines
 // means a shallower search per second, so the rest show a dash.

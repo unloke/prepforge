@@ -3,7 +3,7 @@
 /* Chess-book headings, copperplate-like route lines, and the existing ink/accent.
    The ornament is generated from the open repertoire, never a random motif. */
 #build-rep-header #build-rep-name { position: relative; padding-right: 72px; }
-#build-rep-name b { font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 500; letter-spacing: -0.4px; }
+#build-rep-name b { font-family: var(--serif); font-size: 19px; font-weight: 400; letter-spacing: -0.2px; }
 .rep-route-mark { position: absolute; width: 64px; right: 0; top: 2px; opacity: 0.85; appearance: none; border: 1px solid var(--line); background: none; padding: 6px; margin-top: -6px; min-height: 32px; color: inherit; cursor: pointer; border-radius: 6px; transition: background 160ms ease, opacity 160ms ease; }
 .route-glyph { display: block; width: 100%; height: auto; overflow: visible; }
 .route-glyph path { fill: none; stroke: var(--line); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
@@ -17,7 +17,7 @@
 #builder-tree .mtree-move.has-unseen.is-current .mtree-san::after { background: currentColor; }
 .lineage-modal { width: min(900px, calc(100vw - 40px)); max-height: min(800px, calc(100dvh - min(14vh, 120px) - 24px)); padding: 0; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
 .lineage-modal .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px 12px; border-bottom: 1px solid var(--line); }
-.lineage-modal .modal-title { font: 500 26px/1.2 Georgia, "Times New Roman", serif; letter-spacing: -0.5px; }
+.lineage-modal .modal-title { font: 500 26px/1.2 var(--serif); letter-spacing: -0.5px; }
 .lineage-body { min-height: 0; overflow: auto; padding: 20px 24px 24px; }
 .lineage-loading { padding: 30px 0; color: var(--muted); }
 .lineage-error { color: var(--danger); font-size: 13px; padding: 8px 0; }
@@ -30,7 +30,7 @@
 .activity-entry > div { min-width: 0; }
 .activity-entry header, .discussion-messages header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; font-size: 13px; }
 .activity-entry time, .discussion-messages time { color: var(--muted); font-size: 11px; }
-.person-initial { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; font: italic 17px Georgia, serif; background: var(--surface-3); }
+.person-initial { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 50%; font: italic 17px var(--serif); background: var(--surface-3); }
 .activity-entry.is-unread .person-initial { border-color: var(--accent-text); color: var(--accent-text); }
 .activity-action { display: inline-block; margin-top: 5px; font-size: 14px; }
 .activity-count { margin-left: 9px; color: var(--muted); font: 12px var(--mono); }
@@ -48,7 +48,7 @@
 .discussion-link.is-active { background: var(--surface-3); border-color: var(--accent-text); }
 .discussion-content { min-width: 0; }
 .discussion-position { display: flex; align-items: center; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-.discussion-position h3 { font: 500 22px Georgia, serif; margin: 0 0 10px; }
+.discussion-position h3 { font: 500 22px var(--serif); margin: 0 0 10px; }
 .discussion-position .btn { margin: 2px 4px 2px 0; }
 .discussion-detached { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .discussion-messages li { padding: 16px 0; border-bottom: 1px solid var(--line); }
@@ -69,14 +69,14 @@
 .atlas-tools select { max-width: 200px; min-height: 32px; color: var(--text); background: var(--float); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 6px; font: inherit; }
 .atlas-identity { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .atlas-kicker { font-size: 12px; color: var(--muted); }
-.atlas-identity h3 { font: 400 30px/1.15 Georgia, serif; letter-spacing: -0.7px; margin: 0; overflow-wrap: anywhere; }
+.atlas-identity h3 { font: 400 30px/1.15 var(--serif); letter-spacing: -0.7px; margin: 0; overflow-wrap: anywhere; }
 .atlas-side { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
 .atlas-side i { width: 8px; height: 8px; background: var(--text); border: 1px solid var(--muted); border-radius: 50%; }
 .atlas-side .is-black { background: var(--bg); }
 .atlas-portrait { display: grid; grid-template-columns: 1fr 1.1fr 1fr; align-items: center; gap: 24px; margin: 12px 0 24px; }
 .atlas-index { min-width: 0; }
 .atlas-index-number { display: flex; align-items: baseline; flex-wrap: wrap; gap: 7px; margin: 8px 0 16px; }
-.atlas-index-number strong { font: 400 52px/1.1 Georgia, serif; letter-spacing: -2px; color: var(--atlas-ink); font-variant-numeric: lining-nums tabular-nums; }
+.atlas-index-number strong { font: 400 52px/1.1 var(--serif); letter-spacing: -2px; color: var(--atlas-ink); font-variant-numeric: lining-nums tabular-nums; }
 .atlas-index-number > span { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .atlas-index-rule { height: 1px; background: var(--atlas-rule); max-width: 170px; }
 .atlas-index-rule i { display: block; width: var(--value); height: 1px; background: var(--atlas-ink); transform-origin: left; animation: atlas-trace 900ms ease-out both; }
@@ -87,16 +87,16 @@
 .atlas-axis { stroke-dasharray: 2 5; }
 .atlas-envelope { stroke: var(--atlas-ink); stroke-width: 1.3; fill: color-mix(in srgb, var(--atlas-ink) 11%, transparent); transform-origin: center; animation: atlas-impress 850ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 .atlas-vertex { fill: var(--atlas-ink); animation: atlas-appear 1000ms ease both; }
-.atlas-fingerprint text { fill: var(--muted); font: 10px Georgia, serif; }
+.atlas-fingerprint text { fill: var(--muted); font: 10px var(--serif); }
 .atlas-facets { display: grid; gap: 16px; min-width: 0; }
 .atlas-facet { display: grid; grid-template-columns: 20px 1fr auto; align-items: baseline; gap: 5px; font-size: 13px; }
-.atlas-facet-id { color: var(--muted); font: italic 11px Georgia, serif; }
-.atlas-facet b { font: 400 22px/1 Georgia, serif; color: var(--atlas-ink); font-variant-numeric: lining-nums tabular-nums; }
+.atlas-facet-id { color: var(--muted); font: italic 11px var(--serif); }
+.atlas-facet b { font: 400 22px/1 var(--serif); color: var(--atlas-ink); font-variant-numeric: lining-nums tabular-nums; }
 .atlas-facet-track { grid-column: 2 / 4; height: 2px; background: var(--atlas-rule); margin-top: 5px; }
 .atlas-facet-track i { display: block; height: 100%; width: var(--value); background: var(--atlas-ink); transform-origin: left; animation: atlas-trace 700ms ease-out var(--delay) both; }
 .atlas-map { border-top: 1px solid var(--atlas-rule); padding: 16px 0 18px; }
 .atlas-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.atlas-section-head h4 { margin: 0; font: italic 18px Georgia, serif; }
+.atlas-section-head h4 { margin: 0; font: italic 18px var(--serif); }
 .atlas-section-head > span { font-size: 12px; color: var(--muted); }
 .atlas-map .route-glyph { width: 100%; height: 96px; margin: 16px 0 0; }
 .atlas-map .route-glyph path { stroke: var(--atlas-ink); opacity: 0.55; }
@@ -106,7 +106,7 @@
 .atlas-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; border-top: 1px solid var(--atlas-rule); padding-top: 17px; color: var(--muted); font-size: 12px; }
 .atlas-foot b { font-weight: 400; color: var(--text); font-variant-numeric: tabular-nums; margin-right: 4px; }
 .atlas-foot .atlas-imprint { margin-left: auto; display: flex; align-items: baseline; gap: 12px; }
-.atlas-imprint b { font: italic 18px Georgia, serif; color: var(--atlas-ink); }
+.atlas-imprint b { font: italic 18px var(--serif); color: var(--atlas-ink); }
 .atlas-identity, .atlas-index, .atlas-facets, .atlas-foot { animation: atlas-appear 500ms ease-out both; }
 @keyframes atlas-trace { from { transform: scaleX(0); } }
 @keyframes atlas-impress { from { opacity: 0; transform: scale(0.7); } }

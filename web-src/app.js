@@ -2,6 +2,8 @@ import { html } from "./html.js";
 import { bindPgnInput } from "./analyze-pgn-open.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/source-serif-4";
 import "./styles.css";
 import { promptRenameRepertoire } from "./repertoire-rename.js";
 import { paintBuildSkeleton } from "./views/build-skeleton.js";

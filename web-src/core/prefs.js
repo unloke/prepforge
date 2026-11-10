@@ -5,8 +5,8 @@ import { fetchLichessProfile } from "../lichess-profile.js";
 
 const DEFAULT_PREFS = {
   theme: "system",
-  accent: "blue",
-  boardTheme: "slate",
+  accent: "amber",
+  boardTheme: "wood",
   coordinates: true,
   lastMovePulse: true,
   flipAnim: true,

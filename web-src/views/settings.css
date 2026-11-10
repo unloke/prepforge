@@ -611,8 +611,10 @@
   border-radius: 50%;
   background: var(--swatch);
 }
+.accent-swatch[data-accent="amber"] { --swatch: #c08a3e; }
 .accent-swatch[data-accent="blue"] { --swatch: #2f5bd3; }
 .accent-swatch[data-accent="orange"] { --swatch: #c2410c; }
+:root[data-theme="dark"] .accent-swatch[data-accent="amber"] { --swatch: #d4a35c; }
 :root[data-theme="dark"] .accent-swatch[data-accent="blue"] { --swatch: #6d8ff0; }
 :root[data-theme="dark"] .accent-swatch[data-accent="orange"] { --swatch: #f0932b; }
 /* The board preview: a 2x2 board in the theme's own squares, named beside it. */

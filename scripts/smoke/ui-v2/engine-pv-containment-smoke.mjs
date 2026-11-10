@@ -12,7 +12,7 @@
 // browser Stockfish (a configured lite profile), and samples
 // EVERY animation frame while the search streams:
 //   - documentElement/body scrollWidth-clientWidth and scrollHeight-clientHeight
-//   - #engine-window, #engine-window-pvs, #explorer-engine-slot, #explorer-drawer,
+//   - #engine-window, #engine-window-pvs, #build-engine-slot, #explorer-drawer,
 //     .dock-body scroll vs client (both axes)
 //   - per-row escape: a row's box outside its slot/drawer box
 // It exercises MultiPV 1→5 and two uncached positions (nothing cached for them), so the
@@ -129,7 +129,7 @@ const SAMPLER = () => {
   const sample = () => {
     const doc = document.documentElement;
     const pvs = document.getElementById("engine-window-pvs");
-    const slot = document.getElementById("explorer-engine-slot");
+    const slot = document.getElementById("build-engine-slot");
     const drawer = document.getElementById("explorer-drawer");
     const body = document.querySelector("#build-inspector .dock-body");
     const rows = [...(pvs?.querySelectorAll(".engine-pv") || [])];
@@ -265,10 +265,7 @@ for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.nam
   check(w.pvsX <= 0, `${vp.name}: the PV block must clip a long line, not scroll sideways (worst ${w.pvsX}px)`);
   check(w.escapedSlot === 0, `${vp.name}: a PV row must stay inside its slot (worst ${w.escapedSlot})`);
   check(w.escapedPanel === 0, `${vp.name}: a PV row must stay inside its panel (worst ${w.escapedPanel})`);
-  // #explorer-engine-slot is deliberately full-bleed (margin -12px inside the body's
-  // 12px padding), so the drawer reports exactly that 12px as scrollWidth overflow at
-  // every viewport and with the engine closed. Anything beyond it is new bleed.
-  check(w.drawerX <= 12, `${vp.name}: the Explorer drawer must not bleed past its slot margins (worst ${w.drawerX}px)`);
+  check(w.drawerX <= 0, `${vp.name}: the Explorer drawer must not scroll sideways (worst ${w.drawerX}px)`);
   check(w.bodyX <= 1, `${vp.name}: the inspector body must not scroll sideways (worst ${w.bodyX}px)`);
   // Above the stacking breakpoint the panel owns the screen and the inspector is the
   // intended internal scroll area, so the page itself must not move. Below it the page

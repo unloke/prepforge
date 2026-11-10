@@ -518,7 +518,7 @@
   /* The Explorer's engine card keeps one line: on a 360px phone the button's
      size note goes before the engine's name is clipped mid-word. */
   @container unlock (max-width: 330px) {
-    #explorer-engine-slot .unlock-size { display: none; }
+    #build-engine-slot .unlock-size { display: none; }
   }
   /* The line picker's cells are 32px: a thumb's size, five in a 160px row. */
   .engine-lines > button { width: 32px; height: 32px; }
