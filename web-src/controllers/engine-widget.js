@@ -101,6 +101,7 @@ class EngineWidget {
     this.evalBarText = document.getElementById("engine-eval-bar-text");
     this.evalHead = document.getElementById("engine-head-eval");
     this.linesEl = document.getElementById("engine-lines");
+    this.linesMoreBtn = document.getElementById("engine-lines-more");
     this.depthReadout = document.getElementById("engine-window-depth-readout");
     this.closeBtn = document.getElementById("engine-window-close");
     this._renderLinesReadout();
@@ -161,12 +162,7 @@ class EngineWidget {
     }
     setEngineBestArrow(null);
     this.el.classList.remove("is-visible");
-    // The floating window fades out; docked in a panel there is no fade, so
-    // waiting left the last line standing under a header that had gone.
-    if (this.el.closest?.(".engine-slot")) this.el.hidden = true;
-    else setTimeout(() => {
-      if (!this.el.classList.contains("is-visible")) this.el.hidden = true;
-    }, 240);
+    this.el.hidden = true;
     try {
       if (this.engine) await this.engine.close();
     } catch (_) {
@@ -344,13 +340,27 @@ class EngineWidget {
     for (const btn of this.linesEl?.querySelectorAll("[data-n]") || []) {
       btn.setAttribute("aria-checked", String(Number(btn.dataset.n) === this.multipv));
     }
+    if (this.linesMoreBtn) this.linesMoreBtn.textContent = this.multipv === 1 ? "1 line" : `${this.multipv} lines`;
+  }
+
+  // A phone Repertoire folds the picker behind a "N lines" button.
+  _showLinesPicker(open) {
+    if (!this.linesMoreBtn) return;
+    this.linesMoreBtn.setAttribute("aria-expanded", String(open));
+    this.linesEl.classList.toggle("is-open", open);
   }
 
   _bindControls() {
     this.closeBtn.addEventListener("click", () => setEngineOn(activeViewName(), false));
     this.linesEl.addEventListener("click", (event) => {
       const btn = event.target.closest("[data-n]");
-      if (btn) this._setMultipv(Number(btn.dataset.n));
+      if (!btn) return;
+      this._setMultipv(Number(btn.dataset.n));
+      this._showLinesPicker(false);
+    });
+    this.linesMoreBtn?.addEventListener("click", () => this._showLinesPicker(!this.linesEl.classList.contains("is-open")));
+    globalThis.document?.addEventListener("pointerdown", (event) => {
+      if (this.linesEl.classList.contains("is-open") && !event.target.closest?.(".engine-head-tools")) this._showLinesPicker(false);
     });
     // A line is for the move list: clicking one of its moves plays the line up to
     // that move into the analysis tree, as a variation from the position on the

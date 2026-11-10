@@ -517,11 +517,21 @@
   }
   /* The Explorer's engine card keeps one line: on a 360px phone the button's
      size note goes before the engine's name is clipped mid-word. */
-  @container unlock (max-width: 330px) {
-    #build-engine-slot .unlock-size { display: none; }
-  }
   /* The line picker's cells are 32px: a thumb's size, five in a 160px row. */
   .engine-lines > button { width: 32px; height: 32px; }
+  /* Above the board the engine is one row: the line, then "N lines" (the
+     picker opens under it) and × to turn it off. Name, depth and the download
+     offer stay off the board screen; Settings keeps the download. */
+  #build-engine-slot { padding: 2px 12px 4px; }
+  #build-engine-slot .engine-window.is-docked { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 6px; }
+  #build-engine-slot .engine-window-head { grid-area: 1 / 2; padding: 0; }
+  #build-engine-slot .engine-head-tools { position: relative; gap: 2px; }
+  #build-engine-slot .engine-window-body { grid-area: 1 / 1; }
+  #build-engine-slot :is(.engine-head-meta, .engine-window-unlock) { display: none; }
+  #build-engine-slot .engine-lines { display: none; position: absolute; top: 100%; right: 0; z-index: var(--z-tool); background: var(--float); box-shadow: var(--shadow-2); }
+  #build-engine-slot .engine-lines.is-open { display: inline-flex; }
+  #build-engine-slot .engine-lines-more { display: inline-flex; }
+  #build-engine-slot .engine-window-close { display: inline-grid; }
   /* The fork is one row, as Lichess lays out its next-move choices: the label,
      then the chips in a line that scrolls sideways. Chips are drawn 36px with
      centred text and a 44px target round each. */

@@ -612,8 +612,6 @@
 #analysis-engine-slot .engine-window-body,
 #analysis-engine-slot .engine-window-unlock { grid-column: 1 / -1; }
 #analysis-engine-slot .engine-head-label,
-#analysis-engine-slot .engine-window-close,
-#analysis-engine-slot .engine-window-resize,
 #analysis-engine-slot .engine-bar { display: none; }
 #analysis-engine-slot .engine-window-body { display: block; padding: 0; }
 
