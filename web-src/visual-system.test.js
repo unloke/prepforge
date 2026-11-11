@@ -464,9 +464,9 @@ describe("accent presets meet WCAG AA in both themes", () => {
   }
 
   const presets = [...css.matchAll(/:root(\[data-accent="([a-z]+)"\])/g)].map((m) => m[2]);
-  // Blue is the default and declares no override: it is the light/dark base
+  // Amber is the default and declares no override: it is the light/dark base
   // tokens, checked by the guards above.
-  expect([...new Set(presets)]).toEqual(["orange"]);
+  expect([...new Set(presets)]).toEqual(["blue", "orange"]);
 
   for (const name of [...new Set(presets)]) {
     for (const [theme, selector] of [

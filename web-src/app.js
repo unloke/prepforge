@@ -2,6 +2,7 @@ import { html } from "./html.js";
 import { bindPgnInput } from "./analyze-pgn-open.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
+import "./styles/fonts.css";
 import "./styles.css";
 import { promptRenameRepertoire } from "./repertoire-rename.js";
 import { paintBuildSkeleton } from "./views/build-skeleton.js";

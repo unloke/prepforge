@@ -4,8 +4,8 @@
 
 import { ACCENT_MODES, BOARD_MODES, readStoredAccent, setAccent } from "../theme.js";
 
-const ACCENT_LABELS = { blue: "Blue", orange: "Orange" };
-const BOARD_LABELS = { slate: "Slate", classic: "Classic", green: "Green", walnut: "Walnut" };
+const ACCENT_LABELS = { amber: "Amber", blue: "Blue", orange: "Orange" };
+const BOARD_LABELS = { wood: "Wood", slate: "Slate", classic: "Classic", green: "Green", walnut: "Walnut" };
 
 export function createAppearanceSection({ pref, setPref }) {
   let bound = false;
@@ -45,7 +45,7 @@ export function createAppearanceSection({ pref, setPref }) {
     const container = document.getElementById("settings-accent-pickers");
     if (!container) return;
 
-    const current = readStoredAccent() || "blue";
+    const current = readStoredAccent() || "amber";
     container.innerHTML = "";
 
     ACCENT_MODES.forEach((accent) => {
@@ -71,7 +71,7 @@ export function createAppearanceSection({ pref, setPref }) {
     const container = document.getElementById("settings-board-colors");
     if (!container) return;
 
-    const current = pref("boardTheme") || "slate";
+    const current = pref("boardTheme") || "wood";
     container.innerHTML = "";
 
     BOARD_MODES.forEach((board) => {

@@ -1,13 +1,13 @@
 export const THEME_MODES = Object.freeze(["system", "light", "dark"]);
 
-// The accent presets. `blue` is the default and carries no override in
+// The accent presets. `amber` is the default and carries no override in
 // styles.css; every other name here must have a `:root[data-accent="…"]` block
 // (light) and a dark counterpart, each measured to 4.5:1.
-export const ACCENT_MODES = Object.freeze(["blue", "orange"]);
+export const ACCENT_MODES = Object.freeze(["amber", "blue", "orange"]);
 
-// The board's square colours. `slate` is the default and carries no override;
+// The board's square colours. `wood` is the default and carries no override;
 // every other name has a `:root[data-board="…"]` block in styles.css.
-export const BOARD_MODES = Object.freeze(["slate", "classic", "green", "walnut"]);
+export const BOARD_MODES = Object.freeze(["wood", "slate", "classic", "green", "walnut"]);
 
 // The persisted color theme, kept in the shared prefs blob. Writing the blob
 // rewrites every other pref as well, so a first paint reads it without writing
@@ -44,7 +44,7 @@ export function normalizeTheme(value) {
 }
 
 export function normalizeAccent(value) {
-  return ACCENT_MODES.includes(value) ? value : "blue";
+  return ACCENT_MODES.includes(value) ? value : "amber";
 }
 
 export function readStoredAccent(storage = globalThis.localStorage) {
@@ -93,7 +93,7 @@ export function applyTheme(value, { root = document.documentElement, matchMedia 
 // on a preset the app does not know).
 export function applyAccent(value, { root = document.documentElement } = {}) {
   const accent = normalizeAccent(value);
-  if (accent === "blue") delete root.dataset.accent;
+  if (accent === "amber") delete root.dataset.accent;
   else root.dataset.accent = accent;
   return accent;
 }
@@ -101,8 +101,8 @@ export function applyAccent(value, { root = document.documentElement } = {}) {
 // Board colours: one attribute on <html>, like the accent. Unknown names fall
 // back to the default, so a hand-edited pref cannot leave the board unpainted.
 export function applyBoardTheme(value, { root = document.documentElement } = {}) {
-  const board = BOARD_MODES.includes(value) ? value : "slate";
-  if (board === "slate") delete root.dataset.board;
+  const board = BOARD_MODES.includes(value) ? value : "wood";
+  if (board === "wood") delete root.dataset.board;
   else root.dataset.board = board;
   return board;
 }

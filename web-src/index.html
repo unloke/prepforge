@@ -335,6 +335,8 @@
               </div>
               <button class="btn ghost icon row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
             </div>
+            <!-- The engine sits under the title, over the moves: on whichever tab is open. -->
+            <div class="engine-slot" id="build-engine-slot"></div>
             <div class="panel-body">
             <div class="phone-panes" id="build-panes" role="tablist" aria-label="Panel">
               <button type="button" role="tab" data-pane="moves" aria-selected="true">Moves</button>
@@ -414,7 +416,6 @@
               </div>
               <div class="dock-body">
                 <div class="inspector-panel" id="explorer-drawer" data-testid="explorer-drawer" role="tabpanel" aria-labelledby="build-tool-explorer">
-                  <div class="engine-slot" id="explorer-engine-slot"></div>
                   <div class="explorer-rows" id="explorer-rows"></div>
                 </div>
                 <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" role="tabpanel" aria-labelledby="build-tool-coverage" hidden>
