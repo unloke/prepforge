@@ -704,6 +704,7 @@
     background: var(--text);
     transform: translateX(calc(var(--tab, 0) * 100%));
     transition: transform var(--dur) var(--ease-out);
+    pointer-events: none;
   }
   #view-analyze[data-pane="engine"] .an-tabs { --tab: 1; }
   #view-analyze[data-pane="report"] .an-tabs { --tab: 2; }
