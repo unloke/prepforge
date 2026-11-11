@@ -171,13 +171,26 @@ describe("app boot holds auth-dependent state until the session is known", () =>
       .map((line) => line.trim())
       .filter((line) => line && !line.startsWith("//") && line !== "async function init() {");
     expect(beforeHold).toEqual([]);
-    const authAt = src.indexOf("await refreshAuthStatus();");
+    const authAt = src.indexOf("useStoredSession()");
     expect(showAt).toBeLessThan(authAt);
+  });
+
+  // On a sleeping server every boot request waited its turn behind the last:
+  // providers, the session, settings, the recovery check, then the route.
+  it("opens on a remembered session and reads the server in the background", () => {
+    const init = src.slice(src.indexOf("async function init() {"), src.indexOf("await restoreWorkspaceLocation();"));
+    expect(init).toContain("if (accountService().useStoredSession()) void refreshAuthStatus();");
+    expect(init).toContain("else await Promise.all([providers, refreshAuthStatus()]);");
+    expect(init).not.toContain("await refreshAuthProviders()");
+    const workspace = src.slice(src.indexOf("async function loadSignedInWorkspace() {"));
+    const body = workspace.slice(0, workspace.indexOf("\n}\n"));
+    expect(body).toContain("void refreshAnalyzeRecovery();");
+    expect(body).not.toMatch(/await (refreshAnalyzeRecovery|settingsReady)/);
   });
 
   it("reveals the Library once the session is known, and other routes once restored", () => {
     const early = src.indexOf('view === "dashboard") releaseBootView();');
-    expect(early).toBeGreaterThan(src.indexOf("await refreshAuthStatus();"));
+    expect(early).toBeGreaterThan(src.indexOf("refreshAuthStatus()]);"));
     expect(early).toBeLessThan(src.indexOf("await loadSignedInWorkspace();"));
     const release = src.indexOf("\n  releaseBootView();");
     const restore = src.indexOf("await restoreWorkspaceLocation();");

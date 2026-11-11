@@ -10,6 +10,7 @@ import {
 } from "../auth-gate.js";
 
 const LICHESS_KEY = "prepforge.lichess_username";
+const SESSION_KEY = "prepforge.session";
 // After the guest dismisses the sign-in modal, a burst of 401s from the same
 // action must not pop it straight back open.
 const AUTH_PROMPT_COOLDOWN_MS = 10_000;
@@ -233,6 +234,7 @@ export function createAccountController({
       setStatus("Session ended. Unsaved changes could not be kept on this device; sign in to save them.", { severity: "error" });
       return;
     }
+    storeSession(null);
     appState.sessionExpired = false;
     appState.signedIn = false;
     appState.accountUserId = null;
@@ -689,45 +691,88 @@ export function createAccountController({
     }
   }
 
+  function applySession(me) {
+    appState.signedIn = !!me.id;
+    appState.accountUsername = me.display_name || me.email || null;
+    appState.accountUserId = me.id || null;
+    appState.account = me.id ? {
+      email: me.email || "",
+      displayName: me.display_name || "",
+      plan: me.plan || "free",
+      hasPassword: !!me.has_password,
+      repertoireLimit: me.repertoire_limit ?? null,
+      repertoireCount: me.repertoire_count ?? null,
+    } : null;
+  }
+
+  function storeSession(me) {
+    try {
+      if (me?.id) {
+        const { id, display_name, email, plan, has_password, repertoire_limit, repertoire_count } = me;
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ id, display_name, email, plan, has_password, repertoire_limit, repertoire_count }));
+      } else {
+        localStorage.removeItem(SESSION_KEY);
+      }
+    } catch (_) {
+      /* ignore storage errors */
+    }
+  }
+
+  // A reload opens on the last session the server confirmed, so the workspace
+  // never waits on a sleeping server; refreshAuthStatus then confirms it.
+  let sessionFromCache = false;
+  function useStoredSession() {
+    let me = null;
+    try {
+      me = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    } catch (_) {
+      /* ignore storage errors */
+    }
+    if (!me?.id) return false;
+    applySession(me);
+    appState.authKnown = true;
+    sessionFromCache = true;
+    renderAccountChip();
+    return true;
+  }
+
   let authRetry = 0;
   async function refreshAuthStatus() {
     const previousOwner = appState.accountUserId;
     // The session is being read right now. Anything that renders "signed out" while
     // this is false is guessing, and a signed-in user sees that guess flash on reload.
+    const unconfirmed = () => !appState.authKnown || sessionFromCache;
     try {
       const me = await api("/api/auth/me");
       appState.sessionExpired = false;
-      appState.signedIn = !!me.id;
-      appState.accountUsername = me.display_name || me.email || null;
-      appState.accountUserId = me.id || null;
-      appState.account = {
-        email: me.email || "",
-        displayName: me.display_name || "",
-        plan: me.plan || "free",
-        hasPassword: !!me.has_password,
-        repertoireLimit: me.repertoire_limit ?? null,
-        repertoireCount: me.repertoire_count ?? null,
-      };
+      applySession(me);
+      storeSession(me);
     } catch (error) {
       if (error?.status !== 401) {
         // A server waking up or a dropped request is not an answer: the chip
         // would sit on "Checking your session…" for good. Ask again, backing off.
         renderAccountChip();
-        if (!appState.authKnown) {
+        if (unconfirmed()) {
           authRetry = Math.min(authRetry + 1, 5);
-          setTimeout(() => { if (!appState.authKnown) void refreshAuthStatus(); }, 1000 * 2 ** authRetry);
+          setTimeout(() => { if (unconfirmed()) void refreshAuthStatus(); }, 1000 * 2 ** authRetry);
         }
         return;
       }
       appState.sessionExpired = false;
-      appState.signedIn = false;
-      appState.accountUsername = null;
-      appState.accountUserId = null;
-      appState.account = null;
+      applySession({});
+      storeSession(null);
     }
     appState.authKnown = true;
     authRetry = 0;
+    const wasCached = sessionFromCache;
+    sessionFromCache = false;
     if (previousOwner !== appState.accountUserId) {
+      // The workspace loaded for a remembered session the server no longer
+      // holds: start over from the answer rather than patch every view.
+      if (wasCached) {
+        window.location.reload();
+        return;
+      }
       appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
       onOwnerChanged();
     }
@@ -788,6 +833,7 @@ export function createAccountController({
     } catch (_) {
       /* ignore storage errors */
     }
+    storeSession(null);
     appState.signedIn = false;
     appState.accountUserId = null;
     appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
@@ -889,6 +935,7 @@ export function createAccountController({
     toggleAccountMenu,
     handleAccountMenuAction,
     refreshAuthStatus,
+    useStoredSession,
     authKnown: () => appState.authKnown === true,
     signOut,
     syncReplayControls,
