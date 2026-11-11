@@ -18,9 +18,8 @@ const rule = (selector) => {
   return match[2];
 };
 
-it("the coach banner is a soft strip, not a ruled one", () => {
-  expect(rule(".train-coach")).not.toMatch(/border-bottom/);
-  expect(rule(".train-coach")).toMatch(/background: var\(--panel-soft\)/);
+it("the coach banner sits on the panel, not in a ruled or tinted strip", () => {
+  expect(rule(".train-coach")).not.toMatch(/border-bottom|background/);
 });
 
 it("the session card is not a box", () => {

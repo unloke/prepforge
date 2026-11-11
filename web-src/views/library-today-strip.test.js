@@ -29,9 +29,9 @@ it("the queue is the loudest line in the strip", () => {
 });
 
 it("the streak figure is a figure, not a sentence", () => {
-  // 28px, tabular so two visits do not shift the strip; the word beside it is
-  // the small size.
-  expect(rule(".today-count {")).toMatch(/font-size:\s*28px/);
+  // A serif figure, tabular so two visits do not shift the strip; the word
+  // beside it is the small size.
+  expect(rule(".today-count {")).toMatch(/font: 300 44px\/1 var\(--serif\)/);
   expect(rule(".today-count {")).toMatch(/font-variant-numeric:\s*tabular-nums/);
   expect(rule(".today-unit {")).toMatch(/font-size:\s*var\(--fs-s\)/);
 });
