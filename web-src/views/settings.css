@@ -54,21 +54,8 @@
 }
 .settings-nav-link:hover { color: var(--text); }
 .settings-nav-link:active { transform: scale(0.97); }
-/* The selection mark is the app's one accent line (app-sheet): a 2px line on
-   the nearest edge, exactly as tall as the label. */
-.settings-nav-link.is-active { color: var(--text); }
-.settings-nav-link::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  border-radius: 1px;
-  background: var(--accent);
-  opacity: 0;
-}
-.settings-nav-link.is-active::before { opacity: 1; }
+/* D: the open section is a quiet fill. */
+.settings-nav-link.is-active { background: var(--surface-3); color: var(--text); }
 .settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- Cards + rows ------------------------------------------------------ */

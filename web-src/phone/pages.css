@@ -671,7 +671,6 @@
   }
   #view-settings .settings-nav-link.is-active::after { opacity: 1; }
   /* The desktop label column draws its line on the left edge; the strip has none. */
-  #view-settings .settings-nav-link::before { display: none; }
   #view-settings .settings-content { display: flex; flex-direction: column; gap: var(--phone-gap); }
   /* The section strip is the page's docked bar; the title scrolls away under
      it rather than docking above it as a second bar. */
