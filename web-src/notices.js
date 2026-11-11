@@ -244,8 +244,9 @@ class Notice {
   }
 
   // ---- Jobs ----------------------------------------------------------------
-  update({ current, total, message, phase }) {
+  update({ current, total, message, phase, title }) {
     if (this.state !== "running") return;
+    if (title !== undefined) this._paint(title);
     if (phase && phase !== this._phase) {
       // A new phase may have a smaller denominator: adopt it and restart the bar.
       this._phase = phase;

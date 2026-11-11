@@ -959,7 +959,8 @@ async function runAnalysis(options = {}) {
 
     notices.startJob({
       id: jobId,
-      title: "Analyzing game",
+      title: "Stockfish",
+      message: `0/${positions.length}`,
       tab: "analyze",
       // Docked in the Analyze panel (above the eval card) rather than floating
       // bottom-right, where it covered the right half of the eval graph.
@@ -1027,9 +1028,9 @@ async function runAnalysis(options = {}) {
             engineLifecycleMark(`analyze-${sub}`, tAnalyze);
           },
           onProgress: (done, total) =>
-            job({ current: done, total, phase: "maia-inference", message: `Maia ${done}/${total} moves` }),
+            job({ current: done, total, phase: "maia-inference", title: "Maia", message: `${done}/${total}` }),
           onTrapProgress: (done, total) =>
-            job({ current: done, total, phase: "maia-traps", message: `Maia traps ${done}/${total}` }),
+            job({ current: done, total, phase: "maia-traps", title: "Traps", message: `${done}/${total}` }),
         });
         for (const [fen, ev] of pendingEvals.splice(0)) assessor.push(fen, ev);
         return assessor;
@@ -1046,7 +1047,7 @@ async function runAnalysis(options = {}) {
         else if (wantsMaia) pendingEvals.push([fen, ev]);
       },
       onProgress: (done, total) => job({ current: done, total, phase: "stockfish",
-        message: `Stockfish depth ${prep.depth} · ${done}/${total}` }),
+        title: "Stockfish", message: `${done}/${total}` }),
       shouldCancel,
     }));
     engineLifecycleMark("analyze-stockfish-done", tAnalyze);
@@ -1084,14 +1085,16 @@ async function runAnalysis(options = {}) {
               current: 0,
               total: 1,
               phase: "maia-load",
-              message: `downloading Maia model · ${pct}%`,
+              title: "Maia",
+              message: `${pct}%`,
             });
           } else if (phase === "cache") {
             job({
               current: 0,
               total: 1,
               phase: "maia-load",
-              message: "loading Maia model from cache",
+              title: "Maia",
+              message: "Loading",
             });
           } else if (phase === "verify" || phase === "session") {
             // Cached weights still need an ORT session rebuild (the slow part). Say so, rather
@@ -1101,7 +1104,8 @@ async function runAnalysis(options = {}) {
               current: 0,
               total: 1,
               phase: "maia-load",
-              message: "preparing Maia engine…",
+              title: "Maia",
+              message: "Starting",
             });
           }
         });
@@ -1137,7 +1141,8 @@ async function runAnalysis(options = {}) {
       current: positions.length,
       total: positions.length,
       phase: "classifying",
-      message: "Classifying moves",
+      title: "Grading",
+      message: "Moves",
     });
     // F-03: the engine/model compute is DONE — checkpoint it to the device so
     // a failed SAVE below never costs a re-analysis (retry = re-post only).
@@ -1204,7 +1209,8 @@ async function runAnalysis(options = {}) {
             current: positions.length,
             total: positions.length,
             phase: "saving",
-            message: "Saving analysis",
+            title: "Saving",
+            message: "Report",
           });
         }
         return response;
@@ -1247,7 +1253,8 @@ async function runAnalysis(options = {}) {
       current: positions.length,
       total: positions.length,
       phase: "rendering",
-      message: "rendering",
+      title: "Drawing",
+      message: "Report",
     });
     try {
       // eslint-disable-next-line no-console

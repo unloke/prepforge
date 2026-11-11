@@ -36,14 +36,15 @@
   #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
   #analysis-eval-card .ev-meter { display: none; }
   #analysis-eval-card .eval-chart { border-radius: 6px; touch-action: pan-y; }
-  #analysis-eval-card > .analysis-job-dock:not(:empty) {
-    position: absolute;
-    top: 6px;
-    right: var(--phone-gutter);
-    padding: 0 8px;
-    border-radius: 6px;
-    background: var(--panel);
-  }
+  /* A run reads in the figure's place: its phase over its count, and Stop at
+     the graph's far end, still empty while the curve draws. */
+  #analysis-eval-card > .analysis-job-dock:not(:empty) { grid-column: 1; justify-self: stretch; align-self: center; }
+  #analysis-eval-card:has(> .analysis-job-dock:not(:empty)) .ev-head { visibility: hidden; }
+  #analysis-eval-card .analysis-job-dock > .notice .notice-main { flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; }
+  #analysis-eval-card .analysis-job-dock > .notice .notice-title { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #analysis-eval-card .analysis-job-dock > .notice .notice-text { font-size: 20px; font-weight: 500; line-height: 1.2; }
+  #analysis-eval-card .analysis-job-dock .notice-actions { position: absolute; top: 50%; right: calc(var(--phone-gutter) - 8px); transform: translateY(-50%); }
+  #analysis-eval-card .analysis-job-dock .notice-stop { height: 44px; padding: 0 8px; font-size: 14px; }
 
   /* The coach, when its tab is open: the review switch, the verdict (it scrolls
      inside), the human picks, the prep note. The panel keeps its place; the
