@@ -223,30 +223,31 @@
    sit under their fork, and a position with no answer on our side carries
    one mark. Scoped here (not in the shared move-tree rules that Analyze
    uses): the classes come from build.js's decorate(). */
-/* The main line is a score sheet: one numbered row per move pair, White and
-   Black in their own columns, and each side line indented under the move it
-   leaves from, in smaller grey type that runs inline. */
-#builder-tree .mtree-line.is-main {
-  display: grid;
-  grid-template-columns: 2.4em minmax(0, 7.5em) minmax(0, 7.5em) 1fr;
-  align-items: center;
-}
+/* The repertoire reads as written lines: the main line flows as text, each
+   side line starts on its own row a notch in, on a rail, and a note sits
+   under its move in italic serif. */
+#builder-tree .mtree { padding: 4px 0 8px; font-size: 14px; line-height: 1.75; word-spacing: 2px; }
 
 
-#builder-tree .mtree-line.is-main > .mtree-num {
-  grid-column: 1;
-  justify-self: end;
-  padding: 0 6px 0 0;
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
+#builder-tree .mtree-num { padding: 0; margin-right: 1px; color: var(--label); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 
 #builder-tree .mtree-line.is-main > .mtree-move {
-  justify-self: start;
-  padding: 3px 8px;
-  font-size: 14px;
+  padding: 1px 3px;
   font-weight: 500;
+}
+
+
+#builder-tree .mtree-move { margin: 0; border-radius: 3px; }
+
+
+/* The current move: amber ink and an underline, not a filled pill. */
+#builder-tree .mtree-move.is-current,
+#builder-tree .mtree-line.is-main > .mtree-move.is-current {
+  background: none;
+  box-shadow: inset 0 -1.5px 0 var(--accent);
+  border-radius: 0;
+  color: var(--accent-text);
 }
 
 
@@ -256,37 +257,38 @@
    was 13px on 21px rows with both moves hugging the left, Build's 14px/650 on
    30px). */
 @media (min-width: 761px) {
-  :is(.moves-grid, #builder-tree) .mtree-line.is-main, .train-play-trail { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr); column-gap: 0; }
-  :is(.moves-grid, #builder-tree) .mtree-line.is-main > :is(.mtree-num, .mtree-move), .train-play-trail > span { display: flex; align-items: center; justify-self: stretch; min-height: 28px; margin: 0; padding: 0 10px; border-radius: 0; font-size: 15px; font-weight: 500; text-align: left; }
-  :is(.moves-grid, #builder-tree) .mtree-line.is-main > .mtree-num, .train-play-trail > .pt-n { align-self: stretch; justify-content: center; padding: 0 4px; background: var(--surface-3); color: var(--label); font-size: 13px; }
-  /* A wide panel spreads the sheet's columns apart; a score sheet stays a sheet. */
-  #builder-tree .mtree-line.is-main { max-width: 26rem; }
+  .moves-grid .mtree-line.is-main, .train-play-trail { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr); column-gap: 0; }
+  .moves-grid .mtree-line.is-main > :is(.mtree-num, .mtree-move), .train-play-trail > span { display: flex; align-items: center; justify-self: stretch; min-height: 28px; margin: 0; padding: 0 10px; border-radius: 0; font-size: 15px; font-weight: 500; text-align: left; }
+  .moves-grid .mtree-line.is-main > .mtree-num, .train-play-trail > .pt-n { align-self: stretch; justify-content: center; padding: 0 4px; background: var(--surface-3); color: var(--label); font-size: 13px; }
   #view-train .train-play-trail:not([hidden], :empty) { display: grid; align-content: start; max-height: 50vh; padding: 0; overflow: auto; }
   .train-play-trail > .pt-m.is-last { background: var(--accent); color: var(--accent-ink); }
 }
 
 
-#builder-tree .mtree-line.is-main > .mtree-move.is-w { grid-column: 2; }
-
-
-#builder-tree .mtree-line.is-main > .mtree-move.is-b { grid-column: 3; }
-
 #builder-tree .build-skeleton .mtree-move { pointer-events: none; }
-#builder-tree .build-skeleton .mtree-line.is-main > .mtree-num { background: none; }
 #builder-tree .build-skeleton .mtree-move .skeleton-text { display: block; width: 48px; height: 14px; }
 #builder-tree .build-skeleton .mtree-move:nth-child(6n + 2) .skeleton-text { width: 36px; }
 
 
-#builder-tree .mtree-line.is-main > :is(.mtree-var, .mtree-comment) { grid-column: 1 / -1; }
+#builder-tree .mtree-var { --mtree-indent: 10px; margin: 2px 0 2px 8px; padding: 1px 0 1px 14px; color: var(--text); }
 
 
-#builder-tree .mtree-line.is-main > .mtree-var { margin: 1px 0 3px 2.4em; line-height: 1.6; }
+#builder-tree .mtree-var::before { background: var(--line-strong); }
 
 
-#builder-tree .mtree-var { --mtree-indent: 10px; }
+#builder-tree .mtree-var .mtree-move { padding: 1px 3px; font-weight: 400; }
 
 
-#builder-tree .mtree-var .mtree-move { padding: 1px 4px; font-weight: 400; }
+/* A note under its move: italic serif, one line until it is opened. */
+#builder-tree .mtree-comment {
+  margin: 2px 0 6px 18px;
+  padding: 0;
+  border-left: 0;
+  max-width: 34em;
+  font: italic 14.5px/1.5 var(--serif);
+  word-spacing: 0;
+  color: var(--muted);
+}
 
 
 /* The mark rides inline after the move: the touch layouts' hit-area ::after

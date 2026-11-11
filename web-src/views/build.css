@@ -226,12 +226,12 @@ body.is-guest .build-empty-member, body:not(.is-guest) .build-empty-guest { disp
 .build-tree-region > .tree-wrap { flex: 1 1 auto; min-height: 0; }
 
 
+/* The fork sits under the tree in its own space: floating over the tree, it
+   covered the first rows of the flowing lines. */
 .forkbar {
-  position: absolute;
-  z-index: 8;
-  top: 8px;
-  left: 10px;
-  right: 10px;
+  order: 1;
+  flex: none;
+  margin: 6px 10px 8px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -239,7 +239,6 @@ body.is-guest .build-empty-member, body:not(.is-guest) .build-empty-guest { disp
   padding: 10px 12px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-pop, 0 8px 24px rgb(0 0 0 / 0.16));
   background: var(--panel);
   min-width: 0;
 }
@@ -881,9 +880,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: center;
   gap: 12px;
   min-width: 0;
-  min-height: 30px;
+  min-height: 34px;
   padding: 0 6px;
-  border-bottom: 1px solid var(--line-soft);
+  border-radius: 6px;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
@@ -913,9 +912,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .explorer-row {
   position: relative;
   min-width: 0;
-  border-top: 0;
-  border-right: 0;
-  border-left: 0;
+  border: 0;
   background: transparent;
   font: inherit;
   font-size: var(--fs-s);
@@ -1040,10 +1037,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .explorer-bar {
   display: flex;
   min-width: 0;
-  height: 22px;
-  /* The white share is the panel's own colour: a frame, as on Lichess, keeps
-     it a segment of the bar. */
-  border: 1px solid var(--line-strong);
+  height: 18px;
   border-radius: 3px;
   overflow: hidden;
   background: var(--explorer-track);
@@ -1092,6 +1086,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 
 .explorer-rows.has-eval .explorer-head .explorer-eval { font-weight: 500; color: var(--label); }
+
+
+/* The Games figures sit right, under their heading. */
+.explorer-rows.has-eval .explorer-head > span:nth-child(3) { text-align: right; }
 
 
 .explorer-eval.is-best { color: var(--good-text); }
