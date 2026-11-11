@@ -100,9 +100,10 @@ describe("workspace chrome layout", () => {
     const buildStack = blocks.find(([, body]) => body.includes("#view-build .sidebar { max-height: none"));
     expect(buildStack[0]).toBe(STACKED);
     expect(blocks.some(([q, body]) => q === WIDE && body.includes("#view-train .train-sidebar { height: auto"))).toBe(true);
-    // Games: ledger + detail side by side to 860px, then one column.
-    expect(replayCss).toMatch(/max-width:\s*1020px\)\s*\{\s*\.triage\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+320px/);
-    expect(replayCss).toMatch(/max-width:\s*860px\)\s*\{\s*\.triage\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
+    // Games: one ledger; the open game's board sits beside its detail, then
+    // above it from 860px down.
+    expect(replayCss).toMatch(/\.focus \{[^}]*grid-template-columns: 200px minmax\(0, 1fr\)/);
+    expect(replayCss).toMatch(/max-width:\s*860px\)\s*\{[^}]*\}\s*\.focus\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);
     expect(css).toMatch(/max-width:\s*860px\)\s*\{\s*\.review,\s*\.games-panel,\s*\.replay-results\s*\{\s*height:\s*auto/);
     // Nested lists hand the wheel back to their scrolling parent.
     expect(analyzeCss).not.toMatch(/\.moves-grid\s*\{[^}]*overscroll-behavior:\s*contain/);

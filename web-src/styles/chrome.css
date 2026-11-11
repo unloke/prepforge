@@ -402,7 +402,7 @@
    761px, so a page does not change its header shape when the rail folds. */
 @media (min-width: 761px) {
   .workspace .page-head { display: flex; align-items: baseline; gap: 10px; min-height: 44px; }
-  .workspace .page-head h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+  .workspace .page-head h1 { margin: 0; font-family: var(--serif); font-size: 28px; font-weight: 400; }
   /* The head's icon button mirrors a control the desktop card head already
      shows in words, so on a wide screen it would be a second "New repertoire". */
   .workspace .page-head .page-head-btn { display: none; }

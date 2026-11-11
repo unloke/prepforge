@@ -214,11 +214,14 @@ describe("replay focus internals", () => {
     expect(String(html)).toMatch(/data-piece="p"/);
   });
 
-  it("resolves You in the detail header like the ledger rows", () => {
+  it("resolves You in the open row, and the detail under it does not repeat the players", () => {
     makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
     const html = String(elements["replay-results"].innerHTML);
-    expect(html).toContain("<h2>opp_one vs You</h2>");
-    expect(html).not.toContain("<h2>opp_one vs me_user</h2>");
+    expect(html).toContain("<b>opp_one</b> vs <b>You</b>");
+    expect(html).not.toContain("me_user</b>");
+    expect(html).not.toContain("<h2>opp_one");
+    // The detail follows its row inside the ledger.
+    expect(html).toMatch(/class="lr is-open"[^]*?<\/button><section class="focus"/);
   });
 
   it("renders the moveline as move-pair rows with the departure called out", () => {
@@ -395,7 +398,7 @@ describe("replay focus internals", () => {
       misses_recorded: 0,
     });
     const html = String(elements["replay-results"].innerHTML);
-    expect(String(html).match(/kind-badge t-warn/g)).toHaveLength(3); // 2 rows + focus
+    expect(String(html).match(/kind-badge t-warn/g)).toHaveLength(2); // the rows; the detail under the open one does not repeat it
     expect(String(html)).toContain(">Opponent left prep<");
     expect(String(html)).not.toContain("Different opening");
     expect(String(html)).not.toContain("Opponent novelty");

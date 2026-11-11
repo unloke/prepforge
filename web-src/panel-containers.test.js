@@ -31,8 +31,8 @@ describe("panel containers", () => {
     // The badge column holds "Opponent left prep" at every width, so it never runs into the game column.
     expect(replay).toMatch(/\.lr \{[^}]*grid-template-columns: 156px minmax\(160px, 260px\)/);
     expect(replay).toContain(".lr { grid-template-columns: 156px minmax(110px, 1fr) 64px 80px; }");
-    // The page-level split stays a viewport query.
-    expect(replay).toMatch(/@media \(max-width: 1279px\) \{\s*\.triage \{ grid-template-columns: minmax\(0, 1fr\) 380px; \}\s*\}/);
+    // No page-level split: the open game unfolds inside the ledger.
+    expect(replay).not.toMatch(/\.triage \{[^}]*grid-template-columns/);
     expect(unlock).toMatch(/@container unlock \(max-width: 440px\) \{\s*\.unlock:not\(\.is-inline\) \{ grid-template-columns/);
   });
 

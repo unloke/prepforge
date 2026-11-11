@@ -201,18 +201,20 @@ async function runViewport(vp) {
   const focusText = await page.locator("#replay-results .focus").textContent().catch(() => "");
   check(/expected/.test(focusText || "") && /e6/.test(focusText || "") && /d5/.test(focusText || ""), "focus detail should name the expected and actual moves");
   check((await page.locator("#replay-results .focus .legend").count()) === 0, "focus should not show a standing arrow legend");
-  // The description sits under the board, and the board uses the card's width.
+  // The open game unfolds right under its row: on a wide screen the board
+  // sits beside the description, on a phone above it.
   const geom = await page.evaluate(() => {
     const rect = (sel) => document.querySelector(sel)?.getBoundingClientRect();
+    const row = rect("#replay-results .lr.is-open");
     const focus = rect("#replay-results .focus");
     const boardEl = rect("#replay-results .focus-board");
     const info = rect("#replay-results .focus-info");
-    return focus && boardEl && info
-      ? { below: info.top >= boardEl.bottom - 1, wide: boardEl.width >= (focus.width - 26) * 0.8 }
+    return row && focus && boardEl && info
+      ? { under: Math.abs(focus.top - row.bottom) <= 1, beside: info.left >= boardEl.right, below: info.top >= boardEl.bottom - 1 }
       : null;
   });
-  check(!!geom && geom.below, "focus description should sit below the board");
-  check(!!geom && geom.wide, "focus board should use most of the card's width");
+  check(!!geom && geom.under, "the open game should unfold right under its row");
+  check(!!geom && (vp.width > 860 ? geom.beside : geom.below), "the description should sit beside the board (wide) or under it (narrow)");
 
   if (vp.width <= 760) {
     const ledgerFirst = await page.evaluate(() => {

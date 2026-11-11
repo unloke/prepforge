@@ -637,7 +637,7 @@
     background: var(--bg);
   }
   #view-train .train-coach-icon { width: 22px; height: 22px; flex: none; }
-  #view-train .train-coach-title { font-size: 15px; font-weight: 500; }
+  #view-train .train-coach-title { font-size: 20px; }
   #view-train .train-coach-sub { font-size: 13px; }
 
   /* Session bottom bar: four labelled icons spread evenly (Menu · Flip ·

@@ -25,17 +25,12 @@
   #view-replay .toolbar .sum-chip { height: var(--control-h); }
 }
 
+/* D: one table; the open game unfolds under its row (board, then the detail). */
 .triage {
   flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  /* The detail column is as wide as the board inside it, and the board yields
-     to the window height so a 1366×768 laptop still ends the detail inside
-     the card instead of scrolling the move list out of view. One measure for
-     both, so the board, the sentences and the move rows share both edges. */
-  --focus-w: clamp(260px, calc(100dvh - 412px), 520px);
-  grid-template-columns: minmax(0, 1fr) minmax(380px, calc(var(--focus-w) + 24px));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
 }
 .ledger,
 .focus { min-height: 0; padding: 0; }
@@ -45,8 +40,7 @@
 /* Surfaces by tone: the cards are one step off the page ground with no
    outline. The outline plus the ground's own tint made two nested rectangles
    that read as a frame around the table rather than a surface. */
-#view-replay :is(.ledger, .focus) { border: 0; background: var(--panel); }
-#view-replay .focus { background: var(--panel-soft); }
+#view-replay .ledger { border: 0; background: var(--panel); }
 .ledger { display: flex; flex-direction: column; overflow: hidden; }
 /* The ledger header: title and count on one baseline, with the count reading
    as the title's continuation ("Games to review 4 games · me_user") instead of
@@ -176,7 +170,6 @@
 .lr.is-skeleton { cursor: default; pointer-events: none; }
 .lr.is-skeleton .pl,
 .lr.is-skeleton .open-prev { color: transparent; }
-.focus.is-skeleton .focus-info h2 { color: transparent; }
 /* The focus board's own shape (an 8×8 board) as one pulsing block, the board
    not having loaded being the only unknown here. */
 .skeleton-board {
@@ -185,38 +178,36 @@
   background: var(--surface-3);
   animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
-.kind-badge.t-good { background: var(--good-soft); color: var(--good-text); }
-.kind-badge.t-bad { background: var(--danger-soft); color: var(--danger-strong); }
-.kind-badge.t-warn { background: var(--warn-soft); color: var(--warn-text); }
-.kind-badge.t-none { background: var(--none-soft); color: var(--none); }
+/* D: an outcome is a coloured dot before plain text, not a filled pill. */
+#view-replay .lr .kind-badge { padding-inline: 0; background: none; color: var(--text); }
+#view-replay .lr .kind-badge::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--dot); vertical-align: 1px; }
+.kind-badge.t-good { --dot: var(--good); background: var(--good-soft); color: var(--good-text); }
+.kind-badge.t-bad { --dot: var(--danger); background: var(--danger-soft); color: var(--danger-strong); }
+.kind-badge.t-warn { --dot: var(--warn); background: var(--warn-soft); color: var(--warn-text); }
+.kind-badge.t-none { --dot: var(--none); background: var(--none-soft); color: var(--none); }
 
-.focus { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow: auto; scrollbar-gutter: stable; }
-/* Board above, detail text below, at every width: the board takes the card's
-   full width instead of sharing it with the text. */
-.focus-top { display: flex; flex-direction: column; gap: 12px; }
-/* The board fills the card's width; the card itself is sized from the window
-   height in `.triage`. */
-.focus-board { position: relative; width: 100%; max-width: var(--focus-w); aspect-ratio: 1; }
+.focus {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 12px 24px;
+  padding: 16px 12px 18px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-soft);
+}
+.focus-top { display: contents; }
+.focus-board { position: relative; grid-row: 1 / span 2; width: 100%; align-self: start; aspect-ratio: 1; }
 .focus-board .scout-miniboard { position: relative; box-sizing: border-box; width: 100%; height: auto; aspect-ratio: 1; }
 .focus-info { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
-/* The detail is the one part of the page that is prose, not a table: it gets
-   the reading step (15px) while the ledger stays at the dense 13px. */
-.focus-info h2 { font-size: 16px; word-break: break-word; }
-.focus-line { display: flex; align-items: center; gap: 8px; margin: 0; }
-.focus-result { font-weight: 600; font-variant-numeric: tabular-nums; }
-.focus-result.r-win { color: var(--good-text); }
-.focus-result.r-loss { color: var(--danger-strong); }
-.focus-result.r-draw { color: var(--muted); }
 /* The reasons are the only running prose on the page and the only thing a
    player reads word by word, so they take the reading step (15px); the two
    sentences tell what left prep and how to fix it. */
 #view-replay .reasons { display: flex; flex-direction: column; gap: 6px; max-width: 68ch; margin: 0; padding-left: 16px; color: var(--text); font-size: 16px; line-height: 1.5; }
 .reasons strong { color: var(--text); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
-.moveline { display: grid; gap: 2px; font: 13px/1.55 var(--font); font-variant-numeric: tabular-nums; }
+.moveline { grid-column: 2; display: flex; flex-wrap: wrap; gap: 2px 6px; font: 13px/1.55 var(--font); font-variant-numeric: tabular-nums; }
 .move-pair {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: auto auto auto;
   align-items: center;
   gap: 4px;
   padding: 1px 2px;
@@ -243,7 +234,7 @@
    across the whole half of the row (on a phone that bar ran 150px for "Nf3"),
    and the note under it starts on the moves' edge instead of at the card's. */
 .ply.dep { justify-self: start; }
-.dep-note { padding-left: 34px; }
+.dep-note { padding-left: 2px; }
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .replay-arrows path {
@@ -256,27 +247,17 @@
 .replay-arrows .t-bad { fill: var(--danger); }
 
 /* ≤1279: the detail column narrows. */
-@media (max-width: 1279px) {
-  .triage { grid-template-columns: minmax(0, 1fr) 380px; }
-}
-/* A narrow ledger drops the Opening column. Its width follows the detail
-   column, which follows the window's height, so this is the ledger's own. */
+/* A narrow ledger drops the Opening column. */
 @container ledger (max-width: 700px) {
   .lr { grid-template-columns: 156px minmax(110px, 1fr) 64px 80px; }
   .lr > :nth-child(4) { display: none; }
 }
-/* ≤1020: narrow laptop / split screen. Ledger and detail stay side by side
-   (a row click must visibly change the detail beside it); the detail narrows. */
-@media (max-width: 1020px) {
-  .triage { grid-template-columns: minmax(0, 1fr) 320px; }
-}
-/* ≤860: one column, page scroll (the row click scrolls the detail into view). */
+/* ≤860: page scroll; the detail stacks under its board. */
 @media (max-width: 860px) {
-  .triage { grid-template-columns: minmax(0, 1fr); }
-  .ledger-table,
-  .focus { overflow: visible; }
-  /* One column and a scrolling page: the board is the card's width. */
-  .focus-board { max-width: none; }
+  .ledger-table { overflow: visible; }
+  .focus { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+  .focus-board { grid-row: auto; max-width: 360px; }
+  .moveline { grid-column: 1; }
 }
 /* ≤760: ledger first (reachable at the top, like the desktop column order),
    two-line rows, no column header. */
