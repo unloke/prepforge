@@ -121,7 +121,7 @@
   .view > .page-head { margin-bottom: var(--phone-gap); }
   @keyframes page-head-dock { to { box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the nav bar's edge over scrolled rows */ } }
   @keyframes page-title-dock { to { transform: scale(0.773); } }
-  .page-head h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .page-head h1 { margin: 0; font-family: var(--serif); font-size: 20px; font-weight: 400; }
   .page-head-btn {
     position: relative;
     display: flex;
