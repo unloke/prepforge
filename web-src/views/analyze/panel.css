@@ -354,6 +354,13 @@
 .cr-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .cr-label .rp-glyph { font-style: normal; font-weight: 600; }
 .cr-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cr-move { font: 400 20px/1 var(--serif); }
+.cr-move > i { color: var(--cr-tone, inherit); font-style: normal; }
+.cr-move + .cr-text { color: var(--cr-tone, var(--muted)); }
+.cr-label.g-brilliant { --cr-tone: var(--brilliant-text); }
+.cr-label.g-great { --cr-tone: var(--great-text); }
+.cr-label.g-mistake { --cr-tone: var(--warn-text); }
+.cr-label.g-blunder { --cr-tone: var(--danger); }
 .cr-label.is-right .cr-text { color: var(--good-text); }
 .cr-label.is-wrong .cr-text { color: var(--warn-text); }
 .coach-review > .btn { flex: none; }

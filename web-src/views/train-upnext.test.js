@@ -16,7 +16,7 @@ function makeElements() {
     "train-upnext": makeHost(),
     "train-line-label": { textContent: "" },
     "train-progress-fill": { style: {} },
-    "train-progress": { setAttribute() {} },
+    "train-progress": { setAttribute() {}, toggleAttribute() {}, style: { setProperty() {} } },
     "train-card-kind": { hidden: true, className: "", textContent: "" },
   };
 }
@@ -54,7 +54,7 @@ describe("train up-next preview", () => {
   it("updates the accessible progress value as cards advance", () => {
     const els = makeElements();
     const values = {};
-    els["train-progress"] = { setAttribute: (name, value) => { values[name] = value; } };
+    els["train-progress"] = { setAttribute: (name, value) => { values[name] = value; }, toggleAttribute() {}, style: { setProperty() {} } };
     const view = makeView({ smart: null }, els);
     view.renderSmartProgress({ total_cards: 6, card_index: 2, kind: "due", targets_total: 1 });
     expect(values).toMatchObject({ "aria-valuemin": "0", "aria-valuemax": "6", "aria-valuenow": "2" });

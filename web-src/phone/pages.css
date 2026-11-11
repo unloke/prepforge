@@ -359,8 +359,8 @@
   #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -6px -2px -8px; }
   /* With no queue chips the line holds only the mastery note: it starts at
      the name's left edge instead of hanging off the right. */
-  #view-dashboard .lib-row:not(:has(.kchip, .skeleton-chip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
-  #view-dashboard .lib-cell-queue:not(:has(.kchip, .skeleton-chip)) { display: none; }
+  #view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
+  #view-dashboard .lib-cell-queue:not(:has(.kchip)) { display: none; }
   #view-dashboard .lib-row .row-menu-btn { flex: none; width: 36px; height: 36px; opacity: 1; }
 
   #view-dashboard .steps.card { padding: 4px 0; background: var(--panel); }

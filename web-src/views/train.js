@@ -73,6 +73,10 @@ export function createTrainView({
     label.title = `${unit} ${Math.min(done + 1, total)} of ${total}`;
     document.getElementById("train-progress-fill").style.width = `${Math.round((done / total) * 100)}%`;
     const bar = document.getElementById("train-progress");
+    // A short session reads as one tick per item.
+    bar.toggleAttribute("data-ticks", total <= 30);
+    bar.style.setProperty("--n", String(total));
+    bar.style.setProperty("--done", String(Math.min(done, total)));
     bar.setAttribute("aria-valuemin", "0");
     bar.setAttribute("aria-valuemax", String(total));
     bar.setAttribute("aria-valuenow", String(Math.max(0, Math.min(done, total))));

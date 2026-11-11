@@ -70,7 +70,11 @@ export function createReviewBar({ appState, getReport, showAnalysisPly, selectAn
       : "";
     bar.hidden = false;
     bar.dataset.ply = String(m.ply);
-    bar.innerHTML = html`${step("prev")}<button type="button" class="cr-label g-${m.grade || "none"}${tried === "right" ? " is-right" : tried === "wrong" ? " is-wrong" : ""}" data-review="go" title="${words}">${tried ? "" : html`<i class="rp-glyph" aria-hidden="true">${glyph}</i>`}<span class="cr-text">${words}</span><span class="cr-count">${state.index + 1}/${state.count}</span></button>${step("next")}${actions}`;
+    // On the moment itself the move is the title: "9…b5??" then its grade.
+    const label = tried ? html`<span class="cr-text">${words}</span>`
+      : state.current ? html`<span class="cr-move">${m.label}<i aria-hidden="true">${glyph}</i></span><span class="cr-text">${kind}</span>`
+        : html`<i class="rp-glyph" aria-hidden="true">${glyph}</i><span class="cr-text">${words}</span>`;
+    bar.innerHTML = html`${step("prev")}<button type="button" class="cr-label g-${m.grade || "none"}${tried === "right" ? " is-right" : tried === "wrong" ? " is-wrong" : ""}" data-review="go" title="${words}">${label}<span class="cr-count">${state.index + 1}/${state.count}</span></button>${step("next")}${actions}`;
     if (!bar.dataset.bound) {
       bar.dataset.bound = "1";
       bar.addEventListener("click", (event) => {
