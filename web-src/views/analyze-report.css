@@ -102,14 +102,16 @@
   #view-analyze .report-pane:has(#analysis-summary[data-open="true"]) { max-height: min(66vh, 620px); }
   #analysis-summary > .rp-summary:hover { background: none; }
   #view-analyze .report-pane:has(#analysis-summary:not([data-open="true"])) { padding-block: 0; }
-  #analysis-summary:not([data-open="true"]) > .rp-summary { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 8px; gap: 12px; min-height: 32px; padding: 0 8px; border-bottom: 0; }
-  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-side { display: flex; gap: 6px; padding: 0; border: 0; background: none; }
-  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-name { flex: 1; font-size: 12px; }
-  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-acc { flex: none; font-size: 13px; letter-spacing: normal; text-align: right; }
+  /* D: the players one row each (disc, name, errors, accuracy in serif), the
+     chevron beside the first. */
+  #analysis-summary:not([data-open="true"]) > .rp-summary { grid-template-columns: minmax(0, 1fr) 8px; gap: 0 10px; padding: 4px 8px 8px; border-bottom: 0; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-side { display: flex; align-items: center; gap: 8px; grid-column: 1; padding: 0; border: 0; background: none; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-name { flex: 1; font-size: 13px; font-weight: 600; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-acc { flex: none; min-width: 3.2ch; font: 400 22px/30px var(--serif); text-align: right; }
   #analysis-summary:not([data-open="true"]) > .rp-summary .rp-errs { flex: none; font-size: 12px; }
   #analysis-summary:not([data-open="true"]) > .rp-summary .rp-error-word { display: none; }
   #analysis-summary:not([data-open="true"]) > .rp-summary .rp-error-total { display: inline; }
-  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-chev { position: static; display: block; grid-column: 3; grid-row: 1; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-chev { position: static; display: block; grid-column: 2; grid-row: 1; }
 }
 @media (max-width: 860px) {
   #analysis-summary > .rp-summary { gap: 12px; padding-top: 0; }
