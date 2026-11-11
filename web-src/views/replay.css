@@ -185,10 +185,13 @@
   background: var(--surface-3);
   animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
-.kind-badge.t-good { background: var(--good-soft); color: var(--good-text); }
-.kind-badge.t-bad { background: var(--danger-soft); color: var(--danger-strong); }
-.kind-badge.t-warn { background: var(--warn-soft); color: var(--warn-text); }
-.kind-badge.t-none { background: var(--none-soft); color: var(--none); }
+/* D: an outcome is a coloured dot before plain text, not a filled pill. */
+#view-replay .lr .kind-badge { padding-inline: 0; background: none; color: var(--text); }
+#view-replay .lr .kind-badge::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--dot); vertical-align: 1px; }
+.kind-badge.t-good { --dot: var(--good); background: var(--good-soft); color: var(--good-text); }
+.kind-badge.t-bad { --dot: var(--danger); background: var(--danger-soft); color: var(--danger-strong); }
+.kind-badge.t-warn { --dot: var(--warn); background: var(--warn-soft); color: var(--warn-text); }
+.kind-badge.t-none { --dot: var(--none); background: var(--none-soft); color: var(--none); }
 
 .focus { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow: auto; scrollbar-gutter: stable; }
 /* Board above, detail text below, at every width: the board takes the card's

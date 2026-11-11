@@ -62,7 +62,7 @@
 .prof-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .prof-row .spacer { flex: 1; }
 .prof-id { display: flex; flex-direction: column; }
-.prof-name { font-weight: 600; font-size: 15px; color: var(--accent-text); text-decoration: none; }
+.prof-name { font: 400 22px/1.2 var(--serif); color: var(--text); text-decoration: none; }
 .prof-name:hover { text-decoration: underline; }
 .scout-profile-games { font-size: 13px; color: var(--muted); }
 .speed-chips { display: flex; gap: 4px; flex-wrap: wrap; }
