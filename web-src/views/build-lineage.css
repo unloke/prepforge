@@ -4,9 +4,26 @@
    The ornament is generated from the open repertoire, never a random motif. */
 #build-rep-header #build-rep-name { position: relative; padding-right: 72px; }
 #build-rep-name b { font-family: var(--serif); font-size: 19px; font-weight: 400; letter-spacing: -0.2px; }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   #build-rep-header .color-dot { display: none; }
   #build-rep-name b { font-size: 20px; }
+  /* The pane tabs' underline slides to the open tab; the pane rises in. */
+  #build-panes > button[aria-selected="true"] { border-bottom-color: transparent; }
+  #build-panes::after {
+    content: "";
+    position: absolute;
+    left: var(--phone-gutter);
+    bottom: 0;
+    width: calc((100% - 2 * var(--phone-gutter)) / 3);
+    height: 2px;
+    background: var(--text);
+    transform: translateX(calc(var(--tab, 0) * 100%));
+    transition: transform var(--dur) var(--ease-out);
+  }
+  #view-build[data-pane="explorer"] #build-panes { --tab: 1; }
+  #view-build[data-pane="coverage"] #build-panes { --tab: 2; }
+  #view-build :is(#build-inspector, .build-tree-region) { animation: pane-in var(--dur) var(--ease-out); }
+  @keyframes pane-in { from { opacity: 0; transform: translateY(6px); } }
 }
 .rep-route-mark { position: absolute; width: 64px; right: 0; top: 2px; opacity: 0.85; appearance: none; border: 1px solid var(--line); background: none; padding: 6px; margin-top: -6px; min-height: 32px; color: inherit; cursor: pointer; border-radius: 6px; transition: background 160ms ease, opacity 160ms ease; }
 .route-glyph { display: block; width: 100%; height: auto; overflow: visible; }

@@ -208,8 +208,13 @@ export function cueAllowed(cue, previous, sinceMs) {
   return cue !== previous || sinceMs >= REPEAT_MS;
 }
 
+// The feedback cues also land in the hand where the phone can buzz (Android;
+// iOS has no vibration API).
+const BUZZ = { right: 8, wrong: [14, 60, 14], complete: [10, 50, 10, 50, 24] };
+
 export function playSound(cue) {
   if (!FILES[cue] || !pref("sounds") || globalThis.document?.hidden) return;
+  if (BUZZ[cue]) globalThis.navigator?.vibrate?.(BUZZ[cue]);
   const ctx = context();
   if (!ctx) return;
   const asked = Date.now(), request = ++generation;
