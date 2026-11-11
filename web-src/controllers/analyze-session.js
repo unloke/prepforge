@@ -1079,35 +1079,12 @@ async function runAnalysis(options = {}) {
       try {
         const provider = getSharedMaia3Provider();
         const unsubscribeProgress = provider.subscribeInitProgress(({ phase, loaded, total }) => {
-          if (phase === "download") {
-            const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-            job({
-              current: 0,
-              total: 1,
-              phase: "maia-load",
-              title: "Maia",
-              message: `${pct}%`,
-            });
-          } else if (phase === "cache") {
-            job({
-              current: 0,
-              total: 1,
-              phase: "maia-load",
-              title: "Maia",
-              message: "Loading",
-            });
-          } else if (phase === "verify" || phase === "session") {
-            // Cached weights still need an ORT session rebuild (the slow part). Say so, rather
-            // than leaving the stale "downloading" message up — that's what made a cached
-            // re-init (after an idle teardown) look like a fresh 46 MB download.
-            job({
-              current: 0,
-              total: 1,
-              phase: "maia-load",
-              title: "Maia",
-              message: "Starting",
-            });
-          }
+          // Cached weights still need an ORT session rebuild (the slow part): say
+          // so, rather than leave a stale download figure up.
+          const message = phase === "download"
+            ? `${total ? Math.min(100, Math.round((loaded / total) * 100)) : 0}%`
+            : { cache: "Loading", verify: "Starting", session: "Starting" }[phase];
+          if (message) job({ current: 0, total: 1, phase: "maia-load", title: "Maia", message });
         });
         try {
           const ready = await timed("maia-load", () => assessorReady);
