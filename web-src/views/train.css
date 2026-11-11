@@ -106,14 +106,13 @@
   align-items: center;
   gap: 12px;
   padding: 14px;
-  background: var(--panel-soft);
 }
 
 
 #train-banner[data-state="move"] { --cb: var(--accent); --g: "♟"; }
 
 
-#train-banner[data-state="teach"] { --cb: var(--k-new); --g: "✦"; background: color-mix(in srgb, var(--k-new) 8%, var(--panel)); }
+#train-banner[data-state="teach"] { --cb: var(--k-new); --g: "✦"; }
 
 
 /* A miss is a compact row like the others: the icon and the move carry the red. */
@@ -207,8 +206,7 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
-  font-size: 16px;
-  font-weight: 600;
+  font: 400 24px/1.25 var(--serif);
 }
 
 
@@ -311,7 +309,8 @@
   border: 0;
   background: none;
   color: var(--muted);
-  font: var(--fs-s)/16px var(--mono);
+  font-size: var(--fs-s);
+  line-height: 16px;
   direction: rtl;
   text-align: left;
   white-space: nowrap;
