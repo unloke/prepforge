@@ -409,7 +409,7 @@ export function createReplayView({
       actions.push(html`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
     }
     return (
-      html`<section class="focus card" aria-label="Preparation detail" data-board-side="${game.user_color === "black" ? "black" : "white"}"><div class="focus-top">${boardHtml}<div class="focus-info"><h2>${playerName(game, "white")} vs ${playerName(game, "black")}</h2><p class="focus-line"><i class="kind-badge t-${meta.tone}">${meta.badge}</i><span class="focus-result ${replayResultClass(game)}">${displayReplayResult(game.result)}</span></p><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline" data-ui data-mt="${encodeLine(START_FEN, game.move_san_history || [])}">${renderReplayMoveLine(game)}</div></section>`
+      html`<section class="focus" aria-label="Preparation detail" data-board-side="${game.user_color === "black" ? "black" : "white"}"><div class="focus-top">${boardHtml}<div class="focus-info"><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline" data-ui data-mt="${encodeLine(START_FEN, game.move_san_history || [])}">${renderReplayMoveLine(game)}</div></section>`
     );
   }
 
@@ -430,10 +430,10 @@ export function createReplayView({
         <span class="open-prev skeleton-text">e4 e5 Nf3 Nc6</span>
         <span class="num skeleton-text">4. d3</span>
       </div>`);
-    // The focus card mirrors the board-plus-text shape it is replaced by, so
-    // the triage does not jump when the first rows land.
-    const focus = html`<section class="focus card is-skeleton" aria-hidden="true"><div class="focus-top"><div class="focus-board"><div class="scout-miniboard skeleton-board"></div></div><div class="focus-info"><h2 class="skeleton-text">You vs Opponent</h2><p class="focus-line"><span class="kind-badge skeleton-text">Preparation</span><span class="skeleton-text">1–0</span></p><ul class="reasons"><li><span class="skeleton-text">Opening repertoire · in prep through this move</span></li><li><span class="skeleton-text">Your departure and the prepared reply</span></li></ul><div class="actions"><span class="btn skeleton-text">Analyze</span><span class="btn skeleton-text">Open game</span></div></div></div><div class="moveline">${[1, 2, 3, 4].map(() => html`<div class="move-pair"><span class="move-no skeleton-text">0.</span><span class="ply skeleton-text">Nf3</span><span class="ply skeleton-text">Nc6</span></div>`)}</div></section>`;
-    return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui>${LEDGER_HEAD}${rows}</div></section>${focus}</div>`;
+    // The first row opens, as the loaded list does, so the list does not jump
+    // when the first rows land.
+    const focus = html`<section class="focus is-skeleton" aria-hidden="true"><div class="focus-top"><div class="focus-board"><div class="scout-miniboard skeleton-board"></div></div><div class="focus-info"><ul class="reasons"><li><span class="skeleton-text">Opening repertoire · in prep through this move</span></li><li><span class="skeleton-text">Your departure and the prepared reply</span></li></ul><div class="actions"><span class="btn skeleton-text">Analyze</span><span class="btn skeleton-text">Open game</span></div></div></div><div class="moveline">${[1, 2, 3, 4].map(() => html`<div class="move-pair"><span class="move-no skeleton-text">0.</span><span class="ply skeleton-text">Nf3</span><span class="ply skeleton-text">Nc6</span></div>`)}</div></section>`;
+    return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui>${LEDGER_HEAD}${rows[0]}${focus}${rows.slice(1)}</div></section></div>`;
   }
 
   // The Check failed: the ledger could not be filled, so the page says what
@@ -501,7 +501,7 @@ export function createReplayView({
     const entered = payload !== lastPayload;
     lastPayload = payload;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, "game")}${filter ? ` · ${REPLAY_KINDS[filter].label}` : ""}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, "game")}${filter ? ` · ${REPLAY_KINDS[filter].label}` : ""}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => html`${renderReplayRow(game, index, selectedIndex, { showAccount })}${index === selectedIndex ? renderReplayFocus(game, index) : ""}`)}</div></section></div>`;
     // A fresh Check enters row by row; a row click only swaps the detail card.
     if (entered) enterRows(container.querySelector?.(".ledger-table"));
     else if (focused.index !== lastFocusIndex) enterOnce(container.querySelector?.(".focus"));
