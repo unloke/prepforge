@@ -225,11 +225,8 @@
   #analysis-engine-slot .engine-pv,
   #analysis-engine-slot .engine-pv.is-top { height: 44px; min-height: 44px; font-size: 14px; }
   #analysis-engine-slot .engine-pv-line { line-height: 44px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* The stepper is a 32px dot, which is a pointer's size. Its own box stays the
-     dot; the head row's 44px is the hit area a thumb gets, without a bigger
-     accent circle or a row that overlaps its neighbour. */
-  #analysis-engine-slot[data-ui] .engine-step { position: relative; width: 32px; height: 32px; }
-  #analysis-engine-slot[data-ui] .engine-step::after { content: ""; position: absolute; inset: -6px; }
+  /* The line picker's cells grow to 32px in the 44px head row. */
+  #analysis-engine-slot .engine-lines > button { width: 32px; height: 32px; }
   .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
   .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
   .moves-grid .mtree-line.is-main > .mtree-num { justify-content: flex-end; }
@@ -729,8 +726,7 @@
   #analysis-engine-slot .engine-pv,
   #analysis-engine-slot .engine-pv.is-top { height: 28px; min-height: 0; font-size: 14px; }
   #analysis-engine-slot .engine-pv-line { line-height: 28px; }
-  #analysis-engine-slot[data-ui] .engine-step { width: 26px; height: 26px; }
-  #analysis-engine-slot[data-ui] .engine-step::after { inset: -9px; }
+  #analysis-engine-slot .engine-lines > button { width: 28px; height: 28px; }
   #analysis-engine-pane .cc-switch-label { font-size: 14px; line-height: 36px; }
   #analysis-engine-pane .pf-switch { height: 36px; }
   #analysis-engine-pane .pf-switch::before { top: 9px; }

@@ -31,7 +31,7 @@ function widgetHarness({ coachOn = false } = {}) {
   widget.evalHead = { textContent: "-1.92", dataset: { side: "black" } };
   widget.evalBarWhite = { style: { height: "33%" } };
   widget.depthReadout = {
-    textContent: "16 / 16",
+    textContent: "depth 16",
     dataset: {},
     style: { setProperty() {} },
     title: "",
@@ -55,9 +55,9 @@ describe("Analyze engine stepping", () => {
     expect(widget.evalHead.dataset.side).toBe("black");
     expect(widget.evalHead.dataset.pending).toBe("true");
     expect(widget.evalBarWhite.style.height).toBe("33%");
-    expect(widget.depthReadout.textContent).toBe("0 / ?");
-    expect(widget.depthReadout.dataset.d).toBe("0");
-    expect(widget.depthReadout.title).toBe("Search depth 0");
+    // No depth yet: the readout is empty and hidden until the search reports one.
+    expect(widget.depthReadout.textContent).toBe("");
+    expect(widget.depthReadout.hidden).toBe(true);
     expect(String(widget.pvsEl.innerHTML)).toContain("Calculating…");
     // MultiPV can deliver rank 2 first, leaving a scoreless rank-1 slot.
     widget._renderEvalBar({ score_cp: null, mate_in: null });
@@ -90,15 +90,15 @@ describe("Analyze engine stepping", () => {
     widget.engineDepth = 16;
     widget.el = { hidden: true, classList: { add() {}, remove() {}, contains: () => false } };
     widget.lastFen = "current w - - 0 1";
-    widget.linesReadout = { textContent: "", title: "" };
+    const cells = [1, 2, 3, 4, 5].map((n) => ({ dataset: { n: String(n) }, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } }));
+    widget.linesEl = { querySelectorAll: () => cells };
     await widget.openForCurrent();
     expect(widget.multipv).toBe(1);
     await widget._setMultipv(3);
     expect(sent).toEqual([["open", 1], ["update", 3]]);
     expect(widget.multipv).toBe(3);
-    // The readout counts only what is shown: with the Coach on there is no extra line.
-    expect(widget.linesReadout.textContent).toBe("3");
-    expect(widget.linesReadout.title).toBe("Lines shown");
+    // The picker marks only what is shown: with the Coach on there is no extra line.
+    expect(cells.map((c) => c.attrs["aria-checked"])).toEqual(["false", "false", "true", "false", "false"]);
     // The subscription is the paint path — no sampler. Each depth the engine reports
     // repaints the rows; the depth readout follows it.
     expect(typeof push).toBe("function");

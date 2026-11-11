@@ -515,15 +515,13 @@
     grid-template-columns: minmax(44px, 56px) minmax(40px, 48px) minmax(60px, 68px) minmax(0, 1fr);
     column-gap: 6px;
   }
-  /* The engine's line steppers are 18px dots: the dots stay, their tap areas
-     grow to 40px (the readout between them is not a target). */
   /* The Explorer's engine card keeps one line: on a 360px phone the button's
      size note goes before the engine's name is clipped mid-word. */
   @container unlock (max-width: 330px) {
     #explorer-engine-slot .unlock-size { display: none; }
   }
-  .engine-step { position: relative; }
-  .engine-step::after { content: ""; position: absolute; inset: -11px; }
+  /* The line picker's cells are 32px: a thumb's size, five in a 160px row. */
+  .engine-lines > button { width: 32px; height: 32px; }
   /* The fork is one row, as Lichess lays out its next-move choices: the label,
      then the chips in a line that scrolls sideways. Chips are drawn 36px with
      centred text and a 44px target round each. */
