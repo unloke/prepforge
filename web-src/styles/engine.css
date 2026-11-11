@@ -1,55 +1,9 @@
 /* Engine window: the docked engine lines, its slots, and the engine-unavailable banner. */
 
-/* ----- Engine widget (floating, draggable, resizable) ------------------ */
-
+/* The engine card: always docked in a view's slot (core/engine.js dockEngine). */
 .engine-window {
-  position: fixed;
-  top: 120px;
-  right: 32px;
-  width: 340px;
-  height: 320px;
-  min-width: 280px;
-  min-height: 180px;
-  max-width: 90vw;
-  max-height: 80vh;
-  background: var(--float);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  box-shadow: 0 18px 44px rgba(28, 28, 28, 0.18), 0 4px 12px rgba(28, 28, 28, 0.08);
   display: flex;
   flex-direction: column;
-  z-index: var(--z-tool);
-  overflow: hidden;
-  opacity: 0;
-  transform: translateY(-6px) scale(0.96);
-  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
-}
-
-
-/* Docked in the Repertoire inspector's Engine tab: in flow, no chrome. */
-.engine-window.is-docked {
-  position: static;
-  width: auto;
-  height: auto;
-  min-width: 0;
-  min-height: 0;
-  max-width: none;
-  max-height: none;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: none;
-  opacity: 1;
-  transform: none;
-  overflow: visible;
-}
-
-
-.engine-window.is-docked .engine-window-head {
-  background: none;
-  border-bottom: 0;
-  padding-left: 0;
-  cursor: default;
 }
 
 
@@ -128,16 +82,7 @@
 .engine-pv.is-final .engine-pv-line { font-weight: 500; }
 
 
-.engine-window.is-docked .engine-window-close,
-.engine-window.is-docked .engine-window-resize {
-  display: none;
-}
-
-
-.engine-window.is-visible {
-  opacity: 1;
-  transform: none;
-}
+.engine-window-close { display: none; }
 
 
 /* In-panel slots (Build Explorer / Analyze Evaluation card): a compact block,
@@ -182,12 +127,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 5px 6px 5px 10px;
-  background: var(--panel-soft);
-  border-bottom: 1px solid var(--line-soft);
-  touch-action: none;
-  cursor: grab;
-  user-select: none;
+  padding: 5px 6px 5px 0;
   min-height: 34px;
   flex-shrink: 0;
 }
@@ -256,19 +196,37 @@
 .engine-lines > button[aria-checked="true"] { background: var(--text); color: var(--panel); font-weight: 600; }
 
 
+/* Phone Repertoire only (phone/study.css): the picker folded behind its count. */
+.engine-lines-more {
+  display: none;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+
+.engine-lines-more[aria-expanded="true"] { color: var(--text); border-color: var(--line-strong); }
+
+
 .engine-window-close {
   border: 0;
   background: transparent;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border-radius: 5px;
   cursor: pointer;
   color: var(--muted);
   font-size: 15px;
   line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  place-items: center;
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
@@ -375,24 +333,6 @@
 .engine-pv-line .pv-move.is-current {
   background: var(--accent);
   color: var(--accent-ink);
-}
-
-
-.engine-window-resize {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  height: 16px;
-  cursor: nwse-resize;
-  background: linear-gradient(
-    135deg,
-    transparent 0 35%,
-    var(--line) 35% 50%,
-    transparent 50% 60%,
-    var(--line) 60% 75%,
-    transparent 75% 100%
-  );
 }
 
 

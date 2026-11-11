@@ -273,7 +273,6 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("function paintExplorerEvals(snapshot, mainSnapshot = null)");
     expect(app).toContain("class ExplorerEvalEngine");
     expect(app).toContain("function onExplorerRowClick(rows, uci)");
-    expect(ruleBody(".engine-window.is-docked")).toMatch(/position:\s*static/);
   });
 
   it("parks the Explorer eval search by stopping it, not by forgetting it", () => {
