@@ -23,6 +23,13 @@
   }
   #view-build[data-pane="explorer"] #build-panes { --tab: 1; }
   #view-build[data-pane="coverage"] #build-panes { --tab: 2; }
+  /* The first move sits 14px under the tabs, as in Lichess's move list. The
+     pane keeps four lines of tree: only five open engine lines push past it. */
+  #view-build #build-sidebar > .panel-body { flex: 1 0 112px; gap: 0; scroll-padding-top: calc(var(--phone-tab-h) + 12px); }
+  #view-build #build-sidebar .tree-wrap { padding: 0 0 4px; }
+  /* The scan's answer comes first; the Maia offer follows it. */
+  #coverage-drawer:not([hidden]) { display: flex; flex-direction: column; }
+  #coverage-drawer > [data-unlock-place] { order: 1; }
   #view-build :is(#build-inspector, .build-tree-region) { animation: pane-in var(--dur) var(--ease-out); }
   @keyframes pane-in { from { opacity: 0; transform: translateY(6px); } }
 }

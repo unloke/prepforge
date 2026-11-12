@@ -758,9 +758,11 @@
     box-shadow: none;
     font-size: 14px;
   }
-  /* Up next is rows of the card, not a box inside it; and the banner's line
-     under "Your move" already names the card's kind, so its chip goes. */
-  #view-train .train-progress-panel .upnext { min-height: 0; padding: 0; background: none; }
+  /* The session reads off the board: the line on plain ground, the progress
+     in the top bar's ticks (no Up next), and the banner's line under "Your
+     move" already names the card's kind, so its chip goes. */
+  #view-train .train-sidebar .train-progress-panel { padding: 0 4px; background: none; }
+  #view-train .upnext { display: none; }
   #view-train #train-card-kind { display: none; }
   #view-train .train-summary { gap: 12px; }
   #view-train .train-summary > .train-summary-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
@@ -991,8 +993,8 @@
      and the 100vw board sat 1px off the left edge. */
   :is(#view-analyze, #view-build, #view-train) .study { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   :is(#view-analyze, #view-build, #view-train) .study::-webkit-scrollbar { display: none; }
-  .study .board-bar { position: sticky; bottom: 0; z-index: 5; }
-  :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) { flex: 1 0 140px; padding: 0 var(--phone-gutter) 12px; }
+  .study .board-bar { position: sticky; bottom: 0; z-index: 5; overflow: clip; }
+  :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) { padding: 0 var(--phone-gutter) 12px; }
 
   /* Pane tabs (Build's, Analyze's): Lichess's tool tabs, drawn as underline
      tabs on the row's rule; each tab is the full 36px row, its hit area 44. */
