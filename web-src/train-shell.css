@@ -34,6 +34,7 @@
 .train-history-btn { margin-left: auto; }
 #view-train .train-back { gap: 4px; padding-left: 4px; }
 #view-train .train-back .bi { display: block; }
+#view-train .train-back .bi + .bi { display: none; }
 .train-head-prog { flex: none; margin: 0 14px 4px; }
 
 #view-train[data-train-screen="home"] :is(.train-back, .train-head-main, .train-head-prog, .train-coach),

@@ -36,14 +36,15 @@
   #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
   #analysis-eval-card .ev-meter { display: none; }
   #analysis-eval-card .eval-chart { border-radius: 6px; touch-action: pan-y; }
-  #analysis-eval-card > .analysis-job-dock:not(:empty) {
-    position: absolute;
-    top: 6px;
-    right: var(--phone-gutter);
-    padding: 0 8px;
-    border-radius: 6px;
-    background: var(--panel);
-  }
+  /* A run reads in the figure's place: its phase over its count, and Stop at
+     the graph's far end, still empty while the curve draws. */
+  #analysis-eval-card > .analysis-job-dock:not(:empty) { grid-column: 1; justify-self: stretch; align-self: center; }
+  #analysis-eval-card:has(> .analysis-job-dock:not(:empty)) .ev-head { visibility: hidden; }
+  #analysis-eval-card .analysis-job-dock > .notice .notice-main { flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; }
+  #analysis-eval-card .analysis-job-dock > .notice .notice-title { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #analysis-eval-card .analysis-job-dock > .notice .notice-text { font-size: 20px; font-weight: 500; line-height: 1.2; }
+  #analysis-eval-card .analysis-job-dock .notice-actions { position: absolute; top: 50%; right: calc(var(--phone-gutter) - 8px); transform: translateY(-50%); }
+  #analysis-eval-card .analysis-job-dock .notice-stop { height: 44px; padding: 0 8px; font-size: 14px; }
 
   /* The coach, when its tab is open: the review switch, the verdict (it scrolls
      inside), the human picks, the prep note. The panel keeps its place; the
@@ -144,21 +145,8 @@
   #analysis-explain .cr-count { display: none; }
   #analysis-explain .coach-review > .btn { height: 44px; min-height: 44px; padding: 0 10px; }
   #analysis-explain .cr-label { height: 44px; line-height: 44px; }
-  /* The engine-offer row keeps its one line, but its two controls are a thumb's
-     size here (they were 22px: a pointer's row). The row's height is the
-     controls' height, so nothing overlaps the verdict above it. */
-  #analysis-explain .coach-unlock .unlock.is-inline { height: 44px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x { width: 44px; height: 44px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x svg { width: 16px; height: 16px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text b,
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { font-size: 13px; }
-  /* The gain is a sentence ("What players at your rating would play"), not a
-     number: on a phone's 358px row it clipped at "woul…" beside the two
-     controls. It wraps to two 13px lines inside the same 44px, and the name
-     drops to its own line above it rather than sharing one. */
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text { display: grid; gap: 0; white-space: normal; line-height: 15px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 14px; white-space: normal; }
+  /* The coach pane holds the verdict; the Maia offer waits in Settings. */
+  #analysis-explain > .coach-unlock { display: none; }
 
   /* The open pillar fills the room over the tabs; the tabs sit on the thumb bar. */
   .an-panes {
@@ -411,6 +399,7 @@
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
+    scroll-behavior: smooth;
     scrollbar-width: none;
   }
   #view-analyze #analysis-moves::-webkit-scrollbar { display: none; }
@@ -690,7 +679,24 @@
      round a 36px tab. */
   #view-analyze .an-panes > .an-tabs { position: relative; z-index: 2; }
   #view-analyze .an-tab::after { content: ""; position: absolute; inset: -2px 0 -8px; }
-  #view-analyze .an-tab[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--text); }
+  #view-analyze .an-tab[aria-selected="true"] { color: var(--text); }
+  /* One underline that slides to the open tab, and the pane it opens rises in. */
+  #view-analyze .an-panes > .an-tabs::before {
+    content: "";
+    position: absolute;
+    left: var(--phone-gutter);
+    bottom: 0;
+    width: calc((100% - 2 * var(--phone-gutter)) / 3);
+    height: 2px;
+    background: var(--text);
+    transform: translateX(calc(var(--tab, 0) * 100%));
+    transition: transform var(--dur) var(--ease-out);
+    pointer-events: none;
+  }
+  #view-analyze[data-pane="engine"] .an-tabs { --tab: 1; }
+  #view-analyze[data-pane="report"] .an-tabs { --tab: 2; }
+  #view-analyze :is(.an-pane, #coach-prose) { animation: pane-in var(--dur) var(--ease-out); }
+  @keyframes pane-in { from { opacity: 0; transform: translateY(6px); } }
 
   /* The open pane takes what is left and scrolls inside it. */
   #view-analyze #analysis-explain,

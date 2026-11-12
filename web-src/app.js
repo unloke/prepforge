@@ -1715,12 +1715,14 @@ async function init() {
   // Learn the auth state BEFORE any owner-scoped calls. A signed-out visitor must
   // not fire /api/settings, /api/dashboard, /api/board, /api/lichess — they 401 and
   // spam the console. Gate that whole workspace load behind a real session.
-  await refreshAuthProviders();
-  // The hold is already up (see the top of init), so a signed-in reload never
-  // shows the signed-out shell. The Library is the default route and has its own
-  // skeleton, so it shows as soon as the session is known; other routes hold
-  // until they are restored.
-  await refreshAuthStatus();
+  // A remembered session opens at once and is confirmed in the background; only
+  // a browser with none waits for the server's answer. The hold is already up
+  // (see the top of init), so a signed-in reload never shows the signed-out
+  // shell. The Library is the default route and has its own skeleton, so it
+  // shows as soon as the session is known; other routes hold until restored.
+  const providers = refreshAuthProviders();
+  if (accountService().useStoredSession()) void refreshAuthStatus();
+  else await Promise.all([providers, refreshAuthStatus()]);
   setHandoffOwner(currentOwnerId());
   if (parseWorkspaceLocation(window.location.href).view === "dashboard") releaseBootView();
   // "Last game" depends on the linked Lichess account, which refreshAuthStatus
@@ -1953,7 +1955,7 @@ async function loadSignedInWorkspace() {
   const owner = currentOwnerId();
   const generation = appState.ownerGeneration;
   const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration;
-  const settingsReady = loadSettingsController().then((settings) =>
+  loadSettingsController().then((settings) =>
     isCurrent() ? settings.loadSettingsOnce({ render: false }) : null
   ).catch((error) => { if (isCurrent()) setStatusError(error.message); });
   // The Library paints itself when its read lands (and shows its own failure);
@@ -1990,9 +1992,9 @@ async function loadSignedInWorkspace() {
       { severity: "warning" },
     );
   }
-  await refreshAnalyzeRecovery();
-  if (!isCurrent()) return;
-  await settingsReady;
+  // The recovery check, like the settings read above, lands in the background:
+  // neither holds the route.
+  void refreshAnalyzeRecovery();
 }
 
 // The seams the core modules use to reach the views and the lazily loaded

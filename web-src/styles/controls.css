@@ -623,15 +623,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 
-.skeleton-stack { display: grid; flex: 1; gap: 5px; min-width: 0; }
-
-
-.skeleton-bar.skeleton-thin { height: 8px; }
-
-
-.skeleton-bar.skeleton-chip { width: 64px; height: 16px; border-radius: 8px; }
-
-
 /* ---- One entrance primitive ---------------------------------------------
    A thing enters once, when it first arrives (list-enter.js marks it
    `.is-enter` and takes the marker off when the entrance ends). A row already
@@ -809,13 +800,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    the same bar, taller, with its own row. */
 .skeleton-line {
   height: 16px;
-}
-
-
-.skeleton-row {
-  display: grid;
-  gap: 10px;
-  padding: 14px 12px;
 }
 
 

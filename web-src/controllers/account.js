@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { storeSession, storedSession } from "./session-store.js";
 import { authInputError, authReasonFor, isOpeningKeystroke, markInvalidFields, SLOW_SERVER_NOTE } from "../auth-form.js";
 import { isPopoverOpen, menuKeys, modalDialog, openPopover } from "../core/dialog.js";
 import {
@@ -233,6 +234,7 @@ export function createAccountController({
       setStatus("Session ended. Unsaved changes could not be kept on this device; sign in to save them.", { severity: "error" });
       return;
     }
+    storeSession(null);
     appState.sessionExpired = false;
     appState.signedIn = false;
     appState.accountUserId = null;
@@ -689,44 +691,55 @@ export function createAccountController({
     }
   }
 
+  function applySession(me) {
+    const id = me.id || null;
+    Object.assign(appState, { signedIn: !!id, accountUserId: id, accountUsername: me.display_name || me.email || null });
+    appState.account = id ? {
+      email: me.email || "", displayName: me.display_name || "", plan: me.plan || "free", hasPassword: !!me.has_password,
+      repertoireLimit: me.repertoire_limit ?? null, repertoireCount: me.repertoire_count ?? null,
+    } : null;
+  }
+
+  // A reload opens on the last confirmed session; refreshAuthStatus confirms it.
+  let sessionFromCache = false;
+  function useStoredSession() {
+    const me = storedSession();
+    if (me) applySession(me);
+    if (me) appState.authKnown = sessionFromCache = true;
+    renderAccountChip();
+    return !!me;
+  }
+
   let authRetry = 0;
   async function refreshAuthStatus() {
     const previousOwner = appState.accountUserId;
     // The session is being read right now. Anything that renders "signed out" while
     // this is false is guessing, and a signed-in user sees that guess flash on reload.
+    const unconfirmed = () => !appState.authKnown || sessionFromCache;
+    let me = {};
     try {
-      const me = await api("/api/auth/me");
-      appState.sessionExpired = false;
-      appState.signedIn = !!me.id;
-      appState.accountUsername = me.display_name || me.email || null;
-      appState.accountUserId = me.id || null;
-      appState.account = {
-        email: me.email || "",
-        displayName: me.display_name || "",
-        plan: me.plan || "free",
-        hasPassword: !!me.has_password,
-        repertoireLimit: me.repertoire_limit ?? null,
-        repertoireCount: me.repertoire_count ?? null,
-      };
+      me = await api("/api/auth/me");
     } catch (error) {
       if (error?.status !== 401) {
         // A server waking up or a dropped request is not an answer: the chip
         // would sit on "Checking your session…" for good. Ask again, backing off.
         renderAccountChip();
-        if (!appState.authKnown) {
+        if (unconfirmed()) {
           authRetry = Math.min(authRetry + 1, 5);
-          setTimeout(() => { if (!appState.authKnown) void refreshAuthStatus(); }, 1000 * 2 ** authRetry);
+          setTimeout(() => { if (unconfirmed()) void refreshAuthStatus(); }, 1000 * 2 ** authRetry);
         }
         return;
       }
-      appState.sessionExpired = false;
-      appState.signedIn = false;
-      appState.accountUsername = null;
-      appState.accountUserId = null;
-      appState.account = null;
     }
+    appState.sessionExpired = false;
+    applySession(me);
+    storeSession(me);
     appState.authKnown = true;
     authRetry = 0;
+    const wasCached = sessionFromCache;
+    sessionFromCache = false;
+    // A remembered session the server no longer holds: start over from its answer.
+    if (previousOwner !== appState.accountUserId && wasCached) return void window.location.reload();
     if (previousOwner !== appState.accountUserId) {
       appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
       onOwnerChanged();
@@ -737,12 +750,8 @@ export function createAccountController({
   async function signOut() {
     const confirmed = await showConfirmModal({
       title: "Sign out?",
-      body:
-        "Signs you out on this browser. Your saved repertoires and games stay on your " +
-        "account and return when you sign back in.",
-      okLabel: "Sign out",
-      cancelLabel: "Stay signed in",
-      tone: "danger",
+      body: "Signs you out on this browser. Your saved repertoires and games stay on your account and return when you sign back in.",
+      okLabel: "Sign out", cancelLabel: "Stay signed in", tone: "danger",
     });
     if (!confirmed) return;
     // R-03: coordinate pending local work BEFORE the session ends, while the
@@ -759,20 +768,14 @@ export function createAccountController({
       }
     }
     if (pending > 0) {
+      const changes = `${pending} unsaved change${pending === 1 ? "" : "s"}`;
       const proceed = await showConfirmModal({
-        title: `Sign out with ${pending} unsaved change${pending === 1 ? "" : "s"}?`,
-        body:
-          `${pending} change${pending === 1 ? "" : "s"} could not be saved just now. ` +
-          `They are kept on this device and will sync after you sign back in.`,
-        okLabel: "Sign out anyway",
-        cancelLabel: "Stay signed in",
-        tone: "danger",
+        title: `Sign out with ${changes}?`,
+        body: `${changes.replace(" unsaved", "")} could not be saved just now. They are kept on this device and will sync after you sign back in.`,
+        okLabel: "Sign out anyway", cancelLabel: "Stay signed in", tone: "danger",
       });
       if (!proceed) {
-        setStatus(
-          `Still signed in — ${pending} unsaved change${pending === 1 ? "" : "s"} kept for the next sync.`,
-          { severity: "warning" },
-        );
+        setStatus(`Still signed in — ${changes} kept for the next sync.`, { severity: "warning" });
         return;
       }
     }
@@ -788,8 +791,8 @@ export function createAccountController({
     } catch (_) {
       /* ignore storage errors */
     }
-    appState.signedIn = false;
-    appState.accountUserId = null;
+    storeSession(null);
+    applySession({});
     appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
     onOwnerChanged();
     setStatus("Signed out");
@@ -889,6 +892,7 @@ export function createAccountController({
     toggleAccountMenu,
     handleAccountMenuAction,
     refreshAuthStatus,
+    useStoredSession,
     authKnown: () => appState.authKnown === true,
     signOut,
     syncReplayControls,

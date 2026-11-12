@@ -353,6 +353,15 @@ describe("playing a cue", () => {
     expect(made.sources).toBe(1);
   });
 
+  it("buzzes the feedback cues where the device can, never a move, and not when sounds are off", async () => {
+    vi.stubGlobal("navigator", { vibrate: vi.fn() });
+    const { sound } = await soundReady();
+    for (const cue of ["move", "wrong"]) sound.playSound(cue);
+    (await soundWith({ sounds: false })).sound.playSound("right");
+    expect(navigator.vibrate.mock.calls).toEqual([[[14, 60, 14]]]);
+    vi.unstubAllGlobals();
+  });
+
   it("stays silent when the preference is off, or the cue is unknown", async () => {
     const { sound, made } = await soundWith({ sounds: false });
     sound.playSound("move");
