@@ -3,6 +3,7 @@ import { appState, boards } from "./core/state.js";
 import { OUTBOX_TAB_ID, activeViewName, api, currentOwnerId, setStatus, setStatusError } from "./core/api.js";
 import { effectiveStockfishDepth, pref } from "./core/prefs.js";
 import { isBrowserEngineAvailable, createEngineProvider } from "./engine/stockfish-provider.js";
+import { stockfishBudget } from "./engine/compute-budget.js";
 import { EXPLORER_EVAL_MAX_LINES, engineWantedIn, engineWidget } from "./core/engine.js";
 import { hooks } from "./core/hooks.js";
 import { showUndoToast } from "./undo.js";
@@ -70,7 +71,11 @@ export function buildDockFolded() {
 // Explorer's candidate moves with one PV per candidate. The main widget keeps its
 // own line count, so its best line reaches full depth as fast as a single-PV
 // search; the row evals cost one extra worker, only while Build's Explorer is
-// showing with the engine on.
+// showing with the engine on. A device that runs one engine (a phone) has no
+// second worker to give: the row evals come from the engine's own lines, else
+// this worker would hold the only engine and the lines would never start.
+const oneEngine = () => stockfishBudget.snapshot().limit < 2;
+
 class ExplorerEvalEngine {
   constructor() {
     this.engine = null;
@@ -82,6 +87,7 @@ class ExplorerEvalEngine {
 
   wanted() {
     return (
+      !oneEngine() &&
       activeViewName() === "build" &&
       engineWantedIn("build") &&
       buildDockTab === "explorer" &&
@@ -204,7 +210,8 @@ class ExplorerEvalEngine {
   repaint() {
     // The Explorer rows exist only once the Build editor has loaded.
     if (hooks.build?.session) {
-      hooks.build.paintExplorerEvals(this.snapshot, engineWidget.isOpen() ? engineWidget.lastSnapshot : null);
+      const main = engineWidget.isOpen() ? engineWidget.lastSnapshot : null;
+      hooks.build.paintExplorerEvals(oneEngine() ? main : this.snapshot, main);
     }
   }
 }
