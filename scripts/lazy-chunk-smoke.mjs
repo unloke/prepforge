@@ -33,7 +33,7 @@ function chunkKind(url) {
   if (/^train-/.test(name)) return "train";
   if (/^replay-/.test(name)) return "replay";
   if (/^movetree-/.test(name)) return "movetree";
-  if (/^build-P/.test(name) || /^build-[A-Za-z0-9]+\.js$/.test(name)) return "build-view";
+  if (/^build-P/.test(name) || /^build-[A-Za-z0-9_-]{8}\.js$/.test(name)) return "build-view";
   if (/^teams-/.test(name)) return "teams";
   if (name === scoutView) return "scout-view";
   if (/^settings-/.test(name)) return "settings";
@@ -70,7 +70,7 @@ async function staticChecks() {
 
   // The build-view chunk is "build-<hash>.js" with an alphanumeric-only hash
   // (build-generate-runner-* is a different, hyphenated chunk).
-  const build = await readAsset(/^build-[A-Za-z0-9]+\.js$/);
+  const build = await readAsset(/^build-[A-Za-z0-9_-]{8}\.js$/);
   assert(!/analyze-/.test(build.text), `${build.name} must not reference analyze chunk`);
   assert(!/movetree-/.test(build.text), `${build.name} must not reference movetree chunk`);
 
