@@ -332,17 +332,22 @@
                 <h1 class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</h1>
                 <span class="build-opening" id="build-opening" hidden></span>
                 <span class="build-sync" id="build-sync-head" aria-live="polite" hidden></span>
+                <span class="build-ply" id="build-head-ply"></span>
               </div>
               <button class="btn ghost icon row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
+            </div>
+            <!-- A phone's sheet under the board: its tabs end in the engine switch, and
+                 the engine's line sits under them, over whichever pane is open. -->
+            <div class="phone-panes" id="build-panes" role="tablist" aria-label="Panel">
+              <span class="sheet-grab" id="build-sheet-grab" aria-hidden="true"></span>
+              <button type="button" role="tab" data-pane="moves" aria-selected="true">Tree</button>
+              <button type="button" role="tab" data-pane="explorer" aria-selected="false" title="Tap again for Masters or Players"><span id="build-pane-db">Masters</span></button>
+              <button type="button" role="tab" data-pane="coverage" aria-selected="false">Coverage</button>
+              <span class="pane-engine"><span class="pf-row-label" id="build-engine-label">Engine</span><button type="button" class="pf-switch" id="build-engine-toggle" role="switch" aria-checked="false" aria-labelledby="build-engine-label"><span class="pf-knob"></span></button></span>
             </div>
             <!-- The engine sits under the title, over the moves: on whichever tab is open. -->
             <div class="engine-slot" id="build-engine-slot"></div>
             <div class="panel-body">
-            <div class="phone-panes" id="build-panes" role="tablist" aria-label="Panel">
-              <button type="button" role="tab" data-pane="moves" aria-selected="true">Moves</button>
-              <button type="button" role="tab" data-pane="explorer" aria-selected="false">Explorer</button>
-              <button type="button" role="tab" data-pane="coverage" aria-selected="false">Coverage</button>
-            </div>
             <!-- Shared/read-only host. Static so the shared state renders inside the
                  Opus panel composition; the view only swaps text and visibility. -->
             <div class="shared-banner" id="shared-banner" data-testid="shared-banner" hidden>
@@ -567,7 +572,7 @@
       <section class="view research-view" id="view-replay" data-testid="view-replay">
         <div class="review">
           <section class="games-panel" data-replay-panel="games" role="tabpanel" aria-labelledby="nav-replay">
-            <header class="page-head"><h1>Games</h1></header>
+            <header class="page-head"><h1>Games</h1><button type="button" class="page-head-btn" id="games-setup" aria-expanded="false" aria-label="Games source and sample" title="Games source and sample"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button></header>
             <div class="toolbar" role="group" aria-label="Game review controls">
               <div class="src">
                 <span class="src-label">Games from</span>

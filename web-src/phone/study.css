@@ -187,33 +187,16 @@
   /* Repertoire has its own way out (the header's back button), so its bar
      drops Views: Flip and the move arrows. */
   #view-build .board-bar .bb-views { display: none; }
-  /* Repertoire's bar has room for all four arrows, as Lichess's nav row:
-     |‹ ‹ › ›|, the ends a step narrower than the steps; the shown move's name
-     keeps the middle. */
-  #view-build .board-bar { grid-template-columns: 40px minmax(0, 1fr) 40px 48px 48px 40px; }
-  #view-build .board-bar .board-label { grid-area: 1 / 2 / 2 / 3; }
-  #view-build .board-bar :is(#build-root, #build-parent, #build-next, #build-end) { grid-row: 1; }
-  #view-build .board-bar #build-root { grid-column: 3; }
-  #view-build .board-bar #build-parent { grid-column: 4; }
-  #view-build .board-bar #build-next { grid-column: 5; }
-  #view-build .board-bar #build-end { grid-column: 6; }
-  #view-build .board-bar :is(#build-root, #build-end) {
-    width: 40px;
-    height: 36px;
-    background: var(--surface-3);
-    color: var(--text);
-  }
-  #view-build .board-bar #build-root { border-radius: var(--radius) 2px 2px var(--radius); }
-  #view-build .board-bar #build-parent,
-  #view-build .board-bar #build-next { border-radius: 2px; }
-  #view-build .board-bar #build-end { border-radius: 2px var(--radius) var(--radius) 2px; }
-  #view-build .board-bar :is(#build-root, #build-end):hover { background: var(--surface-3); }
-  #view-build .board-bar :is(#build-root, #build-end):active { background: var(--line-strong); }
+  /* Repertoire's bar: Flip, then ‹ ›; a held arrow jumps to the line's end
+     (phone/sheet.js). The shown move is the title's subline. */
+  #view-build .board-bar { grid-template-columns: 40px minmax(0, 1fr) 48px 48px; }
+  #view-build .board-bar :is(#build-root, #build-end, .board-label) { display: none; }
+  #view-build .board-bar :is(#build-parent, #build-next) { grid-row: 1; }
+  #view-build .board-bar #build-parent { grid-column: 3; }
+  #view-build .board-bar #build-next { grid-column: 4; }
   /* Under 360px the icons and arrows leave the pill too little room for its
      name (Analyze kept 44px): tighten the bar so the action stays readable. */
   @media (max-width: 359px) {
-    #view-build .board-bar { grid-template-columns: 40px minmax(0, 1fr) 36px 44px 44px 36px; }
-    #view-build .board-bar :is(#build-root, #build-end) { width: 36px; }
     #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
     #view-analyze .board-bar .btn.icon { width: 40px; }
     .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) { width: 44px; }
@@ -408,47 +391,13 @@
   #build-rep-header #build-menu { grid-column: 3; }
   #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
 
-  /* Under the board one pane at a time (the line tree, Explorer or Coverage)
-     so stepping through the tree scrolls the tree and nothing else. */
-  /* The pane switch is one segmented track (the app's .seg: a surface-3 track,
-     the chosen pane on a panel plate), not three grey buttons side by side. */
-  #build-panes {
-    position: sticky;
-    top: -10px;
-    z-index: 9;
-    display: flex;
-    margin: -10px -12px 0;
-    padding: 6px 12px 4px;
-    background: var(--bg);
-  }
-  #build-panes::before {
-    content: "";
-    position: absolute;
-    inset: 6px 12px 4px;
-    z-index: -1;
-    border-radius: calc(var(--radius) + 2px);
-    background: var(--surface-3);
-  }
-  #build-panes > button {
-    flex: 1 1 0;
-    min-height: 44px;
-    border: 2px solid transparent;
-    border-radius: calc(var(--radius) + 2px);
-    background: none;
-    background-clip: padding-box;
-    color: var(--muted);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
-  }
-  #build-panes > button[aria-selected="true"] { background: var(--panel); background-clip: padding-box; color: var(--text); }
   #view-build #build-sidebar.is-empty #build-panes,
   #view-build:not([data-pane="explorer"], [data-pane="coverage"]) #build-inspector,
   #view-build:is([data-pane="explorer"], [data-pane="coverage"]) .build-tree-region,
   #build-inspector .dock-tabs { display: none; }
 
   #build-sidebar > .panel-body > * { order: 3; }
-  #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
+  #build-sidebar > .panel-body > .shared-banner { order: 0; }
   #build-sidebar > .panel-body > #build-inspector { order: 1; }
   #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty),
   #build-sidebar > .panel-body > .shared-banner:not([hidden]) {
@@ -531,7 +480,6 @@
   #build-engine-slot .engine-lines { display: none; position: absolute; top: 100%; right: 0; z-index: var(--z-tool); background: var(--float); box-shadow: var(--shadow-2); }
   #build-engine-slot .engine-lines.is-open { display: inline-flex; }
   #build-engine-slot .engine-lines-more { display: inline-flex; }
-  #build-engine-slot .engine-window-close { display: inline-grid; }
   /* The fork is one row, as Lichess lays out its next-move choices: the label,
      then the chips in a line that scrolls sideways. Chips are drawn 36px with
      centred text and a 44px target round each. */
@@ -683,14 +631,6 @@
   #view-train .train-row-opts > .train-chip { flex: 1 1 auto; min-width: 0; padding: 0 14px; }
   /* Fields share the buttons' corner, so a field and its Start read as one row. */
   #view-train .train-chip { justify-content: space-between; border-radius: var(--radius); font-size: 14px; }
-  /* Due queue: the lead card. Title and count, scope with Blitz on one line,
-     the next cards, then its Start across the card's foot. */
-  #view-train .train-row[data-row="smart"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "opts" "next" "go"; }
-  #view-train .train-row[data-row="smart"] .train-row-go { width: 100%; }
-  #view-train .train-due-line { align-items: center; min-height: 32px; }
-  /* Rehearse: one line under its title, the repertoire field and its Start. */
-  #view-train .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text text" "opts go"; }
-  #view-train .train-row[data-row="all_lines"] .train-row-go { min-width: 96px; }
   /* Practice: Opponent cards, Play as, then Random position beside Play. The
      pane's tab names it, so the card drops its title; the desktop chip gives
      way to the cards. */
@@ -996,33 +936,6 @@
   .study .board-bar { position: sticky; bottom: 0; z-index: 5; overflow: clip; }
   :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) { padding: 0 var(--phone-gutter) 12px; }
 
-  /* Pane tabs (Build's, Analyze's): Lichess's tool tabs, drawn as underline
-     tabs on the row's rule; each tab is the full 36px row, its hit area 44. */
-  #build-panes {
-    position: sticky;
-    top: 0;
-    gap: 0;
-    height: var(--phone-tab-h);
-    margin: 0 calc(-1 * var(--phone-gutter)) 4px;
-    padding: 0 var(--phone-gutter);
-    box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the tab row's rule */
-  }
-  #build-panes::before { content: none; }
-  #build-panes > button {
-    position: relative;
-    min-height: 0;
-    height: var(--phone-tab-h);
-    border: 0;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    font-size: 13px;
-  }
-  #build-panes > button[aria-selected="true"] { border-bottom-color: var(--text); background: none; }
-  /* The band grows 10px down from the 34px padding box into the pane's top
-     (the board above keeps its last rank): a 44px target round a 36px tab.
-     The row sits over the pane so the band is what a finger meets there. */
-  #build-panes { z-index: 2; }
-  #build-panes > button::after { content: ""; position: absolute; inset: 0 0 -10px; }
   #view-build #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty) { border-radius: 0; background: none; }
   #view-build .tree-wrap { padding: 4px 0; font-size: 14px; line-height: 28px; }
 

@@ -25,9 +25,11 @@ it("Library phone controls take the shared control height", () => {
   const dismiss = rule("#view-dashboard .steps .setup-dismiss");
   expect(dismiss).toMatch(/min-width:\s*36px/);
   expect(dismiss).toMatch(/height:\s*36px/);
+  // A row's menu is a long-press on a phone; the ⋯ button is kept off screen
+  // for the keyboard and VoiceOver, not removed.
   const menu = rule("#view-dashboard .lib-row .row-menu-btn");
-  expect(menu).toMatch(/width:\s*36px/);
-  expect(menu).toMatch(/height:\s*36px/);
+  expect(menu).toMatch(/clip-path:\s*inset\(50%\)/);
+  expect(menu).not.toMatch(/display:\s*none/);
 });
 
 // The two buttons a dead-end Library screen offers — "Clear filter" on a search

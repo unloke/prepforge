@@ -315,7 +315,7 @@ export function createSettingsView({
         : "";
     if (!accounts.length && !feedback) {
       list.innerHTML =
-        html`<p class="muted hint">No Lichess account linked yet. Link one to import your games and see yourself in Games and Scout.</p>`;
+        html`<p class="muted hint">No Lichess account linked yet.</p>`;
       return;
     }
 

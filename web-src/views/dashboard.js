@@ -409,7 +409,7 @@ export function createDashboardView({
     // Three zeros say nothing a new account does not already know.
     const anyCount = (payload.games || 0) + (repCount ?? (payload.repertoires || 0)) + (payload.training_sessions || 0) > 0;
     const written = paint(card, html`
-    <div class="today-streak" data-lit="${streak.trained_today ? "1" : "0"}"
+    <div class="today-streak" data-lit="${streak.trained_today ? "1" : "0"}" data-count="${streak.current}"
          title="Calendar days with at least one graded move${streak.best > 1 ? `; best ${streak.best}` : ""}">
       <span class="today-count">${streak.current}</span>
       <span class="today-unit">day streak</span>

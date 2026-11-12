@@ -10,6 +10,7 @@ import "./phone.css";
 import "./touch.css";
 import "./phone-kit.css";
 import { resetViewScroll } from "./view-scroll.js";
+import { bindHoldToEnd, bindSheet } from "./phone/sheet.js";
 import { swapView } from "./view-swap.js";
 import { prefetchViews } from "./view-prefetch.js";
 import { paintPhoneTabs } from "./phone-tabs.js";
@@ -908,6 +909,7 @@ function closeOpenBuild() {
     boards.build.setAnnotations([], []);
   }
   document.getElementById("build-board-label").textContent = "";
+  document.getElementById("build-head-ply").textContent = "";
   renderBuildRepHeader();
   renderBuilderTree();
   renderBuildSync();
@@ -1413,10 +1415,15 @@ function bindEvents() {
   document.getElementById("build-dock-opts")?.addEventListener("click", openDockOptions);
   // Phones show one of the line tree, Explorer or Coverage under the board.
   const panes = document.getElementById("build-panes");
+  bindSheet(document.getElementById("view-build"), panes, document.getElementById("build-sheet-grab"));
+  bindHoldToEnd(document.getElementById("build-parent"), document.getElementById("build-root"));
+  bindHoldToEnd(document.getElementById("build-next"), document.getElementById("build-end"));
   panes?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-pane]");
     if (!button) return;
     const pane = button.dataset.pane;
+    // The open Explorer's tab, tapped again, picks its database.
+    if (pane === "explorer" && button.getAttribute("aria-selected") === "true") return void openDockOptions();
     document.getElementById("view-build").dataset.pane = pane;
     panes.querySelectorAll("[data-pane]").forEach((b) => b.setAttribute("aria-selected", String(b === button)));
     // The Explorer and Coverage panes are the inspector: a folded dock (its
@@ -1455,9 +1462,9 @@ function bindEvents() {
   document
     .getElementById("open-engine-widget")
     .addEventListener("click", () => setEngineOn("analyze", !engineWantedIn("analyze")));
-  document
-    .getElementById("explorer-engine-toggle")
-    ?.addEventListener("click", () => setEngineOn("build", !engineWantedIn("build")));
+  for (const id of ["explorer-engine-toggle", "build-engine-toggle"]) {
+    document.getElementById(id)?.addEventListener("click", () => setEngineOn("build", !engineWantedIn("build")));
+  }
   bindEvalChart();
   document.getElementById("analysis-start").addEventListener("click", () => {
     void analysisTreeNav("start").catch(() => {});

@@ -5,7 +5,9 @@
 // Lichess at 390px and fixed the phone design to:
 //   - one board, the full viewport width, square, edge to edge, in every
 //     board screen and every tab/state of it (it never shrinks for a pane);
-//   - no peek sheet / drag-to-resize handle on a board screen;
+//   - no peek sheet / drag-to-resize handle on a board screen (the Build
+//     sheet's grab bar is the 2026-11-11 exception: the board keeps its size
+//     until the sheet is dragged over it);
 //   - a 48px thumb bar;
 //   - tabs drawn 36px, each with a 44px tap target round it.
 // checkPhoneBoard returns a list of failures (empty = holds) so each smoke
@@ -18,7 +20,7 @@ export async function checkPhoneBoard(page, { view, board, tabs = null, label = 
     const root = document.getElementById(view);
     const b = document.getElementById(board)?.getBoundingClientRect();
     const bar = root?.querySelector(".board-bar")?.getBoundingClientRect();
-    const peek = [...document.querySelectorAll(`#${view} [data-peek], #${view} .peek-grab, #${view} .sheet-grab, #${view} [data-drag-resize]`)]
+    const peek = [...document.querySelectorAll(`#${view} [data-peek], #${view} .peek-grab, #${view} [data-drag-resize]`)]
       .filter((el) => el.getBoundingClientRect().height > 0).map((el) => el.className || el.tagName);
     const tabRows = tabs
       ? [...document.querySelectorAll(tabs)].filter((el) => el.getBoundingClientRect().height > 0).map((el) => {
