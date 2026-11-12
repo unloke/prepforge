@@ -67,7 +67,11 @@ try{
   assert.equal(await page.locator('#repertoire-context-menu').evaluate(el=>!el.matches(':popover-open')), true);
   assert.equal(await page.evaluate(()=>document.activeElement.id), 'lib-filter-search');
   await page.setViewportSize({ width: 390, height: 844 });
-  await opener.tap();
+  // A phone opens the row menu with a long-press; the ⋯ button is off screen.
+  const row = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="audit-rep"]');
+  await row.dispatchEvent('pointerdown', { pointerType: 'touch', isPrimary: true, clientX: 100, clientY: 100 });
+  await page.locator('#repertoire-context-menu:popover-open').waitFor({ timeout: 3000 });
+  await row.dispatchEvent('pointerup', { pointerType: 'touch', isPrimary: true });
   assert.equal(await page.locator('#repertoire-context-menu').getAttribute('role'), 'menu');
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 1280, height: 800 });
