@@ -18,14 +18,15 @@ it("Home is a page with no board; the Result keeps the final board but no thumb 
 it("Home splits into Drill and Practice panes, one primary action each", () => {
   expect(phone).toContain('#view-train:not([data-train-pane="play"]) .train-row[data-row="play"],');
   expect(phone).toContain('#view-train[data-train-pane="play"] .train-row:not([data-row="play"]) { display: none; }');
-  // Due queue's Start runs across the card's foot; Practice's Play is the filled one beside Random.
-  expect(phone).toMatch(/\.train-row\[data-row="smart"\] \{[^}]*grid-template-areas: "text" "opts" "next" "go";/);
+  // Practice's Play is the filled one beside Random.
   expect(phone).toMatch(/\.train-row\[data-row="play"\] \{[^}]*"lucky go";/);
   expect(phone).toMatch(/\[data-row="play"\] \.train-row-go \{[^}]*background: var\(--accent\)/);
-  // Rehearse is one line: the field and its Start.
-  expect(phone).toMatch(/\.train-row\[data-row="all_lines"\] \{[^}]*grid-template-areas: "text text" "opts go";/);
   // The desktop rows keep their chips; the tabs, cards and labels are phone-only.
   const shell = readFileSync(new URL("../train-shell.css", import.meta.url), "utf8");
+  // The due count heads the phone's Drill pane with Resume under it, the next
+  // cards after; Rehearse is one line: its title, the field and its Start.
+  expect(shell).toMatch(/\.train-row\[data-row="smart"\] \{[^}]*grid-template-areas: "text" "opts" "go" "next";/);
+  expect(shell).toMatch(/\.train-row\[data-row="all_lines"\] \{[^}]*grid-template-areas: "text opts go";/);
   expect(shell).toContain("#view-train :is(.train-bots, .train-sec-label) { display: none; }");
   expect(shell).toContain('#view-train[data-train-pane="play"] .train-row:not([data-row="play"]) { display: none; }');
 });

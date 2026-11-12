@@ -141,10 +141,10 @@ export function setEngineOn(view, on) {
 export function syncEngineChrome() {
   const buildOn = engineWantedIn("build");
   const analyzeOn = engineWantedIn("analyze");
-  const toggle = document.getElementById("explorer-engine-toggle");
-  if (toggle) {
-    toggle.classList.toggle("is-on", buildOn);
-    toggle.setAttribute("aria-checked", String(buildOn));
+  for (const id of ["explorer-engine-toggle", "build-engine-toggle"]) {
+    const toggle = document.getElementById(id);
+    toggle?.classList.toggle("is-on", buildOn);
+    toggle?.setAttribute("aria-checked", String(buildOn));
   }
   const analyzeBtn = document.getElementById("open-engine-widget");
   if (analyzeBtn) {

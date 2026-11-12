@@ -202,7 +202,8 @@ for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.nam
   await page.locator("#view-build.is-active").waitFor({ timeout: 20000 });
   const pane = page.locator('#build-panes [data-pane="explorer"]');
   if (await pane.isVisible().catch(() => false)) await pane.click();
-  await page.locator('[data-testid="open-engine-widget-build"]').click();
+  // The phone sheet's tab row carries its own Engine switch.
+  await page.locator("#explorer-engine-toggle, #build-engine-toggle").locator("visible=true").first().click();
   await page.waitForSelector("#engine-window.is-visible", { timeout: 15000 });
   await page.waitForFunction(
     () => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending) .pv-move"),

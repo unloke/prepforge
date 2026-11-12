@@ -1,6 +1,7 @@
 import { html } from "../html.js";
 import { enterRows } from "../list-enter.js";
 import { roleLabel } from "../share-roles.js";
+import { bindLongPress } from "../phone/sheet.js";
 
 // The Library table's rows and the painter that keeps them in place.
 //
@@ -128,9 +129,9 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
         open();
       }
     });
-    row.addEventListener("contextmenu", (event) =>
-      openRepertoireContextMenu(event, repId, row.dataset.active === "1"),
-    );
+    const menu = (event) => openRepertoireContextMenu(event, repId, row.dataset.active === "1");
+    row.addEventListener("contextmenu", menu);
+    bindLongPress(row, menu);
     row.querySelector(".row-menu-btn").addEventListener("click", (event) => {
       event.stopPropagation();
       const rect = event.currentTarget.getBoundingClientRect();

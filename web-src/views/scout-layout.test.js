@@ -31,9 +31,10 @@ it("the retry action sits at the end of the error row", () => {
   expect(rule(".scout-error .btn")).toMatch(/margin-left:\s*auto/);
 });
 
-it("on a phone the engine offer follows the report once there is one", () => {
+it("on a phone the engine offer waits for the report and follows it", () => {
   const phone = cssSource("phone.css");
-  expect(phone).toMatch(/\.scout-panel:has\(#scout-results:not\(:empty\)\) \.scout-main > \[data-unlock-place="scout"\] \{ order: 2; \}/);
+  expect(phone).toMatch(/\.scout-panel:not\(:has\(#scout-results:not\(:empty\)\)\) \.scout-main > \[data-unlock-place="scout"\] \{ display: none; \}/);
+  expect(phone).toMatch(/\.scout-main > \[data-unlock-place="scout"\] \{ order: 2; \}/);
 });
 
 // The identity is one line above the tabs, and the engine status takes no height

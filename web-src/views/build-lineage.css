@@ -3,18 +3,59 @@
 /* Chess-book headings, copperplate-like route lines, and the existing ink/accent.
    The ornament is generated from the open repertoire, never a random motif. */
 #build-rep-header #build-rep-name { position: relative; padding-right: 72px; }
+.build-ply { display: none; }
 #build-rep-name b { font-family: var(--serif); font-size: 19px; font-weight: 400; letter-spacing: -0.2px; }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   #build-rep-header .color-dot { display: none; }
   #build-rep-name b { font-size: 20px; }
-  /* The pane tabs' underline slides to the open tab; the pane rises in. */
-  #build-panes > button[aria-selected="true"] { border-bottom-color: transparent; }
+  /* The title's subline is the shown move; the save state takes it only while
+     there is something to say (unsaved, failed). */
+  #build-rep-header .build-ply { display: block; color: var(--label); font-size: var(--fs-xs); line-height: 16px; }
+  #build-rep-header .build-sync.is-saved,
+  #build-rep-header .build-sync:not([hidden]):not(.is-saved) ~ .build-ply { display: none; }
+  /* The sheet under the board: its tab row (the database's name on the
+     Explorer tab, the engine switch at the end), the engine's line, the pane.
+     Dragged up by the tab row it covers the board but its top two ranks. */
+  #build-panes {
+    --sw: 96px;
+    order: 2;
+    position: relative;
+    z-index: 3;
+    flex: none;
+    display: flex;
+    height: var(--phone-tab-h);
+    padding: 0 var(--phone-gutter);
+    background: var(--bg);
+    box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the tab row's rule */
+    touch-action: none;
+    transition: border-radius var(--dur) var(--ease-out);
+  }
+  #build-panes > button {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  #build-panes > button[aria-selected="true"] { color: var(--text); }
+  #build-panes > button::after { content: ""; position: absolute; inset: 0 0 -8px; }
+  #build-pane-db::after { content: " \25BE"; color: var(--accent-text); }
+  #build-panes .pane-engine { flex: none; width: var(--sw); display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--muted); font-size: 13px; }
+  #build-panes .sheet-grab { position: absolute; top: 3px; left: 50%; width: 32px; height: 4px; margin-left: -16px; border-radius: 2px; background: var(--line-strong); }
+  #build-panes .sheet-grab::after { content: ""; position: absolute; inset: -6px -20px; }
   #build-panes::after {
     content: "";
     position: absolute;
     left: var(--phone-gutter);
     bottom: 0;
-    width: calc((100% - 2 * var(--phone-gutter)) / 3);
+    width: calc((100% - 2 * var(--phone-gutter) - var(--sw)) / 3);
     height: 2px;
     background: var(--text);
     transform: translateX(calc(var(--tab, 0) * 100%));
@@ -23,10 +64,22 @@
   }
   #view-build[data-pane="explorer"] #build-panes { --tab: 1; }
   #view-build[data-pane="coverage"] #build-panes { --tab: 2; }
-  /* The first move sits 14px under the tabs, as in Lichess's move list. The
-     pane keeps four lines of tree: only five open engine lines push past it. */
-  #view-build #build-sidebar > .panel-body { flex: 1 0 112px; gap: 0; scroll-padding-top: calc(var(--phone-tab-h) + 12px); }
+  #build-engine-slot { order: 2; position: relative; z-index: 3; background: var(--bg); }
+  #build-engine-slot:has(.engine-window) { box-shadow: inset 0 -1px 0 var(--line); }
+  #build-engine-slot .engine-window-close { display: none; }
+  #view-build .study .board-stack { position: relative; z-index: 1; transition: margin-bottom var(--dur) var(--ease-out); }
+  #view-build.is-raised .study .board-stack { margin-bottom: calc(80px - 100vw); }
+  #view-build.is-raised #build-panes { border-radius: 16px 16px 0 0; }
+  #view-build #build-sidebar > .panel-body { position: relative; z-index: 2; background: var(--bg); flex: 1 0 112px; gap: 0; padding-top: 8px; }
   #view-build #build-sidebar .tree-wrap { padding: 0 0 4px; }
+  /* The Explorer is its rows: the database is its tab, the engine is the
+     sheet's switch, so the pane's options row and column heads go. Coverage
+     keeps its row (scope, Scan). */
+  #view-build[data-pane="explorer"] #build-inspector .dock-head { display: contents; }
+  #view-build[data-pane="explorer"] #build-inspector .dock-head > :not(#build-dock-tools),
+  #build-inspector .explorer-head { display: none; }
+  #build-inspector .explorer-row { min-height: 40px; }
+  #build-inspector .explorer-pick { min-height: 40px; }
   /* The scan's answer comes first; the Maia offer follows it. */
   #coverage-drawer:not([hidden]) { display: flex; flex-direction: column; }
   #coverage-drawer > [data-unlock-place] { order: 1; }

@@ -45,22 +45,21 @@ it("the phone Library list starts under one row of filters; search opens from th
 it("the phone repertoire row keeps the mastery figure", () => {
   // The mastery cell used to be display:none on a phone, so a phone row said
   // nothing about progress even though the desktop row carries a percentage.
+  // It closes the row on the right, across both lines; the bar and the word
+  // "mastered" are left out (no room, and the figure alone reads as progress).
   const cell = rule("#view-dashboard .lib-row .lib-cell-mastery {");
   expect(cell).not.toMatch(/display:\s*none/);
-  expect(cell).toMatch(/display:\s*flex/);
-  // The percentage itself is kept, the bar is not (no room for it).
-  expect(rule("#view-dashboard .lib-row .lib-mbar {")).toMatch(/display:\s*none/);
-  // The word names the number: the phone has no column header to do it.
-  expect(rule("#view-dashboard .lib-row .lib-mastery-word {")).toMatch(/display:\s*(inline|block)/);
+  expect(cell).toMatch(/grid-area:\s*pct/);
+  expect(css).toMatch(/grid-template-areas:\s*"name name name pct" "dot sub queue pct"/);
+  expect(rule("#view-dashboard .lib-row :is(.lib-mbar,")).toMatch(/display:\s*none/);
 });
 
 it("a repertoire keeps its name whole on a phone", () => {
-  // The mastery figure (or the untrained note) shared the name's line and cut
-  // the name to a few letters. The name owns the first line; the figure closes
-  // the queue's line on the right.
-  expect(css).toMatch(/grid-template-areas:\s*"rep rep" "queue mastery"/);
-  // With no queue chips the note starts at the name's edge, not the dot's.
-  expect(rule("#view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery {")).toMatch(/padding-left:\s*38px/);
+  // The name owns the first line up to the figure; a long one ends in an
+  // ellipsis rather than wrapping the row.
+  const name = rule("#view-dashboard .lib-row .name {");
+  expect(name).toMatch(/white-space:\s*nowrap/);
+  expect(name).toMatch(/text-overflow:\s*ellipsis/);
 });
 
 it("the phone checklist shows no step number", () => {

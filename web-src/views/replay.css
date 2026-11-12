@@ -299,4 +299,13 @@
   #view-replay .focus .actions { flex-wrap: nowrap; gap: 8px; }
   #view-replay .focus .actions > button.btn { flex: 1 1 0; min-width: 0; }
   #view-replay .focus .actions > a.btn.ghost { flex: none; }
+  /* Games' source and sample wait behind its ⚙; the list (or its empty
+     state) is the page. */
+  #view-replay .games-panel:not([data-setup]) > .toolbar { padding: 0; background: none; }
+  #view-replay .games-panel:not([data-setup]) > .toolbar > :is(.src:not(:has(.src-chip-signin, .src-chips:empty)), .inline-field),
+  #view-replay .games-panel:not([data-setup]) > .toolbar > .src:has(.src-chip-signin) > :not(.src-chips) { display: none; }
+  #games-setup[aria-expanded="true"] { background: var(--line-strong); }
+  #view-replay .games-panel .ledger:has(.ledger-empty) { background: none; }
+  #view-replay .games-panel .ledger:has(.ledger-empty) > .card-head { display: none; }
+  #view-replay .games-panel .ledger-empty.empty-state.big { padding: 22vh 16px 0; }
 }

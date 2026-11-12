@@ -240,6 +240,11 @@ function gamesIdleHint() {
 }
 
 function bindGamesSource() {
+  document.getElementById("games-setup")?.addEventListener("click", (event) => {
+    const open = event.currentTarget.getAttribute("aria-expanded") !== "true";
+    event.currentTarget.setAttribute("aria-expanded", String(open));
+    event.currentTarget.closest(".games-panel").toggleAttribute("data-setup", open);
+  });
   document.getElementById("games-source-add")?.addEventListener("click", (event) => {
     // Sources only matter for a Check, which needs an account — don't let a
     // guest collect usernames that would silently ride into their account.

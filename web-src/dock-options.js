@@ -20,6 +20,9 @@ export function paintDockOptions({ tab, db, scopeText }) {
   });
   const name = document.getElementById("build-dock-opts-label");
   if (name) name.textContent = label;
+  // A phone's Explorer tab is the database's name; tapping it again opens these options.
+  const pane = document.getElementById("build-pane-db");
+  if (pane) pane.textContent = dockOptionsLabel({ tab: "explorer", db });
   const button = document.getElementById("build-dock-opts");
   if (button) {
     const what = tab === "coverage" ? "Coverage" : "Explorer";

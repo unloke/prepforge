@@ -143,74 +143,43 @@
      steps left. */
   #view-dashboard .lib { gap: var(--phone-gap); }
   #view-dashboard .lib-grid { gap: var(--phone-gap); }
-  /* The strip answers one question — what to study next — so the queue is the
-     largest line on it and the streak is the quiet meta above. The action
-     keeps the accent and takes a thumb-sized pill. */
+  /* Today is one strip: what is due, then the streak and what else waits,
+     with Train beside them. */
   #view-dashboard .today.card {
     display: grid;
-    /* The action closes the card on its own line, as wide as the card's text:
-       beside the streak a "Learn new moves" pill took half the row and
-       out-shouted the queue it acts on, and a longer label had nowhere to go. */
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "streak"
-      "queue"
-      "more"
-      "train";
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "queue queue train" "streak more train";
     align-items: center;
-    gap: 2px 12px;
-    min-height: 52px;
-    padding: 12px 14px;
+    gap: 0;
+    min-height: 56px;
+    padding: 8px 8px 8px 16px;
     background: var(--panel);
   }
   #view-dashboard .today-streak {
     grid-area: streak;
     flex-direction: row;
-    align-items: baseline;
-    gap: 5px;
+    gap: 4px;
     width: auto;
     height: auto;
+    margin-right: 4px;
     padding: 0;
     border: 0;
-    border-radius: 0;
     background: none;
-    line-height: 1.1;
-  }
-  /* A streak is a fact, not a state: it is read, not warned about, so it keeps
-     the ink and lets the queue carry the emphasis. */
-  #view-dashboard .today-count { color: var(--muted); font-size: 13px; font-weight: 500; }
-  #view-dashboard .today-unit { display: block; color: var(--muted); font-size: 13px; }
-  #view-dashboard .today-unit small { display: none; }
-  #view-dashboard .today-recap,
-  #view-dashboard .today-counts { display: none; }
-  /* The aside is only the counts and the recap: with both hidden it would
-     leave an empty grid cell. */
-  #view-dashboard .today-aside { display: none; }
-  #view-dashboard .today-body { display: contents; }
-  #view-dashboard .today-warning { grid-area: more; margin-top: 4px; font-size: 13px; }
-  /* A failed read is one card: the strip's grid would clip it into the 40px
-     streak slot, so it spans the full row instead. */
-  #view-dashboard .today-error { grid-column: 1 / -1; grid-area: queue; }
-  #view-dashboard .today > .btn { grid-area: train; }
-  /* The queue never breaks between a figure and its unit, and never leaves a
-     "·" at the end of a line: the two lines are separate elements now, and the
-     queue is two lines at most. */
-  #view-dashboard .today-queue {
-    grid-area: queue;
-    color: var(--text);
-    font-size: 15px;
-    font-weight: 500;
-    line-height: 1.3;
-    text-wrap: pretty;
-  }
-  #view-dashboard .today-more {
-    grid-area: more;
-    margin-top: 2px;
+    color: var(--muted);
     font-size: 13px;
     line-height: 1.35;
-    text-wrap: pretty;
   }
-  #view-dashboard .today .btn { min-height: 36px; height: 36px; margin-top: 10px; padding: 0 18px; border-radius: var(--radius); font-size: 14px; }
+  #view-dashboard .today-streak[data-count="0"] { display: none; }
+  #view-dashboard .today-streak::after { content: "\B7"; }
+  #view-dashboard .today-count { color: inherit; font: inherit; }
+  #view-dashboard .today-unit { display: block; color: inherit; font-size: inherit; }
+  #view-dashboard :is(.today-unit small, .today-aside) { display: none; }
+  #view-dashboard .today-body { display: contents; }
+  #view-dashboard .today-error { grid-column: 1 / -1; grid-area: queue; }
+  #view-dashboard .today > .btn { grid-area: train; margin-left: 12px; }
+  #view-dashboard .today-queue { grid-area: queue; color: var(--text); font-size: 15px; font-weight: 500; line-height: 1.3; }
+  #view-dashboard :is(.today-more, .today-warning) { grid-area: more; overflow: hidden; margin: 0; font-size: 13px; line-height: 1.35; white-space: nowrap; text-overflow: ellipsis; }
+  #view-dashboard .today .btn { min-height: 36px; height: 36px; padding: 0 16px; border-radius: 10px; font-size: 14px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   /* The phone has no card head: the page title names the page, and its
@@ -251,37 +220,24 @@
     font-size: 15px;
     font-weight: 500;
   }
-  /* Five filters must all be visible at 390px: a row that scrolls sideways
-     reads as a cut-off row. They were five 44px pills at 13px, which filled
-     the width and read as the screen's buttons rather than its filters. They
-     are one track with one filled option: the same target height, no pill
-     around each word. */
-  #view-dashboard .lib-list .seg {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 2px;
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
-    border-radius: 12px;
-    background: var(--surface-3);
-  }
-  #view-dashboard .lib-list.is-empty:not(:has(.lib-no-match)) .seg { display: none; }
+  /* The filters are an underlined tab row; Disabled sits with the search. */
+  #view-dashboard .lib-list .seg { display: flex; gap: 0; margin: 0; padding: 0; border-radius: 0; background: none; box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the tab row's rule */ }
+  #view-dashboard .lib-list.is-empty:not(:has(.lib-no-match)) .seg,
+  #view-dashboard .lib:not([data-search-open]) .seg-btn[data-lib-filter="disabled"]:not(.is-active) { display: none; }
   #view-dashboard .lib-list .seg-btn {
-    flex: 1 1 auto;
-    min-width: 36px;
+    position: relative;
+    flex: 1 1 0;
     min-height: 36px;
     height: 36px;
-    padding: 0 6px;
+    padding: 0;
     border: 0;
-    border-radius: 10px;
+    border-radius: 0;
     background: none;
     color: var(--muted);
     font-size: 13px;
     font-weight: 500;
-    white-space: nowrap;
   }
-  #view-dashboard .lib-list .seg-btn.is-active { background: var(--panel); color: var(--text); font-weight: 500; }
+  #view-dashboard .lib-list .seg-btn.is-active { background: none; color: var(--text); box-shadow: inset 0 -2px 0 var(--text); /* taste-skill-ignore: the open tab's underline */ }
   .search-field {
     width: 100%;
     height: 36px;
@@ -295,73 +251,36 @@
   .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--muted); }
   .search-field input { height: 36px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
   #view-dashboard .lib-rep-list { border-radius: var(--radius-card); background: var(--panel); overflow: hidden; }
-  #view-dashboard .lib-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    min-height: 52px;
-    margin: 0;
-    padding: 8px 4px 8px 14px;
-    border: 0;
-    border-radius: 0;
-    background: none;
-    box-shadow: none;
-  }
+  /* A row is two lines: the name, then the side's dot, the subline and the
+     queue; mastery closes it on the right. The menu is a long-press. */
+  #view-dashboard .lib-row { position: relative; display: block; min-height: 54px; margin: 0; padding: 8px 14px; border: 0; border-radius: 0; background: none; box-shadow: none; -webkit-touch-callout: none; user-select: none; }
   #view-dashboard .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
-  /* The open repertoire is marked with the group's own fill, not a 3px accent
-     bar: inside a rounded grouped list a bar on the first row reads as a clip
-     mark, and the accent belongs to the screen's action. */
   #view-dashboard .lib-row.is-selected,
   #view-dashboard .lib-row.is-selected:hover { background: var(--surface-3); }
   #view-dashboard .lib-row.is-selected::before { content: none; }
-  #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
-  #view-dashboard .lib-row :is(.color-dot, .skeleton-dot) { flex: none; width: 26px; height: 26px; }
-  #view-dashboard .lib-row .lib-name { min-width: 0; gap: 2px; }
-  #view-dashboard .lib-row .name { font-size: 15px; font-weight: 500; }
-  #view-dashboard .lib-row .rep-sub { font-size: 13px; }
-  /* The desktop row carries a mastery figure in its own column; the phone row
-     dropped it, so a phone could not tell a trained repertoire from an
-     untrained one. On a phone it closes the name's line at 13px — the size of
-     the row's other quiet facts — and the queue keeps the line under it, so the
-     right edge is one value beside the name rather than two lines of numbers
-     beside the ⋯. */
   #view-dashboard .lib-row .lib-opt {
     display: grid;
-    flex: 1 1 auto;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "rep rep" "queue mastery";
+    grid-template-columns: 9px auto minmax(0, 1fr) auto;
+    grid-template-areas: "name name name pct" "dot sub queue pct";
     align-items: center;
-    gap: 6px 10px;
+    gap: 2px 6px;
     min-width: 0;
   }
-  /* The name owns the first line: beside "0% mastered" it was cut to
-     "Sicilian Najdor…" and its subline wrapped. The figure closes the queue's
-     line instead, on the row's right edge. */
-  #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; justify-self: end; display: flex; }
-  #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: nowrap; gap: 2px; padding-left: 34px; }
-  #view-dashboard .lib-row .lib-mbar { display: none; }
-  #view-dashboard .lib-row .lib-mastery { flex-direction: row; align-items: baseline; gap: 4px; width: auto; line-height: 1.2; }
-  #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: right; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
-  #view-dashboard .lib-row .lib-mastery-word { display: inline; color: var(--label); font-size: 13px; }
-  /* A shared repertoire is read-only; its name line already says so. */
-  #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
-  /* The queue chip is the row's own action under a thumb, and at 18px it was
-     under the 24px minimum target. It grows to 24px, the most it can take
-     inside a row without turning the queue line into a stack of buttons; the
-     row itself is the target for opening the repertoire. */
-  /* Drawn as text with its dot, as Lichess prints a study's counts: three
-     boxed pills wrapped the queue to a second line. The target stays. */
-  #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; padding: 0 4px; font-size: 13px; border-color: transparent; background: none; }
-  /* The chip stays a 24px pill; its hit area grows into the queue line's own
-     band (the 6px gap above, the row's 8px padding below) and stops there. At
-     -10px it reached up over the name's subline, so a tap at the row's middle,
-     meant to open the repertoire, opened Train instead. */
-  #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -6px -2px -8px; }
-  /* With no queue chips the line holds only the mastery note: it starts at
-     the name's left edge instead of hanging off the right. */
-  #view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
+  #view-dashboard .lib-row :is(.lib-cell-rep, .lib-name) { display: contents; }
+  #view-dashboard .lib-row :is(.color-dot, .skeleton-dot) { grid-area: dot; width: 9px; height: 9px; margin: 0; border-width: 1px; }
+  #view-dashboard .lib-row .lib-name-line { grid-area: name; min-width: 0; }
+  #view-dashboard .lib-row .name { overflow: hidden; font-size: 15px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
+  #view-dashboard .lib-row .rep-sub { grid-area: sub; font-size: 13px; white-space: nowrap; }
+  #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; overflow: hidden; gap: 0; }
   #view-dashboard .lib-cell-queue:not(:has(.kchip)) { display: none; }
-  #view-dashboard .lib-row .row-menu-btn { flex: none; width: 36px; height: 36px; opacity: 1; }
+  #view-dashboard .lib-row .lib-cell-mastery { grid-area: pct; display: flex; padding-left: 8px; }
+  #view-dashboard .lib-row :is(.lib-mbar, .lib-mastery-word, .lib-mastery-none) { display: none; }
+  /* The menu is a long-press; its button stays for the keyboard and VoiceOver. */
+  #view-dashboard .lib-row .row-menu-btn { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  #view-dashboard .lib-row .lib-mastery b { color: var(--muted); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
+  #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; margin-block: -3px; padding: 0 4px; font-size: 13px; border-color: transparent; background: none; }
+  #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -6px -2px -8px; }
 
   #view-dashboard .steps.card { padding: 4px 0; background: var(--panel); }
   #view-dashboard .steps .card-head { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-height: 0; margin: 0; padding: 8px 6px 4px 14px; }
@@ -421,7 +340,7 @@
   /* The ≤860px rule sets this title as a block; on a phone it is the pages'
      title row, its title centred in the 44px bar. */
   #view-replay .review > section > .page-head { display: flex; }
-  #view-replay .review > section > .page-head h1 { margin: 0; }
+  #view-replay .review > section > .page-head h1 { flex: 1; margin: 0; }
   #view-replay :is(.games-panel, .scout-panel) > .toolbar {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -534,7 +453,8 @@
      the first screen is the opponent's lines, and the offer's card follows them.
      Only once there is a report: while games stream the page is short, and the
      card would sit 500px below the stream with nothing between. */
-  #view-replay .scout-panel:has(#scout-results:not(:empty)) .scout-main > [data-unlock-place="scout"] { order: 2; }
+  #view-replay .scout-panel:not(:has(#scout-results:not(:empty))) .scout-main > [data-unlock-place="scout"] { display: none; }
+  #view-replay .scout-main > [data-unlock-place="scout"] { order: 2; }
   /* The report's blocks keep the page's 12px step: the grid's 24px and the
      offer's own 12px margin put 36px between the offer and the empty card. */
   #view-replay .scout-grid { row-gap: var(--phone-gap); }

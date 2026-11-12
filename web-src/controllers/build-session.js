@@ -223,7 +223,7 @@ async function selectBuildNode(nodeId, { branchChoiceId = null } = {}) {
     node.depth === 0
       ? "Start"
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
-  document.getElementById("build-board-label").textContent = label;
+  for (const id of ["build-board-label", "build-head-ply"]) document.getElementById(id).textContent = label;
   // A step through the tree changes the mark, not the tree. Structural edits
   // (add/delete/collapse/note/grade/import) call renderBuilderTree themselves.
   if (buildView) buildView.updateBuildTreeSelection();
