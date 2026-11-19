@@ -180,11 +180,19 @@ def test_revert_restores_compact_op_delta_and_cleans_up_generated_adds(world):
     assert "repertoire_id" not in delta_entry["after"]
     assert "tags_json" not in delta_entry["after"]
 
+    copied = _post(w["c"]["copy"], "/api/repertoires/fork", {"repertoire_id": w["rep"]})
+    assert copied.status_code == 200, copied.text
+
     # Deleting and reverting must expand defaults + restore eval/prob intact
     deleted = _post(w["c"]["edit"], "/api/build/delete-nodes", {
         "repertoire_id": w["rep"], "node_ids": [e5_node["id"]],
     })
     assert deleted.status_code == 200, deleted.text
+    # The original's undo snapshot still needs the evaluation shared with the copy.
+    removed_copy = _post(w["c"]["copy"], "/api/repertoires/delete", {
+        "repertoire_id": copied.json()["repertoire_id"],
+    })
+    assert removed_copy.status_code == 200, removed_copy.text
     restored = _revert(w, deleted.json()["revision"])
     assert restored.status_code == 200, restored.text
     restored_e5 = next(n for n in restored.json()["nodes"] if n["id"] == e5_node["id"])

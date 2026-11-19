@@ -217,56 +217,6 @@ class EvaluationRepository(Repository):
 
         return {item_key: eval_ids[fp] for item_key, fp in item_fps.items()}
 
-    def _reclaim_unreferenced_evaluations(
-        self, conn: Connection, eval_ids: Iterable[Optional[int]]
-    ) -> int:
-        """Delete evaluations (and newly-orphaned positions) no longer referenced by FK."""
-        wanted = sorted({int(i) for i in eval_ids if i is not None})
-        if not wanted:
-            return 0
-        deleted = 0
-        ref_cols = (
-            t.moves.c.engine_eval_before_id,
-            t.moves.c.engine_eval_after_id,
-            t.moves.c.best_move_eval_id,
-            t.opening_nodes.c.engine_evaluation_id,
-        )
-        for offset in range(0, len(wanted), _EVAL_IN_CHUNK):
-            chunk = wanted[offset:offset + _EVAL_IN_CHUNK]
-            still_used = set()
-            for col in ref_cols:
-                still_used.update(
-                    int(row[0]) for row in conn.execute(select(col).where(col.in_(chunk))).all()
-                )
-            orphan_evals = [eid for eid in chunk if eid not in still_used]
-            if not orphan_evals:
-                continue
-            pos_ids = sorted({
-                int(row[0])
-                for row in conn.execute(
-                    select(t.engine_evaluations.c.position_id).where(
-                        t.engine_evaluations.c.id.in_(orphan_evals)
-                    )
-                ).all()
-            })
-            res = conn.execute(
-                delete(t.engine_evaluations).where(t.engine_evaluations.c.id.in_(orphan_evals))
-            )
-            deleted += int(res.rowcount or 0)
-            if pos_ids:
-                used_pos = {
-                    int(row[0])
-                    for row in conn.execute(
-                        select(t.engine_evaluations.c.position_id).where(
-                            t.engine_evaluations.c.position_id.in_(pos_ids)
-                        )
-                    ).all()
-                }
-                orphan_pos = [pid for pid in pos_ids if pid not in used_pos]
-                if orphan_pos:
-                    conn.execute(delete(t.positions).where(t.positions.c.id.in_(orphan_pos)))
-        return deleted
-
     def _load_evaluations(
         self, conn: Connection, eval_ids: Iterable[Optional[int]]
     ) -> Dict[int, EngineEvaluation]:

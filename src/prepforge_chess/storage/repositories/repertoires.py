@@ -862,21 +862,8 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     conn, owner, PLAYED_SESSIONS_KEY,
                     (cur if isinstance(cur, int) and cur >= 0 else 0) + sessions,
                 )
-            eval_ids = [
-                int(row[0])
-                for row in conn.execute(
-                    select(t.opening_nodes.c.engine_evaluation_id)
-                    .distinct()
-                    .where(
-                        t.opening_nodes.c.repertoire_id == repertoire_id,
-                        t.opening_nodes.c.engine_evaluation_id.is_not(None),
-                    )
-                ).all()
-            ]
+            # Activity snapshots in other repertoires may still use shared evaluations.
             conn.execute(delete(t.repertoires).where(t.repertoires.c.id == repertoire_id))
-            conn.execute(delete(t.opening_nodes).where(t.opening_nodes.c.repertoire_id == repertoire_id))
-            if eval_ids:
-                self._reclaim_unreferenced_evaluations(conn, eval_ids)
 
     def _archive_reviews(self, conn: Connection, reviewed, week_ago: datetime) -> None:
         """Keep this week's review timestamps of rows about to be deleted, so the
