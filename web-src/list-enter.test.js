@@ -116,9 +116,9 @@ describe("entrances", () => {
     }
   });
 
-  it("Train's screens enter through the view transition, never a second entrance animation", () => {
+  it("Train's screens use the shared live entrance, never a second screen animation", () => {
     const shell = readFileSync(new URL("./train-shell.css", import.meta.url), "utf8");
-    expect(shell).toContain("::view-transition-new(train-body)");
+    expect(shell).not.toContain("view-transition");
     expect(css + shell).not.toMatch(/#train-(summary|progress-panel|home)[^{]*\{[^}]*animation:/);
   });
 

@@ -10,11 +10,13 @@ const shared = eagerCss + readFileSync(new URL("./teams.css", import.meta.url), 
 const view = shared;
 
 // The desktop block that composes Teams.
-const desktop = shared.slice(shared.indexOf("@media (min-width: 1021px) {\n  .teams {"));
+const desktop = shared.slice(shared.indexOf("@media (min-width: 1021px) {"));
 
 describe("Teams is a work surface", () => {
-  it("gives the grid the height of the view", () => {
-    expect(desktop).toMatch(/\.teams \{ grid-template-columns: var\(--teams-dir, 300px\) minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); min-height: 100%; \}/);
+  it("fills the height left below the page heading instead of adding another full view", () => {
+    expect(desktop).toMatch(/#view-teams\.is-active \{ display: flex; flex-direction: column; \}/);
+    expect(desktop).toMatch(/\.teams \{ flex: 1 0 auto; min-height: 0; grid-template-columns: var\(--teams-dir, 300px\) minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); \}/);
+    expect(desktop).not.toMatch(/min-height: 100%/);
     expect(desktop).toMatch(/\.teams:has\(> \.team-detail:not\(\[hidden\]\)\) \{ grid-template-rows: auto minmax\(0, 1fr\); \}/);
   });
 
@@ -107,4 +109,3 @@ describe("Teams disabled actions and member/create flows", () => {
     expect(createBlock).toContain('if (!created && !failedWithAuth) saveCreateTeamDraft("");');
   });
 });
-

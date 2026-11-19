@@ -105,7 +105,10 @@ const LIMITS = [
   // Drill widgets bring it to 179,199 B; the cap moves to 179,300 B.
   // 2026-11-05 QA round 4: the rail foot, closing rail and disabled Teams
   // icon buttons bring it to 179,454 B; the cap moves to 179,500 B.
-  { prefix: "index-", suffix: ".css", maxBytes: 179_500, label: "main stylesheet" },
+  // Shared interaction motion and visible-viewport sizing, minus the old
+  // snapshot rules, plus aligned phone gutters and footer hit testing,
+  // bring the sheet to 180,032 B.
+  { prefix: "index-", suffix: ".css", maxBytes: 180_200, label: "main stylesheet" },
 ];
 
 let files;
