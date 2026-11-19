@@ -71,14 +71,15 @@ class EvaluationRepository(Repository):
         cached = pos_cache.get(key)
         if cached is not None:
             return cached
+        packed = codec.pack_position(key)
         stmt = (
             _insert(conn, t.positions)
-            .values(fen=key)
-            .on_conflict_do_nothing(index_elements=["fen"])
+            .values(key=packed)
+            .on_conflict_do_nothing(index_elements=["key"])
         )
         conn.execute(stmt)
         pos_id = conn.execute(
-            select(t.positions.c.id).where(t.positions.c.fen == key)
+            select(t.positions.c.id).where(t.positions.c.key == packed)
         ).scalar_one()
         pos_cache[key] = int(pos_id)
         return int(pos_id)
@@ -97,7 +98,7 @@ class EvaluationRepository(Repository):
             "score_cp": evaluation.score_cp,
             "mate_in": evaluation.mate_in,
             "best_move_uci": evaluation.best_move_uci,
-            "pv": codec.encode_pv(evaluation.pv),
+            "pv": codec.pack_pv(evaluation.pv),
             "wdl_win": None if wdl is None else wdl[0],
             "wdl_draw": None if wdl is None else wdl[1],
             "wdl_loss": None if wdl is None else wdl[2],
@@ -112,7 +113,7 @@ class EvaluationRepository(Repository):
                 score_cp=values["score_cp"],
                 mate_in=values["mate_in"],
                 best_move_uci=values["best_move_uci"],
-                pv=values["pv"],
+                pv=codec.encode_pv(evaluation.pv),
                 wdl_win=values["wdl_win"],
                 wdl_draw=values["wdl_draw"],
                 wdl_loss=values["wdl_loss"],
@@ -173,16 +174,16 @@ class EvaluationRepository(Repository):
 
         missing_keys = list(dict.fromkeys(pos_key for _, _, pos_key in pending if pos_key not in pos_cache))
         for offset in range(0, len(missing_keys), _EVAL_IN_CHUNK):
-            chunk = missing_keys[offset:offset + _EVAL_IN_CHUNK]
+            packed = {codec.pack_position(k): k for k in missing_keys[offset:offset + _EVAL_IN_CHUNK]}
             conn.execute(
                 _insert(conn, t.positions)
-                .values([{"fen": k} for k in chunk])
-                .on_conflict_do_nothing(index_elements=["fen"])
+                .values([{"key": k} for k in packed])
+                .on_conflict_do_nothing(index_elements=["key"])
             )
             for row in conn.execute(
-                select(t.positions.c.id, t.positions.c.fen).where(t.positions.c.fen.in_(chunk))
+                select(t.positions.c.id, t.positions.c.key).where(t.positions.c.key.in_(list(packed)))
             ).all():
-                pos_cache[row.fen] = int(row.id)
+                pos_cache[packed[bytes(row.key)]] = int(row.id)
 
         by_fp: Dict[bytes, Dict[str, Any]] = {}
         item_fps: Dict[Any, bytes] = {}
@@ -240,6 +241,6 @@ class EvaluationRepository(Repository):
             score_cp=row["score_cp"],
             mate_in=row["mate_in"],
             best_move_uci=row["best_move_uci"],
-            pv=codec.decode_pv(row["pv"]),
+            pv=codec.unpack_pv(row["pv"]),
             wdl=codec.decode_wdl(row["wdl_win"], row["wdl_draw"], row["wdl_loss"]),
         )

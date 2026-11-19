@@ -32,7 +32,7 @@ def test_cleanup_retains_old_receipts_and_replays_stay_exactly_once():
 def test_operational_cli_defaults_to_dry_run(monkeypatch, capsys):
     repo = _repository()
     with repo.engine.begin() as conn:
-        conn.execute(insert(t.positions).values(fen="orphan-fen"))
+        conn.execute(insert(t.positions).values(key=b"orphan"))
     monkeypatch.setattr("prepforge_chess.api.db.make_engine", lambda: repo.engine)
     # The in-memory engine must remain alive for the two invocations.
     monkeypatch.setattr(repo.engine, "dispose", lambda: None)
@@ -49,7 +49,7 @@ def test_operational_cli_defaults_to_dry_run(monkeypatch, capsys):
 def test_cleanup_deletes_are_set_based_and_keep_latest_ties():
     repo = _repository()
     with repo.engine.begin() as conn:
-        conn.execute(insert(t.positions), [{"fen": f"unused-{i}"} for i in range(2000)])
+        conn.execute(insert(t.positions), [{"key": f"unused-{i}".encode()} for i in range(2000)])
         conn.execute(insert(t.analysis_results), [
             {"id": f"analysis-{i:04}", "game_id": "game", "analyzed_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
              "engine": "mock", "summary_json": "{}", "critical_ply": ""} for i in range(20)
