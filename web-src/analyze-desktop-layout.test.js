@@ -72,6 +72,7 @@ describe("Analyze desktop geometry", () => {
     expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-acc \{[^}]*grid-row: 1;/);
     expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-errs \{[^}]*grid-column: 2 \/ -1; grid-row: 2;/);
     expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-side \{[^}]*align-items: baseline;/);
+    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-disc \{[^}]*display: block;[^}]*align-self: center;/);
     expect(report).not.toMatch(/#analysis-summary > \.rp-summary \.rp-acc \{[^}]*align-self: center;/);
   });
 
