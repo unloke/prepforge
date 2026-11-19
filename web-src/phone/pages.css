@@ -260,7 +260,7 @@
   #view-dashboard .lib-row.is-selected::before { content: none; }
   #view-dashboard .lib-row .lib-opt {
     display: grid;
-    grid-template-columns: 9px auto minmax(0, 1fr) auto;
+    grid-template-columns: 9px minmax(0, auto) minmax(min-content, 1fr) auto;
     grid-template-areas: "name name name pct" "dot sub queue pct";
     align-items: center;
     gap: 2px 6px;
@@ -270,16 +270,21 @@
   #view-dashboard .lib-row :is(.color-dot, .skeleton-dot) { grid-area: dot; width: 9px; height: 9px; margin: 0; border-width: 1px; }
   #view-dashboard .lib-row .lib-name-line { grid-area: name; min-width: 0; }
   #view-dashboard .lib-row .name { overflow: hidden; font-size: 15px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
-  #view-dashboard .lib-row .rep-sub { grid-area: sub; font-size: 13px; white-space: nowrap; }
-  #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; overflow: hidden; gap: 0; }
+  #view-dashboard .lib-row .rep-sub { grid-area: sub; font-size: 13px; overflow-wrap: anywhere; }
+  #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; gap: 0; }
   #view-dashboard .lib-cell-queue:not(:has(.kchip)) { display: none; }
+  #view-dashboard .lib-row:not(:has(.kchip)) .rep-sub { grid-column: sub / pct; }
+  @media (max-width: 360px) {
+    #view-dashboard .lib-row .lib-opt { grid-template-columns: 9px minmax(0, 1fr) auto auto; }
+    #view-dashboard .lib-row .lib-cell-queue { flex-flow: column; align-items: flex-start; }
+  }
   #view-dashboard .lib-row .lib-cell-mastery { grid-area: pct; display: flex; padding-left: 8px; }
   #view-dashboard .lib-row :is(.lib-mbar, .lib-mastery-word, .lib-mastery-none) { display: none; }
   /* The menu is a long-press; its button stays for the keyboard and VoiceOver. */
   #view-dashboard .lib-row .row-menu-btn { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   #view-dashboard .lib-row .lib-mastery b { color: var(--muted); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
   #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
-  #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; margin-block: -3px; padding: 0 4px; font-size: 13px; border-color: transparent; background: none; }
+  #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; margin-block: -3px; padding: 0 4px; font-size: 13px; white-space: nowrap; border-color: transparent; background: none; }
   #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -6px -2px -8px; }
 
   #view-dashboard .steps.card { padding: 4px 0; background: var(--panel); }

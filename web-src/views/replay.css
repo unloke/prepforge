@@ -290,6 +290,10 @@
      card's 14px); a 100% width on top of that stopped it 14px short of the
      right edge and cut "6 opponent left prep" mid-word inside the card. */
   #view-replay .toolbar > .sum-chips:not([hidden]) { width: auto; }
+  #view-replay .games-panel:not([data-setup]) > .toolbar > .sum-chips:not([hidden]) {
+    margin-inline: 0;
+    padding: 5px 0;
+  }
   /* The ledger's head is one line: the title, then the count, which yields. */
   #view-replay .ledger .card-head { flex-wrap: nowrap; min-width: 0; }
   #view-replay .ledger .card-head h2 { flex: none; white-space: nowrap; }
@@ -307,5 +311,5 @@
   #games-setup[aria-expanded="true"] { background: var(--line-strong); }
   #view-replay .games-panel .ledger:has(.ledger-empty) { background: none; }
   #view-replay .games-panel .ledger:has(.ledger-empty) > .card-head { display: none; }
-  #view-replay .games-panel .ledger-empty.empty-state.big { padding: 22vh 16px 0; }
+  #view-replay .games-panel .ledger-empty.empty-state.big { padding: 24px 16px; }
 }
