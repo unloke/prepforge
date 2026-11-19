@@ -1,6 +1,6 @@
 // Library viewport smoke (ui-v2 page internals, 2026-09-27 integration round).
 // Serves the built static/ tree, intercepts /api/* with real-shape
-// fixtures, and at 1440x900 / 1180x900 / 390x844 checks:
+// fixtures, and at 1440x900 / 1180x900 / 390x844 / 320x568 checks:
 //   - no horizontal overflow, no console/page errors
 //   - Library table + preview render from the fixture data
 //   - click-to-preview shows the clicked repertoire; preview actions work
@@ -427,4 +427,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[lib-smoke] ok — all three viewports render the Library from real fixture state with no overflow and no console errors.");
+console.log(`[lib-smoke] ok — all ${VIEWPORTS.length} viewports render the Library from real fixture state with no overflow and no console errors.`);
