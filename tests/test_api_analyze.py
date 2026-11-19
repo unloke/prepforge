@@ -113,7 +113,7 @@ def test_prepare_rejects_empty_pgn(client):
 # ---- classify-save: persist + read back ------------------------------------
 
 
-def test_recall_of_a_snapshot_in_an_older_codec_asks_for_a_new_analysis(client):
+def test_recall_of_an_unreadable_snapshot_asks_for_a_new_analysis(client):
     from sqlalchemy import update
 
     from prepforge_chess.api import db
@@ -124,7 +124,7 @@ def test_recall_of_a_snapshot_in_an_older_codec_asks_for_a_new_analysis(client):
     assert _classify_save(client, prepared).status_code == 200
     with db.get_engine().begin() as conn:
         conn.execute(update(sa_tables.analysis_results).values(
-            move_results_json='{"codec":"zlib-base64-v1","data":"eJyLjgUAARUAuQ=="}'))
+            move_results=b"not zlib"))
     recall = client.get(f"/api/analyses/{prepared['game_id']}")
     assert recall.status_code == 409
     assert "Analyze this game again" in recall.json()["detail"]
@@ -361,7 +361,7 @@ def test_recall_legacy_snapshot_requests_reanalysis(client):
     with db.get_engine().begin() as conn:
         conn.execute(update(t.analysis_results).where(
             t.analysis_results.c.game_id == prepared["game_id"]
-        ).values(move_results_json=None))
+        ).values(move_results=None))
     response = client.get(f"/api/analyses/{prepared['game_id']}")
     assert response.status_code == 409
     assert "Analyze this game again" in response.json()["detail"]

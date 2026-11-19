@@ -68,7 +68,6 @@ linked_accounts = Table(
     Column('created_at', UTCDateTime(), nullable=False, default=_now),
     UniqueConstraint('provider', 'provider_user_id', name='uq_provider_identity'),
     UniqueConstraint('user_id', 'provider', 'provider_user_id', name='uq_user_provider_identity'),
-    Index('ix_linked_accounts_user_id', 'user_id'),
 )
 
 teams = Table(
@@ -89,7 +88,6 @@ team_members = Table(
     Column('role', SAEnum(TeamRole, native_enum=False, length=16), nullable=False, default=TeamRole.member),
     Column('created_at', UTCDateTime(), nullable=False, default=_now),
     UniqueConstraint('team_id', 'user_id', name='uq_team_member'),
-    Index('ix_team_members_team_id', 'team_id'),
     Index('ix_team_members_user_id', 'user_id'),
 )
 
@@ -111,7 +109,6 @@ user_settings = Table(
     Column('key', String(length=120), primary_key=True),
     Column('value_json', Text(), nullable=False, default='null'),
     Column('updated_at', UTCDateTime(), nullable=False, default=_now),
-    Index('ix_user_settings_user_id', 'user_id'),
 )
 
 train_attempt_receipts = Table(
@@ -122,7 +119,6 @@ train_attempt_receipts = Table(
     Column('correct', Boolean(), nullable=False),
     Column('created_at', UTCDateTime(), nullable=False, default=_now),
     Index('ix_train_attempt_receipts_created_at', 'created_at'),
-    Index('ix_train_attempt_receipts_session_id', 'session_id'),
 )
 
 password_reset_tokens = Table(
@@ -172,7 +168,6 @@ games = Table(
     Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_games_owner_user_id")),
     Column("created_at", UTCDateTime(), nullable=False),
     Column("updated_at", UTCDateTime(), nullable=False),
-    Index("idx_games_owner", "owner_user_id"),
     Index("idx_games_owner_created", "owner_user_id", "created_at", "id"),
     Index("idx_games_owner_lichess", "owner_user_id", "lichess_id", unique=True),
 )
@@ -225,7 +220,6 @@ moves = Table(
     Column("generated_comment", Text),
     Column("tags_json", Text),
     Column("source", Text, nullable=False),
-    Index("idx_moves_game_ply", "game_id", "ply"),
 )
 
 analysis_results = Table(
@@ -246,7 +240,8 @@ analysis_results = Table(
     # Search/model quality metadata for this run (A-05): target vs actual
     # depth, shallow spots, Maia status, algorithm versions.
     Column("quality_json", Text),
-    Column("move_results_json", Text),
+    # zlib-compressed JSON (codec.encode_analysis_moves), stored as raw bytes.
+    Column("move_results", LargeBinary),
 )
 Index("idx_analysis_results_game_latest", analysis_results.c.game_id,
       analysis_results.c.analyzed_at.desc(), analysis_results.c.id.desc())
