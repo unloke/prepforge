@@ -11,6 +11,7 @@ import { OUTBOX_TAB_ID, currentOwnerId, localDateString, postJson, setStatus, se
 import { CSRF_HEADER, readCsrfCookie } from "../csrf.js";
 import { commitPendingUndos } from "../undo.js";
 import { buildOpMatchesRepertoire, hasPendingBuildOpsFor, resolveBuildId } from "../build-entry.js";
+import { invalidateBuildTree } from "../build-tree.js";
 import { setBuildSync, setTrainSyncState } from "../train-entry.js";
 import { captureBuildContext, hydrateBuild } from "../core/app-context.js";
 
@@ -138,13 +139,11 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       if (!ownsQueue()) return false;
 
       // Re-point this repertoire's queued children through acknowledged parent IDs.
-      const stillPending = appState.buildPending.filter((m) =>
-        buildOpMatchesRepertoire(m, repertoireId),
-      );
-      for (const m of stillPending) {
-        if (idMap[m.parentRef]) {
+      for (const m of appState.buildPending) {
+        if (buildOpMatchesRepertoire(m, repertoireId) && idMap[m.parentRef]) {
           m.parentRef = idMap[m.parentRef];
           m.node.parent_id = m.parentRef;
+          invalidateBuildTree(appState.build);
         }
       }
 
@@ -200,6 +199,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
             if (idMap[m.parentRef]) {
               m.parentRef = idMap[m.parentRef];
               m.node.parent_id = m.parentRef;
+              invalidateBuildTree(appState.build);
             }
           }
           if (payload && isCurrent()) {

@@ -32,6 +32,7 @@ import { analysisGameName } from "./analyze-name.js";
 import { setBoardCaption } from "./board-caption.js";
 import { readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo } from "./chess-local.js";
+import { getBuildTree, summarizeBuild } from "./build-tree.js";
 import { setupOnFirstVisit } from "./engine/engine-profile.js";
 import { bindUnlocks } from "./engine-unlock.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
@@ -498,7 +499,7 @@ function syncAnalysisGameName() {
 // Per-view chrome that lives inside the pages: Analyze's game on the board, the
 // Repertoire header's size summary, and (phones) the More sheet's Library mirror
 // of Import.
-let headTitleCache = { build: null, key: "", title: "" };
+const buildHeadTitles = new WeakMap();
 function syncViewHeads() {
   document.querySelectorAll("[data-lib-mirror]").forEach((item) => { item.hidden = appState.currentView !== "dashboard"; });
   if (appState.currentView === "analyze") syncAnalysisGameName();
@@ -506,31 +507,15 @@ function syncViewHeads() {
   if (!nameEl) return;
   const build = appState.build;
   if (!build || isBuildReadOnly()) { nameEl.title = ""; return; }
-  const key = `${build.nodes.length}:${build.revision}:${appState.buildPending?.length || 0}:${appState.buildPendingDeletes?.length || 0}`;
-  if (headTitleCache.build !== build || headTitleCache.key !== key) {
-    const played = build.nodes.filter((n) => n.depth > 0);
-    const parents = new Set(build.nodes.map((n) => n.parent_id));
-    const lines = played.filter((n) => !parents.has(n.id)).length;
-    const train = countBuildMovesToTrain(build);
-    headTitleCache = { build, key, title: `${countOf(lines, "line")} · ${countOf(played.length, "move")} · ${train} to train.` +
-      ` ${train === 1 ? "It is your move" : "They are your moves"}, which Train drills; opponent replies aren't drilled.` };
+  const tree = getBuildTree(build);
+  let title = buildHeadTitles.get(tree);
+  if (!title) {
+    const { moves, lines, train } = summarizeBuild(build, tree);
+    title = `${countOf(lines, "line")} · ${countOf(moves, "move")} · ${train} to train.` +
+      ` ${train === 1 ? "It is your move" : "They are your moves"}, which Train drills; opponent replies aren't drilled.`;
+    buildHeadTitles.set(tree, title);
   }
-  if (nameEl.title !== headTitleCache.title) nameEl.title = headTitleCache.title;
-}
-
-// Own-side moves on the enabled tree (a disabled node hides its subtree) —
-// mirrors the server's trainable count shown on the Library row.
-function countBuildMovesToTrain(build) {
-  const byId = new Map(build.nodes.map((n) => [n.id, n]));
-  const enabledMemo = new Map();
-  const reachable = (node) => {
-    if (!node) return true;
-    if (enabledMemo.has(node.id)) return enabledMemo.get(node.id);
-    const ok = node.is_enabled !== false && reachable(byId.get(node.parent_id));
-    enabledMemo.set(node.id, ok);
-    return ok;
-  };
-  return build.nodes.filter((n) => n.depth > 0 && n.move_side === build.color && reachable(n)).length;
+  if (nameEl.title !== title) nameEl.title = title;
 }
 
 function switchView(name, { fromUrl = false } = {}) {
@@ -563,12 +548,7 @@ function switchView(name, { fromUrl = false } = {}) {
     preloadAnalyzeView().catch(() => {});
   }
   if (name === "build") {
-    preloadCoach().catch(() => {});
     preloadBuildView().catch(() => {});
-    // No Maia warmup here by design: the ~46 MB weights only start downloading
-    // after an explicit Generate click (see generateFromCurrentNode), so merely
-    // browsing Build never triggers engine/model loading.
-    preloadBuildGen().catch(() => {});
   }
   if (name === "train") {
     preloadTrainView().catch(() => {});
@@ -635,6 +615,7 @@ async function editRepertoire(repertoireId, nodeId = null) {
   // The Repertoire view opens NOW with a skeleton; the tree fills in when the
   // load lands (it used to sit on the previous page for seconds).
   const loadSeq = ++buildLoadSeq;
+  appState.buildLoadRequest?.abort();
   // The repertoire this load opens. Until it lands appState.build is still the
   // previous tree, so a route back to that tree must not read as "already open".
   appState.buildLoadTarget = repertoireId;
@@ -649,9 +630,13 @@ async function editRepertoire(repertoireId, nodeId = null) {
   }
   if (loadSeq !== buildLoadSeq) return;
   appState.sharedToken = null;
+  const request = new AbortController();
+  appState.buildLoadRequest = request;
+  // Fetch the tree renderer alongside the repertoire, not after it arrives.
+  ensureMoveTreeRenderer().catch(() => {});
   try {
     const payload = await api(
-      `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`
+      `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`, { signal: request.signal }
     );
     if (loadSeq !== buildLoadSeq) return;
     const target = nodeId && payload.nodes.some((n) => n.id === nodeId) ? nodeId : null;
@@ -667,6 +652,8 @@ async function editRepertoire(repertoireId, nodeId = null) {
     if (loadSeq !== buildLoadSeq) return;
     setBuildLoading(false);
     setStatusError(error.message);
+  } finally {
+    if (appState.buildLoadRequest === request) appState.buildLoadRequest = null;
   }
 }
 
@@ -2031,7 +2018,7 @@ appReadyPromise = init()
   });
 
 // Lets that app.js reassigns, read live by the lazily loaded controllers/*-session.js.
-export { _buildGenReady, _coachReady, buildView };
+export { _coachReady, buildView };
 // The Coverage panel is created by coverage-entry.js; re-exported so the Build
 // editor keeps its one import from the shell.
 export { coverageView } from "./coverage-entry.js";

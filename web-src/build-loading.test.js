@@ -51,9 +51,10 @@ function harness() {
   });
   const deps = {
     ...common, setBuildLoading: loading, hardFlushBuild: vi.fn(async () => {}),
-    api: vi.fn((path) => {
+    ensureMoveTreeRenderer: vi.fn(async () => {}),
+    api: vi.fn((path, { signal }) => {
       const id = new URL(path, "http://test").searchParams.get("repertoire_id");
-      const request = deferred(); requests.set(id, request); return request.promise;
+      const request = { ...deferred(), signal }; requests.set(id, request); return request.promise;
     }),
     hydrateBuild, setStatusError: vi.fn(), syncWorkspaceUrl: vi.fn(), updateBuildReadOnlyUi: vi.fn(),
   };
@@ -79,6 +80,7 @@ describe("repertoire load isolation", () => {
     const h = harness();
     const load = h.edit("B");
     await waitForRequest(h, "B");
+    expect(h.deps.ensureMoveTreeRenderer).toHaveBeenCalledOnce();
     expect(h.appState.currentView).toBe("build");
     expect(h.getElementById("view-build").inert).toBe(true);
     expect(h.board.legalMoves).toEqual([]);
@@ -111,11 +113,14 @@ describe("repertoire load isolation", () => {
     const h = harness();
     const first = h.edit("B"); await waitForRequest(h, "B");
     const second = h.edit("C"); await waitForRequest(h, "C");
+    expect(h.requests.get("B").signal.aborted).toBe(true);
+    expect(h.requests.get("C").signal.aborted).toBe(false);
     h.requests.get("B").resolve(payload("B")); await first;
     expect(h.hydrateBuild).not.toHaveBeenCalled();
     expect(h.appState.buildLoading).toBe(true);
     h.requests.get("C").resolve(payload("C")); await second;
     expect(h.appState.build.repertoire_id).toBe("C");
+    expect(h.appState.buildLoadRequest).toBeNull();
   });
 
   it("does not navigate back when the user leaves during loading", async () => {
