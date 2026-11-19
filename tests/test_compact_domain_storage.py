@@ -103,3 +103,43 @@ def test_node_delete_still_seeks_an_index(migrated):
         )]
     assert any("(node_id=?)" in step for step in progress_plan), progress_plan
     assert any("idx_opening_nodes_repertoire_parent" in step for step in nodes_plan), nodes_plan
+
+
+def test_no_index_repeats_a_prefix_of_a_key_or_another_index():
+    from prepforge_chess.storage import sa_tables
+
+    for table in sa_tables.metadata.sorted_tables:
+        keys = [tuple(c.name for c in table.primary_key.columns)]
+        keys += [tuple(c.name for c in uq.columns) for uq in table.constraints
+                 if isinstance(uq, sa.UniqueConstraint)]
+        keys += [tuple(ix.columns.keys()) for ix in table.indexes]
+        for index in table.indexes:
+            cols = tuple(index.columns.keys())
+            covering = [k for k in keys if k != cols and k[:len(cols)] == cols]
+            assert not covering and keys.count(cols) == 1, (table.name, index.name)
+
+
+def test_board_fen_matches_python_chess_fen():
+    import random
+
+    import chess
+
+    from prepforge_chess.storage.codec import board_fen
+
+    for fen in (
+        "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1",
+        "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3",
+        "rnbqkbnr/pppp1ppp/8/8/3Pp3/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 2",
+        "8/P6k/8/8/8/8/6Kp/8 w - - 0 60",
+    ):
+        board = chess.Board(fen)
+        assert board_fen(board) == board.fen()
+    rng = random.Random(3)
+    for _ in range(200):
+        board = chess.Board()
+        for _ in range(rng.randint(1, 120)):
+            moves = list(board.legal_moves)
+            if not moves:
+                break
+            board.push(rng.choice(moves))
+            assert board_fen(board) == board.fen()
