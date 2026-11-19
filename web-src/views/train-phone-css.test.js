@@ -41,8 +41,9 @@ it("a Session's top bar sits over the board and its bottom bar is four labelled 
 it("aligns Drill content gutters and lets Start share the card edges", () => {
   const shell = readFileSync(new URL("../train-shell.css", import.meta.url), "utf8");
   expect(shell).toMatch(/#view-train \.train-row\[data-row="smart"\] \{[^}]*padding: 8px 0 0;/);
-  expect(shell).toMatch(/#view-train \[data-row="smart"\] \.train-row-text \{[^}]*padding-inline: 14px;/);
-  expect(shell).toMatch(/#view-train \[data-row="smart"\] \.train-row-opts \{[^}]*padding-inline: 14px;/);
+  for (const selector of ["train-row-text", "train-row-opts"]) {
+    expect(shell).toMatch(new RegExp(`#view-train \\[data-row="smart"\\] \\.${selector} \\{[^}]*padding-inline: 14px;`));
+  }
   expect(shell).toMatch(/#view-train \.train-due-next \{[^}]*margin: 8px 0 0;/);
   expect(phone).toMatch(/#view-train #train-home > \.train-recent \{[^}]*padding: 8px 14px 0;/);
 });
