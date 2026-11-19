@@ -21,7 +21,7 @@
   background: none;
 }
 #analysis-summary > .rp-summary .rp-side + .rp-side { border-left: 1px solid var(--line); padding-left: 16px; }
-#analysis-summary > .rp-summary .rp-disc { display: block; grid-column: 1; grid-row: 1; align-self: center; }
+#analysis-summary > .rp-summary .rp-disc { grid-column: 1; grid-row: 1; align-self: center; }
 #analysis-summary > .rp-summary .rp-name { display: block; grid-column: 2; grid-row: 1; font-size: 13px; font-weight: 500; }
 #analysis-summary > .rp-summary .rp-acc { grid-column: 3; grid-row: 1; font-size: 24px; font-weight: 500; letter-spacing: -0.03em; text-align: right; }
 #analysis-summary > .rp-summary .rp-errs { display: flex; grid-column: 2 / -1; grid-row: 2; gap: 6px; overflow: hidden; font-size: 12px; }
@@ -119,7 +119,7 @@
   #analysis-summary > .rp-summary .rp-side + .rp-side { padding-left: 12px; }
   #analysis-summary > .rp-summary .rp-name { grid-column: 2 / -1; }
   #analysis-summary > .rp-summary .rp-acc { grid-column: 2; grid-row: 2; text-align: left; font-size: 20px; }
-  #analysis-summary > .rp-summary .rp-errs { grid-column: 3; grid-row: 2; align-self: baseline; }
+  #analysis-summary > .rp-summary .rp-errs { grid-column: 3; grid-row: 2; }
 }
 @media (max-width: 600px) {
   #analysis-summary > .rp-summary { grid-template-columns: repeat(2, minmax(0, 1fr)) 8px; gap: 8px; padding-block: 4px; }
