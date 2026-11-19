@@ -335,7 +335,6 @@ export function createBuildView({
   }
 
   function renderBuilderTree() {
-    const newPayload = paintedTree !== appState.build;
     paintedTree = null;
     renderTools();
     const container = document.getElementById("builder-tree");
@@ -382,8 +381,8 @@ export function createBuildView({
     if (firstAutoCollapse) {
       collapseByDefault = true;
       variationOverrides.clear();
+      revealCurrentPath(children);
     }
-    if (newPayload || firstAutoCollapse) revealCurrentPath(children);
     const treeHtml = moveTreeRenderer.renderMoveTree(treeRoot, moveTreeOptions(children));
     renderBuildOpening();
     container.innerHTML = treeHtml;

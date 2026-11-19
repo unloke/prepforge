@@ -259,6 +259,11 @@ describe("build tree — large repertoire auto-collapse", () => {
     view.updateBuildTreeSelection();
     expect(container.innerHTML).toMatch(/is-current[^>]*data-node-id="var-0"/);
 
+    onClick(click);
+    appState.build = { ...appState.build, name: "Renamed" };
+    view.updateBuildTreeSelection();
+    expect(container.innerHTML).not.toContain('data-node-id="var-0"');
+
     appState.build = { ...appState.build, repertoire_id: "another-repertoire" };
     appState.buildCurrentNodeId = root.id;
     view.renderBuilderTree();
