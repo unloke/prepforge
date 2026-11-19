@@ -1,5 +1,24 @@
 import { expect, it } from "vitest";
-import { getBuildTree, invalidateBuildTree, summarizeBuild } from "./build-tree.js";
+import { getBuildTree, indexBuildNodes, invalidateBuildTree, summarizeBuild } from "./build-tree.js";
+
+it("indexes the original nodes and shares only empty lists and equal strings", () => {
+  const root = { id: "root", fen: "root-fen", fen_after: "root-fen", arrows: [], circles: [], tags: [] };
+  const tags = ["study"];
+  const child = { id: "child", parent_id: "root", fen: "child-fen", fen_before: "root-fen", tags, arrows: [] };
+  const custom = { id: "custom", parent_id: "child", fen: "custom-fen", fen_before: "other-fen", fen_after: "also-other-fen" };
+  const nodes = [root, child, custom];
+  const original = structuredClone(nodes);
+  const byId = indexBuildNodes(nodes);
+  expect(nodes).toEqual(original);
+  expect(byId.get("root")).toBe(root);
+  expect(byId.get("child")).toBe(child);
+  expect(child.arrows).toBe(root.arrows);
+  expect(root.circles).toBe(root.tags);
+  expect(Object.isFrozen(root.tags)).toBe(true);
+  expect(child.tags).toBe(tags);
+  child.arrows = [{ from: "e2", to: "e4" }];
+  expect(root.arrows).toEqual([]);
+});
 
 it("reuses the ordered child index until the loaded tree changes", () => {
   const root = { id: "root", parent_id: null, depth: 0 };

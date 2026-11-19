@@ -21,7 +21,7 @@ import { nodeMenuHeading } from "../node-menu.js";
 import { buildRole } from "../share-roles.js";
 import { countOf } from "../plural.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
-import { getBuildTree } from "../build-tree.js";
+import { getBuildTree, indexBuildNodes } from "../build-tree.js";
 
 import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, downloadText,
   engineLifecycleMark, OUTBOX_TAB_ID, postJson, setStatus, setStatusError } from "../core/api.js";
@@ -92,8 +92,7 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
     appState.buildSyncRetry = 0;
   }
   appState.build = payload;
-  appState.buildNodeById = new Map();
-  for (const node of payload.nodes) appState.buildNodeById.set(node.id, node);
+  appState.buildNodeById = indexBuildNodes(payload.nodes);
   invalidateBook();
   // Orient only when a repertoire opens — a reconcile re-hydrate after an
   // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
