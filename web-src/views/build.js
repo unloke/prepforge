@@ -247,7 +247,7 @@ export function createBuildView({
   // The tree payload the container was last painted from. A re-read (hydrate
   // after training, sync, reload) swaps appState.build for a new object, so a
   // step that lands on the new payload must repaint, not move the mark.
-  let paintedTree = null;
+  let paintedTree = null, paintedSelectionId = null;
 
   function moveTreeOptions(children) {
     return {
@@ -336,7 +336,7 @@ export function createBuildView({
     });
   }
 
-  function renderBuilderTree() {
+  function renderBuilderTree({ revealSelection = false } = {}) {
     paintedTree = null;
     renderTools();
     const container = document.getElementById("builder-tree");
@@ -349,6 +349,7 @@ export function createBuildView({
     }
     if (!appState.build) {
       collapseState = null;
+      paintedSelectionId = null;
       renderBuildOpening();
       container.innerHTML =
         html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
@@ -371,7 +372,7 @@ export function createBuildView({
     const moveTreeRenderer = getMoveTreeRenderer();
     if (!moveTreeRenderer) {
       void ensureMoveTreeRenderer()
-        .then(() => renderBuilderTree())
+        .then(() => renderBuilderTree({ revealSelection }))
         .catch(() => {});
       return;
     }
@@ -389,13 +390,18 @@ export function createBuildView({
     if (!collapseState.byDefault && length > AUTO_COLLAPSE_THRESHOLD) {
       collapseState.byDefault = true;
       collapseState.overrides.clear();
-      revealCurrentPath(children);
+      revealSelection = true;
     }
+    // A rename keeps the same selection; a save may replace a selected
+    // provisional ID, and a fresh open can explicitly land on a hidden move.
+    const selectedId = appState.buildCurrentNodeId;
+    if (revealSelection || selectedId !== paintedSelectionId) revealCurrentPath(children);
     const treeHtml = moveTreeRenderer.renderMoveTree(treeRoot, moveTreeOptions(children));
     renderBuildOpening();
     container.innerHTML = treeHtml;
     collaboration?.markMoves();
     paintedTree = appState.build;
+    paintedSelectionId = selectedId;
     // The arrival is over once the token has landed: drop the flag now so no
     // later render replays it, and drop the class on animationend so nothing
     // is left carrying an entrance that already happened.
@@ -439,13 +445,13 @@ export function createBuildView({
     const renderer = getMoveTreeRenderer();
     if (focusId && !buildPath(appState.buildCurrentNodeId).some((n) => n.id === focusId)) {
       focusId = null;
-      renderBuilderTree();
+      renderBuilderTree({ revealSelection: appState.buildLoading });
       return;
     }
     // The tree renderer chunk is still loading: the first paint of this tree is
     // a render, not a mark move (renderBuilderTree waits for the chunk itself).
     if (!container || !renderer || paintedTree !== appState.build) {
-      renderBuilderTree();
+      renderBuilderTree({ revealSelection: appState.buildLoading });
       return;
     }
     // Not on screen (inside a collapsed branch, or the tree has not been
@@ -454,10 +460,10 @@ export function createBuildView({
     const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
     const currentId = node && node.parent_id ? node.id : null;
     if (!renderer.updateMoveTreeSelection(container, { currentId })) {
-      if (currentId) revealCurrentPath(getBuildTree(appState.build).children);
-      renderBuilderTree();
+      renderBuilderTree({ revealSelection: true });
       return;
     }
+    paintedSelectionId = appState.buildCurrentNodeId;
     renderTools();
     renderBuildOpening();
     renderBuildBranchBar();
