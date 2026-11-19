@@ -297,7 +297,8 @@
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   #view-train .train-row[data-row="smart"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "opts" "go" "next"; gap: 4px; padding: 8px 0 0; background: none; }
   #view-train [data-row="smart"] .train-row-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  #view-train [data-row="smart"] .train-row-text { align-items: center; padding-inline: 14px; }
+  #view-train [data-row="smart"] .train-row-text { flex-flow: column; align-items: flex-start; padding-inline: 14px; }
+  #view-train [data-row="smart"] .train-outlook { flex-flow: column; align-items: flex-start; }
   #view-train [data-row="smart"] .train-outlook-lead { display: flex; align-items: center; gap: 12px; color: var(--text); font-size: 18px; }
   #view-train [data-row="smart"] .train-outlook-lead b { margin: 0; font: 400 64px/0.9 var(--serif); }
   #view-train [data-row="smart"] .train-row-opts { justify-content: flex-start; gap: 6px; margin: 0 0 8px; padding-inline: 14px; }

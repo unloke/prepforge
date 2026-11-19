@@ -67,13 +67,11 @@ describe("Analyze phone panes", () => {
 describe("Analyze desktop geometry", () => {
   const styles = eagerCss;
 
-  it("gives each player's error status the full row below name and accuracy", () => {
+  it("centers accuracy across the player's name and error status", () => {
     const report = read("./views/analyze-report.css");
-    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-acc \{[^}]*grid-row: 1;/);
-    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-errs \{[^}]*grid-column: 2 \/ -1; grid-row: 2;/);
-    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-side \{[^}]*align-items: baseline;/);
-    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-disc \{[^}]*display: block;[^}]*align-self: center;/);
-    expect(report).not.toMatch(/#analysis-summary > \.rp-summary \.rp-acc \{[^}]*align-self: center;/);
+    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-acc \{[^}]*grid-column: 3; grid-row: 1 \/ 3;/);
+    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-errs \{[^}]*grid-column: 2; grid-row: 2; white-space: normal;/);
+    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-side \{[^}]*align-items: center;/);
   });
 
   it("does not stretch the board column past the board on desktop", () => {

@@ -47,11 +47,11 @@ it("the phone repertoire row keeps the mastery figure", () => {
   // nothing about progress even though the desktop row carries a percentage.
   // It closes the row on the right, across both lines; the bar and the word
   // "mastered" are left out (no room, and the figure alone reads as progress).
-  const cell = rule("#view-dashboard .lib-row .lib-cell-mastery {");
+  const cell = rule(".lib-row .lib-cell-mastery {");
   expect(cell).not.toMatch(/display:\s*none/);
   expect(cell).toMatch(/grid-area:\s*pct/);
   expect(css).toMatch(/grid-template-areas:\s*"name name name pct" "dot sub queue pct"/);
-  expect(rule("#view-dashboard .lib-row :is(.lib-mbar,")).toMatch(/display:\s*none/);
+  expect(rule(".lib-row :is(.lib-mbar,")).toMatch(/display:\s*none/);
 });
 
 it("keeps filter hit areas outside the strip without adding a vertical scrollbar", () => {
@@ -61,7 +61,7 @@ it("keeps filter hit areas outside the strip without adding a vertical scrollbar
 it("a repertoire keeps its name whole on a phone", () => {
   // The name owns the first line up to the figure; a long one ends in an
   // ellipsis rather than wrapping the row.
-  const name = rule("#view-dashboard .lib-row .name {");
+  const name = rule(".lib-row .name {");
   expect(name).toMatch(/white-space:\s*nowrap/);
   expect(name).toMatch(/text-overflow:\s*ellipsis/);
 });

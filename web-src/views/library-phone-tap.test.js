@@ -27,7 +27,7 @@ it("Library phone controls take the shared control height", () => {
   expect(dismiss).toMatch(/height:\s*36px/);
   // A row's menu is a long-press on a phone; the ⋯ button is kept off screen
   // for the keyboard and VoiceOver, not removed.
-  const menu = rule("#view-dashboard .lib-row .row-menu-btn");
+  const menu = rule(".lib-row .row-menu-btn");
   expect(menu).toMatch(/clip-path:\s*inset\(50%\)/);
   expect(menu).not.toMatch(/display:\s*none/);
 });
