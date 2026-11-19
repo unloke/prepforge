@@ -400,14 +400,14 @@ export function createBuildView({
     renderBuildOpening();
     container.innerHTML = treeHtml;
     collaboration?.markMoves();
-    paintedTree = appState.build;
-    paintedSelectionId = selectedId;
     // The arrival is over once the token has landed: drop the flag now so no
     // later render replays it, and drop the class on animationend so nothing
     // is left carrying an entrance that already happened.
     const el = appState.buildJustAddedId ? container.querySelector(".mtree-move.is-added") : null;
     appState.buildJustAddedId = null;
     if (el?.addEventListener) el.addEventListener("animationend", () => el.classList.remove("is-added"), { once: true });
+    paintedTree = appState.build;
+    paintedSelectionId = selectedId;
     bindContainerEvents(container);
     moveTreeRenderer.bindMoveTreeClicks(
       container,
