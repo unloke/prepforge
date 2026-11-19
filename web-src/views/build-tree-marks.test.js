@@ -9,7 +9,7 @@ import { eagerCss as css } from "../test-styles-source.js";
 const build = readFileSync(new URL("./build.js", import.meta.url), "utf8");
 
 it("the decorate marks a leaf the opponent has just played as a gap", () => {
-  expect(build).toMatch(/const gap = opp && !\(node\.children && node\.children\.length\);/);
+  expect(build).toContain("const gap = opp && !children.has(b.id);");
   expect(build).toMatch(/if \(gap\) classes\.push\("is-gap"\);/);
 });
 

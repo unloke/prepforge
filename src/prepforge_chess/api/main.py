@@ -18,6 +18,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from prepforge_chess.api.config import get_settings
 from prepforge_chess.api.middleware import CSRFMiddleware, SecurityHeadersMiddleware
@@ -49,10 +50,20 @@ class _TextGZipMiddleware(GZipMiddleware):
     wasm on every request took 11.8 s (0.2 s plain) and serialized parallel engine loads.
     Their build-time brotli twins (api/static.py) are the compressed form instead."""
 
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope["path"].endswith(GZIP_SKIP_EXT):
-            await self.app(scope, receive, send)
-            return
+    def __init__(self, app: ASGIApp, minimum_size: int) -> None:
+        super().__init__(app, minimum_size=minimum_size)
+        # Build sends the full tree at once; maximum compression delays the first byte.
+        self._build_load = GZipMiddleware(app, minimum_size=minimum_size, compresslevel=7)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            path = scope["path"]
+            if path.endswith(GZIP_SKIP_EXT):
+                await self.app(scope, receive, send)
+                return
+            if path == "/api/build/load":
+                await self._build_load(scope, receive, send)
+                return
         await super().__call__(scope, receive, send)
 
 
