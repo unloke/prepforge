@@ -205,6 +205,7 @@ def test_wdl_and_pv_round_trip():
     assert codec.decode_wdl(None, None, None) is None
     assert codec.unpack_pv(codec.pack_pv(["e2e4", "e7e5", "e7e8q", "0000"])) == ["e2e4", "e7e5", "e7e8q", "0000"]
     assert codec.unpack_pv(codec.pack_pv(["e7e8Q", "", "a2a1n"])) == ["e7e8q", "a2a1n"]
+    assert codec.encode_pv(["e7e8Q", "", "a2a1n"]) == codec.encode_pv(codec.unpack_pv(codec.pack_pv(["e7e8Q", "a2a1n"]))) == "e7e8q a2a1n"
 
 
 def test_opening_tree_hydrate_from_uci_path():
