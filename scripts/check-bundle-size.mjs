@@ -109,7 +109,8 @@ const LIMITS = [
   // snapshot rules, plus aligned phone gutters and footer hit testing,
   // bring the sheet to 180,032 B. The Analyze-only in-flow footer fix brings
   // the current sheet to 180,227 B, without changing Build/Train positioning.
-  { prefix: "index-", suffix: ".css", maxBytes: 180_300, label: "main stylesheet" },
+  // Keyboard-visible, row-anchored Library Actions brings it to 180,372 B.
+  { prefix: "index-", suffix: ".css", maxBytes: 180_400, label: "main stylesheet" },
 ];
 
 let files;
