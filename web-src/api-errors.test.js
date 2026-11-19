@@ -1,5 +1,5 @@
 import { withRequestDeadline } from "./sync-queue.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { apiErrorMessage } from "./api-errors.js";
 import { AUTH_REQUIRED_MESSAGE, isSessionAuthFailure } from "./auth-gate.js";
 import { appSource } from "./test-app-source.js";
@@ -36,14 +36,19 @@ describe("shared API adapter", () => {
   const source = appSource();
   const start = source.indexOf("async function api(path, options = {}) {");
   const end = source.indexOf("\n}\n", start) + 2;
-  function adapter(status, detail) {
+  function responseAdapter(response, scheduler = {}) {
+    const yieldStart = source.indexOf("async function yieldToBrowser(");
+    const yieldEnd = source.indexOf("\n}\n", yieldStart) + 2;
     return new Function("fetch", "headersWithCsrf", "getCsrfToken", "isSessionAuthFailure",
-      "AUTH_REQUIRED_MESSAGE", "apiErrorMessage", "withRequestDeadline", "CLIENT_ID_HEADER", "OUTBOX_TAB_ID",
-      `return (${source.slice(start, end)});`)(
-      async () => new Response(JSON.stringify({ detail }), { status, headers: { "retry-after": "4" } }),
+      "AUTH_REQUIRED_MESSAGE", "apiErrorMessage", "withRequestDeadline", "CLIENT_ID_HEADER", "OUTBOX_TAB_ID", "globalThis",
+      `${source.slice(yieldStart, yieldEnd)}; return (${source.slice(start, end)});`)(
+      async () => response,
       async (_method, headers) => headers, () => "csrf", isSessionAuthFailure, AUTH_REQUIRED_MESSAGE, apiErrorMessage, withRequestDeadline,
-      "X-PF-Client", "tab",
+      "X-PF-Client", "tab", { scheduler },
     );
+  }
+  function adapter(status, detail) {
+    return responseAdapter(new Response(JSON.stringify({ detail }), { status, headers: { "retry-after": "4" } }));
   }
   it("exposes the validation explanation and preserves status/detail", async () => {
     await expect(adapter(422, EMAIL_DETAIL)("/api/auth/register")).rejects.toMatchObject({
@@ -57,5 +62,30 @@ describe("shared API adapter", () => {
     await expect(adapter(401, "invalid email or password")("/api/auth/login")).rejects.toMatchObject({
       message: "invalid email or password", status: 401,
     });
+  });
+  const largeJsonOptions = { responseType: "large-json" };
+  const largeBody = { note: "é".repeat(600_000) };
+  it("yields before and after parsing a large body by decoded byte size", async () => {
+    const yieldTask = vi.fn(async () => {});
+    const read = responseAdapter(new Response(JSON.stringify(largeBody)), { yield: yieldTask });
+    await expect(read("/api/build/load", largeJsonOptions)).resolves.toEqual(largeBody);
+    expect(yieldTask).toHaveBeenCalledTimes(2);
+  });
+  it("does not yield for small repertoire responses or lose HTTP errors", async () => {
+    const scheduler = { yield: vi.fn() };
+    const read = responseAdapter(new Response('{"nodes":[]}'), scheduler);
+    await expect(read("/api/build/load", largeJsonOptions)).resolves.toEqual({ nodes: [] });
+    const fail = responseAdapter(new Response("proxy offline", { status: 502 }), scheduler);
+    await expect(fail("/api/build/load", largeJsonOptions)).rejects.toMatchObject({ status: 502 });
+    expect(scheduler.yield).not.toHaveBeenCalled();
+  });
+  it("does not deliver a parsed payload if canceled while yielding", async () => {
+    const controller = new AbortController();
+    const yieldTask = vi.fn(async () => {});
+    const canceled = new Error("Superseded");
+    yieldTask.mockImplementationOnce(async () => {}).mockImplementationOnce(async () => controller.abort(canceled));
+    const read = responseAdapter(new Response(JSON.stringify(largeBody)), { yield: yieldTask });
+    await expect(read("/api/build/load", { ...largeJsonOptions, signal: controller.signal })).rejects.toBe(canceled);
+    expect(yieldTask).toHaveBeenCalledTimes(2);
   });
 });

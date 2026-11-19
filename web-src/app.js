@@ -353,6 +353,7 @@ async function restoreWorkspaceLocation() {
     try {
       const payload = await api(
         `/api/build/load?repertoire_id=${encodeURIComponent(loc.repertoireId)}`,
+        { responseType: "large-json" },
       );
       if (seq === workspaceNavigationSeq) {
         await hydrateBuild(payload, payload.selected_node_id);
@@ -636,7 +637,8 @@ async function editRepertoire(repertoireId, nodeId = null) {
   ensureMoveTreeRenderer().catch(() => {});
   try {
     const payload = await api(
-      `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`, { signal: request.signal }
+      `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`,
+      { signal: request.signal, responseType: "large-json" },
     );
     if (loadSeq !== buildLoadSeq) return;
     const target = nodeId && payload.nodes.some((n) => n.id === nodeId) ? nodeId : null;

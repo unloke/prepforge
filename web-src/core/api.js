@@ -56,6 +56,12 @@ export function setStatusError(message) {
 
 const getCsrfToken = createCsrfTokenSource();
 
+async function yieldToBrowser(signal) {
+  signal.throwIfAborted();
+  await (globalThis.scheduler?.yield?.() ?? new Promise((resolve) => setTimeout(resolve, 0)));
+  signal.throwIfAborted();
+}
+
 export async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   const { timeoutMs = method === "GET" ? 30_000 : 90_000, signal: callerSignal, responseType = "json", ...fetchOptions } = options;
@@ -76,10 +82,15 @@ export async function api(path, options = {}) {
     headers,
   });
   if (response.ok && responseType === "blob") return response.blob();
+  const blob = response.ok && responseType === "large-json" ? await response.blob() : null;
   // Read as text first so a non-JSON body (a 500 "Internal Server Error", a 502
   // from the proxy, an HTML error page) surfaces a clear message instead of a raw
   // "Unexpected token 'I' ... is not valid JSON" from response.json().
-  const raw = await response.text();
+  const raw = await (blob ?? response).text();
+  // Large Build loads leave room for paint/input between decoding, parsing,
+  // and hydrating the tree. Blob size counts decompressed bytes, even with gzip.
+  const large = blob?.size >= 1024 * 1024;
+  if (large) await yieldToBrowser(signal);
   let payload = {};
   if (raw) {
     try {
@@ -111,6 +122,7 @@ export async function api(path, options = {}) {
     }
     throw err;
   }
+  if (large) await yieldToBrowser(signal);
   return payload;
   }, { signal: callerSignal, timeoutMs, method });
 }

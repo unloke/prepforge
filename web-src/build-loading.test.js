@@ -81,6 +81,7 @@ describe("repertoire load isolation", () => {
     const load = h.edit("B");
     await waitForRequest(h, "B");
     expect(h.deps.ensureMoveTreeRenderer).toHaveBeenCalledOnce();
+    expect(h.deps.api).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ responseType: "large-json" }));
     expect(h.appState.currentView).toBe("build");
     expect(h.getElementById("view-build").inert).toBe(true);
     expect(h.board.legalMoves).toEqual([]);
