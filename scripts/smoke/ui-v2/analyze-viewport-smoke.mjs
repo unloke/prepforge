@@ -834,6 +834,23 @@ async function runViewport(vp) {
     check((await page.locator("#pgn-input").inputValue()).includes('[Black "me_user"]'), "a completed older review must keep the recalled PGN");
   }
 
+  if (vp.width === 390 && vp.height === 660) {
+    await page.setViewportSize({ width: 390, height: 448 });
+    const short = await checkPhoneBoard(page, { view: "view-analyze", board: "analysis-board", label: "short Analyze" });
+    for (const f of short.fails) check(false, f);
+    const lastSquare = page.locator("#analysis-board .square").last();
+    await lastSquare.scrollIntoViewIfNeeded();
+    const rankReachable = await lastSquare.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest(".square") === el;
+    });
+    check(rankReachable, "the bottom rank must scroll fully into view and receive input, not hide behind controls");
+    await page.locator("#view-analyze [data-phone-nav]").scrollIntoViewIfNeeded();
+    await page.locator("#view-analyze [data-phone-nav]").click();
+    check(await page.evaluate(() => document.body.classList.contains("phone-nav-open")), "short-screen navigation stays reachable after scrolling");
+    await page.keyboard.press("Escape");
+  }
+
   // Overflow + console errors (ignore engine/resource noise from wasm fetches).
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
