@@ -383,6 +383,10 @@ async function runViewport(vp) {
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
+  if (vp.width >= 1021) {
+    const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+    check(pageHeight <= vp.height + 1, `short Teams content must not reserve a full view below its heading, got ${pageHeight}px`);
+  }
   const realErrors = consoleErrors.filter((t) => !/Failed to load resource|favicon|net::/i.test(t));
   check(realErrors.length === 0, `console errors: ${realErrors.join(" | ")}`);
 

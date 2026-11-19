@@ -22,7 +22,8 @@
   .teams { --teams-dir: 340px; }
 }
 @media (min-width: 1021px) {
-  .teams { grid-template-columns: var(--teams-dir, 300px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 100%; }
+  #view-teams.is-active { display: flex; flex-direction: column; }
+  .teams { flex: 1 0 auto; min-height: 0; grid-template-columns: var(--teams-dir, 300px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
   .teams > .card.dir,
   .teams > .card.incoming { grid-column: 1; align-self: start; }
 }

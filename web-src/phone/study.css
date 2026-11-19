@@ -232,11 +232,13 @@
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     box-shadow: var(--shadow-bar); /* taste-skill-ignore: a bar that floats over scrolling content is a real overlay */
     transform: translateY(calc(100% + var(--phone-bar-h) + 40px));
+    pointer-events: none;
     visibility: hidden;
     transition: transform var(--dur) var(--ease-out), visibility 0s linear var(--dur);
   }
   body.phone-nav-open:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
     transform: none;
+    pointer-events: auto;
     visibility: visible;
     transition: transform var(--dur) var(--ease-out);
   }
@@ -556,6 +558,7 @@
     border-radius: 0;
     box-shadow: none;
     transform: none;
+    pointer-events: auto;
     visibility: visible;
     transition: none;
   }
@@ -688,7 +691,7 @@
   .train-bot-icon { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   .train-bot-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .train-bot-sub { color: var(--label); font-size: 12px; font-weight: 500; white-space: nowrap; }
-  #view-train #train-home > .train-recent { gap: 8px; padding: 8px 16px 0; border-top: 0; font-size: 14px; }
+  #view-train #train-home > .train-recent { gap: 8px; padding: 8px 14px 0; border-top: 0; font-size: 14px; }
 
   /* Session panel and the Result card */
   #view-train .train-line-path { margin-block: -8px -4px; padding-block: 14px; }

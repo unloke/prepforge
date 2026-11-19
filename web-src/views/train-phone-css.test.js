@@ -38,6 +38,16 @@ it("a Session's top bar sits over the board and its bottom bar is four labelled 
   expect(phone).toMatch(/#view-train \.board-bar \.bl \{ display: block; font-size: 12px;/);
 });
 
+it("aligns Drill content gutters and lets Start share the card edges", () => {
+  const shell = readFileSync(new URL("../train-shell.css", import.meta.url), "utf8");
+  expect(shell).toMatch(/#view-train \.train-row\[data-row="smart"\] \{[^}]*padding: 8px 0 0;/);
+  for (const selector of ["train-row-text", "train-row-opts"]) {
+    expect(shell).toMatch(new RegExp(`#view-train \\[data-row="smart"\\] \\.${selector} \\{[^}]*padding-inline: 14px;`));
+  }
+  expect(shell).toMatch(/#view-train \.train-due-next \{[^}]*margin: 8px 0 0;/);
+  expect(phone).toMatch(/#view-train #train-home > \.train-recent \{[^}]*padding: 8px 14px 0;/);
+});
+
 it("is driven by the screen attribute alone", () => {
   expect(css).not.toContain("data-session-state");
   expect(css).not.toContain("data-play-live");

@@ -276,9 +276,11 @@ async function run({ name, width, height, mobile }) {
   }));
   await page.evaluate(() => {
     window.__rapidNavClicks = [];
+    window.__rapidViewsClick = false;
     window.__rapidNavListener = (e) => {
       const view = e.target.closest(".tab[data-view]")?.dataset.view;
       if (view) window.__rapidNavClicks.push({ view, trusted: e.isTrusted, during: document.documentElement.classList.contains("view-swap") });
+      if (e.target.closest("#view-analyze [data-phone-nav]")) window.__rapidViewsClick = e.isTrusted;
     };
     document.addEventListener("click", window.__rapidNavListener, true);
   });
@@ -286,6 +288,15 @@ async function run({ name, width, height, mobile }) {
     await step(`rapid:${view}`);
     await page.mouse.click(points[i].x, points[i].y);
     await page.waitForTimeout(25);
+  }
+  if (mobile) {
+    const hitTesting = await page.locator(".tabbar").evaluate((el) => getComputedStyle(el).pointerEvents);
+    if (hitTesting !== "none") failures.push(`${name}: the departing footer must stop hit testing immediately`);
+    const box = await page.locator("#view-analyze [data-phone-nav]").boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    const opened = await page.evaluate(() => window.__rapidViewsClick && document.body.classList.contains("phone-nav-open"));
+    if (!opened) failures.push(`${name}: a trusted incoming Views click must open navigation, not hit the departing footer`);
+    await page.keyboard.press("Escape");
   }
   await settle();
   const rapid = await page.evaluate(() => {

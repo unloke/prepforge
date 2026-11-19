@@ -106,8 +106,9 @@ const LIMITS = [
   // 2026-11-05 QA round 4: the rail foot, closing rail and disabled Teams
   // icon buttons bring it to 179,454 B; the cap moves to 179,500 B.
   // Shared interaction motion and visible-viewport sizing, minus the old
-  // snapshot rules, bring the sheet to ~179,920 B.
-  { prefix: "index-", suffix: ".css", maxBytes: 180_000, label: "main stylesheet" },
+  // snapshot rules, plus aligned phone gutters and footer hit testing,
+  // bring the sheet to 180,032 B.
+  { prefix: "index-", suffix: ".css", maxBytes: 180_200, label: "main stylesheet" },
 ];
 
 let files;
