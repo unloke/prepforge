@@ -77,8 +77,8 @@ it("every Train control is a thumb-sized target on a phone", () => {
 it("the pickers open as a bottom sheet at the thumb", () => {
   const sheet = phone.match(/\.train-picker \{[^}]*\}/)[0];
   expect(sheet).toMatch(/top: auto/);
-  expect(sheet).toMatch(/bottom: calc\(8px \+ env\(safe-area-inset-bottom\)\)/);
-  expect(sheet).toMatch(/max-height: 70dvh/);
+  expect(sheet).toContain("bottom: calc(var(--viewport-bottom) + 8px + env(safe-area-inset-bottom))");
+  expect(sheet).toContain("max-height: calc(var(--viewport-height) * 0.7)");
 });
 
 it("the result cells share one row on a phone instead of orphaning the last", () => {

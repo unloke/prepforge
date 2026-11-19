@@ -180,8 +180,8 @@
   --fs-xs: 11px;
 
   /* -- Radii, elevation, control sizes ------------------------------------ */
-  --radius: 8px;      /* controls, small chips */
-  --radius-card: 14px; /* cards, popovers, dialogs */
+  --radius: 6px;      /* controls, small chips */
+  --radius-card: 10px; /* cards, popovers, dialogs */
   --radius-chip: 4px; /* status and kind pills: one step under a control */
   /* One control-size system. Every button, field and menu row takes its height
      from these three tokens; a phone (phone.css) and a touch screen (touch.css)

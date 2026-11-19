@@ -334,7 +334,8 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   await page.waitForTimeout(100);
   await tap(item);
   await page.waitForTimeout(100);
-  check(S, !(await page.locator("#account-menu").isVisible()), "second trigger click should close the menu");
+  check(S, await page.evaluate(() => !document.getElementById("account-menu").matches(":popover-open")), "second trigger click should close the menu");
+  check(S, await page.locator("#account-menu").waitFor({ state: "hidden", timeout: 2000 }).then(() => true, () => false), "the closed account menu should leave the screen");
   check(S, await page.evaluate(() => document.activeElement?.id === "sheet-account"), "toggle-close should keep focus on #sheet-account");
 
   await page.keyboard.press("Escape");

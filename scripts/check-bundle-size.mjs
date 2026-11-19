@@ -105,7 +105,9 @@ const LIMITS = [
   // Drill widgets bring it to 179,199 B; the cap moves to 179,300 B.
   // 2026-11-05 QA round 4: the rail foot, closing rail and disabled Teams
   // icon buttons bring it to 179,454 B; the cap moves to 179,500 B.
-  { prefix: "index-", suffix: ".css", maxBytes: 179_500, label: "main stylesheet" },
+  // Shared disclosure/menu transitions, reversible tab marks and visible-viewport
+  // sizing bring the sheet to ~180,760 B; keep the ceiling close to that delta.
+  { prefix: "index-", suffix: ".css", maxBytes: 180_800, label: "main stylesheet" },
 ];
 
 let files;
