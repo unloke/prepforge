@@ -278,7 +278,7 @@ async function runViewport(vp) {
           getComputedStyle(button).clipPath === "none" &&
           button.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)),
         contained: box.top >= rowBox.top && box.bottom <= rowBox.bottom &&
-          row.querySelector(".lib-opt").getBoundingClientRect().right <= box.left - 4,
+          row.querySelector(".lib-cell-mastery").getBoundingClientRect().right <= box.left - 4,
         intact: list.scrollTop === 0 && name.top >= listBox.top && name.bottom <= listBox.bottom,
       };
     });
@@ -288,6 +288,7 @@ async function runViewport(vp) {
     await page.keyboard.press("Enter");
     check(await page.locator("#repertoire-context-menu").isVisible(), "Enter on Actions must open its menu");
     await page.keyboard.press("Escape");
+    await page.locator("#repertoire-context-menu").waitFor({ state: "hidden" });
     check(!(await page.locator("#repertoire-context-menu").isVisible()), "Escape must close Actions");
     check(await page.evaluate(() => document.activeElement?.matches('[data-row-menu="rep-1"]')),
       "closing Actions must restore focus to its button");
