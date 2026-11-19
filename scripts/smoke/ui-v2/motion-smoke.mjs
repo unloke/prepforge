@@ -216,6 +216,8 @@ async function run({ name, width, height, mobile }) {
     await targetPage.waitForTimeout(280);
     const properties = await targetPage.evaluate(({ since, selector }) => window.__reveals.slice(since)
       .filter((e) => e.el.matches(selector)).map((e) => e.property), { since, selector });
+    const dialogs = await targetPage.locator("dialog[open]").allTextContents();
+    if (dialogs.length) throw new Error(`${name}: ${button} opened an unexpected dialog: ${dialogs.join(" | ")}`);
     if (enabled ? !["opacity", "translate"].every((p) => properties.includes(p)) : properties.length > 0) {
       failures.push(`${name}: ${selector} should ${enabled ? "reveal with opacity/translate" : "stay still for reduced motion"}, got ${properties}`);
     }
@@ -283,8 +285,9 @@ async function run({ name, width, height, mobile }) {
   const targets = ["#team-tab-repertoires", "#team-tab-members", "#team-tab-repertoires"];
   const clicks = [];
   for (const selector of targets) {
-    const r = await page.locator(selector).boundingBox();
-    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+    // A shorter pane can change phone scroll anchoring; aim at the live tab,
+    // not coordinates captured before the browser's scroll adjustment.
+    await page.locator(selector).click();
     clicks.push(await page.locator(selector).getAttribute("aria-selected"));
     await page.waitForTimeout(25);
   }
@@ -301,6 +304,8 @@ async function run({ name, width, height, mobile }) {
   // A Settings area is its own view: the link opens its card, marks it, and
   // the view fades in (no landing ring; the card is the page).
   await step("settings:area");
+  const unexpectedDialogs = await page.locator("dialog[open]").allTextContents();
+  if (unexpectedDialogs.length) throw new Error(`${name}: unexpected dialogs before Settings: ${unexpectedDialogs.join(" | ")}`);
   await page.locator(".settings-nav .settings-nav-link", { hasText: "Board" }).click();
   await page.waitForTimeout(400);
   const area = await page.evaluate(() => ({
