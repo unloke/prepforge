@@ -93,7 +93,9 @@ export async function api(path, options = {}) {
   const raw = await (blob ?? response).text();
   // Large Build loads leave room for paint/input between decoding, parsing,
   // and hydrating the tree. Use the decompressed body, not its transfer size.
-  const large = largeJson && (blob?.size ?? raw.length) >= 1024 * 1024;
+  const yieldBytes = 1024 * 1024;
+  const large = largeJson && ((blob?.size ?? raw.length) >= yieldBytes
+    || (!blob && raw.length * 3 >= yieldBytes && /[\u0080-\uFFFF]/.test(raw) && new Blob([raw]).size >= yieldBytes));
   if (large) await yieldToBrowser(signal);
   let payload = {};
   if (raw) {

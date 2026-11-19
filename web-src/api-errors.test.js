@@ -82,12 +82,11 @@ describe("shared API adapter", () => {
     await expect(fail("/api/build/load", largeJsonOptions)).rejects.toMatchObject({ status: 502 });
     expect(scheduler.yield).not.toHaveBeenCalled();
   });
-  it("still yields when a small compressed transfer contains a large JSON body", async () => {
-    const body = { note: "a".repeat(1024 * 1024) };
+  it("still yields when a small compressed transfer contains a large Unicode body", async () => {
     const yieldTask = vi.fn(async () => {});
-    const response = new Response(JSON.stringify(body), { headers: { "content-length": "1062", "content-encoding": "gzip" } });
+    const response = new Response(JSON.stringify(largeBody), { headers: { "content-length": "1062", "content-encoding": "gzip" } });
     const read = responseAdapter(response, { yield: yieldTask });
-    await expect(read("/api/build/load", largeJsonOptions)).resolves.toEqual(body);
+    await expect(read("/api/build/load", largeJsonOptions)).resolves.toEqual(largeBody);
     expect(yieldTask).toHaveBeenCalledTimes(2);
   });
   it("does not deliver a parsed payload if canceled while yielding", async () => {
