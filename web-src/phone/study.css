@@ -947,6 +947,7 @@
   :is(#view-analyze, #view-build, #view-train) .study { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   :is(#view-analyze, #view-build, #view-train) .study::-webkit-scrollbar { display: none; }
   .study .board-bar { position: sticky; bottom: 0; z-index: 5; overflow: clip; }
+  #view-analyze .board-bar { position: relative; bottom: auto; }
   :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) { padding: 0 var(--phone-gutter) 12px; }
 
   #view-build #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty) { border-radius: 0; background: none; }

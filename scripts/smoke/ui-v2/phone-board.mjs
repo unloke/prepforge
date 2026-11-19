@@ -35,7 +35,8 @@ export async function checkPhoneBoard(page, { view, board, tabs = null, label = 
       : [];
     return {
       vw: document.documentElement.clientWidth,
-      board: b ? { left: Math.round(b.left), width: Math.round(b.width), height: Math.round(b.height) } : null,
+      board: b ? { left: Math.round(b.left), width: Math.round(b.width), height: Math.round(b.height), bottom: b.bottom } : null,
+      barTop: bar?.height ? bar.top : null,
       bar: bar && bar.height ? Math.round(bar.height) : null,
       peek,
       tabRows,
@@ -47,6 +48,7 @@ export async function checkPhoneBoard(page, { view, board, tabs = null, label = 
   else {
     if (Math.abs(got.board.width - got.vw) > 1 || got.board.left !== 0) fails.push(`${at}the board must run edge to edge at ${got.vw}px, got ${JSON.stringify(got.board)}`);
     if (Math.abs(got.board.width - got.board.height) > 1) fails.push(`${at}the board must be square, got ${JSON.stringify(got.board)}`);
+    if (got.barTop !== null && got.barTop < got.board.bottom - 1) fails.push(`${at}the thumb bar must not cover any board rank, got ${JSON.stringify(got)}`);
   }
   if (got.bar !== null && got.bar !== 48) fails.push(`${at}the thumb bar is 48px, got ${got.bar}`);
   if (got.peek.length) fails.push(`${at}no peek sheet or drag handle on a board screen, got ${got.peek.join(", ")}`);

@@ -9,6 +9,13 @@ import { cssSource, eagerCss } from "./test-styles-source.js";
 const phone = cssSource("phone.css");
 const body = phone.slice(phone.indexOf("@media (max-width: 760px)"));
 
+it("keeps Analyze controls in flow rather than overlaying ranks on a short viewport", () => {
+  expect(phone).toMatch(/#view-analyze \.board-bar \{ position: relative; bottom: auto; \}/);
+  const analyze = cssSource("views/analyze-chart.css");
+  expect(analyze).toMatch(/#view-analyze \.board-bar \{ anchor-name: --analyze-controls; \}/);
+  expect(analyze).toMatch(/#view-analyze #run-analysis \{ position-anchor: --analyze-controls;[^}]*bottom: calc\(anchor\(bottom\)/);
+});
+
 function rule(selector) {
   const start = body.indexOf(`\n  ${selector}`);
   expect(start, selector).toBeGreaterThan(-1);
