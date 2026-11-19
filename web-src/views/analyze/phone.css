@@ -754,7 +754,8 @@
   .analysis-handoff .btn { min-height: 36px; border-radius: var(--radius); font-size: 14px; }
 
   /* The thumb bar's pill keeps the bar's 32px (phone.css). */
-  #view-analyze #run-analysis { height: 32px; bottom: calc(env(safe-area-inset-bottom) + (var(--phone-bar-h) - 32px) / 2); }
+  #view-analyze .board-bar { anchor-name: --analyze-controls; }
+  #view-analyze #run-analysis { position-anchor: --analyze-controls; height: 32px; bottom: calc(anchor(bottom) + env(safe-area-inset-bottom) + (var(--phone-bar-h) - 32px) / 2); }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 40px 40px minmax(0, 1fr) 48px 48px; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #run-analysis { --pill-left: 98px; }
   @media (min-width: 360px) and (max-width: 374px) {

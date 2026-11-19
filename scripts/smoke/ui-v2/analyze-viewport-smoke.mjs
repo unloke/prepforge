@@ -840,12 +840,22 @@ async function runViewport(vp) {
     for (const f of short.fails) check(false, f);
     const lastSquare = page.locator("#analysis-board .square").last();
     await lastSquare.scrollIntoViewIfNeeded();
-    const rankReachable = await lastSquare.evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest(".square") === el;
+    const blockedSquares = await page.locator("#analysis-board").evaluate((board) => {
+      const squares = [...board.querySelectorAll(".square")];
+      const bottom = Math.max(...squares.map((el) => el.getBoundingClientRect().top));
+      return squares.filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.top === bottom && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest(".square") !== el;
+      }).map((el) => el.dataset.square);
     });
-    check(rankReachable, "the bottom rank must scroll fully into view and receive input, not hide behind controls");
+    check(blockedSquares.length === 0, `every bottom-rank square must receive input, blocked: ${blockedSquares.join(", ")}`);
     await page.locator("#view-analyze [data-phone-nav]").scrollIntoViewIfNeeded();
+    const reviewInBar = await page.locator("#run-analysis").evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
+      return r.top >= bar.top && r.bottom <= bar.bottom && el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+    });
+    check(reviewInBar, "Review must scroll with its bar and stay visible and clickable inside it");
     await page.locator("#view-analyze [data-phone-nav]").click();
     check(await page.evaluate(() => document.body.classList.contains("phone-nav-open")), "short-screen navigation stays reachable after scrolling");
     await page.keyboard.press("Escape");
