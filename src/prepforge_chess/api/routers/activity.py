@@ -153,6 +153,9 @@ def activity_revert(body: RevertBody, owner: str = Depends(current_owner),
                 reviewed.extend(conn.execute(select(t.training_progress.c.owner_user_id, t.training_progress.c.last_reviewed_at).where(
                     t.training_progress.c.node_id.in_(chunk), t.training_progress.c.last_reviewed_at >= week_ago)).all())
                 conn.execute(update(t.training_sessions).where(t.training_sessions.c.current_node_id.in_(chunk)).values(current_node_id=None))
+            # Deleting a parent can cascade into nodes in any later batch.
+            for offset in range(0, len(removing_list), 400):
+                chunk = removing_list[offset:offset + 400]
                 conn.execute(delete(t.opening_nodes).where(t.opening_nodes.c.id.in_(chunk)))
             repo._archive_reviews(conn, reviewed, week_ago)
         old_meta = {key: rep[key] for key in metadata}

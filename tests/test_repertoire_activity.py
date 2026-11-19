@@ -73,6 +73,66 @@ def test_deleted_tree_is_restored_in_parent_order(world):
     assert _revert(w, deleted["revision"]).status_code == 409
 
 
+def test_reverting_large_plan_archives_reviews_before_cascading_delete(world, monkeypatch):
+    import json
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    from uuid import UUID
+
+    import chess
+    from sqlalchemy import select
+
+    from prepforge_chess.api import db
+    from prepforge_chess.services import opening_builder
+    from prepforge_chess.storage import sa_tables as t
+    from prepforge_chess.storage.repositories.settings import REVIEW_ARCHIVE_KEY
+
+    w = world
+    board = chess.Board()
+    board.push_uci("e2e4")
+    positions = [(w["e4"], board)]
+    changes = []
+    for parent_ref, position in positions:
+        for index, move in enumerate(position.legal_moves):
+            temp_id = f"tmp-{len(changes) + 1}"
+            changes.append({
+                "action": "planned_add", "tempId": temp_id, "parentRef": parent_ref,
+                "moveUci": move.uci(), "source": "generated_stockfish",
+                "intendedMainline": index == 0,
+            })
+            child = position.copy(stack=False)
+            child.push(move)
+            positions.append((temp_id, child))
+            if len(changes) == 401:
+                break
+        if len(changes) == 401:
+            break
+
+    # Put the reviewed child in the second deletion batch and its parent in the first.
+    ids = iter(UUID(int=i) for i in range(1, 402))
+    monkeypatch.setattr(opening_builder, "uuid", SimpleNamespace(uuid4=lambda: next(ids)))
+    added = _post(w["c"]["owner"], "/api/build/generate/apply-plan", {
+        "repertoire_id": w["rep"], "root_node_id": w["e4"],
+        "plan": {"rootNodeId": w["e4"], "changes": changes},
+    })
+    assert added.status_code == 200, added.text
+    reviewed_at = datetime.now(timezone.utc)
+    with db.make_engine().begin() as conn:
+        conn.execute(t.training_progress.insert().values(
+            owner_user_id=w["ids"]["view"], repertoire_id=w["rep"], node_id=str(UUID(int=401)),
+            attempts=1, correct_attempts=1, last_reviewed_at=reviewed_at,
+        ))
+
+    reverted = _revert(w, added.json()["revision"])
+    assert reverted.status_code == 200, reverted.text
+    assert {node["id"] for node in reverted.json()["nodes"]} == {w["root"], w["e4"]}
+    with db.make_engine().connect() as conn:
+        archive = conn.scalar(select(t.user_settings.c.value_json).where(
+            t.user_settings.c.user_id == w["ids"]["view"], t.user_settings.c.key == REVIEW_ARCHIVE_KEY,
+        ))
+    assert json.loads(archive or "[]") == [reviewed_at.isoformat()]
+
+
 def test_revert_restores_compact_op_delta_and_cleans_up_generated_adds(world):
     import json
     from sqlalchemy import select
