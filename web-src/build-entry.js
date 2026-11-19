@@ -251,7 +251,7 @@ export function setBuildInspector(tool) {
     button.setAttribute("aria-selected", String(on));
     button.tabIndex = on ? 0 : -1;
   });
-  if (changed) enterOnce(panels[tab]);
+  if (changed && globalThis.matchMedia?.("(min-width: 761px)").matches) enterOnce(panels[tab]);
   const dbs = document.getElementById("inspector-dbs");
   const engineSwitch = document.getElementById("explorer-engine-switch");
   if (dbs) dbs.hidden = tab !== "explorer";
