@@ -326,6 +326,10 @@ describe("build tree — large repertoire auto-collapse", () => {
     appState.build = { ...appState.build };
     appState.buildLoading = true;
     view.updateBuildTreeSelection();
+    expect(container.innerHTML).not.toContain('data-node-id="saved-var"');
+
+    appState.build = { ...appState.build };
+    view.updateBuildTreeSelection({ revealSelection: true });
     expect(container.innerHTML).toMatch(/is-current[^>]*data-node-id="saved-var"/);
   });
 });

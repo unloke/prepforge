@@ -61,7 +61,7 @@ export function createBuildSession() {
 // so we fail with an actionable message instead of a raw 400 after the work is done.
 const GEN_MAX_PLY_DEPTH = 20;
 
-async function hydrateBuild(payload, selectedNodeId = null) {
+async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = false } = {}) {
   // This takes a /api/build/load PAYLOAD. Writing anything else into
   // appState.build corrupts every later reader (the header, syncViewHeads),
   // so refuse it here instead of half-adopting it.
@@ -123,7 +123,7 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   const branchChoiceId = payload.repertoire_id === prevRepId
     && nextNodeId === resolveBuildId(appState.buildCurrentNodeId)
     ? resolveBuildId(appState.buildBranchChoiceId) : null;
-  await selectBuildNode(nextNodeId, { branchChoiceId: known(branchChoiceId) ? branchChoiceId : null });
+  await selectBuildNode(nextNodeId, { branchChoiceId: known(branchChoiceId) ? branchChoiceId : null, revealSelection });
   if (appState.build !== payload) return;
   if (!appState.buildFlushing && hasPendingBuildOpsFor(payload.repertoire_id)) {
     setBuildSync("dirty");
@@ -195,7 +195,7 @@ async function renameRepertoire() {
   });
 }
 
-async function selectBuildNode(nodeId, { branchChoiceId = null } = {}) {
+async function selectBuildNode(nodeId, { branchChoiceId = null, revealSelection = false } = {}) {
   if (!appState.buildNodeById.has(nodeId)) return;
   // Which way the board travels: into the current node's own child is a move
   // being shown; a parent, a sibling or a distant node is a step through or a
@@ -228,8 +228,8 @@ async function selectBuildNode(nodeId, { branchChoiceId = null } = {}) {
   for (const id of ["build-board-label", "build-head-ply"]) document.getElementById(id).textContent = label;
   // A step through the tree changes the mark, not the tree. Structural edits
   // (add/delete/collapse/note/grade/import) call renderBuilderTree themselves.
-  if (buildView) buildView.updateBuildTreeSelection();
-  else renderBuilderTree();
+  if (buildView) buildView.updateBuildTreeSelection({ revealSelection });
+  else renderBuilderTree({ revealSelection });
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }

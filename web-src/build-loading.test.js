@@ -109,6 +109,16 @@ describe("repertoire load isolation", () => {
     expect(h.deps.setStatusError).toHaveBeenCalledWith("offline");
   });
 
+  it("asks to reveal a valid explicit target when opening from another view", async () => {
+    const h = harness();
+    const load = h.edit("B", "branch");
+    await waitForRequest(h, "B");
+    const response = { ...payload("B"), nodes: [{ id: "branch" }] };
+    h.requests.get("B").resolve(response);
+    await load;
+    expect(h.hydrateBuild).toHaveBeenCalledWith(response, "branch", { revealSelection: true });
+  });
+
   it("a superseded response cannot hydrate or unlock the newer load", async () => {
     const h = harness();
     const first = h.edit("B"); await waitForRequest(h, "B");

@@ -440,18 +440,18 @@ export function createBuildView({
   // on every click. This moves the mark and leaves the markup alone. Anything
   // structural (add, delete, collapse, note, grade, import) still calls
   // renderBuilderTree, which is the only path that writes the container.
-  function updateBuildTreeSelection() {
+  function updateBuildTreeSelection({ revealSelection = false } = {}) {
     const container = document.getElementById("builder-tree");
     const renderer = getMoveTreeRenderer();
     if (focusId && !buildPath(appState.buildCurrentNodeId).some((n) => n.id === focusId)) {
       focusId = null;
-      renderBuilderTree({ revealSelection: appState.buildLoading });
+      renderBuilderTree({ revealSelection });
       return;
     }
     // The tree renderer chunk is still loading: the first paint of this tree is
     // a render, not a mark move (renderBuilderTree waits for the chunk itself).
     if (!container || !renderer || paintedTree !== appState.build) {
-      renderBuilderTree({ revealSelection: appState.buildLoading });
+      renderBuilderTree({ revealSelection });
       return;
     }
     // Not on screen (inside a collapsed branch, or the tree has not been

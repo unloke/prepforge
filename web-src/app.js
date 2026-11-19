@@ -640,7 +640,7 @@ async function editRepertoire(repertoireId, nodeId = null) {
     );
     if (loadSeq !== buildLoadSeq) return;
     const target = nodeId && payload.nodes.some((n) => n.id === nodeId) ? nodeId : null;
-    await hydrateBuild(payload, target || payload.selected_node_id);
+    await hydrateBuild(payload, target || payload.selected_node_id, { revealSelection: !!target });
     if (loadSeq !== buildLoadSeq) return;
     setBuildLoading(false, { restore: false });
     appState.trainingRepertoireId = payload.repertoire_id;
