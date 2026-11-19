@@ -1,126 +1,144 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-
-import { swapView } from "./view-swap.js";
+import { animateView, swapView } from "./view-swap.js";
 import { eagerCss as css } from "./test-styles-source.js";
 
+function animation() {
+  let finish, reject;
+  const finished = new Promise((resolve, fail) => { finish = resolve; reject = fail; });
+  return {
+    animationName: "view-enter", finished, finish, reject,
+    cancel: vi.fn(() => reject(new Error("Animation was canceled"))),
+  };
+}
 
-function view(id, active = false) {
+function view(id, active = false, arrival = null) {
   const classes = new Set(active ? ["is-active"] : []);
   return {
-    id,
+    id, classes,
+    getAnimations: vi.fn(() => arrival ? [arrival] : []),
     classList: {
       add: (...c) => c.forEach((x) => classes.add(x)),
       remove: (...c) => c.forEach((x) => classes.delete(x)),
       contains: (c) => classes.has(c),
       toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)),
     },
-    classes,
   };
 }
 
-function withTransitions({ reduce = false } = {}) {
-  const pending = [];
+function environment({ reduce = false, hidden = false } = {}) {
   const root = view("root");
   vi.stubGlobal("matchMedia", () => ({ matches: reduce }));
   vi.stubGlobal("document", {
-    documentElement: root,
-    visibilityState: "visible",
-    startViewTransition(update) {
-      let done;
-      const finished = new Promise((resolve) => { done = resolve; });
-      let skip;
-      const ready = new Promise((_, reject) => { skip = reject; });
-      pending.push(() => { update(); done(); });
-      pending.skips = [...(pending.skips || []), () => skip(new Error("Transition was skipped"))];
-      const skipTransition = vi.fn(() => skip(new Error("Transition was skipped")));
-      pending.transitions = [...(pending.transitions || []), { skipTransition }];
-      return { finished, ready, skipTransition };
-    },
+    documentElement: root, visibilityState: hidden ? "hidden" : "visible",
+    startViewTransition: vi.fn(),
   });
-  return pending;
+  return root;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  swapView([], "", { animate: false });
+  vi.unstubAllGlobals();
+});
 
-describe("route view swap", () => {
-  it("keeps the old page painted until it is captured, then swaps", async () => {
-    const pending = withTransitions();
-    const a = view("view-a", true);
-    const b = view("view-b");
-    const onSwap = vi.fn();
-    swapView([a, b], "view-b", { onSwap });
-    expect(a.classes.has("is-active")).toBe(true);
-    expect(onSwap).not.toHaveBeenCalled();
-    pending.shift()();
-    expect(a.classes.has("is-active")).toBe(false);
+describe("live route view swap", () => {
+  it("activates live content synchronously, with one arrival until the fade ends", async () => {
+    const root = environment();
+    const arrival = animation();
+    const a = view("a", true), b = view("b", false, arrival);
+    const onSwap = vi.fn(() => expect(b.classes.has("is-arriving")).toBe(true));
+    expect(swapView([a, b], "b", { onSwap })).toBe(arrival);
+    expect(a.classes.size).toBe(0);
     expect(b.classes.has("is-active")).toBe(true);
-    expect(b.classes.has("is-arriving")).toBe(true);
+    expect(b.classes.has("is-view-entering")).toBe(true);
     expect(onSwap).toHaveBeenCalledOnce();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(b.classes.has("is-arriving")).toBe(false);
+    expect(document.startViewTransition).not.toHaveBeenCalled();
+    arrival.finish();
+    await arrival.finished;
+    expect([...b.classes]).toEqual(["is-active"]);
+    expect(root.classes.size).toBe(0);
   });
 
-  it("swaps instantly for reduced motion", () => {
-    const pending = withTransitions({ reduce: true });
-    const a = view("view-a", true);
-    const b = view("view-b");
+  it.each([{ reduce: true }, { hidden: true }])("swaps instantly with %j", (options) => {
+    const root = environment(options);
+    const a = view("a", true), b = view("b", false, animation());
     const onSwap = vi.fn();
-    expect(swapView([a, b], "view-b", { onSwap })).toBeNull();
-    expect(pending).toHaveLength(0);
+    expect(swapView([a, b], "b", { onSwap })).toBeNull();
     expect(onSwap).toHaveBeenCalledOnce();
+    expect(b.getAnimations).not.toHaveBeenCalled();
     expect([...b.classes]).toEqual(["is-active"]);
+    expect(root.classes.size).toBe(0);
   });
 
-  it("swaps instantly without the API", () => {
-    vi.stubGlobal("document", {});
-    const a = view("view-a", true);
-    const b = view("view-b");
-    expect(swapView([a, b], "view-b")).toBeNull();
-    expect([...b.classes]).toEqual(["is-active"]);
-  });
-
-  it("a second switch before the capture wins", () => {
-    const pending = withTransitions();
-    const [a, b, c] = [view("view-a", true), view("view-b"), view("view-c")];
-    swapView([a, b, c], "view-b");
-    swapView([a, b, c], "view-c");
-    expect(pending.transitions[0].skipTransition).toHaveBeenCalledOnce();
-    // The replaced transition's late update does nothing.
-    pending.shift()();
-    expect(a.classes.has("is-active")).toBe(true);
-    pending.shift()();
+  it("cancels the old animation synchronously without its late cleanup clearing the new one", async () => {
+    const root = environment();
+    const first = animation(), second = animation();
+    const a = view("a", true), b = view("b", false, first), c = view("c", false, second);
+    swapView([a, b, c], "b");
+    swapView([a, b, c], "c");
+    expect(first.cancel).toHaveBeenCalledOnce();
+    expect(b.classes.size).toBe(0);
     expect(c.classes.has("is-active")).toBe(true);
-    expect(b.classes.size).toBe(0);
-  });
-
-  it("clears the transition layer when an instant switch interrupts an animation", async () => {
-    const pending = withTransitions();
-    const [a, b, c] = [view("view-a", true), view("view-b"), view("view-c")];
-    swapView([a, b, c], "view-b");
-    expect(document.documentElement.classes.has("view-swap")).toBe(true);
-    swapView([a, b, c], "view-c", { animate: false });
-    expect(document.documentElement.classes.has("view-swap")).toBe(false);
-    pending.shift()();
     await Promise.resolve();
+    expect(c.classes.has("is-arriving")).toBe(true);
+    expect(root.classes.has("view-swap")).toBe(true);
+    second.finish();
+    await second.finished;
     expect([...c.classes]).toEqual(["is-active"]);
+  });
+
+  it("clears all animation markers for an instant interruption", async () => {
+    const root = environment();
+    const first = animation();
+    const a = view("a", true), b = view("b", false, first), c = view("c");
+    swapView([a, b, c], "b");
+    swapView([a, b, c], "c", { animate: false });
+    await Promise.resolve();
+    expect(first.cancel).toHaveBeenCalledOnce();
+    expect(root.classes.size).toBe(0);
     expect(b.classes.size).toBe(0);
+    expect([...c.classes]).toEqual(["is-active"]);
   });
 
-  it("names the workspace, never the board, and drops the old CSS view fade", () => {
-    expect(css).toMatch(/\.workspace \{[^}]*view-transition-name:\s*view/);
-    expect(css).not.toMatch(/board[^{]*\{[^}]*view-transition-name/);
-    expect(css).not.toMatch(/\.view\.is-active \{[^}]*animation:/);
+  it("cleans up when a running animation is rejected", async () => {
+    const root = environment();
+    const arrival = animation();
+    const a = view("a", true), b = view("b", false, arrival);
+    swapView([a, b], "b");
+    arrival.reject(new Error("External cancellation"));
+    await Promise.resolve();
+    expect([...b.classes]).toEqual(["is-active"]);
+    expect(root.classes.size).toBe(0);
   });
 
-  it("a transition skipped by a newer one is not an unhandled rejection", async () => {
-    const pending = withTransitions();
-    const unhandled = vi.fn();
-    globalThis.process.on("unhandledRejection", unhandled);
-    swapView([view("view-a", true), view("view-b")], "view-b");
-    pending.skips[0]();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    globalThis.process.off("unhandledRejection", unhandled);
-    expect(unhandled).not.toHaveBeenCalled();
+  it("does not leave markers when CSS has no runnable animation", () => {
+    const root = environment();
+    const a = view("a", true), b = view("b");
+    expect(swapView([a, b], "b")).toBeNull();
+    expect([...b.classes]).toEqual(["is-active"]);
+    expect(root.classes.size).toBe(0);
+  });
+
+  it("can animate only Train's live panel, leaving its board untouched", async () => {
+    const root = environment();
+    const arrival = animation();
+    const train = view("train", true), panel = view("panel", false, arrival);
+    const update = vi.fn();
+    animateView(train, update, { target: panel });
+    expect(update).toHaveBeenCalledOnce();
+    expect(train.classes.has("is-arriving")).toBe(true);
+    expect(train.classes.has("is-view-entering")).toBe(false);
+    expect(train.getAnimations).not.toHaveBeenCalled();
+    expect(panel.classes.has("is-view-entering")).toBe(true);
+    arrival.finish();
+    await arrival.finished;
+    expect([...train.classes]).toEqual(["is-active"]);
+    expect(panel.classes.size).toBe(0);
+    expect(root.classes.size).toBe(0);
+  });
+
+  it("uses live CSS entrances without snapshot names or pointer blocking", () => {
+    expect(css).toContain(".is-view-entering { animation: view-enter var(--dur) var(--ease-out) both; }");
+    expect(css).not.toMatch(/view-transition-name/);
+    expect(css).not.toMatch(/\.is-view-entering\s*\{[^}]*pointer-events/);
   });
 });

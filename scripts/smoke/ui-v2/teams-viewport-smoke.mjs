@@ -177,9 +177,14 @@ async function runViewport(vp) {
   check(await page.locator("#teams-shared .skeleton-text").count() === 1, "incoming shares must have a loading placeholder on the first paint");
   check(await page.locator("#view-teams .incoming").isVisible(), "incoming shares must be present on the first paint");
   const desktopDetail = vp.width > 760;
+  const layoutBox = (locator) => locator.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const view = el.closest(".view").getBoundingClientRect();
+    return { y: box.y - view.y, height: box.height };
+  });
   check(await page.locator("#team-detail-card").isVisible() === desktopDetail, "the desktop detail skeleton is present before modules load; a phone keeps its directory");
-  const initialIncoming = await page.locator("#view-teams .incoming").boundingBox();
-  const initialMembers = desktopDetail ? await page.locator("#team-members .mem-row").first().boundingBox() : null;
+  const initialIncoming = await layoutBox(page.locator("#view-teams .incoming"));
+  const initialMembers = desktopDetail ? await layoutBox(page.locator("#team-members .mem-row").first()) : null;
   const firstBar = await page.locator("#teams-list .name.skeleton-text").first().boundingBox();
   check(firstBar?.width > 30 && firstBar?.height >= 10, "cold skeleton bars need their eager geometry");
   await shot("cold");
@@ -188,7 +193,7 @@ async function runViewport(vp) {
   // not disappear when the controller initializes or data starts arriving.
   await gates.directory.started;
   check(await page.locator("#team-detail-card").isVisible() === desktopDetail, "controller arrival must not hide the detail skeleton");
-  const afterModules = await page.locator("#view-teams .incoming").boundingBox();
+  const afterModules = await layoutBox(page.locator("#view-teams .incoming"));
   check(Math.abs(afterModules.y - initialIncoming.y) <= 1, "incoming skeleton must not move when modules arrive");
   gates.incoming.release();
   await page.waitForTimeout(100);
@@ -208,7 +213,7 @@ async function runViewport(vp) {
   await shot("directory");
   if (desktopDetail) {
     await gates.detail.started;
-    const member = await page.locator("#team-members .mem-row").first().boundingBox();
+    const member = await layoutBox(page.locator("#team-members .mem-row").first());
     check(Math.abs(member.y - initialMembers.y) <= 1 && Math.abs(member.height - initialMembers.height) <= 1,
       "member skeleton geometry must survive directory arrival");
     check(await page.locator("#team-detail-card").getAttribute("aria-busy") === "true", "detail stays loading until its own response arrives");

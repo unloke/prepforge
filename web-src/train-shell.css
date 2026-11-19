@@ -230,20 +230,6 @@
 .train-recent-name { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .train-recent-row b { font-variant-numeric: tabular-nums; }
 
-/* ---- View transitions: chrome only, never the board --------------------- */
-:root.train-vt::view-transition-old(root),
-:root.train-vt::view-transition-new(root) { animation: none; }
-::view-transition-group(train-mode-title) { animation-duration: 380ms; animation-timing-function: var(--ease-out); }
-::view-transition-old(train-body) { animation: train-vt-out 200ms var(--ease-out) both; }
-::view-transition-new(train-body) { animation: train-vt-in 380ms var(--ease-out) both; }
-/* Named only while a Train transition runs, so route-level transitions in
-   the app shell never see Train's names; and the route's own name (.workspace,
-   view-swap.js) steps aside meanwhile so the board does not fade with it. */
-:root.train-vt #view-train .panel-scroll { view-transition-name: train-body; }
-:root.train-vt .workspace { view-transition-name: none; }
-@keyframes train-vt-out { to { opacity: 0; } }
-@keyframes train-vt-in { from { opacity: 0; transform: translateY(8px); } }
-
 /* A drill panel with nothing in it yet (a rehearsal before its first answer)
    draws no empty box under the banner. */
 #train-progress-panel:not(:has(> :not([hidden], :empty, .train-session-meta), #train-card-kind:not([hidden]), .train-stats-line:not(:empty))) { display: none; }

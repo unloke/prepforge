@@ -140,8 +140,7 @@ export function downloadText(filename, mime, content) {
   URL.revokeObjectURL(url);
 }
 
-// The route, not the painted view: during a route View Transition the old
-// view stays painted for a frame (view-swap.js).
+// The route state is authoritative, independent of entrance animation timing.
 export function activeViewName() {
   return appState.currentView;
 }

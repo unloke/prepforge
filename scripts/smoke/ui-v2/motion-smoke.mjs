@@ -158,13 +158,6 @@ function recorder() {
   document.addEventListener("animationstart", (e) => {
     const el = e.target;
     if (!isEntrance(e.animationName)) return;
-    // The route cross-fade is a View Transition (view-swap.js): its animation
-    // runs on a ::view-transition-* pseudo-element and covers the whole
-    // workspace, not one .view.
-    if (/^::view-transition/.test(e.pseudoElement || String(el.tagName || ""))) {
-      window.__anim.push({ step: window.__step, t: performance.now(), name: e.animationName, uid: 0, path: `::view-transition (${e.animationName})`, anc: [], view: true, route: true });
-      return;
-    }
     if (!el.getClientRects().length) return;
     window.__anim.push({ step: window.__step, t: performance.now(), name: e.animationName, uid: uid(el), path: path(el), anc: ancestors(el), view: el.matches(".view"), inWorkspace: Boolean(el.closest(".workspace")) });
   }, true);
@@ -274,6 +267,39 @@ async function run({ name, width, height, mobile }) {
   }));
   if (!area.shown || !area.hidden) failures.push(`${name}: the Board area should show its card and hide the others, got ${JSON.stringify(area)}`);
   if (area.active !== "Board") failures.push(`${name}: the strip should mark Board, got "${area.active}"`);
+
+  const routes = mobile ? ["train", "analyze"] : ["train", "analyze", "build"];
+  const points = await Promise.all(routes.map(async (view) => {
+    const selector = `${mobile ? ".tabbar-item" : ".nav-item"}[data-view="${view}"] .ic`;
+    const r = await page.locator(selector).boundingBox();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  }));
+  await page.evaluate(() => {
+    window.__rapidNavClicks = [];
+    window.__rapidNavListener = (e) => {
+      const view = e.target.closest(".tab[data-view]")?.dataset.view;
+      if (view) window.__rapidNavClicks.push({ view, trusted: e.isTrusted, during: document.documentElement.classList.contains("view-swap") });
+    };
+    document.addEventListener("click", window.__rapidNavListener, true);
+  });
+  for (const [i, view] of routes.entries()) {
+    await step(`rapid:${view}`);
+    await page.mouse.click(points[i].x, points[i].y);
+    await page.waitForTimeout(25);
+  }
+  await settle();
+  const rapid = await page.evaluate(() => {
+    document.removeEventListener("click", window.__rapidNavListener, true);
+    return {
+      clicks: window.__rapidNavClicks,
+      active: [...document.querySelectorAll(".view.is-active")].map((el) => el.id),
+      residue: document.querySelectorAll(".is-arriving, :root.view-swap").length,
+    };
+  });
+  if (rapid.clicks.map((c) => c.view).join() !== routes.join() || rapid.clicks.some((c) => !c.trusted)
+      || !rapid.clicks.some((c) => c.during) || rapid.active.join() !== `view-${routes.at(-1)}` || rapid.residue) {
+    failures.push(`${name}: rapid real navigation should reach every control and settle on the last view, got ${JSON.stringify(rapid)}`);
+  }
   await page.waitForTimeout(300);
   for (const e of errors) failures.push(`${name}: pageerror ${e}`);
   await context.close();

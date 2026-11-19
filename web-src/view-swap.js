@@ -1,56 +1,44 @@
-// Route-level view swap. Where View Transitions exist the outgoing page
-// cross-fades into the incoming one (styles.css names .workspace and styles the
-// pair; the rail and the board get no name of their own). The name is set only
-// while a swap runs (`:root.view-swap`): a named element is its own stacking
-// layer, which would keep a page's fixed sheet under the phone tab bar. The page stays as it
-// is until the browser has captured it, so `.is-active` moves inside the
-// transition's update; route state (appState.currentView, activeViewName) is
-// current at once. The incoming view is `.is-arriving` until the fade ends,
-// which list-enter.js reads so rows painted meanwhile ride the fade instead of
-// rising a second time. Without the API, or with reduced motion, the swap is
-// instant.
-let seq = 0;
-let activeTransition = null;
+// Animate live content, not captured pages: input stays on the real controls.
+let stopArrival = () => {};
 
 const reduced = () => Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 
-export function swapView(views, id, { animate = true, onSwap = () => {} } = {}) {
-  const list = [...views];
-  const token = ++seq;
-  const next = list.find((v) => v.id === id) || null;
-  activeTransition?.skipTransition?.();
-  activeTransition = null;
-  const apply = () => {
-    for (const view of list) view.classList.toggle("is-active", view === next);
-    onSwap();
-  };
-  for (const view of list) view.classList.remove("is-arriving");
-  const shown = list.find((v) => v.classList.contains("is-active"));
-  const doc = globalThis.document;
-  const root = doc?.documentElement;
-  root?.classList.remove("view-swap");
-  if (!animate || !shown || !next || shown === next || typeof doc?.startViewTransition !== "function"
-      || doc.visibilityState === "hidden" || reduced()) {
-    apply();
+export function animateView(view, update, { animate = true, target = view } = {}) {
+  stopArrival();
+  const root = globalThis.document?.documentElement;
+  if (!animate || !view || !target || document.visibilityState === "hidden" || reduced()) {
+    update();
     return null;
   }
   root?.classList.add("view-swap");
-  const transition = doc.startViewTransition(() => {
-    // A newer switch replaced this one before the capture: it applies itself.
-    if (token !== seq) return;
-    apply();
-    next.classList.add("is-arriving");
-  });
-  activeTransition = transition;
-  // A newer switch skips this one; Chrome reports the skipped `ready` as an
-  // unhandled rejection unless someone listens.
-  transition.ready.catch(() => {});
+  view.classList.add("is-arriving");
+  update();
+  target.classList.add("is-view-entering");
+  const animation = target.getAnimations().find((a) => a.animationName === "view-enter");
+  let settled = false;
   const finish = () => {
-    if (token !== seq) return;
-    activeTransition = null;
-    next.classList.remove("is-arriving");
+    if (settled) return;
+    settled = true;
+    view.classList.remove("is-arriving");
+    target.classList.remove("is-view-entering");
     root?.classList.remove("view-swap");
+    stopArrival = () => {};
   };
-  transition.finished.then(finish, finish);
-  return transition;
+  if (!animation) {
+    finish();
+    return null;
+  }
+  stopArrival = () => { animation.cancel(); finish(); };
+  animation.finished.then(finish, finish);
+  return animation;
+}
+
+export function swapView(views, id, { animate = true, onSwap = () => {} } = {}) {
+  const list = [...views];
+  const shown = list.find((v) => v.classList.contains("is-active"));
+  const next = list.find((v) => v.id === id) || null;
+  return animateView(next, () => {
+    for (const view of list) view.classList.toggle("is-active", view === next);
+    onSwap();
+  }, { animate: animate && Boolean(shown && next && shown !== next) });
 }

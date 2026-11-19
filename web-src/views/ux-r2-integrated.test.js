@@ -14,25 +14,24 @@ const scout = read("./scout.css");
 afterEach(() => vi.unstubAllGlobals());
 
 describe("the route swap's layer", () => {
-  it("names the workspace only while a swap runs", () => {
-    expect(styles).toContain(":root.view-swap .workspace { view-transition-name: view; }");
-    expect(styles).not.toMatch(/^\.workspace \{ view-transition-name: view; \}/m);
+  it("keeps the workspace out of captured stacking layers", () => {
+    expect(styles).not.toMatch(/view-transition-name/);
+    expect(styles).toContain(".is-view-entering { animation: view-enter");
   });
 
   it("sets and clears :root.view-swap around the transition", async () => {
     const rootClasses = new Set();
-    let run, done;
+    let done;
     const finished = new Promise((r) => { done = r; });
     vi.stubGlobal("matchMedia", () => ({ matches: false }));
     vi.stubGlobal("document", {
       visibilityState: "visible",
       documentElement: { classList: { add: (c) => rootClasses.add(c), remove: (c) => rootClasses.delete(c) } },
-      startViewTransition(update) { run = update; return { finished, ready: Promise.resolve() }; },
     });
-    const mk = (id, on) => { const s = new Set(on ? ["is-active"] : []); return { id, classList: { add: (c) => s.add(c), remove: (c) => s.delete(c), contains: (c) => s.has(c), toggle: (c, v) => (v ? s.add(c) : s.delete(c)) } }; };
+    const mk = (id, on) => { const s = new Set(on ? ["is-active"] : []); return { id, getAnimations: () => [{ animationName: "view-enter", finished, cancel() {} }], classList: { add: (c) => s.add(c), remove: (c) => s.delete(c), contains: (c) => s.has(c), toggle: (c, v) => (v ? s.add(c) : s.delete(c)) } }; };
     swapView([mk("a", true), mk("b")], "b");
     expect(rootClasses.has("view-swap")).toBe(true);
-    run(); done();
+    done();
     await finished; await Promise.resolve(); await Promise.resolve();
     expect(rootClasses.has("view-swap")).toBe(false);
   });
