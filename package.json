@@ -34,7 +34,7 @@
     "@fontsource-variable/geist": "5.3.0",
     "@fontsource-variable/source-serif-4": "5.3.1",
     "chess.js": "^1.4.0",
-    "onnxruntime-web": "^1.30.0",
+    "onnxruntime-web": "^1.31.1",
     "stockfish": "19.0.0"
   }
 }
