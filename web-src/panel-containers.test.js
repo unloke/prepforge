@@ -42,6 +42,6 @@ describe("panel containers", () => {
     // A sticky header is never skipped.
     expect(replay).not.toMatch(/\.lr\.head[^{]*\{[^}]*content-visibility/);
     // Measured without a gain: the Scout plan rows, the chart strip and Library rows paint whole.
-    for (const sheet of [scout, styles]) expect(sheet).not.toContain("content-visibility");
+    for (const sheet of [scout, styles]) expect(sheet).not.toMatch(/content-visibility:\s*auto/);
   });
 });

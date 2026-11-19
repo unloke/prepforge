@@ -431,7 +431,7 @@ body.is-guest .build-empty-member, body:not(.is-guest) .build-empty-guest { disp
 }
 
 
-.dock-tabs button.is-active { color: var(--text); border-bottom-color: var(--accent); }
+.dock-tabs button.is-active { color: var(--text); }
 
 
 .dock-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -1169,4 +1169,3 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--text);
   font-weight: 500;
 }
-

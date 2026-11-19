@@ -212,6 +212,9 @@
   --dur: 220ms;      /* list entry, reveal, show/hide */
   --dur-slow: 300ms; /* the eval bar landing, a panel settling */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* standard: decelerate */
+  --viewport-height: 100dvh;
+  --viewport-top: 0px;
+  --viewport-bottom: 0px;
 
   /* -- In-page stacking: one ordered ladder instead of ad-hoc numbers. Dialogs,
      menus and pickers are <dialog>/[popover] in the top layer and need none. */
@@ -404,4 +407,3 @@
   --accent-text: #f7b273;
   --accent-ink: #0d1020;
 }
-
