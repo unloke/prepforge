@@ -27,8 +27,57 @@ def _convert(table, source, target, transform):
         last = batch[-1][0]
 
 
-def _pv_bytes(text):
-    return codec.pack_pv(text.split())
+_EVALUATION_REFS = (
+    ("moves", "engine_eval_before_id"),
+    ("moves", "engine_eval_after_id"),
+    ("moves", "best_move_eval_id"),
+    ("opening_nodes", "engine_evaluation_id"),
+)
+
+
+def _pack_evaluations():
+    conn = op.get_bind()
+    evaluations = sa.table(
+        "engine_evaluations",
+        sa.column("id", sa.Integer),
+        sa.column("fingerprint", sa.LargeBinary),
+        sa.column("pv_packed", sa.LargeBinary),
+    )
+    last = 0
+    while True:
+        batch = conn.execute(sa.text(
+            "SELECT e.id, p.fen, e.fingerprint, e.engine, e.depth, e.nodes, e.time_ms,"
+            " e.score_cp, e.mate_in, e.best_move_uci, e.pv, e.wdl_win, e.wdl_draw, e.wdl_loss"
+            " FROM engine_evaluations e JOIN positions p ON p.id = e.position_id"
+            " WHERE e.id > :last ORDER BY e.id LIMIT :limit"
+        ), {"last": last, "limit": _BATCH}).mappings().all()
+        if not batch:
+            return
+        for row in batch:
+            fields = dict(row)
+            row_id = fields.pop("id")
+            old_fingerprint = fields.pop("fingerprint")
+            fen = fields.pop("fen")
+            packed = codec.pack_pv(fields.pop("pv").split())
+            fingerprint = codec.fingerprint_bytes(codec.evaluation_fingerprint(
+                position_fen=fen, pv=" ".join(codec.unpack_pv(packed)), **fields,
+            ))
+            if fingerprint != old_fingerprint:
+                keep_id = conn.scalar(sa.select(evaluations.c.id).where(
+                    evaluations.c.fingerprint == fingerprint,
+                ))
+                if keep_id is not None:
+                    # The canonical digest already exists. Redirect its references
+                    # before removing the duplicate so no move loses its evaluation.
+                    for table, column in _EVALUATION_REFS:
+                        refs = sa.table(table, sa.column(column, sa.Integer))
+                        conn.execute(refs.update().where(refs.c[column] == row_id).values({column: keep_id}))
+                    conn.execute(evaluations.delete().where(evaluations.c.id == row_id))
+                    continue
+            conn.execute(evaluations.update().where(evaluations.c.id == row_id).values(
+                pv_packed=packed, fingerprint=fingerprint,
+            ))
+        last = batch[-1]["id"]
 
 
 def _swap(table, old, new, new_type, transform, unique=None):
@@ -42,12 +91,12 @@ def _swap(table, old, new, new_type, transform, unique=None):
 
 
 def upgrade():
-    _swap("positions", "fen", "key", sa.LargeBinary(), codec.pack_position, "uq_positions_key")
     op.add_column("engine_evaluations", sa.Column("pv_packed", sa.LargeBinary()))
-    _convert("engine_evaluations", "pv", "pv_packed", _pv_bytes)
+    _pack_evaluations()
     with op.batch_alter_table("engine_evaluations") as batch_op:
         batch_op.drop_column("pv")
         batch_op.alter_column("pv_packed", new_column_name="pv", existing_type=sa.LargeBinary(), nullable=False)
+    _swap("positions", "fen", "key", sa.LargeBinary(), codec.pack_position, "uq_positions_key")
 
 
 def downgrade():
