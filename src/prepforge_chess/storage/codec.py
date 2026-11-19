@@ -66,15 +66,115 @@ def decode_uci_sequence(blob: Optional[str]) -> List[str]:
 
 
 def encode_pv(pv: Optional[Sequence[str]]) -> str:
-    if not pv:
-        return ""
-    return " ".join(pv)
+    """The PV text the fingerprint hashes: what :func:`pack_pv` stores, so a
+    loaded evaluation re-saves onto its own row."""
+    return " ".join(unpack_pv(pack_pv(pv)))
 
 
-def decode_pv(blob: Optional[str]) -> List[str]:
+def pack_pv(pv: Optional[Sequence[str]]) -> bytes:
+    """PV as 2 bytes per move: from | to << 6 | promotion << 12.
+
+    Case-insensitive; empty entries are skipped and the line stops at the
+    first entry that is not a UCI move, since nothing after it is playable.
+    """
+    out = bytearray()
+    for uci in pv or ():
+        uci = (uci or "").lower()
+        if not uci:
+            continue
+        if uci == "0000":
+            word = 0
+        else:
+            try:
+                if len(uci) not in (4, 5):
+                    raise ValueError(uci)
+                word = chess.parse_square(uci[:2]) | chess.parse_square(uci[2:4]) << 6
+                if len(uci) == 5:
+                    word |= chess.PIECE_SYMBOLS.index(uci[4]) << 12
+            except ValueError:
+                break
+        out += word.to_bytes(2, "little")
+    return bytes(out)
+
+
+def unpack_pv(blob: Optional[bytes]) -> List[str]:
     if not blob:
         return []
-    return [part for part in blob.split() if part]
+    moves = []
+    for offset in range(0, len(blob), 2):
+        word = int.from_bytes(blob[offset:offset + 2], "little")
+        promotion = word >> 12
+        moves.append(chess.Move(word & 63, word >> 6 & 63, promotion or None).uci())
+    return moves
+
+
+def _varint(value: int) -> bytes:
+    out = bytearray()
+    while True:
+        low = value & 0x7F
+        value >>= 7
+        if value:
+            out.append(low | 0x80)
+        else:
+            out.append(low)
+            return bytes(out)
+
+
+def _read_varint(data: bytes, offset: int) -> Tuple[int, int]:
+    value = shift = 0
+    while True:
+        byte = data[offset]
+        offset += 1
+        value |= (byte & 0x7F) << shift
+        shift += 7
+        if not byte & 0x80:
+            return value, offset
+
+
+def pack_position(fen: str) -> bytes:
+    """The positions-catalog key: a lossless binary form of ``position_key(fen)``.
+
+    occupied (8 bytes) | turn + en-passant file (1) | castling rooks on ranks
+    1 and 8 (2) | one nibble per occupied square, ascending (piece type, +8 for
+    black) | halfmove and fullmove varints. About half the canonical FEN text.
+    """
+    board = chess.Board(fen)
+    ep = board.ep_square if board.has_legal_en_passant() else None
+    rights = board.clean_castling_rights()
+    out = bytearray(board.occupied.to_bytes(8, "little"))
+    out.append((0 if board.turn == chess.WHITE else 1) | (0 if ep is None else chess.square_file(ep) + 1) << 1)
+    out.append(rights & 0xFF)
+    out.append(rights >> 56 & 0xFF)
+    nibbles = []
+    for square in chess.scan_forward(board.occupied):
+        piece = board.piece_at(square)
+        nibbles.append(piece.piece_type | (0 if piece.color == chess.WHITE else 8))
+    if len(nibbles) % 2:
+        nibbles.append(0)
+    out += bytes(nibbles[i] | nibbles[i + 1] << 4 for i in range(0, len(nibbles), 2))
+    out += _varint(board.halfmove_clock) + _varint(board.fullmove_number)
+    return bytes(out)
+
+
+def unpack_position(key: bytes) -> str:
+    """Inverse of :func:`pack_position`: the canonical six-field FEN."""
+    occupied = int.from_bytes(key[:8], "little")
+    flags = key[8]
+    board = chess.Board(None)
+    squares = list(chess.scan_forward(occupied))
+    offset = 11
+    for index, square in enumerate(squares):
+        nibble = key[offset + index // 2] >> (4 * (index % 2)) & 0x0F
+        board.set_piece_at(square, chess.Piece(nibble & 7, chess.BLACK if nibble & 8 else chess.WHITE))
+    offset += (len(squares) + 1) // 2
+    board.turn = chess.BLACK if flags & 1 else chess.WHITE
+    board.castling_rights = key[9] | key[10] << 56
+    ep_file = flags >> 1
+    if ep_file:
+        board.ep_square = chess.square(ep_file - 1, 5 if board.turn == chess.WHITE else 2)
+    board.halfmove_clock, offset = _read_varint(key, offset)
+    board.fullmove_number, offset = _read_varint(key, offset)
+    return board.fen()
 
 
 def encode_wdl(wdl: Optional[Mapping[str, float]]) -> Optional[Tuple[int, int, int]]:
