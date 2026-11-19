@@ -28,10 +28,7 @@ def _convert(table, source, target, transform):
 
 
 def _pv_bytes(text):
-    try:
-        return codec.pack_pv(text.split())
-    except ValueError:
-        return b""
+    return codec.pack_pv(text.split())
 
 
 def _swap(table, old, new, new_type, transform, unique=None):

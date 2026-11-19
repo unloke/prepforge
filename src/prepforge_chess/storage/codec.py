@@ -72,19 +72,28 @@ def encode_pv(pv: Optional[Sequence[str]]) -> str:
 
 
 def pack_pv(pv: Optional[Sequence[str]]) -> bytes:
-    """PV as 2 bytes per move: from | to << 6 | promotion << 12."""
+    """PV as 2 bytes per move: from | to << 6 | promotion << 12.
+
+    Case-insensitive; empty entries are skipped and the line stops at the
+    first entry that is not a UCI move, since nothing after it is playable.
+    """
     out = bytearray()
     for uci in pv or ():
-        if not uci or uci == "0000":
+        uci = (uci or "").lower()
+        if not uci:
+            continue
+        if uci == "0000":
             word = 0
-        elif len(uci) in (4, 5):
-            word = chess.parse_square(uci[:2]) | chess.parse_square(uci[2:4]) << 6
-            if len(uci) == 5:
-                word |= chess.PIECE_SYMBOLS.index(uci[4].lower()) << 12
         else:
-            raise ValueError("invalid uci: {0!r}".format(uci))
-        if uci:
-            out += word.to_bytes(2, "little")
+            try:
+                if len(uci) not in (4, 5):
+                    raise ValueError(uci)
+                word = chess.parse_square(uci[:2]) | chess.parse_square(uci[2:4]) << 6
+                if len(uci) == 5:
+                    word |= chess.PIECE_SYMBOLS.index(uci[4]) << 12
+            except ValueError:
+                break
+        out += word.to_bytes(2, "little")
     return bytes(out)
 
 
