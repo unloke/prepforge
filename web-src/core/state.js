@@ -43,6 +43,7 @@ export const appState = {
   build: null,
   buildLoading: false,
   buildLoadTarget: null,
+  buildLoadRequest: null,
   buildNodeById: new Map(),
   buildCurrentNodeId: null,
   buildBranchChoiceId: null,

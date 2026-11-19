@@ -12,7 +12,7 @@ import { formatEngineEval } from "../engine-eval.js";
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
 // outbox and its flushes) stays in app.js so it can run before this loads and on unload.
 
-import { _buildGenReady, buildView, coverageView } from "../app.js";
+import { buildView, coverageView } from "../app.js";
 import { buildDockTab, explorerClient, explorerDb, explorerModule } from "../build-entry.js";
 import { pokeBuildLive } from "../build-live.js";
 import { localBoardInfo } from "../chess-local.js";
@@ -22,6 +22,7 @@ import { nodeMenuHeading } from "../node-menu.js";
 import { buildRole } from "../share-roles.js";
 import { countOf } from "../plural.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
+import { getBuildTree, indexBuildNodes } from "../build-tree.js";
 
 import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, downloadText,
   engineLifecycleMark, OUTBOX_TAB_ID, postJson, setStatus, setStatusError } from "../core/api.js";
@@ -61,7 +62,7 @@ export function createBuildSession() {
 // so we fail with an actionable message instead of a raw 400 after the work is done.
 const GEN_MAX_PLY_DEPTH = 20;
 
-async function hydrateBuild(payload, selectedNodeId = null) {
+async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = false } = {}) {
   // This takes a /api/build/load PAYLOAD. Writing anything else into
   // appState.build corrupts every later reader (the header, syncViewHeads),
   // so refuse it here instead of half-adopting it.
@@ -93,14 +94,13 @@ async function hydrateBuild(payload, selectedNodeId = null) {
     appState.buildSyncRetry = 0;
   }
   appState.build = payload;
-  appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
+  appState.buildNodeById = indexBuildNodes(payload.nodes);
   invalidateBook();
   // Orient only when a repertoire opens — a reconcile re-hydrate after an
   // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
   if (boards.build && payload.repertoire_id !== prevRepId) {
     boards.build.setOrientation(payload.color === "black" ? "black" : "white");
   }
-  renderBuildRepHeader();
   // Merge local edits before selecting or painting anything. Selecting a server
   // ancestor first briefly moved the board backwards on every in-flight add.
   reapplyPendingBuildNodes(
@@ -108,6 +108,7 @@ async function hydrateBuild(payload, selectedNodeId = null) {
     appState.buildIdMap,
   );
   reapplyPendingBuildDeletes();
+  renderBuildRepHeader();
   // Derived analysis must include optimistic edits too.
   coverageView?.sync();
   // The opening node must exist in this payload. A node that a concurrent edit
@@ -123,7 +124,7 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   const branchChoiceId = payload.repertoire_id === prevRepId
     && nextNodeId === resolveBuildId(appState.buildCurrentNodeId)
     ? resolveBuildId(appState.buildBranchChoiceId) : null;
-  await selectBuildNode(nextNodeId, { branchChoiceId: known(branchChoiceId) ? branchChoiceId : null });
+  await selectBuildNode(nextNodeId, { branchChoiceId: known(branchChoiceId) ? branchChoiceId : null, revealSelection });
   if (appState.build !== payload) return;
   if (!appState.buildFlushing && hasPendingBuildOpsFor(payload.repertoire_id)) {
     setBuildSync("dirty");
@@ -195,9 +196,8 @@ async function renameRepertoire() {
   });
 }
 
-async function selectBuildNode(nodeId, { branchChoiceId = null } = {}) {
+async function selectBuildNode(nodeId, { branchChoiceId = null, revealSelection = false } = {}) {
   if (!appState.buildNodeById.has(nodeId)) return;
-  if (appState.buildNodeById.get(nodeId).preview) return;
   // Which way the board travels: into the current node's own child is a move
   // being shown; a parent, a sibling or a distant node is a step through or a
   // jump across existing history, so it stays quiet and keeps no move pulse.
@@ -229,8 +229,8 @@ async function selectBuildNode(nodeId, { branchChoiceId = null } = {}) {
   for (const id of ["build-board-label", "build-head-ply"]) document.getElementById(id).textContent = label;
   // A step through the tree changes the mark, not the tree. Structural edits
   // (add/delete/collapse/note/grade/import) call renderBuilderTree themselves.
-  if (buildView) buildView.updateBuildTreeSelection();
-  else renderBuilderTree();
+  if (buildView) buildView.updateBuildTreeSelection({ revealSelection });
+  else renderBuilderTree({ revealSelection });
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }
@@ -773,7 +773,6 @@ async function onExplorerRowClick(rows, uci) {
   const currentFen = node ? node.fen : boards.build && boards.build.fen;
   if (!node || !rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
   const existing = buildChildForUci(node.id, uci);
-  if (existing?.preview) return;
   if (existing) {
     await selectBuildNode(existing.id);
     return;
@@ -813,10 +812,7 @@ function buildRootId() {
 }
 
 function buildMainlineChild(nodeId) {
-  if (!appState.build) return null;
-  const kids = appState.build.nodes.filter((n) => n.parent_id === nodeId);
-  if (!kids.length) return null;
-  return kids.find((k) => k.is_mainline) || kids[0];
+  return buildChildrenOf(nodeId)[0] || null;
 }
 
 function buildGoRoot() {
@@ -854,9 +850,7 @@ function buildGoToEnd() {
 // The next-move branches from a node (its children), mainline first.
 function buildChildrenOf(nodeId) {
   if (!appState.build || !nodeId) return [];
-  return appState.build.nodes
-    .filter((n) => n.parent_id === nodeId)
-    .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
+  return getBuildTree(appState.build).children.get(nodeId) || [];
 }
 
 // The fork picker. ONE mental model everywhere: you stand on a position, and when
@@ -1033,7 +1027,6 @@ async function onBuildBoardMove(moveUci) {
   const existing = appState.build.nodes.find(
     (n) => n.parent_id === parentId && canonicalBuildUci(parent.fen, n.uci) === moveUci
   );
-  if (existing?.preview) return rollback();
   if (existing) {
     await selectBuildNode(existing.id);
     return;
@@ -1416,7 +1409,6 @@ async function generateFromCurrentNode() {
   // Stop button before the POST rather than imply a cancel that wouldn't hold.
   const controller = new AbortController();
   const preview = createGeneratePreview({
-    build: generationBuild,
     byId: appState.buildNodeById,
     isCurrent: () => isCurrent() && appState.build === generationBuild,
     render: (parents) => parents && buildView?.renderGeneratePreview
@@ -1473,7 +1465,7 @@ async function generateFromCurrentNode() {
     engineLifecycleMark("build-feedback-paint", tGenerate);
     const maiaReady = getSharedMaia3Provider().warmup();
     engineLifecycleMark("build-maia-init-start", tGenerate);
-    const { runBrowserBuildGenerate } = await (_buildGenReady || preloadBuildGen());
+    const { runBrowserBuildGenerate } = await preloadBuildGen();
     engineLifecycleMark("build-runner-import-done", tGenerate);
     if (maiaReady && typeof maiaReady.then === "function") {
       // Do NOT block the Stockfish-led opening moves on this: just note when
@@ -1487,7 +1479,7 @@ async function generateFromCurrentNode() {
     engineLifecycleMark("build-inference-start", tGenerate);
     const plan = await runBrowserBuildGenerate({
       build: generationBuild,
-      rootNodeId: nodeId,
+        rootNodeId: nodeId,
       ownColor,
       plyDepth,
       maiaRating,
@@ -1625,7 +1617,6 @@ function openNodeContextMenu(event, nodeId) {
   event.preventDefault();
   if (isBuildReadOnly()) return;
   const node = appState.buildNodeById.get(nodeId);
-  if (node?.preview) return;
   if (!node) return;
   const menu = document.getElementById("node-context-menu");
   // Only what the page can act on and then show. Each entry here changes
@@ -1688,7 +1679,6 @@ function openNodeContextMenu(event, nodeId) {
 async function handleNodeContextAction(action, nodeId) {
   closeNodeContextMenu();
   let node = appState.buildNodeById.get(nodeId);
-  if (node?.preview) return;
   if (!node) return;
   // Delete is local-first (and confirmation-free): prune the subtree from the
   // client tree immediately and let the debounced flush tell the server. No

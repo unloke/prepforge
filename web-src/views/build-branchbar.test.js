@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createBuildView } from "./build.js";
+import { createMoveTreeRenderer } from "./shared/movetree.js";
 
 // Characterization for the ui-prototype-v2 workspace internals:
 //  - fork chips show each continuation's real practical share
@@ -28,7 +29,7 @@ function makeNode(overrides) {
   };
 }
 
-function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
+function makeHarness({ nodes, currentNodeId, renderer }) {
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const appState = {
     build: { nodes, color: "black", repertoire_id: "rep-1" },
@@ -51,6 +52,7 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
   const container = {
     get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     querySelector: vi.fn(() => null),
+    addEventListener: vi.fn(),
     querySelectorAll: vi.fn((sel) => {
       if (sel.startsWith(".mtree-collapse")) return [];
       if (sel.startsWith(".mtree-crumb")) return [];
@@ -71,7 +73,7 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
   const view = createBuildView({
     appState,
     boards,
-    getMoveTreeRenderer: () => ({
+    getMoveTreeRenderer: () => renderer || ({
       renderMoveTree: () => '<div class="mtree"></div>',
       bindMoveTreeClicks: () => {},
       scrollIntoViewWithin: () => {},
@@ -90,6 +92,16 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
     },
   });
   return { view, bar, container, meta, appState };
+}
+
+function variationToggle(container, id) {
+  const variation = { outerHTML: "" };
+  const toggle = { dataset: { collapseId: id }, closest: () => variation };
+  const [, onClick] = container.addEventListener.mock.calls.find(([event]) => event === "click");
+  return () => {
+    onClick({ target: { closest: (sel) => sel.includes("mtree-collapse") ? toggle : null }, stopPropagation: vi.fn() });
+    return variation.outerHTML;
+  };
 }
 
 describe("build branch bar — practical share", () => {
@@ -213,8 +225,11 @@ describe("build tree — large repertoire auto-collapse", () => {
   it("collapses off-path variations on initial open for trees > 250 nodes while keeping active path expanded", () => {
     const root = makeNode({ id: "root", depth: 0 });
     const main = makeNode({ id: "main-0", parent_id: "root", depth: 1, san: "e4", uci: "e2e4", is_mainline: true });
-    const offPathVar = makeNode({ id: "var-0", parent_id: "root", depth: 1, san: "d4", uci: "d2d4", is_mainline: false });
-    const nodes = [root, main, offPathVar];
+    const offPathVar = makeNode({ id: "var-0", parent_id: "root", depth: 1, san: "d4", uci: "d2d4" });
+    const activeVar = makeNode({ id: "active-0", parent_id: "root", depth: 1, san: "c4", uci: "c2c4" });
+    const leaf = makeNode({ id: "active-1", parent_id: activeVar.id, depth: 2, san: "e5", uci: "e7e5" });
+    // Put an alternative before the flagged mainline, as a server payload can.
+    const nodes = [root, offPathVar, main, activeVar, leaf];
     let prev = main;
     for (let i = 1; i < 260; i += 1) {
       const next = makeNode({
@@ -229,15 +244,92 @@ describe("build tree — large repertoire auto-collapse", () => {
       nodes.push(next);
       prev = next;
     }
-    const { view, appState } = makeHarness({ nodes, currentNodeId: main.id });
-    appState.buildRepertoireId = "rep-large";
+    const { view, appState, container } = makeHarness({
+      nodes, currentNodeId: leaf.id, renderer: createMoveTreeRenderer(),
+    });
     view.renderBuilderTree();
-    expect(appState.buildCollapsed.has("var-0")).toBe(true);
-    expect(appState.buildCollapsed.has("main-0")).toBe(false);
+    expect(container.innerHTML).toContain('data-collapse-id="var-0" title="Expand variation"');
+    expect(container.innerHTML).not.toContain('data-node-id="var-0"');
+    expect(container.innerHTML).not.toContain('data-collapse-id="main-0"');
+    expect(container.innerHTML).toContain('data-node-id="active-1"');
+    expect(container.innerHTML).toMatch(/is-current[^>]*data-node-id="active-1"/);
 
-    // Expanding a variation persists across subsequent renders of the same repertoire
-    appState.buildCollapsed.delete("var-0");
+    const toggle = variationToggle(container, offPathVar.id);
+    expect(toggle()).toContain('data-node-id="var-0"');
     view.renderBuilderTree();
-    expect(appState.buildCollapsed.has("var-0")).toBe(false);
+    expect(container.innerHTML).toContain('data-node-id="var-0"');
+
+    expect(toggle()).not.toContain('data-node-id="var-0"');
+    appState.buildCurrentNodeId = offPathVar.id;
+    view.updateBuildTreeSelection();
+    expect(container.innerHTML).toMatch(/is-current[^>]*data-node-id="var-0"/);
+
+    toggle();
+    appState.build = { ...appState.build, name: "Renamed" };
+    view.updateBuildTreeSelection();
+    expect(container.innerHTML).not.toContain('data-node-id="var-0"');
+
+    appState.build = { ...appState.build, repertoire_id: "another-repertoire" };
+    appState.buildCurrentNodeId = root.id;
+    view.renderBuilderTree();
+    expect(container.innerHTML).not.toContain('data-node-id="var-0"');
+  });
+
+  it("preserves manual collapse in a small repertoire after opening another", () => {
+    const root = makeNode({ id: "root" });
+    const main = makeNode({ id: "main", parent_id: root.id, depth: 1, san: "e4", is_mainline: true });
+    const variation = makeNode({ id: "var", parent_id: root.id, depth: 1, san: "d4" });
+    const { view, appState, container } = makeHarness({
+      nodes: [root, main, variation], currentNodeId: root.id, renderer: createMoveTreeRenderer(),
+    });
+    const original = appState.build;
+    const originalIndex = appState.buildNodeById;
+    view.renderBuilderTree();
+    expect(variationToggle(container, variation.id)()).toContain('title="Expand variation"');
+
+    const otherNodes = original.nodes.map((n) => ({ ...n, id: `other-${n.id}`, parent_id: n.parent_id && `other-${n.parent_id}` }));
+    appState.build = { ...original, nodes: otherNodes, repertoire_id: "other" };
+    appState.buildNodeById = new Map(otherNodes.map((n) => [n.id, n]));
+    appState.buildCurrentNodeId = otherNodes[0].id;
+    view.renderBuilderTree();
+    expect(container.innerHTML).toContain('data-node-id="other-var"');
+
+    appState.build = { ...original };
+    appState.buildNodeById = originalIndex;
+    appState.buildCurrentNodeId = root.id;
+    view.renderBuilderTree();
+    expect(container.innerHTML).toContain('data-collapse-id="var" title="Expand variation"');
+    expect(container.innerHTML).not.toContain('data-node-id="var"');
+  });
+
+  it("reveals the selected variation after its ID changes or a fresh open targets it", () => {
+    const root = makeNode({ id: "root" });
+    const main = makeNode({ id: "main", parent_id: root.id, depth: 1, san: "e4", is_mainline: true });
+    const variation = makeNode({ id: "tmp-1", parent_id: root.id, depth: 1, san: "d4" });
+    const filler = Array.from({ length: 250 }, (_, i) => makeNode({ id: `filler-${i}`, parent_id: main.id, depth: 2, san: "d5" }));
+    const nodes = [root, main, variation, ...filler];
+    const { view, appState, container } = makeHarness({
+      nodes, currentNodeId: variation.id, renderer: createMoveTreeRenderer(),
+    });
+    view.renderBuilderTree();
+    expect(container.innerHTML).toMatch(/is-current[^>]*data-node-id="tmp-1"/);
+
+    const saved = { ...variation, id: "saved-var" };
+    const savedNodes = [root, main, saved, ...filler];
+    appState.build = { ...appState.build, nodes: savedNodes };
+    appState.buildNodeById = new Map(savedNodes.map((n) => [n.id, n]));
+    appState.buildCurrentNodeId = saved.id;
+    view.updateBuildTreeSelection();
+    expect(container.innerHTML).toMatch(/is-current[^>]*data-node-id="saved-var"/);
+
+    expect(variationToggle(container, saved.id)()).not.toContain('data-node-id="saved-var"');
+    appState.build = { ...appState.build };
+    appState.buildLoading = true;
+    view.updateBuildTreeSelection();
+    expect(container.innerHTML).not.toContain('data-node-id="saved-var"');
+
+    appState.build = { ...appState.build };
+    view.updateBuildTreeSelection({ revealSelection: true });
+    expect(container.innerHTML).toMatch(/is-current[^>]*data-node-id="saved-var"/);
   });
 });

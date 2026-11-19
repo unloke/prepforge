@@ -182,6 +182,7 @@ describe("Boot route lifecycle", () => {
     const appState = { currentView: "dashboard", signedIn: true };
     const deps = { appState, paintBuildSkeleton, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
       hardFlushBuild: async () => {}, api: async () => ({ repertoire_id: "picked", nodes: [] }), hydrateBuild: vi.fn(),
+      ensureMoveTreeRenderer: async () => {},
       loadReturnState: () => null, syncWorkspaceUrl: vi.fn(), updateBuildReadOnlyUi: vi.fn(), setStatusError: vi.fn(),
       window: { location: { href: "http://x/#/dashboard" } }, parseWorkspaceLocation,
       paintBuildEmpty: vi.fn(), renderBuildRepHeader: vi.fn(), renderBuilderTree: vi.fn(),

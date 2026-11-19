@@ -12,7 +12,7 @@ function harness() {
   let current = true, frame, fallback;
   const render = vi.fn();
   const cancelFrame = vi.fn(), cancelLater = vi.fn(), onClear = vi.fn();
-  const preview = createGeneratePreview({ build, byId, render, onClear, isCurrent: () => current,
+  const preview = createGeneratePreview({ byId, render, onClear, isCurrent: () => current,
     frame: vi.fn((fn) => { frame = fn; return 1; }), cancelFrame,
     later: vi.fn((fn) => { fallback = fn; return 2; }), cancelLater,
   });
@@ -26,7 +26,11 @@ describe("generation preview", () => {
     h.preview.add(add("tmp-1", "root", "e2e4"));
     h.preview.add(add("tmp-2", "tmp-1", "e7e5"));
     expect(h.render).not.toHaveBeenCalled();
-    expect(h.byId.get("tmp-2")).toMatchObject({ parent_id: "tmp-1", san: "e5", depth: 2, preview: true });
+    expect(h.preview.node("tmp-2")).toMatchObject({ parent_id: "tmp-1", san: "e5", depth: 2, preview: true });
+    expect(h.build.nodes).toEqual([h.byId.get("root")]);
+    expect(h.byId.has("tmp-1")).toBe(false);
+    expect(h.preview.childrenOf("root", [{ id: "saved" }]).map((node) => node.id)).toEqual(["saved", "tmp-1"]);
+    expect(h.preview.childrenOf("tmp-1", []).map((node) => node.id)).toEqual(["tmp-2"]);
     h.frame();
     expect(h.render).toHaveBeenCalledTimes(1);
     expect(h.cancelLater).toHaveBeenCalledWith(2);
@@ -46,7 +50,8 @@ describe("generation preview", () => {
     h.preview.add(add("tmp-1", "root", "e2e4"));
     h.preview.clear();
     expect(h.build.nodes).toEqual([root]);
-    expect([...h.byId.keys()]).toEqual(["root"]);
+    expect(h.preview.node("tmp-1")).toBeUndefined();
+    expect(h.preview.childrenOf("root", [])).toEqual([]);
     expect(h.render).toHaveBeenCalledTimes(1);
     h.frame();
     h.preview.add(add("tmp-2", "root", "d2d4"));
@@ -102,9 +107,7 @@ describe("Generate controller integration", () => {
     expect(generate).toContain('if (ev?.type === "change")');
     expect(generate).toMatch(/finally \{[\s\S]*preview.clear\(\)/);
   });
-  it("rejects preview selection and context edits", () => {
-    expect(source).toContain("if (appState.buildNodeById.get(nodeId).preview) return;");
-    expect(source.match(/if \(node\?\.preview\) return;/g)).toHaveLength(2);
+  it("clears the separate preview on hydration", () => {
     expect(source).toContain("appState.buildGenerationPreview?.clear(false)");
   });
 });

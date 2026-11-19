@@ -1,10 +1,11 @@
 import { Chess } from "chess.js";
 
-export function createGeneratePreview({ build, byId, isCurrent, render, onClear = () => {},
+export function createGeneratePreview({ byId, isCurrent, render, onClear = () => {},
   frame = (fn) => requestAnimationFrame(fn), cancelFrame = (id) => cancelAnimationFrame(id),
   later = (fn) => setTimeout(fn, 100), cancelLater = (id) => clearTimeout(id),
 }) {
-  const ids = new Set();
+  const nodes = new Map();
+  const children = new Map();
   const parents = new Set();
   let raf = null, timer = null, closed = false;
   const unschedule = () => {
@@ -24,19 +25,24 @@ export function createGeneratePreview({ build, byId, isCurrent, render, onClear 
     closed = true;
     onClear();
     unschedule();
-    build.nodes = build.nodes.filter((node) => !ids.has(node.id));
-    for (const id of ids) byId.delete(id);
-    ids.clear();
+    nodes.clear();
+    children.clear();
     parents.clear();
     if (paint && isCurrent()) render();
   };
   return {
     clear,
+    node: (id) => nodes.get(id),
+    childrenOf: (id, saved) => {
+      const pending = children.get(id);
+      if (!pending) return saved;
+      return saved?.length ? [...saved, ...pending] : pending;
+    },
     add(change) {
       if (closed) return;
       if (!isCurrent()) return clear();
       if (change.action !== "planned_add") return;
-      const parent = byId.get(change.parentRef);
+      const parent = nodes.get(change.parentRef) || byId.get(change.parentRef);
       if (!parent) throw new Error("Missing generation preview parent");
       const chess = new Chess(parent.fen);
       const move = chess.move({ from: change.moveUci.slice(0, 2), to: change.moveUci.slice(2, 4),
@@ -49,9 +55,10 @@ export function createGeneratePreview({ build, byId, isCurrent, render, onClear 
         is_enabled: true, is_mainline: change.intendedMainline,
         preview: true, previewEntering: true,
       };
-      build.nodes.push(node);
-      byId.set(node.id, node);
-      ids.add(node.id);
+      nodes.set(node.id, node);
+      const siblings = children.get(parent.id);
+      if (siblings) siblings.push(node);
+      else children.set(parent.id, [node]);
       parents.add(parent.id);
       if (raf === null) {
         raf = frame(flush);

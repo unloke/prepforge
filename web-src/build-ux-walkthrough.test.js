@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import { appSource } from "./test-app-source.js";
 import { eagerCss as css } from "./test-styles-source.js";
 import { buildSkeleton } from "./views/build-skeleton.js";
+import { summarizeBuild } from "./build-tree.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
@@ -150,8 +151,6 @@ describe("Generate dialog", () => {
 });
 
 describe("Move counts (P2-4)", () => {
-  const { countBuildMovesToTrain } = compile(["function countBuildMovesToTrain(build) {"]);
-
   it("counts own-side moves on the enabled tree, like the Library's trainable count", () => {
     const build = {
       color: "white",
@@ -164,7 +163,7 @@ describe("Move counts (P2-4)", () => {
         { id: "e", depth: 3, parent_id: "d", move_side: "white" },
       ],
     };
-    expect(countBuildMovesToTrain(build)).toBe(2);
+    expect(summarizeBuild(build)).toEqual({ moves: 5, lines: 2, train: 2 });
   });
 
   it("uses the same 'to train' wording on the Library row and the Repertoire header", () => {
