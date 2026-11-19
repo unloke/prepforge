@@ -10,6 +10,7 @@
 // rising a second time. Without the API, or with reduced motion, the swap is
 // instant.
 let seq = 0;
+let activeTransition = null;
 
 const reduced = () => Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 
@@ -17,6 +18,8 @@ export function swapView(views, id, { animate = true, onSwap = () => {} } = {}) 
   const list = [...views];
   const token = ++seq;
   const next = list.find((v) => v.id === id) || null;
+  activeTransition?.skipTransition?.();
+  activeTransition = null;
   const apply = () => {
     for (const view of list) view.classList.toggle("is-active", view === next);
     onSwap();
@@ -24,12 +27,13 @@ export function swapView(views, id, { animate = true, onSwap = () => {} } = {}) 
   for (const view of list) view.classList.remove("is-arriving");
   const shown = list.find((v) => v.classList.contains("is-active"));
   const doc = globalThis.document;
+  const root = doc?.documentElement;
+  root?.classList.remove("view-swap");
   if (!animate || !shown || !next || shown === next || typeof doc?.startViewTransition !== "function"
       || doc.visibilityState === "hidden" || reduced()) {
     apply();
     return null;
   }
-  const root = doc.documentElement;
   root?.classList.add("view-swap");
   const transition = doc.startViewTransition(() => {
     // A newer switch replaced this one before the capture: it applies itself.
@@ -37,13 +41,16 @@ export function swapView(views, id, { animate = true, onSwap = () => {} } = {}) 
     apply();
     next.classList.add("is-arriving");
   });
+  activeTransition = transition;
   // A newer switch skips this one; Chrome reports the skipped `ready` as an
   // unhandled rejection unless someone listens.
   transition.ready.catch(() => {});
-  transition.finished.finally(() => {
+  const finish = () => {
     if (token !== seq) return;
+    activeTransition = null;
     next.classList.remove("is-arriving");
     root?.classList.remove("view-swap");
-  });
+  };
+  transition.finished.then(finish, finish);
   return transition;
 }

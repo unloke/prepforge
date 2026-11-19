@@ -484,7 +484,7 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--viewport-bottom);
     z-index: 40;
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--panel);
@@ -694,4 +694,3 @@
 @media (min-width: 761px) and (max-height: 560px) {
   .rail .nav-group-label { display: none; }
 }
-

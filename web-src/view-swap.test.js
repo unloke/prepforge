@@ -20,8 +20,10 @@ function view(id, active = false) {
 
 function withTransitions({ reduce = false } = {}) {
   const pending = [];
+  const root = view("root");
   vi.stubGlobal("matchMedia", () => ({ matches: reduce }));
   vi.stubGlobal("document", {
+    documentElement: root,
     visibilityState: "visible",
     startViewTransition(update) {
       let done;
@@ -30,7 +32,9 @@ function withTransitions({ reduce = false } = {}) {
       const ready = new Promise((_, reject) => { skip = reject; });
       pending.push(() => { update(); done(); });
       pending.skips = [...(pending.skips || []), () => skip(new Error("Transition was skipped"))];
-      return { finished, ready };
+      const skipTransition = vi.fn(() => skip(new Error("Transition was skipped")));
+      pending.transitions = [...(pending.transitions || []), { skipTransition }];
+      return { finished, ready, skipTransition };
     },
   });
   return pending;
@@ -81,11 +85,25 @@ describe("route view swap", () => {
     const [a, b, c] = [view("view-a", true), view("view-b"), view("view-c")];
     swapView([a, b, c], "view-b");
     swapView([a, b, c], "view-c");
+    expect(pending.transitions[0].skipTransition).toHaveBeenCalledOnce();
     // The replaced transition's late update does nothing.
     pending.shift()();
     expect(a.classes.has("is-active")).toBe(true);
     pending.shift()();
     expect(c.classes.has("is-active")).toBe(true);
+    expect(b.classes.size).toBe(0);
+  });
+
+  it("clears the transition layer when an instant switch interrupts an animation", async () => {
+    const pending = withTransitions();
+    const [a, b, c] = [view("view-a", true), view("view-b"), view("view-c")];
+    swapView([a, b, c], "view-b");
+    expect(document.documentElement.classes.has("view-swap")).toBe(true);
+    swapView([a, b, c], "view-c", { animate: false });
+    expect(document.documentElement.classes.has("view-swap")).toBe(false);
+    pending.shift()();
+    await Promise.resolve();
+    expect([...c.classes]).toEqual(["is-active"]);
     expect(b.classes.size).toBe(0);
   });
 

@@ -163,7 +163,6 @@
   cursor: pointer;
 }
 .teams .tabs button.is-active {
-  border-bottom-color: var(--accent);
   color: var(--text);
 }
 /* An inactive tab brightens under the pointer: the strip sits on the quiet
