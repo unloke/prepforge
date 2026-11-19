@@ -269,7 +269,7 @@
   .lib-row .lib-name-line { grid-area: name; min-width: 0; }
   .lib-row .name { overflow: hidden; font-size: 15px; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
   .lib-row .rep-sub { grid-area: sub; font-size: 13px; white-space: nowrap; }
-  .lib-row .lib-cell-queue { grid-area: queue; display: flex; gap: 0; }
+  .lib-row .lib-cell-queue { grid-area: queue; display: flex; overflow: hidden; gap: 0; }
   .lib-cell-queue:not(:has(.kchip)) { display: none; }
   .lib-row:not(:has(.kchip)) .rep-sub { grid-column: sub / pct; }
   @media (max-width: 375px) {
