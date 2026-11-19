@@ -1033,10 +1033,7 @@ async function onBuildBoardMove(moveUci) {
   const existing = appState.build.nodes.find(
     (n) => n.parent_id === parentId && canonicalBuildUci(parent.fen, n.uci) === moveUci
   );
-  if (existing?.preview) {
-    rollback();
-    return;
-  }
+  if (existing?.preview) return rollback();
   if (existing) {
     await selectBuildNode(existing.id);
     return;
