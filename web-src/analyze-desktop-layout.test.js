@@ -67,6 +67,12 @@ describe("Analyze phone panes", () => {
 describe("Analyze desktop geometry", () => {
   const styles = eagerCss;
 
+  it("gives each player's error status the full row below name and accuracy", () => {
+    const report = read("./views/analyze-report.css");
+    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-acc \{[^}]*grid-row: 1;/);
+    expect(report).toMatch(/#analysis-summary > \.rp-summary \.rp-errs \{[^}]*grid-column: 2 \/ -1; grid-row: 2;/);
+  });
+
   it("does not stretch the board column past the board on desktop", () => {
     // The board is a square capped by its width share, so a stretched column
     // left a tall empty area under it (175px at 1180x900) while the panel

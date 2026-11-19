@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { countOf } from "../plural.js";
+import { animateView } from "../view-swap.js";
 import { closeTrainPicker, openTrainPicker, trainRepertoireItems } from "../train-picker.js";
 import { recentRuns } from "../train-history.js";
 import { lineTail } from "../views/train.js";
@@ -63,34 +64,6 @@ export function trainScreenOf(state) {
   return "home";
 }
 
-const reducedMotion = () => globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-// Same-document View Transition around a Train screen change. Only chrome is
-// named (row title ↔ header, scope chip, panel body); the board is never part
-// of it, and the root snapshot does not animate (train-shell.css).
-export function withTrainTransition(update, { from = null, to = null } = {}) {
-  if (!document.startViewTransition || reducedMotion()) {
-    update();
-    return;
-  }
-  const root = document.documentElement;
-  if (from) from.style.viewTransitionName = "train-mode-title";
-  root.classList.add("train-vt");
-  const transition = document.startViewTransition(() => {
-    if (from) from.style.viewTransitionName = "";
-    update();
-    const target = typeof to === "function" ? to() : to;
-    if (target) target.style.viewTransitionName = "train-mode-title";
-  });
-  transition.ready.catch(() => {}); // skipped by a newer transition: not an error
-  transition.finished.finally(() => {
-    root.classList.remove("train-vt");
-    if (from) from.style.viewTransitionName = "";
-    const target = typeof to === "function" ? to() : to;
-    if (target) target.style.viewTransitionName = "";
-  });
-}
-
 export function syncTrainScreen() {
   const view = document.getElementById("view-train");
   if (!view) return;
@@ -112,17 +85,13 @@ export function syncTrainScreen() {
     if (screen === "home") void paintTrainHome();
   };
   // Starting is one state change. A route fade already carries its content;
-  // another captured transition during async setup makes it enter twice.
+  // another panel entrance during async setup makes it enter twice.
   if (!before || before === screen || state.trainStarting || state.playStarting ||
       document.documentElement.classList.contains?.("view-swap")) {
     apply();
     return;
   }
-  const head = document.getElementById("train-head-mode");
-  const rowTitle = document.querySelector(`#train-home [data-vt-title="${mode}"]`);
-  withTrainTransition(apply, before === "home"
-    ? { from: rowTitle, to: head }
-    : screen === "home" ? { from: head, to: rowTitle } : {});
+  animateView(view, apply, { target: view.querySelector(".panel-scroll") });
 }
 
 export function trainScopeLabel(state = appState) {
@@ -171,7 +140,7 @@ function paintActions(screen, mode) {
 // Every way into Train lands here: nav, Library's Train, "Train this
 // repertoire", a picked move, the palette. The scope is set explicitly, so a
 // one-repertoire queue is never served from "all repertoires".
-export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, origin = null } = {}) {
+export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true } = {}) {
   const state = appState;
   if (!(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
   closeTrainPicker();
@@ -185,9 +154,7 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
     if (state.currentView !== "train") switchView("train");
     syncTrainScreen();
   };
-  if (origin && state.currentView !== "train") {
-    withTrainTransition(enter, { from: origin, to: () => document.getElementById("train-scope-chip") });
-  } else enter();
+  enter();
   if (!autostart) return;
   if (mode === "play") return startPlaySessionTracked();
   return startTraining(mode, { fresh: !!targets.length, repertoireId, targetNodeIds: targets });

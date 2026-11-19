@@ -54,6 +54,10 @@ it("the phone repertoire row keeps the mastery figure", () => {
   expect(rule("#view-dashboard .lib-row :is(.lib-mbar,")).toMatch(/display:\s*none/);
 });
 
+it("keeps filter hit areas outside the strip without adding a vertical scrollbar", () => {
+  expect(css).toMatch(/#view-dashboard \.lib-list \.seg \{[^}]*overflow: visible;/);
+});
+
 it("a repertoire keeps its name whole on a phone", () => {
   // The name owns the first line up to the figure; a long one ends in an
   // ellipsis rather than wrapping the row.

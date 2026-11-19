@@ -11,7 +11,7 @@ describe("settings motion", () => {
     // A second rise on the title, the strip and each card read as the page
     // loading twice; only the view's cross-fade plays on a visit.
     expect(settings).not.toMatch(/#view-settings\.is-active [^{]*\{[^}]*animation:/);
-    expect(css).toMatch(/::view-transition-new\(view\) \{[^}]*animation:\s*view-enter/);
+    expect(css).toMatch(/\.is-view-entering \{[^}]*animation:\s*view-enter/);
   });
 
   it("keeps the entrance to opacity and travel", () => {

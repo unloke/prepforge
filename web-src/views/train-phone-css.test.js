@@ -38,6 +38,16 @@ it("a Session's top bar sits over the board and its bottom bar is four labelled 
   expect(phone).toMatch(/#view-train \.board-bar \.bl \{ display: block; font-size: 12px;/);
 });
 
+it("aligns Drill content gutters and lets Start share the card edges", () => {
+  const shell = readFileSync(new URL("../train-shell.css", import.meta.url), "utf8");
+  expect(shell).toMatch(/#view-train \.train-row\[data-row="smart"\] \{[^}]*padding: 8px 0 0;/);
+  for (const selector of ["train-row-text", "train-row-opts"]) {
+    expect(shell).toMatch(new RegExp(`#view-train \\[data-row="smart"\\] \\.${selector} \\{[^}]*padding-inline: 14px;`));
+  }
+  expect(shell).toMatch(/#view-train \.train-due-next \{[^}]*margin: 8px 0 0;/);
+  expect(phone).toMatch(/#view-train #train-home > \.train-recent \{[^}]*padding: 8px 14px 0;/);
+});
+
 it("is driven by the screen attribute alone", () => {
   expect(css).not.toContain("data-session-state");
   expect(css).not.toContain("data-play-live");
@@ -77,8 +87,8 @@ it("every Train control is a thumb-sized target on a phone", () => {
 it("the pickers open as a bottom sheet at the thumb", () => {
   const sheet = phone.match(/\.train-picker \{[^}]*\}/)[0];
   expect(sheet).toMatch(/top: auto/);
-  expect(sheet).toMatch(/bottom: calc\(8px \+ env\(safe-area-inset-bottom\)\)/);
-  expect(sheet).toMatch(/max-height: 70dvh/);
+  expect(sheet).toContain("bottom: calc(var(--viewport-bottom) + 8px + env(safe-area-inset-bottom))");
+  expect(sheet).toContain("max-height: calc(var(--viewport-height) * 0.7)");
 });
 
 it("the result cells share one row on a phone instead of orphaning the last", () => {
