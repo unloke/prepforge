@@ -597,8 +597,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Phone options already enter as a bottom sheet. */
 @media (min-width: 761px) and (prefers-reduced-motion: no-preference) {
-  :is(#explorer-drawer, #coverage-drawer) {
-    transition: opacity var(--dur) var(--ease-out), translate var(--dur) var(--ease-out);
+  :is(#explorer-drawer, #coverage-drawer).is-enter {
+    animation: row-enter var(--dur) var(--ease-out) both;
   }
 
   .dock-tools {
@@ -616,7 +616,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   }
 
   @starting-style {
-    :root:not(.view-swap) :is(#explorer-drawer, #coverage-drawer):not([hidden]) { opacity: 0; translate: 0 6px; }
     .dock-tools:popover-open { opacity: 0; translate: 0 -4px; }
   }
 }

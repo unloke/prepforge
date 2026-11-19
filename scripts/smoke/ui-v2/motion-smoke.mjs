@@ -131,6 +131,9 @@ function recorder() {
   document.addEventListener("transitionrun", (e) => {
     if (["opacity", "translate"].includes(e.propertyName)) window.__reveals.push({ el: e.target, property: e.propertyName });
   }, true);
+  document.addEventListener("animationstart", (e) => {
+    if (e.animationName === "row-enter") for (const property of ["opacity", "transform"]) window.__reveals.push({ el: e.target, property });
+  }, true);
   const ids = new WeakMap();
   let n = 0;
   const uid = (el) => { if (!ids.has(el)) ids.set(el, ++n); return ids.get(el); };
@@ -218,7 +221,7 @@ async function run({ name, width, height, mobile }) {
       .filter((e) => e.el.matches(selector)).map((e) => e.property), { since, selector });
     const dialogs = await targetPage.locator("dialog[open]").allTextContents();
     if (dialogs.length) throw new Error(`${name}: ${button} opened an unexpected dialog: ${dialogs.join(" | ")}`);
-    if (enabled ? !["opacity", "translate"].every((p) => properties.includes(p)) : properties.length > 0) {
+    if (enabled ? !(properties.includes("opacity") && properties.some((p) => ["translate", "transform"].includes(p))) : properties.length > 0) {
       failures.push(`${name}: ${selector} should ${enabled ? "reveal with opacity/translate" : "stay still for reduced motion"}, got ${properties}`);
     }
   };
@@ -360,6 +363,13 @@ async function run({ name, width, height, mobile }) {
     failures.push(`${name}: rapid real navigation should reach every control and settle on the last view, got ${JSON.stringify(rapid)}`);
   }
   await page.waitForTimeout(300);
+  await go("#/build?rep=rep-1");
+  await settle();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator("#builder-tree .mtree-move").first().waitFor();
+  await settle(400);
+  const replayedPanes = await page.evaluate(() => window.__reveals.filter((e) => e.el.matches("#explorer-drawer, #coverage-drawer, [data-team-panel]")).length);
+  if (replayedPanes) failures.push(`${name}: reloading Build must not replay its child pane entrance`);
   for (const e of errors) failures.push(`${name}: pageerror ${e}`);
   await context.close();
 

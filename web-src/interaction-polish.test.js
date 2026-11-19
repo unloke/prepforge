@@ -29,8 +29,7 @@ describe("shared interaction polish", () => {
     for (const file of ["views/build.css", "views/teams.css"]) {
       const css = cssSource(file);
       expect(css).toContain("prefers-reduced-motion: no-preference");
-      expect(css).toContain("transition: opacity var(--dur) var(--ease-out), translate var(--dur) var(--ease-out)");
-      expect(css).toMatch(/@starting-style\s*\{\s*:root:not\(\.view-swap\)[^{]*:not\(\[hidden\]\)/);
+      expect(css).toMatch(/\.is-enter\s*\{\s*animation: row-enter var\(--dur\) var\(--ease-out\) both/);
     }
     expect(cssSource("views/build.css")).toContain("(min-width: 761px) and (prefers-reduced-motion: no-preference)");
     expect(cssSource("views/teams.css")).toContain("[data-team-panel][hidden] { display: none; }");

@@ -5,7 +5,7 @@ import { html } from "../html.js";
 // repertoires as two tabs over ONE panel (counts live on the tabs), with the
 // invite-link status as a footer line under the tabs.
 import { loadTeamDirectory } from "../team-directory.js";
-import { enterRows } from "../list-enter.js";
+import { enterOnce, enterRows } from "../list-enter.js";
 import { teamRowsSkeleton } from "./team-skeleton.js";
 import { PHONE_QUERY } from "../phone-layout.js";
 import { GRANT_ROLES, canCopy, roleAllows, roleLabel } from "../share-roles.js";
@@ -35,7 +35,9 @@ export function createTeamsView({
       tab.tabIndex = active ? 0 : -1;
     });
     document.querySelectorAll("[data-team-panel]").forEach((panel) => {
+      const entering = panel.hidden && panel.dataset.teamPanel === pane;
       panel.hidden = panel.dataset.teamPanel !== pane;
+      if (entering) enterOnce(panel);
     });
   }
 
