@@ -82,14 +82,18 @@ export async function api(path, options = {}) {
     headers,
   });
   if (response.ok && responseType === "blob") return response.blob();
-  const blob = response.ok && responseType === "large-json" ? await response.blob() : null;
+  const largeJson = response.ok && responseType === "large-json";
+  const encodedSize = largeJson ? Number(response.headers.get("content-length")) : 0;
+  // A small transfer doesn't need the extra Blob read; unknown sizes still use it.
+  const blob = largeJson && !(encodedSize > 0 && encodedSize <= 32 * 1024)
+    ? await response.blob() : null;
   // Read as text first so a non-JSON body (a 500 "Internal Server Error", a 502
   // from the proxy, an HTML error page) surfaces a clear message instead of a raw
   // "Unexpected token 'I' ... is not valid JSON" from response.json().
   const raw = await (blob ?? response).text();
   // Large Build loads leave room for paint/input between decoding, parsing,
-  // and hydrating the tree. Blob size counts decompressed bytes, even with gzip.
-  const large = blob?.size >= 1024 * 1024;
+  // and hydrating the tree. Use the decompressed body, not its transfer size.
+  const large = largeJson && (blob?.size ?? raw.length) >= 1024 * 1024;
   if (large) await yieldToBrowser(signal);
   let payload = {};
   if (raw) {

@@ -73,11 +73,22 @@ describe("shared API adapter", () => {
   });
   it("does not yield for small repertoire responses or lose HTTP errors", async () => {
     const scheduler = { yield: vi.fn() };
-    const read = responseAdapter(new Response('{"nodes":[]}'), scheduler);
+    const response = new Response('{"nodes":[]}', { headers: { "content-length": "12" } });
+    const blob = vi.spyOn(response, "blob");
+    const read = responseAdapter(response, scheduler);
     await expect(read("/api/build/load", largeJsonOptions)).resolves.toEqual({ nodes: [] });
+    expect(blob).not.toHaveBeenCalled();
     const fail = responseAdapter(new Response("proxy offline", { status: 502 }), scheduler);
     await expect(fail("/api/build/load", largeJsonOptions)).rejects.toMatchObject({ status: 502 });
     expect(scheduler.yield).not.toHaveBeenCalled();
+  });
+  it("still yields when a small compressed transfer contains a large JSON body", async () => {
+    const body = { note: "a".repeat(1024 * 1024) };
+    const yieldTask = vi.fn(async () => {});
+    const response = new Response(JSON.stringify(body), { headers: { "content-length": "1062", "content-encoding": "gzip" } });
+    const read = responseAdapter(response, { yield: yieldTask });
+    await expect(read("/api/build/load", largeJsonOptions)).resolves.toEqual(body);
+    expect(yieldTask).toHaveBeenCalledTimes(2);
   });
   it("does not deliver a parsed payload if canceled while yielding", async () => {
     const controller = new AbortController();
