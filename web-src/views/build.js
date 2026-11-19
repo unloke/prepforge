@@ -63,8 +63,9 @@ export function createBuildView({
   boardRenderers = null,
 }) {
   let focusId = null, focusRepertoire = null;
-  let collapseRepertoire = null, collapseByDefault = false;
-  const variationOverrides = new Set();
+  let collapseState = null;
+  let collapseOwner = appState.ownerGeneration;
+  const collapseByRepertoire = new Map();
   const boundContainers = new WeakSet();
   const miniBoard = (fen) => positionThumbnail(fen, appState.build?.color, boardRenderers);
   const collaboration = collaborationApi ? createBuildCollaboration({
@@ -293,14 +294,14 @@ export function createBuildView({
   }
 
   function variationIsCollapsed(id) {
-    return collapseByDefault !== variationOverrides.has(id);
+    return collapseState.byDefault !== collapseState.overrides.has(id);
   }
 
   function revealCurrentPath(children) {
     for (const node of buildPath(appState.buildCurrentNodeId)) {
       if (!node.parent_id || children.get(node.parent_id)?.[0] === node) continue;
-      if (collapseByDefault) variationOverrides.add(node.id);
-      else variationOverrides.delete(node.id);
+      if (collapseState.byDefault) collapseState.overrides.add(node.id);
+      else collapseState.overrides.delete(node.id);
     }
   }
 
@@ -320,7 +321,8 @@ export function createBuildView({
       if (!toggle) return;
       event.stopPropagation();
       const id = toggle.dataset.collapseId;
-      if (!variationOverrides.delete(id)) variationOverrides.add(id);
+      const { overrides } = collapseState;
+      if (!overrides.delete(id)) overrides.add(id);
       const renderer = getMoveTreeRenderer();
       const varNode = appState.buildNodeById.get(id);
       const varEl = toggle.closest?.(".mtree-var");
@@ -339,10 +341,14 @@ export function createBuildView({
     renderTools();
     const container = document.getElementById("builder-tree");
     const branchBar = document.getElementById("build-branchbar");
+    if (collapseOwner !== appState.ownerGeneration) {
+      collapseOwner = appState.ownerGeneration;
+      collapseByRepertoire.clear();
+      collapseState = null;
+      openNotes.clear();
+    }
     if (!appState.build) {
-      collapseRepertoire = null;
-      collapseByDefault = false;
-      variationOverrides.clear();
+      collapseState = null;
       renderBuildOpening();
       container.innerHTML =
         html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
@@ -370,17 +376,19 @@ export function createBuildView({
       return;
     }
     const repId = appState.build.repertoire_id;
-    if (collapseRepertoire !== repId) {
-      collapseRepertoire = repId;
-      collapseByDefault = false;
-      variationOverrides.clear();
+    let nextCollapseState = collapseByRepertoire.get(repId);
+    if (!nextCollapseState) {
+      nextCollapseState = { byDefault: false, overrides: new Set() };
+      collapseByRepertoire.set(repId, nextCollapseState);
+    }
+    if (collapseState !== nextCollapseState) {
+      collapseState = nextCollapseState;
       openNotes.clear();
     }
     // Store only deviations from the default, not every hidden variation.
-    const firstAutoCollapse = !collapseByDefault && length > AUTO_COLLAPSE_THRESHOLD;
-    if (firstAutoCollapse) {
-      collapseByDefault = true;
-      variationOverrides.clear();
+    if (!collapseState.byDefault && length > AUTO_COLLAPSE_THRESHOLD) {
+      collapseState.byDefault = true;
+      collapseState.overrides.clear();
       revealCurrentPath(children);
     }
     const treeHtml = moveTreeRenderer.renderMoveTree(treeRoot, moveTreeOptions(children));
