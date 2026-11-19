@@ -773,10 +773,7 @@ async function onExplorerRowClick(rows, uci) {
   const currentFen = node ? node.fen : boards.build && boards.build.fen;
   if (!node || !rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
   const existing = buildChildForUci(node.id, uci);
-  if (existing?.preview) {
-    rollback();
-    return;
-  }
+  if (existing?.preview) return;
   if (existing) {
     await selectBuildNode(existing.id);
     return;
@@ -1036,6 +1033,10 @@ async function onBuildBoardMove(moveUci) {
   const existing = appState.build.nodes.find(
     (n) => n.parent_id === parentId && canonicalBuildUci(parent.fen, n.uci) === moveUci
   );
+  if (existing?.preview) {
+    rollback();
+    return;
+  }
   if (existing) {
     await selectBuildNode(existing.id);
     return;
