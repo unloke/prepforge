@@ -9,6 +9,11 @@ import { cssSource, eagerCss } from "./test-styles-source.js";
 const phone = cssSource("phone.css");
 const body = phone.slice(phone.indexOf("@media (max-width: 760px)"));
 
+it("keeps study controls in flow rather than overlaying ranks on a short viewport", () => {
+  expect(phone).not.toMatch(/\.study \.board-bar \{[^}]*position: sticky;/);
+  expect(phone).toMatch(/\.study \.board-bar \{[^}]*position: relative;/);
+});
+
 function rule(selector) {
   const start = body.indexOf(`\n  ${selector}`);
   expect(start, selector).toBeGreaterThan(-1);
