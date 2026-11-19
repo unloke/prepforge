@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { createGeneratePreview } from "./generate-preview.js";
 import { openOverflowMenu } from "../core/overflow-menu.js";
 import { promptRenameRepertoire } from "../repertoire-rename.js";
 import { enterRows } from "../list-enter.js";
@@ -67,6 +68,7 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   if (!payload || typeof payload !== "object" || !payload.repertoire_id || !Array.isArray(payload.nodes)) {
     throw new TypeError("hydrateBuild needs a /api/build/load payload with repertoire_id and nodes");
   }
+  appState.buildGenerationPreview?.clear(false);
   // Opening/switching to a DIFFERENT repertoire must not throw away local-first
   // sync state: callers hard-flush before switching, and anything still queued
   // (a restored queue, a flush that failed) is tagged with its target and kept
@@ -195,6 +197,7 @@ async function renameRepertoire() {
 
 async function selectBuildNode(nodeId, { branchChoiceId = null } = {}) {
   if (!appState.buildNodeById.has(nodeId)) return;
+  if (appState.buildNodeById.get(nodeId).preview) return;
   // Which way the board travels: into the current node's own child is a move
   // being shown; a parent, a sibling or a distant node is a step through or a
   // jump across existing history, so it stays quiet and keeps no move pulse.
@@ -1410,6 +1413,15 @@ async function generateFromCurrentNode() {
   // server apply can't be un-persisted by aborting the fetch, so we remove the
   // Stop button before the POST rather than imply a cancel that wouldn't hold.
   const controller = new AbortController();
+  const preview = createGeneratePreview({
+    build: generationBuild,
+    byId: appState.buildNodeById,
+    isCurrent: () => isCurrent() && appState.build === generationBuild,
+    render: (parents) => parents && buildView?.renderGeneratePreview
+      ? buildView.renderGeneratePreview(parents) : renderBuilderTree(),
+    onClear: () => controller.abort(),
+  });
+  appState.buildGenerationPreview = preview;
   // Believable progress: estimate a ceiling, advance a little whenever the planner adds
   // nodes, and — when the engine is busy but quiet — inch forward on a timer so the bar
   // never looks stuck. It is capped just below `total` until generation truly finishes,
@@ -1428,10 +1440,11 @@ async function generateFromCurrentNode() {
       tab: "build",
       dock: document.getElementById("build-job-dock"),
       total: progress.total,
-      onCancel: () => controller.abort(),
+      onCancel: () => preview.clear(),
     });
 
     nudgeTimer = setInterval(() => {
+      if (!isCurrent() || appState.build !== generationBuild) return preview.clear(false);
       if (!notices.isBusy()) return;
       if (Date.now() - lastInitAt < 2000) return; // let Maia cold-init progress own the toast
       progress.done = Math.min(progress.total - 3, progress.done + 1);
@@ -1509,6 +1522,7 @@ async function generateFromCurrentNode() {
       // nudge timer drive, so a chatty stream can't fake completion. Skipped while the Maia
       // cold-init owns the toast (its download % is more useful there).
       onEvent: (ev) => {
+        if (ev?.type === "change") return preview.add(ev.change);
         if (!notices.isBusy()) return;
         if (Date.now() - lastInitAt < 2000) return;
         if (ev && ev.type === "search") {
@@ -1600,6 +1614,8 @@ async function generateFromCurrentNode() {
     }
   } finally {
     if (nudgeTimer) clearInterval(nudgeTimer);
+    preview.clear();
+    if (appState.buildGenerationPreview === preview) appState.buildGenerationPreview = null;
   }
 }
 
@@ -1607,6 +1623,7 @@ function openNodeContextMenu(event, nodeId) {
   event.preventDefault();
   if (isBuildReadOnly()) return;
   const node = appState.buildNodeById.get(nodeId);
+  if (node?.preview) return;
   if (!node) return;
   const menu = document.getElementById("node-context-menu");
   // Only what the page can act on and then show. Each entry here changes
@@ -1669,6 +1686,7 @@ function openNodeContextMenu(event, nodeId) {
 async function handleNodeContextAction(action, nodeId) {
   closeNodeContextMenu();
   let node = appState.buildNodeById.get(nodeId);
+  if (node?.preview) return;
   if (!node) return;
   // Delete is local-first (and confirmation-free): prune the subtree from the
   // client tree immediately and let the debounced flush tell the server. No

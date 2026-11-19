@@ -146,6 +146,12 @@
    distinguishable from the ones already there. Transform and opacity only: a
    new token must not shift the tokens around it. */
 .mtree-move.is-added { animation: move-added var(--dur) var(--ease-out) both; }
+.mtree-move.is-preview { opacity: 0.65; pointer-events: none; }
+.mtree-move.is-preview-entering { animation: move-added var(--dur) var(--ease-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mtree-move.is-preview-entering { animation: none; }
+}
 
 
 @keyframes move-added {
@@ -299,4 +305,3 @@
   color: var(--negative);
   font-weight: 600;
 }
-

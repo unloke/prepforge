@@ -334,6 +334,8 @@ export function createBuildView({
         // The move this session just made: one rise, once, so a line the user
         // added is distinguishable from the seventy already there.
         if (b.id === appState.buildJustAddedId) classes.push("is-added");
+        if (b.preview) classes.push("is-preview");
+        if (b.previewEntering) classes.push("is-preview-entering");
         // One quiet mark per move and one sentence behind it. The tree used to
         // carry four signals at once — a mastery bar, a "prepared" underline,
         // the accent fill on every move of the path, and a bold mainline — so
@@ -346,6 +348,7 @@ export function createBuildView({
         const open = openNotes.has(String(b.id)) ? " is-open" : "";
         return {
           classes,
+          disabled: !!b.preview,
           title: [status, gap ? "No answer recorded here" : "", "Right-click for move options"].filter(Boolean).join(" · "),
           ...(status ? { label: status } : {}),
           after: b.comment
@@ -450,6 +453,7 @@ export function createBuildView({
     const el = appState.buildJustAddedId ? container.querySelector(".mtree-move.is-added") : null;
     appState.buildJustAddedId = null;
     if (el?.addEventListener) el.addEventListener("animationend", () => el.classList.remove("is-added"), { once: true });
+    finishPreviewEntrance(container);
     bindContainerEvents(container);
     moveTreeRenderer.bindMoveTreeClicks(
       container,
@@ -460,6 +464,45 @@ export function createBuildView({
     renderBuildBranchBar();
     onTreeRendered();
     followCurrentMove(container, moveTreeRenderer);
+  }
+
+  function finishPreviewEntrance(container) {
+    for (const el of container.querySelectorAll(".is-preview-entering")) {
+      const node = appState.buildNodeById.get(el.dataset.nodeId);
+      if (node) node.previewEntering = false;
+      if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        el.classList.remove("is-preview-entering");
+        continue;
+      }
+      el.addEventListener("animationend", () => el.classList.remove("is-preview-entering"), { once: true });
+    }
+  }
+
+  function renderGeneratePreview(parents) {
+    const container = document.getElementById("builder-tree");
+    const renderer = getMoveTreeRenderer();
+    const cached = getNormalizedTree();
+    const variations = new Set();
+    for (const id of parents) {
+      let ancestor = appState.buildNodeById.get(id), move = null;
+      while (ancestor && !move) {
+        move = container.querySelector(`[data-node-id="${CSS.escape(String(ancestor.id))}"]`);
+        ancestor = appState.buildNodeById.get(ancestor.parent_id);
+      }
+      const variation = move?.closest(".mtree-var");
+      if (!variation || !renderer?.renderMoveVariation) return renderBuilderTree();
+      variations.add(variation);
+    }
+    for (const variation of variations) {
+      if ([...variations].some((other) => other !== variation && other.contains(variation))) continue;
+      const id = variation.querySelector("[data-collapse-id]")?.dataset.collapseId;
+      const node = cached?.byId.get(id);
+      if (!node) return renderBuilderTree();
+      variation.outerHTML = String(renderer.renderMoveVariation(node, moveTreeOptions(appState.buildCollapsed || new Set())));
+    }
+    finishPreviewEntrance(container);
+    renderBuildBranchBar();
+    onTreeRendered();
   }
 
   // The tree keeps the current move in view, read in the next frame, as Analyze
@@ -526,6 +569,7 @@ export function createBuildView({
     discussionLabel: () => collaboration?.discussionLabel() || "Discuss position",
     renderBuildRepHeader,
     renderBuilderTree,
+    renderGeneratePreview,
     updateBuildTreeSelection,
     renderBuildBranchBar,
     renderBuildOpening,
