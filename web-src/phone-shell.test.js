@@ -80,6 +80,12 @@ it("the bottom bar holds its rows inside the screen", () => {
   expect(phone).toMatch(/--phone-bar-h:\s*48px/);
 });
 
+it("stops a departing study navigation bar from covering the incoming controls", () => {
+  expect(rule("body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {")).toMatch(/pointer-events: none;/);
+  expect(rule("body.phone-nav-open:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {")).toMatch(/pointer-events: auto;/);
+  expect(rule('body:has(#view-train.is-active:is([data-train-screen="home"], [data-train-screen="result"])) .tabbar {')).toMatch(/pointer-events: auto;/);
+});
+
 // Every custom property a phone rule reads must be one the app defines. The
 // disabled board pill named `--faint`, which exists nowhere: the declaration was
 // dropped at computed-value time, so the pill fell back to inherited ink and read

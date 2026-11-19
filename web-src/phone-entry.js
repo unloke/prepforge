@@ -2,7 +2,7 @@ import { appState, boards } from "./core/state.js";
 import { setStatus, setStatusError } from "./core/api.js";
 import { analyzeView } from "./views/analyze-loader.js";
 import { openModal } from "./core/dialog.js";
-import { closeSheetOffPhone } from "./phone-layout.js";
+import { closeSheetOffPhone, trackVisualViewport } from "./phone-layout.js";
 import { wireLibraryPhoneHead } from "./library-phone.js";
 import { disposeSharedMaia3Provider, peekSharedMaia3Provider } from "./engine/maia3-provider.js";
 
@@ -16,6 +16,7 @@ let onAccountChipClick, toggleTheme;
 
 export function bindPhoneChrome(deps) {
   ({ onAccountChipClick, toggleTheme } = deps);
+  trackVisualViewport();
   wireMobileNav();
   wireLibraryPhoneHead();
 }

@@ -19,4 +19,5 @@ export async function openAnalysisHistory(page) {
   await page.waitForFunction(() =>
     document.querySelector('#analysis-history[aria-busy="false"] .history-item[data-game-id]'),
   null, { timeout: 10000 });
+  await page.locator('#analysis-history .history-item[data-game-id] .hi-open').first().waitFor({ state: "visible" });
 }

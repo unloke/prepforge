@@ -15,7 +15,6 @@ from __future__ import annotations
 import hashlib
 import io
 import json
-import base64
 import zlib
 from dataclasses import asdict, fields
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
@@ -213,6 +212,65 @@ def fingerprint_bytes(digest: str) -> bytes:
     return bytes.fromhex(digest)
 
 
+_PIECE_BITBOARDS = (
+    ("pawns", "P", "p"),
+    ("knights", "N", "n"),
+    ("bishops", "B", "b"),
+    ("rooks", "R", "r"),
+    ("queens", "Q", "q"),
+    ("kings", "K", "k"),
+)
+_EMPTY_RUNS = tuple(("1" * n, str(n)) for n in range(8, 1, -1))
+
+
+_STANDARD_CASTLING = (
+    (chess.BB_H1, "K"),
+    (chess.BB_A1, "Q"),
+    (chess.BB_H8, "k"),
+    (chess.BB_A8, "q"),
+)
+
+
+def _castling_field(board: chess.Board) -> str:
+    if not board.castling_rights:
+        return "-"
+    if board.chess960:
+        return board.castling_xfen()
+    rights = board.clean_castling_rights()
+    return "".join(symbol for mask, symbol in _STANDARD_CASTLING if rights & mask) or "-"
+
+
+def board_fen(board: chess.Board) -> str:
+    """``board.fen()`` from the bitboards, without 64 ``piece_at`` lookups.
+
+    Serializing the position is the dominant cost of hydrating an opening tree
+    (one FEN per node), and python-chess builds the placement square by square.
+    """
+    grid = ["1"] * 64
+    white = board.occupied_co[chess.WHITE]
+    black = board.occupied_co[chess.BLACK]
+    for attr, upper, lower in _PIECE_BITBOARDS:
+        pieces = getattr(board, attr)
+        for square in chess.scan_forward(pieces & white):
+            grid[square] = upper
+        for square in chess.scan_forward(pieces & black):
+            grid[square] = lower
+    placement = "/".join("".join(grid[rank:rank + 8]) for rank in range(56, -1, -8))
+    for run, digits in _EMPTY_RUNS:
+        placement = placement.replace(run, digits)
+    castling = _castling_field(board)
+    ep = board.ep_square
+    ep_name = chess.SQUARE_NAMES[ep] if ep is not None and board.has_legal_en_passant() else "-"
+    return "{0} {1} {2} {3} {4} {5}".format(
+        placement,
+        "w" if board.turn == chess.WHITE else "b",
+        castling,
+        ep_name,
+        board.halfmove_clock,
+        board.fullmove_number,
+    )
+
+
 def _color_from_board(board: chess.Board) -> Color:
     return Color.WHITE if board.turn == chess.WHITE else Color.BLACK
 
@@ -239,7 +297,7 @@ def _replay_on_board(
     if move not in board.legal_moves:
         raise ValueError("illegal move {0} for FEN {1}".format(uci, board.fen()))
     if fen_before is None:
-        fen_before = board.fen()
+        fen_before = board_fen(board)
     side = _color_from_board(board)
     move_number = board.fullmove_number
     record_ply = ply if ply is not None else (board.fullmove_number - 1) * 2 + (
@@ -252,7 +310,7 @@ def _replay_on_board(
         uci=move.uci(),
         san=san,
         fen_before=fen_before,
-        fen_after=board.fen(),
+        fen_after=board_fen(board),
         move_number=move_number,
         ply=record_ply,
         side_to_move=side,
@@ -307,7 +365,6 @@ def game_uci_blob(game: Game) -> str:
     return encode_uci_sequence(move.uci for move in game.moves)
 
 
-ANALYSIS_SNAPSHOT_CODEC = "analysis-zlib-base64-v2"
 _ENGINE_EVAL_FIELDS = tuple(f.name for f in fields(EngineEvaluation))
 _ANALYSIS_FIELDS = (
     "uci", "source", "classification", "engine_eval_before", "engine_eval_after",
@@ -315,7 +372,7 @@ _ANALYSIS_FIELDS = (
 )
 
 
-def encode_analysis_moves(moves: Sequence[MoveRecord]) -> str:
+def encode_analysis_moves(moves: Sequence[MoveRecord]) -> bytes:
     """Self-contained run snapshot; never references mutable game annotations.
 
     Each ply stores only what replaying the run's starting position (the first
@@ -357,19 +414,20 @@ def encode_analysis_moves(moves: Sequence[MoveRecord]) -> str:
             list(move.tags) or None,
         ])
     body = {"i": moves[0].fen_before if moves else STARTING_FEN, "e": evals, "m": rows}
-    raw = json.dumps(body, separators=(",", ":")).encode("utf-8")
-    return json.dumps({"codec": ANALYSIS_SNAPSHOT_CODEC, "data": base64.b64encode(zlib.compress(raw, 9)).decode("ascii")}, separators=(",", ":"))
+    return zlib.compress(json.dumps(body, separators=(",", ":")).encode("utf-8"), 9)
 
 
-def decode_analysis_moves(payload: Optional[str]) -> List[MoveRecord]:
+def decode_analysis_moves(payload: Optional[bytes]) -> List[MoveRecord]:
     # Older analyses have no trustworthy per-run moves. Do not attach today's
     # shared annotations to a historical summary; reanalysis creates a snapshot.
     if payload is None:
         return []
-    envelope = json.loads(payload)
-    if not isinstance(envelope, dict) or envelope.get("codec") != ANALYSIS_SNAPSHOT_CODEC:
-        raise ValueError("unsupported analysis snapshot codec")
-    body = json.loads(zlib.decompress(base64.b64decode(envelope["data"], validate=True)))
+    try:
+        body = json.loads(zlib.decompress(payload))
+    except zlib.error as exc:
+        raise ValueError("unreadable analysis snapshot") from exc
+    if not isinstance(body, dict):
+        raise ValueError("unreadable analysis snapshot")
     evals = [
         EngineEvaluation(**{key: value for key, value in evaluation.items() if key in _ENGINE_EVAL_FIELDS})
         for evaluation in body["e"]

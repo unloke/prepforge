@@ -322,8 +322,8 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   check(S, onTop, "account menu should render above the More sheet");
 
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(150);
-  check(S, !(await page.locator("#account-menu").isVisible()), "Escape should close the account menu");
+  check(S, await page.evaluate(() => !document.getElementById("account-menu").matches(":popover-open")), "Escape should close the account menu");
+  check(S, await page.locator("#account-menu").waitFor({ state: "hidden", timeout: 2000 }).then(() => true, () => false), "the escaped account menu should leave the screen");
   check(S, await page.locator("#more-sheet").isVisible(), "the first Escape should leave the More sheet open");
   check(S, await page.evaluate(() => document.activeElement?.id === "sheet-account"), "focus should return to #sheet-account");
   check(S, (await attr(item, "aria-expanded")) === "false", "#sheet-account should be aria-expanded=false after close");
@@ -334,7 +334,8 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   await page.waitForTimeout(100);
   await tap(item);
   await page.waitForTimeout(100);
-  check(S, !(await page.locator("#account-menu").isVisible()), "second trigger click should close the menu");
+  check(S, await page.evaluate(() => !document.getElementById("account-menu").matches(":popover-open")), "second trigger click should close the menu");
+  check(S, await page.locator("#account-menu").waitFor({ state: "hidden", timeout: 2000 }).then(() => true, () => false), "the closed account menu should leave the screen");
   check(S, await page.evaluate(() => document.activeElement?.id === "sheet-account"), "toggle-close should keep focus on #sheet-account");
 
   await page.keyboard.press("Escape");
@@ -446,8 +447,8 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   check(S, geom.focusInMenu, "focus should stay inside the account menu");
   check(S, geom.expanded === "true", "#account-chip should stay aria-expanded=true while open");
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(150);
-  check(S, !(await menu.isVisible()), "Escape should close the rail account menu");
+  check(S, await menu.evaluate((el) => !el.matches(":popover-open")), "Escape should close the rail account menu");
+  check(S, await menu.waitFor({ state: "hidden", timeout: 2000 }).then(() => true, () => false), "the rail account menu should leave the screen");
   check(S, await page.evaluate(() => document.activeElement?.id === "account-chip"), "focus should return to #account-chip");
   await page.close();
 }
