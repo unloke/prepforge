@@ -59,12 +59,13 @@ export function createMoveTreeRenderer() {
       `<button class="${escapeHtml(classes.join(" "))}" data-node-id="${escapeHtml(node.id)}" aria-label="${escapeHtml(label)}"`,
     );
     if (deco.title) chunks.push(` title="${escapeHtml(deco.title)}"`);
+    if (deco.disabled) chunks.push(` disabled`);
     if (isCurrent) chunks.push(` aria-current="true"`);
     chunks.push(`><span class="mtree-san">${escapeHtml(node.san)}</span>`);
     pushHtmlValue(chunks, deco.suffix);
     // A pointer's way to the move menu: a ⋯ that shows while the move is
     // hovered. Keyboards reach the same menu with the context-menu key.
-    if (opts.moveMenu) chunks.push(`<span class="mtree-more" aria-hidden="true">⋯</span>`);
+    if (opts.moveMenu && !deco.disabled) chunks.push(`<span class="mtree-more" aria-hidden="true">⋯</span>`);
     chunks.push(`</button>`);
     if (wrapTok) chunks.push(`</span>`);
     pushHtmlValue(chunks, deco.after);

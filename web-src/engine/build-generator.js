@@ -203,6 +203,10 @@ export async function generateBuildPlan({
       /* observational stream — a listener error must not fail the run */
     }
   };
+  const pushChange = (change) => {
+    changes.push(change);
+    emit({ type: "change", change });
+  };
 
   // _upsert_child (opening_builder.py:357-424). Returns the existing-or-new working node;
   // the caller recurses into it either way. Records the corresponding plan change.
@@ -224,7 +228,7 @@ export async function generateBuildPlan({
       }
       if (Object.keys(changed).length > 0) {
         summary.updatedCount += 1;
-        changes.push({ action: "updated", nodeId: existing.id, ...changed });
+        pushChange({ action: "updated", nodeId: existing.id, ...changed });
       }
       return existing;
     }
@@ -256,7 +260,7 @@ export async function generateBuildPlan({
     parent.children.push(child);
     summary.addedCount += 1;
     // parentRef: existing node id, or a same-run tempId (tmp- prefix is never a real uuid).
-    changes.push({
+    pushChange({
       action: "planned_add",
       tempId,
       parentRef: parent.id ?? parent.tempId,
@@ -282,7 +286,7 @@ export async function generateBuildPlan({
     if (blocking.length === 0) return; // nothing claims mainline → upsertChild's rule suffices
     if (blocking.some((c) => PROTECTED_SOURCES.has(c.source))) return; // preserve user's mainline
     for (const c of parent.children) c.isMainline = c === child;
-    changes.push({ action: "set_mainline", nodeRef: child.id ?? child.tempId });
+    pushChange({ action: "set_mainline", nodeRef: child.id ?? child.tempId });
   };
 
   // _expand (opening_builder.py:228-355).

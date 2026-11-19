@@ -249,15 +249,30 @@ export function createBuildView({
   // step that lands on the new payload must repaint, not move the mark.
   let paintedTree = null, paintedSelectionId = null;
 
+  function treeNode(id) {
+    return appState.buildNodeById.get(id) || appState.buildGenerationPreview?.node(id);
+  }
+
   function moveTreeOptions(children) {
+    const preview = appState.buildGenerationPreview;
+    const orderedChildren = (node) => {
+      if (node.children) return node.children;
+      const saved = children.get(node.id) || NO_CHILDREN;
+      return preview?.childrenOf(node.id, saved) || saved;
+    };
     return {
       currentId: appState.buildCurrentNodeId,
-      orderedChildren: (node) => node.children || children.get(node.id) || NO_CHILDREN,
+      orderedChildren,
       moveNumberOf: (node) => node.move_number,
       sideOf: (node) => node.move_side,
       collapsible: true,
       isCollapsed: (node) => variationIsCollapsed(node.id),
       decorate: (b) => {
+        if (b.preview) return {
+          classes: b.previewEntering ? ["is-preview", "is-preview-entering"] : ["is-preview"],
+          disabled: true,
+          title: "Pending save",
+        };
         const classes = [];
         if (b.mastery) classes.push(`m-${b.mastery}`);
         if (!b.is_enabled) classes.push("is-disabled");
@@ -324,11 +339,12 @@ export function createBuildView({
       const { overrides } = collapseState;
       if (!overrides.delete(id)) overrides.add(id);
       const renderer = getMoveTreeRenderer();
-      const varNode = appState.buildNodeById.get(id);
+      const varNode = treeNode(id);
       const varEl = toggle.closest?.(".mtree-var");
       if (renderer?.renderMoveVariation && varNode && varEl && "outerHTML" in varEl) {
         const { children } = getBuildTree(appState.build);
         varEl.outerHTML = String(renderer.renderMoveVariation(varNode, moveTreeOptions(children)));
+        finishPreviewEntrance(container);
         collaboration?.markMoves();
         return;
       }
@@ -361,7 +377,8 @@ export function createBuildView({
     const { root, children, length } = getBuildTree(appState.build);
     const focused = appState.buildNodeById.get(focusId);
     const treeRoot = focused?.parent_id ? { children: [focused] } : root;
-    if (!treeRoot || !(treeRoot.children || children.get(treeRoot.id))?.length) {
+    const options = moveTreeOptions(children);
+    if (!treeRoot || !options.orderedChildren(treeRoot).length) {
       renderBuildOpening();
       container.innerHTML = html`<div class="tree-empty">Play a move to add it to this line.</div>`;
       if (branchBar) branchBar.hidden = true;
@@ -396,7 +413,7 @@ export function createBuildView({
     // provisional ID, and a fresh open can explicitly land on a hidden move.
     const selectedId = appState.buildCurrentNodeId;
     if (revealSelection || selectedId !== paintedSelectionId) revealCurrentPath(children);
-    const treeHtml = moveTreeRenderer.renderMoveTree(treeRoot, moveTreeOptions(children));
+    const treeHtml = moveTreeRenderer.renderMoveTree(treeRoot, options);
     renderBuildOpening();
     container.innerHTML = treeHtml;
     collaboration?.markMoves();
@@ -406,6 +423,7 @@ export function createBuildView({
     const el = appState.buildJustAddedId ? container.querySelector(".mtree-move.is-added") : null;
     appState.buildJustAddedId = null;
     if (el?.addEventListener) el.addEventListener("animationend", () => el.classList.remove("is-added"), { once: true });
+    finishPreviewEntrance(container);
     paintedTree = appState.build;
     paintedSelectionId = selectedId;
     bindContainerEvents(container);
@@ -418,6 +436,46 @@ export function createBuildView({
     renderBuildBranchBar();
     onTreeRendered();
     followCurrentMove(container, moveTreeRenderer);
+  }
+
+  function finishPreviewEntrance(container) {
+    for (const el of container.querySelectorAll(".is-preview-entering")) {
+      const node = appState.buildGenerationPreview?.node(el.dataset.nodeId);
+      if (node) node.previewEntering = false;
+      if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+        el.classList.remove("is-preview-entering");
+        continue;
+      }
+      el.addEventListener("animationend", () => el.classList.remove("is-preview-entering"), { once: true });
+    }
+  }
+
+  function renderGeneratePreview(parents) {
+    const container = document.getElementById("builder-tree");
+    const renderer = getMoveTreeRenderer();
+    const { children } = getBuildTree(appState.build);
+    const options = moveTreeOptions(children);
+    const variations = new Set();
+    for (const id of parents) {
+      let ancestor = treeNode(id), move = null;
+      while (ancestor && !move) {
+        move = container.querySelector(`[data-node-id="${CSS.escape(String(ancestor.id))}"]`);
+        ancestor = treeNode(ancestor.parent_id);
+      }
+      const variation = move?.closest(".mtree-var");
+      if (!variation || !renderer?.renderMoveVariation) return renderBuilderTree();
+      variations.add(variation);
+    }
+    for (const variation of variations) {
+      if ([...variations].some((other) => other !== variation && other.contains(variation))) continue;
+      const id = variation.querySelector("[data-collapse-id]")?.dataset.collapseId;
+      const node = treeNode(id);
+      if (!node) return renderBuilderTree();
+      variation.outerHTML = String(renderer.renderMoveVariation(node, options));
+    }
+    finishPreviewEntrance(container);
+    collaboration?.markMoves();
+    onTreeRendered();
   }
 
   // The tree keeps the current move in view, read in the next frame, as Analyze
@@ -479,6 +537,7 @@ export function createBuildView({
     discussionLabel: () => collaboration?.discussionLabel() || "Discuss position",
     renderBuildRepHeader,
     renderBuilderTree,
+    renderGeneratePreview,
     updateBuildTreeSelection,
     renderBuildBranchBar,
     renderBuildOpening,

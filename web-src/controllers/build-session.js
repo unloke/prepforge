@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { createGeneratePreview } from "./generate-preview.js";
 import { openOverflowMenu } from "../core/overflow-menu.js";
 import { promptRenameRepertoire } from "../repertoire-rename.js";
 import { enterRows } from "../list-enter.js";
@@ -68,6 +69,7 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
   if (!payload || typeof payload !== "object" || !payload.repertoire_id || !Array.isArray(payload.nodes)) {
     throw new TypeError("hydrateBuild needs a /api/build/load payload with repertoire_id and nodes");
   }
+  appState.buildGenerationPreview?.clear(false);
   // Opening/switching to a DIFFERENT repertoire must not throw away local-first
   // sync state: callers hard-flush before switching, and anything still queued
   // (a restored queue, a flush that failed) is tagged with its target and kept
@@ -1359,7 +1361,6 @@ async function generateFromCurrentNode() {
     return;
   }
   const isCurrent = captureBuildContext();
-  const generationBuild = appState.build;
   let nodeId = appState.buildCurrentNodeId;
   if (!appState.build || !nodeId) {
     setStatus("Open or create a repertoire first");
@@ -1379,6 +1380,7 @@ async function generateFromCurrentNode() {
     return;
   }
   nodeId = resolveBuildId(nodeId);
+  const generationBuild = appState.build;
   const ownColor = appState.build.color === "black" ? "black" : "white";
   const anchorFen = appState.buildNodeById.get(nodeId)?.fen || "";
   const userToMove = (anchorFen.split(" ")[1] === "b" ? "black" : "white") === ownColor;
@@ -1406,6 +1408,14 @@ async function generateFromCurrentNode() {
   // server apply can't be un-persisted by aborting the fetch, so we remove the
   // Stop button before the POST rather than imply a cancel that wouldn't hold.
   const controller = new AbortController();
+  const preview = createGeneratePreview({
+    byId: appState.buildNodeById,
+    isCurrent: () => isCurrent() && appState.build === generationBuild,
+    render: (parents) => parents && buildView?.renderGeneratePreview
+      ? buildView.renderGeneratePreview(parents) : renderBuilderTree(),
+    onClear: () => controller.abort(),
+  });
+  appState.buildGenerationPreview = preview;
   // Believable progress: estimate a ceiling, advance a little whenever the planner adds
   // nodes, and — when the engine is busy but quiet — inch forward on a timer so the bar
   // never looks stuck. It is capped just below `total` until generation truly finishes,
@@ -1424,10 +1434,11 @@ async function generateFromCurrentNode() {
       tab: "build",
       dock: document.getElementById("build-job-dock"),
       total: progress.total,
-      onCancel: () => controller.abort(),
+      onCancel: () => preview.clear(),
     });
 
     nudgeTimer = setInterval(() => {
+      if (!isCurrent() || appState.build !== generationBuild) return preview.clear(false);
       if (!notices.isBusy()) return;
       if (Date.now() - lastInitAt < 2000) return; // let Maia cold-init progress own the toast
       progress.done = Math.min(progress.total - 3, progress.done + 1);
@@ -1468,7 +1479,7 @@ async function generateFromCurrentNode() {
     engineLifecycleMark("build-inference-start", tGenerate);
     const plan = await runBrowserBuildGenerate({
       build: generationBuild,
-      rootNodeId: nodeId,
+        rootNodeId: nodeId,
       ownColor,
       plyDepth,
       maiaRating,
@@ -1505,6 +1516,7 @@ async function generateFromCurrentNode() {
       // nudge timer drive, so a chatty stream can't fake completion. Skipped while the Maia
       // cold-init owns the toast (its download % is more useful there).
       onEvent: (ev) => {
+        if (ev?.type === "change") return preview.add(ev.change);
         if (!notices.isBusy()) return;
         if (Date.now() - lastInitAt < 2000) return;
         if (ev && ev.type === "search") {
@@ -1596,6 +1608,8 @@ async function generateFromCurrentNode() {
     }
   } finally {
     if (nudgeTimer) clearInterval(nudgeTimer);
+    preview.clear();
+    if (appState.buildGenerationPreview === preview) appState.buildGenerationPreview = null;
   }
 }
 
