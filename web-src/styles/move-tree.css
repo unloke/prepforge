@@ -149,10 +149,6 @@
 .mtree-move.is-preview { opacity: 0.65; pointer-events: none; }
 .mtree-move.is-preview-entering { animation: move-added var(--dur) var(--ease-out) both; }
 
-@media (prefers-reduced-motion: reduce) {
-  .mtree-move.is-preview-entering { animation: none; }
-}
-
 
 @keyframes move-added {
   from { opacity: 0; transform: translateY(4px) scale(0.94); }
