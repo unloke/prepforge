@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createSyncQueue } from "./sync-queue.js";
 import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
 import { createBookActions } from "./analyze-book.js";
+import { indexBuildNodes } from "./build-tree.js";
 import { createSettingsActions } from "./settings-actions.js";
 import { classifySyncError } from "./sync-errors.js";
 import { expect, it, vi } from "vitest";
@@ -47,7 +48,7 @@ it("opening a repertoire retains and reapplies its durable pending deletes", asy
   });
   const run = compile("async function hydrateBuild(", {
     appState, coverageView: { sync: vi.fn() }, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
-    selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes,
+    selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes, indexBuildNodes,
     resolveBuildId: id => id,
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
     renderBuildSync: vi.fn(), syncWorkspaceUrl: vi.fn(), hasPendingBuildOpsFor: () => true, setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
+import { indexBuildNodes } from "./build-tree.js";
 import { createSyncController } from "./controllers/sync.js";
 import { loadDurableOutbox } from "./sync-queue.js";
 import { appSource } from "./test-app-source.js";
@@ -41,7 +42,7 @@ function harness() {
   });
   const positions = [];
   const deps = {
-    appState, coverageView: null, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
+    appState, coverageView: null, indexBuildNodes, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
     boards: { build: { setPosition: vi.fn(p => positions.push(p.fen)), setAnnotations: vi.fn() } },
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
     resolveBuildId: ref => { const id = ref && typeof ref === "object" ? ref.id : ref; return appState.buildIdMap[id] || id; },

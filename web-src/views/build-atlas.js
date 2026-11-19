@@ -1,17 +1,7 @@
 import { html } from "../html.js";
 import { modalDialog, openModal } from "../core/dialog.js";
 import { startAtlasPreparation } from "../atlas-preparation-client.js";
-
-export function indexTree(nodes) {
-  const children = new Map();
-  for (const node of nodes) {
-    const list = children.get(node.parent_id) || [];
-    list.push(node);
-    children.set(node.parent_id, list);
-  }
-  for (const list of children.values()) list.sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
-  return children;
-}
+import { indexTree } from "../build-tree.js";
 
 export function subtreeNodes(root, children) {
   const result = [], stack = [root];
@@ -26,11 +16,15 @@ export function subtreeNodes(root, children) {
 const MAX_GLYPH_NODES = 300;
 
 // One combined path per ink colour keeps even a large tree a small SVG DOM.
-export function routeGlyph(nodes, rootId, currentId) {
-  const byId = new Map(nodes.map((node) => [node.id, node]));
+export function routeGlyph(nodes, rootId, currentId, indexes = null) {
+  let byId = indexes?.byId;
+  if (!byId) {
+    byId = new Map();
+    for (const node of nodes) byId.set(node.id, node);
+  }
   const root = byId.get(rootId);
   if (!root) return "";
-  const fullChildren = indexTree(nodes), positions = new Map(), path = new Set();
+  const fullChildren = indexes?.children ?? indexTree(nodes), positions = new Map(), path = new Set();
   let current = byId.get(currentId), leaf = 0, deepest = 1;
   while (current) { path.add(current.id); current = byId.get(current.parent_id); }
   let children = fullChildren;

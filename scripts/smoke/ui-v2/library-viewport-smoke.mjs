@@ -241,6 +241,8 @@ async function runViewport(vp) {
     await page.waitForTimeout(250);
     check(await page.locator("#lib-filter-search").isVisible(), "the magnifier opens the search field");
     check(await page.evaluate(() => document.activeElement?.id === "lib-filter-search"), "the opened search field takes focus");
+    const filterWidth = await page.locator('#view-dashboard .lib-list .seg').evaluate((el) => ({ width: el.clientWidth, box: el.getBoundingClientRect().width }));
+    check(Math.abs(filterWidth.width - filterWidth.box) <= 1, "the filter strip must not lose width to a vertical scrollbar");
     await page.locator("#lib-search-cancel").click();
     await page.waitForTimeout(250);
     check(!(await page.locator("#lib-filter-search").isVisible()), "Cancel folds the search field away");

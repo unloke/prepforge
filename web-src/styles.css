@@ -15,4 +15,5 @@
 @import "./views/build.css";
 @import "./views/train.css";
 @import "./views/review.css";
+@import "./styles/disclosure.css";
 @import "./styles/reduced-motion.css";

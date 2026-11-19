@@ -274,14 +274,14 @@ export function renderBuilderTreeEmptyState() {
   hooks.build?.syncViewHeads();
 }
 
-export function renderBuilderTree() {
+export function renderBuilderTree(options) {
   hooks.build?.coverageView?.sync();
   if (!appState.build) {
     renderBuilderTreeEmptyState();
     return;
   }
-  if (hooks.build?.view) return hooks.build.view.renderBuilderTree();
-  void hooks.build?.ensureBuildView().then((view) => view.renderBuilderTree()).catch(() => {});
+  if (hooks.build?.view) return hooks.build.view.renderBuilderTree(options);
+  void hooks.build?.ensureBuildView().then((view) => view.renderBuilderTree(options)).catch(() => {});
 }
 
 // ===== Local-first Build sync ================================================

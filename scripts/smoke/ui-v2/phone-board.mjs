@@ -15,6 +15,10 @@
 import { hitAreaSource } from "./hit-area.mjs";
 
 export async function checkPhoneBoard(page, { view, board, tabs = null, label = "" }) {
+  await page.locator(`#${board}`).evaluate(async (el) => {
+    await Promise.all(el.getAnimations().filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+      .map((animation) => animation.finished.catch(() => {})));
+  });
   const got = await page.evaluate(({ view, board, tabs, src }) => {
     const hitArea = eval(src);
     const root = document.getElementById(view);

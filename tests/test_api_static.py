@@ -301,6 +301,30 @@ def test_gzip_skips_engine_binaries():
     assert client.get("/index.js", headers=headers).headers["content-encoding"] == "gzip"
 
 
+def test_build_load_gzip_keeps_the_same_json_and_allows_identity():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from prepforge_chess.api.main import _TextGZipMiddleware
+
+    app = FastAPI()
+    app.add_middleware(_TextGZipMiddleware, minimum_size=10)
+    payload = {"nodes": [{"id": str(i), "comment": "準備"} for i in range(128)]}
+
+    @app.get("/api/build/load")
+    def build_load():
+        return payload
+
+    client = TestClient(app)
+    identity = client.get("/api/build/load", headers={"Accept-Encoding": "identity"})
+    compressed = client.get("/api/build/load", headers={"Accept-Encoding": "gzip"})
+    assert identity.json() == payload == compressed.json()
+    assert "content-encoding" not in identity.headers
+    assert compressed.headers["content-encoding"] == "gzip"
+    assert "accept-encoding" in compressed.headers["vary"].lower()
+    assert int(compressed.headers["content-length"]) < len(identity.content)
+
+
 def _brotli_tree(tmp_path, monkeypatch):
     """A static tree with an identity file and its build-time brotli twin."""
     monkeypatch.setattr(static_mod, "STATIC_DIR", tmp_path)

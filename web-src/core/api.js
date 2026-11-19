@@ -56,6 +56,12 @@ export function setStatusError(message) {
 
 const getCsrfToken = createCsrfTokenSource();
 
+async function yieldToBrowser(signal) {
+  signal.throwIfAborted();
+  await (globalThis.scheduler?.yield?.() ?? new Promise((resolve) => setTimeout(resolve, 0)));
+  signal.throwIfAborted();
+}
+
 export async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   const { timeoutMs = method === "GET" ? 30_000 : 90_000, signal: callerSignal, responseType = "json", ...fetchOptions } = options;
@@ -76,10 +82,21 @@ export async function api(path, options = {}) {
     headers,
   });
   if (response.ok && responseType === "blob") return response.blob();
+  const largeJson = response.ok && responseType === "large-json";
+  const encodedSize = largeJson ? Number(response.headers.get("content-length")) : 0;
+  // A small transfer doesn't need the extra Blob read; unknown sizes still use it.
+  const blob = largeJson && !(encodedSize > 0 && encodedSize <= 32 * 1024)
+    ? await response.blob() : null;
   // Read as text first so a non-JSON body (a 500 "Internal Server Error", a 502
   // from the proxy, an HTML error page) surfaces a clear message instead of a raw
   // "Unexpected token 'I' ... is not valid JSON" from response.json().
-  const raw = await response.text();
+  const raw = await (blob ?? response).text();
+  // Large Build loads leave room for paint/input between decoding, parsing,
+  // and hydrating the tree. Use the decompressed body, not its transfer size.
+  const yieldBytes = 1024 * 1024;
+  const large = largeJson && ((blob?.size ?? raw.length) >= yieldBytes
+    || (!blob && raw.length * 3 >= yieldBytes && /[\u0080-\uFFFF]/.test(raw) && new Blob([raw]).size >= yieldBytes));
+  if (large) await yieldToBrowser(signal);
   let payload = {};
   if (raw) {
     try {
@@ -111,6 +128,7 @@ export async function api(path, options = {}) {
     }
     throw err;
   }
+  if (large) await yieldToBrowser(signal);
   return payload;
   }, { signal: callerSignal, timeoutMs, method });
 }
@@ -140,8 +158,7 @@ export function downloadText(filename, mime, content) {
   URL.revokeObjectURL(url);
 }
 
-// The route, not the painted view: during a route View Transition the old
-// view stays painted for a frame (view-swap.js).
+// The route state is authoritative, independent of entrance animation timing.
 export function activeViewName() {
   return appState.currentView;
 }
