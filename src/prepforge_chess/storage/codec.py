@@ -75,7 +75,9 @@ def pack_pv(pv: Optional[Sequence[str]]) -> bytes:
     """PV as 2 bytes per move: from | to << 6 | promotion << 12."""
     out = bytearray()
     for uci in pv or ():
-        move = chess.Move.from_uci(uci)
+        if not uci:
+            continue
+        move = chess.Move.from_uci(uci.lower())
         out += (move.from_square | move.to_square << 6 | (move.promotion or 0) << 12).to_bytes(2, "little")
     return bytes(out)
 
