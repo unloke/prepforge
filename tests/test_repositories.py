@@ -19,7 +19,7 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
-from prepforge_chess.storage import sa_tables
+from prepforge_chess.storage import codec, sa_tables
 from api_helpers import insert_users
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
@@ -519,7 +519,7 @@ def test_distinct_castling_and_ep_get_distinct_position_rows():
             )
         )
     with repo.engine.connect() as conn:
-        fens = [r[0] for r in conn.execute(text("SELECT fen FROM positions"))]
+        fens = [codec.unpack_position(r[0]) for r in conn.execute(text("SELECT key FROM positions"))]
     assert len(fens) == 6
     assert len(set(fens)) == 6
 

@@ -3,7 +3,8 @@
 Compact persistent representation:
 * games store ``initial_fen`` + ``uci_blob``; PGN/SAN/FEN sequences are derived;
 * moves hold only per-ply annotations that cannot be rebuilt from the UCI blob;
-* positions is a full-FEN catalog (6 fields, unique); never a short hash;
+* positions is a full-position catalog keyed by ``codec.pack_position`` — the
+  lossless binary form of the 6-field FEN (unique); never a short hash;
 * engine_evaluations key on ``fingerprint`` alone — the 32-byte digest of
   position, engine, search limits and result (unset limits stored as
   ``codec.UNSET_SEARCH_LIMIT``). Rows are immutable snapshots: a different
@@ -176,7 +177,7 @@ positions = Table(
     "positions",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("fen", Text, nullable=False, unique=True),
+    Column("key", LargeBinary, nullable=False, unique=True),
 )
 
 engine_evaluations = Table(
@@ -191,7 +192,7 @@ engine_evaluations = Table(
     Column("score_cp", Integer),
     Column("mate_in", Integer),
     Column("best_move_uci", Text),
-    Column("pv", Text, nullable=False),
+    Column("pv", LargeBinary, nullable=False),
     Column("wdl_win", Integer),
     Column("wdl_draw", Integer),
     Column("wdl_loss", Integer),

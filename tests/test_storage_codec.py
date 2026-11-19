@@ -203,7 +203,7 @@ def test_wdl_and_pv_round_trip():
     decoded = codec.decode_wdl(*encoded)
     assert decoded == {"win": 0.35, "draw": 0.4, "loss": 0.25}
     assert codec.decode_wdl(None, None, None) is None
-    assert codec.decode_pv(codec.encode_pv(["e2e4", "e7e5"])) == ["e2e4", "e7e5"]
+    assert codec.unpack_pv(codec.pack_pv(["e2e4", "e7e5", "e7e8q", "0000"])) == ["e2e4", "e7e5", "e7e8q", "0000"]
 
 
 def test_opening_tree_hydrate_from_uci_path():

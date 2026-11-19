@@ -10,7 +10,7 @@ from alembic.config import Config
 
 from prepforge_chess.api.config import get_settings
 from prepforge_chess.core.chess_core import ChessCore
-from prepforge_chess.core.models import AnalysisResult
+from prepforge_chess.core.models import AnalysisResult, EngineEvaluation
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 
@@ -60,3 +60,27 @@ def test_existing_snapshots_survive_the_binary_column_migration(migrated):
     loaded = repo.load_latest_analysis_result(game.id)
     assert [move.uci for move in loaded.move_results] == ["e2e4", "e7e5", "g1f3"]
     assert "move_snapshot_missing" not in (loaded.quality or {})
+
+
+def test_existing_positions_and_pvs_survive_the_packing_migration(migrated):
+    cfg, engine = migrated
+    repo = WorkspaceRepository(engine)
+    game = ChessCore().import_single_pgn('[Result "*"]\n\n1. e4 e5 2. Nf3 *')
+    for move in game.moves:
+        move.engine_eval_after = EngineEvaluation(engine="sf", depth=12, score_cp=30, pv=["e7e5", "g1f3", "b8c6"])
+    repo.save_game(game)
+
+    command.downgrade(cfg, "a1c3e5f7b9d2")
+    with engine.connect() as conn:
+        fens = set(conn.exec_driver_sql("SELECT fen FROM positions").scalars())
+        pvs = set(conn.exec_driver_sql("SELECT pv FROM engine_evaluations").scalars())
+    assert fens == {move.fen_after for move in game.moves}
+    assert pvs == {"e7e5 g1f3 b8c6"}
+
+    command.upgrade(cfg, "head")
+    loaded = repo.load_game(game.id)
+    assert [move.engine_eval_after.pv for move in loaded.moves] == [["e7e5", "g1f3", "b8c6"]] * 3
+    repo.save_game(game)
+    with engine.connect() as conn:
+        assert conn.exec_driver_sql("SELECT count(*) FROM positions").scalar_one() == 3
+        assert conn.exec_driver_sql("SELECT count(*) FROM engine_evaluations").scalar_one() == 3

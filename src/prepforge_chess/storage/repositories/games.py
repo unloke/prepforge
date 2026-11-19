@@ -45,21 +45,18 @@ class GameRepository(EvaluationRepository):
             # under both backends' parameter caps). One round-trip per
             # chunk, not per position.
             for chunk_start in range(0, len(fen_keys), FEN_CHUNK):
-                chunk = fen_keys[chunk_start : chunk_start + FEN_CHUNK]
+                packed = {codec.pack_position(key): key for key in fen_keys[chunk_start : chunk_start + FEN_CHUNK]}
                 conn.execute(
                     _insert(conn, t.positions)
-                    .values([{"fen": key} for key in chunk])
-                    .on_conflict_do_nothing(index_elements=["fen"])
+                    .values([{"key": key} for key in packed])
+                    .on_conflict_do_nothing(index_elements=["key"])
                 )
-            pos_ids = {}
-            for pos_start in range(0, len(fen_keys), FEN_CHUNK):
-                pos_chunk = fen_keys[pos_start : pos_start + FEN_CHUNK]
                 for row in conn.execute(
-                    select(t.positions.c.id, t.positions.c.fen).where(
-                        t.positions.c.fen.in_(pos_chunk)
+                    select(t.positions.c.id, t.positions.c.key).where(
+                        t.positions.c.key.in_(list(packed))
                     )
                 ).all():
-                    pos_ids[row.fen] = int(row.id)
+                    pos_ids[packed[bytes(row.key)]] = int(row.id)
 
         # 2. Deduplicate engine evaluations by their content fingerprint and
         # insert them in chunks with RETURNING ids. The fingerprint commits to
@@ -78,7 +75,7 @@ class GameRepository(EvaluationRepository):
                 "score_cp": evaluation.score_cp,
                 "mate_in": evaluation.mate_in,
                 "best_move_uci": evaluation.best_move_uci,
-                "pv": codec.encode_pv(evaluation.pv),
+                "pv": codec.pack_pv(evaluation.pv),
                 "wdl_win": None if wdl is None else wdl[0],
                 "wdl_draw": None if wdl is None else wdl[1],
                 "wdl_loss": None if wdl is None else wdl[2],
@@ -92,7 +89,7 @@ class GameRepository(EvaluationRepository):
                 score_cp=payload["score_cp"],
                 mate_in=payload["mate_in"],
                 best_move_uci=payload["best_move_uci"],
-                pv=payload["pv"],
+                pv=codec.encode_pv(evaluation.pv),
                 wdl_win=payload["wdl_win"],
                 wdl_draw=payload["wdl_draw"],
                 wdl_loss=payload["wdl_loss"],
