@@ -1,0 +1,22 @@
+/* Native disclosure semantics stay intact; unsupported browsers open instantly. */
+@supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+  details:not([role="tabpanel"])::details-content {
+    interpolate-size: allow-keywords;
+    block-size: 0;
+    opacity: 0;
+    overflow: clip;
+    transition:
+      block-size var(--dur) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-out),
+      content-visibility var(--dur) allow-discrete;
+  }
+
+  details[open]:not([role="tabpanel"])::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    details:not([role="tabpanel"])::details-content { transition: none; }
+  }
+}

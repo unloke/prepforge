@@ -179,6 +179,24 @@
   cursor: not-allowed;
 }
 
+:is(.dock-tabs, .teams .tabs) button { position: relative; }
+
+:is(.dock-tabs, .teams .tabs) button::after {
+  content: "";
+  position: absolute;
+  inset-inline: 8px;
+  bottom: -2px;
+  height: 2px;
+  border-radius: var(--radius-chip);
+  background: var(--accent);
+  scale: 0 1;
+  transition: scale var(--dur) var(--ease-out);
+}
+
+:is(.dock-tabs, .teams .tabs) button.is-active::after { scale: 1; }
+
+.dock.is-folded .dock-tabs button::after { scale: 0; }
+
 
 .pf-info {
   flex: none;

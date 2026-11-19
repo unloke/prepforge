@@ -385,7 +385,7 @@ describe("Library row reconciliation", () => {
     const chip = { dataset: { trainChip: "due" } };
     const click = row._listeners.get("click")[0];
     click({ target: { closest: (sel) => (sel === "[data-train-chip]" ? chip : null) } });
-    expect(openTrain).toHaveBeenCalledWith({ mode: "smart", repertoireId: "rep-1", origin: chip });
+    expect(openTrain).toHaveBeenCalledWith({ mode: "smart", repertoireId: "rep-1" });
   });
 
   it("keeps the selected row selected through a refresh, in place", async () => {

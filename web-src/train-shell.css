@@ -230,20 +230,6 @@
 .train-recent-name { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .train-recent-row b { font-variant-numeric: tabular-nums; }
 
-/* ---- View transitions: chrome only, never the board --------------------- */
-:root.train-vt::view-transition-old(root),
-:root.train-vt::view-transition-new(root) { animation: none; }
-::view-transition-group(train-mode-title) { animation-duration: 380ms; animation-timing-function: var(--ease-out); }
-::view-transition-old(train-body) { animation: train-vt-out 200ms var(--ease-out) both; }
-::view-transition-new(train-body) { animation: train-vt-in 380ms var(--ease-out) both; }
-/* Named only while a Train transition runs, so route-level transitions in
-   the app shell never see Train's names; and the route's own name (.workspace,
-   view-swap.js) steps aside meanwhile so the board does not fade with it. */
-:root.train-vt #view-train .panel-scroll { view-transition-name: train-body; }
-:root.train-vt .workspace { view-transition-name: none; }
-@keyframes train-vt-out { to { opacity: 0; } }
-@keyframes train-vt-in { from { opacity: 0; transform: translateY(8px); } }
-
 /* A drill panel with nothing in it yet (a rehearsal before its first answer)
    draws no empty box under the banner. */
 #train-progress-panel:not(:has(> :not([hidden], :empty, .train-session-meta), #train-card-kind:not([hidden]), .train-stats-line:not(:empty))) { display: none; }
@@ -309,18 +295,18 @@
    the scope and Blitz are its subline, the next cards a group under that.
    Rehearse is one row. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
-  #view-train .train-row[data-row="smart"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "opts" "go" "next"; gap: 4px; padding: 8px 4px 0; background: none; }
+  #view-train .train-row[data-row="smart"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "opts" "go" "next"; gap: 4px; padding: 8px 0 0; background: none; }
   #view-train [data-row="smart"] .train-row-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  #view-train [data-row="smart"] .train-row-text { align-items: center; }
+  #view-train [data-row="smart"] .train-row-text { align-items: center; padding-inline: 14px; }
   #view-train [data-row="smart"] .train-outlook-lead { display: flex; align-items: center; gap: 12px; color: var(--text); font-size: 18px; }
   #view-train [data-row="smart"] .train-outlook-lead b { margin: 0; font: 400 64px/0.9 var(--serif); }
-  #view-train [data-row="smart"] .train-row-opts { justify-content: flex-start; gap: 6px; margin: 0 0 8px; }
+  #view-train [data-row="smart"] .train-row-opts { justify-content: flex-start; gap: 6px; margin: 0 0 8px; padding-inline: 14px; }
   #view-train [data-row="smart"] .train-row-go { width: 100%; height: 40px; font-size: 15px; }
   #view-train :is([data-row="smart"], [data-row="all_lines"]) .train-row-opts > .train-chip { flex: 0 1 auto; height: 28px; min-height: 0; padding: 0; border: 0; background: none; color: var(--muted); font-size: 13px; gap: 4px; }
   #view-train [data-row="smart"] .train-blitz-row { flex: none; margin: 0; gap: 6px; color: var(--muted); font-size: 13px; }
   #view-train [data-row="smart"] .train-blitz-row .pf-row-label { color: inherit; font-size: inherit; }
   #view-train [data-row="smart"] .train-blitz-row::before { content: "\B7"; margin-right: 2px; }
-  #view-train .train-due-next { margin: 8px -4px 0; padding: 0 6px; border-radius: var(--radius-card); background: var(--panel); }
+  #view-train .train-due-next { margin: 8px 0 0; padding: 0 6px; border-radius: var(--radius-card); background: var(--panel); }
   #view-train .train-due-next li + li { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
   #view-train .train-due-line { align-items: center; min-height: 46px; font-size: 15px; }
   #view-train .train-row[data-row="all_lines"] { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "text opts go"; padding: 6px 8px 6px 14px; }

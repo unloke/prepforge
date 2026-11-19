@@ -423,26 +423,7 @@
 }
 
 
-/* A route change is a View Transition (view-swap.js): the workspace is the one
-   named element, so the rail stays put and the page cross-fades with a few px
-   of travel. The group never morphs size. Named only during the swap: a named
-   element is a stacking layer, and a page's fixed sheet must rise over the
-   phone tab bar. */
-:root.view-swap .workspace { view-transition-name: view; }
-
-
-::view-transition-group(view) { animation: none; }
-
-
-::view-transition-old(view) { animation: view-leave var(--dur-fast) var(--ease-out) both; }
-
-
-::view-transition-new(view) { animation: view-enter var(--dur) var(--ease-out) both; }
-
-
-@keyframes view-leave {
-  to { opacity: 0; }
-}
+.is-view-entering { animation: view-enter var(--dur) var(--ease-out) both; }
 
 
 /* One loading state: until the hold leaves the DOM the default view stays
@@ -452,7 +433,7 @@
 }
 
 
-/* A view switch is a cross-fade plus a few px of travel, never a layout
+/* A view switch is a fade plus a few px of travel, never a layout
    change: opacity and transform only. */
 @keyframes view-enter {
   from {
@@ -484,7 +465,7 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--viewport-bottom);
     z-index: 40;
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--panel);
@@ -694,4 +675,3 @@
 @media (min-width: 761px) and (max-height: 560px) {
   .rail .nav-group-label { display: none; }
 }
-

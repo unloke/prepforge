@@ -1,6 +1,6 @@
 # Backend consistency
 
-Analysis reports persist a self-contained `move_results_json` snapshot alongside
+Analysis reports persist a self-contained `move_results` snapshot (zlib-compressed JSON bytes) alongside
 the run summary in `analysis_results`. Recall selects both in one owner-scoped
 statement, ordered by `(analyzed_at DESC, id DESC)`. Later writes to shared game
 annotations and reclamation of unused engine evaluations do not alter a report.

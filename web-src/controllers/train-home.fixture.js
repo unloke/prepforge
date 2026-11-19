@@ -17,6 +17,7 @@ export function fakeElement(id) {
     id, hidden: false, textContent: "", innerHTML: "", dataset: {}, style: {}, disabled: false,
     classList: { add() {}, remove() {}, toggle() {} },
     listeners: {}, attributes: {},
+    getAnimations: () => [],
     setAttribute(name, value) { el.attributes[name] = String(value); }, getAttribute(name) { return el.attributes[name] ?? null; }, focus() {},
     addEventListener(type, fn) { el.listeners[type] = fn; },
     click() { return el.listeners.click?.({ currentTarget: el, target: el }); },
