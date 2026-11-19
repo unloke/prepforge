@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { atlasAnalysis, atlasScoreText, indexTree, positionThumbnail, routeGlyph, subtreeNodes } from "./build-atlas.js";
+import { atlasAnalysis, atlasScoreText, positionThumbnail, routeGlyph, subtreeNodes } from "./build-atlas.js";
+import { indexTree } from "../build-tree.js";
 import { html } from "../html.js";
 
 const nodes = [

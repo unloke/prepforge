@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { createGeneratePreview } from "./generate-preview.js";
 import { createMoveTreeRenderer } from "../views/shared/movetree.js";
+import { createBuildView } from "../views/build.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const add = (tempId, parentRef, moveUci) => ({ action: "planned_add", tempId, parentRef, moveUci });
@@ -106,5 +107,31 @@ describe("Generate controller integration", () => {
     expect(source).toContain("if (appState.buildNodeById.get(nodeId).preview) return;");
     expect(source.match(/if \(node\?\.preview\) return;/g)).toHaveLength(2);
     expect(source).toContain("appState.buildGenerationPreview?.clear(false)");
+  });
+});
+
+describe("preview rendering with the shared Build index", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("patches a variation using raw nodes and the indexed children", () => {
+    const h = harness();
+    h.preview.add(add("tmp-1", "root", "e2e4"));
+    const appState = { build: { ...h.build, repertoire_id: "rep", color: "white" },
+      buildNodeById: h.byId, buildCurrentNodeId: "root" };
+    const container = { innerHTML: "", querySelector: () => null, querySelectorAll: () => [] };
+    vi.stubGlobal("document", { getElementById: (id) => id === "builder-tree" ? container : null });
+    vi.stubGlobal("CSS", { escape: (id) => id });
+    const renderer = { ...createMoveTreeRenderer(), bindMoveTreeClicks: vi.fn() };
+    const view = createBuildView({ appState, boards: {}, getMoveTreeRenderer: () => renderer,
+      ensureMoveTreeRenderer: async () => renderer, selectBuildNode: vi.fn(),
+      openNodeContextMenu: vi.fn(), buildBranchContext: () => null });
+    view.renderBuilderTree();
+    const variation = { outerHTML: "", querySelector: () => ({ dataset: { collapseId: "tmp-1" } }) };
+    container.querySelector = () => ({ closest: () => variation });
+    h.preview.add(add("tmp-2", "tmp-1", "e7e5"));
+    view.renderGeneratePreview(new Set(["tmp-1"]));
+    expect(variation.outerHTML).toContain('data-node-id="tmp-2"');
+    expect(variation.outerHTML).toContain('class="mtree-san">e5');
+    expect(variation.outerHTML).toContain(" disabled");
+    h.preview.clear(false);
   });
 });

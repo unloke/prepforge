@@ -31,14 +31,15 @@ export function createMoveTreeRenderer() {
   // Screen readers get the SAN alone ("e4"), which no one can act on. Name the
   // button the way a person reads the line: move number and side, the SAN, and
   // the grade (or "variation") when the view decorates one.
-  function moveTokenLabel(node, deco) {
-    const num = node.moveNumber == null ? "" : `${node.moveNumber}${node.side === "black" ? "..." : "."}`;
-    const side = node.side === "black" ? "Black" : "White";
-    return [`${num} ${node.san}`, side, deco.label].filter(Boolean).join(", ");
+  function moveTokenLabel(san, moveNumber, side, decoration) {
+    const num = moveNumber == null ? "" : `${moveNumber}${side === "black" ? "..." : "."}`;
+    return [`${num} ${san}`, side === "black" ? "Black" : "White", decoration].filter(Boolean).join(", ");
   }
 
   function pushMoveToken(chunks, node, opts, forceNumber, inVar) {
-    const isWhite = node.side === "white";
+    const side = opts.sideOf ? opts.sideOf(node) : node.side;
+    const moveNumber = opts.moveNumberOf ? opts.moveNumberOf(node) : node.moveNumber;
+    const isWhite = side === "white";
     const showNum = isWhite || forceNumber;
     const deco = (opts.decorate && opts.decorate(node)) || {};
     // The side places the move in its column where a view sets the main line
@@ -48,11 +49,11 @@ export function createMoveTreeRenderer() {
     const isCurrent = node.id === opts.currentId;
     if (isCurrent) classes.push("is-current");
     else if (opts.pathIds && opts.pathIds.has(node.id)) classes.push("on-path");
-    const label = moveTokenLabel(node, deco);
+    const label = moveTokenLabel(node.san, moveNumber, side, deco.label);
     const wrapTok = inVar && showNum;
     if (wrapTok) chunks.push(`<span class="mtree-tok">`);
     if (showNum) {
-      chunks.push(`<span class="mtree-num">${escapeHtml(node.moveNumber)}${isWhite ? "." : "…"}</span>`);
+      chunks.push(`<span class="mtree-num">${escapeHtml(moveNumber)}${isWhite ? "." : "…"}</span>`);
     }
     chunks.push(
       `<button class="${escapeHtml(classes.join(" "))}" data-node-id="${escapeHtml(node.id)}" aria-label="${escapeHtml(label)}"`,
@@ -91,8 +92,8 @@ export function createMoveTreeRenderer() {
       // list first: Build's fork bar and the server both call 3...Bf5 the
       // mainline even when 3...Na6 arrives earlier in the payload. A child
       // without the flag (Analyze's variation tree) falls back to array order.
-      const kids = mainlineFirst(cur.children || []);
-      pending = kids.slice(1);
+      const kids = childrenOf(cur, opts);
+      pending = kids.length > 1 ? kids.slice(1) : [];
       cur = kids[0] || null;
     }
   }
@@ -135,13 +136,17 @@ export function createMoveTreeRenderer() {
     return [kids[index], ...kids.slice(0, index), ...kids.slice(index + 1)];
   }
 
+  function childrenOf(node, opts) {
+    return opts.orderedChildren ? opts.orderedChildren(node) : mainlineFirst(node.children || []);
+  }
+
   function renderMoveTree(root, opts) {
-    const kids = root.children || [];
+    const kids = childrenOf(root, opts);
     const chunks = [`<div class="mtree">`];
     if (!kids.length) {
       chunks.push(`<div class="empty-state">${escapeHtml(opts.emptyText || "No moves yet.")}</div></div>`);
     } else {
-      const [main, ...alts] = mainlineFirst(kids);
+      const [main, ...alts] = kids;
       chunks.push(`<div class="mtree-line is-main">`);
       pushMoveLine(chunks, main, opts, alts);
       chunks.push(`</div></div>`);
