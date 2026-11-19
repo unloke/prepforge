@@ -773,6 +773,10 @@ async function onExplorerRowClick(rows, uci) {
   const currentFen = node ? node.fen : boards.build && boards.build.fen;
   if (!node || !rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
   const existing = buildChildForUci(node.id, uci);
+  if (existing?.preview) {
+    rollback();
+    return;
+  }
   if (existing) {
     await selectBuildNode(existing.id);
     return;
@@ -1366,7 +1370,6 @@ async function generateFromCurrentNode() {
     return;
   }
   const isCurrent = captureBuildContext();
-  const generationBuild = appState.build;
   let nodeId = appState.buildCurrentNodeId;
   if (!appState.build || !nodeId) {
     setStatus("Open or create a repertoire first");
@@ -1386,6 +1389,7 @@ async function generateFromCurrentNode() {
     return;
   }
   nodeId = resolveBuildId(nodeId);
+  const generationBuild = appState.build;
   const ownColor = appState.build.color === "black" ? "black" : "white";
   const anchorFen = appState.buildNodeById.get(nodeId)?.fen || "";
   const userToMove = (anchorFen.split(" ")[1] === "b" ? "black" : "white") === ownColor;
