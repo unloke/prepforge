@@ -226,12 +226,12 @@ class GameRepository(EvaluationRepository):
                     "summary_json": _json_dump(result.summary),
                     "critical_ply": ",".join(str(p) for p in result.critical_ply),
                     "quality_json": _json_dump(result.quality) if result.quality else None,
-                    "move_results_json": codec.encode_analysis_moves(result.move_results),
+                    "move_results": codec.encode_analysis_moves(result.move_results),
                 },
                 conflict=[t.analysis_results.c.id],
                 update_cols=(
                     "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
-                    "quality_json", "move_results_json",
+                    "quality_json", "move_results",
                 ),
             )
 
@@ -456,12 +456,12 @@ class GameRepository(EvaluationRepository):
                     "summary_json": _json_dump(result.summary),
                     "critical_ply": ",".join(str(p) for p in result.critical_ply),
                     "quality_json": _json_dump(result.quality) if result.quality else None,
-                    "move_results_json": codec.encode_analysis_moves(result.move_results),
+                    "move_results": codec.encode_analysis_moves(result.move_results),
                 },
                 conflict=[t.analysis_results.c.id],
                 update_cols=(
                     "analyzed_at", "engine", "depth", "summary_json", "critical_ply",
-                    "quality_json", "move_results_json",
+                    "quality_json", "move_results",
                 ),
             )
 
@@ -607,10 +607,10 @@ class GameRepository(EvaluationRepository):
         # A snapshot written before the current codec cannot be read: it is as
         # good as missing, and the run is analyzed again rather than failing.
         try:
-            moves = codec.decode_analysis_moves(row["move_results_json"])
+            moves = codec.decode_analysis_moves(row["move_results"])
         except ValueError:
             moves = None
-        if row["move_results_json"] is None or moves is None:
+        if row["move_results"] is None or moves is None:
             quality = dict(quality or {}, move_snapshot_missing=True)
         return AnalysisResult(
             game_id=row["game_id"],
