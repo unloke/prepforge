@@ -149,6 +149,7 @@ export async function generateBuildPlan({
   // { type: "expanded", relativePly } after a node finishes expanding. Purely
   // observational — it never affects the plan, so determinism is unchanged.
   onEvent = () => {},
+  maxChanges = null,
   signal = null,
 } = {}) {
   if (!engine || !maia || !chess) throw new Error("generateBuildPlan requires engine, maia, and chess adapters");
@@ -159,6 +160,10 @@ export async function generateBuildPlan({
   const resolvedOwnColor = ownColor || repertoireColor;
   const depthLimit = Math.max(1, Math.floor(Number(plyDepth) || 1));
   const branchLimit = Math.max(1, Math.floor(Number(ownSideCandidateCount) || 1));
+  const changeLimit =
+    maxChanges !== null && Number.isFinite(Number(maxChanges)) && Number(maxChanges) > 0
+      ? Math.floor(Number(maxChanges))
+      : null;
   const rating = clampRating(maiaRating);
   const mode = String(detailMode || "balanced").toLowerCase();
   const shareOr = (value, fallback) =>
@@ -283,6 +288,7 @@ export async function generateBuildPlan({
   // _expand (opening_builder.py:228-355).
   const expand = async (node, relativePly, onMainlinePath) => {
     if (relativePly >= depthLimit) return;
+    if (changeLimit !== null && changes.length >= changeLimit) return;
     checkAbort();
     emit({ type: "expanded", relativePly });
 
@@ -302,6 +308,7 @@ export async function generateBuildPlan({
       let generatedBranches = 0;
       for (const candidate of candidates) {
         if (manualPreparedUcis.has(candidate.moveUci)) continue; // preserve manual move verbatim
+        if (changeLimit !== null && changes.length >= changeLimit) break;
         const child = upsertChild(
           node,
           candidate.moveUci,
@@ -311,12 +318,16 @@ export async function generateBuildPlan({
           manualPreparedUcis.size === 0, // intended mainline only when nothing manual is present
         );
         // off the mainline path once any manual-prepared move owns this node
-        await expand(child, relativePly + 1, onMainlinePath && manualPreparedUcis.size === 0);
+        if (changeLimit === null || changes.length + 2 <= changeLimit) {
+          await expand(child, relativePly + 1, onMainlinePath && manualPreparedUcis.size === 0);
+        }
         generatedBranches += 1;
         if (generatedBranches >= branchLimit) break;
       }
       return;
     }
+
+    if (changeLimit !== null && changes.length + 2 > changeLimit) return;
 
     // Opponent's turn → the engine's best move is the MAINLINE; Maia supplies the human
     // BRANCHES. Threshold is 10% on the mainline path else 30% (unchanged). The two sources
@@ -386,6 +397,7 @@ export async function generateBuildPlan({
 
     for (const branchPred of kept) {
       if (branchPred.move_uci === mainlineUci) continue; // already the mainline child
+      if (changeLimit !== null && changes.length >= changeLimit) break;
       const branchChild = upsertChild(
         node,
         branchPred.move_uci,
@@ -394,7 +406,7 @@ export async function generateBuildPlan({
         branchPred.probability,
         false,
       );
-      if (mode === "simple") continue; // create the branch node but don't recurse
+      if (mode === "simple" || (changeLimit !== null && changes.length >= changeLimit)) continue; // create the branch node but don't recurse
       await expand(branchChild, relativePly + 1, false); // now off the mainline path
     }
   };

@@ -1,7 +1,7 @@
 """Evaluations persistence."""
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Mapping, Optional
+from typing import Any, Dict, Iterable, Mapping, Optional, Tuple
 from sqlalchemy import delete, func, select, union
 from sqlalchemy.engine import Connection
 from prepforge_chess.core.models import EngineEvaluation
@@ -9,6 +9,9 @@ from prepforge_chess.storage import codec
 from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.common import _insert
 from prepforge_chess.storage.repositories.base import Repository
+
+_EVAL_IN_CHUNK = 400
+_EVAL_INSERT_CHUNK = 40
 
 
 class EvaluationRepository(Repository):
@@ -80,20 +83,12 @@ class EvaluationRepository(Repository):
         pos_cache[key] = int(pos_id)
         return int(pos_id)
 
-    def _save_engine_evaluation(
-        self,
-        conn: Connection,
-        evaluation: Optional[EngineEvaluation],
-        fen: str,
-        pos_cache: Optional[Dict[str, int]] = None,
-    ) -> Optional[int]:
-        if evaluation is None:
-            return None
-        if pos_cache is None:
-            pos_cache = {}
-        position_id = self._ensure_position(conn, fen, pos_cache)
+    @staticmethod
+    def _evaluation_values(
+        position_id: int, pos_key: str, evaluation: EngineEvaluation
+    ) -> Dict[str, Any]:
         wdl = codec.encode_wdl(evaluation.wdl)
-        values = {
+        values: Dict[str, Any] = {
             "position_id": position_id,
             "engine": evaluation.engine,
             "depth": codec.encode_search_limit(evaluation.depth),
@@ -107,20 +102,38 @@ class EvaluationRepository(Repository):
             "wdl_draw": None if wdl is None else wdl[1],
             "wdl_loss": None if wdl is None else wdl[2],
         }
-        values["fingerprint"] = codec.fingerprint_bytes(codec.evaluation_fingerprint(
-            engine=values["engine"],
-            position_fen=codec.position_key(fen),
-            depth=values["depth"],
-            nodes=values["nodes"],
-            time_ms=values["time_ms"],
-            score_cp=values["score_cp"],
-            mate_in=values["mate_in"],
-            best_move_uci=values["best_move_uci"],
-            pv=values["pv"],
-            wdl_win=values["wdl_win"],
-            wdl_draw=values["wdl_draw"],
-            wdl_loss=values["wdl_loss"],
-        ))
+        values["fingerprint"] = codec.fingerprint_bytes(
+            codec.evaluation_fingerprint(
+                engine=values["engine"],
+                position_fen=pos_key,
+                depth=values["depth"],
+                nodes=values["nodes"],
+                time_ms=values["time_ms"],
+                score_cp=values["score_cp"],
+                mate_in=values["mate_in"],
+                best_move_uci=values["best_move_uci"],
+                pv=values["pv"],
+                wdl_win=values["wdl_win"],
+                wdl_draw=values["wdl_draw"],
+                wdl_loss=values["wdl_loss"],
+            )
+        )
+        return values
+
+    def _save_engine_evaluation(
+        self,
+        conn: Connection,
+        evaluation: Optional[EngineEvaluation],
+        fen: str,
+        pos_cache: Optional[Dict[str, int]] = None,
+    ) -> Optional[int]:
+        if evaluation is None:
+            return None
+        if pos_cache is None:
+            pos_cache = {}
+        pos_key = codec.position_key(fen)
+        position_id = self._ensure_position(conn, pos_key, pos_cache)
+        values = self._evaluation_values(position_id, pos_key, evaluation)
         # Evaluations are immutable snapshots: identical content dedupes onto
         # one row (cache hit below), while a DIFFERENT result carries a
         # different fingerprint and therefore gets its own row. Nothing is ever
@@ -140,6 +153,119 @@ class EvaluationRepository(Repository):
                 )
             ).scalar_one()
         return int(ev_id)
+
+    def save_engine_evaluations_batched(
+        self,
+        conn: Connection,
+        items: Iterable[Tuple[Any, Optional[EngineEvaluation], str]],
+        pos_cache: Optional[Dict[str, int]] = None,
+    ) -> Dict[Any, int]:
+        """Batch-upsert unique positions and evaluations in bounded SQL chunks."""
+        pending = [
+            (item_key, evaluation, codec.position_key(fen))
+            for item_key, evaluation, fen in items
+            if evaluation is not None
+        ]
+        if not pending:
+            return {}
+        if pos_cache is None:
+            pos_cache = {}
+
+        missing_keys = list(dict.fromkeys(pos_key for _, _, pos_key in pending if pos_key not in pos_cache))
+        for offset in range(0, len(missing_keys), _EVAL_IN_CHUNK):
+            chunk = missing_keys[offset:offset + _EVAL_IN_CHUNK]
+            conn.execute(
+                _insert(conn, t.positions)
+                .values([{"fen": k} for k in chunk])
+                .on_conflict_do_nothing(index_elements=["fen"])
+            )
+            for row in conn.execute(
+                select(t.positions.c.id, t.positions.c.fen).where(t.positions.c.fen.in_(chunk))
+            ).all():
+                pos_cache[row.fen] = int(row.id)
+
+        by_fp: Dict[bytes, Dict[str, Any]] = {}
+        item_fps: Dict[Any, bytes] = {}
+        for item_key, evaluation, pos_key in pending:
+            values = self._evaluation_values(pos_cache[pos_key], pos_key, evaluation)
+            fp = bytes(values["fingerprint"])
+            by_fp.setdefault(fp, values)
+            item_fps[item_key] = fp
+
+        eval_ids: Dict[bytes, int] = {}
+        eval_rows = list(by_fp.values())
+        for offset in range(0, len(eval_rows), _EVAL_INSERT_CHUNK):
+            chunk = eval_rows[offset:offset + _EVAL_INSERT_CHUNK]
+            stmt = (
+                _insert(conn, t.engine_evaluations)
+                .values(chunk)
+                .on_conflict_do_nothing(index_elements=["fingerprint"])
+                .returning(t.engine_evaluations.c.id, t.engine_evaluations.c.fingerprint)
+            )
+            for row in conn.execute(stmt).all():
+                eval_ids[bytes(row.fingerprint)] = int(row.id)
+
+        missing_fps = [fp for fp in by_fp if fp not in eval_ids]
+        for offset in range(0, len(missing_fps), _EVAL_IN_CHUNK):
+            chunk = missing_fps[offset:offset + _EVAL_IN_CHUNK]
+            for row in conn.execute(
+                select(t.engine_evaluations.c.id, t.engine_evaluations.c.fingerprint).where(
+                    t.engine_evaluations.c.fingerprint.in_(chunk)
+                )
+            ).all():
+                eval_ids[bytes(row.fingerprint)] = int(row.id)
+
+        return {item_key: eval_ids[fp] for item_key, fp in item_fps.items()}
+
+    def _reclaim_unreferenced_evaluations(
+        self, conn: Connection, eval_ids: Iterable[Optional[int]]
+    ) -> int:
+        """Delete evaluations (and newly-orphaned positions) no longer referenced by FK."""
+        wanted = sorted({int(i) for i in eval_ids if i is not None})
+        if not wanted:
+            return 0
+        deleted = 0
+        ref_cols = (
+            t.moves.c.engine_eval_before_id,
+            t.moves.c.engine_eval_after_id,
+            t.moves.c.best_move_eval_id,
+            t.opening_nodes.c.engine_evaluation_id,
+        )
+        for offset in range(0, len(wanted), _EVAL_IN_CHUNK):
+            chunk = wanted[offset:offset + _EVAL_IN_CHUNK]
+            still_used = set()
+            for col in ref_cols:
+                still_used.update(
+                    int(row[0]) for row in conn.execute(select(col).where(col.in_(chunk))).all()
+                )
+            orphan_evals = [eid for eid in chunk if eid not in still_used]
+            if not orphan_evals:
+                continue
+            pos_ids = sorted({
+                int(row[0])
+                for row in conn.execute(
+                    select(t.engine_evaluations.c.position_id).where(
+                        t.engine_evaluations.c.id.in_(orphan_evals)
+                    )
+                ).all()
+            })
+            res = conn.execute(
+                delete(t.engine_evaluations).where(t.engine_evaluations.c.id.in_(orphan_evals))
+            )
+            deleted += int(res.rowcount or 0)
+            if pos_ids:
+                used_pos = {
+                    int(row[0])
+                    for row in conn.execute(
+                        select(t.engine_evaluations.c.position_id).where(
+                            t.engine_evaluations.c.position_id.in_(pos_ids)
+                        )
+                    ).all()
+                }
+                orphan_pos = [pid for pid in pos_ids if pid not in used_pos]
+                if orphan_pos:
+                    conn.execute(delete(t.positions).where(t.positions.c.id.in_(orphan_pos)))
+        return deleted
 
     def _load_evaluations(
         self, conn: Connection, eval_ids: Iterable[Optional[int]]

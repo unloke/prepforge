@@ -1233,7 +1233,7 @@ function estimateBuildGenerateTotal({ plyDepth, mainThreshold, branchThreshold, 
     if (!userPly) branchNodes = branchNodes * branchReplies + (mainReplies - 1);
     total += 1 + branchNodes; // the mainline node plus everything branched off it
   }
-  return Math.max(4, Math.ceil(total * 1.2));
+  return Math.min(typeof MAX_PLAN_CHANGES === "number" ? MAX_PLAN_CHANGES : 2000, Math.max(4, Math.ceil(total * 1.2)));
 }
 
 // Generate dialog: every knob in plain view, no presets. Depth is counted in full
@@ -1439,7 +1439,7 @@ async function generateFromCurrentNode() {
         current: progress.done,
         total: progress.total,
         message: progress.plannedMoves
-          ? `building tree · +${progress.plannedMoves} moves`
+          ? `+${progress.plannedMoves} moves · building tree`
           : "searching candidate moves",
       });
     }, 1800);
@@ -1499,7 +1499,7 @@ async function generateFromCurrentNode() {
           current: progress.done,
           total: progress.total,
           message: progress.plannedMoves
-            ? `expanding branches · +${added} moves`
+            ? `+${added} moves · expanding branches`
             : "expanding branches",
         });
       },
@@ -1528,36 +1528,14 @@ async function generateFromCurrentNode() {
       // instead while the bar scans until tree generation resumes onProgress ticks.
       onMaiaInitProgress: ({ phase, loaded, total }) => {
         lastInitAt = Date.now();
-        if (phase === "download") {
-          const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-          notices.updateJob({
-            current: 0,
-            total: 1,
-            phase: "maia-init",
-            message: `downloading Maia model · ${pct}%`,
-          });
-        } else if (phase === "cache") {
-          notices.updateJob({
-            current: 0,
-            total: 1,
-            phase: "maia-init",
-            message: "loading cached Maia model",
-          });
-        } else if (phase === "verify") {
-          notices.updateJob({
-            current: 0,
-            total: 1,
-            phase: "maia-init",
-            message: "verifying Maia model",
-          });
-        } else if (phase === "session") {
-          notices.updateJob({
-            current: 0,
-            total: 1,
-            phase: "maia-init",
-            message: "starting Maia engine",
-          });
-        }
+        const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+        const msg = {
+          download: `downloading Maia model · ${pct}%`,
+          cache: "loading cached Maia model",
+          verify: "verifying Maia model",
+          session: "starting Maia engine",
+        }[phase];
+        if (msg) notices.updateJob({ current: 0, total: 1, phase: "maia-init", message: msg });
       },
     });
     if (nudgeTimer) {
@@ -1600,8 +1578,9 @@ async function generateFromCurrentNode() {
         repertoire_id: generatedRepertoireId,
         root_node_id: nodeId,
         plan,
+        ...(globalThis.crypto?.randomUUID ? { operation_id: globalThis.crypto.randomUUID() } : {}),
       },
-      { signal: controller.signal },
+      { timeoutMs: 180_000 },
     );
     if (isCurrent()) await hydrateBuild(payload, nodeId);
     const summary = payload.summary || {};
@@ -1610,6 +1589,7 @@ async function generateFromCurrentNode() {
       message: `+${summary.added_nodes || 0} new moves`,
       onClick: () => switchView("build"),
     });
+    setStatus(`Added ${countOf(summary.added_nodes || 0, "new move")}`, { severity: "success" });
   } catch (error) {
     if (error && (error.name === "AbortError" || error.cancelled)) {
       // Aborted before the POST: nothing persisted, existing tree still rendered.

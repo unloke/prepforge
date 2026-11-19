@@ -15,6 +15,7 @@ import { createMaia3Provider } from "./maia3-provider.js";
 import { isTerminalPosition } from "./game-analyzer.js";
 import { waitForEngineSearch } from "./engine-search-wait.js";
 import { generateBuildPlan, buildExistingSubtreeFromFlatNodes, SOURCE } from "./build-generator.js";
+import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
 
 const DEFAULT_GEN_DEPTH = 8; // match the server's GenerateConfig / EngineAnalysisConfig(depth=8)
 const DEFAULT_MAX_MULTIPV = 5; // standalone adapter default; the orchestrator sizes it precisely
@@ -116,6 +117,9 @@ export function createMaiaPredictionAdapter(provider, { signal = null } = {}) {
 export function createChessAdapter() {
   return {
     sideToMove(fen) {
+      const turn = typeof fen === "string" ? fen.split(" ")[1] : "";
+      if (turn === "w") return "white";
+      if (turn === "b") return "black";
       return new Chess(fen).turn() === "w" ? "white" : "black";
     },
     applyUci(fen, uci) {
@@ -166,6 +170,7 @@ export async function runBrowserBuildGenerate({
   branchThreshold = null,
   preserveManualPreparedMoves = true,
   depth = DEFAULT_GEN_DEPTH,
+  maxChanges = MAX_PLAN_CHANGES,
   signal = null,
   onProgress = () => {},
   onEvent = () => {},
@@ -231,6 +236,7 @@ export async function runBrowserBuildGenerate({
       chess: createChessAdapter(),
       onProgress,
       onEvent,
+      maxChanges,
       signal,
     });
   } finally {

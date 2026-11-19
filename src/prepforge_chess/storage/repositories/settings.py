@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 REVIEW_ARCHIVE_KEY = "recap.deleted_reviews"
 PLAYED_SESSIONS_KEY = "recap.replaced_sessions"
+BUILD_RECEIPT_PREFIX = "build-receipt:"
+BUILD_RECEIPTS_KEPT = 32
 
 
 def prune_review_archive(stamps: Iterable[Any], since_iso: str) -> List[str]:
@@ -63,6 +65,22 @@ class SettingsRepository(Repository):
             set_={"value_json": stmt.excluded.value_json, "updated_at": stmt.excluded.updated_at},
         )
         conn.execute(stmt)
+        if key.startswith(BUILD_RECEIPT_PREFIX):
+            stale_keys = (
+                select(t.user_settings.c.key)
+                .where(
+                    t.user_settings.c.user_id == user_id,
+                    t.user_settings.c.key.like(f"{BUILD_RECEIPT_PREFIX}%"),
+                )
+                .order_by(t.user_settings.c.updated_at.desc(), t.user_settings.c.key.desc())
+                .offset(BUILD_RECEIPTS_KEPT)
+            )
+            conn.execute(
+                delete(t.user_settings).where(
+                    t.user_settings.c.user_id == user_id,
+                    t.user_settings.c.key.in_(stale_keys),
+                )
+            )
 
     def lock_user_setting(
         self, conn: Connection, user_id: str, key: str, default: Any = None
@@ -150,7 +168,8 @@ class SettingsRepository(Repository):
         with self.engine.connect() as conn:
             rows = conn.execute(
                 select(t.user_settings.c.key, t.user_settings.c.value_json).where(
-                    t.user_settings.c.user_id == owner_user_id
+                    t.user_settings.c.user_id == owner_user_id,
+                    ~t.user_settings.c.key.like(f"{BUILD_RECEIPT_PREFIX}%"),
                 )
             ).all()
         return {row[0]: _json_load(row[1], None) for row in rows}

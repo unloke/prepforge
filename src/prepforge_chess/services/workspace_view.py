@@ -1,27 +1,32 @@
 """Build-workspace serialization — a pure view over stored repertoire data.
 
 Turns a stored repertoire (tree + training progress) into the JSON payload the SPA's
-Build view consumes. It computes **no chess**: it reads the persisted tree, asks the
-(now Maia-free) ``OpeningBuilderService`` for a ``tree_report`` (pure traversal), and
+Build view consumes. It computes **no chess**: it traverses the persisted tree once and
 layers mastery/health on top for FastAPI ``/api/build/load``.
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from prepforge_chess.core.models import EngineEvaluation, OpeningNode, Repertoire
-from prepforge_chess.services.opening_builder import OpeningBuilderService, OpeningTreeItem
 from prepforge_chess.services.progress import compute_health, mastery_map
 from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 _EMPTY_SUMMARY = {"added_nodes": 0, "updated_nodes": 0, "high_probability_unprepared": 0}
 
 
-def _walk(node: OpeningNode) -> Iterator[OpeningNode]:
-    yield node
-    for child in node.children:
-        yield from _walk(child)
+def _walk_with_depth(root: OpeningNode) -> List[Tuple[OpeningNode, int]]:
+    """Iterative pre-order DFS producing (node, depth) pairs without intermediate items."""
+    out: List[Tuple[OpeningNode, int]] = []
+    stack: List[Tuple[OpeningNode, int]] = [(root, 0)]
+    while stack:
+        node, depth = stack.pop()
+        out.append((node, depth))
+        next_depth = depth + 1
+        for child in reversed(node.children):
+            stack.append((child, next_depth))
+    return out
 
 
 def engine_eval_to_json(ev: Optional[EngineEvaluation]) -> Optional[Dict[str, Any]]:
@@ -41,16 +46,16 @@ def engine_eval_to_json(ev: Optional[EngineEvaluation]) -> Optional[Dict[str, An
     }
 
 
-def opening_item_to_json(
-    item: OpeningTreeItem, node: OpeningNode, mastery: Optional[str] = None
+def opening_node_to_json(
+    node: OpeningNode, depth: int, mastery: Optional[str] = None
 ) -> Dict[str, Any]:
     move = node.move
     return {
-        "id": item.node_id,
-        "parent_id": item.parent_id,
-        "depth": item.depth,
-        "san": item.san,
-        "uci": item.uci,
+        "id": node.id,
+        "parent_id": node.parent_id,
+        "depth": depth,
+        "san": move.san if move is not None else "root",
+        "uci": move.uci if move is not None else None,
         "fen": node.fen,
         "fen_before": move.fen_before if move is not None else None,
         "fen_after": move.fen_after if move is not None else node.fen,
@@ -58,14 +63,14 @@ def opening_item_to_json(
         "ply": move.ply if move is not None else 0,
         "move_side": move.side_to_move.value if move is not None else None,
         "side_to_move": node.side_to_move.value,
-        "source": item.source.value,
-        "is_mainline": item.is_mainline,
-        "is_prepared": item.is_prepared,
-        "is_enabled": item.is_enabled,
-        "maia_probability": item.maia_probability,
+        "source": node.source.value,
+        "is_mainline": node.is_mainline,
+        "is_prepared": node.is_user_prepared_move,
+        "is_enabled": node.is_enabled,
+        "maia_probability": node.maia_probability,
         "engine_evaluation": engine_eval_to_json(node.engine_evaluation),
-        "tags": item.tags,
-        "comment": item.comment,
+        "tags": list(node.tags),
+        "comment": node.comment,
         "arrows": list(node.arrows),
         "circles": list(node.circles),
         "mastery": mastery,
@@ -89,13 +94,9 @@ def build_workspace_payload(
     repertoire = repertoire or repository.load_repertoire(repertoire_id)
     if repertoire is None:
         raise ValueError("repertoire not found: {0}".format(repertoire_id))
-    # Maia-free: tree_report is a pure traversal of the stored tree (no engine/model).
-    report = OpeningBuilderService(repository).tree_report(
-        repertoire.id, include_disabled=True, repertoire=repertoire
-    )
-    nodes_by_id = {node.id: node for node in _walk(repertoire.root_node)}
+    walked = _walk_with_depth(repertoire.root_node)
     if selected_node_id:
-        selected = nodes_by_id.get(selected_node_id)
+        selected = next((node for node, _ in walked if node.id == selected_node_id), None)
         if selected is None:
             raise ValueError("opening node not found: {0}".format(selected_node_id))
     else:
@@ -136,11 +137,11 @@ def build_workspace_payload(
         "selected_node_id": selected.id,
         "selected_fen": selected.fen,
         "summary": summary or dict(_EMPTY_SUMMARY),
-        "nodes_total": report.total_nodes,
+        "nodes_total": len(walked),
         "revision": revision,
         "health": health_data,
         "nodes": [
-            opening_item_to_json(item, nodes_by_id[item.node_id], mastery.get(item.node_id))
-            for item in report.visible_nodes
+            opening_node_to_json(node, depth, mastery.get(node.id))
+            for node, depth in walked
         ],
     }

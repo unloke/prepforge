@@ -28,6 +28,7 @@ const MASTERY_WORDS = {
 // target), so its window is shorter: two rows above the line, not three.
 const FORK_WINDOW = 8;
 const FORK_WINDOW_PHONE = 6;
+const AUTO_COLLAPSE_THRESHOLD = 250;
 
 function forkWindowSize() {
   try {
@@ -60,6 +61,9 @@ export function createBuildView({
   boardRenderers = null,
 }) {
   let focusId = null, focusRepertoire = null;
+  let treeCache = null;
+  let autoCollapsedRepertoireId = null;
+  const boundContainers = new WeakSet();
   const miniBoard = (fen) => positionThumbnail(fen, appState.build?.color, boardRenderers);
   const collaboration = collaborationApi ? createBuildCollaboration({
     appState, selectBuildNode, miniBoard, ...collaborationApi,
@@ -92,35 +96,75 @@ export function createBuildView({
     return path.reverse();
   }
 
-  function buildNormalizedTree() {
-    if (!appState.build) return null;
+  function getNormalizedTree() {
+    if (!appState.build) {
+      treeCache = null;
+      return null;
+    }
+    const fId = focusId && focusRepertoire === appState.build.repertoire_id ? focusId : null;
+    const nodes = appState.build.nodes || [];
+    if (
+      treeCache &&
+      treeCache.build === appState.build &&
+      treeCache.nodesLen === nodes.length &&
+      treeCache.revision === appState.build.revision &&
+      treeCache.focusId === fId
+    ) {
+      return treeCache;
+    }
     const childrenByParent = new Map();
     let rootNode = null;
-    for (const node of appState.build.nodes) {
+    for (const node of nodes) {
       if (node.depth === 0) {
         rootNode = node;
         continue;
       }
-      if (!childrenByParent.has(node.parent_id)) childrenByParent.set(node.parent_id, []);
-      childrenByParent.get(node.parent_id).push(node);
+      let list = childrenByParent.get(node.parent_id);
+      if (!list) {
+        list = [];
+        childrenByParent.set(node.parent_id, list);
+      }
+      list.push(node);
     }
     for (const list of childrenByParent.values()) {
       list.sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline));
     }
     if (!rootNode) return null;
-    const make = (bnode) => ({
-      id: bnode.id,
-      san: bnode.san,
-      moveNumber: bnode.move_number,
-      side: bnode.move_side,
-      raw: bnode,
-      children: (childrenByParent.get(bnode.id) || []).map(make),
-    });
-    if (focusId && focusRepertoire === appState.build.repertoire_id) {
-      const focused = appState.buildNodeById.get(focusId);
-      if (focused?.parent_id) return { id: "focused-line", children: [make(focused)] };
+    const byId = new Map();
+    const makeNode = (bnode) => {
+      const norm = {
+        id: bnode.id,
+        san: bnode.san,
+        moveNumber: bnode.move_number,
+        side: bnode.move_side,
+        raw: bnode,
+        children: [],
+      };
+      byId.set(String(norm.id), norm);
+      return norm;
+    };
+    const buildSubtree = (startBnode) => {
+      const startNorm = makeNode(startBnode);
+      const stack = [[startBnode, startNorm]];
+      while (stack.length) {
+        const [bnode, norm] = stack.pop();
+        for (const kid of childrenByParent.get(bnode.id) || []) {
+          const kidNorm = makeNode(kid);
+          norm.children.push(kidNorm);
+          stack.push([kid, kidNorm]);
+        }
+      }
+      return startNorm;
+    };
+    let root;
+    if (fId) {
+      const focused = appState.buildNodeById.get(fId);
+      root = focused?.parent_id ? { id: "focused-line", children: [buildSubtree(focused)] } : buildSubtree(rootNode);
+    } else {
+      root = buildSubtree(rootNode);
     }
-    return make(rootNode);
+    treeCache = { build: appState.build, nodesLen: nodes.length, revision: appState.build.revision, focusId: fId, root, byId };
+    return treeCache;
   }
 
   function renderBuildRepHeader() {
@@ -271,41 +315,11 @@ export function createBuildView({
   // step that lands on the new payload must repaint, not move the mark.
   let paintedTree = null;
 
-  function renderBuilderTree() {
-    paintedTree = null;
-    renderTools();
-    const container = document.getElementById("builder-tree");
-    const branchBar = document.getElementById("build-branchbar");
-    if (!appState.build) {
-      renderBuildOpening();
-      container.innerHTML =
-        html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
-      if (branchBar) branchBar.hidden = true;
-      if (boards.build) boards.build.setBranchArrows([]);
-      onTreeRendered();
-      return;
-    }
-    const root = buildNormalizedTree();
-    if (!root || !root.children.length) {
-      renderBuildOpening();
-      container.innerHTML = html`<div class="tree-empty">Play a move to add it to this line.</div>`;
-      if (branchBar) branchBar.hidden = true;
-      if (boards.build) boards.build.setBranchArrows([]);
-      onTreeRendered();
-      return;
-    }
-    const moveTreeRenderer = getMoveTreeRenderer();
-    if (!moveTreeRenderer) {
-      void ensureMoveTreeRenderer()
-        .then(() => renderBuilderTree())
-        .catch(() => {});
-      return;
-    }
-    const collapsed = appState.buildCollapsed || (appState.buildCollapsed = new Set());
-    const treeHtml = moveTreeRenderer.renderMoveTree(root, {
+  function moveTreeOptions(collapsed) {
+    return {
       currentId: appState.buildCurrentNodeId,
       collapsible: true,
-      isCollapsed: (node) => collapsed.has(node.id),
+      isCollapsed: (node) => collapsed.has(node.id) || collapsed.has(String(node.id)),
       decorate: (node) => {
         const b = node.raw;
         const classes = [];
@@ -340,7 +354,92 @@ export function createBuildView({
         };
       },
       moveMenu: !isReadOnly(),
+    };
+  }
+
+  function autoCollapseIfLarge(cached) {
+    const repId = appState.buildRepertoireId ?? appState.build?.repertoire_id;
+    const count = appState.build?.nodes?.length || 0;
+    if (count <= AUTO_COLLAPSE_THRESHOLD || repId === autoCollapsedRepertoireId) return;
+    autoCollapsedRepertoireId = repId;
+    const collapsed = appState.buildCollapsed || (appState.buildCollapsed = new Set());
+    const activeIds = new Set(buildPath(appState.buildCurrentNodeId).map((n) => n.id));
+    for (const node of [cached.root, ...cached.byId.values()]) {
+      if (node.children.length <= 1) continue;
+      const mainIdx = Math.max(0, node.children.findIndex((kid) => kid?.raw?.is_mainline));
+      node.children.forEach((kid, idx) => {
+        if (idx !== mainIdx && !activeIds.has(kid.id)) collapsed.add(kid.id);
+      });
+    }
+  }
+
+  function bindContainerEvents(container) {
+    if (boundContainers.has(container) || typeof container.addEventListener !== "function") return;
+    boundContainers.add(container);
+    container.addEventListener("click", (event) => {
+      const note = event.target?.closest?.(".mtree-comment[data-note-for]");
+      if (note && !event.target.closest("[data-mt]")) {
+        const id = note.dataset.noteFor;
+        if (openNotes.has(id)) openNotes.delete(id);
+        else openNotes.add(id);
+        note.classList.toggle("is-open", openNotes.has(id));
+        return;
+      }
+      const toggle = event.target?.closest?.(".mtree-collapse[data-collapse-id]");
+      if (!toggle) return;
+      event.stopPropagation();
+      const id = toggle.dataset.collapseId;
+      const collapsed = appState.buildCollapsed || (appState.buildCollapsed = new Set());
+      if (collapsed.has(id)) collapsed.delete(id);
+      else collapsed.add(id);
+      const renderer = getMoveTreeRenderer();
+      const varNode = getNormalizedTree()?.byId.get(String(id));
+      const varEl = toggle.closest?.(".mtree-var");
+      if (renderer?.renderMoveVariation && varNode && varEl && "outerHTML" in varEl) {
+        varEl.outerHTML = String(renderer.renderMoveVariation(varNode, moveTreeOptions(collapsed)));
+        collaboration?.markMoves();
+        return;
+      }
+      renderBuilderTree();
     });
+  }
+
+  function renderBuilderTree() {
+    paintedTree = null;
+    renderTools();
+    const container = document.getElementById("builder-tree");
+    const branchBar = document.getElementById("build-branchbar");
+    if (!appState.build) {
+      treeCache = null;
+      autoCollapsedRepertoireId = null;
+      renderBuildOpening();
+      container.innerHTML =
+        html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
+      if (branchBar) branchBar.hidden = true;
+      if (boards.build) boards.build.setBranchArrows([]);
+      onTreeRendered();
+      return;
+    }
+    const cached = getNormalizedTree();
+    const root = cached?.root;
+    if (!root || !root.children.length) {
+      renderBuildOpening();
+      container.innerHTML = html`<div class="tree-empty">Play a move to add it to this line.</div>`;
+      if (branchBar) branchBar.hidden = true;
+      if (boards.build) boards.build.setBranchArrows([]);
+      onTreeRendered();
+      return;
+    }
+    const moveTreeRenderer = getMoveTreeRenderer();
+    if (!moveTreeRenderer) {
+      void ensureMoveTreeRenderer()
+        .then(() => renderBuilderTree())
+        .catch(() => {});
+      return;
+    }
+    autoCollapseIfLarge(cached);
+    const collapsed = appState.buildCollapsed || (appState.buildCollapsed = new Set());
+    const treeHtml = moveTreeRenderer.renderMoveTree(root, moveTreeOptions(collapsed));
     renderBuildOpening();
     container.innerHTML = treeHtml;
     collaboration?.markMoves();
@@ -348,28 +447,10 @@ export function createBuildView({
     // The arrival is over once the token has landed: drop the flag now so no
     // later render replays it, and drop the class on animationend so nothing
     // is left carrying an entrance that already happened.
+    const el = appState.buildJustAddedId ? container.querySelector(".mtree-move.is-added") : null;
     appState.buildJustAddedId = null;
-    container.querySelectorAll(".mtree-move.is-added").forEach((el) => {
-      el.addEventListener("animationend", () => el.classList.remove("is-added"), { once: true });
-    });
-    container.querySelectorAll(".mtree-comment[data-note-for]").forEach((note) => {
-      note.addEventListener("click", (event) => {
-        if (event.target.closest("[data-mt]")) return;
-        const id = note.dataset.noteFor;
-        if (openNotes.has(id)) openNotes.delete(id);
-        else openNotes.add(id);
-        note.classList.toggle("is-open", openNotes.has(id));
-      });
-    });
-    container.querySelectorAll(".mtree-collapse[data-collapse-id]").forEach((toggle) => {
-      toggle.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const id = toggle.dataset.collapseId;
-        if (collapsed.has(id)) collapsed.delete(id);
-        else collapsed.add(id);
-        renderBuilderTree();
-      });
-    });
+    if (el?.addEventListener) el.addEventListener("animationend", () => el.classList.remove("is-added"), { once: true });
+    bindContainerEvents(container);
     moveTreeRenderer.bindMoveTreeClicks(
       container,
       (id) => void selectBuildNode(id).catch(() => {}),
@@ -422,6 +503,12 @@ export function createBuildView({
     const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
     const currentId = node && node.parent_id ? node.id : null;
     if (!renderer.updateMoveTreeSelection(container, { currentId })) {
+      if (currentId && appState.buildCollapsed?.size) {
+        for (const p of buildPath(currentId)) {
+          appState.buildCollapsed.delete(p.id);
+          appState.buildCollapsed.delete(String(p.id));
+        }
+      }
       renderBuilderTree();
       return;
     }

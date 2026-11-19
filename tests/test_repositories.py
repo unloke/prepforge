@@ -729,3 +729,68 @@ def test_load_game_renders_pgn_only_when_requested(monkeypatch):
     assert "saved annotation" in repo.load_game(game.id, render_pgn=True).pgn
     assert "saved annotation" in list(repo.iter_games(render_pgn=True))[0].pgn
     assert render.call_count == 2
+
+
+def test_build_receipt_pruning_and_export_exclusion():
+    from sqlalchemy import select, func
+    from prepforge_chess.storage.repositories.settings import BUILD_RECEIPTS_KEPT
+
+    repo = _repository()
+    uid = "u-receipt-" + uuid.uuid4().hex[:8]
+    insert_users(repo.engine, uid)
+    repo.set_user_setting(uid, "ui.theme", "dark")
+    for i in range(BUILD_RECEIPTS_KEPT + 10):
+        repo.set_user_setting(uid, f"build-receipt:plan:{i:04d}", {"digest": f"d-{i}"})
+
+    with repo.engine.connect() as conn:
+        receipt_count = int(conn.execute(
+            select(func.count()).select_from(sa_tables.user_settings).where(
+                sa_tables.user_settings.c.user_id == uid,
+                sa_tables.user_settings.c.key.like("build-receipt:%"),
+            )
+        ).scalar_one())
+    assert receipt_count == BUILD_RECEIPTS_KEPT
+    assert repo.list_owner_settings(uid) == {"ui.theme": "dark"}
+
+
+def test_delete_repertoire_reclaims_orphan_evaluations_and_positions():
+    from sqlalchemy import select, func
+
+    repo = _repository()
+    core = ChessCore()
+    uid = "u-reclaim-" + uuid.uuid4().hex[:8]
+    insert_users(repo.engine, uid)
+    move = core.apply_uci(STARTING_FEN, "e2e4", source=MoveSource.GENERATED_STOCKFISH)
+    ev = EngineEvaluation(engine="stockfish", depth=8, score_cp=35, best_move_uci="e7e5", pv=["e7e5"])
+
+    def make_rep(name: str, shared: bool = True) -> Repertoire:
+        rep_id = "rep-" + uuid.uuid4().hex[:8]
+        root = OpeningNode(id="root-" + rep_id, repertoire_id=rep_id, fen=STARTING_FEN, side_to_move=Color.WHITE)
+        child = OpeningNode(
+            id="child-" + rep_id,
+            repertoire_id=rep_id,
+            parent_id=root.id,
+            move=move,
+            fen=move.fen_after,
+            side_to_move=Color.BLACK,
+            engine_evaluation=ev if shared else EngineEvaluation(engine="stockfish", depth=10, score_cp=40, best_move_uci="c7c5", pv=["c7c5"]),
+            source=MoveSource.GENERATED_STOCKFISH,
+        )
+        root.children.append(child)
+        return Repertoire(id=rep_id, name=name, color=Color.WHITE, root_fen=STARTING_FEN, root_node=root)
+
+    rep1 = make_rep("First", shared=True)
+    rep2 = make_rep("Second", shared=True)
+    repo.save_repertoire(rep1, owner_user_id=uid)
+    repo.save_repertoire(rep2, owner_user_id=uid)
+
+    # Deleting rep1 keeps the shared eval referenced by rep2; deleting rep2 reclaims both eval and position
+    repo.delete_repertoire(rep1.id)
+    with repo.engine.connect() as conn:
+        assert int(conn.execute(select(func.count()).select_from(sa_tables.engine_evaluations)).scalar_one()) == 1
+        assert int(conn.execute(select(func.count()).select_from(sa_tables.positions)).scalar_one()) == 1
+
+    repo.delete_repertoire(rep2.id)
+    with repo.engine.connect() as conn:
+        assert int(conn.execute(select(func.count()).select_from(sa_tables.engine_evaluations)).scalar_one()) == 0
+        assert int(conn.execute(select(func.count()).select_from(sa_tables.positions)).scalar_one()) == 0

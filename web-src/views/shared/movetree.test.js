@@ -201,7 +201,7 @@ describe("createMoveTreeRenderer", () => {
 });
 
 describe("updateMoveTreeSelection", () => {
-  const { renderMoveTree, updateMoveTreeSelection } = createMoveTreeRenderer();
+  const { renderMoveTree, renderMoveVariation, updateMoveTreeSelection } = createMoveTreeRenderer();
 
   // The classes each button carries, as the DOM would report them.
   function classesOf(container, id) {
@@ -267,5 +267,15 @@ describe("updateMoveTreeSelection", () => {
   it("reports a move that is not in the tree", () => {
     const container = stubMoveTreeContainer(renderMoveTree(sampleTree(), { currentId: "n1" }));
     expect(updateMoveTreeSelection(container, { currentId: "gone" })).toBe(false);
+  });
+
+  it("renders a single variation fragment via renderMoveVariation matching the tree", () => {
+    const root = sampleTree();
+    const opts = { collapsible: true, isCollapsed: (n) => n.id === "alt", currentId: "n1" };
+    const full = String(renderMoveTree(root, opts));
+    const single = String(renderMoveVariation(root.children[1], opts));
+    expect(single).toContain('data-collapse-id="alt"');
+    expect(single).toContain('<span class="mtree-collapsed">…</span>');
+    expect(full).toContain(single);
   });
 });

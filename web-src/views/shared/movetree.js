@@ -1,6 +1,25 @@
-import { html } from "../../html.js";
+import { html, raw } from "../../html.js";
 // Shared move-tree HTML renderer (lazy-loaded from app.js for Build; static import
 // from analyze.js). Pure render + click binding — no appState or navigation.
+
+const SafeHtml = html``.constructor;
+const HTML_ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const HTML_UNSAFE = /[&<>"']/;
+const HTML_MATCHES = /[&<>"']/g;
+
+function escapeHtml(value) {
+  const str = String(value ?? "");
+  return HTML_UNSAFE.test(str) ? str.replace(HTML_MATCHES, (c) => HTML_ENTITIES[c]) : str;
+}
+
+function pushHtmlValue(chunks, value) {
+  if (!value) return;
+  if (value instanceof SafeHtml) {
+    chunks.push(value.value);
+    return;
+  }
+  chunks.push(escapeHtml(value));
+}
 
 let lastPointer = "mouse";
 const swallowClick = (event) => {
@@ -18,12 +37,9 @@ export function createMoveTreeRenderer() {
     return [`${num} ${node.san}`, side, deco.label].filter(Boolean).join(", ");
   }
 
-  function renderMoveToken(node, opts, forceNumber, inVar) {
+  function pushMoveToken(chunks, node, opts, forceNumber, inVar) {
     const isWhite = node.side === "white";
-    const numHtml =
-      isWhite || forceNumber
-        ? html`<span class="mtree-num">${node.moveNumber}${isWhite ? "." : "…"}</span>`
-        : "";
+    const showNum = isWhite || forceNumber;
     const deco = (opts.decorate && opts.decorate(node)) || {};
     // The side places the move in its column where a view sets the main line
     // as a score sheet (Build).
@@ -32,33 +48,41 @@ export function createMoveTreeRenderer() {
     const isCurrent = node.id === opts.currentId;
     if (isCurrent) classes.push("is-current");
     else if (opts.pathIds && opts.pathIds.has(node.id)) classes.push("on-path");
-    const title = deco.title ? html` title="${String(deco.title)}"` : "";
     const label = moveTokenLabel(node, deco);
+    const wrapTok = inVar && showNum;
+    if (wrapTok) chunks.push(`<span class="mtree-tok">`);
+    if (showNum) {
+      chunks.push(`<span class="mtree-num">${escapeHtml(node.moveNumber)}${isWhite ? "." : "…"}</span>`);
+    }
+    chunks.push(
+      `<button class="${escapeHtml(classes.join(" "))}" data-node-id="${escapeHtml(node.id)}" aria-label="${escapeHtml(label)}"`,
+    );
+    if (deco.title) chunks.push(` title="${escapeHtml(deco.title)}"`);
+    if (isCurrent) chunks.push(` aria-current="true"`);
+    chunks.push(`><span class="mtree-san">${escapeHtml(node.san)}</span>`);
+    pushHtmlValue(chunks, deco.suffix);
     // A pointer's way to the move menu: a ⋯ that shows while the move is
     // hovered. Keyboards reach the same menu with the context-menu key.
-    const more = opts.moveMenu ? html`<span class="mtree-more" aria-hidden="true">⋯</span>` : "";
-    const button = html`<button class="${classes.join(" ")}" data-node-id="${String(node.id)}" aria-label="${label}"${title}${isCurrent ? html` aria-current="true"` : ""}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}${more}</button>`;
-    // In a flowing variation a line could break between "8." and its move; the main
-    // line keeps them apart as its score sheet's grid cells.
-    const token = inVar && numHtml ? html`<span class="mtree-tok">${numHtml}${button}</span>` : html`${numHtml}${button}`;
-    return html`${token}${deco.after || ""}`;
+    if (opts.moveMenu) chunks.push(`<span class="mtree-more" aria-hidden="true">⋯</span>`);
+    chunks.push(`</button>`);
+    if (wrapTok) chunks.push(`</span>`);
+    pushHtmlValue(chunks, deco.after);
   }
 
   // Walk the line from startNode, emitting each move's alternatives right after
   // it, as PGN does: "5. Be2 c5 (5... Nd7)". `alts` are startNode's own
-  // siblings. A variation (renderMoveVariation) starts on the branch's own
+  // siblings. A variation (pushMoveVariation) starts on the branch's own
   // first move: its next move continues just that branch, so it is never
   // interleaved with the parent line's other branches.
-  function renderMoveLine(startNode, opts, alts = [], inVar = false) {
-    const markup = [];
+  function pushMoveLine(chunks, startNode, opts, alts = [], inVar = false) {
     let cur = startNode;
     let pending = alts;
     let forceNumber = true;
     while (cur) {
-      markup.push(renderMoveToken(cur, opts, forceNumber, inVar));
+      pushMoveToken(chunks, cur, opts, forceNumber, inVar);
       forceNumber = false;
       for (const alt of pending) {
-        markup.push(renderMoveVariation(alt, opts));
+        pushMoveVariation(chunks, alt, opts);
         forceNumber = true;
       }
       // The mainline is the continuation the repertoire marks as main
@@ -70,10 +94,9 @@ export function createMoveTreeRenderer() {
       pending = kids.slice(1);
       cur = kids[0] || null;
     }
-    return html`${markup}`;
   }
 
-  function renderMoveVariation(firstNode, opts) {
+  function pushMoveVariation(chunks, firstNode, opts) {
     const collapsed =
       opts.collapsible && opts.isCollapsed && opts.isCollapsed(firstNode);
     // The variation that leads to the shown move carries the accent rail. It is
@@ -83,13 +106,25 @@ export function createMoveTreeRenderer() {
     // navigation at 10,000 moves, against 0.4 ms with the rule gone.
     const onPath = opts.pathIds && opts.pathIds.has(firstNode.id);
     const leads = firstNode.id === opts.currentId || onPath;
-    const toggle = opts.collapsible
-      ? html`<button class="mtree-collapse" type="button" data-collapse-id="${String(firstNode.id)}" title="${collapsed ? "Expand" : "Collapse"} variation">${collapsed ? "▸" : "▾"}</button>`
-      : "";
-    const inner = collapsed
-      ? html`<span class="mtree-collapsed">…</span>`
-      : renderMoveLine(firstNode, opts, [], true);
-    return html`<div class="mtree-var${leads ? " is-on-path" : ""}">${toggle}${inner}</div>`;
+    chunks.push(`<div class="mtree-var${leads ? " is-on-path" : ""}">`);
+    if (opts.collapsible) {
+      chunks.push(
+        `<button class="mtree-collapse" type="button" data-collapse-id="${escapeHtml(firstNode.id)}" title="${collapsed ? "Expand" : "Collapse"} variation">${collapsed ? "▸" : "▾"}</button>`,
+      );
+    }
+    if (collapsed) {
+      chunks.push(`<span class="mtree-collapsed">…</span>`);
+    } else {
+      pushMoveLine(chunks, firstNode, opts, [], true);
+    }
+    chunks.push(`</div>`);
+  }
+
+  function renderMoveVariation(firstNode, opts) {
+    const chunks = [];
+    pushMoveVariation(chunks, firstNode, opts);
+    // eslint-disable-next-line local/trusted-raw -- built from static markup and escapeHtml/SafeHtml values
+    return raw(chunks.join(""));
   }
 
   // Build's flat payload arrives in arbitrary order (see the test next door).
@@ -101,13 +136,17 @@ export function createMoveTreeRenderer() {
 
   function renderMoveTree(root, opts) {
     const kids = root.children || [];
+    const chunks = [`<div class="mtree">`];
     if (!kids.length) {
-      return (
-        html`<div class="mtree"><div class="empty-state">${opts.emptyText || "No moves yet."}</div></div>`
-      );
+      chunks.push(`<div class="empty-state">${escapeHtml(opts.emptyText || "No moves yet.")}</div></div>`);
+    } else {
+      const [main, ...alts] = mainlineFirst(kids);
+      chunks.push(`<div class="mtree-line is-main">`);
+      pushMoveLine(chunks, main, opts, alts);
+      chunks.push(`</div></div>`);
     }
-    const [main, ...alts] = mainlineFirst(kids);
-    return html`<div class="mtree"><div class="mtree-line is-main">${renderMoveLine(main, opts, alts)}</div></div>`;
+    // eslint-disable-next-line local/trusted-raw -- built from static markup and escapeHtml/SafeHtml values
+    return raw(chunks.join(""));
   }
 
   // Brings el into view inside the nearest box that scrolls: the container itself, or
@@ -287,5 +326,11 @@ export function createMoveTreeRenderer() {
     return true;
   }
 
-  return { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection };
+  return {
+    renderMoveTree,
+    renderMoveVariation,
+    scrollIntoViewWithin,
+    bindMoveTreeClicks,
+    updateMoveTreeSelection,
+  };
 }
