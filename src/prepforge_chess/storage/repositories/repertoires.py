@@ -39,8 +39,52 @@ class RepertoireQuotaExceeded(RuntimeError):
 
 # Writes kept in repertoire_ops per repertoire. A device further behind than
 # this reloads the tree instead of catching up op by op.
-OPS_KEPT = 500
-OPS_TRIM_EVERY = 100
+OPS_KEPT = 100
+OPS_TRIM_EVERY = 20
+
+_NODE_IN_CHUNK = 400
+_NODE_UPSERT_CHUNK = 40
+
+_OP_NODE_DEFAULTS: Dict[str, Any] = {
+    "parent_id": None,
+    "uci": None,
+    "engine_evaluation_id": None,
+    "maia_probability": None,
+    "is_mainline": 0,
+    "is_user_prepared_move": 0,
+    "is_enabled": 1,
+    "priority": 0.0,
+    "comment": None,
+    "tags_json": None,
+    "arrows_json": None,
+    "circles_json": None,
+    "tactical_warning": None,
+    "strategic_idea": None,
+    "typical_plan": None,
+    "source": "manual",
+}
+
+
+def compact_op_node_row(row: Mapping[str, Any]) -> Dict[str, Any]:
+    """Strip id, repertoire_id, and default column values from full-row op deltas."""
+    return {
+        key: value
+        for key, value in row.items()
+        if key not in {"id", "repertoire_id"}
+        and (key not in _OP_NODE_DEFAULTS or value != _OP_NODE_DEFAULTS[key])
+    }
+
+
+def expand_op_node_row(
+    row: Mapping[str, Any], repertoire_id: str, node_id: str
+) -> Dict[str, Any]:
+    """Rehydrate a compacted op node row back into full opening_nodes columns."""
+    return {
+        **_OP_NODE_DEFAULTS,
+        **row,
+        "id": node_id,
+        "repertoire_id": repertoire_id,
+    }
 
 
 class RepertoireRepository(EvaluationRepository, TrainingRepository):
@@ -82,6 +126,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         self, conn: Connection, repertoire_id: str, *,
         nodes: Iterable[str] = (), removed: Iterable[str] = (),
         meta: bool = False, reset: bool = False, before: Optional[dict] = None,
+        after_rows: Optional[Dict[str, Dict[str, Any]]] = None,
         metadata_before: Optional[dict] = None, discussion_id: Optional[str] = None,
         reverted_revision: Optional[int] = None,
     ) -> int:
@@ -104,7 +149,14 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             self._expected_revisions[repertoire_id] = current
         op = {"nodes": sorted(set(nodes)), "removed": sorted(set(removed)), "meta": meta, "reset": reset}
         if before is not None:
-            after = self._node_rows(conn, repertoire_id, set(before) | set(op["nodes"]))
+            needed_ids = set(before) | set(op["nodes"])
+            if after_rows is None:
+                after = self._node_rows(conn, repertoire_id, needed_ids)
+            else:
+                missing_ids = [nid for nid in needed_ids if nid not in after_rows]
+                after = {nid: after_rows[nid] for nid in needed_ids if nid in after_rows}
+                if missing_ids:
+                    after.update(self._node_rows(conn, repertoire_id, missing_ids))
             delta = {}
             for node_id in set(before) | set(after):
                 old, new = before.get(node_id), after.get(node_id)
@@ -113,6 +165,11 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 if old is not None and new is not None:
                     keys = {key for key in old if old[key] != new[key]}
                     old, new = ({key: row[key] for key in keys} for row in (old, new))
+                else:
+                    if old is not None:
+                        old = compact_op_node_row(old)
+                    if new is not None:
+                        new = compact_op_node_row(new)
                 delta[node_id] = {"before": old, "after": new}
             if delta:
                 op["delta"] = delta
@@ -139,12 +196,18 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
 
     @staticmethod
     def _node_rows(conn: Connection, repertoire_id: str, node_ids: Iterable[str]) -> dict:
-        ids = list(node_ids)
+        ids = list(dict.fromkeys(node_ids))
         if not ids:
             return {}
-        return {row["id"]: dict(row) for row in conn.execute(select(t.opening_nodes).where(
-            t.opening_nodes.c.repertoire_id == repertoire_id, t.opening_nodes.c.id.in_(ids),
-        )).mappings()}
+        rows: Dict[str, Dict[str, Any]] = {}
+        for offset in range(0, len(ids), _NODE_IN_CHUNK):
+            chunk = ids[offset:offset + _NODE_IN_CHUNK]
+            for row in conn.execute(select(t.opening_nodes).where(
+                t.opening_nodes.c.repertoire_id == repertoire_id,
+                t.opening_nodes.c.id.in_(chunk),
+            )).mappings():
+                rows[row["id"]] = dict(row)
+        return rows
 
     def repertoire_ops_since(self, repertoire_id: str, since: int) -> List[Dict[str, Any]]:
         """The logged writes after ``since``, oldest first."""
@@ -217,8 +280,10 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             ).scalar_one() > max_owned:
                 raise RepertoireQuotaExceeded(max_owned)  # rolls the insert back
             pos_cache: Dict[str, int] = {}
-            for node in self._walk_nodes(repertoire.root_node):
-                self._save_opening_node(conn, node, pos_cache)
+            rows = self._build_opening_node_rows(
+                conn, self._walk_nodes(repertoire.root_node), pos_cache
+            )
+            self._upsert_opening_node_rows(conn, rows)
             self._bump_revision(conn, repertoire.id, reset=True)
 
     def update_opening_nodes(self, repertoire_id: str, changes: List[Dict[str, Any]]) -> None:
@@ -265,19 +330,20 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             return
         with self._edit_write() as conn:
             before = self._node_rows(conn, repertoire_id, [node.id for node in nodes])
-            pos_cache: Dict[str, int] = {}
-            rows = []
             for node in nodes:
                 if node.repertoire_id != repertoire_id:
                     raise ValueError("node belongs to another repertoire")
-                rows.append(self._opening_node_values(conn, node, pos_cache))
-            stmt = _insert(conn, t.opening_nodes)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[t.opening_nodes.c.id],
-                set_={name: stmt.excluded[name] for name in rows[0] if name != "id"},
+            pos_cache: Dict[str, int] = {}
+            rows = self._build_opening_node_rows(conn, nodes, pos_cache)
+            self._upsert_opening_node_rows(conn, rows)
+            after_rows = {row["id"]: row for row in rows}
+            self._bump_revision(
+                conn,
+                repertoire_id,
+                nodes=[node.id for node in nodes],
+                before=before,
+                after_rows=after_rows,
             )
-            conn.execute(stmt, rows)
-            self._bump_revision(conn, repertoire_id, nodes=[node.id for node in nodes], before=before)
             if receipt is not None:
                 self.write_user_setting(conn, *receipt)
 
@@ -796,6 +862,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     conn, owner, PLAYED_SESSIONS_KEY,
                     (cur if isinstance(cur, int) and cur >= 0 else 0) + sessions,
                 )
+            # Activity snapshots in other repertoires may still use shared evaluations.
             conn.execute(delete(t.repertoires).where(t.repertoires.c.id == repertoire_id))
 
     def _archive_reviews(self, conn: Connection, reviewed, week_ago: datetime) -> None:
@@ -864,37 +931,78 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             update_cols=tuple(name for name in values if name not in {"id", "created_at"}),
         )
 
+    @staticmethod
+    def _opening_node_row(
+        node: OpeningNode, engine_evaluation_id: Optional[int]
+    ) -> Dict[str, Any]:
+        arriving = node.move.uci if node.move is not None else None
+        return {
+            "id": node.id,
+            "repertoire_id": node.repertoire_id,
+            "parent_id": node.parent_id,
+            "uci": arriving,
+            "engine_evaluation_id": engine_evaluation_id,
+            "maia_probability": node.maia_probability,
+            "is_mainline": _bool_to_int(node.is_mainline),
+            "is_user_prepared_move": _bool_to_int(node.is_user_prepared_move),
+            "is_enabled": _bool_to_int(node.is_enabled),
+            "priority": node.priority,
+            "comment": node.comment,
+            "tags_json": _json_dump(node.tags) if node.tags else None,
+            "arrows_json": _json_dump(node.arrows) if node.arrows else None,
+            "circles_json": _json_dump(node.circles) if node.circles else None,
+            "tactical_warning": node.tactical_warning,
+            "strategic_idea": node.strategic_idea,
+            "typical_plan": node.typical_plan,
+            "source": node.source.value,
+        }
+
+    def _build_opening_node_rows(
+        self,
+        conn: Connection,
+        nodes: Iterable[OpeningNode],
+        pos_cache: Optional[Dict[str, int]] = None,
+    ) -> List[Dict[str, Any]]:
+        node_list = list(nodes)
+        if not node_list:
+            return []
+        eval_ids = self.save_engine_evaluations_batched(
+            conn,
+            ((node.id, node.engine_evaluation, node.fen) for node in node_list),
+            pos_cache,
+        )
+        return [
+            self._opening_node_row(node, eval_ids.get(node.id))
+            for node in node_list
+        ]
+
+    @staticmethod
+    def _upsert_opening_node_rows(
+        conn: Connection, rows: List[Dict[str, Any]]
+    ) -> None:
+        if not rows:
+            return
+        update_cols = [name for name in rows[0] if name not in {"id", "created_at"}]
+        # 18 columns per row -> 40-row chunks stay safely under SQLite's 999 bind limit.
+        for offset in range(0, len(rows), _NODE_UPSERT_CHUNK):
+            chunk = rows[offset:offset + _NODE_UPSERT_CHUNK]
+            stmt = _insert(conn, t.opening_nodes).values(chunk)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[t.opening_nodes.c.id],
+                set_={name: stmt.excluded[name] for name in update_cols},
+            )
+            conn.execute(stmt)
+
     def _opening_node_values(
         self, conn: Connection, node: OpeningNode,
         pos_cache: Optional[Dict[str, int]] = None,
     ) -> Dict[str, Any]:
         if pos_cache is None:
             pos_cache = {}
-        arriving = node.move.uci if node.move is not None else None
-        eval_fen = node.fen
         engine_evaluation_id = self._save_engine_evaluation(
-            conn, node.engine_evaluation, eval_fen, pos_cache
+            conn, node.engine_evaluation, node.fen, pos_cache
         )
-        return {
-                "id": node.id,
-                "repertoire_id": node.repertoire_id,
-                "parent_id": node.parent_id,
-                "uci": arriving,
-                "engine_evaluation_id": engine_evaluation_id,
-                "maia_probability": node.maia_probability,
-                "is_mainline": _bool_to_int(node.is_mainline),
-                "is_user_prepared_move": _bool_to_int(node.is_user_prepared_move),
-                "is_enabled": _bool_to_int(node.is_enabled),
-                "priority": node.priority,
-                "comment": node.comment,
-                "tags_json": _json_dump(node.tags) if node.tags else None,
-                "arrows_json": _json_dump(node.arrows) if node.arrows else None,
-                "circles_json": _json_dump(node.circles) if node.circles else None,
-                "tactical_warning": node.tactical_warning,
-                "strategic_idea": node.strategic_idea,
-                "typical_plan": node.typical_plan,
-                "source": node.source.value,
-            }
+        return self._opening_node_row(node, engine_evaluation_id)
 
     def _walk_nodes(self, root: OpeningNode) -> Iterable[OpeningNode]:
         yield root

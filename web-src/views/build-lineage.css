@@ -227,3 +227,17 @@
   .activity-entry { grid-template-columns: 24px minmax(0, 1fr); }
   .activity-revision { display: none; }
 }
+.modal-group-label { letter-spacing: 0.05em; text-transform: uppercase; }
+.modal-field.is-num input { text-align: right; font-variant-numeric: tabular-nums; }
+.modal-stat[data-note="estimate"] {
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+}
+#build-job-dock > .notice,
+#coverage-job-dock > .notice {
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+#build-job-dock > .notice .notice-text,
+#coverage-job-dock > .notice .notice-text { font-variant-numeric: tabular-nums; }

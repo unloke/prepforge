@@ -498,31 +498,24 @@ function syncAnalysisGameName() {
 // Per-view chrome that lives inside the pages: Analyze's game on the board, the
 // Repertoire header's size summary, and (phones) the More sheet's Library mirror
 // of Import.
+let headTitleCache = { build: null, key: "", title: "" };
 function syncViewHeads() {
-  document.querySelectorAll("[data-lib-mirror]").forEach((item) => {
-    item.hidden = appState.currentView !== "dashboard";
-  });
+  document.querySelectorAll("[data-lib-mirror]").forEach((item) => { item.hidden = appState.currentView !== "dashboard"; });
   if (appState.currentView === "analyze") syncAnalysisGameName();
-  // The repertoire's size describes the whole tree, not the position, so it is
-  // a caption on the name: as the panel's last band it spent 38px of every
-  // build on a number the builder reads once.
   const nameEl = document.getElementById("build-rep-name");
   if (!nameEl) return;
   const build = appState.build;
-  if (!build || isBuildReadOnly()) {
-    // An empty title renders as no tooltip, and it clears the old tree's size.
-    nameEl.title = "";
-    return;
+  if (!build || isBuildReadOnly()) { nameEl.title = ""; return; }
+  const key = `${build.nodes.length}:${build.revision}:${appState.buildPending?.length || 0}:${appState.buildPendingDeletes?.length || 0}`;
+  if (headTitleCache.build !== build || headTitleCache.key !== key) {
+    const played = build.nodes.filter((n) => n.depth > 0);
+    const parents = new Set(build.nodes.map((n) => n.parent_id));
+    const lines = played.filter((n) => !parents.has(n.id)).length;
+    const train = countBuildMovesToTrain(build);
+    headTitleCache = { build, key, title: `${countOf(lines, "line")} · ${countOf(played.length, "move")} · ${train} to train.` +
+      ` ${train === 1 ? "It is your move" : "They are your moves"}, which Train drills; opponent replies aren't drilled.` };
   }
-  const played = build.nodes.filter((n) => n.depth > 0);
-  const parents = new Set(build.nodes.map((n) => n.parent_id));
-  const lines = played.filter((n) => !parents.has(n.id)).length;
-  // "to train" is the Library's count too: your own enabled moves — the
-  // ones Train drills (opponent replies are context, not cards).
-  const train = countBuildMovesToTrain(build);
-  nameEl.title =
-    `${countOf(lines, "line")} · ${countOf(played.length, "move")} · ${train} to train.` +
-    ` ${train === 1 ? "It is your move" : "They are your moves"}, which Train drills; opponent replies aren't drilled.`;
+  if (nameEl.title !== headTitleCache.title) nameEl.title = headTitleCache.title;
 }
 
 // Own-side moves on the enabled tree (a disabled node hides its subtree) —

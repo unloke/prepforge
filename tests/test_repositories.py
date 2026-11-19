@@ -729,3 +729,25 @@ def test_load_game_renders_pgn_only_when_requested(monkeypatch):
     assert "saved annotation" in repo.load_game(game.id, render_pgn=True).pgn
     assert "saved annotation" in list(repo.iter_games(render_pgn=True))[0].pgn
     assert render.call_count == 2
+
+
+def test_build_receipt_pruning_and_export_exclusion():
+    from sqlalchemy import select, func
+    from prepforge_chess.storage.repositories.settings import BUILD_RECEIPTS_KEPT
+
+    repo = _repository()
+    uid = "u-receipt-" + uuid.uuid4().hex[:8]
+    insert_users(repo.engine, uid)
+    repo.set_user_setting(uid, "ui.theme", "dark")
+    for i in range(BUILD_RECEIPTS_KEPT + 10):
+        repo.set_user_setting(uid, f"build-receipt:plan:{i:04d}", {"digest": f"d-{i}"})
+
+    with repo.engine.connect() as conn:
+        receipt_count = int(conn.execute(
+            select(func.count()).select_from(sa_tables.user_settings).where(
+                sa_tables.user_settings.c.user_id == uid,
+                sa_tables.user_settings.c.key.like("build-receipt:%"),
+            )
+        ).scalar_one())
+    assert receipt_count == BUILD_RECEIPTS_KEPT
+    assert repo.list_owner_settings(uid) == {"ui.theme": "dark"}

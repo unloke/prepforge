@@ -23,14 +23,34 @@ export function subtreeNodes(root, children) {
   return result;
 }
 
+const MAX_GLYPH_NODES = 300;
+
 // One combined path per ink colour keeps even a large tree a small SVG DOM.
 export function routeGlyph(nodes, rootId, currentId) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const root = byId.get(rootId);
   if (!root) return "";
-  const children = indexTree(nodes), positions = new Map(), path = new Set();
+  const fullChildren = indexTree(nodes), positions = new Map(), path = new Set();
   let current = byId.get(currentId), leaf = 0, deepest = 1;
   while (current) { path.add(current.id); current = byId.get(current.parent_id); }
+  let children = fullChildren;
+  if (nodes.length > MAX_GLYPH_NODES) {
+    const kept = new Set(path);
+    for (const id of path) {
+      for (const kid of fullChildren.get(id) || []) kept.add(kid.id);
+    }
+    const queue = [root];
+    for (let i = 0; i < queue.length && kept.size < MAX_GLYPH_NODES; i += 1) {
+      kept.add(queue[i].id);
+      for (const kid of fullChildren.get(queue[i].id) || []) queue.push(kid);
+    }
+    const trimmed = new Map();
+    for (const id of kept) {
+      const kids = (fullChildren.get(id) || []).filter((kid) => kept.has(kid.id));
+      if (kids.length) trimmed.set(id, kids);
+    }
+    children = trimmed;
+  }
   const place = (node, depth) => {
     const kids = children.get(node.id) || [];
     const ys = kids.map((kid) => place(kid, depth + 1));

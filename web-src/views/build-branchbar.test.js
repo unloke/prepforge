@@ -201,3 +201,43 @@ describe("build tree — mastery legend", () => {
     expect(String(meta.innerHTML)).not.toContain("legend");
   });
 });
+
+describe("build tree — large repertoire auto-collapse", () => {
+  beforeEach(() => {
+    globalThis.document = undefined;
+  });
+  afterEach(() => {
+    globalThis.document = undefined;
+  });
+
+  it("collapses off-path variations on initial open for trees > 250 nodes while keeping active path expanded", () => {
+    const root = makeNode({ id: "root", depth: 0 });
+    const main = makeNode({ id: "main-0", parent_id: "root", depth: 1, san: "e4", uci: "e2e4", is_mainline: true });
+    const offPathVar = makeNode({ id: "var-0", parent_id: "root", depth: 1, san: "d4", uci: "d2d4", is_mainline: false });
+    const nodes = [root, main, offPathVar];
+    let prev = main;
+    for (let i = 1; i < 260; i += 1) {
+      const next = makeNode({
+        id: `m-${i}`,
+        parent_id: prev.id,
+        depth: i + 1,
+        san: i % 2 === 1 ? "e5" : "Nf3",
+        uci: i % 2 === 1 ? "e7e5" : "g1f3",
+        move_side: i % 2 === 1 ? "black" : "white",
+        is_mainline: true,
+      });
+      nodes.push(next);
+      prev = next;
+    }
+    const { view, appState } = makeHarness({ nodes, currentNodeId: main.id });
+    appState.buildRepertoireId = "rep-large";
+    view.renderBuilderTree();
+    expect(appState.buildCollapsed.has("var-0")).toBe(true);
+    expect(appState.buildCollapsed.has("main-0")).toBe(false);
+
+    // Expanding a variation persists across subsequent renders of the same repertoire
+    appState.buildCollapsed.delete("var-0");
+    view.renderBuilderTree();
+    expect(appState.buildCollapsed.has("var-0")).toBe(false);
+  });
+});

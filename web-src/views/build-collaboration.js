@@ -12,7 +12,7 @@ const keyOf = (fen) => String(fen).split(" ").slice(0, 4).join(" ");
 
 export function createBuildCollaboration({ appState, api, postJson, hydrateBuild, selectBuildNode, showInputModal, miniBoard }) {
   let data = null, discussions = [], loadedKey = null, sequence = 0;
-  let scope = null, generation = appState.ownerGeneration;
+  let scope = null, generation = appState.ownerGeneration, hadMarkedMoves = false;
   const dialogs = new Set();
   const drafts = new Map();
   const rid = () => appState.build?.repertoire_id;
@@ -24,6 +24,8 @@ export function createBuildCollaboration({ appState, api, postJson, hydrateBuild
 
   function markMoves() {
     const unread = new Set(data?.unread_nodes || []);
+    if (unread.size === 0 && !hadMarkedMoves) return;
+    hadMarkedMoves = unread.size > 0;
     document.querySelectorAll("#builder-tree .mtree-move[data-node-id]").forEach((el) => {
       el.classList.toggle("has-unseen", unread.has(el.dataset.nodeId));
     });

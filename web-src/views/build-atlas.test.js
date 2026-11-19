@@ -69,4 +69,22 @@ describe("Repertoire atlas", () => {
     expect(white.indexOf("<b>r</b>")).toBeLessThan(white.indexOf("<b>R</b>"));
     expect(black.indexOf("<b>R</b>")).toBeLessThan(black.indexOf("<b>r</b>"));
   });
+
+  it("caps routeGlyph SVG edges on large trees above 300 nodes while keeping active path", () => {
+    const big = [{ id: "root", parent_id: null }];
+    for (let i = 1; i <= 10; i += 1) {
+      big.push({ id: `m${i}`, parent_id: i === 1 ? "root" : `m${i - 1}`, is_mainline: true });
+    }
+    for (let b = 0; b < 20; b += 1) {
+      let parent = "m1";
+      for (let k = 0; k < 20; k += 1) {
+        const id = `b${b}_${k}`;
+        big.push({ id, parent_id: parent });
+        parent = id;
+      }
+    }
+    const svg = String(routeGlyph(big, "root", "m10"));
+    expect(svg).not.toMatch(/NaN|undefined/);
+    expect((svg.match(/C/g) || []).length).toBeLessThanOrEqual(310);
+  });
 });

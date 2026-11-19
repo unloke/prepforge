@@ -6,7 +6,8 @@ import {
   createChessAdapter,
   runBrowserBuildGenerate,
 } from "./build-generate-runner.js";
-import { SOURCE } from "./build-generator.js";
+import { SOURCE, generateBuildPlan } from "./build-generator.js";
+import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 // Fool's mate — White is checkmated, no legal continuation.
@@ -363,5 +364,49 @@ describe("orchestrator runBrowserBuildGenerate", () => {
     ).rejects.toThrow(/illegal move/);
     expect(engine.calls.some((c) => c.type === "close")).toBe(true);
     expect(maia.terminated).toBe(true);
+  });
+
+  it("fast-paths sideToMove from valid FEN and respects maxChanges cap", async () => {
+    const adapter = createChessAdapter();
+    expect(adapter.sideToMove(START_FEN)).toBe("white");
+    expect(adapter.sideToMove("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")).toBe("black");
+
+    // Wide opponent tree capped at maxChanges = 3 stops before adding all branches
+    const wide = await generateBuildPlan({
+      rootFen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+      rootNodeId: "anchor",
+      repertoireColor: "white",
+      plyDepth: 3,
+      maiaRating: 1500,
+      maxChanges: 3,
+      engine: {
+        candidates: async (fen) => [
+          { moveUci: adapter.sideToMove(fen) === "white" ? "g1f3" : "e7e5", evaluation: null },
+        ],
+      },
+      maia: {
+        predictions: async () => [
+          { move_uci: "e7e5", probability: 0.4 },
+          { move_uci: "c7c5", probability: 0.3 },
+          { move_uci: "e7e6", probability: 0.2 },
+          { move_uci: "d7d5", probability: 0.1 },
+        ],
+      },
+      chess: adapter,
+    });
+    expect(wide.changes.length).toBeLessThanOrEqual(3);
+
+    const runnerCapped = await runBrowserBuildGenerate({
+      build,
+      rootNodeId: "anchor",
+      plyDepth: 2,
+      maiaRating: 1500,
+      maxChanges: 1,
+      createEngine: () => fakeEngineProvider({ [START_FEN]: [pv(1, ["e2e4"], 30)] }),
+      createMaia: () => fakeMaiaProvider({}),
+      isEngineAvailable: () => true,
+    });
+    expect(runnerCapped.changes.length).toBe(1);
+    expect(MAX_PLAN_CHANGES).toBe(2000);
   });
 });

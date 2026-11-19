@@ -143,3 +143,46 @@ def test_list_repertoires_statement_count_postgres():
     assert len(listed_many) - len(listed_one) == 4
     assert count_many == count_one
     assert count_many in (2, 3)
+
+
+def test_apply_generation_plan_batches_evaluations_into_bounded_sql():
+    import chess
+
+    engine = connect_database()
+    apply_schema(engine)
+    repo = WorkspaceRepository(engine)
+    builder = OpeningBuilderService(repo)
+    rep = builder.create_repertoire(CreateRepertoireRequest("Batched Plan", Color.WHITE))
+
+    # Build a 25-move legal fan under e4 (with unique engineEvaluation per node)
+    e4 = builder.add_move(rep.id, rep.root_node.id, "e2e4")
+    board = chess.Board(e4.fen)
+    changes = [
+        {
+            "action": "planned_add",
+            "tempId": f"tmp-{i}",
+            "parentRef": e4.id,
+            "moveUci": move.uci(),
+            "source": "generated_stockfish",
+            "intendedMainline": i == 0,
+            "maiaProbability": round(0.02 * (i + 1), 3),
+            "engineEvaluation": {
+                "engine": "stockfish",
+                "depth": 8,
+                "score_cp": 15 - i,
+                "mate_in": None,
+                "best_move_uci": "g1f3",
+                "pv": [move.uci()],
+            },
+        }
+        for i, move in enumerate(list(board.legal_moves)[:20])
+    ]
+    count, (_, summary) = count_statements(
+        engine,
+        lambda: builder.apply_generation_plan(
+            rep.id, e4.id, {"rootNodeId": e4.id, "changes": changes}
+        ),
+    )
+    assert summary.added_nodes == 20
+    # Batched positions + evaluations + node upserts keep query count O(1) per chunk
+    assert count <= 12

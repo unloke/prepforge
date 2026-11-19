@@ -11,6 +11,7 @@ from sqlalchemy import delete, select, update
 from prepforge_chess.api.deps import current_owner, get_repository, member_name
 from prepforge_chess.api.routers.workspace import _repertoire_access, _payload
 from prepforge_chess.storage import sa_tables as t
+from prepforge_chess.storage.repositories.repertoires import expand_op_node_row
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 router = APIRouter(prefix="/api/build", tags=["activity"])
@@ -94,7 +95,12 @@ def activity_revert(body: RevertBody, owner: str = Depends(current_owner),
             _conflict("This event has no reversible tree edit.")
         current = repo._node_rows(conn, rid, delta)
         for node_id, change in delta.items():
-            after = change["after"]
+            before_raw, after_raw = change["before"], change["after"]
+            after = (
+                expand_op_node_row(after_raw, rid, node_id)
+                if before_raw is None and after_raw is not None
+                else after_raw
+            )
             row = current.get(node_id)
             if after is None:
                 if row is not None:
@@ -106,11 +112,20 @@ def activity_revert(body: RevertBody, owner: str = Depends(current_owner),
             if rep[key] != change["after"]:
                 _conflict("The repertoire was renamed or changed again. Review the newer edit first.")
         removing = {node_id for node_id, change in delta.items() if change["before"] is None}
-        restoring = {node_id: change["before"] for node_id, change in delta.items()
-                     if change["after"] is None}
-        if removing and conn.scalar(select(t.opening_nodes.c.id).where(
-            t.opening_nodes.c.parent_id.in_(removing), ~t.opening_nodes.c.id.in_(removing)).limit(1)):
-            _conflict("New moves continue this line. Remove those continuations first.")
+        restoring = {
+            node_id: expand_op_node_row(change["before"], rid, node_id)
+            for node_id, change in delta.items()
+            if change["after"] is None
+        }
+        if removing:
+            removing_list = sorted(removing)
+            for offset in range(0, len(removing_list), 400):
+                chunk = removing_list[offset:offset + 400]
+                child_ids = conn.scalars(
+                    select(t.opening_nodes.c.id).where(t.opening_nodes.c.parent_id.in_(chunk))
+                ).all()
+                if any(cid not in removing for cid in child_ids):
+                    _conflict("New moves continue this line. Remove those continuations first.")
         for row in restoring.values():
             parent = row["parent_id"]
             if parent not in restoring and not conn.scalar(select(t.opening_nodes.c.id).where(
@@ -122,17 +137,26 @@ def activity_revert(body: RevertBody, owner: str = Depends(current_owner),
             ready = [node_id for node_id, row in pending.items() if row["parent_id"] not in pending]
             if not ready:
                 _conflict("This edit cannot restore a valid move tree.")
-            for node_id in ready:
-                conn.execute(t.opening_nodes.insert().values(**pending.pop(node_id)))
+            for offset in range(0, len(ready), 40):
+                conn.execute(
+                    t.opening_nodes.insert(),
+                    [pending.pop(node_id) for node_id in ready[offset:offset + 40]],
+                )
         for node_id, change in delta.items():
             if change["before"] is not None and change["after"] is not None:
                 conn.execute(update(t.opening_nodes).where(t.opening_nodes.c.id == node_id).values(**change["before"]))
         if removing:
             week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-            reviewed = conn.execute(select(t.training_progress.c.owner_user_id, t.training_progress.c.last_reviewed_at).where(
-                t.training_progress.c.node_id.in_(removing), t.training_progress.c.last_reviewed_at >= week_ago)).all()
-            conn.execute(update(t.training_sessions).where(t.training_sessions.c.current_node_id.in_(removing)).values(current_node_id=None))
-            conn.execute(delete(t.opening_nodes).where(t.opening_nodes.c.id.in_(removing)))
+            reviewed = []
+            for offset in range(0, len(removing_list), 400):
+                chunk = removing_list[offset:offset + 400]
+                reviewed.extend(conn.execute(select(t.training_progress.c.owner_user_id, t.training_progress.c.last_reviewed_at).where(
+                    t.training_progress.c.node_id.in_(chunk), t.training_progress.c.last_reviewed_at >= week_ago)).all())
+                conn.execute(update(t.training_sessions).where(t.training_sessions.c.current_node_id.in_(chunk)).values(current_node_id=None))
+            # Deleting a parent can cascade into nodes in any later batch.
+            for offset in range(0, len(removing_list), 400):
+                chunk = removing_list[offset:offset + 400]
+                conn.execute(delete(t.opening_nodes).where(t.opening_nodes.c.id.in_(chunk)))
             repo._archive_reviews(conn, reviewed, week_ago)
         old_meta = {key: rep[key] for key in metadata}
         if metadata:
