@@ -104,6 +104,6 @@ it("a reloaded page can flush at once: pagehide releases the dying page's lock",
   void dying.queue.flush(); // in flight when the page unloads; its finally never runs
   const reloaded = setup({ persist: vi.fn(), tabId: "two" });
   expect(await reloaded.queue.flush()).toBe(false);
-  listeners.forEach((fn) => fn());
+  listeners[0](); // pagehide belongs to the dying page, not the new document
   expect(await reloaded.queue.flush()).toBe(true);
 });

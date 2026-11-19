@@ -278,11 +278,6 @@ describe("outbox settling", () => {
     expect(merged.build.pending).toHaveLength(0);
   });
 });
-// The lock must never outlive the page that took it: a page that goes away
-// mid-flush (a reload) leaves the next load of the same owner unable to flush,
-// and Train then refuses to start the session ("Couldn't sync your last
-// session"). The browser fires pagehide BEFORE the visibilitychange flush that
-// takes the lock, so the release has to happen on the way out as well.
 describe("flush lock and the page that took it", () => {
   let handlers;
   beforeEach(() => {
@@ -315,15 +310,14 @@ describe("flush lock and the page that took it", () => {
     return { queue, state };
   }
 
-  it("gives the lock back when the page unloads", () => {
+  it("defers a late visibility flush until pageshow", async () => {
     const { queue } = queueWithStuckFlush();
-    // The browser tears a page down in this order: beforeunload, pagehide,
-    // visibilitychange(hidden) — the flush that TAKES the lock — then unload.
-    handlers.beforeunload?.();
-    handlers.pagehide?.();
-    queue.flush();
-    expect(acquireFlushLock("owner", "tab-2", 1000, "train")).toBe(false); // held
-    handlers.unload?.();
-    expect(acquireFlushLock("owner", "tab-2", 1100, "train")).toBe(true); // released
+    handlers.pagehide({ persisted: true });
+    await expect(queue.flush()).resolves.toBe(false);
+    expect(handlers.unload).toBeUndefined();
+
+    handlers.pageshow({ persisted: true });
+    void queue.flush();
+    expect(acquireFlushLock("owner", "tab-2", 1000, "train")).toBe(false);
   });
 });

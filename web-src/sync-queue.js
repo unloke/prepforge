@@ -34,19 +34,16 @@ export function createSyncQueue({ key, state, owner, generation, serialize, flus
     sync.retry = Math.min(sync.retry + 1, 6);
     arm(info?.retryAfterMs ?? Math.min(30_000, 1000 * 2 ** (sync.retry - 1)));
   }
-  // An unloading page never reaches the flush's finally: release its lock on
-  // the way out. The teardown order is beforeunload -> pagehide ->
-  // visibilitychange(hidden) -> unload, and the visibilitychange flush is the
-  // one that TAKES the lock — so releasing on beforeunload/pagehide alone left
-  // the lock behind and it blocked the next load of the same owner (Train:
-  // "Couldn't sync your last session" and no session). unload fires last, so
-  // the lock always goes back.
   let heldLock = null;
-  const releaseHeldLock = () => { if (heldLock) releaseFlushLock(heldLock, key); };
-  globalThis.addEventListener?.("beforeunload", releaseHeldLock);
-  globalThis.addEventListener?.("pagehide", releaseHeldLock);
-  globalThis.addEventListener?.("unload", releaseHeldLock);
+  let pageHidden = false;
+  globalThis.addEventListener?.("pagehide", () => {
+    pageHidden = true;
+    if (heldLock) releaseFlushLock(heldLock, key);
+  });
+  globalThis.addEventListener?.("pageshow", () => { pageHidden = false; });
   function drain() {
+    // A late visibilitychange must not reacquire a lock after pagehide.
+    if (pageHidden) return Promise.resolve(false);
     const sync = state(), account = owner(), epoch = generation();
     if (sync.flushing) return sync.flushing;
     if (!hasWork()) return Promise.resolve(true);
