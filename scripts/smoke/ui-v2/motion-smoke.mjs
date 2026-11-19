@@ -127,6 +127,10 @@ const failures = [];
 
 // Runs in the page before any app code.
 function recorder() {
+  window.__reveals = [];
+  document.addEventListener("transitionrun", (e) => {
+    if (["opacity", "translate"].includes(e.propertyName)) window.__reveals.push({ el: e.target, property: e.propertyName });
+  }, true);
   const ids = new WeakMap();
   let n = 0;
   const uid = (el) => { if (!ids.has(el)) ids.set(el, ++n); return ids.get(el); };
@@ -206,6 +210,16 @@ async function run({ name, width, height, mobile }) {
   const step = (s) => page.evaluate((s) => { window.__step = s; }, s);
   const go = (hash) => page.evaluate((h) => { location.hash = h; }, hash);
   const settle = (ms = 1400) => page.waitForTimeout(ms);
+  const reveal = async (targetPage, button, selector, enabled = true) => {
+    const since = await targetPage.evaluate(() => window.__reveals.length);
+    await targetPage.locator(button).click();
+    await targetPage.waitForTimeout(280);
+    const properties = await targetPage.evaluate(({ since, selector }) => window.__reveals.slice(since)
+      .filter((e) => e.el.matches(selector)).map((e) => e.property), { since, selector });
+    if (enabled ? !["opacity", "translate"].every((p) => properties.includes(p)) : properties.length > 0) {
+      failures.push(`${name}: ${selector} should ${enabled ? "reveal with opacity/translate" : "stay still for reduced motion"}, got ${properties}`);
+    }
+  };
   const refreshAndReturn = async (id, hash) => {
     await step(`${id}:refresh`);
     await page.evaluate(() => { window.dispatchEvent(new Event("focus")); document.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("resize")); });
@@ -221,6 +235,11 @@ async function run({ name, width, height, mobile }) {
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"]').waitFor({ timeout: 15000 });
   await settle();
+  if (mobile) {
+    await reveal(page, "#library-search-toggle", "#view-dashboard .search-field");
+    await page.locator("#lib-filter-search").fill("Caro");
+    await page.locator(".lib-search-cancel").click();
+  }
   await refreshAndReturn("library", "#/dashboard");
 
   await step("build:enter");
@@ -229,6 +248,17 @@ async function run({ name, width, height, mobile }) {
   if (!mobile) await page.locator("#explorer-rows .explorer-row").first().waitFor({ timeout: 15000 }).catch(() => failures.push(`${name}: the Explorer never listed its rows`));
   else await page.locator("#builder-tree .mtree-move").first().waitFor({ timeout: 15000 }).catch(() => failures.push(`${name}: the tree never painted`));
   await settle();
+  if (!mobile) {
+    await reveal(page, "#build-tool-coverage", "#coverage-drawer");
+    await reveal(page, "#build-tool-explorer", "#explorer-drawer");
+    await reveal(page, "#build-dock-opts", ".dock-tools");
+    await page.keyboard.press("Escape");
+    const closed = await page.locator(".dock-tools").evaluate((el) => ({
+      open: el.matches(":popover-open"), pointerEvents: getComputedStyle(el).pointerEvents,
+    }));
+    if (closed.open || closed.pointerEvents !== "none") failures.push(`${name}: departing panel options must stop hit testing immediately`);
+    await settle(180);
+  }
   // A new position is one arrival: its rows enter once.
   await step("build:new-position");
   await page.locator('#builder-tree .mtree-move[data-node-id="n3"], #builder-tree [data-node-id="n3"]').first().click().catch(() => {});
@@ -248,6 +278,19 @@ async function run({ name, width, height, mobile }) {
   await page.locator('#teams-list .team-row[data-team-id="t1"]').click();
   await page.locator("#team-members .mem-row:not(.is-skeleton)").first().waitFor({ timeout: 15000 }).catch(() => {});
   await settle();
+  await reveal(page, "#team-tab-repertoires", "#team-panel-repertoires");
+  await reveal(page, "#team-tab-members", "#team-panel-members");
+  const targets = ["#team-tab-repertoires", "#team-tab-members", "#team-tab-repertoires"];
+  const clicks = [];
+  for (const selector of targets) {
+    const r = await page.locator(selector).boundingBox();
+    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+    clicks.push(await page.locator(selector).getAttribute("aria-selected"));
+    await page.waitForTimeout(25);
+  }
+  const selected = await page.evaluate(() => [...document.querySelectorAll("[data-team-panel]:not([hidden])")].map((el) => el.id));
+  if (clicks.some((selected) => selected !== "true") || selected.join() !== "team-panel-repertoires") failures.push(`${name}: rapid pane input must update selection immediately`);
+  await settle(280);
   await refreshAndReturn("teams", "#/teams");
 
   await step("settings:enter");
@@ -317,6 +360,7 @@ async function run({ name, width, height, mobile }) {
 
   // Reduced motion: the ring shows without fading; the view does not travel.
   const reduced = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce" });
+  await reduced.addInitScript(recorder);
   const rp = await reduced.newPage();
   await rp.goto(`${base}/#/settings`, { waitUntil: "domcontentloaded" });
   await rp.locator(".settings-nav .settings-nav-link").first().waitFor({ timeout: 15000 });
@@ -329,6 +373,21 @@ async function run({ name, width, height, mobile }) {
   await rp.waitForTimeout(150);
   const still = await rp.evaluate(() => document.querySelector("#set-board")?.offsetParent !== null);
   if (!still) failures.push(`${name} reduced motion: the Board area should open without a fade`);
+  await rp.goto(`${base}/#/teams`, { waitUntil: "domcontentloaded" });
+  await rp.locator('#teams-list .team-row[data-team-id="t1"]').waitFor();
+  await rp.locator('#teams-list .team-row[data-team-id="t1"]').click();
+  await rp.locator("#team-tab-members").waitFor();
+  await reveal(rp, "#team-tab-repertoires", "#team-panel-repertoires", false);
+  if (!mobile) {
+    await rp.goto(`${base}/#/build?rep=rep-1`, { waitUntil: "domcontentloaded" });
+    await rp.locator("#build-tool-coverage").waitFor();
+    await reveal(rp, "#build-tool-coverage", "#coverage-drawer", false);
+    await reveal(rp, "#build-dock-opts", ".dock-tools", false);
+  } else {
+    await rp.goto(`${base}/#/dashboard`, { waitUntil: "domcontentloaded" });
+    await rp.locator("#dashboard-repertoires .lib-row").first().waitFor();
+    await reveal(rp, "#library-search-toggle", "#view-dashboard .search-field", false);
+  }
   await reduced.close();
 }
 

@@ -173,6 +173,17 @@
 .teams .tabs .count[hidden] { display: none; }
 [data-team-panel][hidden] { display: none; }
 
+/* Only newly shown panes enter; refreshes and the view's own arrival do not. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-team-panel] {
+    transition: opacity var(--dur) var(--ease-out), translate var(--dur) var(--ease-out);
+  }
+
+  @starting-style {
+    :root:not(.view-swap) [data-team-panel]:not([hidden]) { opacity: 0; translate: 0 6px; }
+  }
+}
+
 /* The pane's action lives on its own line above the rows — the tab already
    names the pane, so a second bold label under it was a repeat. */
 .sub-head {
