@@ -151,6 +151,26 @@ async function runViewport(vp) {
   // The pick is persisted where the rail toggle keeps it, and it survives a load.
   const storedTheme = await page.evaluate(() => JSON.parse(localStorage.getItem("prepforge.prefs") || "{}").theme);
   check(storedTheme === "dark", `Settings → Appearance must store the theme, got "${storedTheme}"`);
+
+  const blueAccent = page.getByRole("button", { name: "Blue", exact: true });
+  const greenBoard = page.getByRole("button", { name: "Green", exact: true });
+  const woodPreview = page.getByRole("button", { name: "Wood", exact: true }).locator(".board-square");
+  const woodColors = () => woodPreview.evaluateAll((squares) => squares.map((el) => getComputedStyle(el).backgroundColor));
+  const originalWood = await woodColors();
+  check(originalWood.length === 4 && new Set(originalWood).size === 2, "Wood should preview two square colors");
+  await blueAccent.click();
+  await greenBoard.click();
+  check((await woodColors()).every((color, i) => color === originalWood[i]),
+    "the Wood preview must keep its colors when Green is selected");
+
+  const classic = page.getByRole("group", { name: "Piece set" }).getByRole("button", { name: "Classic" });
+  const staunton = page.getByRole("button", { name: "Staunton Pro" });
+  const background = (tile) => tile.evaluate((el) => getComputedStyle(el).backgroundColor);
+  await classic.click();
+  await page.mouse.move(vp.width - 4, vp.height - 4);
+  check(await classic.getAttribute("aria-pressed") === "true" && await background(classic) !== await background(staunton),
+    "the selected piece set must have a different background from the unselected tile");
+
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1200);
   const reloadedTheme = await page.evaluate(() => document.documentElement.dataset.theme);
@@ -159,6 +179,10 @@ async function runViewport(vp) {
   await page.waitForTimeout(600);
   const reloadedPressed = await page.locator('#settings-theme-seg .seg-btn[data-theme-value="dark"]').getAttribute("aria-pressed");
   check(reloadedPressed === "true", "the Appearance control should show the stored pick after a reload");
+  check(await blueAccent.getAttribute("aria-pressed") === "true" && await greenBoard.getAttribute("aria-pressed") === "true",
+    "changing the board color after picking an accent must persist both choices");
+  check(await classic.getAttribute("aria-pressed") === "true" && await background(classic) !== await background(staunton),
+    "the saved piece set must stay highlighted after reload");
   // The rail toggle and the card are one value: the toggle flips it, the card follows.
   const toggle = page.locator('[data-testid="theme-toggle"]');
   if (await toggle.isVisible()) await toggle.click();

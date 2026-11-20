@@ -117,8 +117,6 @@
   /* -- Board ------------------------------------------------------------
      A light wood pair and an amber last-move tint, the same in both themes:
      the squares are the board's colours, not the page's. */
-  --square-light: #e6dac5;
-  --square-dark: #a98b6d;
   --board-frame: #8a7056;
   --dot-white: #ffffff; /* the white side's dot/face */
 
@@ -343,10 +341,11 @@
 
 /* ---- Board colour themes --------------------------------------------------
    The board reads --square-light and --square-dark on <html data-board>, set
-   before first paint by theme.js (applyBoardTheme). `wood` is the default and
-   takes the theme values above. A swatch in Settings carries the same pair on
-   itself, so the picker shows the board it will make. One pair is the same in
-   both themes: the squares are the board's colours, not the page's. */
+   before first paint by theme.js (applyBoardTheme). Wood is the default.
+   Each Settings swatch carries its own pair, independent of the active board. */
+:root, .board-color-swatch[data-board="wood"] { --square-light: #e6dac5; --square-dark: #a98b6d; }
+
+
 :root[data-board="slate"], .board-color-swatch[data-board="slate"] { --square-light: #dee3e6; --square-dark: #8ca2ad; --coord-on-light: #4a6170; --coord-on-dark: #16232b; }
 
 
