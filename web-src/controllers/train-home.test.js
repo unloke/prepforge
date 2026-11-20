@@ -7,6 +7,8 @@ import {
   createTrainHome, dueIn, dueMeta, dueStartState, outlookHtml, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
 } from "./train-home.js";
 import { saveRun } from "../train-history.js";
+import { provideApp } from "../core/app-context.js";
+import { formatWorkspaceHash, workspaceLocationFromState } from "../workspace-url.js";
 vi.mock("../core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 vi.mock("../train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 vi.mock("./train-session.js", () => import("./train-session.fixture.js"));
@@ -244,6 +246,16 @@ describe("the Due row", () => {
 });
 
 describe("the Result", () => {
+  it("drops the mixed Due URL as soon as its Result is shown", () => {
+    const { appState } = setup({ currentView: "train", trainMode: "smart", smart: { mixed: true, prompt: null } });
+    let hash = formatWorkspaceHash(workspaceLocationFromState(appState));
+    expect(hash).toBe("#/train?mode=smart");
+    provideApp({ syncWorkspaceUrl: () => { hash = formatWorkspaceHash(workspaceLocationFromState(appState)); } });
+    showTrainResult({ mode: "smart", title: "Queue complete", cells: [] });
+    expect(hash).toBe("#/train");
+    expect(appState.smart).not.toBeNull();
+  });
+
   it("Recent lists the runs before this one, never the run on the card", () => {
     const store = new Map();
     vi.stubGlobal("localStorage", {
@@ -257,6 +269,24 @@ describe("the Result", () => {
     const recent = doc.getElementById("train-recent");
     expect(recent.hidden).toBe(false);
     expect(String(recent.innerHTML).match(/train-recent-row/g)).toHaveLength(1);
+  });
+});
+
+describe("leaving a mixed Due queue for Practice", () => {
+  it.each([true, false])("clears the URL on Train even with autostart=%s", async autostart => {
+    const { appState, deps } = setup({ currentView: "train", trainMode: "smart", smart: { mixed: true, prompt: {} } });
+    let hash = formatWorkspaceHash(workspaceLocationFromState(appState));
+    expect(hash).toBe("#/train?mode=smart");
+    provideApp({ syncWorkspaceUrl: () => { hash = formatWorkspaceHash(workspaceLocationFromState(appState)); } });
+    deps.startPlaySessionTracked.mockImplementationOnce(() => {
+      expect(hash).toBe("#/train");
+      return false;
+    });
+    await createTrainHome(deps).openTrain({ mode: "play", autostart });
+    expect(hash).toBe("#/train");
+    expect(appState.smart).toBeNull();
+    expect(deps.switchView).not.toHaveBeenCalled();
+    expect(deps.startPlaySessionTracked).toHaveBeenCalledTimes(autostart ? 1 : 0);
   });
 });
 
