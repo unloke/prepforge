@@ -9,6 +9,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
+import { checkSourcePicker } from "./source-picker.mjs";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
@@ -194,6 +195,8 @@ async function runViewport(vp) {
     "pre-Start: the Scout view should already have bound its controls (Start is data-only)",
   );
   check(preStart.reportEmpty, "pre-Start: report should still be empty");
+
+  await checkSourcePicker(page, "#scout-source-add", check);
 
   // Run the scout — streams the stubbed PGN and builds the report.
   await page.evaluate(() => document.getElementById("scout-btn").click());
