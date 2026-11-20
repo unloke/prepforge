@@ -37,7 +37,7 @@ export function generateExistingPlies(nodes, rootId, maxDepth, ownColor) {
       if (seen.has(child.id)) continue;
       seen.add(child.id);
       // The planner preserves, but does not expand, manual prepared own moves.
-      if (child.source === "manual" && (child.is_user_prepared_move ?? child.is_prepared)
+      if (child.source === "manual" && child.is_prepared
         && child.move_side === ownColor) continue;
       counts[ply] = (counts[ply] || 0) + 1;
       visit(child.id, ply + 1);
