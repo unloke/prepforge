@@ -17,6 +17,29 @@ function compile(name, deps) {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
 describe("Analyze study saves", () => {
+  it.each([null, "g1"])("keeps introductory-comment headers and custom FEN when navigation synchronizes PGN (%s)", async gameId => {
+    const fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 9";
+    const pgn = `{intro}\n[Event "Custom"]\n[Site "Paris"]\n[Round "3"]\n[SetUp "1"]\n[FEN "${fen}"]\n\n9. Nf3 Nc6 *`;
+    const parsed = parsePgn(pgn);
+    const appState = { analysisPgnStale: false };
+    const view = createAnalyzeView({ appState, START_FEN });
+    const { moves, varNodes } = view.adaptParsedTree(parsed.root);
+    appState.analysis = { game_id: gameId, moves, pgn };
+    appState.analysisVarNodes = varNodes;
+    const input = { value: pgn };
+    const sync = compile("syncPgnFromTree", {
+      appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
+      ensureAnalyzeView: async () => view,
+    });
+    await sync();
+    const restored = parsePgn(input.value);
+    expect(restored.ok).toBe(true);
+    expect(restored.headers).toEqual(parsed.headers);
+    expect(restored.root.children[0].fenBefore).toBe(fen);
+    expect(input.value).toContain("{intro}");
+    expect(appState.analysis.pgn).toBe(input.value);
+  });
+
   it("debounces tree edits and writes only the newest PGN to its original game", async () => {
     vi.useFakeTimers();
     const save = vi.fn(async () => {});

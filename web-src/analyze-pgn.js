@@ -28,7 +28,7 @@ function sideOf(color) {
   return color === "w" ? "white" : "black";
 }
 
-function extractHeaders(pgnText) {
+export function extractHeaders(pgnText) {
   const headers = {};
   const headerRe = /^\s*(?:\[(\w+)\s+"([^"]*)"\][ \t]*(?:\r?\n|$)|(\{[^}]*\}|;[^\r\n]*))/;
   let movetext = pgnText;
