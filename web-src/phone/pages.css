@@ -291,8 +291,10 @@
   }
   .lib-row .lib-cell-mastery { grid-area: pct; display: flex; padding-left: 8px; }
   .lib-row :is(.lib-mbar, .lib-mastery-word, .lib-mastery-none) { display: none; }
-  /* The menu is a long-press; its button stays for the keyboard and VoiceOver. */
-  .lib-row .row-menu-btn { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  /* Long-press on touch; reveal the anchored button for keyboard navigation. */
+  .lib-row .row-menu-btn { position: absolute; top: 8px; right: 14px; width: 36px; height: 36px; clip-path: inset(50%); }
+  .lib-row .row-menu-btn:focus-visible { clip-path: none; }
+  .lib-row:has(.row-menu-btn:focus-visible) .lib-opt { padding-right: 44px; }
   .lib-row .lib-mastery b { color: var(--muted); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
   .lib-row.is-shared .lib-cell-mastery { display: none; }
   #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; margin-block: -3px; padding: 0 4px; font-size: 13px; white-space: nowrap; border-color: transparent; background: none; }

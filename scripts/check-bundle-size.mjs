@@ -109,7 +109,7 @@ const LIMITS = [
   // snapshot rules, plus aligned phone gutters and footer hit testing,
   // bring the sheet to 180,032 B. The Analyze-only in-flow footer fix brings
   // the current sheet to 180,227 B, without changing Build/Train positioning.
-  // Pane/options/search motion, intrinsic popovers and source-picker containment.
+  // Motion, intrinsic popovers, source-picker containment, and Library keyboard focus.
   { prefix: "index-", suffix: ".css", maxBytes: 181_500, label: "main stylesheet" },
 ];
 
