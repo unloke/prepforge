@@ -32,8 +32,9 @@ URL; `engine-profile.js` separates the saved recommendation from the usable
 profile and publishes replayable setup progress for Settings. Analyze's job card
 reports only the analysis work.
 
-The first engine startup of a page prepares full in the background, then detection
-requests an idle window from `compute-budget.js`. Foreground work cancels the
+Opening the site does not run device detection. On first Stockfish use, a device
+without a saved setup requests an idle window from `compute-budget.js` to
+detect; Settings can also start it explicitly. Foreground work cancels the
 probe; it retries after that work finishes. A whole-game session pins its net
 through all Maia follow-ups and holds the batch budget through checkpointing,
 cloud persistence and rendering. The Engine card reads the pass's saved results

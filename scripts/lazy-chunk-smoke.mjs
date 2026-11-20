@@ -52,7 +52,7 @@ function staticImports(text) {
 }
 
 // Engine runtime and weights: never on the shell's critical path or the idle warm-up.
-const HEAVY = /\.wasm$|\.onnx$|^\/static\/engine\/|\/maia3-worker-/;
+const HEAVY = /\.wasm$|\.onnx$|^\/static\/engine\/(?!stockfish\.manifest\.json$)|\/maia3-worker-/;
 
 async function readAsset(namePattern) {
   const files = await readdir(ASSETS_DIR);
@@ -125,7 +125,12 @@ function startStaticServer() {
           return;
         }
         const body = await readFile(filePath);
-        res.writeHead(200, { "Content-Type": MIME[extname(filePath)] || "application/octet-stream" });
+        const headers = { "Content-Type": MIME[extname(filePath)] || "application/octet-stream" };
+        if (url.searchParams.has("isolated")) {
+          headers["Cross-Origin-Opener-Policy"] = "same-origin";
+          headers["Cross-Origin-Embedder-Policy"] = "require-corp";
+        }
+        res.writeHead(200, headers);
         res.end(body);
       } catch {
         res.writeHead(404).end("not found");
@@ -164,7 +169,7 @@ async function browserChecks() {
   // Opens the shell and records chunk kinds and heavy engine requests. saveData
   // turns off the idle view warm-up (view-prefetch.js) so on-demand loading can
   // be checked view by view.
-  async function open({ saveData }) {
+  async function open({ saveData, signedIn = false }) {
     const context = await browser.newContext();
     if (saveData) {
       await context.addInitScript(() => {
@@ -172,6 +177,16 @@ async function browserChecks() {
       });
     }
     const page = await context.newPage();
+    if (signedIn) {
+      await page.addInitScript(() => localStorage.setItem("prepforge.welcome", "done"));
+      await page.route("**/api/**", (route) => {
+        const path = new URL(route.request().url()).pathname;
+        const json = path === "/api/auth/me" ? { id: "u1", display_name: "Smoke Tester" }
+          : path === "/api/repertoires" ? { repertoires: [], shared: [] }
+          : {};
+        return route.fulfill({ json });
+      });
+    }
     const seen = { loaded: new Set(), heavy: new Set() };
     page.on("request", (request) => {
       const url = new URL(request.url()).pathname;
@@ -180,15 +195,17 @@ async function browserChecks() {
       const kind = chunkKind(url);
       if (kind) seen.loaded.add(kind);
     });
-    await page.goto(`${base}/`, { waitUntil: "networkidle" });
+    await page.goto(`${base}/${signedIn ? "?isolated" : ""}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(800);
     return { context, page, ...seen };
   }
   const noHeavy = (heavy, when) => assert(heavy.size === 0, `${when} fetched engine runtime/weights: ${[...heavy].join(", ")}`);
 
   try {
-    // Idle warm-up: after first paint every view chunk is fetched, the engine is not.
-    const warm = await open({ saveData: false });
+    // Even a fresh signed-in device that supports the engine warms only view chunks.
+    const warm = await open({ saveData: false, signedIn: true });
+    assert(await warm.page.evaluate(() => crossOriginIsolated), "signed-in warm-up must support the browser engine");
+    await warm.page.waitForSelector("#account-chip.is-connected", { state: "attached" });
     const warmKinds = ["dashboard", "build-view", "analyze", "movetree", "train", "replay", "settings", "teams"];
     // One view per idle slot (each capped at 4 s), so give the queue time to drain.
     for (let waited = 0; waited < 20000 && !warmKinds.every((k) => warm.loaded.has(k)); waited += 250) {

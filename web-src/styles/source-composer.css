@@ -95,6 +95,8 @@
     font-size: 16px;
   }
   .src-chip { height: auto; min-height: var(--control-h); padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
+  /* Fit the full remove target inside a row's 6px padding, not outside its list. */
+  .src-row.is-external .src-chip-x { margin-block: -6px; }
 }
 
 
@@ -116,6 +118,7 @@
   max-height: calc(100dvh - 16px);
   overflow-y: auto;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   padding: 12px;
   background: var(--float);
@@ -227,6 +230,7 @@
 
 .src-rows {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   max-height: 220px;
   overflow: auto;
@@ -250,4 +254,3 @@
   flex: 1;
   min-width: 0;
 }
-
