@@ -309,7 +309,7 @@ export async function syncPgnFromTree() {
   if (seq !== analysisRecallSeq || input.value !== original) return;
   const next = view.serializeAnalysisPgn(input.value);
   if (!next) return;
-  analysis.pgn = next;
+  if (analysis) analysis.pgn = next;
   appState.analysisPgnStale = false;
   if (next !== input.value) {
     analyzePgnWriting = true;

@@ -356,6 +356,21 @@ describe("serialization never clobbers a textarea the user is editing", () => {
     expect(h.input.value).toBe(typed);
   });
 
+  it("writes free-play moves without an analysis payload", async () => {
+    const appState = { analysis: null, analysisVarNodes: new Map(), analysisPgnStale: true };
+    const view = createAnalyzeView({ appState, START_FEN });
+    appState.analysisVarNodes = view.adaptParsedTree(parsePgn("1. e4 e5").root, 0).varNodes;
+    const input = { value: "" };
+    const doc = { getElementById: () => input, activeElement: null };
+    const sync = new Function("appState", "document", "analysisRecallSeq", "ensureAnalyzeView",
+      `let analyzePgnWriting = false; ${body} return syncPgnFromTree;`)(appState, doc, 1, async () => view);
+
+    await expect(sync()).resolves.toBeUndefined();
+    expect(input.value).toBe("1. e4 e5");
+    expect(appState.analysis).toBeNull();
+    expect(appState.analysisPgnStale).toBe(false);
+  });
+
   it("still writes a new branch into a focused box, so a reload keeps it", async () => {
     // A branch exists only in the tree until the box carries it; the box was not
     // edited since (analysisPgnStale), so this is not the user's keystroke.
