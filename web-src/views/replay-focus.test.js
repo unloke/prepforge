@@ -64,6 +64,7 @@ function makeView(elements, { renderers = RENDERERS } = {}) {
     onTrainMiss: () => {},
     onBuildReply: () => {},
     onAnalyze: () => {},
+    isOwnAccount: (account) => account === "self",
   });
 }
 
@@ -212,6 +213,18 @@ describe("replay focus internals", () => {
     expect(String(html)).toContain('data-square="f3"');
     // Pieces render through the production SVG helpers.
     expect(String(html)).toMatch(/data-piece="p"/);
+  });
+
+  it("names an external player's games instead of calling them You", () => {
+    const external = { ...userErrorGame, source_account: "Zhigalko_Sergei", black: "Zhigalko_Sergei" };
+    makeView(elements).renderReplayResults({ games: [external], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html).toContain("<b>opp_one</b> vs <b>Zhigalko_Sergei</b>");
+    expect(html).toContain("Zhigalko_Sergei diverged at 2…");
+    expect(html).not.toContain("<b>You</b>");
+    expect(html).not.toContain("You diverged");
+    expect(html).toContain('title="Fetched from this Lichess player">Zhigalko_Sergei');
+    expect(html).not.toContain("Fetched from this linked account");
   });
 
   it("resolves You in the open row, and the detail under it does not repeat the players", () => {

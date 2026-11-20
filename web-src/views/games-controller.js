@@ -71,18 +71,13 @@ async function runLichessCompare() {
     appState.replayOpen = new Set();
     await renderReplayResults(payload, isCurrent);
     if (!isCurrent()) return;
+    // The ledger header already names the count and the source; a notice only
+    // says what the ledger cannot: moves this check added to training.
     const queued = Number(payload.misses_recorded) || 0;
-    const sources = Array.isArray(payload.sources) ? payload.sources : [];
-    const sourceLabel =
-      sources.length > 1
-        ? `self (${sources.length} accounts)`
-        : payload.username === "self"
-          ? "self"
-          : payload.username;
     setStatus(
       queued > 0
         ? `Fetched ${countOf(payload.count, "game")} · ${queued} forgotten move${queued === 1 ? "" : "s"} added to training`
-        : `Fetched ${countOf(payload.count, "game")} for ${sourceLabel}`
+        : ""
     );
   } catch (error) {
     if (isCurrent()) {
@@ -309,6 +304,10 @@ async function ensureReplayView() {
       // Focus-board renderers: the production FEN decoder + active piece-SVG
       // set, shared with the Library preview (piece style follows Settings).
       boardRenderers: { parseFenBoard, pieceSvg },
+      isOwnAccount: (account) => {
+        const name = String(account || "").toLowerCase();
+        return lichessAccounts().some((linked) => String(linked.username || "").toLowerCase() === name);
+      },
       getReplayFilter: () => appState.replayFilter,
       isGameOpen: (index) => appState.replayOpen.has(index),
       onToggleFilter: (kind) => {

@@ -142,6 +142,10 @@ async function runViewport(vp) {
   };
   await shot("setup");
 
+  // The empty ledger spans the triage column (start alignment once collapsed it to 0px).
+  const emptyWidth = await page.locator("#replay-results .ledger-empty").evaluate((el) => el.getBoundingClientRect().width).catch(() => 0);
+  check(emptyWidth > vp.width * 0.4, `empty Games state should span the column, got ${Math.round(emptyWidth)}px`);
+
   if (vp.width <= 760) await page.locator("#games-setup").click();
   await checkSourcePicker(page, "#games-source-add", check);
   if (vp.width <= 760) await page.locator("#games-setup").click();
@@ -231,6 +235,10 @@ async function runViewport(vp) {
   }
 
   await shot("triage");
+
+  // The ledger header names the count and source; only moves added to training earn a toast.
+  const sourceNotices = await page.locator(".notice").filter({ hasText: / for \S+$/ }).count();
+  check(sourceNotices === 0, `Check should raise no "Fetched N games for …" notice over the results, got ${sourceNotices}`);
 
   // Add reply acts on the row it sits in: the opponent's departure move is
   // played into the matched repertoire (POST /api/build/add-moves), not just
