@@ -173,6 +173,13 @@
 .teams .tabs .count[hidden] { display: none; }
 [data-team-panel][hidden] { display: none; }
 
+/* Only newly shown panes enter; refreshes and the view's own arrival do not. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-team-panel].is-enter {
+    animation: row-enter var(--dur) var(--ease-out) both;
+  }
+}
+
 /* The pane's action lives on its own line above the rows — the tab already
    names the pane, so a second bold label under it was a repeat. */
 .sub-head {

@@ -8,6 +8,7 @@ import { EXPLORER_EVAL_MAX_LINES, engineWantedIn, engineWidget } from "./core/en
 import { hooks } from "./core/hooks.js";
 import { showUndoToast } from "./undo.js";
 import { createBuildLive } from "./build-live.js";
+import { enterOnce } from "./list-enter.js";
 
 // The sync controller and the Build session are created by the shell after this
 // module binds; both arrive through hooks.build. selectBuildNode and
@@ -231,6 +232,7 @@ export function sameFenPosition(a, b) {
 
 export function setBuildInspector(tool) {
   const tab = BUILD_DOCK_TABS.includes(tool) ? tool : buildDockTab;
+  const changed = tab !== buildDockTab;
   const panels = {
     explorer: document.getElementById("explorer-drawer"),
     coverage: document.getElementById("coverage-drawer"),
@@ -249,6 +251,7 @@ export function setBuildInspector(tool) {
     button.setAttribute("aria-selected", String(on));
     button.tabIndex = on ? 0 : -1;
   });
+  if (changed && globalThis.matchMedia?.("(min-width: 761px)").matches) enterOnce(panels[tab]);
   const dbs = document.getElementById("inspector-dbs");
   const engineSwitch = document.getElementById("explorer-engine-switch");
   if (dbs) dbs.hidden = tab !== "explorer";

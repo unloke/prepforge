@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ENTER, enterOnce, enterRows, reveal, settleEntrances } from "./list-enter.js";
 import { eagerCss as css } from "./test-styles-source.js";
@@ -31,8 +31,16 @@ function list(keys, opts = {}) {
   return container;
 }
 const entering = (container) => container.children.filter((row) => row.classList.contains(ENTER)).map((row) => row.dataset.key);
+afterEach(() => vi.unstubAllGlobals());
 
 describe("entrances", () => {
+  it("does not leave a pending arrival when reduced motion is enabled", () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+    const panel = fakeEl();
+    panel.classList.add(ENTER);
+    enterOnce(panel);
+    expect(panel.classList.contains(ENTER)).toBe(false);
+  });
   it("numbers the arriving rows and caps the stagger so a long list never drags", () => {
     const container = list(Array.from({ length: 40 }, (_, i) => `r${i}`));
     enterRows(container);

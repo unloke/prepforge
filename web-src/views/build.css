@@ -593,7 +593,32 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 
-.dock-tools:popover-open { display: grid; gap: 12px; }
+.dock-tools:popover-open { display: grid; align-content: start; gap: 12px; }
+
+/* Phone options already enter as a bottom sheet. */
+@media (min-width: 761px) and (prefers-reduced-motion: no-preference) {
+  :is(#explorer-drawer, #coverage-drawer).is-enter {
+    animation: row-enter var(--dur) var(--ease-out) both;
+  }
+
+  .dock-tools {
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      translate var(--dur-fast) var(--ease-out),
+      display var(--dur-fast) allow-discrete,
+      overlay var(--dur-fast) allow-discrete;
+  }
+
+  .dock-tools:not(:popover-open) {
+    opacity: 0;
+    translate: 0 -4px;
+    pointer-events: none;
+  }
+
+  @starting-style {
+    .dock-tools:popover-open { opacity: 0; translate: 0 -4px; }
+  }
+}
 
 
 .dock-opt { display: grid; gap: 4px; }

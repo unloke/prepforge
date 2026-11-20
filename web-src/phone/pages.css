@@ -207,6 +207,18 @@
   /* Nothing to filter yet (the empty card carries its own actions): no row. */
   #view-dashboard .lib:not([data-search-open]) .lib-list.is-empty:not(:has(.lib-no-match)) .card-head { display: none; }
   #view-dashboard .lib-list .search-field { grid-area: search; width: 100%; margin: 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    #view-dashboard .lib-list :is(.search-field, .lib-search-cancel) {
+      transition: opacity var(--dur) var(--ease-out), translate var(--dur) var(--ease-out);
+    }
+
+    @starting-style {
+      :root:not(.view-swap) #view-dashboard .lib[data-search-open] .lib-list :is(.search-field, .lib-search-cancel) {
+        opacity: 0;
+        translate: 0 -4px;
+      }
+    }
+  }
   #view-dashboard .lib-search-cancel {
     display: block;
     grid-area: cancel;

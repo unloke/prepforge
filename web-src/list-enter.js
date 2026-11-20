@@ -55,7 +55,7 @@ export function enterRows(container, { key = rowKey } = {}) {
 // the view's own fade already carries it.
 export function enterOnce(el) {
   if (!el?.classList) return;
-  if (entranceCovered(el)) {
+  if (entranceCovered(el) || globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
     el.classList.remove(ENTER);
     return;
   }
