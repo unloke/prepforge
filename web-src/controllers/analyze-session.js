@@ -8,6 +8,8 @@ import {
 } from "../analyze-checkpoint.js";
 import { isReviewedMove } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
+import { createBatchSwitcher } from "../analyze-batch.js";
+import { recallAnalysis } from "./analyze-entry.js";
 import { ANALYSIS_ROOT_PATH } from "../analyze-node-path.js";
 import { _coachReady, analysisRecallSeq, analyzeView } from "../app.js";
 import { setPositionCaption } from "../board-caption.js";
@@ -43,6 +45,10 @@ import { accountService, analysisSelfSide, defaultRepertoireNameFromPgn, hideAna
   importRepertoireFromPgnText, invalidateAnalysisSource, refreshAnalysisHistoryIfOpen,
   refreshAnalyzeRecovery, requireSignIn, showAnalysisRetrySave, switchView, syncPgnFromTree,
   syncViewHeads, syncWorkspaceUrl } from "../core/app-context.js";
+
+const switchBatchAnalysis = createBatchSwitcher({ appState, recallAnalysis, runAnalysis, invalidateAnalysisSource,
+  sourceIsCurrent: (seq) => seq === analysisRecallSeq,
+  isBusy: () => document.getElementById("run-analysis").disabled || notices.isBusy(), setStatus });
 
 export function createAnalyzeSession() {
   positionCoach = new PositionCoach();
@@ -1310,6 +1316,7 @@ function renderImportPicker(summary, mode) {
   const label = (g) =>
     `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"}, ${g.status}${g.error ? ` (${g.error})` : ""}`;
   host.hidden = false;
+  host.setAttribute("aria-busy", "false");
   host.innerHTML =
     html`<span class="import-summary">${summary.imported_count} new · ${summary.existing_count} already present · ${summary.failed_count} failed of ${summary.total_games}</span><select id="analysis-import-select" aria-label="Choose analyzed game">${games
       .map(
@@ -1317,24 +1324,8 @@ function renderImportPicker(summary, mode) {
           html`<option value="${g.index}"${g.index === summary.selected_index ? " selected" : ""}${g.status === "failed" ? " disabled" : ""}>${label(g)}</option>`,
       )}</select>`;
   const select = host.querySelector("#analysis-import-select");
-  if (select) {
-    select.addEventListener("change", () => {
-      // The picker names a game in the paste it was built from (`fromBatch`), not a
-      // game in the box: after a run the box holds only the analyzed game. A new
-      // source (a paste, a recall) drops that paste, so a list left on screen must
-      // not POST its index into a box that no longer holds those games.
-      if (!appState.analysisMultiPgn) {
-        host.hidden = true;
-        host.innerHTML = "";
-        setStatus("Paste the games again to switch between them", { severity: "warning" });
-        return;
-      }
-      void runAnalysis({ mode: "multi", selectIndex: Number(select.value), fromBatch: true });
-    });
-  }
-  setStatus(
-    `Imported ${summary.imported_count} new, ${summary.existing_count} already present, ${summary.failed_count} failed. Analyzing game ${summary.selected_index + 1}.`,
-  );
+  select?.addEventListener("change", () => { void switchBatchAnalysis(summary, Number(select.value), host); });
+  setStatus("");
 }
 
 async function finishAnalyzeCheckpoint(checkpoint) {

@@ -135,4 +135,22 @@ describe("Recent analyses study restore", () => {
     expect(h.deps.setStatusError).toHaveBeenCalledWith("offline");
     expect(h.appState.analysis).toBeUndefined();
   });
+
+  it.each([404, 409])("reports an unavailable saved report (%s) to the batch flow without showing an error", async status => {
+    const h = harness();
+    const onMissing = vi.fn();
+    h.deps.api.mockRejectedValue(Object.assign(new Error("no usable report"), { status }));
+    expect(await h.recall("g1", null, { sourceSeq: 1, onMissing })).toBe(false);
+    expect(onMissing).toHaveBeenCalledOnce();
+    expect(h.deps.setStatusError).not.toHaveBeenCalled();
+  });
+
+  it("keeps network errors out of the missing-report path", async () => {
+    const h = harness();
+    const onMissing = vi.fn();
+    h.deps.api.mockRejectedValue(Object.assign(new Error("server unavailable"), { status: 500 }));
+    expect(await h.recall("g1", null, { sourceSeq: 1, onMissing })).toBe(false);
+    expect(onMissing).not.toHaveBeenCalled();
+    expect(h.deps.setStatusError).toHaveBeenCalledWith("server unavailable");
+  });
 });

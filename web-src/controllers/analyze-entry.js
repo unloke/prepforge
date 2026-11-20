@@ -239,7 +239,7 @@ const analysisStudy = createAnalysisStudySaver({
   onError: (error) => setStatusError(`Study changes not saved: ${error.message}`),
 });
 
-export async function recallAnalysis(gameId, listItem = null, { sourceSeq = invalidateAnalysisSource(), quiet = false } = {}) {
+export async function recallAnalysis(gameId, listItem = null, { sourceSeq = invalidateAnalysisSource(), quiet = false, onMissing = null } = {}) {
   const seq = sourceSeq;
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
@@ -278,7 +278,10 @@ export async function recallAnalysis(gameId, listItem = null, { sourceSeq = inva
     await syncPgnFromTree();
     return seq === analysisRecallSeq;
   } catch (error) {
-    if (seq === analysisRecallSeq && !quiet) setStatusError(error.message);
+    if (seq === analysisRecallSeq) {
+      if (onMissing && (error.status === 404 || error.status === 409)) onMissing();
+      else if (!quiet) setStatusError(error.message);
+    }
     return false;
   } finally {
     if (seq === analysisRecallSeq) sidebar?.setAttribute("aria-busy", "false");
