@@ -17,7 +17,7 @@ function repertoire(color, sans) {
   return { id: color, name: `${color} prep`, color, rootId: "root", children, kids };
 }
 
-function harness(side, sans, reps) {
+function harness(side, sans, reps, deps = {}) {
   const el = { hidden: true, innerHTML: "", querySelector: () => ({ addEventListener: vi.fn() }) };
   vi.stubGlobal("document", { getElementById: () => el });
   const chess = new Chess(), byId = new Map();
@@ -33,11 +33,34 @@ function harness(side, sans, reps) {
   const actions = createBookActions({
     bookState: { loaded: true, reps }, appState, analysisSelfSide: () => side,
     loadCoach: async () => ({ buildBookline }),
+    ...deps,
   });
   return { ...actions, appState, buildBookline, el };
 }
 
 describe("Analyze repertoire ownership", () => {
+  it("keeps only playable book moves and the fields needed to match and recommend them", async () => {
+    const bookState = { loaded: false };
+    const c4 = { id: "c4", parent_id: "root", san: "c4", uci: "c2c4", is_mainline: false, arrows: [] };
+    const d4 = { id: "d4", parent_id: "root", san: "d4", uci: "d2d4", is_mainline: true, fen_after: "unused" };
+    const api = vi.fn()
+      .mockResolvedValueOnce({ repertoires: [{ id: "white" }] })
+      .mockResolvedValueOnce({ repertoire_id: "white", name: "white prep", color: "white", nodes: [
+        { id: "root", parent_id: null },
+        c4, d4, { id: "e4", parent_id: "root", san: "e4", uci: "e2e4", is_enabled: false },
+      ] });
+    const h = harness("white", ["e4"], [], { bookState, api, currentOwnerId: () => "user" });
+    h.appState.pendingRepDeletes = new Set();
+
+    await h.updateBookline();
+
+    const [rep] = bookState.reps;
+    expect([...rep.children.keys()]).toEqual(["root|c2c4", "root|d2d4"]);
+    expect(rep.kids.get("root")).toContain(rep.children.get("root|c2c4"));
+    expect(rep.children.get("root|d2d4")).toStrictEqual({ id: "d4", san: "d4", uci: "d2d4", is_mainline: true });
+    expect(h.buildBookline).toHaveBeenCalledWith(expect.objectContaining({ kind: "user", expectedSan: "d4" }));
+  });
+
   it("shows a white player's departure even when the black repertoire contains that move", async () => {
     const h = harness("white", ["e4", "e5", "Bc4"], [
       repertoire("white", ["e4", "e5", "Nf3"]),
