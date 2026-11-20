@@ -27,7 +27,7 @@ import { planTrainRunIn } from "../train-flow.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, showTrainResult, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
-import { rehearsalStats, saveRehearsal } from "../train-rehearsal.js";
+import { restoreRehearsal, saveRehearsal } from "../train-rehearsal.js";
 import { appState, boards, notices, START_FEN } from "../core/state.js";
 import { api, currentOwnerId, localDateString, postJson, setStatus, setStatusError, sleep } from "../core/api.js";
 import { effectiveMaiaRating } from "../core/prefs.js";
@@ -264,7 +264,11 @@ export async function startTraining(mode, options = {}) {
     appState.training = payload;
     appState.trainAttempt = 1;
     trainStatsReset();
-    if (!fresh) appState.trainStats = rehearsalStats(currentOwnerId(), payload) || appState.trainStats;
+    const saved = !fresh && restoreRehearsal(currentOwnerId(), payload);
+    if (saved) {
+      appState.trainStats = saved.stats;
+      appState.trainAttempt = saved.attempt;
+    }
     if (boards.train && payload.color) {
       boards.train.setOrientation(payload.color === "black" ? "black" : "white");
     }

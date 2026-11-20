@@ -16,10 +16,14 @@ export function saveRehearsal(owner, training, stats, attempt) {
   } catch (_) { /* best effort */ }
 }
 
-export function rehearsalStats(owner, training) {
+export function restoreRehearsal(owner, training) {
   const memo = loadRehearsal(owner, training.repertoire_id);
-  return memo?.training.session_id === training.session_id &&
+  const sameRun = memo?.training.session_id === training.session_id &&
     Array.isArray(training.line_order) &&
     JSON.stringify(memo.training.line_order) === JSON.stringify(training.line_order) &&
-    memo.training.prompt.current_index <= training.prompt.current_index ? memo.stats : null;
+    memo.training.prompt.current_index <= training.prompt.current_index;
+  if (!sameRun) return null;
+  const samePrompt = ["current_index", "line_node_id", "fen_before"].every(name =>
+    memo.training.prompt[name] === training.prompt[name]);
+  return { stats: memo.stats, attempt: samePrompt && Number.isInteger(memo.attempt) && memo.attempt > 0 ? memo.attempt : 1 };
 }
