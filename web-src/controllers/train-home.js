@@ -9,7 +9,7 @@ import { createTrainPreview, paintTrainPreviewLoading } from "./train-preview.js
 import { appState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
-import { lichessAccounts, requireSignIn, switchView } from "../core/app-context.js";
+import { lichessAccounts, requireSignIn, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
 import { blitzEnabled, clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setBlitzEnabled,
   skipTrainingLine, startPlaySessionTracked, startTraining, takebackPlaySession, trainHint } from "./train-session.js";
@@ -180,6 +180,7 @@ function resetSessions() {
 export async function leaveToHome() {
   if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
   resetSessions();
+  syncWorkspaceUrl();
   invalidateTrainPreview();
   syncTrainScreen();
   void resetTrainBoardIdle("");

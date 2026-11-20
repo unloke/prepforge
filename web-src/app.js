@@ -373,7 +373,7 @@ async function restoreWorkspaceLocation() {
   if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply, loc.node);
   // #/train is Train Home; a link that names a repertoire opens its Due queue,
   // with that scope on the session's chip.
-  if (loc.view === "train" && appState.signedIn && loc.repertoireId) {
+  if (loc.view === "train" && appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) {
     await openTrain({ mode: "smart", repertoireId: loc.repertoireId });
   }
 }
@@ -426,7 +426,10 @@ async function handleWorkspacePopstate() {
     if (loc.node && loc.node !== current) await restoreAnalysisNodePath(loc.node);
     else if (!loc.node && loc.ply && loc.ply !== appState.analysisPly) await showAnalysisPly(loc.ply);
   }
-  if (loc.view === "train" && appState.signedIn && loc.repertoireId && loc.repertoireId !== trainQueueRepertoireId(appState)) {
+  if (loc.view === "train" && appState.signedIn && (
+    loc.repertoireId && loc.repertoireId !== trainQueueRepertoireId(appState) ||
+    loc.trainMode === "smart" && !appState.smart?.mixed
+  )) {
     await openTrain({ mode: "smart", repertoireId: loc.repertoireId });
   }
 }

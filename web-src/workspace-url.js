@@ -61,7 +61,7 @@ function asAnalysisNode(raw) {
   return isAnalysisNodePath(node) && node !== ANALYSIS_ROOT_PATH ? node : null;
 }
 
-export function formatWorkspaceHash({ view, replaySection, repertoireId, ply, node, settingsArea } = {}) {
+export function formatWorkspaceHash({ view, replaySection, repertoireId, ply, node, settingsArea, trainMode } = {}) {
   const rawView = String(view || "").toLowerCase();
   // Canonical form: replay + section always serializes to the section alias
   // (#/games or #/scout). Accepting a bare { view: "games"/"scout" } keeps
@@ -79,6 +79,7 @@ export function formatWorkspaceHash({ view, replaySection, repertoireId, ply, no
     ? `settings/${settingsArea}` : section || v;
   const params = new URLSearchParams();
   if (repertoireId) params.set("rep", String(repertoireId));
+  if (v === "train" && trainMode === "smart") params.set("mode", "smart");
   const plyNum = asPly(ply);
   if (plyNum && plyNum > 0) params.set("ply", String(plyNum));
   const nodeId = asAnalysisNode(node);
@@ -112,6 +113,7 @@ export function parseWorkspaceHash(hash) {
   }
   return {
     view: asView(slug),
+    ...(slug === "train" && params.get("mode") === "smart" ? { trainMode: "smart" } : {}),
     ...(slug === "settings" && /^(account|appearance|board|engine)$/.test(viewPart.split("/")[1])
       ? { settingsArea: viewPart.split("/")[1] } : {}),
     replaySection: null,
@@ -152,6 +154,7 @@ export function workspaceLocationFromState(state = {}) {
   const view = asView(state.currentView || state.view);
   return {
     view,
+    ...(view === "train" && state.smart?.mixed && !state.trainResult ? { trainMode: "smart" } : {}),
     replaySection:
       view === "replay"
         ? asReplaySection(state.replaySection || state.replay_section)

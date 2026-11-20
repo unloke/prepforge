@@ -950,8 +950,14 @@ async function answerAlternative({ fen, playedUci, san, still, reopen }) {
   setTrainBanner("review", "Also in your repertoire", `${san} is your prep too. This card drills another move.`);
   await sleep(900);
   if (!still()) return;
-  await reopen();
-  appState.trainBusy = false;
+  try {
+    await reopen();
+  } finally {
+    if (still()) {
+      appState.trainBusy = false;
+      syncTrainSessionControls();
+    }
+  }
 }
 
 async function submitTrainingMove(playedUci) {
