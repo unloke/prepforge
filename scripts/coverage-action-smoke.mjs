@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { Chess } from "chess.js";
+import { createServer } from "vite";
 
-const base = process.env.COVERAGE_SMOKE_URL || "http://127.0.0.1:5188/static/";
+const server = process.env.COVERAGE_SMOKE_URL ? null : await createServer({
+  server: { host: "127.0.0.1", port: 5189, strictPort: true, open: false },
+});
+await server?.listen();
+const base = process.env.COVERAGE_SMOKE_URL || "http://127.0.0.1:5189/static/";
 const game = new Chess();
 const nodes = [{ id: "root", parent_id: null, depth: 0, fen: game.fen(), is_enabled: true }];
 for (const [i, san] of ["e4", "e5", "Nf3"].entries()) {
@@ -67,4 +72,5 @@ try {
   console.log("[coverage-action] ok — lower-gap selection and end-of-list scrolling keep the phone action reachable; deselection and desktop unchanged");
 } finally {
   await browser.close();
+  await server?.close();
 }
