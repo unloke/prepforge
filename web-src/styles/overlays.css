@@ -489,10 +489,6 @@
     margin-top: 8px;
     max-height: calc(var(--viewport-height) - 16px);
   }
-  .auth-modal .modal-title { padding-top: 6px; padding-bottom: 4px; }
-  .auth-modal .modal-body { gap: 6px; padding-bottom: 6px; }
-  .auth-modal .auth-footer { padding-top: 6px; padding-bottom: 8px; }
-  .auth-modal .auth-error { margin-top: 0; }
 }
 
 
