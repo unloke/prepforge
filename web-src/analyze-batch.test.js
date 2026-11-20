@@ -62,6 +62,24 @@ describe("completed batch analysis switching", () => {
     expect(h.appState.analysis).toBe(h.old);
   });
 
+  it.each([false, true])("releases the picker when prepare advances the source then fails (propagated=%s)", async propagated => {
+    const h = harness();
+    h.deps.recallAnalysis.mockImplementation(async (_id, _game, { onMissing }) => { onMissing(); return false; });
+    h.deps.runAnalysis.mockImplementation(async () => {
+      h.invalidate();
+      h.appState.analysisMultiPgn = "batch";
+      if (propagated) throw new Error("prepare failed");
+    });
+    const switching = h.change(h.summary, 1, h.host);
+    if (propagated) await expect(switching).rejects.toThrow("prepare failed");
+    else await switching;
+    expect(h.select.disabled).toBe(false);
+    expect(h.host.setAttribute).toHaveBeenLastCalledWith("aria-busy", "false");
+    h.deps.runAnalysis.mockImplementation(async () => {});
+    await h.change(h.summary, 0, h.host);
+    expect(h.deps.runAnalysis).toHaveBeenCalledTimes(2);
+  });
+
   it("does not start an analysis after another source supersedes a missing report", async () => {
     const h = harness();
     h.deps.recallAnalysis.mockImplementation(async (_id, _game, { onMissing }) => { h.invalidate(); onMissing(); return false; });
