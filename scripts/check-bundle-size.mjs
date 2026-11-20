@@ -110,7 +110,8 @@ const LIMITS = [
   // bring the sheet to 180,032 B. The Analyze-only in-flow footer fix brings
   // the current sheet to 180,227 B, without changing Build/Train positioning.
   // Motion, intrinsic popovers, source-picker containment, and Library keyboard focus.
-  { prefix: "index-", suffix: ".css", maxBytes: 181_500, label: "main stylesheet" },
+  // The combined Teams, Games, Scout, and landscape sign-in fixes measure 181,542 B.
+  { prefix: "index-", suffix: ".css", maxBytes: 181_550, label: "main stylesheet" },
 ];
 
 let files;
