@@ -47,6 +47,26 @@ function treesEquivalent(a, b) {
 }
 
 describe("parsePgn", () => {
+  it.each(["", "not a FEN", "8/8/8/8/8/8/8/8 w - - 0 1"])("rejects invalid FEN headers: %s", (fen) => {
+    expect(parsePgn(`[SetUp "1"]\n[FEN "${fen}"]\n\n1. e4 e5 *`)).toEqual({ ok: false, error: "Invalid FEN header." });
+  });
+
+  it("plays moves from a valid custom starting FEN", () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    const parsed = parsePgn(`[SetUp "1"]\n[FEN "${fen}"]\n\n1... e5 2. Nf3 *`);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.root.children[0].fenBefore).toBe(fen);
+    expect(mainlineSans(parsed.root)).toEqual(["e5", "Nf3"]);
+  });
+
+  it("refuses header-separated games before interpreting their moves", () => {
+    expect(parsePgn('[White "Alice"]\n\n1. e4 e5 *\n\n[White "Carol"]\n\n1. d4 d5 2. c4 *'))
+      .toEqual({ ok: false, error: "Multiple games found. Use Review → Analyze batch." });
+  });
+
+  it("ignores header-like text inside comments", () => {
+    expect(parsePgn('1. e4 {\n[Event "not a game"]\n} e5 *').ok).toBe(true);
+  });
   it("parses a simple mainline with correct node fields", () => {
     const { ok, root } = parsePgn("1. e4 e5 2. Nf3 Nc6");
     expect(ok).toBe(true);

@@ -63,6 +63,15 @@ function treeOf(pgn) {
 }
 
 describe("serializeAnalysisPgn keeps one game's header block", () => {
+  it("exports accepted headers and moves while a rejected draft remains in the box", () => {
+    const g1 = treeOf(G1);
+    const out = serializer({ pgn: '[White "Not Alice"]\n[Result "0-1"]\n\n1. Qh9 0-1',
+      analysis: { moves: g1.moves, pgn: G1 }, varNodes: g1.varNodes });
+    expect(out).toContain('[White "Alice"]');
+    expect(out).not.toContain("Not Alice");
+    expect(sansOf(out)).toEqual(["e4", "e5", "Qh5", "Nc6", "Bc4", "g6"]);
+  });
+
   it("never merges a second pasted game's tags onto this game's movetext", () => {
     const g1 = treeOf(G1);
     const out = serializer({ pgn: PASTE, analysis: { moves: g1.moves }, varNodes: g1.varNodes });

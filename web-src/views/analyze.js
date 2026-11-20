@@ -204,7 +204,7 @@ export function createAnalyzeView({
       moves,
       evalGraph: analysis.eval_graph || [],
       positionEvals: analysis.position_evals || {},
-      headers: pgnHeaderTags(document.getElementById("pgn-input")?.value || ""),
+      headers: pgnHeaderTags(analysis.pgn ?? document.getElementById("pgn-input")?.value ?? ""),
       names: { white: analysis.white, black: analysis.black, result: analysis.result },
       reps: bookReps(),
       selfSide: selfSide(),
@@ -296,7 +296,8 @@ export function createAnalyzeView({
   // from: a flat `moves` array (the mainline) and an `analysisVarNodes` map keyed by
   // `v<seq>` whose `parentId` points at the node a variation branches from. Mirrors
   // the ids buildAnalysisTree() expects (`m<ply>` on the mainline, `root` at start).
-  function adaptParsedTree(root) {
+  // A recalled review owns only its graded prefix; later moves remain branches.
+  function adaptParsedTree(root, mainlineLength = Infinity) {
     const moves = [];
     const varNodes = new Map();
     let seq = 0;
@@ -330,19 +331,19 @@ export function createAnalyzeView({
         });
       }
       const kids = node.children || [];
-      if (kids[0]) walk(kids[0], id, onMainline, onMainline ? ply + 1 : 0);
+      if (kids[0]) walk(kids[0], id, onMainline && ply < mainlineLength, onMainline ? ply + 1 : 0);
       for (let i = 1; i < kids.length; i += 1) walk(kids[i], id, false, 0);
     }
     const top = root.children || [];
-    if (top[0]) walk(top[0], "root", true, 1);
+    if (top[0]) walk(top[0], "root", mainlineLength > 0, 1);
     for (let i = 1; i < top.length; i += 1) walk(top[i], "root", false, 0);
     return { moves, varNodes };
   }
 
   function serializeAnalysisPgn(sourcePgn) {
     const analysis = appState.analysis;
-    const moves = analysis?.moves || [];
-    const movetext = treeToMovetext(buildAnalysisTree(moves).root);
+    sourcePgn = analysis?.pgn ?? sourcePgn;
+    const movetext = treeToMovetext(buildAnalysisTree(analysis?.moves || []).root);
     if (!movetext) return "";
     // The FIRST header block only. The movetext this appends is one game's, so a
     // second game's tags would relabel these moves as that game (the box, the tree
@@ -374,7 +375,7 @@ export function createAnalyzeView({
         `[Result "${safe(analysis.result || "*")}"]`,
       ];
       if (analysis.lichess_id) tags.push(`[Site "https://lichess.org/${safe(analysis.lichess_id)}"]`);
-      const fen = moves[0]?.fen_before;
+      const fen = analysis.moves?.[0]?.fen_before;
       if (fen && fen !== START_FEN) tags.push('[SetUp "1"]', `[FEN "${safe(fen)}"]`);
       header = tags.join("\n");
     }

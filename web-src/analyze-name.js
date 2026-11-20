@@ -10,7 +10,7 @@ export function analysisGameName(appState, pgnText) {
   // unloaded in the source box must not title an empty board.
   const loaded = !!(analysis && ((analysis.moves && analysis.moves.length) || analysis.initialFen));
   if (!loaded) return "";
-  const tags = pgnHeaderTags(pgnText || "");
+  const tags = pgnHeaderTags(analysis.pgn ?? pgnText ?? "");
   const known = (v) => (v && !/^[?*.\s]+$/.test(v) ? v : "");
   const white = known(tags.White) || known(analysis.white);
   const black = known(tags.Black) || known(analysis.black);

@@ -15,6 +15,11 @@ function stubDocument(ids) {
 const el = () => ({ textContent: "", title: "" });
 
 describe("the game named under the board", () => {
+  it("names the accepted game rather than an uncommitted PGN edit", () => {
+    const state = { analysis: { moves: [{ ply: 1 }], pgn: '[White "Morphy"]\n[Black "Duke"]\n[Result "1-0"]\n\n1. e4 1-0' } };
+    expect(analysisGameName(state, '[White "Not Morphy"]\n[Black "Not Duke"]\n[Result "0-1"]\n\n1. Qh9 0-1'))
+      .toBe("Morphy vs Duke · 1-0");
+  });
   it("names the players, then the result, event and date the PGN carries", () => {
     const pgn = [
       '[White "MagnusCarlsen"]', '[Black "HikaruNakamura"]', '[Result "1-0"]',
