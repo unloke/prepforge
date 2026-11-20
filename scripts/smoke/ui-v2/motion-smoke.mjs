@@ -257,6 +257,11 @@ async function run({ name, width, height, mobile }) {
     await reveal(page, "#build-tool-coverage", "#coverage-drawer");
     await reveal(page, "#build-tool-explorer", "#explorer-drawer");
     await reveal(page, "#build-dock-opts", ".dock-tools");
+    const databaseSize = await page.locator("#inspector-dbs").evaluate((el) => ({
+      height: el.getBoundingClientRect().height,
+      controlHeight: parseFloat(getComputedStyle(el).getPropertyValue("--control-h")),
+    }));
+    if (databaseSize.height > databaseSize.controlHeight + 1) failures.push(`${name}: Panel options must not stretch its database controls: ${JSON.stringify(databaseSize)}`);
     await page.keyboard.press("Escape");
     const closed = await page.locator(".dock-tools").evaluate((el) => ({
       open: el.matches(":popover-open"), pointerEvents: getComputedStyle(el).pointerEvents,

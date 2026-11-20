@@ -584,6 +584,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   margin: 0;
   border: 0;
   width: 280px;
+  height: max-content;
   max-width: calc(100vw - 16px);
   padding: 12px;
   border-radius: var(--radius-card);
