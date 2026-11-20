@@ -241,6 +241,13 @@ export function createMoveTreeRenderer() {
 
     if (!onContext) return;
 
+    container.addEventListener("touchend", (event) => {
+      if (pressedId === null) return;
+      // Suppress compatibility mouse events before they light-dismiss the popover.
+      event.preventDefault();
+      document.removeEventListener("click", swallowClick, true);
+    }, { passive: false });
+
     container.addEventListener("contextmenu", (event) => {
       const button = moveOf(event);
       if (!button) return;

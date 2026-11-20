@@ -179,8 +179,8 @@ describe("createMoveTreeRenderer", () => {
     const onSelect = vi.fn();
     const onContext = vi.fn();
     bindMoveTreeClicks(container, onSelect, onContext);
-    // Six events for the whole tree, not six per move.
-    expect(container.listenerCount()).toBe(6);
+    // Seven events for the whole tree, not seven per move.
+    expect(container.listenerCount()).toBe(7);
 
     container.dispatch("click", "n2");
     expect(onSelect).toHaveBeenCalledWith("n2");
@@ -197,6 +197,35 @@ describe("createMoveTreeRenderer", () => {
     bindMoveTreeClicks(container, onSelect, vi.fn());
     container.dispatch("click", "n1");
     expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels compatibility mouse events only for a completed long press", () => {
+    vi.useFakeTimers();
+    const doc = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    vi.stubGlobal("document", doc);
+    try {
+      const container = stubMoveTreeContainer(renderMoveTree(sampleTree(), {}));
+      const onContext = vi.fn();
+      bindMoveTreeClicks(container, vi.fn(), onContext);
+      const preventDefault = vi.fn();
+      container.dispatch("pointerdown", "n1", { pointerType: "touch", clientX: 10, clientY: 20 });
+      container.dispatch("pointerup", "n1");
+      container.dispatch("touchend", "n1", { preventDefault });
+      expect(preventDefault).not.toHaveBeenCalled();
+      expect(onContext).not.toHaveBeenCalled();
+
+      container.dispatch("pointerdown", "n1", { pointerType: "touch", clientX: 10, clientY: 20 });
+      vi.advanceTimersByTime(700);
+      expect(onContext).toHaveBeenCalledTimes(1);
+      container.dispatch("pointerup", "n1");
+      container.dispatch("touchend", "n1", { preventDefault });
+      expect(preventDefault).toHaveBeenCalledTimes(1);
+      const [type, swallow] = doc.addEventListener.mock.calls[0];
+      expect(doc.removeEventListener).toHaveBeenCalledWith(type, swallow, true);
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
   });
 });
 

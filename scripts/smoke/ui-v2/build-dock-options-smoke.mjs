@@ -127,6 +127,33 @@ try {
   await page.locator("#repertoire-context-menu:popover-open").waitFor({ state: "hidden" });
   check(annotationWrites.length === writesAfterClear, "empty-board and keyboard dismissal must not write annotations");
   console.log(`[build-menu-dismiss] ${failures.length ? "FAIL" : "ok"} — touch dismissal, no board events/writes, reload persistence, normal board tap`);
+  const longPressFailures = failures.length;
+  const move = page.locator('#builder-tree .mtree-move[data-node-id="n1"]');
+  const moveMenu = page.locator("#node-context-menu:popover-open");
+  await page.locator("#build-board").click({ position: { x: 1, y: 1 } });
+  await page.keyboard.press("ArrowLeft");
+  await move.tap();
+  check(await move.evaluate((el) => el.classList.contains("is-current")), "short tap must select the move");
+  check(await moveMenu.count() === 0, "short tap must not open the move menu");
+  const touch = await page.context().newCDPSession(page);
+  const moveBox = await move.boundingBox();
+  await touch.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: moveBox.x + moveBox.width / 2, y: moveBox.y + moveBox.height / 2 }] });
+  await page.waitForTimeout(700);
+  check(await moveMenu.count() === 1, "long press must open the move menu while held");
+  await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(50);
+  check(await moveMenu.count() === 1, "move menu must stay open after long-press release");
+  if (process.env.BUILD_LONG_PRESS_SCREENSHOT) await page.screenshot({ path: process.env.BUILD_LONG_PRESS_SCREENSHOT, scale: "css", animations: "disabled" });
+  if (await moveMenu.count()) {
+    await moveMenu.locator('[data-action="add_comment"]').tap();
+    await page.getByRole("dialog", { name: "Note on 1. e4", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Cancel", exact: true }).tap();
+  }
+  await page.locator("#build-menu").tap();
+  await page.locator('#repertoire-context-menu [data-action="build-node-menu"]').tap();
+  check(await moveMenu.count() === 1, "More → Options must still open the move menu");
+  await page.keyboard.press("Escape");
+  console.log(`[build-long-press] ${failures.length > longPressFailures ? "FAIL" : "ok"} — short tap selects; hold/release keeps menu open; note action and More → Options work`);
   // The phone pane the user picked is kept when the window widens.
   await page.locator('#build-panes [data-pane="explorer"]').click();
   await page.setViewportSize({ width: 1440, height: 900 });
