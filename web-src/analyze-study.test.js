@@ -79,6 +79,34 @@ describe("Analyze study saves", () => {
     expect(save).toHaveBeenCalledExactlyOnceWith("g2", PGN, "owner");
   });
 
+  it("autosaves added board variations without dropping imported comments or NAGs", async () => {
+    const annotated = PGN.replace("1. e4", "{Opening note} 1. e4 $1 {King pawn}")
+      .replace("e5 2.", "e5 ;Black's reply\n2.")
+      .replace("Nf3", "Nf3!?").replace("(2... d6)", "({Alternative} 2... d6 $5 {Philidor})");
+    const appState = { analysisPgnStale: true };
+    const view = createAnalyzeView({ appState, START_FEN });
+    const extended = annotated.replace("Nc6 (", "Nc6 (2... Nf6) (");
+    const { moves, varNodes } = view.adaptParsedTree(parsePgn(extended).root);
+    appState.analysis = { game_id: "g1", moves, pgn: annotated };
+    appState.analysisVarNodes = varNodes;
+    const input = { value: annotated };
+    const queue = vi.fn();
+    const sync = compile("syncPgnFromTree", {
+      appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
+      ensureAnalyzeView: async () => view, analysisStudy: { queue }, currentOwnerId: () => "owner",
+    });
+    await sync();
+    expect(queue).toHaveBeenCalledExactlyOnceWith("g1", input.value, "owner");
+    for (const annotation of ["{Opening note}", "$1", "{King pawn}", ";Black's reply\n", "!?", "{Alternative}", "$5", "{Philidor}"]) {
+      expect(input.value).toContain(annotation);
+    }
+    expect(input.value).toContain("(2... Nf6)");
+    expect(parsePgn(input.value).ok).toBe(true);
+    appState.analysisPgnStale = true;
+    await sync();
+    expect(queue.mock.calls[1][1]).toBe(queue.mock.calls[0][1]);
+  });
+
   it("serializes overlapping saves so the newest branch wins", async () => {
     vi.useFakeTimers();
     let release;

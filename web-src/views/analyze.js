@@ -343,7 +343,7 @@ export function createAnalyzeView({
   function serializeAnalysisPgn(sourcePgn) {
     const analysis = appState.analysis;
     sourcePgn = analysis?.pgn ?? sourcePgn;
-    const movetext = treeToMovetext(buildAnalysisTree(analysis?.moves || []).root);
+    const movetext = treeToMovetext(buildAnalysisTree(analysis?.moves || []).root, sourcePgn);
     if (!movetext) return "";
     // The FIRST header block only. The movetext this appends is one game's, so a
     // second game's tags would relabel these moves as that game (the box, the tree

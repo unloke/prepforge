@@ -67,6 +67,17 @@ describe("parsePgn", () => {
   it("ignores header-like text inside comments", () => {
     expect(parsePgn('1. e4 {\n[Event "not a game"]\n} e5 *').ok).toBe(true);
   });
+
+  it("preserves header-like text as a comment, not a game header", () => {
+    const parsed = parsePgn('1. e4 {\n[Event "not a game"]\n} e5 *');
+    expect(parsed.headers).toEqual({});
+    expect(treeToMovetext(parsed.root)).toContain('{\n[Event "not a game"]\n}');
+  });
+
+  it.each(["", "1. Qh9", "1. d4 {Other game} d5"]) ("does not attach annotations from an absent, rejected or different source: %s", source => {
+    const root = parsePgn("1. e4 e5").root;
+    expect(treeToMovetext(root, source)).toBe("1. e4 e5");
+  });
   it("parses a simple mainline with correct node fields", () => {
     const { ok, root } = parsePgn("1. e4 e5 2. Nf3 Nc6");
     expect(ok).toBe(true);
