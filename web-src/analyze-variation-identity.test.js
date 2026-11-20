@@ -224,19 +224,30 @@ describe("rebuildAnalysisVariations parses only the analyzed game", () => {
   const rebuildWith = (appState, text) =>
     rebuild(parsePgn, async () => viewFor(appState), appState)(text);
 
-  it("the whole textarea would glue game 2's branch under game 1's last move", async () => {
-    // Proves the failure mode is real (and why the source must be one game).
-    const glued = buildTree(MULTI);
+  it("rejects the whole textarea without attaching game 2's branches", async () => {
     const g1 = buildTree(G1);
-    expect(glued.moves.map((m) => m.san)).toEqual(["e4", "e5", "Qh5", "Nc6", "Bc4", "g6", "Nf3", "d5", "g3"]);
     const appState = { analysisVarNodes: new Map(), analysisVarCounter: 0, analysis: { moves: g1.moves },
       analysisTree: null };
-    // Force the whole-textarea parse the old code did: this is the failure mode.
-    await rebuildWith(appState, MULTI);
+    expect(await rebuildWith(appState, MULTI)).toBe(false);
     const tree = viewFor(appState).buildAnalysisTree(g1.moves);
     const attached = [...appState.analysisVarNodes.values()]
       .filter((v) => tree.byId.has(v.parentId)).map((v) => `${v.san}@${tree.byId.get(v.parentId).san}`);
-    expect(attached).toEqual(["d4@g6", "d5@d4"]);
+    expect(attached).toEqual([]);
+  });
+
+  it("restores appended moves beyond a reviewed mainline as selectable continuation nodes", async () => {
+    const base = buildTree("1. d4 d5 2. c4 e6 *");
+    const pgn = "1. d4 d5 2. c4 (2. Nf3 Nf6) e6 3. e4 Nf6 *";
+    const appState = { analysis: { moves: base.moves }, analysisVarNodes: new Map() };
+    expect(await rebuildWith(appState, pgn)).toBe(true);
+    const tree = viewFor(appState).buildAnalysisTree(base.moves);
+    const path = "d2d4-d7d5-c2c4-e7e6-e2e4-g8f6";
+    const tip = analysisNodeIdFromPath(path, tree);
+    expect(tip).toBeTruthy();
+    expect(tree.byId.get(tip).san).toBe("Nf6");
+    expect(appState.analysis.moves).toBe(base.moves);
+    expect(viewFor(appState).serializeAnalysisPgn(pgn)).toContain("3. e4 Nf6");
+    expect(appState.analysis.pgn).toBe(pgn);
   });
 
   it("the analyzed game's own PGN keeps every game's branch with its own mainline", async () => {

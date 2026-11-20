@@ -163,13 +163,20 @@ function parseMovetext(movetext, initialFen = START_FEN) {
 
 export function parsePgn(pgnText) {
   const text = pgnText ?? "";
+  let hasMovetext = false;
+  for (const line of stripComments(text).split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    if (/^\s*\[\w+\s+"/.test(line)) {
+      if (hasMovetext) return { ok: false, error: "Multiple games found. Use Review → Analyze batch." };
+    } else hasMovetext = true;
+  }
   const { headers, movetext } = extractHeaders(text);
   let initialFen = START_FEN;
-  if (headers.FEN) {
+  if (Object.hasOwn(headers, "FEN")) {
     if (isFenLegal(headers.FEN)) {
       initialFen = headers.FEN;
     } else {
-      console.warn("Malformed FEN header, using START_FEN:", headers.FEN);
+      return { ok: false, error: "Invalid FEN header." };
     }
   }
   const result = parseMovetext(movetext, initialFen);

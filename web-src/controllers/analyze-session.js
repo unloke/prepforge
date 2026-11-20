@@ -1213,7 +1213,7 @@ async function runAnalysis(options = {}) {
     const nodePath = (!userSelectedPath || userSelectedPath === ANALYSIS_ROOT_PATH) && finalMainlinePly > 0
       ? null
       : (userSelectedPath || ANALYSIS_ROOT_PATH);
-    appState.analysis = payload;
+    appState.analysis = Object.assign(payload, { pgn: gamePgn });
     appState.analysisTree = null;
     engineLifecycleMark("analyze-render-start", tAnalyze);
     await timed("render", () => renderAnalysis(payload, { sourceSeq: seq }));
@@ -1616,7 +1616,8 @@ async function rebuildAnalysisVariations(gamePgn) {
   const parsed = parsePgn(gamePgn);
   if (!parsed.ok) return false;
   const view = await ensureAnalyzeView();
-  const { varNodes } = view.adaptParsedTree(parsed.root);
+  const { varNodes } = view.adaptParsedTree(parsed.root, appState.analysis?.moves?.length);
+  appState.analysis.pgn = gamePgn;
   appState.analysisVarNodes = varNodes;
   appState.analysisVarCounter = varNodes.size;
   appState.analysisTree = null;
@@ -1642,28 +1643,22 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onIn
     // Check for FEN-only PGN (has FEN header but no moves)
     const fenHeader = parsed.headers.FEN;
     if (fenHeader) {
-      try {
-        // FEN-only PGN: show the FEN position without any moves
-        appState.analysis = { moves: [], eval_graph: [], engine: null, depth: null, initialFen: fenHeader };
-        appState.analysisVarNodes = new Map();
-        appState.analysisVarCounter = 0;
-        appState.analysisCurrentNodeId = "root";
-        appState.analysisNodePath = null;
-        appState.analysisTree = null;
-        appState.analysisSourcePgn = null;
-        view.renderAnalysisTree([]);
-        view.renderEvalChart([]);
-        view.renderReport([]);
-        hideAnalysisHandoff();
-        revealAnalysisResults();
-        // Use the same guarded board path as a movetext PGN or recall.
-        await showAnalysisPly(0);
-        return true;
-      } catch (err) {
-        if (sourceSeq !== analysisRecallSeq) return false;
-        // FEN is invalid or boardInfo failed; fall through to empty-box logic
-        console.warn("Failed to load FEN-only PGN:", err);
-      }
+      // FEN-only PGN: show the FEN position without any moves
+      appState.analysis = { pgn: pgnText, moves: [], eval_graph: [], engine: null, depth: null, initialFen: fenHeader };
+      appState.analysisVarNodes = new Map();
+      appState.analysisVarCounter = 0;
+      appState.analysisCurrentNodeId = "root";
+      appState.analysisNodePath = null;
+      appState.analysisTree = null;
+      appState.analysisSourcePgn = null;
+      view.renderAnalysisTree([]);
+      view.renderEvalChart([]);
+      view.renderReport([]);
+      hideAnalysisHandoff();
+      revealAnalysisResults();
+      // Use the same guarded board path as a movetext PGN or recall.
+      await showAnalysisPly(0);
+      return true;
     }
     // Emptied box → clear the move list and eval chart, drop any analyzed game.
     appState.analysis = null;
@@ -1677,7 +1672,7 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onIn
   }
   // A typed/edited game replaces any prior analysis (classifications are dropped
   // until the user re-runs Analyze). Synthetic payload keeps showAnalysisPly happy.
-  appState.analysis = { moves, eval_graph: [], engine: null, depth: null };
+  appState.analysis = { pgn: pgnText, moves, eval_graph: [], engine: null, depth: null };
   appState.analysisVarNodes = varNodes;
   appState.analysisVarCounter = varNodes.size;
   appState.analysisCurrentNodeId = "root";

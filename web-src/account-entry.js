@@ -628,7 +628,7 @@ ${black || ""}`;
 // Which side of the Analyze game is the user ("white" | "black" | null): the PGN box's
 // White/Black tags, else the recalled analysis, matched against linked Lichess names.
 export function analysisSelfSide() {
-  const tags = analyzeHeaderTags(document.getElementById("pgn-input")?.value || "");
+  const tags = analyzeHeaderTags(appState.analysis?.pgn ?? document.getElementById("pgn-input")?.value ?? "");
   const analysis = appState.analysis || {};
   return selfSide(tags.White || analysis.white, tags.Black || analysis.black, [
     appState.lichessUsername,
