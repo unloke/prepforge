@@ -208,6 +208,20 @@ async function runViewport(vp) {
   const liveCount = await page.locator('[data-testid="scout-live-count"]').textContent().catch(() => "0");
   check(new RegExp(String(GAME_TOTAL)).test(liveCount || "0"), `live counter should show ${GAME_TOTAL} games, got "${liveCount}"`);
 
+  // The live engine line sits above the colour tabs, never over them.
+  const progressOverlap = await page.evaluate(() => {
+    const progress = document.getElementById("scout-engine-progress");
+    const tabs = document.querySelector("#scout-results .scout-color-tabs");
+    if (!progress || !tabs) return "missing";
+    progress.classList.remove("is-idle");
+    progress.innerHTML = '<span class="scout-progress-label">Checking lines… 3/12</span><progress max="100" value="25"></progress>';
+    const gap = tabs.getBoundingClientRect().top - progress.getBoundingClientRect().bottom;
+    progress.classList.add("is-idle");
+    progress.innerHTML = "";
+    return gap;
+  });
+  check(typeof progressOverlap === "number" && progressOverlap >= 0, `Scout progress line should clear the colour tabs, got gap ${progressOverlap}`);
+
   // Colour tabs with real per-colour counts (40 as White, 32 as Black).
   const tabs = await page.locator("#scout-results .scout-color-tab").count();
   check(tabs === 2, `expected 2 colour tabs, got ${tabs}`);

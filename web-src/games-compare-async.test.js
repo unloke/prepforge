@@ -71,3 +71,14 @@ it("uses the singular when a compare returns one game", async () => {
   await pending;
   expect(h.deps.setStatus).toHaveBeenCalledWith("Fetched 1 game · 1 forgotten move added to training");
 });
+
+it("raises no notice over the results when nothing was added to training", async () => {
+  const h = harness();
+  const pending = h.run();
+  h.requests[0]({ games: [], count: 10, misses_recorded: 0, username: "first" });
+  await pending;
+  // The ledger header already names the count and source; a toast on top of
+  // the results covered the expanded board on phones.
+  expect(h.deps.setStatus).toHaveBeenLastCalledWith("");
+  expect(h.deps.setStatus.mock.calls.flat().join(" ")).not.toContain("Fetched 10 games");
+});

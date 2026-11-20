@@ -57,9 +57,7 @@
 .ledger-table { flex: 1; overflow: auto; }
 /* Empty, idle and error states live inside the ledger so the page keeps its
    shape before the first Check: the columns are already there, the message
-   sits where the rows will be. The card sizes to its content — a table with
-   no rows should not paint 800px of white under the message. */
-#view-replay .ledger:has(.ledger-empty) { align-self: start; }
+   sits where the rows will be. */
 #view-replay .ledger:has(.ledger-empty) .ledger-table { overflow: visible; }
 /* Nothing to detail yet: the ledger takes the whole triage instead of leaving
    half the page as bare ground beside an empty card. */
@@ -276,9 +274,6 @@
   .lr > :nth-child(3) { grid-area: res; justify-self: end; }
   .lr .pl { font-size: 14px; }
   .lr > :nth-child(5) { grid-area: dep; }
-  /* The triage is a flex column here, so the empty card's start alignment
-     would shrink it to the message's width. */
-  #view-replay .ledger:has(.ledger-empty) { align-self: stretch; }
 }
 /* Phone, round 2: several sources scroll sideways in their one row (Lichess's
    chip row) instead of wrapping the toolbar to a second line. */
