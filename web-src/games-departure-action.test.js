@@ -60,6 +60,7 @@ function render(game) {
     onTrainMiss: () => {},
     onBuildReply: () => {},
     onAnalyze: () => {},
+    isOwnAccount: (account) => account === "self",
   });
   view.renderReplayResults({ games: [game] });
   return results.innerHTML;

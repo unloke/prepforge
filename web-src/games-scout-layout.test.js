@@ -26,3 +26,21 @@ describe("Games and Scout layout regressions", () => {
     expect(scoutCss).not.toMatch(/\.scout-engine-progress\s*\{[^}]*margin-block:\s*-/);
   });
 });
+
+describe("Games and Scout normal-use regressions", () => {
+  it("folds a long Games move list only on a phone", () => {
+    expect(replayCss).toMatch(/\.moveline-more \{ display: none; \}/);
+    expect(replayCss).toMatch(/@media \(max-width: 760px\)[^{]*\{\s*\.moveline:has\(> \.moveline-more\) > \.move-pair\.is-far \{ display: none; \}/);
+  });
+
+  it("heads the Scout line column with what its rows show", () => {
+    const report = readFileSync(new URL("./scout-report.js", import.meta.url), "utf8");
+    expect(report).toContain("<span>Last seen</span>");
+    expect(report).not.toContain("Type · last seen");
+  });
+
+  it("puts Scout's engine offer under the report, not above it", () => {
+    const main = html.slice(html.indexOf('<div class="scout-main">'), html.indexOf('id="scout-side"'));
+    expect(main.indexOf('data-unlock-place="scout"')).toBeGreaterThan(main.indexOf('id="scout-results"'));
+  });
+});
