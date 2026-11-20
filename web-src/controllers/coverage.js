@@ -186,10 +186,8 @@ export function createCoverageController({
     el.querySelectorAll("[data-gap]").forEach((n) => n.addEventListener("click", async () => {
       if (!valid()) { sync(); return; }
       try {
-        // The position the gap comes from, on the board: the missing move is
-        // named in the row, and playing it is the user's own edit.
         const gap = result.gaps[Number(n.dataset.gap)];
-        await selectNode(gap.nodeId);
+        await selectNode(gap.nodeId, { previewUci: gap.moveUci });
       } catch (error) { onError(error); }
     }));
   }

@@ -197,7 +197,7 @@ async function renameRepertoire() {
   });
 }
 
-async function selectBuildNode(nodeId, { branchChoiceId = null, revealSelection = false } = {}) {
+async function selectBuildNode(nodeId, { branchChoiceId = null, revealSelection = false, previewUci = null } = {}) {
   if (!appState.buildNodeById.has(nodeId)) return;
   // Which way the board travels: into the current node's own child is a move
   // being shown; a parent, a sibling or a distant node is a step through or a
@@ -232,6 +232,7 @@ async function selectBuildNode(nodeId, { branchChoiceId = null, revealSelection 
   // (add/delete/collapse/note/grade/import) call renderBuilderTree themselves.
   if (buildView) buildView.updateBuildTreeSelection({ revealSelection });
   else renderBuilderTree({ revealSelection });
+  if (previewUci) boards.build.setBranchArrows([previewUci], previewUci);
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }

@@ -2,7 +2,7 @@
 // (Explorer bars, Generate dialog, counts, ⋯ menu, Coverage's Maia gate,
 // delete notice, loading state). Pure helpers run from their real app.js
 // source; wiring that only exists as DOM glue is pinned by source checks.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -33,6 +33,44 @@ function compile(names, deps = {}) {
     ...depNames.map((k) => deps[k]),
   );
 }
+
+describe("Coverage gap board preview", () => {
+  function harness() {
+    const node = { id: "e4", depth: 1, fen: "after-e4", uci: "e2e4", move_number: 1, move_side: "white", san: "e4", arrows: ["g1f3"], circles: [] };
+    const appState = { build: {}, buildCurrentNodeId: "e4", buildNodeById: new Map([["e4", node]]) };
+    const board = { setPosition() {}, setAnnotations() {}, setBranchArrows: vi.fn() };
+    const { selectBuildNode } = compile(["async function selectBuildNode("], {
+      appState, boards: { build: board }, boardInfo: async () => ({ legal_moves: [] }),
+      document: { getElementById: () => ({}) }, engineWidget: null, scheduleExplorerRefresh() {},
+      buildView: { updateBuildTreeSelection: () => board.setBranchArrows(["e7e5", "c7c5"], "e7e5") },
+    });
+    return { selectBuildNode, board, appState, node };
+  }
+
+  it("shows only the gap's temporary arrow, then restores saved branches on navigation", async () => {
+    const h = harness();
+    await h.selectBuildNode("e4", { previewUci: "d7d5" });
+    expect(h.board.setBranchArrows).toHaveBeenLastCalledWith(["d7d5"], "d7d5");
+    expect(h.node.arrows).toEqual(["g1f3"]);
+    await h.selectBuildNode("e4");
+    expect(h.board.setBranchArrows).toHaveBeenLastCalledWith(["e7e5", "c7c5"], "e7e5");
+  });
+
+  it("does not preview an unknown node or a selection superseded while loading", async () => {
+    const h = harness();
+    await h.selectBuildNode("missing", { previewUci: "d7d5" });
+    expect(h.board.setBranchArrows).not.toHaveBeenCalled();
+    const pending = h.selectBuildNode("e4", { previewUci: "d7d5" });
+    h.appState.build = {};
+    await pending;
+    expect(h.board.setBranchArrows).not.toHaveBeenCalled();
+  });
+
+  it("passes the selected gap's move to the board selection", () => {
+    const controller = readFileSync(join(root, "controllers", "coverage.js"), "utf8");
+    expect(controller).toContain("selectNode(gap.nodeId, { previewUci: gap.moveUci })");
+  });
+});
 
 describe("Explorer bars", () => {
   const { explorerThinSample, explorerSegLabel } = compile(
