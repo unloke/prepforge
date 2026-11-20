@@ -328,8 +328,8 @@ async function runViewport(vp) {
     await checkClosed();
     await openActions();
     await page.setViewportSize({ width: 844, height: 390 });
-    await actions.waitFor({ state: "hidden" });
-    check(await actionsButton.getAttribute("aria-expanded") === "false", "leaving the phone Teams layout dismisses the sheet");
+    await page.waitForFunction(() => !document.getElementById("team-actions").open);
+    check(await page.locator("#team-detail-more").getAttribute("aria-expanded") === "false", "leaving the phone Teams layout dismisses the sheet");
     await page.setViewportSize({ width: vp.width, height: vp.height });
   }
 

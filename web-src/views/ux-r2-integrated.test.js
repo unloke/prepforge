@@ -39,15 +39,15 @@ describe("the route swap's layer", () => {
 
 describe("the shared phone sheet", () => {
   it("dims with its own spread shadow, never a layer over its fill", () => {
-    const rule = phone.match(/\.phone-sheet\.is-open \{[^}]*\}/)[0];
+    const rule = phone.match(/\.phone-sheet:is\(\.is-open, \[open\]\) \{[^}]*\}/)[0];
     expect(rule).toMatch(/box-shadow: 0 0 0 100vmax rgba\(0, 0, 0, 0\.45\)/);
     const before = phone.match(/\.phone-sheet\.is-open::before \{[^}]*\}/)[0];
     expect(before).not.toMatch(/background/);
   });
 
   it("leaves Teams without its local sheet workaround", () => {
-    expect(teams).not.toMatch(/#team-actions\.is-open::after/);
-    expect(teams).not.toMatch(/#team-actions\.is-open \{ bottom:/);
+    expect(teams).not.toMatch(/#team-actions(?:\.is-open|\[open\])::after/);
+    expect(teams).not.toMatch(/#team-actions(?:\.is-open|\[open\]) \{[^}]*\bbottom:/);
   });
 });
 
