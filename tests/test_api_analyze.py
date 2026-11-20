@@ -113,6 +113,45 @@ def test_prepare_rejects_empty_pgn(client):
 # ---- classify-save: persist + read back ------------------------------------
 
 
+def test_analysis_study_saves_headers_and_variations_for_recall(client):
+    _register(client, "study@example.com")
+    prepared = _prepare(client)
+    classified = _classify_save(client, prepared).json()
+    game_id = prepared["game_id"]
+    pgn = _PGN.replace('[Event "Test"]', '[Event "Test"]\n[Site "Paris"]\n[Date "1858.11.02"]\n[Round "1"]')
+    pgn = pgn.replace("Nc6 *", "Nc6 (2... d6) *")
+    response = client.put(f"/api/analyses/{game_id}/pgn", json={"pgn": pgn}, headers=csrf_headers(client))
+    assert response.status_code == 200, response.text
+    assert response.json() == {"saved": True}
+    recalled = client.get(f"/api/analyses/{game_id}").json()
+    assert recalled["pgn"] == pgn
+    assert recalled["moves"] == classified["moves"]
+
+
+def test_analysis_study_rejects_mainline_mismatch_without_changing_saved_pgn(client):
+    _register(client, "mismatch@example.com")
+    prepared = _prepare(client)
+    _classify_save(client, prepared)
+    url = f"/api/analyses/{prepared['game_id']}"
+    original = client.get(url).json()["pgn"]
+    response = client.put(url + "/pgn", json={"pgn": "1. d4 d5 *"}, headers=csrf_headers(client))
+    assert response.status_code == 400
+    assert "mainline" in response.json()["detail"]
+    assert client.get(url).json()["pgn"] == original
+
+
+def test_analysis_study_rejects_empty_pgn_and_requires_owner_and_csrf(client):
+    _register(client, "owner-study@example.com")
+    prepared = _prepare(client)
+    _classify_save(client, prepared)
+    url = f"/api/analyses/{prepared['game_id']}/pgn"
+    assert client.put(url, json={"pgn": ""}, headers=csrf_headers(client)).status_code == 422
+    assert client.put(url, json={"pgn": _PGN}).status_code == 403
+    client.post("/api/auth/logout", headers=csrf_headers(client))
+    _register(client, "foreign-study@example.com")
+    assert client.put(url, json={"pgn": _PGN}, headers=csrf_headers(client)).status_code == 404
+
+
 def test_recall_of_an_unreadable_snapshot_asks_for_a_new_analysis(client):
     from sqlalchemy import update
 

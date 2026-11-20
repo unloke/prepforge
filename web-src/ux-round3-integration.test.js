@@ -31,6 +31,7 @@ function harness(realBoard = false) {
   const doc = { getElementById: () => input, querySelector: () => null, activeElement: null };
   const deps = {
     appState, document: doc, START_FEN, parsePgn,
+    analysisStudy: { flush: async () => {} },
     api: () => pending.promise, ensureAnalyzeView: vi.fn(async () => view),
     hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(async () => {}),
     revealAnalysisResults: vi.fn(), syncViewHeads: vi.fn(), setStatus: vi.fn(), setStatusError: vi.fn(),
