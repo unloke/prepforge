@@ -11,6 +11,7 @@ import { eagerCss as css } from "./test-styles-source.js";
 import { buildSkeleton } from "./views/build-skeleton.js";
 import { summarizeBuild } from "./build-tree.js";
 import { readGenerateInt } from "./controllers/build-generate-dialog.js";
+import { generateEstimateRange, generateEstimateText } from "./controllers/build-generate-estimate.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
@@ -104,12 +105,9 @@ describe("Explorer bars", () => {
 });
 
 describe("Generate dialog", () => {
-  const helpers = compile(
+  const helpers = { generateEstimateRange, generateEstimateText, ...compile(
     [
-      "function estimateBuildGenerateTotal({ plyDepth, mainThreshold, branchThreshold, userToMove = true }) {",
       "function readGenerateOptions(values, { userToMove = true } = {}) {",
-      "function generateEstimateRange(options) {",
-      "function generateEstimateText(options) {",
     ],
     {
       readGenerateInt,
@@ -123,7 +121,7 @@ describe("Generate dialog", () => {
       effectiveMaiaRating: () => 1500,
       effectiveStockfishDepth: () => 16,
     },
-  );
+  ) };
 
   it("counts depth in full moves and always ends the tree on your answer", () => {
     const values = { own_moves: "3", main_pct: "10", branch_pct: "30", maia_rating: "1500", engine_depth: "16" };
@@ -159,6 +157,12 @@ describe("Generate dialog", () => {
     expect(helpers.generateEstimateText(base)).toMatch(/^\d+–\d+$/);
   });
 
+  it("excludes existing moves on a shallow Generate rerun", () => {
+    const options = { plyDepth: 1, userToMove: true, mainThreshold: 0.1, branchThreshold: 0.3 };
+    expect(helpers.generateEstimateRange(options, [1])).toEqual({ low: 0, high: 0 });
+    expect(helpers.generateEstimateText(options, [1])).toBe("0");
+  });
+
   it("has no presets, no own-side alternatives and nothing folded away", () => {
     const fields = extractByMarker("function generateDialogFields() {");
     expect(fields).not.toContain("advanced: true");
@@ -185,6 +189,8 @@ describe("Generate dialog", () => {
   it("repaints only the range figure, and keeps the reuse caveat on it", () => {
     const open = extractByMarker("async function generateFromCurrentNode() {");
     expect(open).toContain("fields: generateDialogFields(),");
+    expect(open).toContain("generateExistingPlies(generationBuild.nodes, nodeId, GEN_MAX_PLY_DEPTH, ownColor)");
+    expect(open).toContain("generateEstimateText(readGenerateOptions(current, { userToMove }), existingPlies)");
     expect(open).toContain('\'[data-note="estimate"] b\'');
     // The stat holds the unit as a span, so writing textContent must not target
     // the whole row (it would drop "new moves").
