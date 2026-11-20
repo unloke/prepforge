@@ -47,6 +47,12 @@ function treesEquivalent(a, b) {
 }
 
 describe("parsePgn", () => {
+  it.each(["*", "1-0", "0-1", "1/2-1/2"])("parses a termination marker glued to the last move: %s", result => {
+    const parsed = parsePgn(`1. e4 e5${result}`);
+    expect(parsed.ok).toBe(true);
+    expect(mainlineSans(parsed.root)).toEqual(["e4", "e5"]);
+  });
+
   it.each(["", "not a FEN", "8/8/8/8/8/8/8/8 w - - 0 1"])("rejects invalid FEN headers: %s", (fen) => {
     expect(parsePgn(`[SetUp "1"]\n[FEN "${fen}"]\n\n1. e4 e5 *`)).toEqual({ ok: false, error: "Invalid FEN header." });
   });

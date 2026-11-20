@@ -71,7 +71,7 @@ function stripComments(text) {
 
 function tokenize(movetext) {
   return (movetext.match(/\{[^}]*\}|;[^\r\n]*|\$\d+|[!?]+|[()]|[^\s(){};$!?]+/g) || [])
-    .map(t => /^[{;$!?]/.test(t) ? t : t.replace(/^\d+\.{1,3}/, ""))
+    .map(t => /^[{;$!?]/.test(t) ? t : t.replace(/^\d+\.{1,3}/, "").replace(/(?:\*|1-0|0-1|1\/2-1\/2)$/, ""))
     .filter(t => t && !/^(\.\.\.|1-0|0-1|1\/2-1\/2|\*)$/.test(t));
 }
 
