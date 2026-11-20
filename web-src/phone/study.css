@@ -417,13 +417,19 @@
   #view-build .tree-wrap { max-height: none; padding: 10px var(--build-pad, 12px); overflow: visible; line-height: 1.6; }
   #view-build .dock-resizer,
   #build-inspector .dock-fold { display: none; }
-  #build-inspector { height: auto; max-height: none; margin: 0; overflow: hidden; }
+  #build-inspector { height: auto; max-height: none; margin: 0; overflow: clip; }
   #build-inspector .dock-tabs { gap: 2px; margin: 10px 12px 0; padding: 2px; border: 0; border-radius: 9px; background: var(--surface-3); }
   #build-inspector .dock-tabs > [role="tab"] { flex: 1 1 0; min-height: 32px; height: 32px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 14px; font-weight: 500; }
   #build-inspector .dock-tabs > [role="tab"][aria-selected="true"] { background: var(--line-strong); color: var(--text); box-shadow: none; }
   #build-inspector .dock-tabs > [role="tab"]::after { content: none; }
   #build-inspector .dock-body { display: flex; flex-direction: column; overflow: visible; }
   #build-inspector .inspector-panel { overflow: visible; }
+  #build-inspector .coverage-complete-bar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg);
+  }
   /* One row, the same in both panes, like Lichess's explorer: the options
      button names the pane's setting ("Masters", "Mainline · 8 moves") and opens
      a sheet with the database, scope and horizon; the pane's one action (the
