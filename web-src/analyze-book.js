@@ -31,9 +31,10 @@ async function ensureBookLoaded() {
                 continue;
               }
               if (node.is_enabled === false || !node.uci) continue;
-              children.set(`${node.parent_id}|${node.uci}`, node);
+              const move = { id: node.id, san: node.san, uci: node.uci, is_mainline: node.is_mainline };
+              children.set(`${node.parent_id}|${node.uci}`, move);
               if (!kids.has(node.parent_id)) kids.set(node.parent_id, []);
-              kids.get(node.parent_id).push(node);
+              kids.get(node.parent_id).push(move);
             }
             return rootId
               ? { id: data.repertoire_id, name: data.name, color: data.color, rootId, children, kids }
