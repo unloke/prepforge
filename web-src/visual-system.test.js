@@ -361,9 +361,9 @@ describe("semantic text colors meet WCAG AA", () => {
     }
     return out;
   }
-  const light = tokensOf(css.slice(0, darkStart));
-  // The board colour themes are overrides chosen by a pref, not the default
-  // palette, so they stay out of the dark block this test reads.
+  const wood = tokensOf(css.match(/:root,\s*\.board-color-swatch\[data-board="wood"\]\s*\{([^}]+)\}/)?.[1] ?? "");
+  const light = { ...tokensOf(css.slice(0, darkStart)), ...wood };
+  // Only the default board palette applies without a board preference.
   const dark = tokensOf(css.slice(darkStart, css.indexOf("/* ---- Board colour themes")));
 
   const TEXT_TOKENS = ["--label", "--warn-text", "--good-text", "--brilliant-text", "--accent-text"];

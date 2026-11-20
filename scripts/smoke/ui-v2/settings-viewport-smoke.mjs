@@ -160,7 +160,7 @@ async function runViewport(vp) {
   check(originalWood.length === 4 && new Set(originalWood).size === 2, "Wood should preview two square colors");
   await blueAccent.click();
   await greenBoard.click();
-  check((await woodColors()).every((color, i) => color === originalWood[i]),
+  check(JSON.stringify(await woodColors()) === JSON.stringify(originalWood),
     "the Wood preview must keep its colors when Green is selected");
 
   const classic = page.getByRole("group", { name: "Piece set" }).getByRole("button", { name: "Classic" });
