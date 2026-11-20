@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import chess
+import chess.pgn
 import gc
+import io
 import weakref
 
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
@@ -269,6 +271,20 @@ def test_export_pgn_without_original_still_rebuilds_legacy_games():
     game.pgn = None
     assert "Original" in codec.export_pgn(game)
     assert "e4" in codec.export_pgn(game)
+
+
+def test_export_pgn_keeps_study_tree_past_authoritative_mainline():
+    game = ChessCore().import_single_pgn('1. e4 {Imported} e5 2. Nf3 Nc6 *')
+    game.moves[0].generated_comment = "Reviewed"
+    game.pgn = '1. e4 e5 (1... c5 {Sicilian}) 2. Nf3 Nc6 3. Bb5 $1 {Continue} (3. Bc4) a6 *'
+    tree = chess.pgn.read_game(io.StringIO(codec.export_pgn(game)))
+    nodes = list(tree.mainline())
+    assert [node.san() for node in nodes] == ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]
+    assert nodes[0].comment == "Imported\nReviewed"
+    assert nodes[0].variations[1].comment == "Sicilian"
+    assert nodes[3].variations[1].san() == "Bc4"
+    assert nodes[4].nags == {1}
+    assert nodes[4].comment == "Continue"
 def test_rebuild_uses_one_board_and_preserves_all_records(monkeypatch):
     from unittest.mock import Mock
     from dataclasses import asdict

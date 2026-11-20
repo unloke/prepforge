@@ -580,7 +580,7 @@ def export_pgn(game: Game) -> str:
     board = chess.Board(game.initial_fen)
     pgn_game = chess.pgn.read_game(io.StringIO(game.pgn)) if game.pgn else None
     if (pgn_game is None or pgn_game.board().fen() != board.fen() or
-            [move.uci() for move in pgn_game.mainline_moves()] !=
+            [move.uci() for move in pgn_game.mainline_moves()][:len(game.moves)] !=
             [record.uci for record in game.moves]):
         pgn_game = chess.pgn.Game()
     if game.initial_fen != STARTING_FEN:

@@ -7,6 +7,9 @@ the workspace tests: FastAPI user -> ``current_owner`` bridge -> SQLAlchemy repo
 """
 from __future__ import annotations
 
+import io
+
+import chess.pgn
 from fastapi.testclient import TestClient
 
 from api_helpers import csrf_headers
@@ -138,6 +141,32 @@ def test_analysis_study_rejects_mainline_mismatch_without_changing_saved_pgn(cli
     assert response.status_code == 400
     assert "mainline" in response.json()["detail"]
     assert client.get(url).json()["pgn"] == original
+
+
+def test_account_export_keeps_saved_analysis_continuations_and_variations(client):
+    _register(client, "study-export@example.com")
+    prepared = _prepare(client)
+    _classify_save(client, prepared)
+    pgn = _PGN.replace("e5", "e5 (1... c5 {Sicilian})").replace(
+        "Nc6 *", "Nc6 (2... d6) 3. Bb5 $1 {Continuation} (3. Bc4) a6 *"
+    )
+    url = f"/api/analyses/{prepared['game_id']}"
+    response = client.put(url + "/pgn", json={"pgn": pgn}, headers=csrf_headers(client))
+    assert response.status_code == 200, response.text
+    exported = client.get("/api/account/export")
+    assert exported.status_code == 200, exported.text
+    saved = next(game for game in exported.json()["games"] if game["id"] == prepared["game_id"])
+    tree = chess.pgn.read_game(io.StringIO(saved["pgn"]))
+    assert [move.uci() for move in tree.mainline_moves()] == [
+        "e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "a7a6",
+    ]
+    assert tree.variations[0].variations[1].comment == "Sicilian"
+    nodes = list(tree.mainline())
+    assert nodes[2].variations[1].san() == "d6"
+    assert nodes[3].variations[1].san() == "Bc4"
+    assert nodes[4].comment == "Continuation"
+    assert nodes[4].nags == {1}
+    assert len(client.get(url).json()["moves"]) == 4
 
 
 def test_analysis_study_rejects_empty_pgn_and_requires_owner_and_csrf(client):
