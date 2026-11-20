@@ -154,16 +154,28 @@ describe("Recent analyses study restore", () => {
     const { moves } = view.adaptParsedTree(parsePgn("1. e4 e5 2. Nf3 Nc6").root);
     const payload = { game_id: "g1", moves, pgn: PGN };
     const input = { value: '[Event "Other game"]' };
+    const picker = { hidden: false };
     const deps = {
       appState, analysisRecallSeq: 1, analysisStudy: { flush }, parsePgn, currentOwnerId: () => "owner",
       api: vi.fn(async () => payload), ensureAnalyzeView: async () => ({ ...view, renderAnalysis: vi.fn() }),
-      document: { getElementById: (id) => id === "pgn-input" ? input : null, querySelector: () => null },
+      document: { getElementById: (id) => id === "pgn-input" ? input : id === "analysis-import-picker" ? picker : null, querySelector: () => null },
+      invalidateAnalysisSource: () => { appState.analysisMultiPgn = null; return 1; },
       hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: () => { appState.analysisVarNodes = new Map(); },
       orientAnalysisForSelf: vi.fn(), showAnalysisPly: vi.fn(), syncViewHeads: vi.fn(),
       revealAnalysisResults: vi.fn(), syncPgnFromTree: vi.fn(), setStatusError: vi.fn(),
     };
-    return { recall: compile("recallAnalysis", deps), deps, input, appState, payload, view };
+    return { recall: compile("recallAnalysis", deps), deps, input, appState, payload, view, picker };
   }
+
+  it("hides the previous batch picker when Recent analyses opens Morphy", async () => {
+    const h = harness();
+    h.appState.analysisMultiPgn = "Alice-Bob and Carol-Dave batch";
+    h.appState.analysis = { game_id: "batch-game", white: "Alice", black: "Bob" };
+    expect(await h.recall("g1")).toBe(true);
+    expect(h.appState.analysis).toBe(h.payload);
+    expect(h.appState.analysisMultiPgn).toBeNull();
+    expect(h.picker.hidden).toBe(true);
+  });
 
   it("flushes pending edits before recall and restores full headers and variations without losing grades", async () => {
     const h = harness();

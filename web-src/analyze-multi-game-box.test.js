@@ -268,6 +268,22 @@ function harness() {
 }
 
 describe("a multi-game paste analyzes one game at a time", () => {
+  it("restores the displayed batch selection when an unsaved game's prepare returns 500", async () => {
+    const h = harness();
+    h.input.value = PASTE;
+    await h.runAnalysis({ mode: "multi", selectIndex: 0 });
+    const displayed = h.appState.analysis;
+    h.deps.postJson.mockRejectedValueOnce(Object.assign(new Error("prepare failed"), { status: 500 }));
+    h.select.value = "1";
+    h.select.listeners.change();
+    await vi.waitFor(() => expect(h.deps.notices.failJob).toHaveBeenCalledWith("prepare failed"));
+    expect(h.appState.analysis).toBe(displayed);
+    expect(h.input.value).toContain('[White "Alice"]');
+    expect(h.select.disabled).toBe(false);
+    expect(h.select.value).toBe("0");
+    expect(h.pickerHost.hidden).toBe(false);
+  });
+
   it("keeps import statistics inline without a duplicate notice over the phone picker", async () => {
     const h = harness();
     h.input.value = PASTE;

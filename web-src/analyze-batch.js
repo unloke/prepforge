@@ -30,7 +30,7 @@ export function createBatchSwitcher({ appState, recallAnalysis, runAnalysis, inv
         setStatus("");
       } else if (missing) {
         host.setAttribute("aria-busy", "false");
-        if (select) select.disabled = false;
+        if (select) { select.disabled = false; select.value = String(summary.selected_index); }
         await runAnalysis({ mode: "multi", selectIndex: index, fromBatch: true });
       } else if (select) {
         select.value = String(summary.selected_index);

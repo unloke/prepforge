@@ -271,6 +271,8 @@ export async function recallAnalysis(gameId, listItem = null, { sourceSeq = inva
     await showAnalysisPly(0);
     if (seq !== analysisRecallSeq) return false;
     view.renderAnalysis(payload);
+    const picker = document.getElementById("analysis-import-picker");
+    if (picker && !appState.analysisMultiPgn) picker.hidden = true;
     syncViewHeads();
     revealAnalysisResults();
     // The list sits at the panel's foot; open the new game at its summary.
