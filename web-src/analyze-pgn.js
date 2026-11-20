@@ -30,14 +30,16 @@ function sideOf(color) {
 
 function extractHeaders(pgnText) {
   const headers = {};
-  const headerRe = /^\s*\[(\w+)\s+"([^"]*)"\][ \t]*(?:\r?\n|$)/;
+  const headerRe = /^\s*(?:\[(\w+)\s+"([^"]*)"\][ \t]*(?:\r?\n|$)|(\{[^}]*\}|;[^\r\n]*))/;
   let movetext = pgnText;
+  let comments = "";
   let match;
   while ((match = headerRe.exec(movetext)) !== null) {
-    headers[match[1]] = match[2];
+    if (match[1]) headers[match[1]] = match[2];
+    else comments += match[3] + "\n";
     movetext = movetext.slice(match[0].length);
   }
-  return { headers, movetext };
+  return { headers, movetext: comments + movetext };
 }
 
 function stripComments(text) {
