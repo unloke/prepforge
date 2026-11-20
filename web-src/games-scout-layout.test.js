@@ -37,6 +37,7 @@ describe("Games and Scout normal-use regressions", () => {
     const report = readFileSync(new URL("./scout-report.js", import.meta.url), "utf8");
     expect(report).toContain("<span>Last seen</span>");
     expect(report).not.toContain("Type · last seen");
+    expect(html).not.toContain("Type · last seen");
   });
 
   it("puts Scout's engine offer under the report, not above it", () => {
