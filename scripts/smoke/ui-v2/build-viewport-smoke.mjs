@@ -379,6 +379,7 @@ async function runViewport(vp) {
   check(await atlas.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), "Atlas must fit the viewport");
   if (process.env.UI_V2_SHOTS) await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `atlas-${vp.name}.png`) });
   await page.keyboard.press("Escape");
+  await page.locator(".atlas-modal").waitFor({ state: "detached" });
   check(await atlas.count() === 0, "Escape dismisses Atlas");
   check(await atlasEntry.evaluate((el) => el === document.activeElement), "Atlas should restore keyboard focus");
 
