@@ -8,6 +8,23 @@ export async function checkGenerateValidation(page, check) {
     await page.waitForTimeout(200);
     return dialog;
   };
+  await page.setViewportSize({ width: 1440, height: 900 });
+  let reopened = await open();
+  await reopened.locator('[name="own_moves"]').fill("0");
+  await reopened.locator('[name="own_moves"]').press("Enter");
+  await reopened.getByRole("button", { name: "Cancel", exact: true }).click();
+  reopened = await open();
+  const reopenedInput = reopened.locator('[name="own_moves"]');
+  await reopenedInput.fill("1.5");
+  await reopenedInput.press("Enter");
+  const currentDescription = await reopenedInput.evaluate((input) => {
+    const message = document.getElementById(input.getAttribute("aria-describedby"));
+    return !!message && input.closest("dialog").contains(message)
+      && message.checkVisibility() && message.textContent === "Use a whole number.";
+  });
+  check(currentDescription, "reopened Generate input must reference its own visible whole-number error");
+  console.log(`[build-generate-description] ${currentDescription ? "ok" : "FAIL"} — reopened input describes its current visible error`);
+  await reopened.getByRole("button", { name: "Cancel", exact: true }).click();
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     const dialog = await open();

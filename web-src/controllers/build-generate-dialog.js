@@ -1,5 +1,7 @@
 import { showInputModal } from "../core/modals.js";
 
+let dialogSequence = 0;
+
 export function readGenerateInt(raw, min, max) {
   const n = Number(String(raw ?? "").trim() || NaN);
   if (!Number.isInteger(n) || n < min || n > max) throw new Error("Invalid Generate value");
@@ -14,6 +16,7 @@ export function generateFieldError(input) {
 }
 
 export function showBuildGenerateDialog(options) {
+  const errorPrefix = `generate-error-${++dialogSequence}`;
   let bound = false;
   let submitted = false;
   return showInputModal({ ...options, onInput: (values, overlay) => {
@@ -22,10 +25,10 @@ export function showBuildGenerateDialog(options) {
       let firstInvalid;
       for (const input of inputs) {
         const error = generateFieldError(input);
-        let message = overlay.querySelector(`#generate-error-${input.name}`);
+        let message = overlay.querySelector(`#${errorPrefix}-${input.name}`);
         if (!message) {
           message = document.createElement("span");
-          message.id = `generate-error-${input.name}`;
+          message.id = `${errorPrefix}-${input.name}`;
           message.className = "auth-error";
           message.setAttribute("role", "alert");
           input.after(message);
