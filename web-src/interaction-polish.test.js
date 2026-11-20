@@ -43,10 +43,12 @@ describe("shared interaction polish", () => {
     expect(css).toMatch(/@starting-style[\s\S]*\.dock-tools:popover-open \{ opacity: 0; translate: 0 -4px/);
   });
 
-  it("sizes panel options to their contents rather than Safari's popover height", () => {
+  it("stacks panel options without Safari's fixed-grid intrinsic-height stretch", () => {
     const css = cssSource("views/build.css");
-    const tools = /\.dock-tools \{([^}]+)\}/.exec(css)[1];
-    expect(tools).toContain("height: max-content");
+    const tools = /\.dock-tools:popover-open \{([^}]+)\}/.exec(css)[1];
+    expect(tools).toContain("display: grid");
+    expect(tools).toContain("align-content: start");
+    expect(tools).toContain("gap: 12px");
     const phone = cssSource("phone/study.css");
     expect(phone).toContain("bottom: calc(var(--viewport-bottom) + 8px + env(safe-area-inset-bottom))");
     expect(phone).toContain("max-height: calc(var(--viewport-height) - env(safe-area-inset-top) - 24px)");

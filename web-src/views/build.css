@@ -584,7 +584,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   margin: 0;
   border: 0;
   width: 280px;
-  height: max-content;
   max-width: calc(100vw - 16px);
   padding: 12px;
   border-radius: var(--radius-card);
@@ -594,7 +593,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 
-.dock-tools:popover-open { display: grid; gap: 12px; }
+.dock-tools:popover-open { display: grid; align-content: start; gap: 12px; }
 
 /* Phone options already enter as a bottom sheet. */
 @media (min-width: 761px) and (prefers-reduced-motion: no-preference) {
