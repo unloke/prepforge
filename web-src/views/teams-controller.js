@@ -300,7 +300,7 @@ async function createTeam() {
     // reads as work in progress instead of a dropped click.
     onSubmit: async (result, close) => {
       const name = (result.name || "").trim();
-      if (!name) { setStatus("Team name is empty"); return; }
+      if (!name) throw new Error("Enter a team name.");
       saveCreateTeamDraft(name);
       try {
         const team = await postJson("/api/teams", { name });
