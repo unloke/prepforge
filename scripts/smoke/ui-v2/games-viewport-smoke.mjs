@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
 import { routeLichessProfile } from "./lichess-profile-route.mjs";
 import { checkGamesAnalyze } from './games-analyze.mjs';
+import { checkSourcePicker } from "./source-picker.mjs";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
@@ -140,6 +141,10 @@ async function runViewport(vp) {
     await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `games-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
   };
   await shot("setup");
+
+  if (vp.width <= 760) await page.locator("#games-setup").click();
+  await checkSourcePicker(page, "#games-source-add", check);
+  if (vp.width <= 760) await page.locator("#games-setup").click();
 
   // Setup: source tray, sample select, Check button.
   const chip = await page.locator('[data-testid="games-source-chips"] .src-chip').count();
