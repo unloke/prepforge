@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { getBuildTree, indexBuildNodes, invalidateBuildTree, summarizeBuild } from "./build-tree.js";
+import { getBuildTree, indexBuildNodes, indexTree, invalidateBuildTree, summarizeBuild } from "./build-tree.js";
 
 it("indexes the original nodes and shares only empty lists and equal strings", () => {
   const root = { id: "root", fen: "root-fen", fen_after: "root-fen", arrows: [], circles: [], tags: [] };
@@ -67,6 +67,19 @@ it("reuses the ordered child index until the loaded tree changes", () => {
 
   build.nodes = [root, a, { ...b, is_mainline: false }, c];
   expect(getBuildTree(build).children.get(root.id).map(({ id }) => id)).toEqual(["a", "b"]);
+});
+
+it("puts mainline siblings first without reordering nodes within either group", () => {
+  const a = { id: "a", parent_id: "root" };
+  const b = { id: "b", parent_id: "root", is_mainline: true };
+  const c = { id: "c", parent_id: "root", is_mainline: false };
+  const d = { id: "d", parent_id: "root", is_mainline: true };
+  const reply = { id: "reply", parent_id: "a", is_mainline: true };
+  const nodes = [a, reply, b, c, d];
+  const children = indexTree(nodes);
+  expect(children.get("root")).toEqual([b, d, a, c]);
+  expect(children.get("a")).toEqual([reply]);
+  expect(nodes).toEqual([a, reply, b, c, d]);
 });
 
 it("counts a deep tree without recursing through its ancestors", () => {

@@ -42,8 +42,16 @@ export function indexTree(nodes) {
     if (siblings) siblings.push(node);
     else children.set(node.parent_id, [node]);
   }
-  for (const siblings of children.values()) {
-    if (siblings.length > 1) siblings.sort((a, b) => Number(!!b.is_mainline) - Number(!!a.is_mainline));
+  for (const [parentId, siblings] of children) {
+    if (siblings.length < 2) continue;
+    for (let i = 1; i < siblings.length; i++) {
+      if (siblings[i].is_mainline && !siblings[i - 1].is_mainline) {
+        siblings.sort((a, b) => Number(!!b.is_mainline) - Number(!!a.is_mainline));
+        break;
+      }
+    }
+    // The index is read-only between rebuilds. Drop the spare capacity from push().
+    children.set(parentId, siblings.slice());
   }
   return children;
 }
