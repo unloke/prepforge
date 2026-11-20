@@ -108,7 +108,7 @@ def test_export_node_path_pgn_can_export_a_single_branch_path():
     assert "1. d4 *" in pgn
 
 
-@pytest.mark.parametrize("moves", ["*", "1. d4 d5 *"])
+@pytest.mark.parametrize("moves", ["1. d4 *", "1. d4 d5 *"])
 def test_import_tree_preserves_root_notes_and_drawings(moves):
     repertoire = RepertoireExportService().import_tree_pgn(
         '{ Develop the London bishop. [%cal Gc1f4] [%csl Yd4] } ' + moves,

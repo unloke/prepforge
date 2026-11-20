@@ -27,6 +27,7 @@ import { planTrainRunIn } from "../train-flow.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, showTrainResult, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
+import { restoreRehearsal, saveRehearsal } from "../train-rehearsal.js";
 import { appState, boards, notices, START_FEN } from "../core/state.js";
 import { api, currentOwnerId, localDateString, postJson, setStatus, setStatusError, sleep } from "../core/api.js";
 import { effectiveMaiaRating } from "../core/prefs.js";
@@ -138,6 +139,7 @@ async function renderTraining(payloadOrPrompt, options) {
   const prompt = payloadOrPrompt?.prompt || payloadOrPrompt;
   if (!prompt) return;
   applyTrainingPromptState(prompt);
+  saveRehearsal(currentOwnerId(), appState.training, appState.trainStats, appState.trainAttempt);
   const out = await (await ensureTrainView()).renderTraining(prompt, options);
   syncTrainSessionControls();
   return out;
@@ -256,15 +258,17 @@ export async function startTraining(mode, options = {}) {
   const fresh = !!options.fresh;
   const body = { seed: 13, mode, repertoire_id: repertoireId, fresh };
   try {
-    const { mapTrainUiSession, shouldResetTrainStats } = await loadTrainResume();
-    if (!isCurrent()) return;
     const payload = await postJson("/api/train/start", body);
     if (!isCurrent()) return;
     if (!payload.prompt) return failed("No moves to rehearse. Add lines in Repertoire.");
     appState.training = payload;
     appState.trainAttempt = 1;
-    const mapped = mapTrainUiSession(payload, { fresh });
-    if (shouldResetTrainStats(mapped)) trainStatsReset();
+    trainStatsReset();
+    const saved = !fresh && restoreRehearsal(currentOwnerId(), payload);
+    if (saved) {
+      appState.trainStats = saved.stats;
+      appState.trainAttempt = saved.attempt;
+    }
     if (boards.train && payload.color) {
       boards.train.setOrientation(payload.color === "black" ? "black" : "white");
     }
@@ -941,12 +945,7 @@ export async function openPlayInAnalyze() {
 // slides back, and the same prompt reopens ungraded (Due and Rehearse alike).
 async function answerAlternative({ fen, playedUci, san, still, reopen }) {
   appState.trainBusy = true;
-  try {
-    const after = await boardAfterMove(fen, playedUci);
-    boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci, cue: false });
-  } catch (_) {
-    // The banner still explains; the board just stays put.
-  }
+  await optimisticBoardMove(boards.train, fen, playedUci, false);
   setTrainBanner("review", "Also in your repertoire", `${san} is your prep too. This card drills another move.`);
   await sleep(900);
   if (!still()) return;
@@ -1114,6 +1113,7 @@ function finishTrainingSession() {
   const training = appState.training;
   const stats = appState.trainStats;
   if (training) training.prompt = null;
+  saveRehearsal(currentOwnerId(), training, stats, appState.trainAttempt);
   boards.train.setEngineArrow(null);
   updateTrainTurnBadge(null);
   document.getElementById("train-board-label").textContent = "";

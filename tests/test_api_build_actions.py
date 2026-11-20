@@ -7,6 +7,7 @@ server-side engine), owner-gated where they touch stored repertoires.
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+import pytest
 
 from api_helpers import csrf_headers
 
@@ -484,6 +485,32 @@ def test_import_pgn_rejects_bad_color(client):
         headers=csrf_headers(client),
     )
     assert r.status_code == 422
+
+
+@pytest.mark.parametrize("pgn", ["this is not chess PGN 123", '[Event "Headers only"]\n\n*', "*", " ", "1. e4 e5 2. Ke3 *"])
+def test_import_pgn_rejects_invalid_or_zero_moves_without_persisting(client, pgn):
+    _register(client, "invalid-pgn@example.com")
+    before = client.get("/api/repertoires").json()
+    response = client.post(
+        "/api/repertoires/import-pgn",
+        json={"pgn": pgn, "name": "Invalid", "color": "white"},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 400, response.text
+    assert "PGN" in response.json()["detail"]
+    assert client.get("/api/repertoires").json() == before
+
+
+def test_import_pgn_preserves_branches(client):
+    _register(client, "branched-pgn@example.com")
+    response = client.post(
+        "/api/repertoires/import-pgn",
+        json={"pgn": "1. e4 e5 (1... c5) 2. Nf3 *", "name": "Branches", "color": "white"},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["nodes_total"] == 5
+    assert {n["uci"] for n in response.json()["nodes"]} >= {"e2e4", "e7e5", "c7c5", "g1f3"}
 
 
 def test_import_pgn_rejects_oversized_payload(client):

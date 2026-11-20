@@ -3,13 +3,14 @@ import { countOf } from "../plural.js";
 import { animateView } from "../view-swap.js";
 import { closeTrainPicker, openTrainPicker, trainRepertoireItems } from "../train-picker.js";
 import { recentRuns } from "../train-history.js";
+import { loadRehearsal } from "../train-rehearsal.js";
 import { lineTail } from "../views/train.js";
 import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
 import { createTrainPreview, paintTrainPreviewLoading } from "./train-preview.js";
 import { appState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
-import { lichessAccounts, requireSignIn, switchView, syncWorkspaceUrl } from "../core/app-context.js";
+import { flushTrainSync, lichessAccounts, requireSignIn, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
 import { blitzEnabled, clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setBlitzEnabled,
   skipTrainingLine, startPlaySessionTracked, startTraining, takebackPlaySession, trainHint } from "./train-session.js";
@@ -140,10 +141,11 @@ function paintActions(screen, mode) {
 // Every way into Train lands here: nav, Library's Train, "Train this
 // repertoire", a picked move, the palette. The scope is set explicitly, so a
 // one-repertoire queue is never served from "all repertoires".
-export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true } = {}) {
+export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false } = {}) {
   const state = appState;
   if (!(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
   closeTrainPicker();
+  if (state.smart) await flushTrainSync();
   resetSessions();
   for (const key of Object.keys(rowErrors)) rowErrors[key] = "";
   state.trainMode = mode;
@@ -158,7 +160,7 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
   syncWorkspaceUrl();
   if (!autostart) return;
   if (mode === "play") return startPlaySessionTracked();
-  return startTraining(mode, { fresh: !!targets.length, repertoireId, targetNodeIds: targets });
+  return startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets });
 }
 
 function resetSessions() {
@@ -180,6 +182,7 @@ function resetSessions() {
 // game asks first.
 export async function leaveToHome() {
   if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
+  if (appState.smart && !(await flushTrainSync())) return;
   resetSessions();
   syncWorkspaceUrl();
   invalidateTrainPreview();
@@ -323,7 +326,10 @@ export async function paintTrainHome() {
   setChip("train-rehearse-scope", rep ? rep.name : signedIn ? "No repertoire" : "Your repertoires", !signedIn || !reps.length);
   document.getElementById("train-rehearse-meta").textContent = rep?.health ? countOf(Number(rep.health.trainable) || 0, "move") : "";
   const rehearseBtn = document.getElementById("start-rehearse");
-  rehearseBtn.textContent = !signedIn ? "Sign in to train" : rep ? "Start" : "Open Library";
+  const paused = signedIn && rep ? loadRehearsal(currentOwnerId(), rep.id) : null;
+  rehearseBtn.textContent = !signedIn ? "Sign in to train" : rep ? paused ? "Resume" : "Start" : "Open Library";
+  document.getElementById("restart-rehearse").hidden = !paused;
+  if (paused) document.getElementById("train-rehearse-meta").textContent = `${Number(paused.training.prompt.current_index) + 1} / ${paused.training.prompt.total_lines}`;
   rehearseBtn.dataset.action = !signedIn ? "signin" : rep ? "start" : "library";
   // With no repertoire the Due row already leads to Library; a second
   // Open Library one row down is the same button twice.
@@ -496,6 +502,8 @@ function bind() {
     openTrain({ mode: "smart", repertoireId: appState.trainScope?.repertoireId || null })));
   $("start-rehearse").addEventListener("click", (e) => rowAction(e.currentTarget, () =>
     openTrain({ mode: "all_lines", repertoireId: appState.trainingRepertoireId })));
+  $("restart-rehearse").addEventListener("click", () =>
+    openTrain({ mode: "all_lines", repertoireId: appState.trainingRepertoireId, fresh: true }));
   $("start-play").addEventListener("click", () => openTrain({ mode: "play" }));
   $("train-due-next").addEventListener("click", (e) => {
     const line = e.target.closest(".train-due-line");

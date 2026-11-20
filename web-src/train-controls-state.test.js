@@ -5,6 +5,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDocument, setup } from "./controllers/train-home.fixture.js";
 import { createTrainHome } from "./controllers/train-home.js";
+import { saveRehearsal } from "./train-rehearsal.js";
+import { provideApp } from "./core/app-context.js";
 vi.mock("./core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 vi.mock("./train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 vi.mock("./controllers/train-session.js", () => import("./controllers/train-session.fixture.js"));
@@ -68,6 +70,35 @@ describe("the board bar's action slot", () => {
 });
 
 describe("Home rows", () => {
+  it("labels an unfinished rehearsal Resume and offers a fresh Start over", async () => {
+    const data = new Map();
+    vi.stubGlobal("localStorage", { getItem: k => data.get(k), setItem: (k, v) => data.set(k, v) });
+    const { deps } = setup({ currentView: "train", trainingRepertoireId: "r1" });
+    saveRehearsal("u1", { repertoire_id: "r1", prompt: { current_index: 1, total_lines: 2 } }, { history: [] }, 1);
+    await createTrainHome(deps).paintTrainHome();
+    expect(doc.getElementById("start-rehearse").textContent).toBe("Resume");
+    expect(doc.getElementById("train-rehearse-meta").textContent).toBe("2 / 2");
+    expect(doc.getElementById("restart-rehearse").hidden).toBe(false);
+    await doc.getElementById("restart-rehearse").click();
+    expect(deps.startTraining).toHaveBeenCalledWith("all_lines", expect.objectContaining({ fresh: true }));
+  });
+
+  it("flushes the paused Due cursor before discarding it or requesting Home's preview", async () => {
+    const { appState, deps } = setup({ currentView: "train", trainMode: "smart", smart: { cardIndex: 2, queue: [1, 2, 3, 4, 5] } });
+    let release;
+    const flush = vi.fn(() => new Promise(resolve => { release = resolve; }));
+    provideApp({ flushTrainSync: flush, syncWorkspaceUrl: vi.fn() });
+    const home = createTrainHome(deps);
+    const leaving = home.leaveToHome();
+    await vi.waitFor(() => expect(flush).toHaveBeenCalledOnce());
+    expect(appState.smart.cardIndex).toBe(2);
+    expect(deps.api).not.toHaveBeenCalled();
+    deps.api.mockResolvedValue({ next_session: { cards: 3, left: 3, resumed: true, upcoming: [{ kind: "due", repertoire_id: "r1", repertoire_name: "Remaining" }] } });
+    release(true);
+    await leaving;
+    await vi.waitFor(() => expect(doc.getElementById("train-due-meta").textContent).toBe("3 cards left"));
+    expect(doc.getElementById("train-due-next").innerHTML).toContain("Remaining");
+  });
   it("a guest's drill rows lead to sign-in and stay pressable; Practice still plays", async () => {
     const { deps } = setup({ signedIn: false, repertoireList: [], sharedRepertoireList: [] });
     await createTrainHome(deps).paintTrainHome();

@@ -52,6 +52,25 @@ describe("all-repertoire Due reload", () => {
     expect(h.openTrain).not.toHaveBeenCalled();
   });
 
+  it("keeps Rehearse and mixed Due links distinct when switching between them", async () => {
+    const hash = formatWorkspaceHash(workspaceLocationFromState({
+      currentView: "train", training: { repertoire_id: "r", prompt: {} },
+    }));
+    expect(hash).toBe("#/train?rep=r&mode=all_lines");
+
+    const rehearsal = runtime(hash, { smart: { mixed: true } });
+    await rehearsal.restore();
+    await rehearsal.popstate();
+    expect(rehearsal.openTrain).toHaveBeenCalledTimes(2);
+    expect(rehearsal.openTrain).toHaveBeenLastCalledWith({ mode: "all_lines", repertoireId: "r" });
+
+    const due = runtime("#/train?mode=smart");
+    due.appState.training = { repertoire_id: "r", prompt: {} };
+    due.appState.trainMode = "all_lines";
+    await due.popstate();
+    expect(due.openTrain).toHaveBeenCalledWith({ mode: "smart", repertoireId: null });
+  });
+
   it("a signed-out reload cannot start a mixed queue", async () => {
     const h = runtime("#/train?mode=smart", { signedIn: false });
     await h.restore();

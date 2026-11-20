@@ -53,7 +53,7 @@ export function setup(state = {}) {
   localDateString.mockReturnValue("2026-10-22");
   confirmAbandonGame.mockResolvedValue(true);
   const switchView = vi.fn((view) => { appState.currentView = view; });
-  provideApp({ switchView, lichessAccounts: () => [], requireSignIn: vi.fn(), syncWorkspaceUrl: vi.fn() });
+  provideApp({ switchView, lichessAccounts: () => [], requireSignIn: vi.fn(), flushTrainSync: vi.fn(async () => true), syncWorkspaceUrl: vi.fn() });
   const deps = { api, localDateString, confirmAbandonGame, switchView, ...session };
   createTrainHome();
   return { appState, deps };

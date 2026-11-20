@@ -10,6 +10,7 @@ import { appSource } from "./test-app-source.js";
 import { eagerCss as css } from "./test-styles-source.js";
 import { buildSkeleton } from "./views/build-skeleton.js";
 import { summarizeBuild } from "./build-tree.js";
+import { readGenerateInt } from "./controllers/build-generate-dialog.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
@@ -68,12 +69,12 @@ describe("Generate dialog", () => {
   const helpers = compile(
     [
       "function estimateBuildGenerateTotal({ plyDepth, mainThreshold, branchThreshold, userToMove = true }) {",
-      "function clampGenerateInt(raw, min, max, fallback) {",
       "function readGenerateOptions(values, { userToMove = true } = {}) {",
       "function generateEstimateRange(options) {",
       "function generateEstimateText(options) {",
     ],
     {
+      readGenerateInt,
       GEN_MAX_PLY_DEPTH: 20,
       GEN_MAX_OWN_MOVES: 10,
       GEN_DEFAULT_OWN_MOVES: 6,
@@ -87,20 +88,24 @@ describe("Generate dialog", () => {
   );
 
   it("counts depth in full moves and always ends the tree on your answer", () => {
-    expect(helpers.readGenerateOptions({ own_moves: "3" }, { userToMove: true }).plyDepth).toBe(5);
-    expect(helpers.readGenerateOptions({ own_moves: "3" }, { userToMove: false }).plyDepth).toBe(6);
-    expect(helpers.readGenerateOptions({ own_moves: "99" }, { userToMove: false }).plyDepth).toBe(20);
-    expect(helpers.readGenerateOptions({}).plyDepth).toBe(11);
+    const values = { own_moves: "3", main_pct: "10", branch_pct: "30", maia_rating: "1500", engine_depth: "16" };
+    expect(helpers.readGenerateOptions(values, { userToMove: true }).plyDepth).toBe(5);
+    expect(helpers.readGenerateOptions(values, { userToMove: false }).plyDepth).toBe(6);
+    expect(helpers.readGenerateOptions({ ...values, own_moves: "10" }, { userToMove: false }).plyDepth).toBe(20);
+    expect(() => helpers.readGenerateOptions({ ...values, own_moves: "99" })).toThrow("Invalid Generate value");
+    expect(() => helpers.readGenerateOptions({})).toThrow("Invalid Generate value");
   });
 
-  it("reads every coverage knob, clamped, with defaults for blanks", () => {
-    const opts = helpers.readGenerateOptions({ main_pct: "5", branch_pct: "99", maia_rating: "", engine_depth: "20" });
+  it("reads every coverage knob without silently clamping or defaulting invalid inputs", () => {
+    const values = { own_moves: "6", main_pct: "5", branch_pct: "50", maia_rating: "2377", engine_depth: "20" };
+    const opts = helpers.readGenerateOptions(values);
     expect(opts.mainThreshold).toBeCloseTo(0.05);
     expect(opts.branchThreshold).toBeCloseTo(0.5);
-    expect(opts.maiaRating).toBe(1500);
+    expect(opts.maiaRating).toBe(2377);
     expect(opts.engineDepth).toBe(20);
-    expect(helpers.readGenerateOptions({}).mainThreshold).toBeCloseTo(0.1);
-    expect(helpers.readGenerateOptions({}).branchThreshold).toBeCloseTo(0.3);
+    for (const [name, value] of Object.entries({ main_pct: "0", branch_pct: "99", maia_rating: "", engine_depth: "0" })) {
+      expect(() => helpers.readGenerateOptions({ ...values, [name]: value })).toThrow("Invalid Generate value");
+    }
   });
 
   it("estimates more moves for deeper or broader coverage", () => {

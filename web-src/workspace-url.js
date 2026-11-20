@@ -79,7 +79,7 @@ export function formatWorkspaceHash({ view, replaySection, repertoireId, ply, no
     ? `settings/${settingsArea}` : section || v;
   const params = new URLSearchParams();
   if (repertoireId) params.set("rep", String(repertoireId));
-  if (v === "train" && trainMode === "smart") params.set("mode", "smart");
+  if (v === "train" && (trainMode === "all_lines" || trainMode === "smart")) params.set("mode", trainMode);
   const plyNum = asPly(ply);
   if (plyNum && plyNum > 0) params.set("ply", String(plyNum));
   const nodeId = asAnalysisNode(node);
@@ -111,9 +111,10 @@ export function parseWorkspaceHash(hash) {
       node: null,
     };
   }
+  const trainMode = params.get("mode");
   return {
     view: asView(slug),
-    ...(slug === "train" && params.get("mode") === "smart" ? { trainMode: "smart" } : {}),
+    ...(slug === "train" && (trainMode === "all_lines" || trainMode === "smart") ? { trainMode } : {}),
     ...(slug === "settings" && /^(account|appearance|board|engine)$/.test(viewPart.split("/")[1])
       ? { settingsArea: viewPart.split("/")[1] } : {}),
     replaySection: null,
@@ -154,6 +155,7 @@ export function workspaceLocationFromState(state = {}) {
   const view = asView(state.currentView || state.view);
   return {
     view,
+    ...(view === "train" && state.training?.prompt ? { trainMode: "all_lines" } : {}),
     ...(view === "train" && state.smart?.mixed && !state.trainResult ? { trainMode: "smart" } : {}),
     replaySection:
       view === "replay"

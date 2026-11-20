@@ -19,7 +19,9 @@ function shared() {
   const deps = {
     appState: { trainHintLevel: 0 },
     boards: { train: board },
-    boardAfterMove: vi.fn(async () => ({ board: { fen: "after" } })),
+    optimisticBoardMove: vi.fn(async (target, fen, move, cue) => {
+      target.setPosition({ fen: "after", legalMoves: [], lastMove: move, cue });
+    }),
     setTrainBanner: vi.fn(),
     sleep: async () => {},
     syncTrainSessionControls: vi.fn(),

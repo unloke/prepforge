@@ -335,6 +335,28 @@ async function runViewport(vp) {
       `the checklist should run the table's width, ${Math.round(listBox.width)}px vs ${Math.round(stepsBox.width)}px`);
   }
 
+  let importRequests = 0;
+  await page.route("**/api/repertoires/import-pgn", (route) => {
+    importRequests++;
+    return route.fulfill({ status: 400, json: { detail: "PGN must contain at least one legal move." } });
+  });
+  if (vp.width <= 760) {
+    await page.locator("#library-add").click();
+    await page.locator('[data-action="dashboard-import-pgn"]').click();
+  } else await page.locator("#dashboard-import-pgn").click();
+  const importDialog = page.locator("dialog[open]");
+  await importDialog.getByRole("button", { name: "Import", exact: true }).click();
+  await page.waitForFunction(() => !document.querySelector('[data-form-error]').hidden);
+  check(importRequests === 0, "empty PGN does not send a request");
+  check(/Paste a PGN/.test(await importDialog.locator("[data-form-error]").textContent()), "empty PGN stays open with an inline error");
+  await importDialog.locator("textarea").fill("this is not chess PGN 123");
+  await importDialog.getByRole("button", { name: "Import", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('[data-form-error]')?.textContent.includes("legal move"));
+  check(importRequests === 1, "junk PGN is submitted only once");
+  check(await importDialog.isVisible(), "rejected PGN stays editable in the open import dialog");
+  check(await importDialog.locator("textarea").inputValue() === "this is not chess PGN 123", "rejected PGN text is preserved");
+  await page.keyboard.press("Escape");
+
   // Mastery bar carries the health pct.
   const barWidth = await page.locator("#dashboard-repertoires .lib-row:first-child .lib-mbar i.is-mastered").getAttribute("style");
   check(/width:\s*50%/.test(barWidth || ""), `first row mastery bar should be 50%, got "${barWidth}"`);

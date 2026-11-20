@@ -309,6 +309,7 @@ export async function syncPgnFromTree() {
   if (seq !== analysisRecallSeq || input.value !== original) return;
   const next = view.serializeAnalysisPgn(input.value);
   if (!next) return;
+  if (analysis) analysis.pgn = next;
   appState.analysisPgnStale = false;
   if (next !== input.value) {
     analyzePgnWriting = true;
@@ -331,10 +332,10 @@ export function bindAnalyzePgnInput() {
     // reload runs) fences those continuations.
     appState.analysisPgnStale = false;
     invalidateAnalysisSource();
-    syncViewHeads();
     analyzePgnInputTimer = setTimeout(() => {
-      orientAnalysisFromPgn(pgnInput.value);
-      void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).catch(
+      void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).then((loaded) => {
+        if (loaded) orientAnalysisFromPgn(appState.analysis?.pgn || "");
+      }).catch(
         () => {}
       );
     }, 300);

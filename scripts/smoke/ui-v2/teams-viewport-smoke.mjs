@@ -229,6 +229,24 @@ async function runViewport(vp) {
   const dirRole = await page.locator('#teams-list .team-row .team-role-badge').first().textContent().catch(() => "");
   check(/Owner/.test(dirRole || ""), `directory should show the Owner badge, got "${dirRole}"`);
 
+  const teamWrites = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/teams") teamWrites.push(request);
+  });
+  await page.getByRole("button", { name: "New team", exact: true }).click();
+  const newTeam = page.getByRole("dialog", { name: "New team", exact: true });
+  const teamName = newTeam.getByLabel("Team name");
+  await teamName.fill("   ");
+  await newTeam.getByRole("button", { name: "Create", exact: true }).click();
+  const nameError = newTeam.getByRole("alert");
+  await nameError.waitFor({ timeout: 3000 });
+  check(await nameError.innerText() === "Enter a team name.", "whitespace validation must be visible inside the dialog");
+  check(await teamName.evaluate((el) => document.activeElement === el), "invalid submission should return focus to Team name");
+  check(teamWrites.length === 0, "whitespace validation should not send a create request");
+  await shot("name-validation");
+  await newTeam.getByRole("button", { name: "Cancel", exact: true }).click();
+  await newTeam.waitFor({ state: "hidden" });
+
   // Open the detail card.
   await page.locator("#teams-list .team-row").first().click();
   await page.waitForFunction(
@@ -273,6 +291,47 @@ async function runViewport(vp) {
   check(membersCount.trim() === "2", `Members tab count should be 2, got "${membersCount}"`);
 
   await shot("members");
+
+  if (vp.width <= 760) {
+    const actionsButton = page.getByRole("button", { name: "Team actions", exact: true });
+    const actions = page.getByRole("dialog", { name: "Team actions", exact: true });
+    const openActions = async () => {
+      await actionsButton.click();
+      await actions.waitFor();
+      check(await actionsButton.getAttribute("aria-expanded") === "true", "the opener announces the open sheet");
+    };
+    const checkClosed = async () => {
+      await actions.waitFor({ state: "hidden" });
+      await page.waitForFunction(() => document.getElementById("team-detail-more").getAttribute("aria-expanded") === "false");
+      check(await actionsButton.evaluate((el) => document.activeElement === el), "closing the sheet restores focus to Team actions");
+    };
+    await openActions();
+    check(await actions.getByRole("button", { name: "Done", exact: true }).evaluate((el) => document.activeElement === el), "opening the sheet focuses Done");
+    for (const key of ["Shift+Tab", ...Array(5).fill("Tab")]) {
+      await page.keyboard.press(key);
+      check(await actions.evaluate((el) => el.contains(document.activeElement) || document.activeElement === document.body), `${key} must not focus the dimmed page`);
+    }
+    check(await actions.evaluate((el) => el.matches(":modal")), "the actions sheet must make the dimmed page inert");
+    await shot("sheet-focus");
+    await page.keyboard.press("Escape");
+    await checkClosed();
+    await openActions();
+    await actions.getByRole("button", { name: "Done", exact: true }).click();
+    await checkClosed();
+    await openActions();
+    await page.mouse.click(12, 30);
+    await checkClosed();
+    await openActions();
+    await actions.getByRole("button", { name: "Rename team", exact: true }).click();
+    const rename = page.getByRole("dialog", { name: "Rename team", exact: true });
+    await rename.getByRole("button", { name: "Cancel", exact: true }).click();
+    await checkClosed();
+    await openActions();
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.waitForFunction(() => !document.getElementById("team-actions").open);
+    check(await page.locator("#team-detail-more").getAttribute("aria-expanded") === "false", "leaving the phone Teams layout dismisses the sheet");
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+  }
 
   // Invite footer from the real payload (owner sees it).
   const foot = await page.locator("#team-invite-foot:not([hidden])").textContent().catch(() => "");

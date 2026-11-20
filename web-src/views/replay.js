@@ -19,6 +19,12 @@ const REPLAY_KINDS = {
   "no-prep": { badge: "No repertoire", label: "not covered", tone: "none", departure: "–" },
 };
 
+// An external player's games are not the user's own: their misses read "Player".
+function replayKindMeta(kind, own) {
+  const meta = REPLAY_KINDS[kind];
+  return kind === "user-error" && !own ? { ...meta, badge: "Player left prep", label: "player left prep" } : meta;
+}
+
 const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 // One ledger, one header row: the loading rows, the result rows and every
@@ -223,6 +229,7 @@ export function createReplayView({
   onBuildReply,
   onAnalyze,
   onRetry,
+  isOwnAccount = () => false,
   onError = (error) => console.error(error),
 }) {
   // The focus board renders through app.js's FEN/piece-SVG helpers so it keeps
@@ -252,7 +259,7 @@ export function createReplayView({
       .filter(([kind]) => counts[kind] > 0)
       .map(
         ([kind, meta]) =>
-          html`<button type="button" class="sum-chip t-${meta.tone}${activeFilter === kind ? " is-on" : ""}" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${counts[kind]} ${meta.label}</button>`
+          html`<button type="button" class="sum-chip t-${meta.tone}${activeFilter === kind ? " is-on" : ""}" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${counts[kind]} ${bucketMeta(kind, games).label}</button>`
       );
     const queued = Number(payload.misses_recorded) || 0;
     const queuedHtml = queued
@@ -284,7 +291,7 @@ export function createReplayView({
     const history = game.move_san_history || [];
     if (!history.length) return html`<span class="muted">No moves recorded.</span>`;
     const departurePly = Number(game.departure_ply) || 0;
-    const kind = REPLAY_KINDS[replayGameKind(game)];
+    const kind = gameMeta(game);
     const tone = kind.tone;
     const rows = [];
     for (let index = 0; index < history.length; index += 2) {
@@ -332,7 +339,7 @@ export function createReplayView({
         : game.expected_node_id
           ? " Already in your training queue."
           : " Your repertoire has no prepared move here.";
-      lines.push(html`You diverged at ${moveNumberLabel(game.departure_ply)}${played}${expected}.${queued}`);
+      lines.push(html`${subjectName(game)} diverged at ${moveNumberLabel(game.departure_ply)}${played}${expected}.${queued}`);
     } else if (game.departure_reason === "opponent_unprepared_branch") {
       const playedSan = replayDepartureSan(game);
       const played = playedSan ? html` <strong>${gamePlyHtml(game, game.departure_ply, playedSan)}</strong>` : "";
@@ -357,14 +364,31 @@ export function createReplayView({
     return html`<span class="res ${cls}" title="${word}"><i class="res-mark" aria-hidden="true"></i>${displayReplayResult(game.result)}</span>`;
   }
 
-  // "You" is resolved against the payload's own user_color, never guessed.
+  // "You" only for games fetched from one of the user's own linked accounts;
+  // an external player's games name that player.
+  function subjectName(game) {
+    return isOwnAccount(game.source_account) ? "You" : game[game.user_color] || "?";
+  }
+
+  function gameMeta(game) {
+    return replayKindMeta(replayGameKind(game), isOwnAccount(game.source_account));
+  }
+
+  // A bucket says "you" only when every game in it came from the user's own accounts.
+  function bucketMeta(kind, games) {
+    return replayKindMeta(kind, games.filter((game) => replayGameKind(game) === kind).every((game) => isOwnAccount(game.source_account)));
+  }
+
   function playerName(game, side) {
-    return game.user_color === side ? "You" : game[side] || "?";
+    return game.user_color === side ? subjectName(game) : game[side] || "?";
+  }
+
+  function accountTitle(account) {
+    return isOwnAccount(account) ? "Fetched from this linked account" : "Fetched from this Lichess player";
   }
 
   function renderReplayRow(game, index, selectedIndex, { showAccount = true } = {}) {
-    const kind = replayGameKind(game);
-    const meta = REPLAY_KINDS[kind];
+    const meta = gameMeta(game);
     const open = index === selectedIndex;
     // Second line: the finish date, plus the source account only when the
     // list mixes several accounts (one account repeated on every row is noise;
@@ -373,7 +397,7 @@ export function createReplayView({
     const subParts = [];
     if (date) subParts.push(html`<time class="lr-date" datetime="${game.finished_at}">${date}</time>`);
     if (showAccount && game.source_account) {
-      subParts.push(html`<i class="acct" title="Fetched from this linked account">${game.source_account}</i>`);
+      subParts.push(html`<i class="acct" title="${accountTitle(game.source_account)}">${game.source_account}</i>`);
     }
     const source = subParts.length ? html`<small>${subParts.map((part, i) => html`${i ? " · " : ""}${part}`)}</small>` : "";
     // The row is the control; its moves only peek (hover), so they are not tab stops.
@@ -390,7 +414,6 @@ export function createReplayView({
 
   function renderReplayFocus(game, index) {
     const kind = replayGameKind(game);
-    const meta = REPLAY_KINDS[kind];
     const boardHtml = replayFocusBoardHtml(game, renderers);
     const lichessLink = game.lichess_id
       ? html`<a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${game.lichess_id}" title="Open on Lichess">lichess ↗</a>`
@@ -477,7 +500,7 @@ export function createReplayView({
         ? html`<div class="row"><button type="button" class="btn" data-show-all>Show all</button></div>`
         : "";
       container.innerHTML = replayEmptyLedger(
-        html`<h3>No games in this bucket</h3><p>Nothing in this sample ${REPLAY_KINDS[filter]?.label || "matched"}.</p>${showAll}`,
+        html`<h3>No games in this bucket</h3><p>Nothing in this sample ${filter ? bucketMeta(filter, payload.games).label : "matched"}.</p>${showAll}`,
         { headHtml: warning }
       );
       container.querySelector?.("[data-show-all]")?.addEventListener?.("click", () => onToggleFilter(filter));
@@ -492,7 +515,7 @@ export function createReplayView({
     const showAccount = accounts.size > 1 || sourceCount > 1;
     const singleAccount = !showAccount && accounts.size === 1 ? [...accounts][0] : "";
     const accountNote = singleAccount
-      ? html` · <i class="acct" title="Fetched from this linked account">${singleAccount}</i>`
+      ? html` · <i class="acct" title="${accountTitle(singleAccount)}">${singleAccount}</i>`
       : "";
     // A row click re-renders the list: keep the ledger's scroll position and
     // the keyboard focus on the clicked row, then reveal the detail card.
@@ -501,7 +524,7 @@ export function createReplayView({
     const entered = payload !== lastPayload;
     lastPayload = payload;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, "game")}${filter ? ` · ${REPLAY_KINDS[filter].label}` : ""}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => html`${renderReplayRow(game, index, selectedIndex, { showAccount })}${index === selectedIndex ? renderReplayFocus(game, index) : ""}`)}</div></section></div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, "game")}${filter ? ` · ${bucketMeta(filter, payload.games).label}` : ""}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => html`${renderReplayRow(game, index, selectedIndex, { showAccount })}${index === selectedIndex ? renderReplayFocus(game, index) : ""}`)}</div></section></div>`;
     // A fresh Check enters row by row; a row click only swaps the detail card.
     if (entered) enterRows(container.querySelector?.(".ledger-table"));
     else if (focused.index !== lastFocusIndex) enterOnce(container.querySelector?.(".focus"));
