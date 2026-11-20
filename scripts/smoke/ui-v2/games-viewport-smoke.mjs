@@ -27,7 +27,7 @@ const GAMES = [
     in_repertoire: true, matched_plies: 3, departure_ply: 4, departure_move_uci: "d7d5",
     departure_reason: "user_left_preparation", repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance",
     move_san_history: ["e4", "c6", "Nf3", "d5"], expected_move_uci: "e7e6", expected_move_san: "e6",
-    training_recorded: true, source_account: "self",
+    training_recorded: true, source_account: "me_user",
   },
   {
     lichess_id: "g2", white: "me_user", black: "opp_two", result: "1-0", user_color: "white",
@@ -35,14 +35,14 @@ const GAMES = [
     departure_reason: "opponent_unprepared_branch", repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance",
     last_matched_node_id: "n2",
     move_san_history: ["e4", "c6", "d4", "Nf6"], expected_move_uci: null, expected_move_san: null,
-    training_recorded: false, source_account: "self",
+    training_recorded: false, source_account: "me_user",
   },
   {
     lichess_id: "g3", white: "me_user", black: "opp_three", result: "1-0", user_color: "white",
     in_repertoire: true, matched_plies: 4, departure_ply: null, departure_move_uci: null,
     departure_reason: "game_stayed_in_preparation", repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance",
     move_san_history: ["e4", "c6", "d4", "d5"], expected_move_uci: null, expected_move_san: null,
-    training_recorded: false, source_account: "self",
+    training_recorded: false, source_account: "me_user",
   },
 ];
 
