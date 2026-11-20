@@ -484,6 +484,13 @@
 
 .auth-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+@media (orientation: landscape) and (max-height: 450px) {
+  .modal.auth-modal {
+    margin-top: 8px;
+    max-height: calc(var(--viewport-height) - 16px);
+  }
+}
+
 
 /* Why the gate opened ("Sign in to start training"). */
 .auth-reason {

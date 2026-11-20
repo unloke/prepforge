@@ -125,11 +125,25 @@ export async function promptImportRepertoireFromPgn(pgnText = "", { defaultName 
   const initialPgn = String(pgnText || "");
   const full = repertoireLimitMessage();
   let customName = false;
-  const meta = await showInputModal({
+  return showInputModal({
     title: "Import PGN as repertoire",
     okLabel: "Import",
     disabled: Boolean(full),
     error: full || "",
+    onSubmit: async (values, close) => {
+      const rawPgn = (initialPgn || values.pgn || "").trim();
+      if (!rawPgn) throw new Error("Paste a PGN or choose a file to import.");
+      const name = (values.name || "").trim() || "Imported game";
+      const color = normalizeRepertoireColor(values.color);
+      const payload = await importRepertoireFromPgnText(rawPgn, { name, color });
+      close(payload);
+      if (switchToBuild) switchView("build");
+      setStatus(
+        switchToBuild
+          ? `Repertoire “${payload.name}” created — edit it in Repertoire`
+          : `Imported “${payload.name}”`,
+      );
+    },
     fields: [
       { name: "name", label: "Name", default: defaultName },
       repertoireColorField("white"),
@@ -162,26 +176,4 @@ export async function promptImportRepertoireFromPgn(pgnText = "", { defaultName 
       }
     },
   });
-  if (!meta) return null;
-  const rawPgn = (initialPgn || meta.pgn || "").trim();
-  if (!rawPgn) {
-    setStatusError("Paste a PGN or choose a file to import.");
-    return null;
-  }
-  const name = (meta.name || "").trim() || "Imported";
-  const color = normalizeRepertoireColor(meta.color);
-  try {
-    const payload = await importRepertoireFromPgnText(rawPgn, { name, color });
-    if (switchToBuild) switchView("build");
-    setStatus(
-      switchToBuild
-        ? `Repertoire “${payload.name}” created — edit it in Repertoire`
-        : `Imported ${payload.name}`,
-    );
-    return payload;
-  } catch (error) {
-    setStatusError(error.message);
-    throw error;
-  }
 }
-
