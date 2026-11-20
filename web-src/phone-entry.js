@@ -137,7 +137,31 @@ export function wireMobileNav() {
   }
   wirePhoneStudyNav();
   wirePhoneSheets();
+  wireTeamActions();
   wireHoldRepeat();
+}
+
+function wireTeamActions() {
+  const sheet = document.getElementById("team-actions");
+  const opener = document.getElementById("team-detail-more");
+  if (!sheet || !opener) return;
+  let closeModal;
+  const close = () => {
+    closeModal?.();
+    closeModal = null;
+    opener.setAttribute("aria-expanded", "false");
+  };
+  opener.addEventListener("click", () => {
+    if (sheet.open) return;
+    opener.focus({ preventScroll: true });
+    opener.setAttribute("aria-expanded", "true");
+    closeModal = openModal(sheet, { keep: true, onDismiss: close });
+  });
+  sheet.addEventListener("click", (event) => {
+    if (event.target.closest?.("[data-sheet-close], [data-mirror]")) close();
+  });
+  const layout = matchMedia("(max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px)");
+  layout.addEventListener("change", () => { if (!layout.matches) close(); });
 }
 
 // Holding a move arrow steps on repeat, like a held arrow key. The click that

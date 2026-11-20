@@ -19,11 +19,11 @@ const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
 
 describe("the open team's ⋯ sheet", () => {
   it("mirrors the desktop controls it replaces", () => {
-    const sheet = view.slice(view.indexOf('id="team-actions"'), view.indexOf("</div>\n            </div>", view.indexOf('id="team-actions"')));
+    const sheet = view.slice(view.indexOf('<dialog class="phone-sheet"'), view.indexOf("</dialog>", view.indexOf('id="team-actions"')));
     for (const target of ["#team-add-member", "#team-detail-rename", "#team-detail-delete", "#team-members .team-remove[data-self='1']"]) {
       expect(sheet).toContain(`data-mirror="${target}"`);
     }
-    expect(view).toContain('data-sheet-open="team-actions"');
+    expect(view).toContain('aria-haspopup="dialog" aria-controls="team-actions"');
     // New team rides the page title, as New repertoire does on Library; Invite docks at the thumb.
     expect(view).toContain('class="page-head-btn" data-mirror="#teams-new"');
     expect(view).toContain('class="btn primary team-invite-cta" id="team-invite-cta" data-mirror="#team-detail-invite"');

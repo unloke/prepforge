@@ -496,8 +496,8 @@ select.team-role-select {
   #view-teams .team-more { grid-column: 3; display: inline-flex; width: 36px; height: 36px; padding: 0; justify-content: center; }
   #view-teams .team-more[hidden] { display: none; }
   #view-teams .team-more svg { fill: currentColor; }
-  /* Closed, the sheet is not in the page at all (an open one is fixed). */
-  #team-actions:not(.is-open) { display: none; }
+  #team-actions[open] { top: auto; width: auto; max-width: none; margin: 0; border: 0; color: inherit; }
+  #team-actions::backdrop { background: transparent; }
   #team-actions .sheet-row { box-shadow: none; }
   #team-actions .sheet-row:not([hidden]) ~ .sheet-row:not([hidden]) { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
   #team-actions .sheet-row[hidden] { display: none; }
