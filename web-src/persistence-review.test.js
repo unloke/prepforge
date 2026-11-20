@@ -21,8 +21,31 @@ it('export keeps the clicked repertoire during sync', async () => {
   const flush=deferred(), appState={build:{repertoire_id:'A'}}, api=vi.fn(async()=>({filename:'A.pgn'}));
   const run=compile('async function exportBuild(', {appState,currentOwnerId:()=> 'owner', hardFlushBuild:()=>flush.promise,
     resolveBuildId:id=>id,api,postJson:vi.fn(),downloadText:vi.fn(),setStatus:vi.fn(),setStatusError:vi.fn()});
-  const pending=run('pgn'); appState.build={repertoire_id:'B'}; flush.resolve(); await pending;
+  const pending=run(); appState.build={repertoire_id:'B'}; flush.resolve(); await pending;
   expect(api).toHaveBeenCalledWith(expect.stringContaining('repertoire_id=A'));
+});
+it('Library export downloads the requested repertoire without changing the open tree', async () => {
+  const appState={build:{repertoire_id:'open'}}, payload={filename:'Library.pgn',mime:'application/x-chess-pgn',content:'1. e4 e5 (1... c5) *'};
+  const api=vi.fn(async()=>payload),downloadText=vi.fn();
+  const run=compile('async function exportBuild(', {appState,currentOwnerId:()=> 'owner',hardFlushBuild:async()=>{},api,downloadText,setStatus:vi.fn(),setStatusError:vi.fn()});
+  await run('library id');
+  expect(api).toHaveBeenCalledWith('/api/repertoires/export-pgn?repertoire_id=library%20id');
+  expect(downloadText).toHaveBeenCalledWith(payload.filename,payload.mime,payload.content);
+  expect(appState.build.repertoire_id).toBe('open');
+});
+it('export without a repertoire requests nothing', async () => {
+  const api=vi.fn(),setStatus=vi.fn();
+  const run=compile('async function exportBuild(', {appState:{},api,setStatus});
+  await run();expect(api).not.toHaveBeenCalled();expect(setStatus).toHaveBeenCalledWith('Open a repertoire first');
+});
+it('Library export stops on failed sync or an account switch', async () => {
+  const api=vi.fn(async()=>({})),downloadText=vi.fn(),setStatusError=vi.fn();let owner='owner';
+  const deps={appState:{},currentOwnerId:()=>owner,hardFlushBuild:async()=>{throw Error('offline');},api,downloadText,setStatus:vi.fn(),setStatusError};
+  await compile('async function exportBuild(',deps)('library');
+  expect(api).not.toHaveBeenCalled();expect(setStatusError).toHaveBeenCalledWith('offline');
+  deps.hardFlushBuild=async()=>{owner='other';};
+  await compile('async function exportBuild(',deps)('library');
+  expect(downloadText).not.toHaveBeenCalled();
 });
 it('a failed annotation save restores the confirmed node and visible board', async()=>{
   const node={arrows:['Ga1a2'],circles:[]}, board={setAnnotations:vi.fn()};

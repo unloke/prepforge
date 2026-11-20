@@ -177,7 +177,7 @@ function openBuildMenu(event) {
     else if (action === "build-discuss") await buildView.openDiscussion();
     else if (action === "build-generate") await generateFromCurrentNode();
     else if (action === "build-rename") await renameRepertoire();
-    else if (action === "build-export-pgn") await exportBuild("pgn");
+    else if (action === "build-export-pgn") await exportBuild();
     else if (action === "build-new-rep") await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
     else if (repId) await handleRepertoireContextAction(action, repId, isActive);
   } });
@@ -1771,12 +1771,11 @@ function markNodeMenuTarget(nodeId) {
 
 // "Export PGN" in the repertoire's ⋯: the whole tree with its variations.
 // The per-move menu's one line export is a clipboard copy, not a download.
-async function exportBuild() {
-  if (!appState.build) {
+export async function exportBuild(repertoireId = appState.build?.repertoire_id) {
+  if (!repertoireId) {
     setStatus("Open a repertoire first");
     return;
   }
-  const repertoireId = appState.build.repertoire_id;
   const ownerId = currentOwnerId();
   // Export reads server-side tree state — sync first.
   try {
