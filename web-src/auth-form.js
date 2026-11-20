@@ -16,6 +16,28 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const SLOW_SERVER_NOTE = "The server is starting up. This can take up to a minute.";
 
+export function authRequestError(error, now = Date.now()) {
+  if (error?.status !== 429) return error?.message || "Something went wrong.";
+  const retry = error.retryAfter;
+  const seconds = retry == null || String(retry).trim() === "" ? NaN
+    : /^\d+$/.test(String(retry).trim()) ? Number(retry)
+      : Math.ceil((Date.parse(retry) - now) / 1000);
+  return Number.isFinite(seconds) && seconds > 0
+    ? `Too many requests. Try again in ${seconds} seconds.`
+    : "Too many requests. Try again later.";
+}
+
+export function cycleAuthFocus(overlay, event) {
+  const controls = [...overlay.querySelectorAll('button:not([disabled]), input:not([disabled]), [tabindex="0"]')]
+    .filter((el) => el.getClientRects().length);
+  const index = controls.indexOf(document.activeElement);
+  const next = event.shiftKey
+    ? (index <= 0 ? controls.length - 1 : index - 1)
+    : (index + 1) % controls.length;
+  event.preventDefault();
+  controls[next]?.focus();
+}
+
 // Client-side check before posting; returns the error line or "" when the form
 // may be sent.
 export function authInputError(mode, { email = "", password = "", confirm = "" } = {}) {

@@ -265,6 +265,9 @@ class RepertoireExportService:
                 )
             )
 
+        if not parsed.variations:
+            raise ValueError("PGN must contain at least one legal move.")
+
         repertoire_id = str(uuid.uuid4())
         starting_fen = parsed.headers.get("FEN") or STARTING_FEN
         root_id = str(uuid.uuid4())

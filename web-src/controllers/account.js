@@ -1,6 +1,6 @@
 import { html } from "../html.js";
 import { storeSession, storedSession } from "./session-store.js";
-import { authInputError, authReasonFor, isOpeningKeystroke, markInvalidFields, SLOW_SERVER_NOTE } from "../auth-form.js";
+import { authInputError, authReasonFor, authRequestError, cycleAuthFocus, isOpeningKeystroke, markInvalidFields, SLOW_SERVER_NOTE } from "../auth-form.js";
 import { isPopoverOpen, menuKeys, modalDialog, openPopover } from "../core/dialog.js";
 import {
   AUTH_REQUIRED_MESSAGE,
@@ -468,8 +468,7 @@ export function createAccountController({
         // slate; the pending action (if any) resumes after it.
         onReload();
       } catch (error) {
-        if (!isCurrent()) return;
-        showError(error.message || "Something went wrong.");
+        if (isCurrent()) showError(authRequestError(error));
       } finally {
         clearTimeout(slowNote);
         const note = overlay.querySelector('[data-auth="notice"]');
@@ -487,6 +486,7 @@ export function createAccountController({
     const openedAt = typeof performance !== "undefined" ? performance.now() : 0;
     const onKey = (event) => {
       if (isOpeningKeystroke(event, openedAt)) return;
+      if (event.key === "Tab") return cycleAuthFocus(overlay, event);
       if (event.key === "Escape") {
         event.preventDefault();
         close();

@@ -287,11 +287,60 @@ for (const vp of VIEWPORTS) {
   const g = await openPage(vp, { handler: guest, welcome: true });
   if ((await probe(g.page)).top) await overlay(vp, g.page, "welcome", { open: async () => {} });
   else check(`${vp.name} welcome`, false, "the welcome did not open");
-  await overlay(vp, g.page, "sign-in", { opener: vp.mobile ? null : "#account-chip", modal: false, tabs: 0, open: async () => {
+  await overlay(vp, g.page, "sign-in", { opener: vp.mobile ? null : "#account-chip", modal: false, tabs: 24, open: async () => {
     if (vp.mobile) await viaMore(g.page, "#sheet-account");
     else await g.page.keyboard.press("Enter");
   } });
   check(`${vp.name} guest`, g.errors.length === 0, `page errors: ${g.errors.join(" | ")}`);
+  await g.ctx.close();
+}
+
+for (const vp of [VIEWPORTS[0], VIEWPORTS[2], { name: "landscape-844", width: 844, height: 390, mobile: true }]) {
+  const g = await openPage(vp, { handler: guest });
+  const page = g.page;
+  if (vp.mobile) await viaMore(page, "#sheet-account");
+  else await page.locator("#account-chip").click();
+  for (const key of ["Tab", "Shift+Tab"]) {
+    let reachedClose = false;
+    for (let i = 0; i < 24; i++) {
+      await page.keyboard.press(key);
+      const active = await page.evaluate(() => ({
+        inside: !!document.activeElement.closest(".auth-modal"),
+        close: document.activeElement.matches('[data-action="close"]'),
+      }));
+      check(`${vp.name} auth focus`, active.inside, `${key} #${i + 1} left the auth dialog`);
+      reachedClose ||= active.close;
+    }
+    check(`${vp.name} auth focus`, reachedClose, `${key} never reached Close`);
+  }
+  await page.locator("#auth-email").fill("not-email");
+  await page.locator("#auth-password").fill("123");
+  await page.locator('[data-action="submit"]').click();
+  const fit = await page.locator(".auth-modal").evaluate((dialog) => {
+    const box = dialog.getBoundingClientRect();
+    return [...dialog.querySelectorAll('.auth-footer button')].every((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top >= box.top && r.bottom <= box.bottom && r.bottom <= innerHeight;
+    }) && dialog.scrollHeight <= dialog.clientHeight + 1;
+  });
+  check(`${vp.name} auth validation`, fit, "validation must leave footer visible without internal scrolling");
+  await page.route("**/api/auth/**", (route) => route.fulfill({ status: 429, headers: { "Retry-After": "60" }, json: {} }));
+  await page.locator('[data-action="forgot"]').click();
+  await page.locator("#auth-email").fill("qa@example.com");
+  await page.locator('[data-action="submit"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-auth="error"]').textContent.includes("Too many requests"));
+  check(`${vp.name} auth rate limit`, /Try again in 60 seconds/.test(await page.locator('[data-auth="error"]').textContent()), "forgot-password 429 uses Retry-After");
+  await page.locator('[data-action="toggle"]').click();
+  for (const mode of ["login", "register"]) {
+    if (mode === "register") await page.locator('[data-action="toggle"]').click();
+    await page.locator("#auth-email").fill("qa@example.com");
+    await page.locator("#auth-password").fill("password123");
+    await page.locator('[data-action="submit"]').click();
+    await page.waitForFunction(() => document.querySelector('[data-auth="error"]').textContent.includes("Too many requests"));
+    check(`${vp.name} ${mode} rate limit`, /Try again in 60 seconds/.test(await page.locator('[data-auth="error"]').textContent()), "auth modes share rate-limit guidance");
+  }
+  await page.keyboard.press("Escape");
+  check(`${vp.name} auth Escape`, await page.locator(".auth-modal").count() === 0, "Escape still closes auth");
   await g.ctx.close();
 }
 
