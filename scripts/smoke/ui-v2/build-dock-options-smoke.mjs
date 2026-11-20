@@ -10,9 +10,10 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
+import { checkGenerateValidation } from "./build-generate-validation.mjs";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
+const STATIC_DIR = process.env.BUILD_SMOKE_STATIC_DIR || join(ROOT, "src", "prepforge_chess", "web", "static");
 const PORT = Number(process.env.BUILD_DOCK_OPTIONS_SMOKE_PORT || 8814);
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".wasm": "application/wasm", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml" };
 
@@ -38,6 +39,8 @@ const api = (path) => {
 };
 
 const server = createServer(async (req, res) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
   const url = new URL(req.url, "http://x");
   if (url.pathname.startsWith("/api/")) {
     if (url.pathname === "/api/build/annotations") {
@@ -86,6 +89,9 @@ try {
   await row.waitFor({ state: "visible", timeout: 15000 });
   await row.dblclick();
   await page.locator("#build-rep-name").filter({ hasText: "Caro-Kann" }).waitFor({ state: "attached", timeout: 15000 });
+  if (process.env.BUILD_GENERATE_ONLY) {
+    await checkGenerateValidation(page, check);
+  } else {
   const arrow = page.locator("#build-annotations .annot-user");
   await arrow.first().waitFor();
   await page.evaluate(() => {
@@ -181,6 +187,9 @@ try {
   const back = await box();
   check(!back.open || inside(back), `desktop again: open options should hang inside the window: ${JSON.stringify(back)}`);
   check(errors.length === 0, `page errors: ${errors.join(" | ")}`);
+  await page.keyboard.press("Escape");
+  await checkGenerateValidation(page, check);
+  }
 } finally {
   await browser.close();
   server.close();

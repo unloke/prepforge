@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { createGeneratePreview } from "./generate-preview.js";
+import { readGenerateInt, showBuildGenerateDialog } from "./build-generate-dialog.js";
 import { openBuildOverflowMenu as openOverflowMenu } from "./build-overflow-menu.js";
 import { promptRenameRepertoire } from "../repertoire-rename.js";
 import { enterRows } from "../list-enter.js";
@@ -1284,7 +1285,6 @@ function generateDialogFields() {
       default: effectiveMaiaRating(),
       min: 600,
       max: 2600,
-      step: 50,
       group: "Engines",
     },
     // Per-position Stockfish search depth for this run; Settings holds the default.
@@ -1303,28 +1303,22 @@ function generateDialogFields() {
   ];
 }
 
-function clampGenerateInt(raw, min, max, fallback) {
-  const n = Math.round(Number(String(raw ?? "").trim() || NaN));
-  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
-}
-
 // `userToMove`: whose turn it is at the anchor. Your first move starts the tree
 // there, so N moves of yours take 2N-1 plies; otherwise the opponent's reply
 // comes first and they take 2N. Either way the tree ends on your answer.
 function readGenerateOptions(values, { userToMove = true } = {}) {
-  const ownMoves = clampGenerateInt(values.own_moves, 1, GEN_MAX_OWN_MOVES, GEN_DEFAULT_OWN_MOVES);
+  const ownMoves = readGenerateInt(values.own_moves, 1, GEN_MAX_OWN_MOVES);
   const plyDepth = Math.min(GEN_MAX_PLY_DEPTH, userToMove ? 2 * ownMoves - 1 : 2 * ownMoves);
   return {
     plyDepth,
     userToMove,
-    mainThreshold: clampGenerateInt(values.main_pct, 1, 50, GEN_DEFAULT_MAIN_PCT) / 100,
-    branchThreshold: clampGenerateInt(values.branch_pct, 1, 50, GEN_DEFAULT_BRANCH_PCT) / 100,
-    maiaRating: clampGenerateInt(values.maia_rating, 600, 2600, effectiveMaiaRating()),
-    engineDepth: clampGenerateInt(
+    mainThreshold: readGenerateInt(values.main_pct, 1, 50) / 100,
+    branchThreshold: readGenerateInt(values.branch_pct, 1, 50) / 100,
+    maiaRating: readGenerateInt(values.maia_rating, 600, 2600),
+    engineDepth: readGenerateInt(
       values.engine_depth,
       STOCKFISH_MIN_DEPTH,
       STOCKFISH_MAX_DEPTH,
-      effectiveStockfishDepth(),
     ),
   };
 }
@@ -1384,7 +1378,7 @@ async function generateFromCurrentNode() {
   const ownColor = appState.build.color === "black" ? "black" : "white";
   const anchorFen = appState.buildNodeById.get(nodeId)?.fen || "";
   const userToMove = (anchorFen.split(" ")[1] === "b" ? "black" : "white") === ownColor;
-  const values = await showInputModal({
+  const values = await showBuildGenerateDialog({
     title: "Generate moves from this position",
     okLabel: "Generate",
     fields: generateDialogFields(),
