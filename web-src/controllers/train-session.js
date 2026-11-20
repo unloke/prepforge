@@ -945,17 +945,18 @@ export async function openPlayInAnalyze() {
 // slides back, and the same prompt reopens ungraded (Due and Rehearse alike).
 async function answerAlternative({ fen, playedUci, san, still, reopen }) {
   appState.trainBusy = true;
-  try {
-    const after = await boardAfterMove(fen, playedUci);
-    boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci, cue: false });
-  } catch (_) {
-    // The banner still explains; the board just stays put.
-  }
+  await optimisticBoardMove(boards.train, fen, playedUci, false);
   setTrainBanner("review", "Also in your repertoire", `${san} is your prep too. This card drills another move.`);
   await sleep(900);
   if (!still()) return;
-  await reopen();
-  appState.trainBusy = false;
+  try {
+    await reopen();
+  } finally {
+    if (still()) {
+      appState.trainBusy = false;
+      syncTrainSessionControls();
+    }
+  }
 }
 
 async function submitTrainingMove(playedUci) {

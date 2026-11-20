@@ -19,9 +19,12 @@ function shared() {
   const deps = {
     appState: { trainHintLevel: 0 },
     boards: { train: board },
-    boardAfterMove: vi.fn(async () => ({ board: { fen: "after" } })),
+    optimisticBoardMove: vi.fn(async (target, fen, move, cue) => {
+      target.setPosition({ fen: "after", legalMoves: [], lastMove: move, cue });
+    }),
     setTrainBanner: vi.fn(),
     sleep: async () => {},
+    syncTrainSessionControls: vi.fn(),
   };
   deps.answerAlternative = compile("async function answerAlternative(", deps);
   return { deps, board };
@@ -65,5 +68,36 @@ describe("another repertoire move", () => {
     expect(renderTraining).toHaveBeenCalledWith(prompt, { keepBanner: true });
     expect(deps.appState.trainStats).toEqual({ mistakes: 0, correct: 0, streak: 3, history: [] });
     expect(deps.setTrainBanner).toHaveBeenCalledWith("review", "Also in your repertoire", expect.stringContaining("d5"));
+  });
+
+  it("re-enables Hint and Skip after Rehearse repaints while busy", async () => {
+    const { deps } = shared();
+    const elements = Object.fromEntries(["train-banner", "train-hint", "train-skip", "play-takeback", "play-resign"].map(id =>
+      [id, { dataset: { state: "review" }, disabled: true }]));
+    deps.syncTrainSessionControls = compile("function syncTrainSessionControls(", {
+      appState: deps.appState, document: { getElementById: id => elements[id] }, syncTrainScreen: vi.fn(), syncViewHeads: vi.fn(),
+    });
+    const answer = compile("async function answerAlternative(", deps);
+    await answer({ fen: FEN, playedUci: "d7d5", san: "d5", still: () => true, reopen: async () => {
+      deps.syncTrainSessionControls();
+      expect(elements["train-hint"].disabled).toBe(true);
+      expect(elements["train-skip"].disabled).toBe(true);
+    } });
+    expect(elements["train-hint"].disabled).toBe(false);
+    expect(elements["train-skip"].disabled).toBe(false);
+  });
+
+  it("releases busy controls when reopening fails, but never changes a replacement run", async () => {
+    const { deps } = shared();
+    const reopen = vi.fn(async () => { throw new Error("render failed"); });
+    await expect(deps.answerAlternative({ fen: FEN, playedUci: "d7d5", san: "d5", still: () => true, reopen })).rejects.toThrow("render failed");
+    expect(deps.appState.trainBusy).toBe(false);
+    expect(deps.syncTrainSessionControls).toHaveBeenCalledOnce();
+    deps.syncTrainSessionControls.mockClear();
+    reopen.mockClear();
+    await deps.answerAlternative({ fen: FEN, playedUci: "d7d5", san: "d5", still: () => false, reopen });
+    expect(reopen).not.toHaveBeenCalled();
+    expect(deps.syncTrainSessionControls).not.toHaveBeenCalled();
+    expect(deps.appState.trainBusy).toBe(true);
   });
 });

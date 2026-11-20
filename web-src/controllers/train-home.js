@@ -157,6 +157,7 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
     syncTrainScreen();
   };
   enter();
+  syncWorkspaceUrl();
   if (!autostart) return;
   if (mode === "play") return startPlaySessionTracked();
   return startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets });
@@ -482,6 +483,7 @@ export function showTrainResult(result) {
   // The run just finished is the card above; Recent is what came before it.
   paintRecent(document.getElementById("train-recent"), recentRuns(currentOwnerId(), 4).filter((run) => run.id !== result.runId).slice(0, 3));
   syncTrainScreen();
+  syncWorkspaceUrl();
 }
 
 // ---------------------------------------------------------------- wiring
