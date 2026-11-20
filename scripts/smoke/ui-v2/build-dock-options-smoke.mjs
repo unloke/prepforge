@@ -40,6 +40,13 @@ const api = (path) => {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   if (url.pathname.startsWith("/api/")) {
+    if (url.pathname === "/api/build/annotations") {
+      let body = "";
+      for await (const chunk of req) body += chunk;
+      const saved = JSON.parse(body);
+      annotationWrites.push(saved);
+      Object.assign(NODES.find((node) => node.id === saved.node_id), { arrows: saved.arrows, circles: saved.circles });
+    }
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(api(url.pathname)));
     return;
@@ -66,9 +73,12 @@ for (const channel of ["msedge", "chrome", undefined]) {
 if (!browser) { console.error("[dock-options-smoke] no chromium-based browser available"); server.close(); process.exit(2); }
 
 const failures = [];
+const annotationWrites = [];
 const check = (ok, label) => { if (!ok) failures.push(label); };
 try {
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  NODES[1].arrows = ["c4f7"];
+  NODES[1].notes = "Keep this note";
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(`http://127.0.0.1:${PORT}`, { waitUntil: "domcontentloaded" });
@@ -76,6 +86,47 @@ try {
   await row.waitFor({ state: "visible", timeout: 15000 });
   await row.dblclick();
   await page.locator("#build-rep-name").filter({ hasText: "Caro-Kann" }).waitFor({ state: "attached", timeout: 15000 });
+  const arrow = page.locator("#build-annotations .annot-user");
+  await arrow.first().waitFor();
+  await page.evaluate(() => {
+    window.boardDismissEvents = [];
+    for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "touchstart", "touchend"]) {
+      document.getElementById("build-board").addEventListener(type, () => window.boardDismissEvents.push(type));
+    }
+  });
+  await page.locator("#build-menu").tap();
+  await page.locator("#repertoire-context-menu:popover-open").waitFor();
+  const square = await page.locator('#build-board [data-square="d3"]').boundingBox();
+  await page.touchscreen.tap(square.x + square.width / 2, square.y + square.height / 2);
+  await page.locator("#repertoire-context-menu:popover-open").waitFor({ state: "hidden" });
+  await page.waitForTimeout(300);
+  if (process.env.BUILD_MENU_SCREENSHOT) await page.screenshot({ path: process.env.BUILD_MENU_SCREENSHOT, animations: "disabled" });
+  check(await arrow.count() > 0, "menu dismissal must preserve the saved arrow");
+  check((await page.evaluate(() => window.boardDismissEvents)).length === 0, "menu dismissal must not deliver any gesture events to the board");
+  check(annotationWrites.length === 0, "menu dismissal must not write annotations");
+  await page.reload();
+  await page.locator("#build-board .square").first().waitFor();
+  await page.waitForTimeout(300);
+  check(await arrow.count() > 0, "saved arrow must survive reload after dismissal");
+  check(NODES[1].notes === "Keep this note", "menu dismissal must preserve text notes");
+  // Once the menu is gone, ordinary board taps still clear saved marks.
+  if (await arrow.count()) {
+    const write = page.waitForResponse((response) => response.url().endsWith("/api/build/annotations"));
+    await page.locator('#build-board [data-square="d3"]').tap();
+    await write;
+    check(annotationWrites.at(-1)?.arrows.length === 0, "a subsequent board tap must still edit annotations");
+  }
+  const writesAfterClear = annotationWrites.length;
+  await page.locator("#build-menu").tap();
+  await page.touchscreen.tap(square.x + square.width / 2, square.y + square.height / 2);
+  check(await page.locator("#repertoire-context-menu:popover-open").count() === 0, "dismissal must work on an unmarked board");
+  await page.locator("#build-menu").focus();
+  await page.keyboard.press("Enter");
+  await page.locator("#repertoire-context-menu:popover-open").waitFor();
+  await page.keyboard.press("Escape");
+  await page.locator("#repertoire-context-menu:popover-open").waitFor({ state: "hidden" });
+  check(annotationWrites.length === writesAfterClear, "empty-board and keyboard dismissal must not write annotations");
+  console.log(`[build-menu-dismiss] ${failures.length ? "FAIL" : "ok"} — touch dismissal, no board events/writes, reload persistence, normal board tap`);
   // The phone pane the user picked is kept when the window widens.
   await page.locator('#build-panes [data-pane="explorer"]').click();
   await page.setViewportSize({ width: 1440, height: 900 });

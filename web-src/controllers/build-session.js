@@ -1,6 +1,6 @@
 import { html } from "../html.js";
 import { createGeneratePreview } from "./generate-preview.js";
-import { openOverflowMenu } from "../core/overflow-menu.js";
+import { openBuildOverflowMenu as openOverflowMenu } from "./build-overflow-menu.js";
 import { promptRenameRepertoire } from "../repertoire-rename.js";
 import { enterRows } from "../list-enter.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
