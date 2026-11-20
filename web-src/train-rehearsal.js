@@ -19,5 +19,7 @@ export function saveRehearsal(owner, training, stats, attempt) {
 export function rehearsalStats(owner, training) {
   const memo = loadRehearsal(owner, training.repertoire_id);
   return memo?.training.session_id === training.session_id &&
-    memo.training.session_generation === training.session_generation ? memo.stats : null;
+    Array.isArray(training.line_order) &&
+    JSON.stringify(memo.training.line_order) === JSON.stringify(training.line_order) &&
+    memo.training.prompt.current_index <= training.prompt.current_index ? memo.stats : null;
 }

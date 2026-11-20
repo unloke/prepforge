@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { loadRehearsal, rehearsalStats, saveRehearsal } from "./train-rehearsal.js";
 import { formatWorkspaceHash, parseWorkspaceHash, workspaceLocationFromState } from "./workspace-url.js";
 
-const training = { repertoire_id: "r", session_id: "s", session_generation: "g", prompt: { current_index: 1, total_lines: 2 } };
+const training = { repertoire_id: "r", session_id: "s", line_order: ["line-a", "line-b"], prompt: { current_index: 1, total_lines: 2 } };
 const stats = { correct: 0, mistakes: 0, skipped: 1, history: [] };
 beforeEach(() => {
   const data = new Map();
@@ -22,7 +22,13 @@ it("restores only the rehearsal's own counters after a Due run", () => {
   const restored = rehearsalStats("u", training);
   expect({ ...restored, skipped: restored.skipped + 1 }).toMatchObject({ skipped: 2, correct: 0, mistakes: 0 });
   expect(rehearsalStats("other", training)).toBeNull();
-  expect(rehearsalStats("u", { ...training, session_generation: "new" })).toBeNull();
+  expect(rehearsalStats("u", { ...training, session_id: "new" })).toBeNull();
+});
+it("rejects counters when deleting a paused line rebuilds the same server session", () => {
+  saveRehearsal("u", training, stats, 1);
+  const rebuilt = { ...training, line_order: ["line-a"], prompt: { current_index: 0, total_lines: 1 } };
+  expect(rehearsalStats("u", rebuilt)).toBeNull();
+  expect(rehearsalStats("u", { ...training, prompt: { ...training.prompt, current_index: 0 } })).toBeNull();
 });
 it("empty, completed and unavailable storage cannot offer a rehearsal resume", () => {
   expect(loadRehearsal("u", "r")).toBeNull();
