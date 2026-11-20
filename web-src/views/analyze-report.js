@@ -55,12 +55,11 @@ function sideOfMove(move, ply) {
   return ply % 2 ? "white" : "black";
 }
 
-// "3.Bb5" / "2…Nc6". The move number comes from the ply, which the graph and the
-// move list always agree on, so the two halves of one move cannot be numbered
-// differently.
+// "3.Bb5" / "2…Nc6", respecting custom starting positions.
 function moveRef(move, ply) {
   const side = sideOfMove(move, ply);
-  return `${Math.ceil(ply / 2)}${side === "black" ? "…" : "."}${move?.san || ""}`;
+  const number = move?.move_number ?? Math.ceil(ply / 2);
+  return `${number}${side === "black" ? "…" : "."}${move?.san || ""}`;
 }
 
 // "+1.3" / "−0.4" / "#3" / "1-0": a graph point as players read it (White's view).
