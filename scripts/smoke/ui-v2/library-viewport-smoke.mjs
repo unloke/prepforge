@@ -1,6 +1,6 @@
 // Library viewport smoke (ui-v2 page internals, 2026-09-27 integration round).
 // Serves the built static/ tree, intercepts /api/* with real-shape
-// fixtures, and at 1440x900 / 1180x900 / 390x844 checks:
+// fixtures, and at 1440x900 / 1180x900 / 390x844 / 320x568 checks:
 //   - no horizontal overflow, no console/page errors
 //   - Library table + preview render from the fixture data
 //   - click-to-preview shows the clicked repertoire; preview actions work
@@ -127,6 +127,7 @@ const VIEWPORTS = [
   { name: "desktop-1440", width: 1440, height: 900 },
   { name: "laptop-1180", width: 1180, height: 900 },
   { name: "mobile-390", width: 390, height: 844 },
+  { name: "mobile-320", width: 320, height: 568 },
 ];
 
 const failures = [];
@@ -258,6 +259,39 @@ async function runViewport(vp) {
     const phoneStepBadge = page.locator("#dashboard-steps .step:not(.is-done) .step-n");
     check((await phoneStepBadge.count()) === 0 || !(await phoneStepBadge.first().isVisible()),
       "the phone checklist must not show a step number");
+
+    const firstRow = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"]');
+    await firstRow.focus();
+    for (let tabs = 0; tabs < 6; tabs += 1) {
+      await page.keyboard.press("Tab");
+      if (await page.evaluate(() => document.activeElement?.matches('[data-row-menu="rep-1"]'))) break;
+    }
+    const actionsFocus = await firstRow.evaluate((row) => {
+      const button = row.querySelector(".row-menu-btn");
+      const box = button.getBoundingClientRect();
+      const list = row.parentElement;
+      const listBox = list.getBoundingClientRect();
+      const rowBox = row.getBoundingClientRect();
+      const name = row.querySelector(".lib-name-line").getBoundingClientRect();
+      return {
+        visible: document.activeElement === button && button.matches(":focus-visible") &&
+          getComputedStyle(button).clipPath === "none" &&
+          button.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)),
+        contained: box.top >= rowBox.top && box.bottom <= rowBox.bottom &&
+          row.querySelector(".lib-cell-mastery").getBoundingClientRect().right <= box.left - 4,
+        intact: list.scrollTop === 0 && name.top >= listBox.top && name.bottom <= listBox.bottom,
+      };
+    });
+    check(actionsFocus.visible, "tabbing to Actions must reveal its button and focus ring");
+    check(actionsFocus.contained, "focused Actions must stay inside its row without covering its content");
+    check(actionsFocus.intact, "focusing Actions must not scroll the clipped list or hide the repertoire title");
+    await page.keyboard.press("Enter");
+    check(await page.locator("#repertoire-context-menu").isVisible(), "Enter on Actions must open its menu");
+    await page.keyboard.press("Escape");
+    await page.locator("#repertoire-context-menu").waitFor({ state: "hidden" });
+    check(!(await page.locator("#repertoire-context-menu").isVisible()), "Escape must close Actions");
+    check(await page.evaluate(() => document.activeElement?.matches('[data-row-menu="rep-1"]')),
+      "closing Actions must restore focus to its button");
   }
 
   // No preview pane: the table takes the full width and a row click opens.
@@ -393,4 +427,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[lib-smoke] ok — all three viewports render the Library from real fixture state with no overflow and no console errors.");
+console.log(`[lib-smoke] ok — all ${VIEWPORTS.length} viewports render the Library from real fixture state with no overflow and no console errors.`);

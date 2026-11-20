@@ -25,11 +25,20 @@ it("Library phone controls take the shared control height", () => {
   const dismiss = rule("#view-dashboard .steps .setup-dismiss");
   expect(dismiss).toMatch(/min-width:\s*36px/);
   expect(dismiss).toMatch(/height:\s*36px/);
-  // A row's menu is a long-press on a phone; the ⋯ button is kept off screen
-  // for the keyboard and VoiceOver, not removed.
+  // Touch uses long-press; the button remains available to assistive input.
   const menu = rule(".lib-row .row-menu-btn");
   expect(menu).toMatch(/clip-path:\s*inset\(50%\)/);
   expect(menu).not.toMatch(/display:\s*none/);
+});
+
+it("reveals the phone Actions button on keyboard focus without scrolling its clipped list", () => {
+  const menu = rule(".lib-row .row-menu-btn {");
+  expect(menu).toMatch(/top:\s*8px/);
+  expect(menu).toMatch(/right:\s*14px/);
+  expect(menu).toMatch(/width:\s*36px/);
+  expect(menu).toMatch(/height:\s*36px/);
+  expect(rule(".lib-row .row-menu-btn:focus-visible")).toMatch(/clip-path:\s*none/);
+  expect(rule(".lib-row:has(.row-menu-btn:focus-visible) .lib-opt")).toMatch(/padding-right:\s*44px/);
 });
 
 // The two buttons a dead-end Library screen offers — "Clear filter" on a search
