@@ -2,6 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { appSource } from "./test-app-source.js";
 const source = appSource();
 function compile(marker, deps) {
+  if (marker === 'async function exportBuild(') deps = {buildOpMatchesRepertoire: compile('function buildOpMatchesRepertoire(', {}), ...deps};
   const start = source.indexOf(marker), end = source.indexOf('\n}\n', start) + 2;
   return new Function(...Object.keys(deps), `return (${source.slice(start, end)});`)(...Object.values(deps));
 }
@@ -38,6 +39,23 @@ it('export without a repertoire requests nothing', async () => {
   const run=compile('async function exportBuild(', {appState:{},api,setStatus});
   await run();expect(api).not.toHaveBeenCalled();expect(setStatus).toHaveBeenCalledWith('Open a repertoire first');
 });
+for (const queue of ['buildPending', 'buildPendingDeletes']) {
+  it(`Library export refuses stale PGN with queued ${queue} for a non-open repertoire`, async () => {
+    const appState={build:{repertoire_id:'open'},buildPending:[],buildPendingDeletes:[]};
+    const api=vi.fn(),downloadText=vi.fn(),setStatusError=vi.fn();
+    const hardFlushBuild=vi.fn(async()=>{appState[queue].push({repertoire_id:'library',id:'move'});});
+    const run=compile('async function exportBuild(', {appState,currentOwnerId:()=> 'owner',hardFlushBuild,api,downloadText,setStatus:vi.fn(),setStatusError});
+    await run('library');
+    expect(hardFlushBuild).toHaveBeenCalledOnce();
+    expect(api).not.toHaveBeenCalled();expect(downloadText).not.toHaveBeenCalled();
+    expect(setStatusError).toHaveBeenCalledWith('Open this repertoire to sync your latest moves, then export.');
+    appState[queue]=[{repertoire_id:'other',id:'unrelated'}];
+    hardFlushBuild.mockImplementation(async()=>{});
+    api.mockResolvedValue({filename:'Library.pgn',mime:'application/x-chess-pgn',content:'1. e4 *'});
+    await run('library');
+    expect(downloadText).toHaveBeenCalledOnce();
+  });
+}
 it('Library export stops on failed sync or an account switch', async () => {
   const api=vi.fn(async()=>({})),downloadText=vi.fn(),setStatusError=vi.fn();let owner='owner';
   const deps={appState:{},currentOwnerId:()=>owner,hardFlushBuild:async()=>{throw Error('offline');},api,downloadText,setStatus:vi.fn(),setStatusError};

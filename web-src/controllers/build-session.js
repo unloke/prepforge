@@ -1784,6 +1784,11 @@ export async function exportBuild(repertoireId = appState.build?.repertoire_id) 
     setStatusError(error.message);
     return;
   }
+  if (repertoireId !== appState.build?.repertoire_id &&
+      [appState.buildPending, appState.buildPendingDeletes].some((ops) => ops?.some((op) => buildOpMatchesRepertoire(op, repertoireId)))) {
+    setStatusError("Open this repertoire to sync your latest moves, then export.");
+    return;
+  }
   const payload = await api(
     `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
   );
