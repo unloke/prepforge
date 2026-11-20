@@ -573,7 +573,7 @@ function bind() {
     const owner = currentOwnerId();
     try {
       const { openTrainingHistory } = await import("../views/train-history.js");
-      if (currentOwnerId() === owner) openTrainingHistory(owner);
+      if (currentOwnerId() === owner) openTrainingHistory(owner, run => currentOwnerId() === owner && openPlayInAnalyze(run));
     } catch { setStatusError("Could not open History. Reload and try again."); }
   });
   $("train-hint").addEventListener("click", () => trainHint());
