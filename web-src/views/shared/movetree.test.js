@@ -199,6 +199,35 @@ describe("createMoveTreeRenderer", () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
+  it("does not cancel a non-move control's touchend after releasing a long press", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("document", { addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    try {
+      const container = stubMoveTreeContainer(renderMoveTree(sampleTree(), {}));
+      const onContext = vi.fn();
+      bindMoveTreeClicks(container, vi.fn(), onContext);
+      container.dispatch("pointerdown", "n1", { pointerType: "touch", clientX: 10, clientY: 20 });
+      vi.advanceTimersByTime(700);
+      const preventContext = vi.fn();
+      container.dispatch("contextmenu", "n1", { preventDefault: preventContext });
+      expect(preventContext).toHaveBeenCalledOnce();
+      expect(onContext).toHaveBeenCalledOnce();
+      container.dispatch("pointerup", "n1");
+      const heldRelease = new Event("touchend", { cancelable: true });
+      container.dispatch("touchend", "n1", { preventDefault: () => heldRelease.preventDefault() });
+      expect(heldRelease.defaultPrevented).toBe(true);
+
+      container.dispatch("pointerdown", "variation-toggle", { pointerType: "touch" });
+      container.dispatch("pointerup", "variation-toggle");
+      const controlRelease = new Event("touchend", { cancelable: true });
+      container.dispatch("touchend", "variation-toggle", { preventDefault: () => controlRelease.preventDefault() });
+      expect(controlRelease.defaultPrevented).toBe(false);
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("cancels compatibility mouse events only for a completed long press", () => {
     vi.useFakeTimers();
     const doc = { addEventListener: vi.fn(), removeEventListener: vi.fn() };

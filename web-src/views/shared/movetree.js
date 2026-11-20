@@ -245,6 +245,7 @@ export function createMoveTreeRenderer() {
       if (pressedId === null) return;
       // Suppress compatibility mouse events before they light-dismiss the popover.
       event.preventDefault();
+      pressedId = null;
       document.removeEventListener("click", swallowClick, true);
     }, { passive: false });
 
