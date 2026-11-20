@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { getBuildTree, indexBuildNodes, invalidateBuildTree, summarizeBuild } from "./build-tree.js";
+import { getBuildTree, indexBuildNodes, indexTree, invalidateBuildTree, summarizeBuild } from "./build-tree.js";
 
 it("indexes the original nodes and shares only empty lists and equal strings", () => {
   const root = { id: "root", fen: "root-fen", fen_after: "root-fen", arrows: [], circles: [], tags: [] };
@@ -18,6 +18,34 @@ it("indexes the original nodes and shares only empty lists and equal strings", (
   expect(child.tags).toBe(tags);
   child.arrows = [{ from: "e2", to: "e4" }];
   expect(root.arrows).toEqual([]);
+});
+
+it("keeps move metadata, optional fields, and annotations intact while indexing repeated strings", () => {
+  const original = [
+    { id: "root", depth: 0, san: null, uci: null },
+    { id: "a", parent_id: "root", san: "e4", uci: "e2e4", source: "manual",
+      move_side: "white", side_to_move: "black", mastery: "untrained", comment: "註解" },
+    { id: "b", parent_id: "a", san: "e5", uci: "e7e5", source: "imported_pgn",
+      move_side: "black", side_to_move: "white", mastery: null, circles: ["e5"] },
+    { id: "c", parent_id: "b", san: "e4", uci: "e2e4", source: "manual",
+      move_side: "white", side_to_move: "black", mastery: "untrained" },
+    ...Array.from({ length: 1024 }, (_, i) => ({
+      id: `extra-${i}`, parent_id: "c", san: "c6", uci: "c7c6", source: "manual",
+      move_side: "black", side_to_move: "white", mastery: null,
+    })),
+  ].map((node) => ({
+    ...node,
+    fen: `fen-${node.id}`,
+    fen_before: node.parent_id ? `fen-${node.parent_id}` : null,
+    fen_after: `fen-${node.id}`,
+  }));
+  const nodes = JSON.parse(JSON.stringify(original));
+  const indexed = indexBuildNodes(nodes);
+  expect(nodes).toStrictEqual(original);
+  expect(indexed.size).toBe(nodes.length);
+  expect(indexed.get("c")).toBe(nodes[3]);
+  nodes[1].mastery = "learning";
+  expect(nodes[3].mastery).toBe("untrained");
 });
 
 it("reuses the ordered child index until the loaded tree changes", () => {
@@ -39,6 +67,19 @@ it("reuses the ordered child index until the loaded tree changes", () => {
 
   build.nodes = [root, a, { ...b, is_mainline: false }, c];
   expect(getBuildTree(build).children.get(root.id).map(({ id }) => id)).toEqual(["a", "b"]);
+});
+
+it("puts mainline siblings first without reordering nodes within either group", () => {
+  const a = { id: "a", parent_id: "root" };
+  const b = { id: "b", parent_id: "root", is_mainline: true };
+  const c = { id: "c", parent_id: "root", is_mainline: false };
+  const d = { id: "d", parent_id: "root", is_mainline: true };
+  const reply = { id: "reply", parent_id: "a", is_mainline: true };
+  const nodes = [a, reply, b, c, d];
+  const children = indexTree(nodes);
+  expect(children.get("root")).toEqual([b, d, a, c]);
+  expect(children.get("a")).toEqual([reply]);
+  expect(nodes).toEqual([a, reply, b, c, d]);
 });
 
 it("counts a deep tree without recursing through its ancestors", () => {

@@ -45,7 +45,6 @@ export function createEngineProfileManager({
   page = globalThis.document,
   lifecycle = globalThis.window,
   createEngine = async opts => (await import("./stockfish-provider.js")).createStockfishWasmProvider({ ...opts, computeBudget: null, profileManaged: false }),
-  scheduleIdle = fn => globalThis.requestIdleCallback ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1000),
   maiaLoad = maiaWorkload,
   headroom = holdHeadroom,
 } = {}) {
@@ -60,7 +59,7 @@ export function createEngineProfileManager({
   // without loading a byte): the device that is offered the choice at all.
   // fitKnown: whether bigFits was measured on this build (before Detect it is unknown, not false).
   let bigFits = false, fitKnown = false;
-  let probing = null, cancelProbe = null, revision = 0, autoSetupDone = false;
+  let probing = null, cancelProbe = null, revision = 0;
   const listeners = new Set();
   const usableListeners = new Set(), setupListeners = new Set();
   let activeRuns = 0, heldUsable = null, publishPending = null, started = false, watching = false;
@@ -522,20 +521,6 @@ export function createEngineProfileManager({
     if (phase === "compile" || phase === "ready") await ready.catch(() => {});
     else ready.catch(() => {});
   }
-  // A device that has never set itself up runs Detect on its own, once, idle after
-  // the first screen is up. A saved setup — detected, chosen by the user, or
-  // recovered from a crash record — is a setup; nothing runs again unasked.
-  function autoSetup() {
-    if (autoSetupDone) return;
-    autoSetupDone = true;
-    load();
-    if (broken || detected || profile.source !== "fallback") return;
-    if (device().connection?.saveData) return;
-    scheduleIdle(() => {
-      if (detected || profile.source !== "fallback" || probing) return;
-      void detect().catch(() => {});
-    });
-  }
   return {
     engineProfile: current,
     usableEngineProfile: usable,
@@ -574,8 +559,6 @@ export function createEngineProfileManager({
     fullEngineChoice: fullNetChoice,
     fullEngineFits() { load(); return fitKnown ? bigFits : null; },
     chooseFullEngine: decide,
-    // A device with no setup of its own sets itself up; see autoSetup.
-    setupOnFirstVisit: autoSetup,
     setEngineProfile(p) { load(); if (!valid(p)) throw new RangeError("Choose big/lite and 1–3 workers"); return change({ net: p.net, workers: p.workers, source: "user" }); },
     resetEngineProfile() { load(); return change(detected || { ...FALLBACK }); },
     detectEngineProfile: detect,
@@ -587,7 +570,7 @@ export function createEngineProfileManager({
 }
 
 const manager = createEngineProfileManager();
-export const { engineProfile, engineMeasurements, lastEngineCrash, engineDetection, cancelEngineDetect, engineWorkerChoices, setupOnFirstVisit, setEngineProfile, resetEngineProfile, detectEngineProfile,
+export const { engineProfile, engineMeasurements, lastEngineCrash, engineDetection, cancelEngineDetect, engineWorkerChoices, setEngineProfile, resetEngineProfile, detectEngineProfile,
   usableEngineProfile, subscribeUsableEngineProfile, engineSetupState, subscribeEngineSetup, prepareFullEngine, engineStarted,
   readyIfCached, fullEngineChoice, fullEngineFits, chooseFullEngine,
   subscribeEngineProfile, guardEngineStartup, reportEngineFailure, createEngineAnalysisRun } = manager;

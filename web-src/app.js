@@ -33,7 +33,6 @@ import { setBoardCaption } from "./board-caption.js";
 import { readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo } from "./chess-local.js";
 import { getBuildTree, summarizeBuild } from "./build-tree.js";
-import { setupOnFirstVisit } from "./engine/engine-profile.js";
 import { bindUnlocks } from "./engine-unlock.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { createBoardController } from "./board/board-controller.js";
@@ -1749,12 +1748,8 @@ async function init() {
   handleBillingReturn();
   syncWorkspaceUrl();
   await resumeAfterSignIn(signInReturn);
-  // A signed-in device with no engine setup of its own measures one for itself,
-  // idle after the first screen is up. It must come after the session is known,
-  // so a guest does not download and probe the engine.
-  if (appState.signedIn) setupOnFirstVisit();
   // A guest's Lichess name (the welcome's level) stays on this device.
-  else if (getStoredLichessUsername()) setLichessUsername(getStoredLichessUsername());
+  if (!appState.signedIn && getStoredLichessUsername()) setLichessUsername(getStoredLichessUsername());
   maybeWelcome({ switchView, setLichessUsername, lichessAccounts, saveSettings: viaSettings("saveSettings") });
 }
 

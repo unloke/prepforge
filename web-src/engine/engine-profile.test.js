@@ -60,6 +60,10 @@ describe("device engine profile", () => {
 
   it("detects on first engine start, and prepares full only for a device already holding it", async () => {
     const f = fixture();
+    expect(f.usableEngineProfile()).toMatchObject({ net: "lite", workers: 1, source: "fallback" });
+    expect(f.engineDetection().running).toBe(false);
+    expect(f.loadModule).not.toHaveBeenCalled();
+    expect(f.createEngine).not.toHaveBeenCalled();
     f.engineStarted(); f.engineStarted();
     await vi.waitFor(() => expect(f.engineProfile().source).toBe("detected"));
     expect(f.loadModule.mock.calls).toEqual([["lite"], ["big"]]);
@@ -496,28 +500,12 @@ describe("every device gets its own measured setup", () => {
     expect(desktop.engineWorkerChoices()).toEqual({ lite: 3, big: 3 });
   });
 
-  it("a fresh device sets itself up once, after the first screen", async () => {
-    const idle = [];
-    const first = fixture({ device: () => NO_SIGNAL, scheduleIdle: fn => { idle.push(fn); } });
-    first.setupOnFirstVisit();
-    first.setupOnFirstVisit();
-    expect(idle).toHaveLength(1);
-    expect(first.createEngine).not.toHaveBeenCalled();
-    idle[0]();
-    await vi.waitFor(() => expect(first.engineProfile().source).toBe("detected"));
-    expect(first.engineProfile()).toMatchObject({ net: "big", workers: 3 });
-  });
-
-  it("does not set up a device that already has a setup, or one on save-data", async () => {
-    const settled = fixture({ device: () => NO_SIGNAL, scheduleIdle: fn => fn() });
+  it("does not run automatic detection on first use with a remembered Lite choice", async () => {
+    const settled = fixture({ device: () => NO_SIGNAL });
     settled.setEngineProfile({ net: "lite", workers: 1 });
-    settled.setupOnFirstVisit();
+    settled.engineStarted();
     await Promise.resolve();
     expect(settled.createEngine).not.toHaveBeenCalled();
-    const throttled = fixture({ device: () => ({ ...NO_SIGNAL, connection: { saveData: true } }), scheduleIdle: fn => fn() });
-    throttled.setupOnFirstVisit();
-    await Promise.resolve();
-    expect(throttled.createEngine).not.toHaveBeenCalled();
   });
 
   it("a stored record cannot start more heaps than this device measured", () => {

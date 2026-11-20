@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import struct
 import zlib
 from dataclasses import asdict, fields
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
@@ -71,6 +72,9 @@ def encode_pv(pv: Optional[Sequence[str]]) -> str:
     return " ".join(unpack_pv(pack_pv(pv)))
 
 
+_PROMOTION_SUFFIX = ("",) + tuple(chess.PIECE_SYMBOLS[1:]) + ("",)
+
+
 def pack_pv(pv: Optional[Sequence[str]]) -> bytes:
     """PV as 2 bytes per move: from | to << 6 | promotion << 12.
 
@@ -100,12 +104,11 @@ def pack_pv(pv: Optional[Sequence[str]]) -> bytes:
 def unpack_pv(blob: Optional[bytes]) -> List[str]:
     if not blob:
         return []
-    moves = []
-    for offset in range(0, len(blob), 2):
-        word = int.from_bytes(blob[offset:offset + 2], "little")
-        promotion = word >> 12
-        moves.append(chess.Move(word & 63, word >> 6 & 63, promotion or None).uci())
-    return moves
+    names = chess.SQUARE_NAMES
+    return [
+        names[word & 63] + names[word >> 6 & 63] + _PROMOTION_SUFFIX[word >> 12] if word else "0000"
+        for word in struct.unpack("<{0}H".format(len(blob) // 2), blob)
+    ]
 
 
 def _varint(value: int) -> bytes:
