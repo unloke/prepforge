@@ -125,7 +125,7 @@ it("a legacy Train start cannot overwrite a newer session", async () => {
     setTrainBanner: vi.fn(), trainStatsReset: vi.fn(), isNothingToTrainError: () => false,
     clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setSmartPanelsHidden: vi.fn(),
     setStatus: vi.fn(), hardFlushBuild: async () => {}, setStatusError: vi.fn(),
-    loadTrainResume: async () => ({ mapTrainUiSession: (p) => p, shouldResetTrainStats: () => false }),
+    rehearsalStats: vi.fn(() => null),
     postJson: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     boards: {}, document: { getElementById: () => ({}) }, renderTrainStats: vi.fn(),
     renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn(), reveal: (el) => { el.hidden = false; } };
