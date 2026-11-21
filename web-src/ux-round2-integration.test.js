@@ -42,6 +42,8 @@ describe("Recall from Recent analyses", () => {
     const pgn = { setAttribute() {}, value: "x" };
     const deps = {
       appState, api, document: { getElementById: () => pgn },
+      analysisStudy: { flush: async () => {} },
+      currentOwnerId: () => "owner",
       hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(),
       renderAnalysis: vi.fn(async () => {}), revealAnalysisResults: vi.fn(),
       syncPgnFromTree: vi.fn(async () => {}), setStatus: vi.fn(), setStatusError: vi.fn(),
@@ -73,6 +75,7 @@ describe("Recall from Recent analyses", () => {
     const api = vi.fn().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
     const { appState, deps, recall } = recallHarness(api);
     const first = recall("old", { white: "A", black: "B" });
+    await vi.waitFor(() => expect(api).toHaveBeenCalledTimes(1));
     const second = recall("new", { white: "Me", black: "Opp" });
     fresh.resolve({ game_id: "new", moves: ["e4"] });
     await second;

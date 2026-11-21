@@ -6,7 +6,7 @@ import { CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.js";
 import "./analyze-chart.css";
 import "./analyze-report.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
-import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
+import { extractHeaders, pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
 import { paintFindGreat, renderReportBlock, reportGradeLabel, reportGradeOf } from "./analyze-report.js";
 import { paintSavedLine } from "./analyze-saved-line.js";
 import { createReviewBar } from "./analyze-review.js";
@@ -343,28 +343,10 @@ export function createAnalyzeView({
   function serializeAnalysisPgn(sourcePgn) {
     const analysis = appState.analysis;
     sourcePgn = analysis?.pgn ?? sourcePgn;
-    const movetext = treeToMovetext(buildAnalysisTree(analysis?.moves || []).root);
+    const movetext = treeToMovetext(buildAnalysisTree(analysis?.moves || []).root, sourcePgn);
     if (!movetext) return "";
-    // The FIRST header block only. The movetext this appends is one game's, so a
-    // second game's tags would relabel these moves as that game (the box, the tree
-    // and the checkpoint must name the same game).
-    const lines = String(sourcePgn || "").split(/\r?\n/);
-    const headers = [];
-    let closed = false;
-    for (const line of lines) {
-      if (/^\s*\[[^\]]*\]\s*$/.test(line)) {
-        // A second block is another game's: stop rather than relabel this one.
-        if (closed) break;
-        headers.push(line.trim());
-        continue;
-      }
-      if (line.trim() === "") {
-        if (headers.length) closed = true;
-        continue;
-      }
-      break;
-    }
-    let header = headers.join("\n");
+    let header = Object.entries(extractHeaders(String(sourcePgn || "")).headers)
+      .map(([name, value]) => `[${name} "${value}"]`).join("\n");
     if (!header && analysis?.game_id) {
       // A recall has no source PGN. Keep its known tags and starting FEN so
       // copying or re-analyzing it reproduces the same game.

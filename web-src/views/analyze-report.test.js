@@ -30,15 +30,15 @@ const GRAPH = [
 ];
 
 // The moves with their positions, as the saved payload carries them.
-function movesOf(sans, grades = [], best = {}) {
-  const chess = new Chess();
+function movesOf(sans, grades = [], best = {}, initialFen) {
+  const chess = new Chess(initialFen);
   return sans.map((san, i) => {
     const fenBefore = chess.fen();
     const mv = chess.move(san);
     return {
       ply: i + 1,
-      move_number: Math.floor(i / 2) + 1,
-      side: i % 2 ? "black" : "white",
+      move_number: Number(fenBefore.split(" ")[5]),
+      side: mv.color === "b" ? "black" : "white",
       san: mv.san,
       uci: mv.lan,
       fen_before: fenBefore,
@@ -75,6 +75,21 @@ describe("grade counts", () => {
 
 describe("key moments", () => {
   const SWINGS = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"], ["brilliant", "best", "great", "blunder", "mistake"], { 4: "d7d6" });
+
+  it.each([
+    ["w", ["Nf3", "Nc6", "Bc4", "d6", "d3", "Nf6"], "9.Nf3"],
+    ["b", ["Nc6", "Nf3", "d6", "Bc4", "Nf6"], "9…Nc6"],
+  ])("uses FEN fullmove numbers for Coach moments from a %s-to-move Practice start", (side, sans, firstLabel) => {
+    const fen = `rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR ${side} KQkq - 0 9`;
+    const moves = movesOf(sans, sans.map(() => "great"), {}, fen);
+    const moments = reviewMoments(moves, []);
+    expect(moments[0].label).toBe(firstLabel);
+    expect(moments.at(-1)).toMatchObject({ label: "11…Nf6", side: "black" });
+  });
+
+  it("can label a moment without saved move-number metadata", () => {
+    expect(reviewMoments([{ ply: 4, side: "black", san: "Nc6", classification: "great" }], [])[0].label).toBe("2…Nc6");
+  });
 
   it("lists the brilliant, great, mistake and blunder moves in game order, with the better move", () => {
     const moments = reviewMoments(SWINGS, GRAPH);

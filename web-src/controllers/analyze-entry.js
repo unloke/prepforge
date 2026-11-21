@@ -3,6 +3,8 @@ import { appState } from "../core/state.js";
 import { api, currentOwnerId, localDayOf, setStatus, setStatusError } from "../core/api.js";
 import { holdNewGameNudge, markLichessSeen, orientAnalysisForSelf, syncFetchMyGameButton } from "../account-entry.js";
 import { analysisHistoryResult } from "../analyze-orient.js";
+import { parsePgn } from "../analyze-pgn.js";
+import { createAnalysisStudySaver } from "../analyze-study.js";
 import { showUndoToast } from "../undo.js";
 import { ensureAnalyzeView } from "../views/analyze-loader.js";
 import { hideAnalysisHandoff, lichessAccounts, loadPgnIntoAnalyze, orientAnalysisFromPgn, requireSignIn,
@@ -229,13 +231,23 @@ export function invalidateAnalysisSource() {
   return ++analysisRecallSeq;
 }
 
-export async function recallAnalysis(gameId, listItem = null, { sourceSeq = invalidateAnalysisSource(), quiet = false } = {}) {
+const analysisStudy = createAnalysisStudySaver({
+  save: (gameId, pgn, ownerId) => {
+    if (ownerId !== currentOwnerId()) throw new Error("Account changed before study was saved");
+    return api(`/api/analyses/${encodeURIComponent(gameId)}/pgn`, { method: "PUT", body: JSON.stringify({ pgn }) });
+  },
+  onError: (error) => setStatusError(`Study changes not saved: ${error.message}`),
+});
+
+export async function recallAnalysis(gameId, listItem = null, { sourceSeq = invalidateAnalysisSource(), quiet = false, onMissing = null } = {}) {
   const seq = sourceSeq;
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   const sidebar = document.getElementById("analyze-sidebar");
   sidebar?.setAttribute("aria-busy", "true");
   try {
+    await analysisStudy.flush(currentOwnerId());
+    if (seq !== analysisRecallSeq) return false;
     const payload = await api(`/api/analyses/${encodeURIComponent(gameId)}`);
     const view = await ensureAnalyzeView();
     if (seq !== analysisRecallSeq) return false;
@@ -245,16 +257,22 @@ export async function recallAnalysis(gameId, listItem = null, { sourceSeq = inva
       if (!payload[key] && listItem?.[key]) payload[key] = listItem[key];
     }
     appState.analysis = payload;
-    // Mirror the recalled game into the PGN box for further exploration.
-    // Clear it before rendering: the head reads its tags first, and a leftover
-    // (e.g. the demo PGN) would title the recalled game "PrepForge vs Demo".
     const pgnInput = document.getElementById("pgn-input");
-    if (pgnInput) pgnInput.value = "";
+    if (pgnInput) pgnInput.value = payload.pgn || "";
     orientAnalysisForSelf(payload.white, payload.black);
     resetAnalysisVariations();
+    if (payload.pgn) {
+      const parsed = parsePgn(payload.pgn);
+      if (!parsed.ok) throw new Error(parsed.error);
+      const { varNodes } = view.adaptParsedTree(parsed.root, payload.moves.length);
+      appState.analysisVarNodes = varNodes;
+      appState.analysisVarCounter = varNodes.size;
+    }
     await showAnalysisPly(0);
     if (seq !== analysisRecallSeq) return false;
     view.renderAnalysis(payload);
+    const picker = document.getElementById("analysis-import-picker");
+    if (picker && !appState.analysisMultiPgn) picker.hidden = true;
     syncViewHeads();
     revealAnalysisResults();
     // The list sits at the panel's foot; open the new game at its summary.
@@ -262,7 +280,10 @@ export async function recallAnalysis(gameId, listItem = null, { sourceSeq = inva
     await syncPgnFromTree();
     return seq === analysisRecallSeq;
   } catch (error) {
-    if (seq === analysisRecallSeq && !quiet) setStatusError(error.message);
+    if (seq === analysisRecallSeq) {
+      if (onMissing && (error.status === 404 || error.status === 409)) onMissing();
+      else if (!quiet) setStatusError(error.message);
+    }
     return false;
   } finally {
     if (seq === analysisRecallSeq) sidebar?.setAttribute("aria-busy", "false");
@@ -309,6 +330,7 @@ export async function syncPgnFromTree() {
   if (seq !== analysisRecallSeq || input.value !== original) return;
   const next = view.serializeAnalysisPgn(input.value);
   if (!next) return;
+  if (analysis?.game_id && appState.analysisPgnStale) analysisStudy.queue(analysis.game_id, next, currentOwnerId());
   if (analysis) analysis.pgn = next;
   appState.analysisPgnStale = false;
   if (next !== input.value) {

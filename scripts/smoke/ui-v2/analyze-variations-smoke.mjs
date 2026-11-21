@@ -108,12 +108,14 @@ const base = `http://127.0.0.1:${PORT}`;
 
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const consoleErrors = [];
-// The multi-game check deliberately trips the single-game refusal (a 400), and the
-// browser logs every failed response. That one is expected; anything else is not.
+// Refusing a multi-game paste (400) and recalling an unanalyzed game (404) are
+// expected; other browser errors are not.
 let expectMultiGameRefusal = false;
+let expectMissingAnalysis = false;
 page.on("console", (m) => {
   if (m.type() !== "error") return;
   if (expectMultiGameRefusal && /Failed to load resource.*400/.test(m.text())) return;
+  if (expectMissingAnalysis && /Failed to load resource.*404/.test(m.text())) return;
   consoleErrors.push(m.text());
 });
 page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
@@ -196,9 +198,17 @@ await page.route("**/api/analyze/prepare", async (route) => {
 // The saved reviews by id, as the real server keeps them: a reload recalls the
 // review it was on by game id (grades, chart) and lays the session's branches on top.
 const savedReviews = new Map();
+await page.route(/\/api\/analyses\/[^/?]+\/pgn$/, async route => {
+  const gameId = decodeURIComponent(new URL(route.request().url()).pathname.split("/").at(-2));
+  const saved = savedReviews.get(gameId);
+  if (route.request().method() !== "PUT" || !saved) return route.fallback();
+  saved.pgn = JSON.parse(route.request().postData()).pgn;
+  await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ saved: true }) });
+});
 await page.route(/\/api\/analyses\/[^/?]+$/, async (route) => {
   const saved = savedReviews.get(decodeURIComponent(new URL(route.request().url()).pathname.split("/").pop()));
-  if (!saved || route.request().method() !== "GET") return route.fallback();
+  if (route.request().method() !== "GET") return route.fallback();
+  if (!saved) return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ detail: "no saved analysis for that game" }) });
   await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(saved) });
 });
 await page.route("**/api/analyze/classify-save", async (route) => {
@@ -215,7 +225,7 @@ await page.route("**/api/analyze/classify-save", async (route) => {
     position_evals[p.fen] = { score_cp: p.score_cp, mate_in: p.mate_in, best_move_uci: p.best_move_uci, pv: p.pv || [], depth: p.depth };
   }
   const saved = {
-    game_id: prepared.gameId, engine: "stockfish (browser)", depth: 4, summary: {},
+    game_id: prepared.gameId, pgn: prepared.pgn, engine: "stockfish (browser)", depth: 4, summary: {},
     position_evals, moves, eval_graph,
   };
   savedReviews.set(prepared.gameId, saved);
@@ -482,11 +492,12 @@ ${G2_PGN}`;
   check(boxAfterRun.includes("Bb5") && !/d4|c4|e6/.test(boxAfterRun),
     `the box must carry the analyzed game's own moves: ${JSON.stringify(boxAfterRun.slice(0, 240))}`);
   // Each game on its own: select game 2 through the import picker and check that
-  // ONLY its mainline and its own branch are listed. The picker POSTs the batch it
-  // was built from (the server indexes into that), so prepare must accept it.
+  // ONLY its mainline and its own branch are listed. Game 2 has no saved report,
+  // so the picker must analyze it from the original batch.
   const picker = page.locator("#analysis-import-select");
   check(await picker.count() > 0, "the import picker must list both pasted games");
   if (await picker.count()) {
+    expectMissingAnalysis = true;
     await picker.selectOption("1");
     // The switch is a full run: wait for the box to name game 2 (the run rewrites
     // it from `prepare.pgn`) and for the button to come back. A failure here is
@@ -497,6 +508,7 @@ ${G2_PGN}`;
       null, { timeout: 60000 },
     ).catch(() => {});
     await page.waitForTimeout(1200);
+    expectMissingAnalysis = false;
     const switchPost = preparePosts.at(-1);
     check(switchPost.status === 200 && switchPost.selectIndex === 1 && switchPost.games === 2,
       `the picker's switch must POST a paste the server can index: ${JSON.stringify({ ...switchPost, pgn: switchPost.pgn.slice(0, 60) })}`);
