@@ -31,12 +31,14 @@ const SUITE = [
   // The dock options popover left open across the phone breakpoint.
   ["Dock options", "build-dock-options-smoke.mjs"],
   ["Engine PV", "engine-pv-containment-smoke.mjs"],
+  ["Coverage action", "../../coverage-action-smoke.mjs"],
   ["Train", "train-viewport-smoke.mjs"],
   ["Games", "games-viewport-smoke.mjs"],
   ["Scout", "scout-viewport-smoke.mjs"],
   ["History refresh", "analyze-history-smoke.mjs"],
   ["Analyze", "analyze-viewport-smoke.mjs"],
   ["Analyze imports", "analyze-import-smoke.mjs"],
+  ["Analyze batch", "analyze-batch-smoke.mjs"],
   // Off-mainline Analyze: a selected variation node (not its mainline cousin of
   // the same move number) drives the board, caption, Coach and engine — through a
   // fast reversal and a reload. Production build only, no E2E hooks.

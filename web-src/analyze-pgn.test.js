@@ -47,6 +47,20 @@ function treesEquivalent(a, b) {
 }
 
 describe("parsePgn", () => {
+  it.each(["{intro}", ";intro", '{intro\n[Event "comment only"]\n}'])("extracts headers after introductory comments: %s", intro => {
+    const parsed = parsePgn(` \n${intro}\n[Event "x"]\n[White "Alice"]\n\n1. e4 e5 *`);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.headers).toEqual({ Event: "x", White: "Alice" });
+    expect(mainlineSans(parsed.root)).toEqual(["e4", "e5"]);
+    expect(treeToMovetext(parsed.root)).toContain(intro);
+  });
+
+  it.each(["*", "1-0", "0-1", "1/2-1/2"])("parses a termination marker glued to the last move: %s", result => {
+    const parsed = parsePgn(`1. e4 e5${result}`);
+    expect(parsed.ok).toBe(true);
+    expect(mainlineSans(parsed.root)).toEqual(["e4", "e5"]);
+  });
+
   it.each(["", "not a FEN", "8/8/8/8/8/8/8/8 w - - 0 1"])("rejects invalid FEN headers: %s", (fen) => {
     expect(parsePgn(`[SetUp "1"]\n[FEN "${fen}"]\n\n1. e4 e5 *`)).toEqual({ ok: false, error: "Invalid FEN header." });
   });
@@ -66,6 +80,17 @@ describe("parsePgn", () => {
 
   it("ignores header-like text inside comments", () => {
     expect(parsePgn('1. e4 {\n[Event "not a game"]\n} e5 *').ok).toBe(true);
+  });
+
+  it("preserves header-like text as a comment, not a game header", () => {
+    const parsed = parsePgn('1. e4 {\n[Event "not a game"]\n} e5 *');
+    expect(parsed.headers).toEqual({});
+    expect(treeToMovetext(parsed.root)).toContain('{\n[Event "not a game"]\n}');
+  });
+
+  it.each(["", "1. Qh9", "1. d4 {Other game} d5"]) ("does not attach annotations from an absent, rejected or different source: %s", source => {
+    const root = parsePgn("1. e4 e5").root;
+    expect(treeToMovetext(root, source)).toBe("1. e4 e5");
   });
   it("parses a simple mainline with correct node fields", () => {
     const { ok, root } = parsePgn("1. e4 e5 2. Nf3 Nc6");

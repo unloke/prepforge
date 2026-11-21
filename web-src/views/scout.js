@@ -523,6 +523,7 @@ export function createScoutView(deps) {
         scoutState.activeSpeed,
         {
           usernames: scoutState.usernames,
+          streaming: isStreaming(),
           colorRecHtml: scoutState.color === "white" || scoutState.color === "black" ? "" // one colour: nothing to compare
             : buildColorRecommendationBanner(
               colorRecommendation(

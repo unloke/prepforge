@@ -111,7 +111,8 @@ const LIMITS = [
   // the current sheet to 180,227 B, without changing Build/Train positioning.
   // Motion, intrinsic popovers, source-picker containment, and Library keyboard focus.
   // The combined Teams, Games, Scout, and landscape sign-in fixes measure 181,542 B.
-  { prefix: "index-", suffix: ".css", maxBytes: 181_550, label: "main stylesheet" },
+  // Build phone Coverage actions and wrapping engine PVs need a 178 KiB cap.
+  { prefix: "index-", suffix: ".css", maxBytes: 182_272, label: "main stylesheet" },
 ];
 
 let files;

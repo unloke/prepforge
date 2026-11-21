@@ -160,7 +160,7 @@
 }
 /* The chosen set needs to read as chosen: a soft accent plate + weight, not a
    ring drawn around the pieces. */
-#piece-style-picker .piece-style-option.is-active {
+#view-settings #piece-style-picker .piece-style-option.is-active {
   background: var(--accent-soft);
   font-weight: 500;
 }

@@ -86,7 +86,20 @@
   padding: 8px 2px;
   border-top: 1px solid var(--line-soft);
 }
-.th-runs .th-run:first-child { border-top: 0; }
+.th-runs > :first-child .th-run { border-top: 0; }
+.th-open {
+  width: 100%;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.th-open:hover { background: var(--panel-soft); }
 .th-run-main { display: flex; flex-direction: column; min-width: 0; }
 .th-run .th-name { margin: 0; font-size: var(--fs); font-weight: 500; }
 .th-run-score { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }

@@ -53,9 +53,10 @@ it("opens a held row's menu once and swallows the tap that ends the hold", () =>
   const click = vi.fn();
   bindLongPress(row, open);
   row.addEventListener("click", click);
-  row.dispatchEvent(pointer("pointerdown", { clientX: 10, clientY: 20 }));
+  row.dispatchEvent(pointer("pointerdown", { clientX: 10, clientY: 20, pointerId: 7 }));
   vi.advanceTimersByTime(500);
   expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ type: "longpress", pointerId: 7, pointerType: "touch", clientX: 10, clientY: 20 }));
   // Android also fires contextmenu for the same hold: no second menu.
   row.dispatchEvent(new Event("contextmenu", { cancelable: true }));
   row.dispatchEvent(new Event("click", { cancelable: true }));

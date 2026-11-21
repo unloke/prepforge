@@ -308,3 +308,10 @@
   #view-replay .games-panel .ledger:has(.ledger-empty) > .card-head { display: none; }
   #view-replay .games-panel .ledger-empty.empty-state.big { padding: 24px 16px; }
 }
+
+/* A phone folds a long game after the decision; "All N moves" opens the rest. */
+.moveline-more { display: none; }
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  .moveline:has(> .moveline-more) > .move-pair.is-far { display: none; }
+  .moveline > .moveline-more { display: inline-flex; }
+}

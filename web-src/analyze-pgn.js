@@ -28,15 +28,18 @@ function sideOf(color) {
   return color === "w" ? "white" : "black";
 }
 
-function extractHeaders(pgnText) {
+export function extractHeaders(pgnText) {
   const headers = {};
-  const headerRe = /^\s*\[(\w+)\s+"([^"]*)"\]\s*$/gm;
+  const headerRe = /^\s*(?:\[(\w+)\s+"([^"]*)"\][ \t]*(?:\r?\n|$)|(\{[^}]*\}|;[^\r\n]*))/;
+  let movetext = pgnText;
+  let comments = "";
   let match;
-  while ((match = headerRe.exec(pgnText)) !== null) {
-    headers[match[1]] = match[2];
+  while ((match = headerRe.exec(movetext)) !== null) {
+    if (match[1]) headers[match[1]] = match[2];
+    else comments += match[3] + "\n";
+    movetext = movetext.slice(match[0].length);
   }
-  const movetext = pgnText.replace(/^\s*\[\w+\s+"[^"]*"\]\s*$/gm, "");
-  return { headers, movetext };
+  return { headers, movetext: comments + movetext };
 }
 
 function stripComments(text) {
@@ -68,20 +71,10 @@ function stripComments(text) {
   return result;
 }
 
-function stripMovetext(text) {
-  let s = stripComments(text);
-  s = s.replace(/\$\d+/g, " ");
-  s = s.replace(/\d+\.{1,3}/g, " ");
-  s = s.replace(/\.\.\./g, " ");
-  s = s.replace(/\b(1-0|0-1|1\/2-1\/2)\b/g, " ");
-  s = s.replace(/\*/g, " ");
-  s = s.replace(/\(/g, " ( ").replace(/\)/g, " ) ");
-  return s.replace(/\s+/g, " ").trim();
-}
-
 function tokenize(movetext) {
-  if (!movetext) return [];
-  return movetext.split(" ").filter(Boolean);
+  return (movetext.match(/\{[^}]*\}|;[^\r\n]*|\$\d+|[!?]+|[()]|[^\s(){};$!?]+/g) || [])
+    .map(t => /^[{;$!?]/.test(t) ? t : t.replace(/^\d+\.{1,3}/, "").replace(/(?:\*|1-0|0-1|1\/2-1\/2)$/, ""))
+    .filter(t => t && !/^(\.\.\.|1-0|0-1|1\/2-1\/2|\*)$/.test(t));
 }
 
 function makeMoveNode(move, parent) {
@@ -107,7 +100,7 @@ function cleanTree(node) {
 
 function parseMovetext(movetext, initialFen = START_FEN) {
   const root = { san: null, children: [], _parent: null };
-  const tokens = tokenize(stripMovetext(movetext));
+  const tokens = tokenize(movetext);
 
   if (tokens.length === 0) {
     cleanTree(root);
@@ -123,7 +116,10 @@ function parseMovetext(movetext, initialFen = START_FEN) {
   for (const token of tokens) {
     const frame = stack[stack.length - 1];
 
-    if (token === "(") {
+    if (/^[{;$!?]/.test(token)) {
+      const target = frame.lastNode || (stack.length === 1 ? root : frame);
+      (target.annotations ||= []).push(token.startsWith(";") ? token + "\n" : token);
+    } else if (token === "(") {
       if (!frame.lastNode) {
         return { ok: false, error: "Variation without preceding move" };
       }
@@ -141,6 +137,7 @@ function parseMovetext(movetext, initialFen = START_FEN) {
       try {
         const move = frame.chess.move(token);
         const node = makeMoveNode(move, frame.lastNode || frame.parentNode);
+        if (!frame.lastNode && frame.annotations) node.startingAnnotations = frame.annotations;
         if (frame.lastNode) {
           frame.lastNode.children.push(node);
         } else {
@@ -194,7 +191,7 @@ function token(node, forceNumber) {
 }
 
 function emit(node, siblings, forceNumber) {
-  let s = token(node, forceNumber);
+  let s = [...(node.startingAnnotations || []), token(node, forceNumber), ...(node.annotations || [])].join(" ");
   for (const v of siblings) {
     s += " (" + emit(v, [], true) + ")";
   }
@@ -207,10 +204,24 @@ function emit(node, siblings, forceNumber) {
   return s;
 }
 
-export function treeToMovetext(root) {
+function copyAnnotations(node, source) {
+  for (const key of ["annotations", "startingAnnotations"]) {
+    if (source[key]) node[key] = source[key];
+  }
+  for (const child of node.children || []) {
+    const original = source.children?.find(n => n.uci === child.uci);
+    if (original) copyAnnotations(child, original);
+  }
+}
+
+export function treeToMovetext(root, sourcePgn) {
+  if (sourcePgn) {
+    const source = parsePgn(sourcePgn);
+    if (source.ok) copyAnnotations(root, source.root);
+  }
   const top = root.children || [];
   if (top.length === 0) return "";
-  return emit(top[0], top.slice(1), true);
+  return [...(root.annotations || []), emit(top[0], top.slice(1), true)].join(" ");
 }
 
 // A PGN's header block as a plain object ("[White \"X\"]" -> White: "X"). The

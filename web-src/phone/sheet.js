@@ -57,8 +57,8 @@ export function bindLongPress(el, open) {
     held = false;
     cancel();
     if (event.pointerType !== "touch") return;
-    const { clientX, clientY } = event;
-    timer = setTimeout(() => { held = true; open({ preventDefault() {}, currentTarget: el, clientX, clientY }); }, HOLD_MS);
+    const { clientX, clientY, pointerId, pointerType } = event;
+    timer = setTimeout(() => { held = true; open({ type: "longpress", preventDefault() {}, currentTarget: el, clientX, clientY, pointerId, pointerType }); }, HOLD_MS);
   });
   for (const type of ["pointerup", "pointercancel"]) el.addEventListener(type, cancel);
   el.addEventListener("contextmenu", (event) => {

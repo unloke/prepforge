@@ -20,6 +20,7 @@ import { appSource } from "./test-app-source.js";
 import { html } from "./html.js";
 import { parsePgn } from "./analyze-pgn.js";
 import { createAnalyzeView } from "./views/analyze.js";
+import { createBatchSwitcher } from "./analyze-batch.js";
 
 const source = appSource();
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -118,9 +119,9 @@ function harness() {
     view[name] = vi.fn(() => vi.fn());
   }
   const input = { value: "" };
-  const pickerHost = { hidden: true, innerHTML: "" };
+  const pickerHost = { hidden: true, innerHTML: "", setAttribute: vi.fn() };
   const select = { value: "0", listeners: {}, addEventListener: (type, fn) => { select.listeners[type] = fn; } };
-  pickerHost.querySelector = (selector) => (selector === "#analysis-import-select" ? select : null);
+  pickerHost.querySelector = (selector) => (["#analysis-import-select", "select"].includes(selector) ? select : null);
   const doc = {
     activeElement: null,
     getElementById: (id) => (id === "pgn-input" ? input
@@ -245,6 +246,7 @@ function harness() {
   ].join("\n");
   const params = {
     ...deps, resetAnalysisVariations, showAnalysisPly,
+    createBatchSwitcher, recallAnalysis: vi.fn(async (_id, _game, { onMissing }) => { onMissing(); return false; }),
     selectedNodePath: () => appState.analysisNodePath || "root", ANALYSIS_ROOT_PATH: "root",
     selectAnalysisNodePath: vi.fn(async () => true),
     markCheckpointSaved: vi.fn(async () => {}), clearCheckpoint: vi.fn(async () => true),
@@ -256,6 +258,8 @@ function harness() {
     let analysisRecallSeq = 0;
     // The real rule: a new source ends the batch and bumps the epoch.
     const invalidateAnalysisSource = () => { appState.analysisMultiPgn = null; return ++analysisRecallSeq; };
+    const switchBatchAnalysis = createBatchSwitcher({ appState, recallAnalysis, runAnalysis, invalidateAnalysisSource,
+      sourceIsCurrent: seq => seq === analysisRecallSeq, isBusy: () => notices.isBusy(), setStatus });
     ${functions}
     return { runAnalysis, renderImportPicker, rebuildAnalysisVariations, loadPgnIntoAnalyze };
   `);
@@ -264,6 +268,31 @@ function harness() {
 }
 
 describe("a multi-game paste analyzes one game at a time", () => {
+  it("restores the displayed batch selection when an unsaved game's prepare returns 500", async () => {
+    const h = harness();
+    h.input.value = PASTE;
+    await h.runAnalysis({ mode: "multi", selectIndex: 0 });
+    const displayed = h.appState.analysis;
+    h.deps.postJson.mockRejectedValueOnce(Object.assign(new Error("prepare failed"), { status: 500 }));
+    h.select.value = "1";
+    h.select.listeners.change();
+    await vi.waitFor(() => expect(h.deps.notices.failJob).toHaveBeenCalledWith("prepare failed"));
+    expect(h.appState.analysis).toBe(displayed);
+    expect(h.input.value).toContain('[White "Alice"]');
+    expect(h.select.disabled).toBe(false);
+    expect(h.select.value).toBe("0");
+    expect(h.pickerHost.hidden).toBe(false);
+  });
+
+  it("keeps import statistics inline without a duplicate notice over the phone picker", async () => {
+    const h = harness();
+    h.input.value = PASTE;
+    await h.runAnalysis({ mode: "multi" });
+    expect(String(h.pickerHost.innerHTML)).toContain("2 new");
+    expect(h.deps.setStatus).toHaveBeenCalledWith("");
+    expect(h.deps.setStatus.mock.calls.map(([message]) => message).join("\n")).not.toMatch(/Imported \d+ new/);
+  });
+
   it("keeps study branches and their selection when a running review finishes", async () => {
     const h = harness();
     h.input.value = G1;

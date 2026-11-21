@@ -277,6 +277,18 @@ class GameRepository(EvaluationRepository):
             )
             self._save_moves_batched(conn, game, result)
 
+    def load_analysis_pgn(self, game_id: str, owner_user_id: str) -> Optional[str]:
+        with self.engine.connect() as conn:
+            return conn.scalar(select(t.games.c.pgn).where(
+                t.games.c.id == game_id, t.games.c.owner_user_id == owner_user_id,
+            ))
+
+    def save_analysis_pgn(self, game_id: str, pgn: str, owner_user_id: str) -> bool:
+        with self.engine.begin() as conn:
+            return bool(conn.execute(update(t.games).where(
+                t.games.c.id == game_id, t.games.c.owner_user_id == owner_user_id,
+            ).values(pgn=pgn)).rowcount)
+
     def load_game(self, game_id: str, owner_user_id: Optional[str] = None, *, render_pgn: bool = False) -> Optional[Game]:
         with self.engine.connect() as conn:
             row = conn.execute(

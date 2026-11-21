@@ -32,6 +32,7 @@ from prepforge_chess.core.limits import (
 )
 from prepforge_chess.api.deps import current_owner, get_repository
 from prepforge_chess.api.ratelimit import limiter
+from prepforge_chess.core.pgn import import_single_pgn
 from prepforge_chess.services.analysis_view import analysis_result_to_payload
 from prepforge_chess.services.app_settings import owner_maia_rating, owner_stockfish_depth
 from prepforge_chess.services.brilliant import BrilliantAnalyzer, BrilliantConfig
@@ -473,7 +474,31 @@ def recall_analysis(
     if result.quality and result.quality.get("move_snapshot_missing"):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail="Saved analysis has no move snapshot. Analyze this game again.")
-    return analysis_result_to_payload(result)
+    return {**analysis_result_to_payload(result), "pgn": repo.load_analysis_pgn(game_id, owner)}
+
+
+class AnalysisStudyPayload(BaseModel):
+    pgn: str = Field(min_length=1, max_length=PGN_LIMITS.max_chars)
+
+
+@router.put("/analyses/{game_id}/pgn")
+def save_analysis_study(
+    game_id: str,
+    body: AnalysisStudyPayload,
+    owner: str = Depends(current_owner),
+    repo: GameRepository = Depends(get_repository),
+) -> dict[str, bool]:
+    game = repo.load_game(game_id, owner_user_id=owner)
+    if game is None or repo.load_latest_analysis_result(game_id, owner_user_id=owner) is None:
+        raise HTTPException(status_code=404, detail="no saved analysis for that game")
+    try:
+        study = import_single_pgn(body.pgn)
+        if (study.initial_fen != game.initial_fen or
+                [m.uci for m in study.moves[:len(game.moves)]] != [m.uci for m in game.moves]):
+            raise ValueError("Study PGN must keep the analyzed game's mainline")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"saved": repo.save_analysis_pgn(game_id, body.pgn, owner)}
 
 
 @router.delete("/analyses/{game_id}")
