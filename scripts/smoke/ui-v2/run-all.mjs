@@ -31,6 +31,7 @@ const SUITE = [
   // The dock options popover left open across the phone breakpoint.
   ["Dock options", "build-dock-options-smoke.mjs"],
   ["Engine PV", "engine-pv-containment-smoke.mjs"],
+  ["Coverage action", "../../coverage-action-smoke.mjs"],
   ["Train", "train-viewport-smoke.mjs"],
   ["Games", "games-viewport-smoke.mjs"],
   ["Scout", "scout-viewport-smoke.mjs"],

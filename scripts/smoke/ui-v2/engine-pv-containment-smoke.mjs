@@ -177,11 +177,12 @@ const VIEWPORTS = [
   { name: "1000x528", width: 1000, height: 528, dpr: 2 },
   { name: "768x900", width: 768, height: 900 },
   { name: "390x660", width: 390, height: 660 },
+  { name: "390x844", width: 390, height: 844 },
 ];
 
 const ONLY = process.env.ENGINE_PV_SMOKE_ONLY; // e.g. "1000x528" while iterating
 for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.name))) {
-  const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: vp.dpr || 1 });
+  const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: vp.dpr || 1, hasTouch: vp.width <= 760 });
   // A configured device runs the real lite engine without first benchmarking
   // hardware alongside the search. This checks streamed layout, not Detect.
   await page.addInitScript(() => localStorage.setItem("prepforge.engine-profile", JSON.stringify({
@@ -242,6 +243,33 @@ for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.nam
       await page.locator("#engine-window").innerText(), errors);
     throw error;
   });
+
+  if (phone) {
+    await page.waitForFunction(() => [...document.querySelectorAll("#engine-window-pvs .engine-pv")]
+      .some((row) => row.querySelectorAll(".pv-move").length >= 10), null, { timeout: 90000 });
+    const selected = await page.locator("#builder-tree .mtree-move.is-current").getAttribute("data-node-id");
+    const count = await page.locator("#builder-tree .mtree-move").count();
+    await page.locator("#engine-window-pvs .engine-pv .pv-move").first().tap();
+    const readable = await page.locator("#engine-window-pvs .engine-pv").evaluateAll((rows) => rows.every((row) => {
+      const line = row.querySelector(".engine-pv-line");
+      const box = row.getBoundingClientRect();
+      return line.scrollWidth <= line.clientWidth + 1 && line.scrollHeight <= line.clientHeight + 1
+        && [...line.querySelectorAll(".pv-move")].every((move) => {
+          const r = move.getBoundingClientRect();
+          return r.left >= box.left - 1 && r.right <= box.right + 1 && r.bottom <= box.bottom + 1;
+        });
+    }));
+    check(readable, `${vp.name}: every move of long phone PVs must be readable without truncation`);
+    check(await page.locator("#builder-tree .mtree-move.is-current").getAttribute("data-node-id") === selected,
+      `${vp.name}: tapping a PV must not change the selected repertoire move`);
+    check(await page.locator("#builder-tree .mtree-move").count() === count,
+      `${vp.name}: tapping a PV must not add repertoire moves`);
+    console.log(`[engine-pv-readable] ${vp.name} ${readable ? "ok" : "FAIL"} — full continuations; tapping preserves the repertoire`);
+  } else {
+    check(await page.locator("#engine-window-pvs .engine-pv-line").evaluateAll((lines) =>
+      lines.every((line) => getComputedStyle(line).whiteSpace === "nowrap")),
+    `${vp.name}: desktop PVs keep their existing single-line layout`);
+  }
 
   // At stacked widths (≤860) the page is the documented scroll owner for Build
   // (styles.css: the sidebar drops its one-screen fit), so a taller inspector is

@@ -1,6 +1,8 @@
 import { html } from "../html.js";
 import { createGeneratePreview } from "./generate-preview.js";
 import { readGenerateInt, showBuildGenerateDialog } from "./build-generate-dialog.js";
+import { estimateBuildGenerateTotal, generateExistingPlies, generateEstimateText,
+  GEN_DEFAULT_MAIN_PCT, GEN_DEFAULT_BRANCH_PCT } from "./build-generate-estimate.js";
 import { openBuildOverflowMenu as openOverflowMenu } from "./build-overflow-menu.js";
 import { promptRenameRepertoire } from "../repertoire-rename.js";
 import { enterRows } from "../list-enter.js";
@@ -197,7 +199,7 @@ async function renameRepertoire() {
   });
 }
 
-async function selectBuildNode(nodeId, { branchChoiceId = null, revealSelection = false } = {}) {
+async function selectBuildNode(nodeId, { branchChoiceId = null, revealSelection = false, previewUci = null } = {}) {
   if (!appState.buildNodeById.has(nodeId)) return;
   // Which way the board travels: into the current node's own child is a move
   // being shown; a parent, a sibling or a distant node is a step through or a
@@ -232,6 +234,7 @@ async function selectBuildNode(nodeId, { branchChoiceId = null, revealSelection 
   // (add/delete/collapse/note/grade/import) call renderBuilderTree themselves.
   if (buildView) buildView.updateBuildTreeSelection({ revealSelection });
   else renderBuilderTree({ revealSelection });
+  if (previewUci) boards.build.setBranchArrows([previewUci], previewUci);
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }
@@ -1214,35 +1217,12 @@ function rollbackOptimisticRepertoire({ previous, previousView, rootId }) {
   }
 }
 
-// Rough up-front size of a Build → Generate run, for the dialog's estimate and the
-// progress bar's ceiling. Your side always gets one move (the engine's best); each
-// opponent position keeps the replies humans play at least `mainThreshold` of the time
-// on the mainline path and `branchThreshold` inside side branches. The reply count per
-// position is a heuristic over typical Maia distributions (~3 at 10%, ~1.7 at 30%).
-// A 20% buffer lets the bar finish a touch early.
-function estimateBuildGenerateTotal({ plyDepth, mainThreshold, branchThreshold, userToMove = true }) {
-  const depth = Math.max(1, Number(plyDepth) || 1);
-  const repliesAt = (share) => Math.min(6, 1 + 0.2 / Math.max(0.01, Number(share) || 0.1));
-  const mainReplies = repliesAt(mainThreshold ?? GEN_DEFAULT_MAIN_PCT / 100);
-  const branchReplies = repliesAt(branchThreshold ?? GEN_DEFAULT_BRANCH_PCT / 100);
-  let branchNodes = 0; // nodes off the mainline path at the current ply
-  let total = 0;
-  for (let ply = 1; ply <= depth; ply++) {
-    const userPly = userToMove ? ply % 2 === 1 : ply % 2 === 0;
-    if (!userPly) branchNodes = branchNodes * branchReplies + (mainReplies - 1);
-    total += 1 + branchNodes; // the mainline node plus everything branched off it
-  }
-  return Math.min(typeof MAX_PLAN_CHANGES === "number" ? MAX_PLAN_CHANGES : 2000, Math.max(4, Math.ceil(total * 1.2)));
-}
-
 // Generate dialog: every knob in plain view, no presets. Depth is counted in full
 // moves (one of yours plus their reply); the tree always ends on your answer.
 // Opponent coverage has two cut-offs: on the mainline path and inside side branches. Kept conservative: the recursion runs locally and a huge tree risks the
 // server apply-plan caps. See GEN_MAX_* / MAX_PLAN_CHANGES.
 const GEN_MAX_OWN_MOVES = GEN_MAX_PLY_DEPTH / 2;
 const GEN_DEFAULT_OWN_MOVES = 6;
-const GEN_DEFAULT_MAIN_PCT = 10;
-const GEN_DEFAULT_BRANCH_PCT = 30;
 
 function generateDialogFields() {
   return [
@@ -1323,21 +1303,6 @@ function readGenerateOptions(values, { userToMove = true } = {}) {
   };
 }
 
-// Rough range from the same model that sizes the progress bar. Moves already in the
-// repertoire are reused, so the real number is often lower (said in the tooltip).
-function generateEstimateRange(options) {
-  const ceiling = estimateBuildGenerateTotal(options);
-  const nice = (n) => (n >= 50 ? Math.round(n / 10) * 10 : n >= 20 ? Math.round(n / 5) * 5 : Math.round(n));
-  const low = Math.max(1, nice(ceiling * 0.4));
-  const high = Math.max(low + 1, nice(ceiling));
-  return { low, high };
-}
-
-function generateEstimateText(options) {
-  const { low, high } = generateEstimateRange(options);
-  return `${low}–${high}`;
-}
-
 async function generateFromCurrentNode() {
   // True click origin for [engine-lifecycle] timing: recorded before any
   // toast/status/rAF so click → feedback-paint measures the real delay.
@@ -1378,6 +1343,7 @@ async function generateFromCurrentNode() {
   const ownColor = appState.build.color === "black" ? "black" : "white";
   const anchorFen = appState.buildNodeById.get(nodeId)?.fen || "";
   const userToMove = (anchorFen.split(" ")[1] === "b" ? "black" : "white") === ownColor;
+  const existingPlies = generateExistingPlies(generationBuild.nodes, nodeId, GEN_MAX_PLY_DEPTH, ownColor);
   const values = await showBuildGenerateDialog({
     title: "Generate moves from this position",
     okLabel: "Generate",
@@ -1385,7 +1351,7 @@ async function generateFromCurrentNode() {
     onInput: (current, overlay) => {
       const range = overlay.querySelector('[data-note="estimate"] b');
       if (!range) return;
-      range.textContent = generateEstimateText(readGenerateOptions(current, { userToMove }));
+      range.textContent = generateEstimateText(readGenerateOptions(current, { userToMove }), existingPlies);
       range.title = "Fewer where your repertoire already has the moves";
     },
   });

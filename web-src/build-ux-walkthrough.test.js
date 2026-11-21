@@ -2,7 +2,7 @@
 // (Explorer bars, Generate dialog, counts, ⋯ menu, Coverage's Maia gate,
 // delete notice, loading state). Pure helpers run from their real app.js
 // source; wiring that only exists as DOM glue is pinned by source checks.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -11,6 +11,7 @@ import { eagerCss as css } from "./test-styles-source.js";
 import { buildSkeleton } from "./views/build-skeleton.js";
 import { summarizeBuild } from "./build-tree.js";
 import { readGenerateInt } from "./controllers/build-generate-dialog.js";
+import { generateEstimateRange, generateEstimateText } from "./controllers/build-generate-estimate.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
@@ -33,6 +34,44 @@ function compile(names, deps = {}) {
     ...depNames.map((k) => deps[k]),
   );
 }
+
+describe("Coverage gap board preview", () => {
+  function harness() {
+    const node = { id: "e4", depth: 1, fen: "after-e4", uci: "e2e4", move_number: 1, move_side: "white", san: "e4", arrows: ["g1f3"], circles: [] };
+    const appState = { build: {}, buildCurrentNodeId: "e4", buildNodeById: new Map([["e4", node]]) };
+    const board = { setPosition() {}, setAnnotations() {}, setBranchArrows: vi.fn() };
+    const { selectBuildNode } = compile(["async function selectBuildNode("], {
+      appState, boards: { build: board }, boardInfo: async () => ({ legal_moves: [] }),
+      document: { getElementById: () => ({}) }, engineWidget: null, scheduleExplorerRefresh() {},
+      buildView: { updateBuildTreeSelection: () => board.setBranchArrows(["e7e5", "c7c5"], "e7e5") },
+    });
+    return { selectBuildNode, board, appState, node };
+  }
+
+  it("shows only the gap's temporary arrow, then restores saved branches on navigation", async () => {
+    const h = harness();
+    await h.selectBuildNode("e4", { previewUci: "d7d5" });
+    expect(h.board.setBranchArrows).toHaveBeenLastCalledWith(["d7d5"], "d7d5");
+    expect(h.node.arrows).toEqual(["g1f3"]);
+    await h.selectBuildNode("e4");
+    expect(h.board.setBranchArrows).toHaveBeenLastCalledWith(["e7e5", "c7c5"], "e7e5");
+  });
+
+  it("does not preview an unknown node or a selection superseded while loading", async () => {
+    const h = harness();
+    await h.selectBuildNode("missing", { previewUci: "d7d5" });
+    expect(h.board.setBranchArrows).not.toHaveBeenCalled();
+    const pending = h.selectBuildNode("e4", { previewUci: "d7d5" });
+    h.appState.build = {};
+    await pending;
+    expect(h.board.setBranchArrows).not.toHaveBeenCalled();
+  });
+
+  it("passes the selected gap's move to the board selection", () => {
+    const controller = readFileSync(join(root, "controllers", "coverage.js"), "utf8");
+    expect(controller).toContain("selectNode(gap.nodeId, { previewUci: gap.moveUci })");
+  });
+});
 
 describe("Explorer bars", () => {
   const { explorerThinSample, explorerSegLabel } = compile(
@@ -66,12 +105,9 @@ describe("Explorer bars", () => {
 });
 
 describe("Generate dialog", () => {
-  const helpers = compile(
+  const helpers = { generateEstimateRange, generateEstimateText, ...compile(
     [
-      "function estimateBuildGenerateTotal({ plyDepth, mainThreshold, branchThreshold, userToMove = true }) {",
       "function readGenerateOptions(values, { userToMove = true } = {}) {",
-      "function generateEstimateRange(options) {",
-      "function generateEstimateText(options) {",
     ],
     {
       readGenerateInt,
@@ -85,7 +121,7 @@ describe("Generate dialog", () => {
       effectiveMaiaRating: () => 1500,
       effectiveStockfishDepth: () => 16,
     },
-  );
+  ) };
 
   it("counts depth in full moves and always ends the tree on your answer", () => {
     const values = { own_moves: "3", main_pct: "10", branch_pct: "30", maia_rating: "1500", engine_depth: "16" };
@@ -121,6 +157,12 @@ describe("Generate dialog", () => {
     expect(helpers.generateEstimateText(base)).toMatch(/^\d+–\d+$/);
   });
 
+  it("excludes existing moves on a shallow Generate rerun", () => {
+    const options = { plyDepth: 1, userToMove: true, mainThreshold: 0.1, branchThreshold: 0.3 };
+    expect(helpers.generateEstimateRange(options, [1])).toEqual({ low: 0, high: 0 });
+    expect(helpers.generateEstimateText(options, [1])).toBe("0");
+  });
+
   it("has no presets, no own-side alternatives and nothing folded away", () => {
     const fields = extractByMarker("function generateDialogFields() {");
     expect(fields).not.toContain("advanced: true");
@@ -147,6 +189,8 @@ describe("Generate dialog", () => {
   it("repaints only the range figure, and keeps the reuse caveat on it", () => {
     const open = extractByMarker("async function generateFromCurrentNode() {");
     expect(open).toContain("fields: generateDialogFields(),");
+    expect(open).toContain("generateExistingPlies(generationBuild.nodes, nodeId, GEN_MAX_PLY_DEPTH, ownColor)");
+    expect(open).toContain("generateEstimateText(readGenerateOptions(current, { userToMove }), existingPlies)");
     expect(open).toContain('\'[data-note="estimate"] b\'');
     // The stat holds the unit as a span, so writing textContent must not target
     // the whole row (it would drop "new moves").
