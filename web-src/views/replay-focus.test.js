@@ -239,6 +239,36 @@ describe("replay focus internals", () => {
     expect(String(elements["replay-summary"].innerHTML)).toContain("1 you left prep");
   });
 
+  it("does not put an external player's miss in the user's training queue", () => {
+    const external = { ...userErrorGame, source_account: "Zhigalko_Sergei", black: "Zhigalko_Sergei" };
+    makeView(elements).renderReplayResults({ games: [external], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html).not.toMatch(/training queue/);
+    expect(html).toContain('data-act="train"');
+    expect(html).toContain(">Drill my move</button>");
+    expect(html).toContain('title="Drill your prepared move at this position"');
+  });
+
+  it("keeps Train and the queue note on the user's own games", () => {
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html).toContain("Added to your training queue.");
+    expect(html).toContain('data-index="0">Train</button>');
+    expect(html).not.toContain("Drill my move");
+  });
+
+  it("folds a long game's moves after the decision behind All N moves", () => {
+    const tail = ["e5", "c5", "Nc3", "Nc6", "Be2", "Qb6", "O-O", "Nh6"];
+    const long = { ...userErrorGame, move_san_history: [...userErrorGame.move_san_history, ...Array.from({ length: 36 }, (_, i) => tail[i % tail.length])] };
+    makeView(elements).renderReplayResults({ games: [long], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html).toContain('<button type="button" class="btn ghost sm moveline-more" data-moveline-more>All 20 moves</button>');
+    expect(html).toMatch(/class="move-pair is-far" data-move="9"/);
+    expect(html).not.toMatch(/class="move-pair[^"]*is-far[^"]*" data-move="8"/);
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    expect(String(elements["replay-results"].innerHTML)).not.toContain("moveline-more");
+  });
+
   it("resolves You in the open row, and the detail under it does not repeat the players", () => {
     makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
     const html = String(elements["replay-results"].innerHTML);

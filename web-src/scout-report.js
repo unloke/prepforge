@@ -903,13 +903,14 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
 // counter ("N games fetched"); the report label only changes when the report does.
 // The report drops early resignations (see isEarlyResignCollapse) and any speed
 // outside the active filter, so the label names that gap when there is one.
-export function scoutAnalyzedLabel(analyzed, skipped = 0) {
+export function scoutAnalyzedLabel(analyzed, skipped = 0, { streaming = false } = {}) {
   const a = Number(analyzed) || 0;
   const s = Number(skipped) || 0;
+  if (streaming) return `${a} game${a === 1 ? "" : "s"} so far · still fetching`;
   return `${a} game${a === 1 ? "" : "s"} analyzed${s ? `, ${s} skipped` : ""}`;
 }
 
-export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtml = "", usernames = [] } = {}) {
+export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtml = "", usernames = [], streaming = false } = {}) {
   const speeds = ["bullet", "blitz", "rapid", "classical"];
   const chips = speeds
     .filter((s) => (profile.speedCounts[s] || 0) >= 5)
@@ -930,7 +931,7 @@ export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtm
           // "self (2 accounts)" is a label, not a Lichess user: no profile link.
           ? html`<span class="prof-name" title="${usernames.join(", ")}">${username}</span>`
           : html`<a class="scout-username-link prof-name" data-username="${username}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${username} ↗</a>`}
-        <span class="scout-profile-games faint">${scoutAnalyzedLabel(analyzed, skipped)}</span>
+        <span class="scout-profile-games faint">${scoutAnalyzedLabel(analyzed, skipped, { streaming })}</span>
       </div>
       <div class="scout-speed-chips speed-chips" role="group" aria-label="Speed">
         <button type="button" class="scout-speed-chip speed${activeSpeed === "all" ? " is-on" : ""}" data-speed="all" aria-pressed="${activeSpeed === "all"}">All</button>
@@ -1439,7 +1440,7 @@ export function buildScoutSectionReport(
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
           </div>`
     : "";
-  const listHead = html`<div class="col-head scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
+  const listHead = html`<div class="col-head scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Last seen</span><span>Their result</span><span></span><span></span></div>`;
   const planBody = prepRows.length
     ? html`${listHead}
           <div class="scout-lines scout-ranked-list lines" role="list" data-ui>${prepRows}</div>

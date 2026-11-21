@@ -8,6 +8,9 @@ import { nounOf } from "../plural.js";
 import { START_FEN, encodeLine, moveTokenHtml } from "../move-text.js";
 import "./replay.css";
 
+const MOVELINE_PHONE_MIN_PAIRS = 8;
+const MOVELINE_PHONE_TAIL_PAIRS = 3;
+
 // `label` reads after a count of games ("5 not covered"): a phrase, never pluralised.
 const REPLAY_KINDS = {
   "in-prep": { badge: "Stayed in prep", label: "stayed in prep", tone: "good" },
@@ -294,6 +297,10 @@ export function createReplayView({
     const kind = gameMeta(game);
     const tone = kind.tone;
     const rows = [];
+    const pairs = Math.ceil(history.length / 2);
+    // A phone folds the game past a few moves after the decision; the rest is one tap away.
+    const anchorPly = departurePly || Number(game.matched_plies) || 0;
+    const keepPairs = Math.max(MOVELINE_PHONE_MIN_PAIRS, Math.ceil(anchorPly / 2) + MOVELINE_PHONE_TAIL_PAIRS);
     for (let index = 0; index < history.length; index += 2) {
       const whitePly = index + 1;
       const blackPly = index + 2;
@@ -301,13 +308,17 @@ export function createReplayView({
       const isDeparture = departurePly === whitePly || departurePly === blackPly;
       const rowClass = ["move-pair"];
       if (isDeparture) rowClass.push("is-departure", `t-${tone}`);
+      if (moveNumber > keepPairs) rowClass.push("is-far");
       const whiteClass = replayPlyClass(whitePly, game, tone);
       const blackSan = history[index + 1];
       rows.push(
         html`<div class="${rowClass.join(" ")}" data-move="${moveNumber}"><span class="move-no">${moveNumber}.</span><span class="ply ${whiteClass}" data-ply="${whitePly}" data-p="${whitePly - 1}">${history[index]}</span>${blackSan === undefined ? html`<span class="ply is-empty" aria-hidden="true"></span>` : html`<span class="ply ${replayPlyClass(blackPly, game, tone)}" data-ply="${blackPly}" data-p="${blackPly - 1}">${blackSan}</span>`}${isDeparture ? html`<span class="dep-note t-${tone}">${kind.badge}</span>` : ""}</div>`,
       );
     }
-    return html`${rows}`;
+    const more = pairs > keepPairs
+      ? html`<button type="button" class="btn ghost sm moveline-more" data-moveline-more>All ${pairs} moves</button>`
+      : "";
+    return html`${rows}${more}`;
   }
 
   function renderReplayDetail(game) {
@@ -334,7 +345,10 @@ export function createReplayView({
       // The server records a miss only when the repertoire holds a prepared
       // move at the departure node. Without one there is nothing in the queue,
       // and claiming otherwise would be a lie the Train action then backs up.
-      const queued = game.training_recorded
+      // An external player's miss is not the user's: no claim about their queue.
+      const queued = !isOwnAccount(game.source_account)
+        ? ""
+        : game.training_recorded
         ? " Added to your training queue."
         : game.expected_node_id
           ? " Already in your training queue."
@@ -423,7 +437,10 @@ export function createReplayView({
     // where the repertoire has no move has nothing to drill, so the button
     // would only fail.
     if (kind === "user-error" && game.expected_node_id && game.repertoire_id) {
-      actions.push(html`<button class="btn primary" data-act="train" data-index="${index}">Train</button>`);
+      // On an external player's game the drill is still the user's own prepared move.
+      actions.push(isOwnAccount(game.source_account)
+        ? html`<button class="btn primary" data-act="train" data-index="${index}">Train</button>`
+        : html`<button class="btn primary" data-act="train" data-index="${index}" title="Drill your prepared move at this position">Drill my move</button>`);
     }
     if (kind === "left-prep" && game.repertoire_id) {
       actions.push(html`<button class="btn primary" data-act="build" data-index="${index}">Add reply</button>`);
@@ -541,6 +558,12 @@ export function createReplayView({
       container.querySelector?.(`.lr[data-index="${revealIndex}"]`)?.focus?.({ preventScroll: true });
       revealIfOffscreen(container.querySelector?.(".focus"));
     }
+    container.querySelectorAll("[data-moveline-more]").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        btn.remove();
+      });
+    });
     container.querySelectorAll("[data-act]").forEach((btn) => {
       btn.addEventListener("click", (event) => {
         event.stopPropagation();

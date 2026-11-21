@@ -81,3 +81,12 @@ describe("scout lines table", () => {
     expect(systemSetupName(null)).toBeNull();
   });
 });
+
+describe("Scout report while games still stream", () => {
+  it("says the count is not final until the fetch ends", () => {
+    expect(scoutAnalyzedLabel(215, 3, { streaming: true })).toBe("215 games so far · still fetching");
+    expect(scoutAnalyzedLabel(1, 0, { streaming: true })).toBe("1 game so far · still fetching");
+    expect(String(renderScoutProfile({ total: 59, speedCounts: {} }, "DrNykterstein", "all", { streaming: true }))).toContain("59 games so far · still fetching");
+    expect(String(renderScoutProfile({ total: 59, speedCounts: {} }, "DrNykterstein", "all"))).toContain("59 games analyzed");
+  });
+});
