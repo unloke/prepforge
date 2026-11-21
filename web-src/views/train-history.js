@@ -43,11 +43,12 @@ function lead(run) {
 const row = run => {
   const scored = score(run);
   const tip = run.mode === 'play' ? scoreLabel(run, scored) : `${run.cards} cards · ${scoreLabel(run, scored)} · ${run.mistakes} missed · ${run.skipped} skipped`;
-  return html`<li class="th-run" title="${tip}">
-    <div class="th-run-main"><b class="th-name" title="${runName(run)}">${runName(run)}</b>
-      <span class="th-when">${modeLabel(run)} · <time datetime="${run.finishedAt}">${DATE.format(new Date(run.finishedAt))}</time></span></div>
-    <div class="th-run-score"><b>${pctText(run, scored)}</b><span>${scoreLabel(run, scored)}</span></div>
-  </li>`;
+  const content = html`<span class="th-run-main"><b class="th-name" title="${runName(run)}">${runName(run)}</b>
+      <span class="th-when">${modeLabel(run)} · <time datetime="${run.finishedAt}">${DATE.format(new Date(run.finishedAt))}</time></span></span>
+    <span class="th-run-score"><b>${pctText(run, scored)}</b><span>${scoreLabel(run, scored)}</span></span>`;
+  return html`<li>${run.mode === 'play' && typeof run.pgn === 'string' && run.pgn.trim()
+    ? html`<button type="button" class="th-run th-open" title="${tip}" data-open-practice="${run.id}">${content}</button>`
+    : html`<div class="th-run" title="${tip}">${content}</div>`}</li>`;
 };
 
 function body(runs) {
@@ -66,13 +67,13 @@ function body(runs) {
 const storageLine = count => `${count} saved run${count === 1 ? '' : 's'}`;
 const retentionNote = `Keeps up to ${HISTORY_LIMITS.runs} recent runs within ${Math.round(HISTORY_LIMITS.bytes / 1024)} KiB in this browser`;
 
-export function openTrainingHistory(ownerId) {
+export function openTrainingHistory(ownerId, openGame) {
   if (!ownerId) return;
   document.getElementById('training-history-dialog')?.remove();
   const overlay = modalDialog('training-history', { id: 'training-history-dialog' });
-  let content, foot;
+  let content, foot, runs = [];
   try {
-    const runs = readTrainingHistory(ownerId);
+    runs = readTrainingHistory(ownerId);
     content = body(runs);
     foot = html`<footer class="th-foot"><span title="${retentionNote}">${storageLine(runs.length)}</span></footer>`;
   } catch {
@@ -87,4 +88,11 @@ export function openTrainingHistory(ownerId) {
     <div class="th-body">${content}</div>${foot}`;
   const close = openModal(overlay, { initialFocus: overlay.querySelector('[data-close]') });
   overlay.querySelector('[data-close]').addEventListener('click', () => close());
+  for (const button of overlay.querySelectorAll('[data-open-practice]')) {
+    button.addEventListener('click', () => {
+      const run = runs.find(run => run.id === button.dataset.openPractice);
+      close();
+      void openGame(run);
+    });
+  }
 }

@@ -908,6 +908,7 @@ function endPlayGame(title, failure = "") {
   if (play.history?.length && !failure) {
     saveRun(currentOwnerId(), {
       id: `play:${play.startedAt}`, mode: "play", blitz: false, result: title,
+      pgn: playSessionPgn(play, appState.lichessUsername), userColor: play.userColor,
       repertoires: (play.repertoires || []).map((rep) => rep.name).filter(Boolean),
       startedAt: new Date(play.startedAt).toISOString(), finishedAt: new Date().toISOString(),
       cards: play.history.filter((ply) => ply.by === "user").length, correct: 0, mistakes: 0, skipped: 0, learned: 0,
@@ -916,13 +917,12 @@ function endPlayGame(title, failure = "") {
   showTrainResult({ ...playResult(play), runId: `play:${play.startedAt}` });
 }
 
-export async function openPlayInAnalyze() {
-  const play = appState.play;
-  if (!play?.history?.length) return;
+export async function openPlayInAnalyze(play = appState.play) {
+  if (!play?.pgn && !play?.history?.length) return;
   const owner = currentOwnerId(), generation = appState.ownerGeneration;
   const sourceSeq = invalidateAnalysisSource();
   const isCurrent = () => sourceSeq === analysisRecallSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
-  const pgn = playSessionPgn(play, appState.lichessUsername);
+  const pgn = play.pgn || playSessionPgn(play, appState.lichessUsername);
   const input = document.getElementById("pgn-input");
   if (input) input.value = pgn;
   const drawer = document.getElementById("pgn-drawer");
