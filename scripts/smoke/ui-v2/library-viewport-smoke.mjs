@@ -55,6 +55,8 @@ const FIXTURE_REPS = {
   shared: [],
 };
 
+const EXPORT_PGN = { filename: "caro-kann.pgn", mime: "application/x-chess-pgn", content: "1. e4 c6 (1... c5) 2. d4 d5 *" };
+
 const api = (path, url) => {
   if (path.startsWith("/api/build/activity")) return { revision: 1, entries: [], unread_nodes: [], truncated: false };
   if (path.startsWith("/api/build/discussions")) return { threads: [] };
@@ -82,6 +84,7 @@ const api = (path, url) => {
   }
   // The share dialog's access read (one grant, link off); before the listing's prefix match.
   if (path.startsWith("/api/repertoires/access")) return { grants: [{ user_id: "u9", name: "Sam", lichess_username: "samqueen", role: "view" }], link: { share_enabled: false, share_role: "view" } };
+  if (path === "/api/repertoires/export-pgn") return EXPORT_PGN;
   if (path.startsWith("/api/repertoires")) return FIXTURE_REPS;
   if (path.startsWith("/api/teams")) return { teams: [] };
   if (path.startsWith("/api/lichess")) return { accounts: [] };
@@ -139,7 +142,7 @@ const arrives = (promise, label, ms = 20000) => Promise.race([
 ]);
 
 async function runViewport(vp) {
-  const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height }, hasTouch: vp.width <= 760 });
   const consoleErrors = [];
   page.on("console", (msg) => { if (msg.type() === "error") consoleErrors.push(msg.text()); });
   page.on("pageerror", (err) => consoleErrors.push(`pageerror: ${err.message}`));
@@ -216,6 +219,19 @@ async function runViewport(vp) {
   // so on a phone the lead is 15px and must not grow back past 16px; wider
   // viewports keep the 16px lead. Either way it outranks the line under it.
   const phone = vp.width <= 760;
+  const disabledFilter = page.locator('[data-lib-filter="disabled"]');
+  check(await disabledFilter.isVisible(), "Disabled must be available without opening search");
+  const filterFit = await page.locator('#view-dashboard .lib-list .seg').evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    return el.scrollWidth <= el.clientWidth && [...el.children].every((tab) => {
+      const r = tab.getBoundingClientRect();
+      return r.left >= box.left - 1 && r.right <= box.right + 1 && tab.scrollWidth <= tab.clientWidth;
+    });
+  });
+  check(filterFit, "all five filter tabs and labels must fit without overflow");
+  await disabledFilter.click();
+  check(await page.locator('#dashboard-repertoires .lib-row').count() === 1, "Disabled filters to the inactive repertoire");
+  await page.locator('[data-lib-filter="all"]').click();
   const leadOk = queueSize && (phone ? queueSize.q >= 15 && queueSize.q <= 16 : queueSize.q >= 16);
   check(leadOk && queueSize.more < queueSize.q,
     `the queue must be the strip's loudest line, got ${JSON.stringify(queueSize)}`);
@@ -292,6 +308,57 @@ async function runViewport(vp) {
     check(!(await page.locator("#repertoire-context-menu").isVisible()), "Escape must close Actions");
     check(await page.evaluate(() => document.activeElement?.matches('[data-row-menu="rep-1"]')),
       "closing Actions must restore focus to its button");
+  }
+
+  const menu = page.locator('#repertoire-context-menu');
+  const openRowMenu = async () => {
+    const row = page.locator('[data-repertoire-id="rep-1"].lib-row');
+    if (phone) {
+      const box = await row.boundingBox();
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: box.x + 30, y: box.y + box.height / 2 }] });
+      await page.waitForTimeout(550);
+      check(await menu.isVisible(), "holding a row opens its action sheet");
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await cdp.detach();
+      await page.waitForTimeout(150);
+    } else await row.locator('[data-row-menu]').click();
+    check(await menu.isVisible(), "the row menu stays open after releasing its opener");
+  };
+  await openRowMenu();
+  const exportDownload = page.waitForEvent("download");
+  await menu.getByRole("menuitem", { name: "Export PGN", exact: true }).click();
+  const downloaded = await exportDownload;
+  check(downloaded.suggestedFilename() === EXPORT_PGN.filename, "Library export uses the server filename");
+  check(await readFile(await downloaded.path(), "utf8") === EXPORT_PGN.content, "Library export preserves the complete PGN and variations");
+  check(await page.locator('#view-dashboard').isVisible(), "Library export does not navigate away");
+  await page.route("**/api/repertoires/export-pgn?*", (route) => route.fulfill({ status: 500, json: { detail: "Export unavailable" } }));
+  await openRowMenu();
+  await menu.getByRole("menuitem", { name: "Export PGN", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Export unavailable" }).waitFor();
+  check(await page.locator('#view-dashboard').isVisible(), "a failed export shows its error without leaving Library");
+  await page.unroute("**/api/repertoires/export-pgn?*");
+  if (phone) {
+    for (const label of ["Rename...", "Share..."]) {
+      await openRowMenu();
+      await menu.getByRole("menuitem", { name: label, exact: true }).tap();
+      await page.locator('dialog[open]').waitFor();
+      check(await page.locator('dialog[open]').isVisible(), `${label} works after lifting the held finger`);
+      await page.keyboard.press("Escape");
+    }
+    await openRowMenu();
+    await page.touchscreen.tap(vp.width - 12, 30);
+    await menu.waitFor({ state: "hidden" });
+    check(!(await menu.isVisible()), "a later outside tap still dismisses the sheet");
+    let disabled = false;
+    await page.route("**/api/repertoires/set-active", (route) => {
+      disabled = route.request().postDataJSON().active === false;
+      return route.fulfill({ json: {} });
+    });
+    await openRowMenu();
+    await menu.getByRole("menuitem", { name: "Disable", exact: true }).tap();
+    await page.waitForTimeout(150);
+    check(disabled, "Disable works after lifting the held finger");
   }
 
   // No preview pane: the table takes the full width and a row click opens.

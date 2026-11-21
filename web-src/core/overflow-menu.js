@@ -64,5 +64,6 @@ export function openOverflowMenu(menu, { event, title = "", items, data = {}, on
     menu.style.top = `${Math.max(8, Math.min(wantTop, window.innerHeight - rect.height - 8))}px`;
   }
   paint(items, title);
+  if (event?.type === "longpress") menu.setPointerCapture(event.pointerId);
   return close;
 }

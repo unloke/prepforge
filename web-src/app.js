@@ -744,6 +744,7 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
       { action: "train", label: "Train this repertoire" }, { action: "edit", label: "Open in Repertoire" },
       { action: "rename", label: "Rename...", group: 1 },
       { action: "share", label: "Share...", group: 1 },
+      { action: "export", label: "Export PGN", group: 1 },
       { action: "toggle-active", label: isActive ? "Disable" : "Enable", group: 1 },
       { action: "delete", label: "Delete...", danger: true, group: 2 },
     ],
@@ -804,6 +805,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       await openShareDialog(repertoireId);
       return;
     }
+    if (action === "export") return await (await import("./controllers/build-session.js")).exportBuild(repertoireId);
     if (action === "toggle-active") {
       const verb = isActive ? "Disable" : "Enable";
       await postJson("/api/repertoires/set-active", {
@@ -1818,7 +1820,7 @@ const PENDING_ACTION_HANDLERS = {
   "new-repertoire": () => createRepertoirePrompt({ title: "New repertoire" }),
   "import-pgn": () => {
     switchView("dashboard");
-    setStatus("Signed in — choose Import PGN to pick your file.");
+    return libraryEntry.promptImportRepertoireFromPgn();
   },
   "new-team": () => {
     switchView("teams");
