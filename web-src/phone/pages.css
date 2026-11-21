@@ -682,7 +682,6 @@
   #view-settings .set-row:has(.slider) { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 0; }
   #view-settings .slider { gap: 12px; }
   #view-settings .slider input[type="range"] { flex: 1 1 auto; width: auto; min-width: 0; }
-  #view-settings .set-row:has(#piece-style-picker) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
   #view-settings #piece-style-picker { flex-wrap: nowrap; gap: 8px; padding: 0; border: 0; background: none; }
   #view-settings #piece-style-picker .piece-style-option { flex: 1 1 0; flex-direction: column; justify-content: center; min-height: 36px; height: auto; padding: 6px 8px 6px 6px; border-radius: var(--radius); background: var(--surface-3); }
 
