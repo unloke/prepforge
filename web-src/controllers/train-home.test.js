@@ -66,6 +66,15 @@ describe("openTrain", () => {
     expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: null, targetNodeIds: [] });
   });
 
+  it("a guarded route entry does not reopen Train after losing the route", async () => {
+    const { deps } = setup();
+    let current = true;
+    deps.confirmAbandonGame.mockImplementation(async () => { current = false; return true; });
+    await createTrainHome(deps).openTrain({ mode: "smart", repertoireId: "r1", isCurrent: () => current });
+    expect(deps.switchView).not.toHaveBeenCalledWith("train");
+    expect(deps.startTraining).not.toHaveBeenCalled();
+  });
+
   it("a Feeling Lucky game names its source in the scope chip", () => {
     const play = { book: "maia", userColor: "white", luckyReason: "titled-game", luckyPhase: "middlegame", luckySource: "lichess-tv" };
     expect(trainScopeLabel({ trainMode: "play", play })).toBe("Live Lichess game · middlegame");
@@ -232,7 +241,7 @@ describe("the Due row", () => {
 
   it("turns a preview 401 into a sign-in action instead of a live Start", async () => {
     const { deps } = setup();
-    deps.api.mockImplementation((url) => url === "/api/repertoires" ? Promise.resolve({ repertoires: [{ id: "r1", name: "Italian", color: "white", is_active: true }], shared: [] }) : Promise.reject(Object.assign(new Error("unauthorized"), { status: 401 })));
+    deps.api.mockImplementation((url) => url === "/api/repertoires" ? Promise.resolve({ repertoires: [{ id: "r1", name: "Italian", color: "white", is_active: true }], shared: [] }) : Promise.reject(Object.assign(new Error("unauthorized"), { status: 401, authRequired: true })));
     await loadTrainRepertoireOptions();
     await createTrainHome().paintTrainHome();
     expect(doc.getElementById("start-train").textContent).toBe("Sign in to train");

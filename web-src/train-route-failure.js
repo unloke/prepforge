@@ -1,4 +1,5 @@
 import { setStatusError } from "./core/api.js";
+import { parseWorkspaceLocation } from "./workspace-url.js";
 
 export function showTrainModuleLoadFailure(error, retry) {
   const home = document.getElementById("train-home");
@@ -15,10 +16,21 @@ export function showTrainModuleLoadFailure(error, retry) {
   if (button) {
     button.hidden = false;
     button.onclick = async () => {
+      button.onclick = null;
       button.hidden = true;
       if (message) message.hidden = true;
       try { await retry(); } catch (retryError) { showTrainModuleLoadFailure(retryError, retry); }
     };
   }
   setStatusError(error.message);
+}
+
+export function retryTrainEntry(isActive, enter, onFailure = showTrainModuleLoadFailure) {
+  const attempt = async () => { if (isActive()) await enter(isActive); };
+  return attempt().catch((error) => { if (isActive()) onFailure(error, attempt); });
+}
+
+export function trainRouteMatches(loc) {
+  const now = parseWorkspaceLocation(window.location.href);
+  return now.view === "train" && (now.repertoireId || null) === (loc.repertoireId || null) && (now.trainMode || null) === (loc.trainMode || null);
 }

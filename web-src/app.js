@@ -51,7 +51,7 @@ import { normalizeSelection } from "./views/shared/source-composer.js";
 import { paintDashboardSkeleton } from "./views/library-skeleton.js";
 import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
 import { acceptRepertoireListing, refreshRepertoireListing } from "./repertoire-listing.js";
-import { showTrainModuleLoadFailure } from "./train-route-failure.js";
+import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { provideApp } from "./core/app-context.js";
@@ -281,6 +281,7 @@ const {
 
 let workspaceUrlReady = false;
 let workspaceNavigationSeq = 0;
+let trainRouteSeq = 0, deferTrainEntry = false;
 // Set when the user picks a page while boot is still awaiting auth / the
 // workspace: restoreWorkspaceLocation must not then snap them back to the URL
 // the page loaded with (a Scout click during boot landed on the dashboard).
@@ -371,12 +372,12 @@ async function restoreWorkspaceLocation() {
   if (loc.view === "replay" && loc.replaySection) {
     appState.replaySection = loc.replaySection;
   }
-  switchView(loc.view, { fromUrl: true });
+  deferTrainEntry = loc.view === "train"; switchView(loc.view, { fromUrl: true }); deferTrainEntry = false;
   if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply, loc.node);
   // #/train is Train Home; a link that names a repertoire opens its Due queue,
   // with that scope on the session's chip. A failed chunk leaves a retry instead of an inert skeleton.
-  const enterTrain = async () => { (await loadTrainSession()).syncTrainControls(); if (loc.view === "train" && appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId }); };
-  if (loc.view === "train") await enterTrain().catch((error) => showTrainModuleLoadFailure(error, enterTrain));
+  const trainEntrySeq = trainRouteSeq, enterTrain = async (stillActive) => { if (!stillActive()) return; (await loadTrainSession()).syncTrainControls(); if (!stillActive()) return; void loadTrainRepertoireOptions(); if (appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId, isCurrent: stillActive }); };
+  if (loc.view === "train") await retryTrainEntry(() => appState.currentView === "train" && (trainRouteSeq === trainEntrySeq || trainRouteMatches(loc)), enterTrain);
 }
 
 // The repertoire Build shows, or the one it is loading (A → B → A while B is
@@ -527,6 +528,7 @@ function switchView(name, { fromUrl = false } = {}) {
   workspaceNavigationSeq += 1;
   const previousView = appState.currentView;
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
+  if ((previousView === "train" || name === "train") && (previousView !== name || fromUrl)) trainRouteSeq += 1;
   if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
   document.getElementById("app-rail")?.classList.add("is-nav-collapsed");
@@ -557,7 +559,7 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "train") {
     preloadTrainView().catch(() => {});
-    loadTrainRepertoireOptions();
+    if (!deferTrainEntry) void retryTrainEntry(() => appState.currentView === "train", async () => { await loadTrainRepertoireOptions(); });
   }
   if (name === "replay") {
     preloadReplayView().catch(() => {});

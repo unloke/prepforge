@@ -150,11 +150,11 @@ function paintActions(screen, mode) {
 // Every way into Train lands here: nav, Library's Train, "Train this
 // repertoire", a picked move, the palette. The scope is set explicitly, so a
 // one-repertoire queue is never served from "all repertoires".
-export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false } = {}) {
+export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false, isCurrent = null } = {}) {
   const state = appState;
-  if (!(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
-  closeTrainPicker();
-  if (state.smart) await flushTrainSync();
+  if (!(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game")) || (isCurrent && !isCurrent())) return;
+  closeTrainPicker(); if (state.smart) await flushTrainSync();
+  if (isCurrent && !isCurrent()) return;
   resetSessions();
   for (const key of Object.keys(rowErrors)) rowErrors[key] = "";
   state.trainMode = mode;

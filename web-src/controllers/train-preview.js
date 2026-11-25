@@ -1,3 +1,4 @@
+import { hooks } from "../core/hooks.js";
 const PREVIEW_TTL = 30000;
 
 export function createTrainPreview(api) {
@@ -42,7 +43,7 @@ export function createTrainPreview(api) {
         return result;
       }).catch((error) => {
         if (pending === request) {
-          if (error?.status === 401) authKey = key;
+          if (error?.authRequired) { authKey = key; hooks.authRequired?.(); }
           else errorKey = key;
           at = 0;
         }

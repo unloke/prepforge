@@ -3,6 +3,7 @@ import { runInNewContext } from "node:vm";
 import { parseWorkspaceLocation, trainQueueRepertoireId } from "./workspace-url.js";
 import { appSource } from "./test-app-source.js";
 import { parsePgn } from "./analyze-pgn.js";
+import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
 
 const source = appSource();
 const restore = source.slice(source.indexOf("async function restoreWorkspaceLocation()"), source.indexOf("\nfunction setReplaySection("));
@@ -15,13 +16,15 @@ const restoreFactory = source
   .replace("export ", "");
 
 function runtime(extra = {}) {
+  const state = extra.appState || { signedIn: true, currentView: "dashboard" };
   const context = {
-    navigatedDuringBoot: false, workspaceNavigationSeq: 0,
-    appState: { signedIn: true, currentView: "dashboard" },
+    navigatedDuringBoot: false, workspaceNavigationSeq: 0, trainRouteSeq: 0, deferTrainEntry: false,
+    appState: state,
     window: { location: { href: "http://local/#/analyze" } },
     parseWorkspaceLocation, loadReturnState: () => null,
-    switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(async () => {}),
+    switchView: vi.fn((view) => { state.currentView = view; }), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(async () => {}),
     loadTrainSession: vi.fn(async () => ({ syncTrainControls: vi.fn() })),
+    loadTrainRepertoireOptions: vi.fn(async () => {}), retryTrainEntry, trainRouteMatches,
     api: vi.fn(), hydrateBuild: vi.fn(), showAnalysisPly: vi.fn(), ...extra,
   };
   context.ANALYSIS_ROOT_PATH = "root";
@@ -58,7 +61,7 @@ it("opens the Due queue of the repertoire the URL names", async () => {
     appState: { signedIn: true, currentView: "dashboard", trainMode: "smart" },
   });
   await ctx.run();
-  expect(ctx.openTrain).toHaveBeenCalledWith({ mode: "smart", repertoireId: "r2" });
+  expect(ctx.openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: "r2" }));
 });
 
 it("#/train is Train Home: nothing starts by itself", async () => {
@@ -110,7 +113,7 @@ it("rebuilds Train's queue for an in-page ?rep change", async () => {
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
   expect(ctx.openTrain).toHaveBeenCalledTimes(1);
-  expect(ctx.openTrain).toHaveBeenCalledWith({ mode: "smart", repertoireId: "r2" });
+  expect(ctx.openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: "r2" }));
 });
 
 it("keeps the live queue when the popstate names the repertoire it drills", async () => {
