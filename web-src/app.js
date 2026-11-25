@@ -430,7 +430,7 @@ async function handleWorkspacePopstate() {
     else if (!loc.node && loc.ply && loc.ply !== appState.analysisPly) await showAnalysisPly(loc.ply);
   }
   if (loc.view === "train" && !loc.repertoireId && !loc.trainMode) { invalidateTrainEntries(); delete appState.trainPendingRoute; }
-  if (trainNeedsQueue) await retryTrainEntry(() => appState.currentView === "train" && trainRouteMatches(loc), async () => { void loadTrainRepertoireOptions().catch(() => {}); await openTrain({ mode: trainMode, repertoireId: loc.repertoireId }); });
+  if (trainNeedsQueue) await retryTrainEntry(() => appState.currentView === "train" && trainRouteMatches(loc), async (stillActive) => { void loadTrainRepertoireOptions().catch(() => {}); const opening = openTrain({ mode: trainMode, repertoireId: loc.repertoireId, isCurrent: stillActive }), entryVersion = appState.trainEntryVersion; if ((await opening) === false && entryVersion === appState.trainEntryVersion && stillActive()) syncWorkspaceUrl(); });
 }
 
 function setReplaySection(section, { focus = false, syncUrl = true } = {}) {

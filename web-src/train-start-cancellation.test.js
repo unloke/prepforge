@@ -46,6 +46,18 @@ describe("canceled Train starts", () => {
     expect(doc.getElementById("view-train").dataset.trainScreen).toBe("session");
   });
 
+  it("starts a scoped queue only when leaving the live game is accepted", async () => {
+    const { deps } = setup({ currentView: "train", trainMode: "play", play: { active: true, history: ["e2e4"] } });
+    deps.confirmAbandonGame.mockResolvedValueOnce(false);
+    await expect(openTrain({ mode: "smart", repertoireId: "r1" })).resolves.toBe(false);
+    expect(deps.startTraining).not.toHaveBeenCalled();
+    expect(appState.play.active).toBe(true);
+    deps.confirmAbandonGame.mockResolvedValueOnce(true);
+    await expect(openTrain({ mode: "smart", repertoireId: "r1" })).resolves.toBe(true);
+    expect(deps.startTraining).toHaveBeenCalledWith("smart", expect.objectContaining({ repertoireId: "r1" }));
+    expect(appState.play).toBeNull();
+  });
+
   it("does not clear the replacement start's session state", () => {
     setup({ currentView: "train", trainMode: "smart" });
     const oldToken = {}, replacementToken = {};

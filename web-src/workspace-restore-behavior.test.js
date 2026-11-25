@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { runInNewContext } from "node:vm";
-import { parseWorkspaceLocation, trainQueueRepertoireId } from "./workspace-url.js";
+import { formatWorkspaceHash, parseWorkspaceLocation, trainQueueRepertoireId, workspaceLocationFromState } from "./workspace-url.js";
 import { appSource } from "./test-app-source.js";
 import { parsePgn } from "./analyze-pgn.js";
 import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
@@ -136,6 +136,65 @@ it("enters that in-page Train queue through the retryable entry path", async () 
   await ctx.run();
   expect(retry).toHaveBeenCalledTimes(1);
   expect(ctx.openTrain).toHaveBeenCalledWith(expect.objectContaining({ repertoireId: "r2" }));
+});
+
+it("replaces a declined scoped Train link with the live session's canonical URL", async () => {
+  const appState = { signedIn: true, currentView: "train", trainMode: "play", play: { active: true, history: ["e2e4"] }, trainEntryVersion: 1 };
+  let canonical = "";
+  const openTrain = vi.fn(() => {
+    appState.trainEntryVersion = 2;
+    appState.trainPendingRoute = { repertoireId: "r2", trainMode: "smart" };
+    return Promise.resolve(false).finally(() => { delete appState.trainPendingRoute; });
+  });
+  const syncWorkspaceUrl = vi.fn(() => { canonical = formatWorkspaceHash(workspaceLocationFromState(appState)); });
+  const ctx = popstateRuntime({ appState, openTrain, syncWorkspaceUrl });
+  await ctx.run();
+  expect(openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: "r2", isCurrent: expect.any(Function) }));
+  expect(syncWorkspaceUrl.mock.calls).toEqual([[]]);
+  expect(canonical).toBe("#/train");
+  const routeCurrent = openTrain.mock.calls[0][0].isCurrent;
+  expect(routeCurrent()).toBe(true);
+  ctx.window.location.href = "http://local/#/train";
+  expect(routeCurrent()).toBe(false);
+});
+
+it("keeps an accepted scoped start on its route", async () => {
+  const appState = { signedIn: true, currentView: "train", trainMode: "play", trainEntryVersion: 1 };
+  const openTrain = vi.fn(() => { appState.trainEntryVersion = 2; return Promise.resolve(true); });
+  const syncWorkspaceUrl = vi.fn();
+  const ctx = popstateRuntime({ appState, openTrain, syncWorkspaceUrl });
+  await ctx.run();
+  expect(syncWorkspaceUrl).not.toHaveBeenCalled();
+});
+
+it("does not treat a superseded pending entry as a decline", async () => {
+  const appState = { signedIn: true, currentView: "train", trainMode: "play", trainEntryVersion: 1 };
+  let finish;
+  const openTrain = vi.fn(() => {
+    appState.trainEntryVersion = 2;
+    return new Promise((done) => { finish = done; });
+  });
+  const syncWorkspaceUrl = vi.fn();
+  const ctx = popstateRuntime({ appState, openTrain, syncWorkspaceUrl });
+  const running = ctx.run();
+  await vi.waitFor(() => expect(openTrain).toHaveBeenCalled());
+  expect(syncWorkspaceUrl).not.toHaveBeenCalled();
+  appState.trainEntryVersion = 3;
+  ctx.window.location.href = "http://local/#/train";
+  finish(false);
+  await running;
+  expect(syncWorkspaceUrl).not.toHaveBeenCalled();
+});
+
+it("does not reconcile a retryable scoped entry failure", async () => {
+  const appState = { signedIn: true, currentView: "train", trainMode: "play", trainEntryVersion: 1 };
+  const openTrain = vi.fn(() => { appState.trainEntryVersion = 2; return Promise.reject(new Error("chunk failed")); });
+  const syncWorkspaceUrl = vi.fn();
+  const retry = vi.fn(async (isActive, enter) => { try { await enter(isActive); } catch {} });
+  const ctx = popstateRuntime({ appState, openTrain, syncWorkspaceUrl, retryTrainEntry: retry });
+  await ctx.run();
+  expect(retry).toHaveBeenCalledTimes(1);
+  expect(syncWorkspaceUrl).not.toHaveBeenCalled();
 });
 
 it("keeps the live queue when the popstate names the repertoire it drills", async () => {

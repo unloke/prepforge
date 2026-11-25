@@ -37,6 +37,13 @@ describe("Train entry navigation ordering", () => {
     expect(train.openTrain.mock.calls[0][0].isCurrent()).toBe(false);
   });
 
+  it("publishes the entry version before the lazy session load starts", async () => {
+    const { appState, openTrain } = wrapperRuntime();
+    const opening = openTrain({ mode: "smart", repertoireId: "r1" });
+    expect(appState.trainEntryVersion).toBe(1);
+    await opening;
+  });
+
   it("does not invoke a Train entry invalidated while its lazy chunk was loading", async () => {
     const { openTrain, train, loadTrainSession, invalidateTrainEntries } = wrapperRuntime();
     let finishLoad;
