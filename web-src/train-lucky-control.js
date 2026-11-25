@@ -1,3 +1,5 @@
+import { setTrainBanner } from "./core/app-context.js";
+
 export function beginLuckyDiscovery(state) {
   if (state.luckyRun) return null;
   const run = { controller: new AbortController(), playToken: state.playStartToken || 0 };
@@ -26,6 +28,15 @@ export function finishLuckyDiscovery(state, run) {
   state.luckyRun = null;
   state.luckyBusy = false;
   paintLuckyButton(false);
+}
+
+// A cancel that also drops the run's visible trace: the banner's progress
+// line. The full session resets (openTrain, ‹ Train, view navigation) repaint
+// or clear the banner themselves and stay with the bare cancel; a pane switch
+// keeps the screen, so it cleans up here.
+export function cancelLuckyPractice(state) {
+  if (!cancelLuckyDiscovery(state)) return;
+  setTrainBanner("move", "", "");
 }
 
 function paintLuckyButton(busy) {

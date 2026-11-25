@@ -53,15 +53,21 @@ export function paintTrainPane(pane = trainPane()) {
 }
 
 // Wires the phone parts of Home: a tap on a card picks the opponent, a tap on
-// a tab switches the pane.
-export function bindTrainPhone(onBook) {
+// a tab switches the pane. An actual switch is reported, so the pane being
+// left can release what its in-flight work owns; retapping the current tab is
+// not a switch.
+export function bindTrainPhone(onBook, onPane) {
   document.getElementById("train-bots").addEventListener("click", (e) => {
     const card = e.target.closest(".train-bot");
     if (card && !card.disabled) onBook(card.dataset.book);
   });
   document.getElementById("train-tabs").addEventListener("click", (e) => {
     const tab = e.target.closest(".seg-btn");
-    if (tab) setTrainPane(tab.dataset.pane);
+    if (!tab) return;
+    const before = trainPane();
+    setTrainPane(tab.dataset.pane);
+    const now = trainPane();
+    if (now !== before) onPane?.(before, now);
   });
   paintTrainPane();
 }

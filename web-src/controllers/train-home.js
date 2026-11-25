@@ -15,7 +15,7 @@ import { showConfirmModal } from "../core/modals.js";
 import { acceptRepertoireListing, fetchRepertoireListing } from "../repertoire-listing.js";
 import { flushTrainSync, lichessAccounts, requireSignIn, setTrainBanner, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
-import { cancelLuckyDiscovery } from "../train-lucky-control.js";
+import { cancelLuckyDiscovery, cancelLuckyPractice } from "../train-lucky-control.js";
 import { blitzEnabled, clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setBlitzEnabled,
   skipTrainingLine, startPlaySessionTracked, startTraining, takebackPlaySession, trainHint } from "./train-session.js";
 // Train is one loop, Home → Session → Result, shared by the Due queue, line
@@ -547,7 +547,11 @@ function bind() {
       onChange: ([id]) => { appState.playBook = id; void paintTrainHome(); },
     });
   });
-  bindTrainPhone((book) => { appState.playBook = book; void paintTrainHome(); });
+  // A Random-position discovery is the Practice pane's own work: leaving the
+  // pane cancels it, so a late position cannot open its game over the Drill
+  // rows, and the freed button retries at once back on Practice. Retapping
+  // the current tab is not a switch and cancels nothing.
+  bindTrainPhone((book) => { appState.playBook = book; void paintTrainHome(); }, (from) => from === "play" && cancelLuckyPractice(appState));
   $("train-play-reps").addEventListener("click", (e) => openTrainPicker(e.currentTarget, {
     label: "Opponent plays from",
     items: trainRepertoireItems(appState, { shared: false }),
