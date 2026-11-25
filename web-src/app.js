@@ -628,21 +628,15 @@ async function editRepertoire(repertoireId, nodeId = null, { fromUrl = false } =
   appState.buildLoadTarget = repertoireId;
   setBuildLoading(true);
   if (!fromUrl) syncWorkspaceUrl({ push: true });
+  let request = null;
   try {
     await hardFlushBuild();
-  } catch (error) {
     if (loadSeq !== buildLoadSeq) return;
-    setBuildLoading(false);
-    setStatusError(error.message);
-    return;
-  }
-  if (loadSeq !== buildLoadSeq) return;
-  appState.sharedToken = null;
-  const request = new AbortController();
-  appState.buildLoadRequest = request;
-  // Fetch the tree renderer alongside the repertoire, not after it arrives.
-  ensureMoveTreeRenderer().catch(() => {});
-  try {
+    appState.sharedToken = null;
+    request = new AbortController();
+    appState.buildLoadRequest = request;
+    // Fetch the tree renderer alongside the repertoire, not after it arrives.
+    ensureMoveTreeRenderer().catch(() => {});
     const payload = await api(
       `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`,
       { signal: request.signal, responseType: "large-json" },
@@ -659,6 +653,12 @@ async function editRepertoire(repertoireId, nodeId = null, { fromUrl = false } =
   } catch (error) {
     if (loadSeq !== buildLoadSeq) return;
     setBuildLoading(false);
+    const loc = typeof window === "undefined"
+      ? {} : parseWorkspaceLocation(window.location.href);
+    if (appState.build?.repertoire_id && appState.currentView === "build" && loc.view === "build"
+      && String(loc.repertoireId) === String(repertoireId)) {
+      syncWorkspaceUrl();
+    }
     setStatusError(error.message);
   } finally {
     if (appState.buildLoadRequest === request) appState.buildLoadRequest = null;

@@ -3,7 +3,7 @@ import { paintBuildSkeleton } from "./views/build-skeleton.js";
 import { describe, expect, it, vi } from "vitest";
 import { localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
-import { serializeWorkspaceLocation, workspaceLocationFromState } from "./workspace-url.js";
+import { parseWorkspaceLocation, serializeWorkspaceLocation, workspaceLocationFromState } from "./workspace-url.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -72,6 +72,7 @@ function harness() {
       const request = { ...deferred(), signal }; requests.set(id, request); return request.promise;
     }),
     hydrateBuild, setStatusError: vi.fn(), syncWorkspaceUrl, updateBuildReadOnlyUi: vi.fn(),
+    parseWorkspaceLocation, window,
   };
   // Keep the real request sequence in one closure, like the application.
   const start = source.indexOf("async function editRepertoire(");
@@ -83,7 +84,7 @@ function harness() {
   const move = compile("async function onBuildBoardMove(", {
     ...common, optimisticBoardMove, isBuildReadOnly: () => false,
   });
-  return { appState, board, edit, move, requests, hydrateBuild, optimisticBoardMove, deps, getElementById, urlOperations };
+  return { appState, board, edit, move, requests, hydrateBuild, optimisticBoardMove, deps, getElementById, urlOperations, window, history };
 }
 async function waitForRequest(h, id) {
   await vi.waitFor(() => expect(h.requests.has(id)).toBe(true));
@@ -176,19 +177,52 @@ describe("repertoire load isolation", () => {
     expect(syncWorkspaceUrl).not.toHaveBeenCalled();
   });
 
-  it("restores the old board after a failed load", async () => {
+  it("restores the cached tree and replaces the failed URL after a 503", async () => {
     const h = harness();
     const load = h.edit("B");
     await waitForRequest(h, "B");
     expect(h.board.setAnnotations).toHaveBeenLastCalledWith([], []);
-    h.requests.get("B").reject(new Error("offline"));
+    h.requests.get("B").reject(Object.assign(new Error("Service unavailable"), { status: 503 }));
     await load;
     expect(h.appState.build.repertoire_id).toBe("A");
     expect(h.appState.buildLoading).toBe(false);
     expect(h.board.legalMoves).toContain("e2e4");
     expect(h.board.setAnnotations).toHaveBeenLastCalledWith(["Ga1a2"], ["Gb3"]);
-    expect(h.deps.setStatusError).toHaveBeenCalledWith("offline");
-    expect(h.urlOperations).toEqual([{ href: "/#/build?rep=B", push: true }]);
+    expect(h.deps.setStatusError).toHaveBeenCalledWith("Service unavailable");
+    expect(h.urlOperations).toEqual([
+      { href: "/#/build?rep=B", push: true },
+      { href: "/#/build?rep=A", push: false },
+    ]);
+    expect(h.window.location.hash).toBe("#/build?rep=A");
+  });
+
+  it("keeps unsaved cached-tree edits when their flush fails", async () => {
+    const h = harness();
+    const pending = { tempId: "tmp-e4", parentRef: "A-root", node: { id: "tmp-e4" }, repertoire_id: "A" };
+    h.appState.buildPending.push(pending);
+    h.deps.hardFlushBuild.mockRejectedValueOnce(new Error("flush offline"));
+    await h.edit("B");
+    expect(h.deps.api).not.toHaveBeenCalled();
+    expect(h.appState.buildPending).toEqual([pending]);
+    expect(h.appState.build.repertoire_id).toBe("A");
+    expect(h.deps.setStatusError).toHaveBeenCalledWith("flush offline");
+    expect(h.urlOperations).toEqual([
+      { href: "/#/build?rep=B", push: true },
+      { href: "/#/build?rep=A", push: false },
+    ]);
+  });
+
+  it("does not rewrite the new URL when a failure arrives after leaving Build", async () => {
+    const h = harness();
+    const load = h.edit("B");
+    await waitForRequest(h, "B");
+    h.appState.currentView = "analyze";
+    h.history.pushState(null, "", "/#/analyze?ply=4");
+    h.urlOperations.length = 0;
+    h.requests.get("B").reject(new Error("offline"));
+    await load;
+    expect(h.urlOperations).toEqual([]);
+    expect(h.window.location.hash).toBe("#/analyze?ply=4");
   });
 
   it("asks to reveal a valid explicit target when opening from another view", async () => {
