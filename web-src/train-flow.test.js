@@ -25,9 +25,10 @@ describe("continuous opening context", () => {
   it("does not rewind through an unrelated start position", () => {
     const d4 = { uci: "d2d4", fen_after: "d4" };
     const d5 = { uci: "d7d5", fen_after: "d5" };
-    const plan = planTrainRunIn(prompt([d4, d5]), "nc6", [e4, e5, nf3, nc6]);
+    const otherStart = { ...prompt([d4, d5]), start_fen: "other-root" };
+    const plan = planTrainRunIn(otherStart, "nc6", [e4, e5, nf3, nc6]);
     expect(plan.rewind).toEqual([]);
-    expect(plan).toMatchObject({ startFen: "root", moves: [d4, d5] });
+    expect(plan).toMatchObject({ startFen: "other-root", moves: [d4, d5] });
   });
   it("continues from the board's current position without replaying it", () => {
     expect(planTrainRunIn(prompt([nf3, nc6], 1), "e5", [e4, e5])).toMatchObject({
