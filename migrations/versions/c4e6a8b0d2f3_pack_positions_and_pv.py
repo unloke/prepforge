@@ -9,6 +9,8 @@ down_revision = "a1c3e5f7b9d2"
 branch_labels = None
 depends_on = None
 
+# Keyset pages bound memory, while executemany writes avoid one database round
+# trip per row. The whole revision still runs in Alembic's single transaction.
 _BATCH = 500
 
 
@@ -22,8 +24,16 @@ def _convert(table, source, target, transform):
         ).all()
         if not batch:
             return
-        for row_id, value in batch:
-            conn.execute(sa.update(rows).where(rows.c.id == row_id).values({target: transform(value)}))
+        updates = [
+            {"row_id": row_id, "value": transform(value)}
+            for row_id, value in batch
+        ]
+        conn.execute(
+            sa.update(rows)
+            .where(rows.c.id == sa.bindparam("row_id"))
+            .values({target: sa.bindparam("value")}),
+            updates,
+        )
         last = batch[-1][0]
 
 
@@ -53,6 +63,7 @@ def _pack_evaluations():
         ), {"last": last, "limit": _BATCH}).mappings().all()
         if not batch:
             return
+        prepared = []
         for row in batch:
             fields = dict(row)
             row_id = fields.pop("id")
@@ -62,21 +73,51 @@ def _pack_evaluations():
             fingerprint = codec.fingerprint_bytes(codec.evaluation_fingerprint(
                 position_fen=fen, pv=" ".join(codec.unpack_pv(packed)), **fields,
             ))
-            if fingerprint != old_fingerprint:
-                keep_id = conn.scalar(sa.select(evaluations.c.id).where(
-                    evaluations.c.fingerprint == fingerprint,
-                ))
-                if keep_id is not None:
-                    # The canonical digest already exists. Redirect its references
-                    # before removing the duplicate so no move loses its evaluation.
-                    for table, column in _EVALUATION_REFS:
-                        refs = sa.table(table, sa.column(column, sa.Integer))
-                        conn.execute(refs.update().where(refs.c[column] == row_id).values({column: keep_id}))
-                    conn.execute(evaluations.delete().where(evaluations.c.id == row_id))
-                    continue
-            conn.execute(evaluations.update().where(evaluations.c.id == row_id).values(
-                pv_packed=packed, fingerprint=fingerprint,
-            ))
+            prepared.append((row_id, old_fingerprint, packed, fingerprint))
+
+        changed = {
+            fingerprint
+            for _row_id, old_fingerprint, _packed, fingerprint in prepared
+            if fingerprint != old_fingerprint
+        }
+        canonical = {}
+        if changed:
+            canonical = {
+                fingerprint: row_id
+                for row_id, fingerprint in conn.execute(sa.select(
+                    evaluations.c.id, evaluations.c.fingerprint,
+                ).where(evaluations.c.fingerprint.in_(changed))).all()
+            }
+
+        reference_updates = {key: [] for key in _EVALUATION_REFS}
+        updates = []
+        deletes = []
+        for row_id, old_fingerprint, packed, fingerprint in prepared:
+            keep_id = None if fingerprint == old_fingerprint else canonical.get(fingerprint)
+            if keep_id is not None:
+                # The canonical digest already exists. Redirect its references
+                # before removing the duplicate so no move loses its evaluation.
+                for key in _EVALUATION_REFS:
+                    reference_updates[key].append({"keep": keep_id, "drop": row_id})
+                deletes.append({"row_id": row_id})
+                continue
+            canonical[fingerprint] = row_id
+            updates.append({"row_id": row_id, "packed": packed, "fingerprint": fingerprint})
+
+        for (table, column), params in reference_updates.items():
+            if params:
+                conn.execute(sa.text(
+                    f"UPDATE {table} SET {column} = :keep WHERE {column} = :drop"
+                ), params)
+        if updates:
+            conn.execute(
+                evaluations.update()
+                .where(evaluations.c.id == sa.bindparam("row_id"))
+                .values(pv_packed=sa.bindparam("packed"), fingerprint=sa.bindparam("fingerprint")),
+                updates,
+            )
+        if deletes:
+            conn.execute(evaluations.delete().where(evaluations.c.id == sa.bindparam("row_id")), deletes)
         last = batch[-1]["id"]
 
 

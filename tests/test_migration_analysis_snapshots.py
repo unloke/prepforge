@@ -130,3 +130,70 @@ def test_pv_packing_refreshes_fingerprints_and_remaps_duplicates(migrated):
         assert conn.execute(sa.text(
             "SELECT score_cp FROM engine_evaluations ORDER BY score_cp",
         )).scalars().all() == [875, 900]
+
+
+def test_large_position_and_pv_packing_batches_driver_calls(tmp_path, monkeypatch):
+    """The production migration must not need one network round trip per row."""
+    db_url = f"sqlite:///{(tmp_path / 'packing.sqlite3').as_posix()}"
+    engine = sa.create_engine(db_url)
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    get_settings.cache_clear()
+    cfg = Config("alembic.ini")
+    command.upgrade(cfg, "a1c3e5f7b9d2")
+
+    count = 1201
+    positions = []
+    evaluations = []
+    for row_id in range(1, count + 1):
+        fen = f"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 {row_id}"
+        pv = "e2e4 e7e5"
+        fingerprint = codec.fingerprint_bytes(codec.evaluation_fingerprint(
+            position_fen=fen,
+            engine="stockfish",
+            depth=12,
+            nodes=-1,
+            time_ms=-1,
+            score_cp=25,
+            mate_in=None,
+            best_move_uci="e2e4",
+            pv=pv,
+            wdl_win=None,
+            wdl_draw=None,
+            wdl_loss=None,
+        ))
+        positions.append({"id": row_id, "fen": fen})
+        evaluations.append({
+            "id": row_id,
+            "position_id": row_id,
+            "fingerprint": fingerprint,
+        })
+    with engine.begin() as conn:
+        conn.execute(sa.text("INSERT INTO positions (id, fen) VALUES (:id, :fen)"), positions)
+        conn.execute(sa.text(
+            "INSERT INTO engine_evaluations"
+            " (id, position_id, engine, depth, nodes, time_ms, score_cp, best_move_uci, pv, fingerprint)"
+            " VALUES (:id, :position_id, 'stockfish', 12, -1, -1, 25, 'e2e4', 'e2e4 e7e5', :fingerprint)"
+        ), evaluations)
+
+    calls = {"positions": [], "engine_evaluations": []}
+
+    def collect(conn, cursor, statement, parameters, context, executemany):
+        for table in calls:
+            if statement.startswith(f"UPDATE {table} SET"):
+                size = len(parameters) if executemany else 1
+                calls[table].append((executemany, size))
+
+    sa.event.listen(sa.engine.Engine, "before_cursor_execute", collect)
+    try:
+        command.upgrade(cfg, "head")
+    finally:
+        sa.event.remove(sa.engine.Engine, "before_cursor_execute", collect)
+        get_settings.cache_clear()
+
+    expected_batches = (count + 499) // 500
+    for table in calls:
+        assert len(calls[table]) <= expected_batches
+        assert sum(size for _many, size in calls[table]) == count
+    with engine.connect() as conn:
+        assert conn.scalar(sa.text("SELECT COUNT(*) FROM positions WHERE key IS NOT NULL")) == count
+        assert conn.scalar(sa.text("SELECT COUNT(*) FROM engine_evaluations WHERE length(pv) = 4")) == count
