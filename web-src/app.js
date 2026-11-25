@@ -1112,9 +1112,9 @@ function loadTrainSession() {
   return trainSessionLoading;
 }
 function cancelActiveTrainStart() {
-  if (!appState.trainStarting) return;
-  appState.trainStarting = false; appState.trainStartToken = null;
-  setTrainBanner("move", "", "");
+  if (!appState.trainStarting && !appState.playStarting) return;
+  if (appState.playStarting) { appState.playStartToken = (appState.playStartToken || 0) + 1; appState.playStarting = null; boards.train?.setPremove(null); }
+  appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", "");
   void trainSessionLoading?.then((train) => train.syncTrainControls()).catch(() => {});
 }
 const viaTrainSession = (name) => (...args) => loadTrainSession().then((train) => train[name](...args));

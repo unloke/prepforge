@@ -189,6 +189,41 @@ it("an invalidated rehearsal start cleans up when its Build flush rejects", asyn
 });
 
 
+function practiceHarness(loads, flush = async () => {}) {
+  const appState = { trainMode: "play", playStartToken: 0 };
+  const deps = { appState, START_FEN: "start", playBook: () => "repertoire", selectedTrainRepertoireIds: () => ["r"], trainRowError: vi.fn(), hardFlushBuild: vi.fn(flush),
+    playRepertoireMeta: () => [{ id: "r", color: "white" }], loadPlayRepertoirePayload: loads, normalizePlayRepertoire: (payload) => ({ id: payload.repertoire_id, rootId: "root" }),
+    playCursorsAtFen: () => ({ r: ["root"] }), resolvePlayColor: () => "white", playPickerColor: () => "white", boardInfo: vi.fn(async () => ({ fen: "start", legal_moves: [] })), effectiveMaiaRating: () => 1500,
+    boards: { train: { setOrientation: vi.fn() } }, paintPlayPosition: vi.fn(), sideToMoveFromFen: () => "white", localPremoveMoves: () => [], playBookLabel: () => "Repertoire",
+    renderPlayTrail: vi.fn(), syncTrainSessionControls: vi.fn(), getSharedMaia3Provider: () => ({ warmup: async () => {} }), playOpponentReply: vi.fn(async () => {}) };
+  return { appState, deps, run: compile("async function startPlaySession(", deps) };
+}
+
+it("a canceled Practice start cannot adopt its tree over a replacement start", async () => {
+  const first = deferred(), second = deferred();
+  const loads = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+  const { appState, run } = practiceHarness(loads);
+  const stale = run();
+  await vi.waitFor(() => expect(loads).toHaveBeenCalledTimes(1));
+  appState.playStartToken += 1;
+  const replacement = run();
+  await vi.waitFor(() => expect(loads).toHaveBeenCalledTimes(2));
+  first.resolve({ repertoire_id: "r" }); expect(await stale).toBe(false); expect(appState.play).toBeUndefined();
+  second.resolve({ repertoire_id: "r" }); expect(await replacement).toBe(true);
+  expect(appState.play).toMatchObject({ active: true, book: "repertoire" });
+});
+
+it("a canceled Practice start does not paint a stale Build flush failure", async () => {
+  const flush = deferred();
+  const { appState, deps, run } = practiceHarness(vi.fn(), () => flush.promise);
+  const attempt = run();
+  await vi.waitFor(() => expect(deps.hardFlushBuild).toHaveBeenCalled());
+  appState.playStartToken += 1;
+  flush.reject(new Error("offline")); expect(await attempt).toBe(false);
+  expect(deps.trainRowError).not.toHaveBeenCalled();
+});
+
+
 it("Scout bulk counts only confirmed complete lines and continues after failures", async () => {
   const scoutSource = readFileSync(new URL("./views/scout.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   // Private view functions are indented inside createScoutView.

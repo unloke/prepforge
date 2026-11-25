@@ -532,7 +532,7 @@ async function startPlaySession({
     try {
       await hardFlushBuild();
     } catch (error) {
-      trainRowError("play", error.message);
+      if (isCurrentStart()) trainRowError("play", error.message);
       return false;
     }
     try {

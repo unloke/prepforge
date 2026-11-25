@@ -70,15 +70,32 @@ describe("Train entry navigation ordering", () => {
   it("navigation cancellation clears the transient start and repaints Home immediately", async () => {
     const start = source.indexOf("function cancelActiveTrainStart(");
     const body = source.slice(start, source.indexOf("\n}\n", start) + 2);
-    const appState = { trainStarting: true, trainStartToken: {} };
+    const appState = { trainStarting: true, trainStartToken: {}, playStarting: Promise.resolve(), playStartToken: 7 };
     const train = { syncTrainControls: vi.fn() };
     const setTrainBanner = vi.fn();
-    const cancel = new Function("appState", "setTrainBanner", "trainSessionLoading", `${body}; return cancelActiveTrainStart;`)(appState, setTrainBanner, Promise.resolve(train));
+    const boards = { train: { setPremove: vi.fn() } };
+    const cancel = new Function("appState", "setTrainBanner", "trainSessionLoading", "boards", `${body}; return cancelActiveTrainStart;`)(appState, setTrainBanner, Promise.resolve(train), boards);
     cancel();
     expect(appState.trainStarting).toBe(false);
     expect(appState.trainStartToken).toBeNull();
+    expect(appState.playStarting).toBeNull();
+    expect(appState.playStartToken).toBe(8);
+    expect(boards.train.setPremove).toHaveBeenCalledWith(null);
     expect(setTrainBanner).toHaveBeenCalledWith("move", "", "");
     await vi.waitFor(() => expect(train.syncTrainControls).toHaveBeenCalled());
+  });
+
+  it("navigation cancellation leaves an already established Practice game alone", () => {
+    const start = source.indexOf("function cancelActiveTrainStart(");
+    const body = source.slice(start, source.indexOf("\n}\n", start) + 2);
+    const play = { active: true };
+    const appState = { play, trainStarting: false, playStarting: null, playStartToken: 3 };
+    const train = { syncTrainControls: vi.fn() };
+    const cancel = new Function("appState", "setTrainBanner", "trainSessionLoading", "boards", `${body}; return cancelActiveTrainStart;`)(appState, vi.fn(), Promise.resolve(train), { train: { setPremove: vi.fn() } });
+    cancel();
+    expect(appState.play).toBe(play);
+    expect(appState.playStartToken).toBe(3);
+    expect(train.syncTrainControls).not.toHaveBeenCalled();
   });
 
   it("scoped popstate entries use the retryable Train entry path", () => {
