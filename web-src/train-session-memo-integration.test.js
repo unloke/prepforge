@@ -7,11 +7,15 @@ import { smartResult } from "./train-result.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
+function cancelStaleTrainStartSource() {
+  const start = source.indexOf("function cancelStaleTrainStart(");
+  return source.slice(start, source.indexOf("\n", start) + 1);
+}
 function compile(marker, deps) {
   const start = source.indexOf(marker);
   if (start < 0) throw new Error(`not found: ${marker}`);
   const end = source.indexOf("\n}\n", start) + 2;
-  return new Function(...Object.keys(deps), `let smartStartSeq = 0; return (${source.slice(start, end)});`)(...Object.values(deps));
+  return new Function(...Object.keys(deps), `let smartStartSeq = 0; ${cancelStaleTrainStartSource()}; return (${source.slice(start, end)});`)(...Object.values(deps));
 }
 function deferred() {
   let resolve;

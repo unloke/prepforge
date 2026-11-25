@@ -41,7 +41,7 @@ it("every Home row puts its action in the same place; only the due queue is fill
   for (const [i, row] of rows.entries()) {
     // The action is a direct child of the row (not of an actions wrapper); the
     // options follow it.
-    const fill = i === 0 ? "btn primary train-row-go" : "btn train-row-go";
+    const fill = i === 0 ? "btn primary train-row-go skeleton-control" : "btn train-row-go skeleton-control";
     expect(row).toMatch(new RegExp(`</div>\\s*<button class="${fill}"`));
     expect(row.indexOf("train-row-go")).toBeLessThan(row.indexOf("train-row-opts"));
   }

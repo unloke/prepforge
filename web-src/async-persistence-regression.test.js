@@ -10,6 +10,10 @@ import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
 const source = appSource();
+function cancelStaleTrainStartSource() {
+  const start = source.indexOf("function cancelStaleTrainStart(");
+  return source.slice(start, source.indexOf("\n", start) + 1);
+}
 function compile(marker, deps, prelude = "", code = source) {
   deps = { html, ...deps };
   const start = code.indexOf(marker);
@@ -129,13 +133,94 @@ it("a legacy Train start cannot overwrite a newer session", async () => {
     postJson: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     boards: {}, document: { getElementById: () => ({}) }, renderTrainStats: vi.fn(),
     renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn(), reveal: (el) => { el.hidden = false; } };
-  const run = compile("async function startTraining(", deps, "let smartStartSeq = 0");
+  const run = compile("async function startTraining(", deps, "let smartStartSeq = 0; " + cancelStaleTrainStartSource());
   const a = run("all_lines"); await vi.waitFor(() => expect(deps.postJson).toHaveBeenCalledTimes(1));
   const b = run("all_lines"); await vi.waitFor(() => expect(deps.postJson).toHaveBeenCalledTimes(2));
   second.resolve({ session_id: "new", prompt: {}, lines: [] }); await b;
   first.resolve({ session_id: "old", prompt: {}, lines: [] }); await a;
   expect(appState.training.session_id).toBe("new");
   expect(deps.renderTraining).toHaveBeenCalledTimes(1);
+});
+
+function rehearsalHarness(flush) {
+  const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r", trainStarting: true };
+  const deps = { appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
+    setTrainBanner: vi.fn(), trainStatsReset: vi.fn(), isNothingToTrainError: () => false,
+    clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setSmartPanelsHidden: vi.fn(),
+    setStatus: vi.fn(), hardFlushBuild: vi.fn(() => flush.promise), setStatusError: vi.fn(),
+    restoreRehearsal: vi.fn(() => null), postJson: vi.fn(),
+    boards: {}, document: { getElementById: () => ({}) }, renderTrainStats: vi.fn(),
+    renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn(), reveal: (el) => { el.hidden = false; } };
+  const run = compile("async function startTraining(", deps, "let smartStartSeq = 0; " + cancelStaleTrainStartSource());
+  return { appState, deps, run };
+}
+
+it("an invalidated rehearsal start cleans up when its Build flush resolves", async () => {
+  const flush = deferred();
+  const { appState, deps, run } = rehearsalHarness(flush);
+  const token = {}; let active = true;
+  appState.trainStartToken = token;
+  const attempt = run("all_lines", { entryToken: token, isCurrent: () => active });
+  await vi.waitFor(() => expect(deps.hardFlushBuild).toHaveBeenCalled());
+  active = false;
+  flush.resolve();
+  await attempt;
+  expect(deps.postJson).not.toHaveBeenCalled();
+  expect(appState.trainStarting).toBe(false);
+  expect(appState.trainStartToken).toBeNull();
+  expect(deps.trainRowError).not.toHaveBeenCalled();
+});
+
+it("an invalidated rehearsal start cleans up when its Build flush rejects", async () => {
+  const flush = deferred();
+  const { appState, deps, run } = rehearsalHarness(flush);
+  const token = {}; let active = true;
+  appState.trainStartToken = token;
+  const attempt = run("all_lines", { entryToken: token, isCurrent: () => active });
+  await vi.waitFor(() => expect(deps.hardFlushBuild).toHaveBeenCalled());
+  active = false;
+  flush.reject(new Error("offline"));
+  await attempt;
+  expect(deps.postJson).not.toHaveBeenCalled();
+  expect(appState.trainStarting).toBe(false);
+  expect(appState.trainStartToken).toBeNull();
+  expect(deps.trainRowError).not.toHaveBeenCalled();
+  expect(deps.syncTrainSessionControls).toHaveBeenCalled();
+});
+
+
+function practiceHarness(loads, flush = async () => {}) {
+  const appState = { trainMode: "play", playStartToken: 0 };
+  const deps = { appState, START_FEN: "start", playBook: () => "repertoire", selectedTrainRepertoireIds: () => ["r"], trainRowError: vi.fn(), hardFlushBuild: vi.fn(flush),
+    playRepertoireMeta: () => [{ id: "r", color: "white" }], loadPlayRepertoirePayload: loads, normalizePlayRepertoire: (payload) => ({ id: payload.repertoire_id, rootId: "root" }),
+    playCursorsAtFen: () => ({ r: ["root"] }), resolvePlayColor: () => "white", playPickerColor: () => "white", boardInfo: vi.fn(async () => ({ fen: "start", legal_moves: [] })), effectiveMaiaRating: () => 1500,
+    boards: { train: { setOrientation: vi.fn() } }, paintPlayPosition: vi.fn(), sideToMoveFromFen: () => "white", localPremoveMoves: () => [], playBookLabel: () => "Repertoire",
+    renderPlayTrail: vi.fn(), syncTrainSessionControls: vi.fn(), getSharedMaia3Provider: () => ({ warmup: async () => {} }), playOpponentReply: vi.fn(async () => {}) };
+  return { appState, deps, run: compile("async function startPlaySession(", deps) };
+}
+
+it("a canceled Practice start cannot adopt its tree over a replacement start", async () => {
+  const first = deferred(), second = deferred();
+  const loads = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+  const { appState, run } = practiceHarness(loads);
+  const stale = run();
+  await vi.waitFor(() => expect(loads).toHaveBeenCalledTimes(1));
+  appState.playStartToken += 1;
+  const replacement = run();
+  await vi.waitFor(() => expect(loads).toHaveBeenCalledTimes(2));
+  first.resolve({ repertoire_id: "r" }); expect(await stale).toBe(false); expect(appState.play).toBeUndefined();
+  second.resolve({ repertoire_id: "r" }); expect(await replacement).toBe(true);
+  expect(appState.play).toMatchObject({ active: true, book: "repertoire" });
+});
+
+it("a canceled Practice start does not paint a stale Build flush failure", async () => {
+  const flush = deferred();
+  const { appState, deps, run } = practiceHarness(vi.fn(), () => flush.promise);
+  const attempt = run();
+  await vi.waitFor(() => expect(deps.hardFlushBuild).toHaveBeenCalled());
+  appState.playStartToken += 1;
+  flush.reject(new Error("offline")); expect(await attempt).toBe(false);
+  expect(deps.trainRowError).not.toHaveBeenCalled();
 });
 
 

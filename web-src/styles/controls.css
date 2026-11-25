@@ -827,9 +827,24 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* Mask text inside its real typographic box; loading does not invent a second layout. */
 /* Keep lazy-loaded view typography from exposing placeholder text. */
-.skeleton-text.skeleton-text { position: relative; color: transparent; -webkit-text-fill-color: transparent; user-select: none; }
-.skeleton-text > * { visibility: hidden; }
-.skeleton-text::after { content: ""; position: absolute; inset-inline: 0; top: 50%; height: 0.8em; max-height: 20px; transform: translateY(-50%); border-radius: 5px; background: color-mix(in srgb, var(--text) 8%, var(--panel)); animation: skeleton-pulse 1.8s ease-in-out infinite alternate; }
+.skeleton-text.skeleton-text, .skeleton-control { position: relative; color: transparent; }
+.skeleton-text.skeleton-text { -webkit-text-fill-color: transparent; user-select: none; }
+.skeleton-text > *, .skeleton-control > * { visibility: hidden; }
+.skeleton-text::after, .skeleton-control::after { content: ""; position: absolute; border-radius: 5px; background: color-mix(in srgb, var(--text) 8%, var(--panel)); animation: skeleton-pulse 1.8s ease-in-out infinite alternate; }
+.skeleton-text::after { inset-inline: 0; top: 50%; height: 0.8em; max-height: 20px; transform: translateY(-50%); }
 /* The content box reserves layout; loading hides decorative borders and tracks. */
 .skeleton-text.skeleton-text { background: none; border-color: transparent; box-shadow: none; }
+.skeleton-number { display: inline-block; }
+.skeleton-number::after { max-height: 0.78em; border-radius: 7px; }
 .skeleton-bar, .skeleton-dot { background: color-mix(in srgb, var(--text) 8%, var(--panel)); animation-duration: 1.8s; }
+
+/* A control whose label depends on data keeps its final chrome and footprint;
+   only the unknown label is masked. Unlike skeleton-text this is for real
+   buttons/chips, so their border and fill stay in place. */
+.skeleton-control::after {
+  left: 50%;
+  top: 50%;
+  width: clamp(32px, 56%, 80px);
+  height: min(0.8em, 14px);
+  translate: -50% -50%;
+}

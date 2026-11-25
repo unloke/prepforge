@@ -17,7 +17,7 @@ function bodyOf(marker) {
 }
 
 describe("editRepertoire load isolation", () => {
-  const edit = bodyOf("async function editRepertoire(repertoireId, nodeId = null) {");
+  const edit = bodyOf("async function editRepertoire(");
 
   it("advances the load sequence before it can throw, so the previous load is stale at once", () => {
     const mark = edit.indexOf("const loadSeq = ++buildLoadSeq;");

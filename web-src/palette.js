@@ -1,6 +1,7 @@
 import { html } from "./html.js";
 import { appState } from "./core/state.js";
-import { activeViewName, api } from "./core/api.js";
+import { activeViewName, api, currentOwnerId } from "./core/api.js";
+import { acceptRepertoireListing, fetchRepertoireListing } from "./repertoire-listing.js";
 import { isBuildReadOnly } from "./build-entry.js";
 import { openModal } from "./core/dialog.js";
 import { buildPaletteItems, filterPaletteItems, paletteScrollTop, renderPaletteItems } from "./command-palette.js";
@@ -92,9 +93,13 @@ export function openPalette() {
 async function refreshPaletteRepertoires() {
   if (!appState.signedIn) return;
   try {
-    const payload = await api("/api/repertoires");
+    const listing = fetchRepertoireListing(api, currentOwnerId(), appState.ownerGeneration || 0);
+    const payload = await listing;
+    if (!payload || !acceptRepertoireListing(listing, currentOwnerId(), appState.ownerGeneration || 0)) return;
     const repertoires = payload.repertoires || [];
     appState.repertoireList = repertoires;
+    appState.sharedRepertoireList = payload.shared || [];
+    appState.repertoireListGeneration = appState.ownerGeneration || 0;
     if (!paletteIsOpen()) return;
     // A query typed while the fetch was in flight must survive the refresh.
     const input = document.getElementById("palette-input");
@@ -165,8 +170,7 @@ async function runPaletteItem(item) {
   }
   if (item.action === "feeling-lucky") {
     dismissTransientOverlays();
-    await openTrain({ mode: "play", autostart: false });
-    onFeelingLucky();
+    if (await openTrain({ mode: "play", autostart: false })) onFeelingLucky();
     return;
   }
   if (item.action === "analyze") {

@@ -1,6 +1,6 @@
 // Phone Home: the opponent cards and the Drill / Practice panes.
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { paintTrainPane, setTrainPane, trainBotsHtml, trainPane } from "./train-bots.js";
+import { bindTrainPhone, paintTrainPane, setTrainPane, trainBotsHtml, trainPane } from "./train-bots.js";
 
 const usable = { maia: true, explorer: false, repertoire: true };
 const reasons = { explorer: "Link Lichess", repertoire: "Sign in" };
@@ -16,7 +16,7 @@ it("renders one card per opponent, the picked one pressed and an unusable one di
 });
 
 // A plain fake DOM: the view and its two tab buttons, and a localStorage.
-let view, tabs;
+let view, tabs, botsBox, tabsBox;
 beforeEach(() => {
   const store = new Map();
   vi.stubGlobal("localStorage", { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), clear: () => store.clear() });
@@ -24,9 +24,15 @@ beforeEach(() => {
     const attrs = {}; const cls = new Set();
     return { dataset: { pane }, setAttribute: (k, v) => { attrs[k] = v; }, getAttribute: (k) => attrs[k] ?? null, classList: { toggle: (c, on) => (on ? cls.add(c) : cls.delete(c)), contains: (c) => cls.has(c) } };
   };
+  const box = () => ({ listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; } });
   view = { dataset: {} };
   tabs = [tab("drill"), tab("play")];
-  vi.stubGlobal("document", { getElementById: (id) => (id === "view-train" ? view : null), querySelectorAll: () => tabs });
+  botsBox = box();
+  tabsBox = box();
+  vi.stubGlobal("document", {
+    getElementById: (id) => (id === "view-train" ? view : id === "train-bots" ? botsBox : id === "train-tabs" ? tabsBox : null),
+    querySelectorAll: () => tabs,
+  });
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -41,4 +47,57 @@ it("the pane defaults to Drill, persists a switch and marks its tab", () => {
   setTrainPane("anything");
   paintTrainPane();
   expect(view.dataset.trainPane).toBe("drill");
+});
+
+// A tap on the tab strip, as the container's click listener receives it.
+function tapTab(pane) {
+  tabsBox.listeners.click({ target: { closest: (sel) => (sel === ".seg-btn" ? { dataset: { pane } } : null) } });
+}
+
+it("switching tabs reports the pane left and the pane entered", () => {
+  const onPane = vi.fn();
+  bindTrainPhone(vi.fn(), onPane);
+  tapTab("play");
+  expect(onPane).toHaveBeenLastCalledWith("drill", "play");
+  tapTab("drill");
+  expect(onPane).toHaveBeenLastCalledWith("play", "drill");
+  expect(onPane).toHaveBeenCalledTimes(2);
+});
+
+it("uses the visible pane when storage refuses writes", () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => null,
+    setItem: () => { throw new Error("quota"); },
+    clear: () => {},
+  });
+  const onPane = vi.fn();
+  bindTrainPhone(vi.fn(), onPane);
+
+  tapTab("play");
+  expect(view.dataset.trainPane).toBe("play");
+  tapTab("drill");
+
+  expect(view.dataset.trainPane).toBe("drill");
+  expect(onPane).toHaveBeenCalledTimes(2);
+  expect(onPane).toHaveBeenLastCalledWith("play", "drill");
+  tapTab("drill");
+  expect(onPane).toHaveBeenCalledTimes(2);
+});
+
+it("retapping the active tab is not a switch and reports nothing", () => {
+  const onPane = vi.fn();
+  bindTrainPhone(vi.fn(), onPane);
+  tapTab("drill");
+  tapTab("play");
+  onPane.mockClear();
+  tapTab("play");
+  expect(onPane).not.toHaveBeenCalled();
+});
+
+it("a tap outside a tab is ignored", () => {
+  const onPane = vi.fn();
+  bindTrainPhone(vi.fn(), onPane);
+  tabsBox.listeners.click({ target: { closest: () => null } });
+  expect(onPane).not.toHaveBeenCalled();
+  expect(trainPane()).toBe("drill");
 });

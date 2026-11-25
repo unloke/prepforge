@@ -44,13 +44,13 @@ describe("Again keeps the finished run's scope", () => {
   it("restarts a one-repertoire queue on that repertoire", async () => {
     const { deps } = setup({ currentView: "train", trainMode: "smart", trainScope: { repertoireId: REP, label: "Caro-Kann" }, trainResult: { mode: "smart" } });
     await doc.getElementById("train-summary-new").click();
-    await vi.waitFor(() => expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: REP, targetNodeIds: [] }));
+    await vi.waitFor(() => expect(deps.startTraining).toHaveBeenCalledWith("smart", expect.objectContaining({ fresh: false, repertoireId: REP, targetNodeIds: [] })));
   });
 
   it("leaves an all-repertoires queue on all of them", async () => {
     const { deps } = setup({ currentView: "train", trainMode: "smart", trainScope: { repertoireId: null, label: "All repertoires" }, trainResult: { mode: "smart" } });
     await doc.getElementById("train-summary-new").click();
-    await vi.waitFor(() => expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: null, targetNodeIds: [] }));
+    await vi.waitFor(() => expect(deps.startTraining).toHaveBeenCalledWith("smart", expect.objectContaining({ fresh: false, repertoireId: null, targetNodeIds: [] })));
   });
 
   it("rehearses the same repertoire again", async () => {

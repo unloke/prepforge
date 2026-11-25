@@ -181,7 +181,7 @@ describe("Recall source ownership", () => {
 describe("Boot route lifecycle", () => {
   it("a repertoire command picked during boot counts as navigation despite deferred URL sync", async () => {
     const appState = { currentView: "dashboard", signedIn: true };
-    const deps = { appState, paintBuildSkeleton, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
+    const deps = { appState, invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), paintBuildSkeleton, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
       hardFlushBuild: async () => {}, api: async () => ({ repertoire_id: "picked", nodes: [] }), hydrateBuild: vi.fn(),
       ensureMoveTreeRenderer: async () => {},
       loadReturnState: () => null, syncWorkspaceUrl: vi.fn(), updateBuildReadOnlyUi: vi.fn(), setStatusError: vi.fn(),
@@ -205,7 +205,7 @@ describe("Boot route lifecycle", () => {
   it("a page picked while the URL repertoire loads supersedes that restore", async () => {
     const rep = deferred();
     const appState = { currentView: "dashboard", signedIn: true };
-    const deps = { appState, api: () => rep.promise, hydrateBuild: vi.fn(), loadReturnState: () => null,
+    const deps = { appState, invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), api: () => rep.promise, hydrateBuild: vi.fn(), loadReturnState: () => null,
       syncWorkspaceUrl: vi.fn(), window: { location: { href: "http://x/#/build?rep=old" } }, parseWorkspaceLocation };
     const start = source.indexOf("function switchView(");
     const navigation = source.slice(start, source.indexOf("  if (appState.currentView", start));

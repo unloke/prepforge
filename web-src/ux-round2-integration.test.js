@@ -3,6 +3,7 @@ import { analysisHistoryResult } from "./analyze-orient.js";
 import { describe, expect, it, vi } from "vitest";
 import { normalizeSelection, selectionChips } from "./views/shared/source-composer.js";
 import { appSource } from "./test-app-source.js";
+import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
 
 const source = appSource();
 function compile(marker, deps, prelude = "") {
@@ -160,7 +161,7 @@ describe("Navigation during boot", () => {
       parseWorkspaceLocation: vi.fn(() => ({ view: "teams" })), loadReturnState: vi.fn(),
       window: { location: { href: "http://x/#/teams" } },
     };
-    const restore = compile("async function restoreWorkspaceLocation(", deps, "let navigatedDuringBoot = false, workspaceNavigationSeq = 0;");
+    const restore = compile("async function restoreWorkspaceLocation(", deps, "let navigatedDuringBoot = false, workspaceNavigationSeq = 0, trainRouteSeq = 0, deferTrainEntry = false;");
     await restore();
     expect(deps.switchView).toHaveBeenCalledWith("teams", { fromUrl: true });
   });

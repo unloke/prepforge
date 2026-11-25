@@ -15,10 +15,21 @@ import { confirmAbandonGame } from "../train-play.js";
 export function fakeElement(id) {
   const el = {
     id, hidden: false, textContent: "", innerHTML: "", dataset: {}, style: {}, disabled: false,
-    classList: { add() {}, remove() {}, toggle() {} },
+    classList: {
+      add(...names) { for (const name of names) el.classes.add(name); },
+      remove(...names) { for (const name of names) el.classes.delete(name); },
+      toggle(name, force) {
+        const on = force === undefined ? !el.classes.has(name) : !!force;
+        if (on) el.classes.add(name);
+        else el.classes.delete(name);
+        return on;
+      },
+      contains(name) { return el.classes.has(name); },
+    },
+    classes: new Set(),
     listeners: {}, attributes: {},
     getAnimations: () => [],
-    setAttribute(name, value) { el.attributes[name] = String(value); }, getAttribute(name) { return el.attributes[name] ?? null; }, focus() {},
+    setAttribute(name, value) { el.attributes[name] = String(value); }, getAttribute(name) { return el.attributes[name] ?? null; }, removeAttribute(name) { delete el.attributes[name]; }, focus() {},
     addEventListener(type, fn) { el.listeners[type] = fn; },
     click() { return el.listeners.click?.({ currentTarget: el, target: el }); },
     querySelector: () => el.child || (el.child = fakeElement(`${id} > *`)),
@@ -26,12 +37,29 @@ export function fakeElement(id) {
   return el;
 }
 
+const STATIC_SKELETON_CONTROLS = new Set([
+  "start-train", "train-due-scope", "start-rehearse", "train-rehearse-scope",
+  "start-play", "train-play-book", "feeling-lucky",
+]);
+
 export function fakeDocument() {
   const els = new Map();
   return {
     els,
     getElementById(id) {
-      if (!els.has(id)) els.set(id, fakeElement(id));
+      if (!els.has(id)) {
+        const el = fakeElement(id);
+        if (STATIC_SKELETON_CONTROLS.has(id)) {
+          el.classes.add("skeleton-control");
+          el.attributes.inert = "";
+        }
+        if (id === "train-home") {
+          el.classes.add("is-loading");
+          el.attributes["aria-busy"] = "true";
+        }
+        if (id === "train-due-next") el.hidden = true;
+        els.set(id, el);
+      }
       return els.get(id);
     },
     querySelector: () => null,
@@ -44,8 +72,17 @@ export function fakeDocument() {
 // registered as fakes, and the core/api, train-play and train-session mocks the
 // test file declares (see the top of this file) given their defaults.
 export function setup(state = {}) {
+  if (!globalThis.localStorage) {
+    const memory = new Map();
+    vi.stubGlobal("localStorage", {
+      getItem: (key) => memory.get(key) ?? null,
+      setItem: (key, value) => memory.set(key, String(value)),
+      removeItem: (key) => memory.delete(key),
+      clear: () => memory.clear(),
+    });
+  }
   for (const key of Object.keys(appState)) delete appState[key];
-  Object.assign(appState, { signedIn: true, accountUserId: "u1", currentView: "dashboard", repertoireList: [
+  Object.assign(appState, { signedIn: true, accountUserId: "u1", currentView: "dashboard", ownerGeneration: 7, repertoireListGeneration: 7, trainHomeReady: false, repertoireList: [
     { id: "r1", name: "Italian", color: "white", is_active: true, health: { trainable: 4 } },
   ], sharedRepertoireList: [{ id: "s1", name: "Coach QGD", color: "black" }], ...state });
   vi.clearAllMocks();
@@ -53,7 +90,7 @@ export function setup(state = {}) {
   localDateString.mockReturnValue("2026-10-22");
   confirmAbandonGame.mockResolvedValue(true);
   const switchView = vi.fn((view) => { appState.currentView = view; });
-  provideApp({ switchView, lichessAccounts: () => [], requireSignIn: vi.fn(), flushTrainSync: vi.fn(async () => true), syncWorkspaceUrl: vi.fn() });
+  provideApp({ switchView, lichessAccounts: () => [], requireSignIn: vi.fn(), flushTrainSync: vi.fn(async () => true), setTrainBanner: vi.fn(), syncWorkspaceUrl: vi.fn() });
   const deps = { api, localDateString, confirmAbandonGame, switchView, ...session };
   createTrainHome();
   return { appState, deps };

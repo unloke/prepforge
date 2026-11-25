@@ -4,8 +4,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDocument, setup } from "./train-home.fixture.js";
 import {
-  createTrainHome, dueIn, dueMeta, dueStartState, outlookHtml, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
+  createTrainHome, dueIn, dueMeta, dueStartState, loadTrainRepertoireOptions, outlookHtml, outlookShape, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
 } from "./train-home.js";
+import { readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
+import { refreshRepertoireListing } from "../repertoire-listing.js";
 import { saveRun } from "../train-history.js";
 import { provideApp } from "../core/app-context.js";
 import { formatWorkspaceHash, workspaceLocationFromState } from "../workspace-url.js";
@@ -51,7 +53,7 @@ describe("openTrain", () => {
     await createTrainHome(deps).openTrain({ mode: "smart", repertoireId: "r1" });
     expect(appState.trainScope).toEqual({ repertoireId: "r1", label: "Italian" });
     expect(deps.switchView).toHaveBeenCalledWith("train");
-    expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: "r1", targetNodeIds: [] });
+    expect(deps.startTraining).toHaveBeenCalledWith("smart", expect.objectContaining({ fresh: false, repertoireId: "r1", targetNodeIds: [] }));
     expect(doc.getElementById("view-train").dataset.trainScreen).toBe("session");
     expect(doc.getElementById("train-scope-chip").textContent).toBe("Italian");
   });
@@ -61,7 +63,23 @@ describe("openTrain", () => {
     await createTrainHome(deps).openTrain({ mode: "smart" });
     expect(appState.trainScope.repertoireId).toBeNull();
     expect(trainScopeLabel(appState)).toBe("All repertoires");
-    expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: null, targetNodeIds: [] });
+    expect(deps.startTraining).toHaveBeenCalledWith("smart", expect.objectContaining({ fresh: false, repertoireId: null, targetNodeIds: [] }));
+  });
+
+  it("a guarded route entry does not reopen Train after losing the route", async () => {
+    const { deps } = setup();
+    let current = true;
+    deps.confirmAbandonGame.mockImplementation(async () => { current = false; return true; });
+    await createTrainHome(deps).openTrain({ mode: "smart", repertoireId: "r1", isCurrent: () => current });
+    expect(deps.switchView).not.toHaveBeenCalledWith("train");
+    expect(deps.startTraining).not.toHaveBeenCalled();
+  });
+
+  it("a start begun on Train does not continue after the user leaves", async () => {
+    const { deps } = setup({ currentView: "train" });
+    deps.confirmAbandonGame.mockImplementation(async () => { deps.switchView("games"); return true; });
+    await createTrainHome(deps).openTrain({ mode: "smart", repertoireId: "r1" });
+    expect(deps.startTraining).not.toHaveBeenCalled();
   });
 
   it("a Feeling Lucky game names its source in the scope chip", () => {
@@ -73,7 +91,7 @@ describe("openTrain", () => {
   it("picked targets always build a fresh queue", async () => {
     const { deps } = setup();
     await createTrainHome(deps).openTrain({ mode: "smart", repertoireId: "r1", targets: ["n1", "n2"] });
-    expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: true, repertoireId: "r1", targetNodeIds: ["n1", "n2"] });
+    expect(deps.startTraining).toHaveBeenCalledWith("smart", expect.objectContaining({ fresh: true, repertoireId: "r1", targetNodeIds: ["n1", "n2"] }));
   });
 
   it("a shared repertoire can be rehearsed like an owned one", async () => {
@@ -86,9 +104,30 @@ describe("openTrain", () => {
   it("a live game is only left after the player agrees", async () => {
     const { appState, deps } = setup({ play: { active: true, history: ["e2e4"] }, trainMode: "play" });
     deps.confirmAbandonGame.mockResolvedValueOnce(false);
-    await createTrainHome(deps).openTrain({ mode: "smart" });
+    await expect(createTrainHome(deps).openTrain({ mode: "smart" })).resolves.toBe(false);
     expect(deps.startTraining).not.toHaveBeenCalled();
     expect(appState.play).toEqual({ active: true, history: ["e2e4"] });
+  });
+
+  it("Random position does not start when the player keeps the live game", async () => {
+    const play = { active: true, history: ["e2e4"] };
+    const { appState, deps } = setup({ currentView: "train", play, trainMode: "play" });
+    deps.confirmAbandonGame.mockResolvedValueOnce(false);
+    createTrainHome(deps);
+    await doc.getElementById("feeling-lucky").listeners.click();
+    expect(deps.onFeelingLucky).not.toHaveBeenCalled();
+    expect(deps.startPlaySessionTracked).not.toHaveBeenCalled();
+    expect(appState.play).toBe(play);
+  });
+
+  it("Random position starts after the player leaves the live game", async () => {
+    const play = { active: true, history: ["e2e4"] };
+    const { appState, deps } = setup({ currentView: "train", play, trainMode: "play" });
+    deps.confirmAbandonGame.mockResolvedValueOnce(true);
+    createTrainHome(deps);
+    await doc.getElementById("feeling-lucky").listeners.click();
+    expect(deps.onFeelingLucky).toHaveBeenCalledTimes(1);
+    expect(appState.play).toBeNull();
   });
 
   it("Play starts a game without touching the drill endpoints", async () => {
@@ -111,14 +150,191 @@ describe("‹ Train", () => {
 
   it("keeps a live game when the player says no", async () => {
     const play = { active: true, history: ["e2e4"] };
-    const { appState, deps } = setup({ currentView: "train", trainMode: "play", play });
+    const { appState, deps } = setup({ currentView: "train", trainMode: "play", play, trainEntryVersion: 4 });
+    const flush = vi.fn(async () => true); provideApp({ flushTrainSync: flush });
     deps.confirmAbandonGame.mockResolvedValueOnce(false);
     await createTrainHome(deps).leaveToHome();
     expect(appState.play).toBe(play);
+    expect(appState.trainEntryVersion).toBe(4); expect(flush).not.toHaveBeenCalled(); expect(deps.resetTrainBoardIdle).not.toHaveBeenCalled();
+  });
+
+  it("invalidates a pending start and drops its scoped route", async () => {
+    const { appState, deps } = setup({
+      currentView: "train", trainMode: "smart", trainStarting: true, trainStartToken: {},
+      trainEntryVersion: 4, trainPendingRoute: { repertoireId: "r1", trainMode: "smart" },
+    });
+    await createTrainHome(deps).leaveToHome();
+    expect(appState.trainEntryVersion).toBe(5);
+    expect(appState.trainPendingRoute).toBeUndefined();
+    expect(appState.trainStarting).toBe(false);
+    expect(doc.getElementById("view-train").dataset.trainScreen).toBe("home");
   });
 });
 
 describe("the Due row", () => {
+  it("keeps Home as one skeleton while the repertoire listing is still unknown", async () => {
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    await createTrainHome(deps).paintTrainHome();
+    expect(deps.api).not.toHaveBeenCalled();
+    expect(doc.getElementById("train-home").classList.contains("is-loading")).toBe(true);
+    expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(true);
+    expect(doc.getElementById("start-train").getAttribute("inert")).toBe("");
+    expect(doc.getElementById("start-train").textContent).not.toBe("Open Library");
+    expect(doc.getElementById("train-due-next").hidden).not.toBe(false);
+  });
+
+  it("uses the remembered preview shape while the listing is still unknown", async () => {
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    rememberTrainPreviewShape("u1", null, { outlook: "none", upcoming: 2 });
+    await createTrainHome(deps).paintTrainHome();
+    expect(deps.api).not.toHaveBeenCalled();
+    expect(doc.getElementById("train-outlook").hidden).toBe(true);
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-due-line/g)).toHaveLength(2);
+    expect(doc.getElementById("train-home").classList.contains("is-loading")).toBe(true);
+  });
+
+  it("paints the remembered preview shape as soon as the options load starts", async () => {
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    rememberTrainPreviewShape("u1", null, { outlook: "none", upcoming: 2 });
+    const pending = loadTrainRepertoireOptions();
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-due-line/g)).toHaveLength(2);
+    expect(doc.getElementById("train-outlook").hidden).toBe(true);
+    await pending;
+    expect(deps.api).toHaveBeenCalledWith("/api/repertoires");
+  });
+
+  it("does not let an older shared options response overwrite a newer refresh", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    let resolveOld;
+    let listingCalls = 0;
+    const oldPayload = { repertoires: [{ id: "old", name: "Old repertoire", color: "white", is_active: true }], shared: [] };
+    const newPayload = { repertoires: [{ id: "new", name: "New repertoire", color: "white", is_active: true }], shared: [] };
+    deps.api.mockImplementation((url) => {
+      if (url === "/api/repertoires") {
+        listingCalls += 1;
+        return listingCalls === 1 ? new Promise((done) => { resolveOld = done; }) : Promise.resolve(newPayload);
+      }
+      return Promise.resolve({ next_session: { cards: 1, new: 1 }, outlook: { now: 1, today: 1, week: 1 } });
+    });
+    const load = loadTrainRepertoireOptions();
+    await refreshRepertoireListing(deps.api, "u1", 7).then((payload) => {
+      appState.repertoireList = payload.repertoires || [];
+      appState.sharedRepertoireList = payload.shared || [];
+      appState.repertoireListGeneration = appState.ownerGeneration || 0;
+    });
+    expect(appState.repertoireList[0].id).toBe("new");
+    resolveOld(oldPayload);
+    await load;
+    expect(appState.repertoireList[0].id).toBe("new");
+  });
+
+  it("does not let a redirected refresh overwrite a newer Train listing", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    const oldRead = new Promise(() => {});
+    let resolveRefresh;
+    const renamedPayload = { repertoires: [{ id: "r1", name: "Audit renamed opening", color: "white", is_active: true }], shared: [] };
+    const stalePayload = { repertoires: [{ id: "r1", name: "Open games — UX branches", color: "white", is_active: true }], shared: [] };
+    let listingCalls = 0;
+    deps.api.mockImplementation((url) => {
+      if (url === "/api/repertoires") {
+        listingCalls += 1;
+        if (listingCalls === 1) return oldRead;
+        if (listingCalls === 2) return new Promise((done) => { resolveRefresh = done; });
+        return Promise.resolve(renamedPayload);
+      }
+      return Promise.resolve({ next_session: { cards: 1, new: 1 }, outlook: { now: 1, today: 1, week: 1 } });
+    });
+    const initialLoad = loadTrainRepertoireOptions();
+    const refresh = refreshRepertoireListing(deps.api, "u1", 7);
+    expect(listingCalls).toBe(2);
+    const newerLoad = loadTrainRepertoireOptions();
+    await newerLoad;
+    expect(appState.repertoireList[0].name).toBe("Audit renamed opening");
+    resolveRefresh(stalePayload);
+    await initialLoad;
+    await refresh.catch(() => {});
+    expect(appState.repertoireList[0].name).toBe("Audit renamed opening");
+  });
+
+  it("does not write a listing issued for a prior owner generation", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    let resolveOld;
+    deps.api.mockImplementation((url) => {
+      if (url === "/api/repertoires") return new Promise((done) => { resolveOld = done; });
+      return Promise.resolve({ next_session: { cards: 1, new: 1 }, outlook: { now: 1, today: 1, week: 1 } });
+    });
+    const load = loadTrainRepertoireOptions();
+    appState.accountUserId = "u2";
+    appState.ownerGeneration = 8;
+    resolveOld({ repertoires: [{ id: "a-only", name: "A account repertoire", color: "white", is_active: true }], shared: [] });
+    await load;
+    expect(appState.repertoireList.some((rep) => rep.id === "a-only")).toBe(false);
+    expect(appState.repertoireListGeneration).not.toBe(8);
+  });
+
+  it("keeps Maia Practice usable while the first listing load is pending", async () => {
+    setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1, playBook: "maia" });
+    const pending = loadTrainRepertoireOptions();
+    await createTrainHome().paintTrainHome();
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBe("");
+    await pending;
+  });
+
+  it("turns a preview 401 into a sign-in action instead of a live Start", async () => {
+    const { deps } = setup();
+    deps.api.mockImplementation((url) => url === "/api/repertoires" ? Promise.resolve({ repertoires: [{ id: "r1", name: "Italian", color: "white", is_active: true }], shared: [] }) : Promise.reject(Object.assign(new Error("unauthorized"), { status: 401, authRequired: true })));
+    await loadTrainRepertoireOptions();
+    await createTrainHome().paintTrainHome();
+    expect(doc.getElementById("start-train").textContent).toBe("Sign in to train");
+    expect(doc.getElementById("start-train").dataset.action).toBe("signin");
+  });
+
+  it("marks a successful options load for this owner generation", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    deps.api.mockResolvedValueOnce({ repertoires: [{ id: "r9", name: "Sicilian" }], shared: [] });
+    await loadTrainRepertoireOptions();
+    expect(appState.repertoireListGeneration).toBe(appState.ownerGeneration);
+    expect(appState.trainRepertoireOptionsError).toBe("");
+    expect(appState.repertoireList[0].name).toBe("Sicilian");
+  });
+
+  it("keeps the listing unknown but honest when options fail", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    deps.api.mockRejectedValueOnce(new Error("network down"));
+    await loadTrainRepertoireOptions();
+    expect(appState.repertoireListGeneration).toBe(-1);
+    expect(appState.trainRepertoireOptionsError).toBe("network down");
+  });
+
+  it("ends a listing failure as a retryable error without locking Practice", async () => {
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1, trainRepertoireOptionsError: "network down" });
+    await createTrainHome(deps).paintTrainHome();
+    expect(deps.api).not.toHaveBeenCalled();
+    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
+    expect(doc.getElementById("train-outlook").getAttribute("aria-busy")).toBe("false");
+    expect(String(doc.getElementById("train-due-next").innerHTML)).not.toContain("skeleton-text");
+    expect(doc.getElementById("train-due-next").hidden).toBe(true);
+    expect(doc.getElementById("start-rehearse").disabled).toBe(true);
+    expect(doc.getElementById("start-play").disabled).toBe(false);
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("train-due-retry").hidden).toBe(false);
+    let listResolve;
+    deps.api.mockImplementation((url) => url === "/api/repertoires" ? new Promise((done) => { listResolve = done; }) : new Promise(() => {}));
+    doc.getElementById("train-due-retry").click();
+    expect(doc.getElementById("train-due-retry").hidden).toBe(true);
+    doc.getElementById("train-due-retry").click();
+    expect(deps.api.mock.calls.filter(([url]) => url === "/api/repertoires")).toHaveLength(1);
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBe("");
+    listResolve({ repertoires: [{ id: "r1", name: "Italian", color: "white", is_active: true }], shared: [] });
+    await vi.waitFor(() => expect(deps.api.mock.calls.some(([url]) => String(url).startsWith("/api/train/smart/summary"))).toBe(true));
+    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
+    expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("train-due-scope").getAttribute("inert")).toBeNull();
+  });
+
   it("holds its loaded shape while the first preview is pending", async () => {
     trainRowError("smart", "");
     const { deps } = setup();
@@ -128,18 +344,47 @@ describe("the Due row", () => {
     const pending = createTrainHome(deps).paintTrainHome();
     expect(doc.getElementById("start-train").textContent).toBe("Start");
     expect(doc.getElementById("start-train").dataset.action).toBe("start");
-    expect(doc.getElementById("start-train").disabled).toBe(false);
+    expect(doc.getElementById("start-train").getAttribute("inert")).toBe("");
+    expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(true);
+    expect(doc.getElementById("train-due-scope").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("train-due-scope").disabled).toBe(false);
+    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
+    expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
     expect(doc.getElementById("train-outlook").hidden).toBe(false);
     expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("skeleton-text");
     expect(String(doc.getElementById("train-due-meta").innerHTML)).toContain("skeleton-text");
-    expect(String(doc.getElementById("train-due-next").innerHTML).match(/<li aria-hidden/g)).toHaveLength(5);
+    expect(doc.getElementById("train-due-next").innerHTML).toBe("");
+    expect(doc.getElementById("train-due-next").hidden).toBe(true);
     expect(doc.getElementById("train-due-next").getAttribute("aria-busy")).toBe("true");
     resolve({ next_session: { cards: 3, new: 3, upcoming: [] }, outlook: { now: 1, today: 2, week: 5 } });
     await pending;
+    expect(doc.getElementById("start-train").disabled).toBe(false);
+    expect(doc.getElementById("start-train").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(false);
+    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
     expect(doc.getElementById("train-due-meta").textContent).toBe("3 cards");
     expect(doc.getElementById("train-outlook").hidden).toBe(false);
     expect(doc.getElementById("train-due-next").hidden).toBe(true);
     expect(String(doc.getElementById("train-outlook").innerHTML)).not.toContain("skeleton-text");
+  });
+
+  it("reuses and refreshes the remembered preview shape", async () => {
+    trainRowError("smart", "");
+    const { deps } = setup();
+    deps.localDateString.mockReturnValue("2099-01-01");
+    rememberTrainPreviewShape("u1", null, { outlook: "none", upcoming: 2 });
+    let resolve;
+    deps.api.mockImplementation(() => new Promise((done) => { resolve = done; }));
+    const pending = createTrainHome(deps).paintTrainHome();
+    expect(doc.getElementById("train-outlook").hidden).toBe(true);
+    expect(doc.getElementById("train-due-next").hidden).toBe(false);
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-due-line/g)).toHaveLength(2);
+    resolve({ next_session: { cards: 1, new: 0, upcoming: [{ repertoire_id: "r1", kind: "reinforce", repertoire_name: "Italian", color: "white", line: ["e4", "e5"] }] }, outlook: null });
+    await pending;
+    expect(readTrainPreviewShape("u1", null)).toEqual({ outlook: "none", upcoming: 1 });
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-due-line/g)).toHaveLength(1);
+    localStorage.removeItem("prepforge.train-preview-shape.u1.mixed");
   });
 
   it("ignores a late preview after the Due scope changes", async () => {
@@ -231,6 +476,9 @@ describe("the Due row", () => {
     // A horizon that adds nothing is not said: one figure, then silence.
     expect(String(outlookHtml({ now: 2, today: 2, week: 2 }))).not.toContain("train-outlook-rest");
     expect(String(outlookHtml(null))).toBe("");
+    expect(outlookShape({ now: 1, today: 4, week: 9 })).toBe("lead-rest");
+    expect(outlookShape({ now: 2, today: 2, week: 2 })).toBe("lead");
+    expect(outlookShape(null)).toBe("none");
   });
 
   it("nothing due is one quiet line naming the next review, not three zeros", () => {
@@ -239,6 +487,7 @@ describe("the Due row", () => {
     expect(quiet).not.toContain("train-outlook-cell");
     expect(quiet).toContain("Nothing due · next in 9 days");
     expect(String(outlookHtml({ now: 0, today: 0, week: 0, next: null }, now))).toBe("");
+    expect(outlookShape({ now: 0, today: 0, week: 0, next: "2026-10-31T12:00:00Z" })).toBe("quiet");
     expect(dueIn("2026-10-22T12:40:00Z", now)).toBe("in 40 min");
     expect(dueIn("2026-10-23T11:00:00Z", now)).toBe("in 23 h");
     expect(dueIn("2026-10-23T13:00:00Z", now)).toBe("tomorrow");

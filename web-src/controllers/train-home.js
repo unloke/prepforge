@@ -6,12 +6,16 @@ import { recentRuns } from "../train-history.js";
 import { loadRehearsal } from "../train-rehearsal.js";
 import { lineTail } from "../views/train.js";
 import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
-import { createTrainPreview, paintTrainPreviewLoading } from "./train-preview.js";
+import { createTrainPreview, paintTrainHomeLoading, paintTrainListingLoading, paintTrainStartLoading, paintTrainPreviewLoading, readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
+import { dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
+export { dueIn, dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
 import { appState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
-import { flushTrainSync, lichessAccounts, requireSignIn, switchView, syncWorkspaceUrl } from "../core/app-context.js";
+import { acceptRepertoireListing, fetchRepertoireListing } from "../repertoire-listing.js";
+import { flushTrainSync, lichessAccounts, requireSignIn, setTrainBanner, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
+import { cancelLuckyDiscovery, cancelLuckyPractice } from "../train-lucky-control.js";
 import { blitzEnabled, clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setBlitzEnabled,
   skipTrainingLine, startPlaySessionTracked, startTraining, takebackPlaySession, trainHint } from "./train-session.js";
 // Train is one loop, Home → Session → Result, shared by the Due queue, line
@@ -40,13 +44,19 @@ function isSignedIn() {
   return !!appState.signedIn && !appState.sessionExpired;
 }
 
+function repertoireListingKnown(state = appState) {
+  return state.repertoireListGeneration === (state.ownerGeneration || 0);
+}
+
 function paintRowErrors() {
   for (const [mode, id] of Object.entries(ROW_ERROR_IDS)) {
     const el = document.getElementById(id);
-    const text = rowErrors[mode] || (mode === "smart" && isSignedIn() && allTrainable().length > 0 && preview?.failed(previewUrl()) ? "Couldn't load the queue. Start still works." : "");
+    const optionsError = mode === "smart" && isSignedIn() && !repertoireListingKnown() && appState.trainRepertoireOptionsError ? "Couldn't load your repertoires." : "";
+    const text = rowErrors[mode] || optionsError || (mode === "smart" && isSignedIn() && allTrainable().length > 0 && preview?.failed(previewUrl()) ? "Couldn't load the queue. Start still works." : "");
     el.hidden = !text;
     el.textContent = text;
   }
+  const retry = document.getElementById("train-due-retry"); if (retry) retry.hidden = !(isSignedIn() && !repertoireListingKnown() && appState.trainRepertoireOptionsError);
 }
 
 export function createTrainHome() {
@@ -141,30 +151,30 @@ function paintActions(screen, mode) {
 // Every way into Train lands here: nav, Library's Train, "Train this
 // repertoire", a picked move, the palette. The scope is set explicitly, so a
 // one-repertoire queue is never served from "all repertoires".
-export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false } = {}) {
-  const state = appState;
-  if (!(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
-  closeTrainPicker();
-  if (state.smart) await flushTrainSync();
+export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false, isCurrent = null } = {}) {
+  const state = appState, wasInTrain = state.currentView === "train", entryToken = {}, entrySeq = isCurrent ? state.trainEntryVersion : (state.trainEntryVersion = (state.trainEntryVersion || 0) + 1), current = isCurrent || (() => state.trainEntryVersion === entrySeq && (!wasInTrain || state.currentView === "train"));
+  if (!current() || !(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return false;
+  closeTrainPicker(); if (state.smart) await flushTrainSync(); if (!current()) return false;
   resetSessions();
   for (const key of Object.keys(rowErrors)) rowErrors[key] = "";
   state.trainMode = mode;
   if (mode === "smart") setDueScope(repertoireId);
   if (mode === "all_lines" && repertoireId) state.trainingRepertoireId = String(repertoireId);
-  if (autostart) state.trainStarting = true;
+  if (autostart) { state.trainStarting = true; state.trainStartToken = entryToken; }
   const enter = () => {
-    if (state.currentView !== "train") switchView("train");
+    if (state.currentView !== "train") { state.trainEntering = true; try { switchView("train"); } finally { delete state.trainEntering; } }
     syncTrainScreen();
   };
   enter();
   syncWorkspaceUrl();
-  if (!autostart) return;
-  if (mode === "play") return startPlaySessionTracked();
-  return startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets });
+  if (!autostart) return true;
+  if (mode === "play") await startPlaySessionTracked(); else await startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
+  return true;
 }
 
 function resetSessions() {
   const state = appState;
+  cancelLuckyDiscovery(state);
   state.playStartToken = (state.playStartToken || 0) + 1;
   state.playStarting = null;
   boards.train?.setPremove(null);
@@ -173,7 +183,7 @@ function resetSessions() {
   state.training = null;
   state.trainResult = null;
   state.trainBusy = false;
-  state.trainStarting = false;
+  state.trainStarting = false; state.trainStartToken = null;
   clearBlitzTimer();
   setBlitzBarVisible(false);
 }
@@ -181,13 +191,13 @@ function resetSessions() {
 // "‹ Train": drills keep their progress (Home then offers "Resume"), a live
 // game asks first.
 export async function leaveToHome() {
-  if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
-  if (appState.smart && !(await flushTrainSync())) return;
-  resetSessions();
-  syncWorkspaceUrl();
-  invalidateTrainPreview();
-  syncTrainScreen();
-  void resetTrainBoardIdle("");
+  const state = appState, entrySeq = state.trainEntryVersion || 0, current = () => (state.trainEntryVersion || 0) === entrySeq && state.currentView === "train";
+  if (!current() || !(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return;
+  if (state.smart && !(await flushTrainSync()) || !current()) return;
+  state.trainEntryVersion = entrySeq + 1; delete state.trainPendingRoute;
+  resetSessions(); setTrainBanner("move", "", "");
+  syncWorkspaceUrl(); invalidateTrainPreview();
+  syncTrainScreen(); void resetTrainBoardIdle("");
 }
 
 // ---------------------------------------------------------------- Home
@@ -226,49 +236,6 @@ function previewUrl() {
   return `/api/train/smart/summary?${scope}&preview=true&local_date=${encodeURIComponent(localDateString())}&utc_offset=${-new Date().getTimezoneOffset()}`;
 }
 
-// What a Start of the Due row would serve, or why it cannot. The button says
-// the verb; how many cards it holds is the row's own line (dueMeta), so Resume
-// does not repeat the count inside a button label.
-export function dueStartState(next, { signedIn, hasRepertoire }) {
-  if (!signedIn) return { label: "Sign in to train", action: "signin" };
-  if (!hasRepertoire) return { label: "Open Library", action: "library" };
-  if (next && Number(next.cards) === 0) return { label: "Open Repertoire", action: "build" };
-  if (next?.resumed) return { label: "Resume", action: "start" };
-  return { label: "Start", action: "start" };
-}
-
-// What a Start would serve. The outlook above already counts what is due, so
-// this line says the one thing it cannot: how many cards the session holds.
-export function dueMeta(next) {
-  if (!next) return "";
-  if (Number(next.cards) === 0) return "Nothing due";
-  return next.resumed ? `${countOf(next.left, "card")} left` : countOf(next.cards, "card");
-}
-
-// "in 40 min", "in 5 h", "tomorrow", "in 3 days".
-export function dueIn(iso, now = Date.now()) {
-  const minutes = Math.max(1, Math.round((Date.parse(iso) - now) / 60000));
-  if (minutes < 60) return `in ${minutes} min`;
-  if (minutes < 24 * 60) return `in ${Math.round(minutes / 60)} h`;
-  const days = Math.round(minutes / (24 * 60));
-  return days === 1 ? "tomorrow" : `in ${days} days`;
-}
-
-// The Due row's one figure and the two that follow it. "Due now" is what the
-// row is about, so it is the figure in ink and the only one at full size; the
-// two horizons behind it are a quieter line, not two more tiles beside it.
-export function outlookHtml(outlook, now = Date.now()) {
-  if (!outlook) return "";
-  if (!outlook.now && !outlook.today && !outlook.week) {
-    return outlook.next ? html`<span class="train-outlook-quiet">Nothing due · next ${dueIn(outlook.next, now)}</span>` : "";
-  }
-  const rest = [];
-  if (Number(outlook.today) > Number(outlook.now)) rest.push(`${outlook.today} by tonight`);
-  if (Number(outlook.week) > Number(outlook.today)) rest.push(`${outlook.week} this week`);
-  return html`<span class="train-outlook-lead"><b>${outlook.now}</b> due now</span>${rest.length
-    ? html`<span class="train-outlook-rest">${rest.join(" · ")}</span>`
-    : ""}`;
-}
 
 function setChip(id, text, disabled = false) {
   const chip = document.getElementById(id);
@@ -304,6 +271,12 @@ export async function paintTrainHome() {
   }
   const reps = allTrainable();
   paintRecent(document.getElementById("train-recent-home"), signedIn ? recentRuns(currentOwnerId(), 3) : [], "No finished runs yet.");
+  const listingKnown = repertoireListingKnown(state);
+  const optionsFailed = signedIn && !listingKnown && state.trainRepertoireOptionsError;
+  if (signedIn && !listingKnown && !optionsFailed) {
+    paintTrainListingLoading(currentOwnerId(), state.trainScope?.repertoireId, state.trainHomeReady, playBook() === "maia");
+    return;
+  }
   // Due queue
   setChip("train-due-scope", dueScopeLabel(), !signedIn || !ownActive().length && !reps.length);
   const due = document.getElementById("start-train");
@@ -312,6 +285,7 @@ export async function paintTrainHome() {
     const start = dueStartState(next, { signedIn: activeAuth, hasRepertoire: reps.length > 0 });
     due.textContent = start.label;
     due.dataset.action = start.action;
+    due.disabled = false;
     document.getElementById("train-due-meta").textContent = activeAuth ? dueMeta(next) : "";
     paintRowErrors();
   };
@@ -331,6 +305,7 @@ export async function paintTrainHome() {
   document.getElementById("restart-rehearse").hidden = !paused;
   if (paused) document.getElementById("train-rehearse-meta").textContent = `${Number(paused.training.prompt.current_index) + 1} / ${paused.training.prompt.total_lines}`;
   rehearseBtn.dataset.action = !signedIn ? "signin" : rep ? "start" : "library";
+  rehearseBtn.disabled = false;
   // With no repertoire the Due row already leads to Library; a second
   // Open Library one row down is the same button twice.
   rehearseBtn.hidden = signedIn && !rep;
@@ -350,16 +325,32 @@ export async function paintTrainHome() {
   syncPlayColorLock();
   // Outlook + Due counts (network): repaint when they land.
   const outlook = document.getElementById("train-outlook");
+  if (optionsFailed) {
+    paintTrainPreviewLoading(false);
+    outlook.innerHTML = ""; outlook.hidden = true; paintDueNext(null);
+    state.trainHomeReady = true; paintTrainHomeLoading(false);
+    for (const id of ["start-train", "start-rehearse", "train-due-scope", "train-rehearse-scope"]) document.getElementById(id).disabled = true;
+    paintRowErrors();
+    return;
+  }
   if (!signedIn || !reps.length) {
     paintTrainPreviewLoading(false);
     outlook.hidden = true;
     paintDueNext(null);
+    if (signedIn) rememberTrainPreviewShape(currentOwnerId(), state.trainScope?.repertoireId, { outlook: "none", upcoming: 0 });
+    state.trainHomeReady = true;
+    paintTrainHomeLoading(false);
     return;
   }
-  paintTrainPreviewLoading(!currentPreview);
+  const owner = currentOwnerId();
+  const scope = state.trainScope?.repertoireId;
+  paintTrainHomeLoading(false);
+  paintTrainStartLoading(!currentPreview);
+  paintTrainPreviewLoading(!currentPreview, readTrainPreviewShape(owner, scope));
   await preview.load(url);
   if (trainScreenOf(state) !== "home" || previewUrl() !== url || !preview.current(url)) return;
   paintTrainPreviewLoading(false);
+  if (preview.authFailed?.(url)) { due.textContent = "Sign in to train"; due.dataset.action = "signin"; due.disabled = false; document.getElementById("train-due-meta").textContent = ""; outlook.innerHTML = ""; outlook.hidden = true; paintDueNext(null); state.trainHomeReady = true; paintTrainHomeLoading(false); return; }
   if (!isSignedIn()) {
     rehearseBtn.textContent = "Sign in to train";
     rehearseBtn.dataset.action = "signin";
@@ -370,6 +361,9 @@ export async function paintTrainHome() {
   paintDueNext(resolved?.next_session?.upcoming);
   outlook.innerHTML = outlookHtml(resolved?.outlook);
   outlook.hidden = !outlook.innerHTML;
+  if (resolved) rememberTrainPreviewShape(owner, scope, { outlook: outlookShape(resolved.outlook), upcoming: resolved.next_session?.upcoming?.length || 0 });
+  state.trainHomeReady = true;
+  paintTrainHomeLoading(false);
 }
 
 // ---------------------------------------------------------------- practice setup
@@ -443,20 +437,27 @@ export function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
 
 // The listing every row reads: own + shared repertoires, then the Home repaint.
 export async function loadTrainRepertoireOptions() {
-  const state = appState;
+  const state = appState, owner = currentOwnerId(), generation = state.ownerGeneration || 0;
+  const current = () => currentOwnerId() === owner && (state.ownerGeneration || 0) === generation;
+  if (state.signedIn) { state.trainRepertoireOptionsError = ""; paintRowErrors(); }
+  if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(owner, state.trainScope?.repertoireId, state.trainHomeReady);
   if (state.signedIn) {
     try {
-      const payload = await api("/api/repertoires");
-      state.repertoireList = payload.repertoires || [];
-      state.sharedRepertoireList = payload.shared || [];
+      const listing = fetchRepertoireListing(api, owner, generation);
+      const payload = await listing;
+      if (payload && current() && acceptRepertoireListing(listing, owner, generation)) {
+        state.repertoireList = payload.repertoires || [];
+        state.sharedRepertoireList = payload.shared || [];
+        state.repertoireListGeneration = generation;
+      }
     } catch (error) {
-      setStatusError(error.message);
+      if (current() && !repertoireListingKnown(state)) state.trainRepertoireOptionsError = error.message || "Could not load repertoires";
+      if (current()) setStatusError(error.message);
     }
   }
-  const key = playRepertoireStorageKey();
+  if (!current()) return; const key = playRepertoireStorageKey();
   if (state.playRepertoirePreferenceKey !== key) {
-    state.playRepertoirePreferenceKey = key;
-    let stored = null;
+    state.playRepertoirePreferenceKey = key; let stored = null;
     try { stored = JSON.parse(localStorage.getItem(key) || "null"); } catch (_) { /* malformed */ }
     state.playRepertoireIds = Array.isArray(stored) ? stored.map(String) : ownActive().map((r) => String(r.id));
   }
@@ -505,6 +506,7 @@ function bind() {
   $("restart-rehearse").addEventListener("click", () =>
     openTrain({ mode: "all_lines", repertoireId: appState.trainingRepertoireId, fresh: true }));
   $("start-play").addEventListener("click", () => openTrain({ mode: "play" }));
+  $("train-due-retry").addEventListener("click", () => void loadTrainRepertoireOptions());
   $("train-due-next").addEventListener("click", (e) => {
     const line = e.target.closest(".train-due-line");
     if (!line) return;
@@ -512,8 +514,7 @@ function bind() {
     void paintTrainHome();
   });
   $("feeling-lucky").addEventListener("click", async () => {
-    await openTrain({ mode: "play", autostart: false });
-    void onFeelingLucky();
+    if (await openTrain({ mode: "play", autostart: false })) void onFeelingLucky();
   });
   $("train-back").addEventListener("click", () => void leaveToHome());
   $("train-summary-home").addEventListener("click", () => void leaveToHome());
@@ -546,7 +547,11 @@ function bind() {
       onChange: ([id]) => { appState.playBook = id; void paintTrainHome(); },
     });
   });
-  bindTrainPhone((book) => { appState.playBook = book; void paintTrainHome(); });
+  // A Random-position discovery is the Practice pane's own work: leaving the
+  // pane cancels it, so a late position cannot open its game over the Drill
+  // rows, and the freed button retries at once back on Practice. Retapping
+  // the current tab is not a switch and cancels nothing.
+  bindTrainPhone((book) => { appState.playBook = book; void paintTrainHome(); }, (from) => from === "play" && cancelLuckyPractice(appState));
   $("train-play-reps").addEventListener("click", (e) => openTrainPicker(e.currentTarget, {
     label: "Opponent plays from",
     items: trainRepertoireItems(appState, { shared: false }),

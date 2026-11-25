@@ -5,7 +5,13 @@ export const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 export const appState = {
   currentView: "dashboard",
+  ownerGeneration: 0,
   repertoireList: [],
+  // The owner generation /api/repertoires last answered for. Train uses it to
+  // tell "listing still unknown" apart from an account that truly has none.
+  repertoireListGeneration: -1,
+  trainRepertoireOptionsError: "",
+  trainHomeReady: false,
   // Repertoires others shared with the user, at the user's role (Train drills them too).
   sharedRepertoireList: [],
   analysis: null,
@@ -90,6 +96,7 @@ export const appState = {
   // One on-demand Lucky round at a time. This protects Lichess's one-request
   // at-a-time guidance and prevents two clicks from racing their Play boards.
   luckyBusy: false,
+  luckyRun: null,
   // Live smart-queue session state (see the Smart queue trainer section).
   smart: null,
   // ---- Local-first Train sync (plan §2) -----------------------------------

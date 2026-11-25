@@ -4,6 +4,7 @@ import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { reveal } from "../list-enter.js";
 import { createLibraryRows } from "./library-rows.js";
+import { acceptRepertoireListing, fetchRepertoireListing, refreshRepertoireListing } from "../repertoire-listing.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
 import {
@@ -609,19 +610,26 @@ export function createDashboardView({
 
   // Fetches and renders the listing; throws on failure so each caller picks
   // its own error composition.
-  async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq)) {
+  async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq), authoritativeRefresh = false) {
     // Team names are optional and never block usable repertoire rows.
     if (appState.signedIn) {
       void loadTeamDirectory(appState, api).then((teams) => {
         if (teams !== null && isCurrent() && repListLoaded) renderRepertoireList();
       }).catch(() => {});
     }
-    const payload = await api("/api/repertoires");
+    const read = authoritativeRefresh ? refreshRepertoireListing : fetchRepertoireListing;
+    const listing = read(api, appState.accountUserId, appState.ownerGeneration || 0);
+    let payload = await listing;
     if (!isCurrent()) return false;
+    if (!payload || !acceptRepertoireListing(listing, appState.accountUserId, appState.ownerGeneration || 0)) {
+      if (appState.repertoireListGeneration !== (appState.ownerGeneration || 0)) return false;
+      payload = { repertoires: appState.repertoireList || [], shared: appState.sharedRepertoireList || [] };
+    }
     const status = document.getElementById("library-refresh-status");
     if (status) status.hidden = true;
     appState.repertoireList = payload.repertoires || [];
     appState.sharedRepertoireList = payload.shared || [];
+    appState.repertoireListGeneration = appState.ownerGeneration || 0;
     if (appState.account) appState.account.repertoireCount = appState.repertoireList.length;
     const visible = (payload.repertoires || []).filter(
       (item) => !appState.pendingRepDeletes.has(String(item.id)),
@@ -652,7 +660,7 @@ export function createDashboardView({
     const seq = ++loadSeq;
     const isCurrent = currentLoad(seq);
     try {
-      return await fetchDashboardRepertoires(seq, isCurrent);
+      return await fetchDashboardRepertoires(seq, isCurrent, true);
     } catch (error) {
       if (!isCurrent()) return false;
       reportListFailure(error.message);

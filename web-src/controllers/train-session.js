@@ -20,6 +20,7 @@ import { coachTipMayReplace, promptCueSan, teachWhy, trainTeachLine, wrongMoveBa
 import { createTrainRecovery } from "../train-recovery.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { playBookName, playTrailRows, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
+import { beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent } from "../train-lucky-control.js";
 import { createPlayMoveHandler } from "../train-play-input.js";
 import { analysisRecallSeq, invalidateAnalysisSource } from "./analyze-entry.js";
 import { isNothingToTrainError } from "../train-start.js";
@@ -204,6 +205,8 @@ function trainStatsReset() {
   appState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0, learned: 0, learnedRetry: 0 };
 }
 
+function cancelStaleTrainStart(options) { if (!appState.trainStarting || appState.trainStartToken !== options.entryToken) return; appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", ""); syncTrainSessionControls(); }
+
 function sideToMoveFromFen(fen) {
   return (fen || "").split(" ")[1] === "b" ? "black" : "white";
 }
@@ -230,7 +233,7 @@ export async function startTraining(mode, options = {}) {
   // ----- line rehearsal (all_lines) below -----
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === smartStartSeq && owner === currentOwnerId() && appState.trainMode === mode;
+  const entryCurrent = options.isCurrent || (() => true), isCurrent = () => entryCurrent() && seq === smartStartSeq && owner === currentOwnerId() && appState.trainMode === mode;
   appState.smart = null;
   clearBlitzTimer();
   setBlitzBarVisible(false);
@@ -250,16 +253,17 @@ export async function startTraining(mode, options = {}) {
   // before the server walks the tree into lines.
   try {
     await hardFlushBuild();
-    if (!isCurrent()) return;
+    if (!isCurrent()) return cancelStaleTrainStart(options);
   } catch (error) {
-    if (isCurrent()) failed(error.message);
+    if (!isCurrent()) return cancelStaleTrainStart(options);
+    failed(error.message);
     return;
   }
   const fresh = !!options.fresh;
   const body = { seed: 13, mode, repertoire_id: repertoireId, fresh };
   try {
     const payload = await postJson("/api/train/start", body);
-    if (!isCurrent()) return;
+    if (!isCurrent()) return cancelStaleTrainStart(options);
     if (!payload.prompt) return failed("No moves to rehearse. Add lines in Repertoire.");
     appState.training = payload;
     appState.trainAttempt = 1;
@@ -277,7 +281,7 @@ export async function startTraining(mode, options = {}) {
     await renderTraining(payload);
     syncWorkspaceUrl();
   } catch (error) {
-    if (!isCurrent()) return;
+    if (!isCurrent()) return cancelStaleTrainStart(options);
     failed(isNothingToTrainError(error) ? "No moves to rehearse. Add lines in Repertoire." : error.message);
   }
 }
@@ -529,7 +533,7 @@ async function startPlaySession({
     try {
       await hardFlushBuild();
     } catch (error) {
-      trainRowError("play", error.message);
+      if (isCurrentStart()) trainRowError("play", error.message);
       return false;
     }
     try {
@@ -775,25 +779,16 @@ const submitPlayMove = createPlayMoveHandler({
 });
 
 export async function onFeelingLucky() {
-  if (appState.luckyBusy) return;
-  appState.luckyBusy = true;
-  const luckyButton = document.getElementById("feeling-lucky");
-  if (luckyButton) {
-    luckyButton.disabled = true;
-    luckyButton.setAttribute("aria-busy", "true");
-  }
+  const run = beginLuckyDiscovery(appState);
+  if (!run) return;
   try {
-    return await runFeelingLuckyClick();
+    return await runFeelingLuckyClick(run);
   } finally {
-    appState.luckyBusy = false;
-    if (luckyButton) {
-      luckyButton.disabled = false;
-      luckyButton.removeAttribute("aria-busy");
-    }
+    finishLuckyDiscovery(appState, run);
   }
 }
 
-async function runFeelingLuckyClick() {
+async function runFeelingLuckyClick(run) {
   // Feeling Lucky is on-demand live-data discovery: after this click, Lichess
   // supplies a fresh titled-player feed and the client replays/scores it
   // locally. The slower Masters walk remains a quality fallback when live
@@ -804,15 +799,17 @@ async function runFeelingLuckyClick() {
   // The live game feed itself is anonymous, but keeping this gate preserves
   // the existing training/account contract. The modal this opens is transient —
   // tab navigation dismisses it (dismissTransientOverlays).
+  const luckyCurrent = () => luckyDiscoveryCurrent(appState, run);
   if (!appState.accountUsername) {
     try {
       await refreshAuthStatus();
     } catch (_) {
       // fall through to the sign-in prompt below
     }
+    if (!luckyCurrent()) return;
   }
   if (!appState.accountUsername) {
-    openAuthModal("login", { notice: "Sign in first, then try a random position." });
+    if (luckyCurrent()) openAuthModal("login", { notice: "Sign in first, then try a random position." });
     return;
   }
   // No Lichess-link hard gate: the live Lichess game-feed endpoints are
@@ -820,21 +817,25 @@ async function runFeelingLuckyClick() {
   // needless network round trip before the actual on-demand game request.
   let dbPicked = null;
   try {
+    if (!luckyCurrent()) return;
     setTrainBanner("runin", "Finding a position…", "Discovering a fresh titled player");
     const { runFeelingLucky } = await import("../feeling-lucky.js");
+    if (!luckyCurrent()) return;
     dbPicked = await runFeelingLucky({
+      signal: run.controller.signal,
       storage: typeof localStorage === "undefined" ? null : localStorage,
       exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
       rating: effectiveMaiaRating(),
       ensureExplorer: ensureExplorerClient,
-      onStatus: setStatus,
-      setBanner: (state, title, sub) => setTrainBanner(state, title, sub),
+      onStatus: (...args) => luckyCurrent() && setStatus(...args),
+      setBanner: (...args) => luckyCurrent() && setTrainBanner(...args),
       startSession: async (session) => {
-        appState.lastLuckyFen = session.fen;
+        if (!luckyCurrent()) return false; appState.lastLuckyFen = session.fen;
         return startPlaySessionTracked(session);
       },
     });
   } catch (error) {
+    if (!luckyCurrent()) return;
     const msg = error && error.message ? error.message : String(error);
     setStatus(msg);
     // Lucky's own runFeelingLucky already painted the right banner for every
@@ -1244,7 +1245,7 @@ let smartStartSeq = 0;
 async function startSmartTraining(options = {}) {
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === smartStartSeq && owner === currentOwnerId() && (appState.trainMode || "smart") === "smart";
+  const entryCurrent = options.isCurrent || (() => true), isCurrent = () => entryCurrent() && seq === smartStartSeq && owner === currentOwnerId() && (appState.trainMode || "smart") === "smart";
   const fresh = !!options.fresh;
   appState.trainResult = null;
   const failed = (text) => {
@@ -1264,7 +1265,7 @@ async function startSmartTraining(options = {}) {
     hardFlushBuild(), flushTrainSync(), loadTrainResume(),
     trainSessionMemo || import("../train-session-memo.js"),
   ]);
-  if (!isCurrent()) return;
+  if (!isCurrent()) return cancelStaleTrainStart(options);
   if (buildSaved.status === "rejected" || buildSaved.value === false) {
     failed("Couldn't save your repertoire edits. Try again in a moment.");
     return;
@@ -1292,7 +1293,7 @@ async function startSmartTraining(options = {}) {
       ...(targets.length ? { target_node_ids: targets } : {}),
     });
   } catch (error) {
-    if (!isCurrent()) return;
+    if (!isCurrent()) return cancelStaleTrainStart(options);
     if (isAuthError(error)) {
       failed("");
       accountService().handleAuthRequired("Sign in to start training");
@@ -1301,7 +1302,7 @@ async function startSmartTraining(options = {}) {
     failed(isNothingToTrainError(error) ? "Nothing to train here. Add lines in Repertoire." : "Couldn't build your queue. Try again in a moment.");
     return;
   }
-  if (!isCurrent()) return;
+  if (!isCurrent()) return cancelStaleTrainStart(options);
   // The URL names the repertoire the queue drills; a mixed queue drills all of
   // them, so it names none. Keeping the anchor here would write ?rep=<anchor>
   // into a Train link that is not about that repertoire.

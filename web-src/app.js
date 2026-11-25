@@ -27,6 +27,7 @@ import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { buildRole } from "./share-roles.js";
 import { createTrainEntry, preloadTrainView, renderBuildSync, setBuildSync } from "./train-entry.js";
+import { cancelLuckyDiscovery } from "./train-lucky-control.js";
 import { showUndoToast } from "./undo.js";
 import { analysisGameName } from "./analyze-name.js";
 import { setBoardCaption } from "./board-caption.js";
@@ -50,6 +51,8 @@ import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { paintDashboardSkeleton } from "./views/library-skeleton.js";
 import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
+import { acceptRepertoireListing, refreshRepertoireListing } from "./repertoire-listing.js";
+import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { provideApp } from "./core/app-context.js";
@@ -279,6 +282,7 @@ const {
 
 let workspaceUrlReady = false;
 let workspaceNavigationSeq = 0;
+let deferTrainEntry = false; function invalidateTrainEntries() { appState.trainEntryVersion = (appState.trainEntryVersion || 0) + 1; }
 // Set when the user picks a page while boot is still awaiting auth / the
 // workspace: restoreWorkspaceLocation must not then snap them back to the URL
 // the page loaded with (a Scout click during boot landed on the dashboard).
@@ -369,13 +373,12 @@ async function restoreWorkspaceLocation() {
   if (loc.view === "replay" && loc.replaySection) {
     appState.replaySection = loc.replaySection;
   }
-  switchView(loc.view, { fromUrl: true });
+  deferTrainEntry = loc.view === "train"; switchView(loc.view, { fromUrl: true }); deferTrainEntry = false;
   if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply, loc.node);
   // #/train is Train Home; a link that names a repertoire opens its Due queue,
-  // with that scope on the session's chip.
-  if (loc.view === "train" && appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) {
-    await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId });
-  }
+  // with that scope on the session's chip. A failed chunk leaves a retry instead of an inert skeleton.
+  if (loc.view === "train" && (loc.repertoireId || loc.trainMode === "smart")) appState.trainPendingRoute = { repertoireId: loc.repertoireId || null, trainMode: loc.trainMode || "smart" }; const enterTrain = async (stillActive) => { if (!stillActive()) return; (await loadTrainSession()).syncTrainControls(); if (!stillActive()) return; void loadTrainRepertoireOptions().catch(() => {}); if (appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId, isCurrent: stillActive }); };
+  if (loc.view === "train") await retryTrainEntry(() => appState.currentView === "train" && trainRouteMatches(loc), enterTrain);
 }
 
 // The repertoire Build shows, or the one it is loading (A → B → A while B is
@@ -411,10 +414,10 @@ async function handleWorkspacePopstate() {
   // editor showing a different tree than its URL survived only until a reload.
   if (loc.view === "build" && loc.repertoireId && appState.signedIn &&
       loc.repertoireId !== shownOrLoadingRepertoireId()) {
-    await editRepertoire(loc.repertoireId);
+    await editRepertoire(loc.repertoireId, null, { fromUrl: true });
     return;
   }
-  switchView(loc.view, { fromUrl: true });
+  const trainMode = loc.trainMode || "smart", trainNeedsQueue = loc.view === "train" && appState.signedIn && (loc.repertoireId ? loc.repertoireId !== trainQueueRepertoireId(appState) || trainMode !== appState.trainMode : loc.trainMode === "smart" && (!appState.smart?.mixed || appState.trainResult)); deferTrainEntry = trainNeedsQueue; switchView(loc.view, { fromUrl: true }); deferTrainEntry = false;
   // An unknown route lands on the Library: the address says so too.
   if (loc.view === "dashboard") syncWorkspaceUrl();
   // Back/forward to an Analyze position puts the board there, the same way boot does.
@@ -426,13 +429,8 @@ async function handleWorkspacePopstate() {
     if (loc.node && loc.node !== current) await restoreAnalysisNodePath(loc.node);
     else if (!loc.node && loc.ply && loc.ply !== appState.analysisPly) await showAnalysisPly(loc.ply);
   }
-  if (loc.view === "train" && appState.signedIn) {
-    const mode = loc.trainMode || "smart";
-    const needsQueue = loc.repertoireId
-      ? loc.repertoireId !== trainQueueRepertoireId(appState) || mode !== appState.trainMode
-      : loc.trainMode === "smart" && (!appState.smart?.mixed || appState.trainResult);
-    if (needsQueue) await openTrain({ mode, repertoireId: loc.repertoireId });
-  }
+  if (loc.view === "train" && !loc.repertoireId && !loc.trainMode) { invalidateTrainEntries(); delete appState.trainPendingRoute; }
+  if (trainNeedsQueue) await retryTrainEntry(() => appState.currentView === "train" && trainRouteMatches(loc), async (stillActive) => { void loadTrainRepertoireOptions().catch(() => {}); const opening = openTrain({ mode: trainMode, repertoireId: loc.repertoireId, isCurrent: stillActive }), entryVersion = appState.trainEntryVersion; if ((await opening) === false && entryVersion === appState.trainEntryVersion && stillActive()) syncWorkspaceUrl(); });
 }
 
 function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
@@ -526,6 +524,11 @@ function switchView(name, { fromUrl = false } = {}) {
   workspaceNavigationSeq += 1;
   const previousView = appState.currentView;
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
+  if (name !== "train" || name === "train" && !appState.trainEntering) {
+    invalidateTrainEntries();
+    delete appState.trainPendingRoute;
+    cancelActiveTrainStart();
+  }
   if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
   document.getElementById("app-rail")?.classList.add("is-nav-collapsed");
@@ -556,7 +559,7 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "train") {
     preloadTrainView().catch(() => {});
-    loadTrainRepertoireOptions();
+    if (!deferTrainEntry && !appState.trainEntering) void retryTrainEntry(() => appState.currentView === "train", async () => { await loadTrainRepertoireOptions(); const loc = parseWorkspaceLocation(window.location.href), mode = loc.trainMode || "smart", needsQueue = loc.repertoireId ? loc.repertoireId !== trainQueueRepertoireId(appState) || mode !== appState.trainMode : loc.trainMode === "smart" && (!appState.smart?.mixed || appState.trainResult); if (appState.currentView === "train" && appState.signedIn && needsQueue) await openTrain({ mode, repertoireId: loc.repertoireId }); });
   }
   if (name === "replay") {
     preloadReplayView().catch(() => {});
@@ -609,8 +612,8 @@ function switchView(name, { fromUrl = false } = {}) {
 
 
 let buildLoadSeq = 0;
-async function editRepertoire(repertoireId, nodeId = null) {
-  // Picking a repertoire is navigation; its loading skeleton defers URL sync.
+async function editRepertoire(repertoireId, nodeId = null, { fromUrl = false } = {}) {
+  // Picking a repertoire is navigation; a URL restore must not push over its entry.
   workspaceNavigationSeq += 1;
   if (!workspaceUrlReady) navigatedDuringBoot = true;
   // Switching repertoires replaces the local Build tree — flush pending moves of
@@ -624,21 +627,16 @@ async function editRepertoire(repertoireId, nodeId = null) {
   // previous tree, so a route back to that tree must not read as "already open".
   appState.buildLoadTarget = repertoireId;
   setBuildLoading(true);
+  if (!fromUrl) syncWorkspaceUrl({ push: true });
+  let request = null;
   try {
     await hardFlushBuild();
-  } catch (error) {
     if (loadSeq !== buildLoadSeq) return;
-    setBuildLoading(false);
-    setStatusError(error.message);
-    return;
-  }
-  if (loadSeq !== buildLoadSeq) return;
-  appState.sharedToken = null;
-  const request = new AbortController();
-  appState.buildLoadRequest = request;
-  // Fetch the tree renderer alongside the repertoire, not after it arrives.
-  ensureMoveTreeRenderer().catch(() => {});
-  try {
+    appState.sharedToken = null;
+    request = new AbortController();
+    appState.buildLoadRequest = request;
+    // Fetch the tree renderer alongside the repertoire, not after it arrives.
+    ensureMoveTreeRenderer().catch(() => {});
     const payload = await api(
       `/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`,
       { signal: request.signal, responseType: "large-json" },
@@ -649,13 +647,18 @@ async function editRepertoire(repertoireId, nodeId = null) {
     if (loadSeq !== buildLoadSeq) return;
     setBuildLoading(false, { restore: false });
     appState.trainingRepertoireId = payload.repertoire_id;
-    // The rail remains usable during loading; a response must not pull the
-    // user back after they have navigated to another page.
-    syncWorkspaceUrl();
+    // The rail remains usable during loading; the opening navigation already
+    // owns the URL, so a late response must not rewrite it.
     updateBuildReadOnlyUi(payload);
   } catch (error) {
     if (loadSeq !== buildLoadSeq) return;
     setBuildLoading(false);
+    const loc = typeof window === "undefined"
+      ? {} : parseWorkspaceLocation(window.location.href);
+    if (appState.build?.repertoire_id && appState.currentView === "build" && loc.view === "build"
+      && String(loc.repertoireId) === String(repertoireId)) {
+      syncWorkspaceUrl();
+    }
     setStatusError(error.message);
   } finally {
     if (appState.buildLoadRequest === request) appState.buildLoadRequest = null;
@@ -663,8 +666,8 @@ async function editRepertoire(repertoireId, nodeId = null) {
 }
 
 // Repertoire loading state: switch to the view (without touching the URL —
-// the caller syncs it once the tree is in) and show a skeleton in place of the
-// previous tree. Turning it off restores whatever is actually loaded.
+// the opening navigation owns any history write) and show a skeleton in place
+// of the previous tree. Turning it off restores whatever is actually loaded.
 function setBuildLoading(on, { restore = true } = {}) {
   appState.buildLoading = on;
   const view = document.getElementById("view-build");
@@ -719,13 +722,8 @@ function syncCoverageReadOnlyState() {
 // "Train this repertoire", a forgotten move, coverage replies: that
 // repertoire's Due queue (or just the picked moves), its name on the chip.
 async function trainRepertoire(repertoireId, { targetNodeIds = [] } = {}) {
-  // Training reads the server's tree: pending Build edits land first.
-  try {
-    await hardFlushBuild();
-  } catch (error) {
-    setStatusError(error.message);
-    return;
-  }
+  // Start the guarded Train entry before any waiting: startTraining drains the
+  // Build outbox itself, and the entry must already exist if the user leaves.
   return openTrain({ mode: "smart", repertoireId, targets: targetNodeIds });
 }
 
@@ -1114,10 +1112,16 @@ function loadTrainSession() {
   });
   return trainSessionLoading;
 }
+function cancelActiveTrainStart() {
+  const canceledLucky = cancelLuckyDiscovery(appState); if (appState.play?.active) return;
+  appState.playStartToken = (appState.playStartToken || 0) + 1; if (!canceledLucky && !appState.trainStarting && !appState.playStarting) return;
+  if (appState.playStarting) { appState.playStarting = null; boards.train?.setPremove(null); } appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", "");
+  void trainSessionLoading?.then((train) => train.syncTrainControls()).catch(() => {});
+}
 const viaTrainSession = (name) => (...args) => loadTrainSession().then((train) => train[name](...args));
 const loadTrainRepertoireOptions = viaTrainSession("loadTrainRepertoireOptions");
 const onFeelingLucky = viaTrainSession("onFeelingLucky");
-const openTrain = viaTrainSession("openTrain");
+const openTrain = (options = {}) => { invalidateTrainEntries(); const seq = appState.trainEntryVersion, mode = options.mode || "smart", intent = mode === "smart" || mode === "all_lines" ? { repertoireId: options.repertoireId || null, trainMode: mode } : null; if (intent) appState.trainPendingRoute = intent; const args = { ...options, isCurrent: options.isCurrent ? () => options.isCurrent() && appState.trainEntryVersion === seq : () => appState.trainEntryVersion === seq }; return loadTrainSession().then((train) => (args.isCurrent() ? train.openTrain(args) : Promise.resolve(false)).finally(() => { if (intent && appState.trainPendingRoute === intent) delete appState.trainPendingRoute; })); };
 const submitTrainingMove = viaTrainSession("submitTrainingMove");
 
 // ----- Sync indicator (Google-Docs style chip by the Build board label) -------
@@ -1137,9 +1141,11 @@ async function refreshRepertoireHead() {
       reloadOpenBuildTree(),
     ]);
   } else if (appState.signedIn) {
-    const listing = await api("/api/repertoires");
-    appState.repertoireList = listing.repertoires || [];
-    appState.sharedRepertoireList = listing.shared || [];
+    const listing = refreshRepertoireListing(api, currentOwnerId(), appState.ownerGeneration || 0);
+    const payload = await listing;
+    if (payload && acceptRepertoireListing(listing, currentOwnerId(), appState.ownerGeneration || 0)) Object.assign(appState, {
+      repertoireList: payload.repertoires || [], sharedRepertoireList: payload.shared || [], repertoireListGeneration: appState.ownerGeneration || 0,
+    });
   }
   renderBuildRepHeader();
   syncViewHeads();

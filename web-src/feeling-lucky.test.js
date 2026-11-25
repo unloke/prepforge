@@ -137,6 +137,39 @@ describe("I'm Feeling Lucky entry", () => {
     expect(h.calls.banner.at(-1).join(" ")).toMatch(/Database unavailable/);
   });
 
+  it("does not open the Explorer fallback after cancellation", async () => {
+    const controller = new AbortController();
+    const h = harness({ picked: PICKED });
+    h.luckyTitledStartFn.mockImplementationOnce(async () => {
+      controller.abort();
+      throw new Error("No sharp titled game found — try again");
+    });
+    const ensureExplorer = vi.fn(async () => ({ fetchStats: vi.fn() }));
+
+    const picked = await runFeelingLucky({ ...h.deps, signal: controller.signal, ensureExplorer });
+
+    expect(picked).toBeNull();
+    expect(h.luckyDbStartFn).not.toHaveBeenCalled();
+    expect(ensureExplorer).not.toHaveBeenCalled();
+    expect(h.calls.banner.join(" ")).not.toMatch(/Database unavailable|No balanced position|Could not verify/);
+  });
+
+  it("does not evaluate or start a position canceled during live discovery", async () => {
+    const controller = new AbortController();
+    const live = { ...PICKED, reason: "titled-game", source: "lichess-user-feed", gameId: "live1" };
+    const h = harness({ picked: null });
+    h.luckyTitledStartFn.mockImplementationOnce(async () => {
+      controller.abort();
+      return live;
+    });
+
+    const picked = await runFeelingLucky({ ...h.deps, signal: controller.signal });
+
+    expect(picked).toBeNull();
+    expect(h.deps.evaluatePosition).not.toHaveBeenCalled();
+    expect(h.calls.session).toHaveLength(0);
+  });
+
   it("reports Nothing sharp when live feed is empty and no Explorer provider exists", async () => {
     const h = harness({ picked: null });
     const picked = await runFeelingLucky(h.deps);
@@ -164,7 +197,7 @@ describe("I'm Feeling Lucky entry", () => {
     const entry = app.slice(app.indexOf("async function onFeelingLucky"));
     expect(entry).not.toMatch(/preferCurated:\s*true/);
     expect(entry).toMatch(/ensureExplorer:\s*ensureExplorerClient/);
-    expect(entry).toMatch(/luckyBusy/);
+    expect(entry).toMatch(/beginLuckyDiscovery/);
   });
 
   it("gates the app entry on sign-in before sampling", async () => {
