@@ -53,21 +53,20 @@
 
 
 .undo-toast {
-  position: fixed;
-  z-index: 90;
-  left: 50%;
-  bottom: max(20px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
+  position: absolute;
+  z-index: 8;
+  top: 8px;
+  right: 10px;
   display: flex;
   align-items: center;
   gap: 8px;
   width: max-content;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100% - 20px);
   margin: 0;
   padding: 6px 8px 6px 14px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
-  background: var(--panel);
+  background: var(--float);
   box-shadow: var(--shadow-pop, 0 8px 24px rgb(0 0 0 / 0.16));
   font-size: var(--fs-s);
   color: var(--text);
@@ -83,9 +82,19 @@
 .undo-toast .btn { flex: none; color: var(--accent-strong); }
 
 
-@media (max-width: 640px) {
-  .undo-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
+@media (max-width: 760px) {
+  .undo-toast {
+    position: fixed;
+    z-index: 90;
+    top: auto;
+    right: auto;
+    left: 50%;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    max-width: calc(100vw - 32px);
+  }
 }
+
 
 
 /* Context menu — all chrome uses theme tokens so light/dark stay consistent. */

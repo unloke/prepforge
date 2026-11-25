@@ -367,12 +367,16 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         rep_row: Mapping[str, Any],
         node_rows: List[Mapping[str, Any]],
         evals: Mapping[int, EngineEvaluation],
+        *,
+        hydrate: bool = True,
     ) -> Optional[Repertoire]:
-        """Assemble + hydrate a Repertoire from already-fetched rows.
+        """Assemble a Repertoire from already-fetched rows.
 
         Shared by ``load_repertoire`` (single) and ``list_repertoires`` (batched)
         so both paths build identical trees from identical row shapes — the batch
         path just supplies rows fetched in bulk instead of one round trip each.
+        ``hydrate=False`` keeps SAN/FEN derivation out of structural reads; the
+        smart trainer hydrates only the card paths it serves.
         """
         nodes: Dict[str, OpeningNode] = {}
         arriving_uci: Dict[str, Optional[str]] = {}
@@ -401,7 +405,10 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 source=MoveSource(row["source"]),
             )
 
-        root_node = codec.hydrate_opening_tree(rep_row["root_fen"], nodes, arriving_uci)
+        if hydrate:
+            root_node = codec.hydrate_opening_tree(rep_row["root_fen"], nodes, arriving_uci)
+        else:
+            root_node = codec.shape_opening_tree(rep_row["root_fen"], nodes, arriving_uci)
         if root_node is None:
             return None
         if rep_row["root_node_id"] and rep_row["root_node_id"] in nodes:
@@ -422,7 +429,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
 
     def load_repertoire(
         self, repertoire_id: str, owner_user_id: Optional[str] = None,
-        *, conn: Optional[Connection] = None,
+        *, conn: Optional[Connection] = None, hydrate: bool = True,
     ) -> Optional[Repertoire]:
         conn = conn if conn is not None else self._edit_connection
         with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
@@ -443,10 +450,11 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             evals = self._load_evaluations(
                 conn, [row["engine_evaluation_id"] for row in node_rows]
             )
-        return self._repertoire_from_rows(rep_row, node_rows, evals)
+        return self._repertoire_from_rows(rep_row, node_rows, evals, hydrate=hydrate)
 
     def list_repertoires(
         self, owner_user_id: Optional[str] = None, *, repertoire_ids: Optional[List[str]] = None,
+        hydrate: bool = True,
     ) -> List[Repertoire]:
         """Full repertoires (optionally owner-scoped), newest first.
 
@@ -487,7 +495,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         out: List[Repertoire] = []
         for rep_row in rep_rows:
             repertoire = self._repertoire_from_rows(
-                rep_row, nodes_by_rep.get(rep_row["id"], []), evals
+                rep_row, nodes_by_rep.get(rep_row["id"], []), evals, hydrate=hydrate
             )
             if repertoire is not None:
                 out.append(repertoire)

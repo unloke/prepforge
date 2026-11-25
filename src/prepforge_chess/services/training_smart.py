@@ -61,6 +61,7 @@ from prepforge_chess.services.scheduler import (
 from prepforge_chess.services.srs import rating_for
 from prepforge_chess.services.training import record_attempt
 from prepforge_chess.services.training_view import heuristic_strategy, piece_name_at
+from prepforge_chess.storage.codec import hydrate_opening_paths
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 # A re-queued card comes back after this many other cards — soon enough that
@@ -163,7 +164,7 @@ class SmartTrainingService:
         time."""
         if repertoire_id in self._rep_cache:
             return self._rep_cache[repertoire_id]
-        rep = self.repository.load_repertoire(repertoire_id, conn=conn)
+        rep = self.repository.load_repertoire(repertoire_id, conn=conn, hydrate=False)
         self._rep_cache[repertoire_id] = rep
         if rep is not None:
             self._index_cache[repertoire_id] = index_nodes(rep.root_node)
@@ -175,6 +176,13 @@ class SmartTrainingService:
             rep = self.repertoire(repertoire_id)
             index = self._index_cache.get(repertoire_id, {}) if rep is not None else {}
         return index
+
+    def _index_for(self, repertoire: Repertoire) -> Dict[str, OpeningNode]:
+        """The node index of THIS object — the service cache's when canonical,
+        a fresh one when a caller supplied an externally loaded copy."""
+        if self._rep_cache.get(repertoire.id) is repertoire:
+            return self._node_index(repertoire.id)
+        return index_nodes(repertoire.root_node)
 
     # ------------------------------------------------------------------ start
 
@@ -218,7 +226,7 @@ class SmartTrainingService:
         self.shared_ids = {meta["id"] for meta in self.repository.list_shared_with(owner_user_id)}
         ids.extend(sorted(self.shared_ids - set(ids)))
         missing = [rep_id for rep_id in ids if rep_id not in self._rep_cache]
-        for rep in self.repository.list_repertoires(repertoire_ids=missing):
+        for rep in self.repository.list_repertoires(repertoire_ids=missing, hydrate=False):
             self._rep_cache[rep.id] = rep
             self._index_cache[rep.id] = index_nodes(rep.root_node)
         self._active_reps = [self._rep_cache[rep_id] for rep_id in ids
@@ -526,6 +534,21 @@ class SmartTrainingService:
                 self.repository.write_training_session(conn, session)
         return None
 
+    def _hydrate_card_line(
+        self, repertoire: Repertoire, path: List[OpeningNode], targets: List[OpeningNode]
+    ) -> None:
+        """Derive SAN/FEN only where card payloads read them: the line itself,
+        each target's opponent reply, and sibling alternatives at the prompt."""
+        ids = {path[-1].id} if path else set()
+        for node in targets:
+            reply = self._reply_after(path, node)
+            if reply is not None:
+                ids.add(reply.id)
+            ids.update(
+                other.id for other in sibling_moves(repertoire.root_node, path, node)
+            )
+        hydrate_opening_paths(repertoire.root_node, ids)
+
     def _card_context(
         self,
         session: TrainingSession,
@@ -536,13 +559,14 @@ class SmartTrainingService:
             path = path_to_node(
                 repertoire.root_node,
                 card.last_target_id,
-                index=self._node_index(repertoire.id),
+                index=self._index_for(repertoire),
             )
         except ValueError:
             return None
         targets = line_targets(path, repertoire.color, card)
         if targets is None:
             return None
+        self._hydrate_card_line(repertoire, path, targets)
         expected_target_index = next(
             (i for i, node in enumerate(targets) if node.id == session.current_node_id),
             0,
@@ -614,13 +638,14 @@ class SmartTrainingService:
                 path = path_to_node(
                     card_rep.root_node,
                     card.last_target_id,
-                    index=self._node_index(card_rep.id),
+                    index=self._index_for(card_rep),
                 )
             except ValueError:
                 continue
             line = line_targets(path, card_rep.color, card)
             if line is None:
                 continue
+            self._hydrate_card_line(card_rep, path, line)
             targets = []
             for target_index, node in enumerate(line):
                 move = node.move

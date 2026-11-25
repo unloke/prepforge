@@ -192,16 +192,22 @@
 .mtree-line.is-main > .mtree-move.is-current { color: var(--accent-ink); }
 
 
-/* Per-variation collapse toggle. */
+/* Per-variation collapse toggle. A collapsed branch keeps its first move as
+   the label; the disclosure mark alone says nothing about what it hides. */
 .mtree-collapse {
   border: 0;
   background: transparent;
   cursor: pointer;
   color: var(--label);
-  font-size: 11px;
+  font: inherit;
   line-height: 1;
   padding: 0 4px 0 0;
   vertical-align: baseline;
+}
+
+
+.mtree-collapse-icon {
+  font-size: 11px;
 }
 
 
@@ -212,6 +218,8 @@
 
 .mtree-collapsed {
   color: var(--muted);
+  font-size: 0.93em;
+  margin-left: 1px;
 }
 
 

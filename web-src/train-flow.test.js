@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { planTrainRunIn } from "./train-flow.js";
+import { describe, expect, it, vi } from "vitest";
+import { planTrainRunIn, playTrainRunIn } from "./train-flow.js";
 
 const e4 = { uci: "e2e4", fen_after: "e4" };
 const e5 = { uci: "e7e5", fen_after: "e5" };
@@ -18,6 +18,18 @@ describe("continuous opening context", () => {
     const plan = planTrainRunIn(prompt([e4, e5, nf3, d6]), "nc6", [e4, e5, nf3, nc6]);
     expect(plan).toMatchObject({ startFen: "nf3", moves: [d6] });
   });
+  it("walks back to a shared branch point instead of cutting to it", () => {
+    const plan = planTrainRunIn(prompt([e4, e5, nf3, d6]), "nc6", [e4, e5, nf3, nc6]);
+    expect(plan.rewind.map((move) => move.fen_after)).toEqual(["nf3"]);
+  });
+  it("does not rewind through an unrelated start position", () => {
+    const d4 = { uci: "d2d4", fen_after: "d4" };
+    const d5 = { uci: "d7d5", fen_after: "d5" };
+    const otherStart = { ...prompt([d4, d5]), start_fen: "other-root" };
+    const plan = planTrainRunIn(otherStart, "nc6", [e4, e5, nf3, nc6]);
+    expect(plan.rewind).toEqual([]);
+    expect(plan).toMatchObject({ startFen: "other-root", moves: [d4, d5] });
+  });
   it("continues from the board's current position without replaying it", () => {
     expect(planTrainRunIn(prompt([nf3, nc6], 1), "e5", [e4, e5])).toMatchObject({
       startFen: "e5", moves: [nf3, nc6], path: [e4, e5, nf3, nc6],
@@ -31,5 +43,29 @@ describe("continuous opening context", () => {
     expect(planTrainRunIn(prompt([e4, e5]), "other", [other])).toMatchObject({
       startFen: "root", moves: [e4, e5],
     });
+  });
+
+  it("goes straight to the answer position under reduced motion", async () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+    const positions = [];
+    const board = { setPosition: (position) => positions.push(position) };
+    const sleep = vi.fn(() => Promise.resolve());
+    const plan = { startFen: "root", moves: [e4, e5], rewind: [nf3] };
+    const played = await playTrainRunIn(board, plan, { active: () => true, sleep });
+    expect(played).toMatchObject({ stopped: false, cueUci: e5.uci });
+    expect(positions).toEqual([{ fen: e5.fen_after, legalMoves: [], lastMove: e5.uci }]);
+    expect(sleep).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+  it("keeps a long run-in inside one time budget", async () => {
+    vi.unstubAllGlobals();
+    const longLine = Array.from({ length: 8 }, (_, index) => ({ uci: `m${index}`, fen_after: `f${index}` }));
+    const board = { setPosition: () => {} };
+    const delays = [];
+    await playTrainRunIn(board, { startFen: "root", moves: longLine, rewind: [] }, {
+      active: () => true,
+      sleep: (ms) => { delays.push(ms); return Promise.resolve(); },
+    });
+    expect(delays.reduce((sum, ms) => sum + ms, 0)).toBeLessThanOrEqual(880);
   });
 });

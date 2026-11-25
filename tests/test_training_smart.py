@@ -1320,3 +1320,41 @@ def test_another_repertoire_move_is_not_a_miss_and_bundle_lists_it():
     )
     if nf3 is not None:
         assert nf3["alternatives"] == []
+
+
+def test_smart_queue_hydrates_only_the_paths_it_serves(monkeypatch):
+    """Queue planning needs structure and side/ply only; SAN/FEN replay belongs
+    to the handful of card paths the response actually ships, not every branch."""
+    repository = _repository()
+    builder = OpeningBuilderService(repository)
+    repertoire = builder.create_repertoire(
+        CreateRepertoireRequest(name="Wide smart", color=Color.WHITE)
+    )
+    sequences = [
+        ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "a7a6", "b5a4", "g8f6"],
+        ["d2d4", "d7d5", "c2c4", "e7e6", "b1c3", "g8f6", "c1g5", "f8e7"],
+        ["c2c4", "e7e5", "b1c3", "b8c6", "g2g3", "g8f6", "f1g2", "f8b4"],
+        ["g1f3", "d7d5", "g2g3", "c7c6", "f1g2", "g8f6", "e1g1", "c8g4"],
+    ]
+    total_moves = 0
+    for sequence in sequences:
+        parent = repertoire.root_node.id
+        for uci in sequence:
+            parent = builder.add_move(repertoire.id, parent, uci).id
+            total_moves += 1
+
+    from prepforge_chess.storage import codec
+    real_replay = codec._replay_on_board
+    calls = 0
+
+    def counting_replay(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return real_replay(*args, **kwargs)
+
+    monkeypatch.setattr(codec, "_replay_on_board", counting_replay)
+    service = SmartTrainingService(repository, "t-owner")
+    session = service.start_or_resume(repertoire.id, seed=5, session_size=4, new_cap=1)
+    assert service.current_prompt(session.id) is not None
+    assert service.session_card_bundle(session, service.repertoire(repertoire.id))
+    assert calls < total_moves // 2

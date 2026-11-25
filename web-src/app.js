@@ -48,7 +48,7 @@ import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoir
   startBuildLive } from "./build-entry.js";
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
-import { libraryRowsSkeleton } from "./views/library-skeleton.js";
+import { paintDashboardSkeleton } from "./views/library-skeleton.js";
 import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
@@ -1586,8 +1586,7 @@ async function init() {
   // while the session is being read (and so a deep link's route is never
   // replaced by the static markup's dashboard default in anything the user sees).
   holdBootView();
-  const libraryRows = document.getElementById("dashboard-repertoires");
-  if (libraryRows) libraryRows.innerHTML = libraryRowsSkeleton();
+  paintDashboardSkeleton(document);
   appState.prefs = loadPrefs();
   installSoundUnlock();
   bindUnlocks();

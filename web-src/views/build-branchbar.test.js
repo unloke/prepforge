@@ -248,7 +248,7 @@ describe("build tree — large repertoire auto-collapse", () => {
       nodes, currentNodeId: leaf.id, renderer: createMoveTreeRenderer(),
     });
     view.renderBuilderTree();
-    expect(container.innerHTML).toContain('data-collapse-id="var-0" title="Expand variation"');
+    expect(container.innerHTML).toContain('data-collapse-id="var-0" title="Expand 1.d4 variation"');
     expect(container.innerHTML).not.toContain('data-node-id="var-0"');
     expect(container.innerHTML).not.toContain('data-collapse-id="main-0"');
     expect(container.innerHTML).toContain('data-node-id="active-1"');
@@ -285,7 +285,7 @@ describe("build tree — large repertoire auto-collapse", () => {
     const original = appState.build;
     const originalIndex = appState.buildNodeById;
     view.renderBuilderTree();
-    expect(variationToggle(container, variation.id)()).toContain('title="Expand variation"');
+    expect(variationToggle(container, variation.id)()).toContain('title="Expand 1.d4 variation"');
 
     const otherNodes = original.nodes.map((n) => ({ ...n, id: `other-${n.id}`, parent_id: n.parent_id && `other-${n.parent_id}` }));
     appState.build = { ...original, nodes: otherNodes, repertoire_id: "other" };
@@ -298,7 +298,7 @@ describe("build tree — large repertoire auto-collapse", () => {
     appState.buildNodeById = originalIndex;
     appState.buildCurrentNodeId = root.id;
     view.renderBuilderTree();
-    expect(container.innerHTML).toContain('data-collapse-id="var" title="Expand variation"');
+    expect(container.innerHTML).toContain('data-collapse-id="var" title="Expand 1.d4 variation"');
     expect(container.innerHTML).not.toContain('data-node-id="var"');
   });
 

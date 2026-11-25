@@ -23,7 +23,7 @@ import { playBookName, playTrailRows, playSessionPgn, resolvePlayColor, takeback
 import { createPlayMoveHandler } from "../train-play-input.js";
 import { analysisRecallSeq, invalidateAnalysisSource } from "./analyze-entry.js";
 import { isNothingToTrainError } from "../train-start.js";
-import { planTrainRunIn } from "../train-flow.js";
+import { planTrainRunIn, playTrainRunIn } from "../train-flow.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, showTrainResult, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
@@ -1446,17 +1446,16 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     const plan = planTrainRunIn(prompt, board.fen, smart.contextPath);
     smart.contextPath = plan.path;
     const runIn = plan.moves;
-    if (runIn.length) {
-      board.setPosition({ fen: plan.startFen, legalMoves: [], lastMove: null });
+    if (runIn.length || plan.rewind?.length) {
       const cue = runIn[runIn.length - 1];
       // The board label already names the repertoire and side.
       setTrainBanner("runin", prompt.target_index ? "Continue the line" : "Next line", cue?.san || "");
-      for (const mv of runIn) {
-        if (appState.smart !== smart || smart.prompt !== prompt) return; // superseded
-        board.setPosition({ fen: mv.fen_after, legalMoves: [], lastMove: mv.uci });
-        cueUci = mv.uci;
-        await sleep(220);
-      }
+      const played = await playTrainRunIn(board, plan, {
+        active: () => appState.smart === smart && smart.prompt === prompt,
+        sleep,
+      });
+      if (played.stopped) return;
+      cueUci = played.cueUci;
     }
     if (appState.smart !== smart || smart.prompt !== prompt) return;
     appState.trainBusy = false;

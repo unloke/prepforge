@@ -617,6 +617,131 @@ def export_pgn(game: Game) -> str:
 
 
 
+def shape_opening_tree(
+    root_fen: str,
+    nodes: Dict[str, OpeningNode],
+    arriving_uci: Mapping[str, Optional[str]],
+) -> Optional[OpeningNode]:
+    """Link an opening tree and derive structural move facts without SAN/FEN replay.
+
+    Training's queue planner needs each move's UCI, mover side and ply, plus the
+    tree's parent/child shape. Those follow from the root FEN and depth alone;
+    the exact SAN/FEN pair is filled only for paths a response ships, by
+    :func:`hydrate_opening_paths`. Until then ``fen_before``/``fen_after`` are
+    empty and ``san`` is the UCI placeholder (the same synthetic-record contract
+    as a root that carries its own arriving move).
+    """
+    children: Dict[Optional[str], List[OpeningNode]] = {}
+    for node in nodes.values():
+        children.setdefault(node.parent_id, []).append(node)
+
+    root = next((n for n in nodes.values() if n.parent_id is None), None)
+    if root is None:
+        return None
+    root.fen = canonicalize_fen(root_fen)
+    board = chess.Board(root.fen)
+    root.side_to_move = _color_from_board(board)
+    root_turn = root.side_to_move
+    root_ply = board.ply()
+
+    root_uci = arriving_uci.get(root.id)
+    if root_uci:
+        root.move = MoveRecord(
+            uci=root_uci,
+            san=root_uci,
+            fen_before=root.fen,
+            fen_after=root.fen,
+            move_number=board.fullmove_number,
+            ply=root_ply,
+            side_to_move=root_turn.opponent,
+            source=root.source,
+        )
+
+    def walk(node: OpeningNode, depth: int) -> None:
+        for child in children.get(node.id, []):
+            uci = arriving_uci.get(child.id)
+            if not uci:
+                raise ValueError("opening node {0} is missing arriving UCI".format(child.id))
+            ply = root_ply + depth + 1
+            mover = root_turn if (depth + 1) % 2 == 1 else root_turn.opponent
+            record = MoveRecord(
+                uci=uci,
+                san=uci,
+                fen_before="",
+                fen_after="",
+                move_number=(ply + 1) // 2,
+                ply=ply,
+                side_to_move=mover,
+                source=child.source,
+            )
+            if child.engine_evaluation is not None:
+                record.engine_eval_after = child.engine_evaluation
+            child.move = record
+            child.fen = ""
+            child.side_to_move = mover.opponent
+            node.children.append(child)
+            walk(child, depth + 1)
+
+    root.children = []
+    walk(root, 0)
+    walk = None
+    return root
+
+
+def hydrate_opening_paths(root: OpeningNode, node_ids: Iterable[str]) -> None:
+    """Fill exact SAN/FEN data on the paths to ``node_ids`` (and their ancestors).
+
+    A structurally shaped tree replays only the branches a training response
+    serves. Extra ids beyond a card's last target — immediate replies and sibling
+    alternatives — hydrate as single nodes without pulling their whole subtrees in.
+    Already hydrated nodes are reused, so overlapping cards pay their shared prefix
+    once per loaded tree.
+    """
+    wanted = set(node_ids)
+    if not wanted:
+        return
+    nodes: Dict[str, OpeningNode] = {}
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        nodes[node.id] = node
+        stack.extend(node.children)
+
+    keep = set()
+    for node_id in wanted:
+        current = nodes.get(node_id)
+        while current is not None and current.id != root.id and current.id not in keep:
+            keep.add(current.id)
+            current = nodes.get(current.parent_id) if current.parent_id else None
+    if not keep:
+        return
+
+    board = chess.Board(root.fen)
+
+    def walk(node: OpeningNode, fen: str) -> None:
+        # ``board`` is parked at ``fen`` on entry, exactly as in hydrate_opening_tree.
+        for child in node.children:
+            if child.id not in keep:
+                continue
+            move = child.move
+            if move is None or not move.uci:
+                raise ValueError("opening node {0} is missing arriving UCI".format(child.id))
+            if move.fen_after:
+                board.push(chess.Move.from_uci(move.uci))
+            else:
+                record = _replay_on_board(board, move.uci, source=child.source, fen_before=fen)
+                if child.engine_evaluation is not None:
+                    record.engine_eval_after = child.engine_evaluation
+                child.move = record
+                child.fen = record.fen_after
+                child.side_to_move = _color_from_board(board)
+            walk(child, child.move.fen_after)
+            board.pop()
+
+    walk(root, root.fen)
+    walk = None
+
+
 def hydrate_opening_tree(
     root_fen: str,
     nodes: Dict[str, OpeningNode],
