@@ -110,13 +110,18 @@ export function createMoveTreeRenderer() {
     const leads = firstNode.id === opts.currentId || onPath;
     chunks.push(`<div class="mtree-var${leads ? " is-on-path" : ""}">`);
     if (opts.collapsible) {
+      const side = opts.sideOf ? opts.sideOf(firstNode) : firstNode.side;
+      const moveNumber = opts.moveNumberOf ? opts.moveNumberOf(firstNode) : firstNode.moveNumber;
+      const number = moveNumber == null ? "" : `${moveNumber}${side === "black" ? "…" : "."}`;
+      const summary = `${number}${firstNode.san}`;
+      const title = collapsed ? `Expand ${summary} variation` : "Collapse variation";
       chunks.push(
-        `<button class="mtree-collapse" type="button" data-collapse-id="${escapeHtml(firstNode.id)}" title="${collapsed ? "Expand" : "Collapse"} variation">${collapsed ? "▸" : "▾"}</button>`,
+        `<button class="mtree-collapse" type="button" data-collapse-id="${escapeHtml(firstNode.id)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="mtree-collapse-icon" aria-hidden="true">${collapsed ? "▸" : "▾"}</span>`,
       );
+      if (collapsed) chunks.push(`<span class="mtree-collapsed">${escapeHtml(`${summary} …`)}</span>`);
+      chunks.push(`</button>`);
     }
-    if (collapsed) {
-      chunks.push(`<span class="mtree-collapsed">…</span>`);
-    } else {
+    if (!collapsed) {
       pushMoveLine(chunks, firstNode, opts, [], true);
     }
     chunks.push(`</div>`);
