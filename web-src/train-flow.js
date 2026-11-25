@@ -8,13 +8,21 @@ export function planTrainRunIn(prompt, currentFen, previousPath = []) {
   const onPath = path.findLastIndex((move) => move.fen_after === currentFen);
   if (onPath >= 0) return { startFen: currentFen, moves: path.slice(onPath + 1), path };
   let common = 0;
+  let rewind = [];
   if (newLine) {
     while (common < moves.length && common < previousPath.length
       && moves[common].uci === previousPath[common].uci
       && moves[common].fen_after === previousPath[common].fen_after) common++;
+    const currentIndex = previousPath.findLastIndex((move) => move.fen_after === currentFen);
+    if (currentIndex >= 0) {
+      for (let index = currentIndex - 1; index >= common - 1; index--) {
+        if (index >= 0) rewind.push(previousPath[index]);
+      }
+      if (!common) rewind.push({ uci: "", fen_after: prompt.start_fen });
+    }
   }
   return {
     startFen: common ? moves[common - 1].fen_after : prompt.start_fen,
-    moves: moves.slice(common), path,
+    moves: moves.slice(common), path, rewind,
   };
 }

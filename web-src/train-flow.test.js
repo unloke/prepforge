@@ -18,6 +18,10 @@ describe("continuous opening context", () => {
     const plan = planTrainRunIn(prompt([e4, e5, nf3, d6]), "nc6", [e4, e5, nf3, nc6]);
     expect(plan).toMatchObject({ startFen: "nf3", moves: [d6] });
   });
+  it("walks back to a shared branch point instead of cutting to it", () => {
+    const plan = planTrainRunIn(prompt([e4, e5, nf3, d6]), "nc6", [e4, e5, nf3, nc6]);
+    expect(plan.rewind.map((move) => move.fen_after)).toEqual(["nf3"]);
+  });
   it("continues from the board's current position without replaying it", () => {
     expect(planTrainRunIn(prompt([nf3, nc6], 1), "e5", [e4, e5])).toMatchObject({
       startFen: "e5", moves: [nf3, nc6], path: [e4, e5, nf3, nc6],

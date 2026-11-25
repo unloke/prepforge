@@ -1446,11 +1446,17 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     const plan = planTrainRunIn(prompt, board.fen, smart.contextPath);
     smart.contextPath = plan.path;
     const runIn = plan.moves;
-    if (runIn.length) {
-      board.setPosition({ fen: plan.startFen, legalMoves: [], lastMove: null });
+    const rewind = plan.rewind || [];
+    if (runIn.length || rewind.length) {
+      if (!rewind.length) board.setPosition({ fen: plan.startFen, legalMoves: [], lastMove: null });
       const cue = runIn[runIn.length - 1];
       // The board label already names the repertoire and side.
       setTrainBanner("runin", prompt.target_index ? "Continue the line" : "Next line", cue?.san || "");
+      for (const mv of rewind) {
+        if (appState.smart !== smart || smart.prompt !== prompt) return; // superseded
+        board.setPosition({ fen: mv.fen_after, legalMoves: [], lastMove: null, back: true });
+        await sleep(110);
+      }
       for (const mv of runIn) {
         if (appState.smart !== smart || smart.prompt !== prompt) return; // superseded
         board.setPosition({ fen: mv.fen_after, legalMoves: [], lastMove: mv.uci });
