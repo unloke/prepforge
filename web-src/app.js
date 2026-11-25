@@ -51,6 +51,7 @@ import { normalizeSelection } from "./views/shared/source-composer.js";
 import { paintDashboardSkeleton } from "./views/library-skeleton.js";
 import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
 import { acceptRepertoireListing, refreshRepertoireListing } from "./repertoire-listing.js";
+import { showTrainModuleLoadFailure } from "./train-route-failure.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { provideApp } from "./core/app-context.js";
@@ -371,13 +372,11 @@ async function restoreWorkspaceLocation() {
     appState.replaySection = loc.replaySection;
   }
   switchView(loc.view, { fromUrl: true });
-  if (loc.view === "train") (await loadTrainSession()).syncTrainControls();
   if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply, loc.node);
   // #/train is Train Home; a link that names a repertoire opens its Due queue,
-  // with that scope on the session's chip.
-  if (loc.view === "train" && appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) {
-    await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId });
-  }
+  // with that scope on the session's chip. A failed chunk leaves a retry instead of an inert skeleton.
+  const enterTrain = async () => { (await loadTrainSession()).syncTrainControls(); if (loc.view === "train" && appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId }); };
+  if (loc.view === "train") await enterTrain().catch((error) => showTrainModuleLoadFailure(error, enterTrain));
 }
 
 // The repertoire Build shows, or the one it is loading (A → B → A while B is

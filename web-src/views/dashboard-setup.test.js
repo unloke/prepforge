@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDashboardView } from "./dashboard.js";
+import { acceptRepertoireListing, fetchRepertoireListing } from "../repertoire-listing.js";
 
 // Library "Get started" setup checklist (signed in):
 //  - three steps — build a repertoire / link Lichess / finish a training
@@ -447,6 +448,33 @@ describe("dashboard setup checklist", () => {
     expect(String(container.innerHTML)).not.toContain("Old load failed");
     expect(String(todayCard.innerHTML)).toContain("1 weak spot to review");
     expect(String(todayCard.innerHTML)).toContain("2 new moves to learn");
+  });
+
+  it("renders the already adopted listing when a superseded refresh is discarded", async () => {
+    let resolveRefresh, resolvePassive;
+    const refreshRequest = new Promise((done) => { resolveRefresh = done; });
+    const passiveRequest = new Promise((done) => { resolvePassive = done; });
+    let listingCalls = 0;
+    const renamed = { id: "r1", name: "Renamed opening", color: "white", is_active: true };
+    api.mockImplementation((url) => {
+      if (String(url).startsWith("/api/dashboard")) return Promise.resolve(dashboardPayload({ repertoires: 1 }));
+      if (url === "/api/repertoires") {
+        listingCalls += 1;
+        return listingCalls === 1 ? refreshRequest : passiveRequest;
+      }
+      return Promise.resolve({ teams: [] });
+    });
+    const refresh = view.loadDashboardRepertoires();
+    const passive = fetchRepertoireListing(api, appState.accountUserId, appState.ownerGeneration || 0);
+    resolvePassive({ repertoires: [renamed], shared: [] });
+    expect(acceptRepertoireListing(passive, appState.accountUserId, appState.ownerGeneration || 0)).toBe(true);
+    appState.repertoireList = [renamed];
+    appState.sharedRepertoireList = [];
+    appState.repertoireListGeneration = appState.ownerGeneration || 0;
+    resolveRefresh({ repertoires: [{ ...renamed, name: "Old opening" }], shared: [] });
+    await refresh;
+    expect(String(container.innerHTML)).toContain("Renamed opening");
+    expect(String(container.innerHTML)).not.toContain("Old opening");
   });
 
   it("a full Library load can recover independently of a pending background refresh", async () => {

@@ -207,7 +207,8 @@ describe("app boot holds auth-dependent state until the session is known", () =>
     // view-dashboard default is only the paint under the hold.
     expect(src).toMatch(/const loc = parseWorkspaceLocation\(window\.location\.href\);/);
     expect(src).toMatch(/switchView\(loc\.view, \{ fromUrl: true \}\);/);
-    expect(src).toMatch(/if \(loc\.view === "train"\) \(await loadTrainSession\(\)\)\.syncTrainControls\(\);/);
+    expect(src).toMatch(/enterTrain = async/);
+    expect(src).toMatch(/showTrainModuleLoadFailure\(error, enterTrain\)/);
   });
 
   it("holds the account chip too: an unread session is not a signed-out one", () => {

@@ -273,7 +273,7 @@ export async function paintTrainHome() {
   const listingKnown = repertoireListingKnown(state);
   const optionsFailed = signedIn && !listingKnown && state.trainRepertoireOptionsError;
   if (signedIn && !listingKnown && !optionsFailed) {
-    paintTrainListingLoading(currentOwnerId(), state.trainScope?.repertoireId, state.trainHomeReady);
+    paintTrainListingLoading(currentOwnerId(), state.trainScope?.repertoireId, state.trainHomeReady, playBook() === "maia");
     return;
   }
   // Due queue
@@ -349,6 +349,7 @@ export async function paintTrainHome() {
   await preview.load(url);
   if (trainScreenOf(state) !== "home" || previewUrl() !== url || !preview.current(url)) return;
   paintTrainPreviewLoading(false);
+  if (preview.authFailed?.(url)) { due.textContent = "Sign in to train"; due.dataset.action = "signin"; due.disabled = false; document.getElementById("train-due-meta").textContent = ""; outlook.innerHTML = ""; outlook.hidden = true; paintDueNext(null); state.trainHomeReady = true; paintTrainHomeLoading(false); return; }
   if (!isSignedIn()) {
     rehearseBtn.textContent = "Sign in to train";
     rehearseBtn.dataset.action = "signin";

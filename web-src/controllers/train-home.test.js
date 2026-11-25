@@ -221,6 +221,24 @@ describe("the Due row", () => {
     expect(appState.repertoireListGeneration).not.toBe(8);
   });
 
+  it("keeps Maia Practice usable while the first listing load is pending", async () => {
+    setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1, playBook: "maia" });
+    const pending = loadTrainRepertoireOptions();
+    await createTrainHome().paintTrainHome();
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBe("");
+    await pending;
+  });
+
+  it("turns a preview 401 into a sign-in action instead of a live Start", async () => {
+    const { deps } = setup();
+    deps.api.mockImplementation((url) => url === "/api/repertoires" ? Promise.resolve({ repertoires: [{ id: "r1", name: "Italian", color: "white", is_active: true }], shared: [] }) : Promise.reject(Object.assign(new Error("unauthorized"), { status: 401 })));
+    await loadTrainRepertoireOptions();
+    await createTrainHome().paintTrainHome();
+    expect(doc.getElementById("start-train").textContent).toBe("Sign in to train");
+    expect(doc.getElementById("start-train").dataset.action).toBe("signin");
+  });
+
   it("marks a successful options load for this owner generation", async () => {
     const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
     deps.api.mockResolvedValueOnce({ repertoires: [{ id: "r9", name: "Sicilian" }], shared: [] });

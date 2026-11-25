@@ -619,8 +619,12 @@ export function createDashboardView({
     }
     const read = authoritativeRefresh ? refreshRepertoireListing : fetchRepertoireListing;
     const listing = read(api, appState.accountUserId, appState.ownerGeneration || 0);
-    const payload = await listing;
-    if (!payload || !isCurrent() || !acceptRepertoireListing(listing, appState.accountUserId, appState.ownerGeneration || 0)) return false;
+    let payload = await listing;
+    if (!isCurrent()) return false;
+    if (!payload || !acceptRepertoireListing(listing, appState.accountUserId, appState.ownerGeneration || 0)) {
+      if (appState.repertoireListGeneration !== (appState.ownerGeneration || 0)) return false;
+      payload = { repertoires: appState.repertoireList || [], shared: appState.sharedRepertoireList || [] };
+    }
     const status = document.getElementById("library-refresh-status");
     if (status) status.hidden = true;
     appState.repertoireList = payload.repertoires || [];

@@ -7,22 +7,26 @@ export function createTrainPreview(api) {
   let at = 0;
   let pending = null;
   let errorKey = "";
+  let authKey = "";
 
   return {
     dataFor: (key) => dataKey === key ? data : null,
     failed: (key) => errorKey === key,
+    authFailed: (key) => authKey === key,
     current: (key) => requestedKey === key,
     invalidate() {
       data = null;
       dataKey = "";
       at = 0;
       errorKey = "";
+      authKey = "";
       pending = null;
       requestedKey = "";
     },
     load(key) {
       requestedKey = key;
       errorKey = "";
+      authKey = "";
       if (pending && pending.key !== key) pending = null;
       if (dataKey === key && Date.now() - at < PREVIEW_TTL) return Promise.resolve(data);
       if (pending?.key === key) return pending.promise;
@@ -37,8 +41,9 @@ export function createTrainPreview(api) {
         at = Date.now();
         return result;
       }).catch((error) => {
-        if (pending === request && error?.status !== 401) {
-          errorKey = key;
+        if (pending === request) {
+          if (error?.status === 401) authKey = key;
+          else errorKey = key;
           at = 0;
         }
         return null;
@@ -78,9 +83,13 @@ export function paintTrainListingDependentLoading(busy) {
   for (const id of ["start-train", "train-due-scope", "start-rehearse", "train-rehearse-scope"]) skeletonControl(document.getElementById(id), busy);
 }
 
-export function paintTrainListingLoading(owner, scope, retrying = false) {
+export function paintTrainListingLoading(owner, scope, retrying = false, practiceUsable = false) {
   if (retrying) paintTrainListingDependentLoading(true);
-  else paintTrainHomeLoading(true);
+  else {
+    paintTrainHomeLoading(true);
+    if (practiceUsable) skeletonControl(document.getElementById("start-play"), false);
+    skeletonControl(document.querySelector?.("#train-bots [data-book='maia']"), false);
+  }
   paintTrainPreviewLoading(true, readTrainPreviewShape(owner, scope));
 }
 
