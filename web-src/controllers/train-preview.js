@@ -91,7 +91,7 @@ export function paintTrainPreviewLoading(busy) {
   outlook.setAttribute("aria-busy", String(busy));
   list.setAttribute("aria-busy", String(busy));
   if (!busy) return;
-  outlook.innerHTML = '<span class="train-outlook-lead skeleton-text" aria-hidden="true"><b>0</b> due now</span><span class="train-outlook-rest skeleton-text" aria-hidden="true">0 this week</span>';
+  outlook.innerHTML = '<span class="train-outlook-lead" aria-hidden="true"><b class="skeleton-text skeleton-number">00</b><span class="skeleton-text">due now</span></span><span class="train-outlook-rest skeleton-text" aria-hidden="true">0 this week</span>';
   outlook.hidden = false;
   meta.innerHTML = '<span class="skeleton-text" aria-hidden="true">0 cards</span>';
   // Upcoming cards are optional content. Without a stored shape, fabricating

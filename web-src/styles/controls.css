@@ -832,6 +832,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .skeleton-text::after { content: ""; position: absolute; inset-inline: 0; top: 50%; height: 0.8em; max-height: 20px; transform: translateY(-50%); border-radius: 5px; background: color-mix(in srgb, var(--text) 8%, var(--panel)); animation: skeleton-pulse 1.8s ease-in-out infinite alternate; }
 /* The content box reserves layout; loading hides decorative borders and tracks. */
 .skeleton-text.skeleton-text { background: none; border-color: transparent; box-shadow: none; }
+.skeleton-number { display: inline-block; }
+.skeleton-number::after { max-height: 0.78em; border-radius: 7px; }
 .skeleton-bar, .skeleton-dot { background: color-mix(in srgb, var(--text) 8%, var(--panel)); animation-duration: 1.8s; }
 
 /* A control whose label depends on data keeps its final chrome and footprint;
