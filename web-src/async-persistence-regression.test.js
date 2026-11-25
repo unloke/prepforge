@@ -142,6 +142,52 @@ it("a legacy Train start cannot overwrite a newer session", async () => {
   expect(deps.renderTraining).toHaveBeenCalledTimes(1);
 });
 
+function rehearsalHarness(flush) {
+  const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r", trainStarting: true };
+  const deps = { appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
+    setTrainBanner: vi.fn(), trainStatsReset: vi.fn(), isNothingToTrainError: () => false,
+    clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setSmartPanelsHidden: vi.fn(),
+    setStatus: vi.fn(), hardFlushBuild: vi.fn(() => flush.promise), setStatusError: vi.fn(),
+    restoreRehearsal: vi.fn(() => null), postJson: vi.fn(),
+    boards: {}, document: { getElementById: () => ({}) }, renderTrainStats: vi.fn(),
+    renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn(), reveal: (el) => { el.hidden = false; } };
+  const run = compile("async function startTraining(", deps, "let smartStartSeq = 0; " + cancelStaleTrainStartSource());
+  return { appState, deps, run };
+}
+
+it("an invalidated rehearsal start cleans up when its Build flush resolves", async () => {
+  const flush = deferred();
+  const { appState, deps, run } = rehearsalHarness(flush);
+  const token = {}; let active = true;
+  appState.trainStartToken = token;
+  const attempt = run("all_lines", { entryToken: token, isCurrent: () => active });
+  await vi.waitFor(() => expect(deps.hardFlushBuild).toHaveBeenCalled());
+  active = false;
+  flush.resolve();
+  await attempt;
+  expect(deps.postJson).not.toHaveBeenCalled();
+  expect(appState.trainStarting).toBe(false);
+  expect(appState.trainStartToken).toBeNull();
+  expect(deps.trainRowError).not.toHaveBeenCalled();
+});
+
+it("an invalidated rehearsal start cleans up when its Build flush rejects", async () => {
+  const flush = deferred();
+  const { appState, deps, run } = rehearsalHarness(flush);
+  const token = {}; let active = true;
+  appState.trainStartToken = token;
+  const attempt = run("all_lines", { entryToken: token, isCurrent: () => active });
+  await vi.waitFor(() => expect(deps.hardFlushBuild).toHaveBeenCalled());
+  active = false;
+  flush.reject(new Error("offline"));
+  await attempt;
+  expect(deps.postJson).not.toHaveBeenCalled();
+  expect(appState.trainStarting).toBe(false);
+  expect(appState.trainStartToken).toBeNull();
+  expect(deps.trainRowError).not.toHaveBeenCalled();
+  expect(deps.syncTrainSessionControls).toHaveBeenCalled();
+});
+
 
 it("Scout bulk counts only confirmed complete lines and continues after failures", async () => {
   const scoutSource = readFileSync(new URL("./views/scout.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");

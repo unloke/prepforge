@@ -51,8 +51,34 @@ describe("Train entry navigation ordering", () => {
     expect(appState.trainPendingRoute).toBeUndefined();
   });
 
-  it("plain Train navigation centrally cancels a pending scoped route", () => {
-    expect(source).toContain('if (name === "train" && !appState.trainEntering) { invalidateTrainEntries(); delete appState.trainPendingRoute; }');
+  it("plain Train navigation centrally cancels a pending scoped route and start state", () => {
+    expect(source).toContain('if (name !== "train" || name === "train" && !appState.trainEntering)');
+    expect(source).toContain("cancelActiveTrainStart();");
+    expect(source).toContain("delete appState.trainPendingRoute;");
+  });
+
+  it("Train this repertoire enters the guarded wrapper before waiting on Build sync", async () => {
+    const start = source.indexOf("async function trainRepertoire(");
+    const body = source.slice(start, source.indexOf("\n}\n", start) + 2);
+    expect(body).not.toContain("await hardFlushBuild");
+    const openTrain = vi.fn(async () => {});
+    const run = new Function("openTrain", `return (${body});`)(openTrain);
+    await run("r1", { targetNodeIds: ["n1"] });
+    expect(openTrain).toHaveBeenCalledWith({ mode: "smart", repertoireId: "r1", targets: ["n1"] });
+  });
+
+  it("navigation cancellation clears the transient start and repaints Home immediately", async () => {
+    const start = source.indexOf("function cancelActiveTrainStart(");
+    const body = source.slice(start, source.indexOf("\n}\n", start) + 2);
+    const appState = { trainStarting: true, trainStartToken: {} };
+    const train = { syncTrainControls: vi.fn() };
+    const setTrainBanner = vi.fn();
+    const cancel = new Function("appState", "setTrainBanner", "trainSessionLoading", `${body}; return cancelActiveTrainStart;`)(appState, setTrainBanner, Promise.resolve(train));
+    cancel();
+    expect(appState.trainStarting).toBe(false);
+    expect(appState.trainStartToken).toBeNull();
+    expect(setTrainBanner).toHaveBeenCalledWith("move", "", "");
+    await vi.waitFor(() => expect(train.syncTrainControls).toHaveBeenCalled());
   });
 
   it("scoped popstate entries use the retryable Train entry path", () => {

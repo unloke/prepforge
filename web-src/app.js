@@ -522,7 +522,12 @@ function syncViewHeads() {
 function switchView(name, { fromUrl = false } = {}) {
   workspaceNavigationSeq += 1;
   const previousView = appState.currentView;
-  if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true; if (name !== "train") invalidateTrainEntries(); if (name === "train" && !appState.trainEntering) { invalidateTrainEntries(); delete appState.trainPendingRoute; }
+  if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
+  if (name !== "train" || name === "train" && !appState.trainEntering) {
+    invalidateTrainEntries();
+    delete appState.trainPendingRoute;
+    cancelActiveTrainStart();
+  }
   if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
   document.getElementById("app-rail")?.classList.add("is-nav-collapsed");
@@ -716,13 +721,8 @@ function syncCoverageReadOnlyState() {
 // "Train this repertoire", a forgotten move, coverage replies: that
 // repertoire's Due queue (or just the picked moves), its name on the chip.
 async function trainRepertoire(repertoireId, { targetNodeIds = [] } = {}) {
-  // Training reads the server's tree: pending Build edits land first.
-  try {
-    await hardFlushBuild();
-  } catch (error) {
-    setStatusError(error.message);
-    return;
-  }
+  // Start the guarded Train entry before any waiting: startTraining drains the
+  // Build outbox itself, and the entry must already exist if the user leaves.
   return openTrain({ mode: "smart", repertoireId, targets: targetNodeIds });
 }
 
@@ -1110,6 +1110,12 @@ function loadTrainSession() {
     throw error;
   });
   return trainSessionLoading;
+}
+function cancelActiveTrainStart() {
+  if (!appState.trainStarting) return;
+  appState.trainStarting = false; appState.trainStartToken = null;
+  setTrainBanner("move", "", "");
+  void trainSessionLoading?.then((train) => train.syncTrainControls()).catch(() => {});
 }
 const viaTrainSession = (name) => (...args) => loadTrainSession().then((train) => train[name](...args));
 const loadTrainRepertoireOptions = viaTrainSession("loadTrainRepertoireOptions");

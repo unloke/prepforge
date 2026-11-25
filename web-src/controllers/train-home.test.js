@@ -134,6 +134,18 @@ describe("‹ Train", () => {
     await createTrainHome(deps).leaveToHome();
     expect(appState.play).toBe(play);
   });
+
+  it("invalidates a pending start and drops its scoped route", async () => {
+    const { appState, deps } = setup({
+      currentView: "train", trainMode: "smart", trainStarting: true, trainStartToken: {},
+      trainEntryVersion: 4, trainPendingRoute: { repertoireId: "r1", trainMode: "smart" },
+    });
+    await createTrainHome(deps).leaveToHome();
+    expect(appState.trainEntryVersion).toBe(5);
+    expect(appState.trainPendingRoute).toBeUndefined();
+    expect(appState.trainStarting).toBe(false);
+    expect(doc.getElementById("view-train").dataset.trainScreen).toBe("home");
+  });
 });
 
 describe("the Due row", () => {

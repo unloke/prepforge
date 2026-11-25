@@ -254,7 +254,8 @@ export async function startTraining(mode, options = {}) {
     await hardFlushBuild();
     if (!isCurrent()) return cancelStaleTrainStart(options);
   } catch (error) {
-    if (isCurrent()) failed(error.message);
+    if (!isCurrent()) return cancelStaleTrainStart(options);
+    failed(error.message);
     return;
   }
   const fresh = !!options.fresh;
