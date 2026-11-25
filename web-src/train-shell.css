@@ -84,7 +84,8 @@
 .train-row > [data-unlock-place],
 .train-row-error { grid-column: 1 / -1; }
 .train-row-error { margin: 0; color: var(--danger); font-size: var(--fs); }
-.train-row-error[hidden] { display: none; }
+.train-row-error[hidden], .train-row-retry[hidden] { display: none; }
+.train-row-retry { grid-column: 1 / -1; justify-self: start; }
 .train-blitz-row { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 500; user-select: none; }
 /* Practice has two ways in, so both sit in the action slot: Random position
    beside Play, the options line under them holds only the game's setup

@@ -168,6 +168,22 @@ describe("the Due row", () => {
     expect(appState.trainRepertoireOptionsError).toBe("network down");
   });
 
+  it("ends a listing failure as a retryable error without locking Practice", async () => {
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1, trainRepertoireOptionsError: "network down" });
+    await createTrainHome(deps).paintTrainHome();
+    expect(deps.api).not.toHaveBeenCalled();
+    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
+    expect(doc.getElementById("train-outlook").getAttribute("aria-busy")).toBe("false");
+    expect(String(doc.getElementById("train-due-next").innerHTML)).not.toContain("skeleton-text");
+    expect(doc.getElementById("train-due-next").hidden).toBe(true);
+    expect(doc.getElementById("start-rehearse").disabled).toBe(true);
+    expect(doc.getElementById("start-play").disabled).toBe(false);
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("train-due-retry").hidden).toBe(false);
+    doc.getElementById("train-due-retry").click();
+    expect(deps.api).toHaveBeenCalledWith("/api/repertoires");
+  });
+
   it("holds its loaded shape while the first preview is pending", async () => {
     trainRowError("smart", "");
     const { deps } = setup();
@@ -179,7 +195,9 @@ describe("the Due row", () => {
     expect(doc.getElementById("start-train").dataset.action).toBe("start");
     expect(doc.getElementById("start-train").getAttribute("inert")).toBe("");
     expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(true);
-    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBe("true");
+    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
+    expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
     expect(doc.getElementById("train-outlook").hidden).toBe(false);
     expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("skeleton-text");
     expect(String(doc.getElementById("train-due-meta").innerHTML)).toContain("skeleton-text");

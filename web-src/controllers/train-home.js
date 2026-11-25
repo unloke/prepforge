@@ -6,7 +6,7 @@ import { recentRuns } from "../train-history.js";
 import { loadRehearsal } from "../train-rehearsal.js";
 import { lineTail } from "../views/train.js";
 import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
-import { createTrainPreview, paintTrainHomeLoading, paintTrainPreviewLoading, readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
+import { createTrainPreview, paintTrainDueLoading, paintTrainHomeLoading, paintTrainPreviewLoading, readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
 import { dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
 export { dueIn, dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
 import { appState, boards } from "../core/state.js";
@@ -47,8 +47,7 @@ function repertoireListingKnown(state = appState) {
 }
 
 function paintTrainListingLoading(state) {
-  paintTrainHomeLoading(true);
-  paintTrainPreviewLoading(true, readTrainPreviewShape(currentOwnerId(), state.trainScope?.repertoireId));
+  paintTrainHomeLoading(true); paintTrainPreviewLoading(true, readTrainPreviewShape(currentOwnerId(), state.trainScope?.repertoireId));
 }
 
 function paintRowErrors() {
@@ -59,6 +58,7 @@ function paintRowErrors() {
     el.hidden = !text;
     el.textContent = text;
   }
+  const retry = document.getElementById("train-due-retry"); if (retry) retry.hidden = !(isSignedIn() && !repertoireListingKnown() && appState.trainRepertoireOptionsError);
 }
 
 export function createTrainHome() {
@@ -280,13 +280,6 @@ export async function paintTrainHome() {
     return;
   }
   const firstPaint = !state.trainHomeReady;
-  if (optionsFailed) {
-    state.trainHomeReady = true;
-    paintTrainHomeLoading(false);
-    for (const id of ["start-train", "start-rehearse", "train-due-scope", "train-rehearse-scope"]) document.getElementById(id).disabled = true;
-    paintRowErrors();
-    return;
-  }
   // Due queue
   setChip("train-due-scope", dueScopeLabel(), !signedIn || !ownActive().length && !reps.length);
   const due = document.getElementById("start-train");
@@ -335,6 +328,14 @@ export async function paintTrainHome() {
   syncPlayColorLock();
   // Outlook + Due counts (network): repaint when they land.
   const outlook = document.getElementById("train-outlook");
+  if (optionsFailed) {
+    paintTrainPreviewLoading(false);
+    outlook.innerHTML = ""; outlook.hidden = true; paintDueNext(null);
+    state.trainHomeReady = true; paintTrainHomeLoading(false);
+    for (const id of ["start-train", "start-rehearse", "train-due-scope", "train-rehearse-scope"]) document.getElementById(id).disabled = true;
+    paintRowErrors();
+    return;
+  }
   if (!signedIn || !reps.length) {
     paintTrainPreviewLoading(false);
     outlook.hidden = true;
@@ -344,9 +345,10 @@ export async function paintTrainHome() {
     paintTrainHomeLoading(false);
     return;
   }
-  if (firstPaint) paintTrainHomeLoading(true);
   const owner = currentOwnerId();
   const scope = state.trainScope?.repertoireId;
+  if (firstPaint) paintTrainHomeLoading(false);
+  paintTrainDueLoading(!currentPreview);
   paintTrainPreviewLoading(!currentPreview, readTrainPreviewShape(owner, scope));
   await preview.load(url);
   if (trainScreenOf(state) !== "home" || previewUrl() !== url || !preview.current(url)) return;
@@ -438,9 +440,9 @@ export function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
 // The listing every row reads: own + shared repertoires, then the Home repaint.
 export async function loadTrainRepertoireOptions() {
   const state = appState;
-  if (state.signedIn && !repertoireListingKnown(state) && !state.trainRepertoireOptionsError) paintTrainListingLoading(state);
+  if (state.signedIn) state.trainRepertoireOptionsError = "";
+  if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(state);
   if (state.signedIn) {
-    state.trainRepertoireOptionsError = "";
     try {
       const payload = await api("/api/repertoires");
       state.repertoireList = payload.repertoires || [];
@@ -503,6 +505,7 @@ function bind() {
   $("restart-rehearse").addEventListener("click", () =>
     openTrain({ mode: "all_lines", repertoireId: appState.trainingRepertoireId, fresh: true }));
   $("start-play").addEventListener("click", () => openTrain({ mode: "play" }));
+  $("train-due-retry").addEventListener("click", () => void loadTrainRepertoireOptions());
   $("train-due-next").addEventListener("click", (e) => {
     const line = e.target.closest(".train-due-line");
     if (!line) return;
