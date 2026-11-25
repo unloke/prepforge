@@ -1112,8 +1112,9 @@ function loadTrainSession() {
   return trainSessionLoading;
 }
 function cancelActiveTrainStart() {
-  if (!appState.trainStarting && !appState.playStarting) return;
-  if (appState.playStarting) { appState.playStartToken = (appState.playStartToken || 0) + 1; appState.playStarting = null; boards.train?.setPremove(null); }
+  if (appState.play?.active) return;
+  appState.playStartToken = (appState.playStartToken || 0) + 1; if (!appState.trainStarting && !appState.playStarting && !appState.luckyBusy) return;
+  if (appState.playStarting) { appState.playStarting = null; boards.train?.setPremove(null); }
   appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", "");
   void trainSessionLoading?.then((train) => train.syncTrainControls()).catch(() => {});
 }

@@ -89,12 +89,13 @@ describe("Train entry navigation ordering", () => {
     const start = source.indexOf("function cancelActiveTrainStart(");
     const body = source.slice(start, source.indexOf("\n}\n", start) + 2);
     const play = { active: true };
-    const appState = { play, trainStarting: false, playStarting: null, playStartToken: 3 };
+    const appState = { play, trainStarting: true, playStarting: Promise.resolve(), playStartToken: 3 };
     const train = { syncTrainControls: vi.fn() };
     const cancel = new Function("appState", "setTrainBanner", "trainSessionLoading", "boards", `${body}; return cancelActiveTrainStart;`)(appState, vi.fn(), Promise.resolve(train), { train: { setPremove: vi.fn() } });
     cancel();
     expect(appState.play).toBe(play);
     expect(appState.playStartToken).toBe(3);
+    expect(appState.playStarting).not.toBeNull();
     expect(train.syncTrainControls).not.toHaveBeenCalled();
   });
 

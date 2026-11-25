@@ -821,7 +821,7 @@ async function runFeelingLuckyClick() {
   // No Lichess-link hard gate: the live Lichess game-feed endpoints are
   // public/anonymous. Do not refresh link status here; that would add a
   // needless network round trip before the actual on-demand game request.
-  let dbPicked = null;
+  let dbPicked = null, luckyToken = appState.playStartToken = (appState.playStartToken || 0) + 1, luckyCurrent = () => appState.playStartToken === luckyToken;
   try {
     setTrainBanner("runin", "Finding a position…", "Discovering a fresh titled player");
     const { runFeelingLucky } = await import("../feeling-lucky.js");
@@ -830,10 +830,10 @@ async function runFeelingLuckyClick() {
       exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
       rating: effectiveMaiaRating(),
       ensureExplorer: ensureExplorerClient,
-      onStatus: setStatus,
-      setBanner: (state, title, sub) => setTrainBanner(state, title, sub),
+      onStatus: (...args) => luckyCurrent() && setStatus(...args),
+      setBanner: (...args) => luckyCurrent() && setTrainBanner(...args),
       startSession: async (session) => {
-        appState.lastLuckyFen = session.fen;
+        if (!luckyCurrent()) return false; appState.lastLuckyFen = session.fen;
         return startPlaySessionTracked(session);
       },
     });
