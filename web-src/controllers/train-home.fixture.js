@@ -72,6 +72,15 @@ export function fakeDocument() {
 // registered as fakes, and the core/api, train-play and train-session mocks the
 // test file declares (see the top of this file) given their defaults.
 export function setup(state = {}) {
+  if (!globalThis.localStorage) {
+    const memory = new Map();
+    vi.stubGlobal("localStorage", {
+      getItem: (key) => memory.get(key) ?? null,
+      setItem: (key, value) => memory.set(key, String(value)),
+      removeItem: (key) => memory.delete(key),
+      clear: () => memory.clear(),
+    });
+  }
   for (const key of Object.keys(appState)) delete appState[key];
   Object.assign(appState, { signedIn: true, accountUserId: "u1", currentView: "dashboard", ownerGeneration: 7, repertoireListGeneration: 7, trainHomeReady: false, repertoireList: [
     { id: "r1", name: "Italian", color: "white", is_active: true, health: { trainable: 4 } },

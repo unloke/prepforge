@@ -370,6 +370,7 @@ async function restoreWorkspaceLocation() {
     appState.replaySection = loc.replaySection;
   }
   switchView(loc.view, { fromUrl: true });
+  if (loc.view === "train") (await loadTrainSession()).syncTrainControls();
   if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply, loc.node);
   // #/train is Train Home; a link that names a repertoire opens its Due queue,
   // with that scope on the session's chip.

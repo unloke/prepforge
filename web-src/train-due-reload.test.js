@@ -9,6 +9,7 @@ function runtime(hash, { signedIn = true, smart = null } = {}) {
     appState: { signedIn, currentView: "train", smart },
     parseWorkspaceLocation, trainQueueRepertoireId, loadReturnState: () => null,
     switchView: vi.fn(), openTrain: vi.fn(async () => {}),
+    loadTrainSession: vi.fn(async () => ({ syncTrainControls: vi.fn() })),
   };
   const compile = marker => {
     const start = source.indexOf(marker);

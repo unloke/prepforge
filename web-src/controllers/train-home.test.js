@@ -4,8 +4,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDocument, setup } from "./train-home.fixture.js";
 import {
-  createTrainHome, dueIn, dueMeta, dueStartState, loadTrainRepertoireOptions, outlookHtml, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
+  createTrainHome, dueIn, dueMeta, dueStartState, loadTrainRepertoireOptions, outlookHtml, outlookShape, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
 } from "./train-home.js";
+import { readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
 import { saveRun } from "../train-history.js";
 import { provideApp } from "../core/app-context.js";
 import { formatWorkspaceHash, workspaceLocationFromState } from "../workspace-url.js";
@@ -130,6 +131,26 @@ describe("the Due row", () => {
     expect(doc.getElementById("train-due-next").hidden).not.toBe(false);
   });
 
+  it("uses the remembered preview shape while the listing is still unknown", async () => {
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    rememberTrainPreviewShape("u1", null, { outlook: "none", upcoming: 2 });
+    await createTrainHome(deps).paintTrainHome();
+    expect(deps.api).not.toHaveBeenCalled();
+    expect(doc.getElementById("train-outlook").hidden).toBe(true);
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-due-line/g)).toHaveLength(2);
+    expect(doc.getElementById("train-home").classList.contains("is-loading")).toBe(true);
+  });
+
+  it("paints the remembered preview shape as soon as the options load starts", async () => {
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    rememberTrainPreviewShape("u1", null, { outlook: "none", upcoming: 2 });
+    const pending = loadTrainRepertoireOptions();
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-due-line/g)).toHaveLength(2);
+    expect(doc.getElementById("train-outlook").hidden).toBe(true);
+    await pending;
+    expect(deps.api).toHaveBeenCalledWith("/api/repertoires");
+  });
+
   it("marks a successful options load for this owner generation", async () => {
     const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
     deps.api.mockResolvedValueOnce({ repertoires: [{ id: "r9", name: "Sicilian" }], shared: [] });
@@ -175,6 +196,24 @@ describe("the Due row", () => {
     expect(doc.getElementById("train-outlook").hidden).toBe(false);
     expect(doc.getElementById("train-due-next").hidden).toBe(true);
     expect(String(doc.getElementById("train-outlook").innerHTML)).not.toContain("skeleton-text");
+  });
+
+  it("reuses and refreshes the remembered preview shape", async () => {
+    trainRowError("smart", "");
+    const { deps } = setup();
+    deps.localDateString.mockReturnValue("2099-01-01");
+    rememberTrainPreviewShape("u1", null, { outlook: "none", upcoming: 2 });
+    let resolve;
+    deps.api.mockImplementation(() => new Promise((done) => { resolve = done; }));
+    const pending = createTrainHome(deps).paintTrainHome();
+    expect(doc.getElementById("train-outlook").hidden).toBe(true);
+    expect(doc.getElementById("train-due-next").hidden).toBe(false);
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-due-line/g)).toHaveLength(2);
+    resolve({ next_session: { cards: 1, new: 0, upcoming: [{ repertoire_id: "r1", kind: "reinforce", repertoire_name: "Italian", color: "white", line: ["e4", "e5"] }] }, outlook: null });
+    await pending;
+    expect(readTrainPreviewShape("u1", null)).toEqual({ outlook: "none", upcoming: 1 });
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-due-line/g)).toHaveLength(1);
+    localStorage.removeItem("prepforge.train-preview-shape.u1.mixed");
   });
 
   it("ignores a late preview after the Due scope changes", async () => {
@@ -266,6 +305,9 @@ describe("the Due row", () => {
     // A horizon that adds nothing is not said: one figure, then silence.
     expect(String(outlookHtml({ now: 2, today: 2, week: 2 }))).not.toContain("train-outlook-rest");
     expect(String(outlookHtml(null))).toBe("");
+    expect(outlookShape({ now: 1, today: 4, week: 9 })).toBe("lead-rest");
+    expect(outlookShape({ now: 2, today: 2, week: 2 })).toBe("lead");
+    expect(outlookShape(null)).toBe("none");
   });
 
   it("nothing due is one quiet line naming the next review, not three zeros", () => {
@@ -274,6 +316,7 @@ describe("the Due row", () => {
     expect(quiet).not.toContain("train-outlook-cell");
     expect(quiet).toContain("Nothing due · next in 9 days");
     expect(String(outlookHtml({ now: 0, today: 0, week: 0, next: null }, now))).toBe("");
+    expect(outlookShape({ now: 0, today: 0, week: 0, next: "2026-10-31T12:00:00Z" })).toBe("quiet");
     expect(dueIn("2026-10-22T12:40:00Z", now)).toBe("in 40 min");
     expect(dueIn("2026-10-23T11:00:00Z", now)).toBe("in 23 h");
     expect(dueIn("2026-10-23T13:00:00Z", now)).toBe("tomorrow");

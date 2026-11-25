@@ -80,7 +80,38 @@ export function paintTrainHomeLoading(busy) {
   for (const bot of document.querySelectorAll?.("#train-bots .train-bot") || []) skeletonControl(bot, busy);
 }
 
-export function paintTrainPreviewLoading(busy) {
+function previewShapeKey(owner, scope) {
+  return `prepforge.train-preview-shape.${encodeURIComponent(owner || "guest")}.${encodeURIComponent(scope || "mixed")}`;
+}
+
+const OUTLOOK_SHAPES = new Set(["none", "quiet", "lead", "lead-rest"]);
+
+function cleanShape(shape) {
+  const upcoming = Number(shape?.upcoming);
+  return Number.isInteger(upcoming) && upcoming >= 0 && upcoming <= 5 && OUTLOOK_SHAPES.has(shape?.outlook)
+    ? { outlook: shape.outlook, upcoming } : null;
+}
+
+export function readTrainPreviewShape(owner, scope) {
+  try { return cleanShape(JSON.parse(localStorage.getItem(previewShapeKey(owner, scope)) || "null")); } catch { return null; }
+}
+
+export function rememberTrainPreviewShape(owner, scope, shape) {
+  const clean = cleanShape(shape);
+  if (!clean) return;
+  try { localStorage.setItem(previewShapeKey(owner, scope), JSON.stringify(clean)); } catch { /* private mode */ }
+}
+
+const DEFAULT_PREVIEW_SHAPE = { outlook: "lead-rest", upcoming: 0 };
+
+function skeletonOutlookHtml(shape) {
+  const lead = '<span class="train-outlook-lead" aria-hidden="true"><b class="skeleton-text skeleton-number">00</b><span class="skeleton-text">due now</span></span>';
+  if (shape === "none") return "";
+  if (shape === "quiet") return '<span class="train-outlook-quiet skeleton-text" aria-hidden="true">Nothing due · next in 00 min</span>';
+  return lead + (shape === "lead-rest" ? '<span class="train-outlook-rest skeleton-text" aria-hidden="true">0 this week</span>' : "");
+}
+
+export function paintTrainPreviewLoading(busy, shape = null) {
   const row = document.querySelector('#train-home [data-row="smart"]');
   const outlook = document.getElementById("train-outlook");
   const meta = document.getElementById("train-due-meta");
@@ -89,11 +120,10 @@ export function paintTrainPreviewLoading(busy) {
   outlook.setAttribute("aria-busy", String(busy));
   list.setAttribute("aria-busy", String(busy));
   if (!busy) return;
-  outlook.innerHTML = '<span class="train-outlook-lead" aria-hidden="true"><b class="skeleton-text skeleton-number">00</b><span class="skeleton-text">due now</span></span><span class="train-outlook-rest skeleton-text" aria-hidden="true">0 this week</span>';
-  outlook.hidden = false;
+  const known = shape || DEFAULT_PREVIEW_SHAPE;
+  outlook.innerHTML = skeletonOutlookHtml(known.outlook);
+  outlook.hidden = known.outlook === "none";
   meta.innerHTML = '<span class="skeleton-text" aria-hidden="true">0 cards</span>';
-  // Upcoming cards are optional content. Without a stored shape, fabricating
-  // five rows only guarantees a large wrong layout when the real count lands.
-  list.innerHTML = "";
-  list.hidden = true;
+  list.innerHTML = Array.from({ length: known.upcoming }, () => '<li aria-hidden="true"><button type="button" class="train-due-line" inert><span class="un-kind skeleton-text">New move</span><span class="train-due-rep"><span class="color-dot skeleton-dot"></span><span class="skeleton-text">Opening repertoire</span></span><span class="train-due-pos skeleton-text">1.e4 e5</span></button></li>').join("");
+  list.hidden = !known.upcoming;
 }

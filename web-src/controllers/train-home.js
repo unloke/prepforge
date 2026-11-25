@@ -6,9 +6,9 @@ import { recentRuns } from "../train-history.js";
 import { loadRehearsal } from "../train-rehearsal.js";
 import { lineTail } from "../views/train.js";
 import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
-import { createTrainPreview, paintTrainHomeLoading, paintTrainPreviewLoading } from "./train-preview.js";
-import { dueMeta, dueStartState, outlookHtml } from "./train-due.js";
-export { dueIn, dueMeta, dueStartState, outlookHtml } from "./train-due.js";
+import { createTrainPreview, paintTrainHomeLoading, paintTrainPreviewLoading, readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
+import { dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
+export { dueIn, dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
 import { appState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
@@ -44,6 +44,11 @@ function isSignedIn() {
 
 function repertoireListingKnown(state = appState) {
   return state.repertoireListGeneration === (state.ownerGeneration || 0);
+}
+
+function paintTrainListingLoading(state) {
+  paintTrainHomeLoading(true);
+  paintTrainPreviewLoading(true, readTrainPreviewShape(currentOwnerId(), state.trainScope?.repertoireId));
 }
 
 function paintRowErrors() {
@@ -271,7 +276,7 @@ export async function paintTrainHome() {
   const listingKnown = repertoireListingKnown(state);
   const optionsFailed = signedIn && !listingKnown && state.trainRepertoireOptionsError;
   if (signedIn && !listingKnown && !optionsFailed) {
-    paintTrainHomeLoading(true);
+    paintTrainListingLoading(state);
     return;
   }
   const firstPaint = !state.trainHomeReady;
@@ -326,7 +331,6 @@ export async function paintTrainHome() {
     setChip("train-play-reps", picked.length === own.length && own.length > 1 ? `All ${own.length}` : picked.length === 1 ? repertoireName(picked[0]) : picked.length ? `${picked.length} of ${own.length}` : "Pick repertoires");
   }
   document.getElementById("start-play").disabled = book === "repertoire" && !picked.length;
-  document.getElementById("feeling-lucky").disabled = false;
   document.getElementById("view-train").dataset.playBook = book;
   syncPlayColorLock();
   // Outlook + Due counts (network): repaint when they land.
@@ -335,12 +339,15 @@ export async function paintTrainHome() {
     paintTrainPreviewLoading(false);
     outlook.hidden = true;
     paintDueNext(null);
+    if (signedIn) rememberTrainPreviewShape(currentOwnerId(), state.trainScope?.repertoireId, { outlook: "none", upcoming: 0 });
     state.trainHomeReady = true;
     paintTrainHomeLoading(false);
     return;
   }
   if (firstPaint) paintTrainHomeLoading(true);
-  paintTrainPreviewLoading(!currentPreview);
+  const owner = currentOwnerId();
+  const scope = state.trainScope?.repertoireId;
+  paintTrainPreviewLoading(!currentPreview, readTrainPreviewShape(owner, scope));
   await preview.load(url);
   if (trainScreenOf(state) !== "home" || previewUrl() !== url || !preview.current(url)) return;
   paintTrainPreviewLoading(false);
@@ -354,6 +361,7 @@ export async function paintTrainHome() {
   paintDueNext(resolved?.next_session?.upcoming);
   outlook.innerHTML = outlookHtml(resolved?.outlook);
   outlook.hidden = !outlook.innerHTML;
+  if (resolved) rememberTrainPreviewShape(owner, scope, { outlook: outlookShape(resolved.outlook), upcoming: resolved.next_session?.upcoming?.length || 0 });
   state.trainHomeReady = true;
   paintTrainHomeLoading(false);
 }
@@ -430,6 +438,7 @@ export function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
 // The listing every row reads: own + shared repertoires, then the Home repaint.
 export async function loadTrainRepertoireOptions() {
   const state = appState;
+  if (state.signedIn && !repertoireListingKnown(state) && !state.trainRepertoireOptionsError) paintTrainListingLoading(state);
   if (state.signedIn) {
     state.trainRepertoireOptionsError = "";
     try {

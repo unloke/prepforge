@@ -29,14 +29,20 @@ export function dueIn(iso, now = Date.now()) {
   return days === 1 ? "tomorrow" : `in ${days} days`;
 }
 
+export function outlookShape(outlook) {
+  if (!outlook) return "none";
+  if (!outlook.now && !outlook.today && !outlook.week) return outlook.next ? "quiet" : "none";
+  const rest = Number(outlook.today) > Number(outlook.now) || Number(outlook.week) > Number(outlook.today);
+  return rest ? "lead-rest" : "lead";
+}
+
 // The Due row's one figure and the two that follow it. "Due now" is what the
 // row is about, so it is the figure in ink and the only one at full size; the
 // two horizons behind it are a quieter line, not two more tiles beside it.
 export function outlookHtml(outlook, now = Date.now()) {
-  if (!outlook) return "";
-  if (!outlook.now && !outlook.today && !outlook.week) {
-    return outlook.next ? html`<span class="train-outlook-quiet">Nothing due · next ${dueIn(outlook.next, now)}</span>` : "";
-  }
+  const shape = outlookShape(outlook);
+  if (shape === "none") return "";
+  if (shape === "quiet") return html`<span class="train-outlook-quiet">Nothing due · next ${dueIn(outlook.next, now)}</span>`;
   const rest = [];
   if (Number(outlook.today) > Number(outlook.now)) rest.push(`${outlook.today} by tonight`);
   if (Number(outlook.week) > Number(outlook.today)) rest.push(`${outlook.week} this week`);

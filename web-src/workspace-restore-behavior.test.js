@@ -21,6 +21,7 @@ function runtime(extra = {}) {
     window: { location: { href: "http://local/#/analyze" } },
     parseWorkspaceLocation, loadReturnState: () => null,
     switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(async () => {}),
+    loadTrainSession: vi.fn(async () => ({ syncTrainControls: vi.fn() })),
     api: vi.fn(), hydrateBuild: vi.fn(), showAnalysisPly: vi.fn(), ...extra,
   };
   context.ANALYSIS_ROOT_PATH = "root";
