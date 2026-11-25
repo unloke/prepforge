@@ -260,9 +260,9 @@ describe("seven views share chrome families", () => {
     // One primary on Home: the due queue's Start leads; Rehearse and Practice
     // keep the same place at the card's top right as outlined actions.
     expect(home.match(/class="btn primary/g)).toHaveLength(1);
-    expect(home).toMatch(/class="btn primary train-row-go" id="start-train"/);
-    expect(home).toMatch(/class="btn train-row-go" id="start-rehearse"/);
-    expect(home).toMatch(/class="btn train-row-go" id="start-play"/);
+    expect(home).toMatch(/class="btn primary train-row-go skeleton-control" id="start-train"/);
+    expect(home).toMatch(/class="btn train-row-go skeleton-control" id="start-rehearse"/);
+    expect(home).toMatch(/class="btn train-row-go skeleton-control" id="start-play"/);
     // No mode tabs, no second History.
     expect(html).not.toContain('id="train-modes"');
     expect(html.match(/data-train-history/g)).toHaveLength(1);

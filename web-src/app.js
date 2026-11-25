@@ -1140,6 +1140,7 @@ async function refreshRepertoireHead() {
     const listing = await api("/api/repertoires");
     appState.repertoireList = listing.repertoires || [];
     appState.sharedRepertoireList = listing.shared || [];
+    appState.repertoireListGeneration = appState.ownerGeneration || 0;
   }
   renderBuildRepHeader();
   syncViewHeads();

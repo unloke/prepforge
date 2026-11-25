@@ -833,3 +833,30 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* The content box reserves layout; loading hides decorative borders and tracks. */
 .skeleton-text.skeleton-text { background: none; border-color: transparent; box-shadow: none; }
 .skeleton-bar, .skeleton-dot { background: color-mix(in srgb, var(--text) 8%, var(--panel)); animation-duration: 1.8s; }
+
+/* A control whose label depends on data keeps its final chrome and footprint;
+   only the unknown label is masked. Unlike skeleton-text this is for real
+   buttons/chips, so their border and fill stay in place. */
+.skeleton-control {
+  position: relative;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  pointer-events: none;
+  user-select: none;
+}
+.skeleton-control > * { visibility: hidden; }
+.skeleton-control::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56%;
+  min-width: 32px;
+  max-width: 80px;
+  height: 0.8em;
+  max-height: 14px;
+  transform: translate(-50%, -50%);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--text) 8%, var(--panel));
+  animation: skeleton-pulse 1.8s ease-in-out infinite alternate;
+}

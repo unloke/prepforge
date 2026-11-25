@@ -5,7 +5,13 @@ export const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 export const appState = {
   currentView: "dashboard",
+  ownerGeneration: 0,
   repertoireList: [],
+  // The owner generation /api/repertoires last answered for. Train uses it to
+  // tell "listing still unknown" apart from an account that truly has none.
+  repertoireListGeneration: -1,
+  trainRepertoireOptionsError: "",
+  trainHomeReady: false,
   // Repertoires others shared with the user, at the user's role (Train drills them too).
   sharedRepertoireList: [],
   analysis: null,

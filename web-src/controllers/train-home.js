@@ -6,7 +6,9 @@ import { recentRuns } from "../train-history.js";
 import { loadRehearsal } from "../train-rehearsal.js";
 import { lineTail } from "../views/train.js";
 import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
-import { createTrainPreview, paintTrainPreviewLoading } from "./train-preview.js";
+import { createTrainPreview, paintTrainHomeLoading, paintTrainPreviewLoading } from "./train-preview.js";
+import { dueMeta, dueStartState, outlookHtml } from "./train-due.js";
+export { dueIn, dueMeta, dueStartState, outlookHtml } from "./train-due.js";
 import { appState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
@@ -40,10 +42,15 @@ function isSignedIn() {
   return !!appState.signedIn && !appState.sessionExpired;
 }
 
+function repertoireListingKnown(state = appState) {
+  return state.repertoireListGeneration === (state.ownerGeneration || 0);
+}
+
 function paintRowErrors() {
   for (const [mode, id] of Object.entries(ROW_ERROR_IDS)) {
     const el = document.getElementById(id);
-    const text = rowErrors[mode] || (mode === "smart" && isSignedIn() && allTrainable().length > 0 && preview?.failed(previewUrl()) ? "Couldn't load the queue. Start still works." : "");
+    const optionsError = mode === "smart" && isSignedIn() && !repertoireListingKnown() && appState.trainRepertoireOptionsError ? "Couldn't load your repertoires." : "";
+    const text = rowErrors[mode] || optionsError || (mode === "smart" && isSignedIn() && allTrainable().length > 0 && preview?.failed(previewUrl()) ? "Couldn't load the queue. Start still works." : "");
     el.hidden = !text;
     el.textContent = text;
   }
@@ -226,49 +233,6 @@ function previewUrl() {
   return `/api/train/smart/summary?${scope}&preview=true&local_date=${encodeURIComponent(localDateString())}&utc_offset=${-new Date().getTimezoneOffset()}`;
 }
 
-// What a Start of the Due row would serve, or why it cannot. The button says
-// the verb; how many cards it holds is the row's own line (dueMeta), so Resume
-// does not repeat the count inside a button label.
-export function dueStartState(next, { signedIn, hasRepertoire }) {
-  if (!signedIn) return { label: "Sign in to train", action: "signin" };
-  if (!hasRepertoire) return { label: "Open Library", action: "library" };
-  if (next && Number(next.cards) === 0) return { label: "Open Repertoire", action: "build" };
-  if (next?.resumed) return { label: "Resume", action: "start" };
-  return { label: "Start", action: "start" };
-}
-
-// What a Start would serve. The outlook above already counts what is due, so
-// this line says the one thing it cannot: how many cards the session holds.
-export function dueMeta(next) {
-  if (!next) return "";
-  if (Number(next.cards) === 0) return "Nothing due";
-  return next.resumed ? `${countOf(next.left, "card")} left` : countOf(next.cards, "card");
-}
-
-// "in 40 min", "in 5 h", "tomorrow", "in 3 days".
-export function dueIn(iso, now = Date.now()) {
-  const minutes = Math.max(1, Math.round((Date.parse(iso) - now) / 60000));
-  if (minutes < 60) return `in ${minutes} min`;
-  if (minutes < 24 * 60) return `in ${Math.round(minutes / 60)} h`;
-  const days = Math.round(minutes / (24 * 60));
-  return days === 1 ? "tomorrow" : `in ${days} days`;
-}
-
-// The Due row's one figure and the two that follow it. "Due now" is what the
-// row is about, so it is the figure in ink and the only one at full size; the
-// two horizons behind it are a quieter line, not two more tiles beside it.
-export function outlookHtml(outlook, now = Date.now()) {
-  if (!outlook) return "";
-  if (!outlook.now && !outlook.today && !outlook.week) {
-    return outlook.next ? html`<span class="train-outlook-quiet">Nothing due · next ${dueIn(outlook.next, now)}</span>` : "";
-  }
-  const rest = [];
-  if (Number(outlook.today) > Number(outlook.now)) rest.push(`${outlook.today} by tonight`);
-  if (Number(outlook.week) > Number(outlook.today)) rest.push(`${outlook.week} this week`);
-  return html`<span class="train-outlook-lead"><b>${outlook.now}</b> due now</span>${rest.length
-    ? html`<span class="train-outlook-rest">${rest.join(" · ")}</span>`
-    : ""}`;
-}
 
 function setChip(id, text, disabled = false) {
   const chip = document.getElementById(id);
@@ -304,6 +268,20 @@ export async function paintTrainHome() {
   }
   const reps = allTrainable();
   paintRecent(document.getElementById("train-recent-home"), signedIn ? recentRuns(currentOwnerId(), 3) : [], "No finished runs yet.");
+  const listingKnown = repertoireListingKnown(state);
+  const optionsFailed = signedIn && !listingKnown && state.trainRepertoireOptionsError;
+  if (signedIn && !listingKnown && !optionsFailed) {
+    paintTrainHomeLoading(true);
+    return;
+  }
+  const firstPaint = !state.trainHomeReady;
+  if (optionsFailed) {
+    state.trainHomeReady = true;
+    paintTrainHomeLoading(false);
+    for (const id of ["start-train", "start-rehearse", "train-due-scope", "train-rehearse-scope"]) document.getElementById(id).disabled = true;
+    paintRowErrors();
+    return;
+  }
   // Due queue
   setChip("train-due-scope", dueScopeLabel(), !signedIn || !ownActive().length && !reps.length);
   const due = document.getElementById("start-train");
@@ -312,6 +290,7 @@ export async function paintTrainHome() {
     const start = dueStartState(next, { signedIn: activeAuth, hasRepertoire: reps.length > 0 });
     due.textContent = start.label;
     due.dataset.action = start.action;
+    due.disabled = false;
     document.getElementById("train-due-meta").textContent = activeAuth ? dueMeta(next) : "";
     paintRowErrors();
   };
@@ -331,6 +310,7 @@ export async function paintTrainHome() {
   document.getElementById("restart-rehearse").hidden = !paused;
   if (paused) document.getElementById("train-rehearse-meta").textContent = `${Number(paused.training.prompt.current_index) + 1} / ${paused.training.prompt.total_lines}`;
   rehearseBtn.dataset.action = !signedIn ? "signin" : rep ? "start" : "library";
+  rehearseBtn.disabled = false;
   // With no repertoire the Due row already leads to Library; a second
   // Open Library one row down is the same button twice.
   rehearseBtn.hidden = signedIn && !rep;
@@ -346,6 +326,7 @@ export async function paintTrainHome() {
     setChip("train-play-reps", picked.length === own.length && own.length > 1 ? `All ${own.length}` : picked.length === 1 ? repertoireName(picked[0]) : picked.length ? `${picked.length} of ${own.length}` : "Pick repertoires");
   }
   document.getElementById("start-play").disabled = book === "repertoire" && !picked.length;
+  document.getElementById("feeling-lucky").disabled = false;
   document.getElementById("view-train").dataset.playBook = book;
   syncPlayColorLock();
   // Outlook + Due counts (network): repaint when they land.
@@ -354,8 +335,11 @@ export async function paintTrainHome() {
     paintTrainPreviewLoading(false);
     outlook.hidden = true;
     paintDueNext(null);
+    state.trainHomeReady = true;
+    paintTrainHomeLoading(false);
     return;
   }
+  if (firstPaint) paintTrainHomeLoading(true);
   paintTrainPreviewLoading(!currentPreview);
   await preview.load(url);
   if (trainScreenOf(state) !== "home" || previewUrl() !== url || !preview.current(url)) return;
@@ -370,6 +354,8 @@ export async function paintTrainHome() {
   paintDueNext(resolved?.next_session?.upcoming);
   outlook.innerHTML = outlookHtml(resolved?.outlook);
   outlook.hidden = !outlook.innerHTML;
+  state.trainHomeReady = true;
+  paintTrainHomeLoading(false);
 }
 
 // ---------------------------------------------------------------- practice setup
@@ -445,11 +431,14 @@ export function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
 export async function loadTrainRepertoireOptions() {
   const state = appState;
   if (state.signedIn) {
+    state.trainRepertoireOptionsError = "";
     try {
       const payload = await api("/api/repertoires");
       state.repertoireList = payload.repertoires || [];
       state.sharedRepertoireList = payload.shared || [];
+      state.repertoireListGeneration = state.ownerGeneration || 0;
     } catch (error) {
+      if (!repertoireListingKnown(state)) state.trainRepertoireOptionsError = error.message || "Could not load repertoires";
       setStatusError(error.message);
     }
   }

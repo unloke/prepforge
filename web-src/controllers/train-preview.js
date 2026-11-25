@@ -48,6 +48,40 @@ export function createTrainPreview(api) {
   };
 }
 
+const HOME_CONTROL_IDS = [
+  "start-train", "train-due-scope", "start-rehearse", "train-rehearse-scope",
+  "start-play", "train-play-book", "train-play-reps", "feeling-lucky",
+];
+
+function skeletonControl(el, busy) {
+  if (!el) return;
+  if (busy) {
+    el.classList.add("skeleton-control");
+    el.setAttribute("aria-hidden", "true");
+    el.setAttribute("tabindex", "-1");
+    return;
+  }
+  if (!el.classList.contains("skeleton-control")) return;
+  el.classList.remove("skeleton-control");
+  el.removeAttribute("aria-hidden");
+  el.removeAttribute("tabindex");
+}
+
+// Train Home's first paint is one coherent loading surface: stable chrome
+// stays real, while every control whose label or availability depends on the
+// repertoire listing is inert and masked in place. A later refresh over real
+// content never uses this state; it keeps the content and marks only the row
+// being refreshed busy.
+export function paintTrainHomeLoading(busy) {
+  const home = document.getElementById("train-home");
+  if (!home) return;
+  home.classList.toggle("is-loading", busy);
+  if (busy) home.setAttribute("aria-busy", "true");
+  else home.removeAttribute("aria-busy");
+  for (const id of HOME_CONTROL_IDS) skeletonControl(document.getElementById(id), busy);
+  for (const bot of document.querySelectorAll?.("#train-bots .train-bot") || []) skeletonControl(bot, busy);
+}
+
 export function paintTrainPreviewLoading(busy) {
   const row = document.querySelector('#train-home [data-row="smart"]');
   const outlook = document.getElementById("train-outlook");
@@ -57,9 +91,11 @@ export function paintTrainPreviewLoading(busy) {
   outlook.setAttribute("aria-busy", String(busy));
   list.setAttribute("aria-busy", String(busy));
   if (!busy) return;
-  outlook.innerHTML = '<span class="train-outlook-lead skeleton-text"><b>0</b> due now</span><span class="train-outlook-rest skeleton-text">0 this week</span>';
+  outlook.innerHTML = '<span class="train-outlook-lead skeleton-text" aria-hidden="true"><b>0</b> due now</span><span class="train-outlook-rest skeleton-text" aria-hidden="true">0 this week</span>';
   outlook.hidden = false;
-  meta.innerHTML = '<span class="skeleton-text">0 cards</span>';
-  list.innerHTML = Array.from({ length: 5 }, () => '<li aria-hidden="true"><button type="button" class="train-due-line" tabindex="-1" disabled><span class="un-kind skeleton-text">New move</span><span class="train-due-rep"><span class="color-dot skeleton-dot"></span><span class="skeleton-text">Opening repertoire</span></span><span class="train-due-pos skeleton-text">1.e4 e5</span></button></li>').join("");
-  list.hidden = false;
+  meta.innerHTML = '<span class="skeleton-text" aria-hidden="true">0 cards</span>';
+  // Upcoming cards are optional content. Without a stored shape, fabricating
+  // five rows only guarantees a large wrong layout when the real count lands.
+  list.innerHTML = "";
+  list.hidden = true;
 }

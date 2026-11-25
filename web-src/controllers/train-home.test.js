@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDocument, setup } from "./train-home.fixture.js";
 import {
-  createTrainHome, dueIn, dueMeta, dueStartState, outlookHtml, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
+  createTrainHome, dueIn, dueMeta, dueStartState, loadTrainRepertoireOptions, outlookHtml, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
 } from "./train-home.js";
 import { saveRun } from "../train-history.js";
 import { provideApp } from "../core/app-context.js";
@@ -119,6 +119,35 @@ describe("‹ Train", () => {
 });
 
 describe("the Due row", () => {
+  it("keeps Home as one skeleton while the repertoire listing is still unknown", async () => {
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    await createTrainHome(deps).paintTrainHome();
+    expect(deps.api).not.toHaveBeenCalled();
+    expect(doc.getElementById("train-home").classList.contains("is-loading")).toBe(true);
+    expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(true);
+    expect(doc.getElementById("start-train").getAttribute("aria-hidden")).toBe("true");
+    expect(doc.getElementById("start-train").getAttribute("tabindex")).toBe("-1");
+    expect(doc.getElementById("start-train").textContent).not.toBe("Open Library");
+    expect(doc.getElementById("train-due-next").hidden).not.toBe(false);
+  });
+
+  it("marks a successful options load for this owner generation", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    deps.api.mockResolvedValueOnce({ repertoires: [{ id: "r9", name: "Sicilian" }], shared: [] });
+    await loadTrainRepertoireOptions();
+    expect(appState.repertoireListGeneration).toBe(appState.ownerGeneration);
+    expect(appState.trainRepertoireOptionsError).toBe("");
+    expect(appState.repertoireList[0].name).toBe("Sicilian");
+  });
+
+  it("keeps the listing unknown but honest when options fail", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    deps.api.mockRejectedValueOnce(new Error("network down"));
+    await loadTrainRepertoireOptions();
+    expect(appState.repertoireListGeneration).toBe(-1);
+    expect(appState.trainRepertoireOptionsError).toBe("network down");
+  });
+
   it("holds its loaded shape while the first preview is pending", async () => {
     trainRowError("smart", "");
     const { deps } = setup();
@@ -128,14 +157,21 @@ describe("the Due row", () => {
     const pending = createTrainHome(deps).paintTrainHome();
     expect(doc.getElementById("start-train").textContent).toBe("Start");
     expect(doc.getElementById("start-train").dataset.action).toBe("start");
-    expect(doc.getElementById("start-train").disabled).toBe(false);
+    expect(doc.getElementById("start-train").getAttribute("tabindex")).toBe("-1");
+    expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(true);
+    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBe("true");
     expect(doc.getElementById("train-outlook").hidden).toBe(false);
     expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("skeleton-text");
     expect(String(doc.getElementById("train-due-meta").innerHTML)).toContain("skeleton-text");
-    expect(String(doc.getElementById("train-due-next").innerHTML).match(/<li aria-hidden/g)).toHaveLength(5);
+    expect(doc.getElementById("train-due-next").innerHTML).toBe("");
+    expect(doc.getElementById("train-due-next").hidden).toBe(true);
     expect(doc.getElementById("train-due-next").getAttribute("aria-busy")).toBe("true");
     resolve({ next_session: { cards: 3, new: 3, upcoming: [] }, outlook: { now: 1, today: 2, week: 5 } });
     await pending;
+    expect(doc.getElementById("start-train").disabled).toBe(false);
+    expect(doc.getElementById("start-train").getAttribute("tabindex")).toBeNull();
+    expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(false);
+    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
     expect(doc.getElementById("train-due-meta").textContent).toBe("3 cards");
     expect(doc.getElementById("train-outlook").hidden).toBe(false);
     expect(doc.getElementById("train-due-next").hidden).toBe(true);

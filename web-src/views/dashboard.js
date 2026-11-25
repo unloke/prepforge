@@ -622,6 +622,7 @@ export function createDashboardView({
     if (status) status.hidden = true;
     appState.repertoireList = payload.repertoires || [];
     appState.sharedRepertoireList = payload.shared || [];
+    appState.repertoireListGeneration = appState.ownerGeneration || 0;
     if (appState.account) appState.account.repertoireCount = appState.repertoireList.length;
     const visible = (payload.repertoires || []).filter(
       (item) => !appState.pendingRepDeletes.has(String(item.id)),
