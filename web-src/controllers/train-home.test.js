@@ -7,6 +7,7 @@ import {
   createTrainHome, dueIn, dueMeta, dueStartState, loadTrainRepertoireOptions, outlookHtml, outlookShape, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
 } from "./train-home.js";
 import { readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
+import { fetchRepertoireListing } from "../repertoire-listing.js";
 import { saveRun } from "../train-history.js";
 import { provideApp } from "../core/app-context.js";
 import { formatWorkspaceHash, workspaceLocationFromState } from "../workspace-url.js";
@@ -149,6 +150,31 @@ describe("the Due row", () => {
     expect(doc.getElementById("train-outlook").hidden).toBe(true);
     await pending;
     expect(deps.api).toHaveBeenCalledWith("/api/repertoires");
+  });
+
+  it("does not let an older shared options response overwrite a newer refresh", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    let resolveOld;
+    let listingCalls = 0;
+    const oldPayload = { repertoires: [{ id: "old", name: "Old repertoire", color: "white", is_active: true }], shared: [] };
+    const newPayload = { repertoires: [{ id: "new", name: "New repertoire", color: "white", is_active: true }], shared: [] };
+    deps.api.mockImplementation((url) => {
+      if (url === "/api/repertoires") {
+        listingCalls += 1;
+        return listingCalls === 1 ? new Promise((done) => { resolveOld = done; }) : Promise.resolve(newPayload);
+      }
+      return Promise.resolve({ next_session: { cards: 1, new: 1 }, outlook: { now: 1, today: 1, week: 1 } });
+    });
+    const load = loadTrainRepertoireOptions();
+    await fetchRepertoireListing(deps.api, "u1", 7).then((payload) => {
+      appState.repertoireList = payload.repertoires || [];
+      appState.sharedRepertoireList = payload.shared || [];
+      appState.repertoireListGeneration = appState.ownerGeneration || 0;
+    });
+    expect(appState.repertoireList[0].id).toBe("new");
+    resolveOld(oldPayload);
+    await load;
+    expect(appState.repertoireList[0].id).toBe("new");
   });
 
   it("marks a successful options load for this owner generation", async () => {

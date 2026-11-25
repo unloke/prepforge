@@ -1,13 +1,19 @@
+let latest = null;
 let inflight = null;
 
-export function fetchRepertoireListing(api, owner, generation, shared = false) {
-  if (!shared) return api("/api/repertoires");
+export function fetchRepertoireListing(api, owner, generation, joinInFlight = false) {
   const key = `${owner || "guest"}:${generation || 0}`;
-  if (inflight?.key === key) return inflight.promise;
+  if (joinInFlight && inflight?.key === key) return inflight.promise;
   const request = { key, promise: null };
-  request.promise = (async () => api("/api/repertoires"))().finally(() => {
+  latest = request;
+  inflight = request;
+  request.promise = (async () => {
+    const payload = await api("/api/repertoires");
+    if (latest === request) return payload;
+    if (latest?.key === key) return latest.promise;
+    return null;
+  })().finally(() => {
     if (inflight === request) inflight = null;
   });
-  inflight = request;
   return request.promise;
 }

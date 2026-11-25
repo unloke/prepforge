@@ -610,15 +610,15 @@ export function createDashboardView({
 
   // Fetches and renders the listing; throws on failure so each caller picks
   // its own error composition.
-  async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq), sharedListing = false) {
+  async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq), joinInFlight = false) {
     // Team names are optional and never block usable repertoire rows.
     if (appState.signedIn) {
       void loadTeamDirectory(appState, api).then((teams) => {
         if (teams !== null && isCurrent() && repListLoaded) renderRepertoireList();
       }).catch(() => {});
     }
-    const payload = await fetchRepertoireListing(api, appState.accountUserId, appState.ownerGeneration || 0, sharedListing);
-    if (!isCurrent()) return false;
+    const payload = await fetchRepertoireListing(api, appState.accountUserId, appState.ownerGeneration || 0, joinInFlight);
+    if (!payload || !isCurrent()) return false;
     const status = document.getElementById("library-refresh-status");
     if (status) status.hidden = true;
     appState.repertoireList = payload.repertoires || [];

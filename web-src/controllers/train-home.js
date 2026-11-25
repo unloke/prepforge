@@ -441,9 +441,11 @@ export async function loadTrainRepertoireOptions() {
   if (state.signedIn) {
     try {
       const payload = await fetchRepertoireListing(api, currentOwnerId(), state.ownerGeneration || 0, true);
-      state.repertoireList = payload.repertoires || [];
-      state.sharedRepertoireList = payload.shared || [];
-      state.repertoireListGeneration = state.ownerGeneration || 0;
+      if (payload) {
+        state.repertoireList = payload.repertoires || [];
+        state.sharedRepertoireList = payload.shared || [];
+        state.repertoireListGeneration = state.ownerGeneration || 0;
+      }
     } catch (error) {
       if (!repertoireListingKnown(state)) state.trainRepertoireOptionsError = error.message || "Could not load repertoires";
       setStatusError(error.message);

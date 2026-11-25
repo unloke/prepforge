@@ -449,6 +449,32 @@ describe("dashboard setup checklist", () => {
     expect(String(todayCard.innerHTML)).toContain("2 new moves to learn");
   });
 
+  it("does not attach a later Library load to a stale pre-refresh listing", async () => {
+    let resolveOld;
+    let listingCalls = 0;
+    const oldRep = { id: "old", name: "Old repertoire", color: "white", is_active: true };
+    const newRep = { id: "new", name: "New repertoire", color: "white", is_active: true };
+    api.mockImplementation((url) => {
+      if (String(url).startsWith("/api/dashboard")) return Promise.resolve(dashboardPayload({ repertoires: 1 }));
+      if (url === "/api/repertoires") {
+        listingCalls += 1;
+        return listingCalls === 1 ? new Promise((done) => { resolveOld = done; }) : Promise.resolve({ repertoires: [newRep], shared: [] });
+      }
+      return Promise.resolve({ teams: [] });
+    });
+    const initialLoad = view.loadDashboard();
+    await vi.waitFor(() => expect(listingCalls).toBe(1));
+    await view.loadDashboardRepertoires();
+    expect(appState.repertoireList[0].id).toBe("new");
+    await view.loadDashboardRepertoires();
+    expect(listingCalls).toBe(3);
+    resolveOld({ repertoires: [oldRep], shared: [] });
+    await initialLoad;
+    expect(appState.repertoireList[0].id).toBe("new");
+    expect(String(container.innerHTML)).toContain("New repertoire");
+    expect(String(container.innerHTML)).not.toContain("Old repertoire");
+  });
+
   it("does not restore owner data when a dashboard response lands after sign-out", async () => {
     let resolve;
     api.mockImplementationOnce(() => new Promise((yes) => { resolve = yes; }));
