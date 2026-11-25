@@ -809,6 +809,7 @@
    resolve against, so the tree never filled the panel and the inspector's
    dragged flex-basis was ignored. */
 .panel-body {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0;
