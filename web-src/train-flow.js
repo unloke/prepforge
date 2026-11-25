@@ -14,11 +14,10 @@ export function planTrainRunIn(prompt, currentFen, previousPath = []) {
       && moves[common].uci === previousPath[common].uci
       && moves[common].fen_after === previousPath[common].fen_after) common++;
     const currentIndex = previousPath.findLastIndex((move) => move.fen_after === currentFen);
-    if (currentIndex >= 0) {
+    if (common && currentIndex >= 0) {
       for (let index = currentIndex - 1; index >= common - 1; index--) {
         if (index >= 0) rewind.push(previousPath[index]);
       }
-      if (!common) rewind.push({ uci: "", fen_after: prompt.start_fen });
     }
   }
   return {
