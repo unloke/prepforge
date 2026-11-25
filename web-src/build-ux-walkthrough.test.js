@@ -288,6 +288,12 @@ describe("Move delete shows one notice, beside the tree (P1-1)", () => {
     expect(html.indexOf('id="build-undo"')).toBeLessThan(html.indexOf('id="build-inspector"'));
   });
 
+  it("keeps the phone undo inside the viewport while the tree is scrolled", () => {
+    const mobile = css.slice(css.indexOf("@media (max-width: 760px)", css.indexOf(".undo-toast")));
+    expect(mobile).toMatch(/\.undo-toast \{[^}]*position: fixed/);
+    expect(mobile).toMatch(/\.undo-toast \{[^}]*bottom:/);
+  });
+
   it("takes the deleted comment out of the position trail with the move", () => {
     // The trail under the breadcrumbs shows the current move's comment. A delete
     // that lands on the current move selects its parent, so the stale paragraph

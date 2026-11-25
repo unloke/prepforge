@@ -82,6 +82,20 @@
 .undo-toast .btn { flex: none; color: var(--accent-strong); }
 
 
+@media (max-width: 760px) {
+  .undo-toast {
+    position: fixed;
+    z-index: 90;
+    top: auto;
+    right: auto;
+    left: 50%;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    max-width: calc(100vw - 32px);
+  }
+}
+
+
 
 /* Context menu — all chrome uses theme tokens so light/dark stay consistent. */
 
