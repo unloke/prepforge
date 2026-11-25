@@ -125,8 +125,7 @@ describe("the Due row", () => {
     expect(deps.api).not.toHaveBeenCalled();
     expect(doc.getElementById("train-home").classList.contains("is-loading")).toBe(true);
     expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(true);
-    expect(doc.getElementById("start-train").getAttribute("aria-hidden")).toBe("true");
-    expect(doc.getElementById("start-train").getAttribute("tabindex")).toBe("-1");
+    expect(doc.getElementById("start-train").getAttribute("inert")).toBe("");
     expect(doc.getElementById("start-train").textContent).not.toBe("Open Library");
     expect(doc.getElementById("train-due-next").hidden).not.toBe(false);
   });
@@ -157,7 +156,7 @@ describe("the Due row", () => {
     const pending = createTrainHome(deps).paintTrainHome();
     expect(doc.getElementById("start-train").textContent).toBe("Start");
     expect(doc.getElementById("start-train").dataset.action).toBe("start");
-    expect(doc.getElementById("start-train").getAttribute("tabindex")).toBe("-1");
+    expect(doc.getElementById("start-train").getAttribute("inert")).toBe("");
     expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(true);
     expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBe("true");
     expect(doc.getElementById("train-outlook").hidden).toBe(false);
@@ -169,7 +168,7 @@ describe("the Due row", () => {
     resolve({ next_session: { cards: 3, new: 3, upcoming: [] }, outlook: { now: 1, today: 2, week: 5 } });
     await pending;
     expect(doc.getElementById("start-train").disabled).toBe(false);
-    expect(doc.getElementById("start-train").getAttribute("tabindex")).toBeNull();
+    expect(doc.getElementById("start-train").getAttribute("inert")).toBeNull();
     expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(false);
     expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
     expect(doc.getElementById("train-due-meta").textContent).toBe("3 cards");

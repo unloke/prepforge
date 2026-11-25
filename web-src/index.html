@@ -494,9 +494,9 @@
                     <div class="train-outlook" id="train-outlook"><span class="train-outlook-lead" aria-hidden="true"><b class="skeleton-text skeleton-number">00</b><span class="skeleton-text">due now</span></span><span class="train-outlook-rest skeleton-text" aria-hidden="true">0 this week</span></div>
                     <span class="train-row-meta" id="train-due-meta"><span class="skeleton-text" aria-hidden="true">0 cards</span></span>
                   </div>
-                  <button class="btn primary train-row-go skeleton-control" id="start-train" data-testid="start-train" type="button" aria-hidden="true" tabindex="-1">Start</button>
+                  <button class="btn primary train-row-go skeleton-control" id="start-train" data-testid="start-train" type="button" inert>Start</button>
                   <div class="train-row-opts">
-                    <button type="button" class="train-chip skeleton-control" id="train-due-scope" data-testid="train-due-scope" aria-haspopup="listbox" aria-hidden="true" tabindex="-1"><span>All repertoires</span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+                    <button type="button" class="train-chip skeleton-control" id="train-due-scope" data-testid="train-due-scope" aria-haspopup="listbox" inert><span>All repertoires</span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                     <span class="pf-row-text train-blitz-row" id="train-blitz-row" title="10s per move · a timeout counts as a miss">
                       <span class="pf-row-label" id="train-blitz-label">Blitz</span>
                       <button type="button" class="pf-switch" id="train-blitz-toggle" role="switch" aria-checked="false" aria-labelledby="train-blitz-label" data-testid="train-blitz-toggle"><span class="pf-knob"></span></button>
@@ -510,9 +510,9 @@
                     <h3 class="train-row-title">Rehearse</h3>
                     <span class="train-row-meta" id="train-rehearse-meta"><span class="skeleton-text" aria-hidden="true">0 moves</span></span>
                   </div>
-                  <button class="btn train-row-go skeleton-control" id="start-rehearse" data-testid="start-rehearse" type="button" aria-hidden="true" tabindex="-1">Start</button>
+                  <button class="btn train-row-go skeleton-control" id="start-rehearse" data-testid="start-rehearse" type="button" inert>Start</button>
                   <div class="train-row-opts">
-                    <button type="button" class="train-chip skeleton-control" id="train-rehearse-scope" data-testid="train-rehearse-scope" aria-haspopup="listbox" aria-hidden="true" tabindex="-1"><span>Repertoire</span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+                    <button type="button" class="train-chip skeleton-control" id="train-rehearse-scope" data-testid="train-rehearse-scope" aria-haspopup="listbox" inert><span>Repertoire</span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                     <button type="button" class="btn ghost sm" id="restart-rehearse" hidden>Start over</button>
                   </div>
                   <p class="train-row-error" id="train-rehearse-error" role="alert" hidden></p>
@@ -522,13 +522,13 @@
                     <h3 class="train-row-title">Practice</h3>
                     <span class="train-row-meta" id="train-play-meta"></span>
                   </div>
-                  <button class="btn train-row-go skeleton-control" id="start-play" data-testid="start-play" type="button" aria-hidden="true" tabindex="-1">Play</button>
+                  <button class="btn train-row-go skeleton-control" id="start-play" data-testid="start-play" type="button" inert>Play</button>
                   <span class="train-sec-label" data-sec="opponent">Opponent</span>
-                  <div class="train-bots" id="train-bots" role="group" aria-label="Opponent" data-testid="train-bots"><button type="button" class="train-bot skeleton-control" aria-hidden="true" tabindex="-1"><span class="train-bot-name">Maia</span></button><button type="button" class="train-bot skeleton-control" aria-hidden="true" tabindex="-1"><span class="train-bot-name">Lichess</span></button><button type="button" class="train-bot skeleton-control" aria-hidden="true" tabindex="-1"><span class="train-bot-name">Repertoire</span></button></div>
+                  <div class="train-bots" id="train-bots" role="group" aria-label="Opponent" data-testid="train-bots"><button type="button" class="train-bot skeleton-control" inert><span class="train-bot-name">Maia</span></button><button type="button" class="train-bot skeleton-control" inert><span class="train-bot-name">Lichess</span></button><button type="button" class="train-bot skeleton-control" inert><span class="train-bot-name">Repertoire</span></button></div>
                   <span class="train-sec-label" data-sec="color">Play as</span>
-                  <button class="btn sm train-lucky skeleton-control" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Practise from a key position in a titled player's game" aria-hidden="true" tabindex="-1">Random<span class="train-lucky-more"> position</span></button>
+                  <button class="btn sm train-lucky skeleton-control" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Practise from a key position in a titled player's game" inert>Random<span class="train-lucky-more"> position</span></button>
                   <div class="train-row-opts">
-                    <button type="button" class="train-chip skeleton-control" id="train-play-book" data-testid="train-play-book" aria-haspopup="listbox" aria-hidden="true" tabindex="-1"><span>vs Maia</span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+                    <button type="button" class="train-chip skeleton-control" id="train-play-book" data-testid="train-play-book" aria-haspopup="listbox" inert><span>vs Maia</span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                     <button type="button" class="train-chip" id="train-play-reps" data-testid="train-play-reps" aria-haspopup="listbox" hidden><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                     <div class="seg train-color" id="train-play-color" role="group" aria-label="Your color">
                       <button type="button" class="seg-btn is-active" data-color="white" data-testid="play-color-white">White</button>

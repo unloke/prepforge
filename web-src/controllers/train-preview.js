@@ -57,14 +57,12 @@ function skeletonControl(el, busy) {
   if (!el) return;
   if (busy) {
     el.classList.add("skeleton-control");
-    el.setAttribute("aria-hidden", "true");
-    el.setAttribute("tabindex", "-1");
+    el.setAttribute("inert", "");
     return;
   }
   if (!el.classList.contains("skeleton-control")) return;
   el.classList.remove("skeleton-control");
-  el.removeAttribute("aria-hidden");
-  el.removeAttribute("tabindex");
+  el.removeAttribute("inert");
 }
 
 // Train Home's first paint is one coherent loading surface: stable chrome

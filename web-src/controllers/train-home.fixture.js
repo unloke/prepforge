@@ -51,8 +51,7 @@ export function fakeDocument() {
         const el = fakeElement(id);
         if (STATIC_SKELETON_CONTROLS.has(id)) {
           el.classes.add("skeleton-control");
-          el.attributes["aria-hidden"] = "true";
-          el.attributes.tabindex = "-1";
+          el.attributes.inert = "";
         }
         if (id === "train-home") {
           el.classes.add("is-loading");
