@@ -10,6 +10,10 @@ import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
 const source = appSource();
+function cancelStaleTrainStartSource() {
+  const start = source.indexOf("function cancelStaleTrainStart(");
+  return source.slice(start, source.indexOf("\n", start) + 1);
+}
 function compile(marker, deps, prelude = "", code = source) {
   deps = { html, ...deps };
   const start = code.indexOf(marker);
@@ -129,7 +133,7 @@ it("a legacy Train start cannot overwrite a newer session", async () => {
     postJson: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     boards: {}, document: { getElementById: () => ({}) }, renderTrainStats: vi.fn(),
     renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn(), reveal: (el) => { el.hidden = false; } };
-  const run = compile("async function startTraining(", deps, "let smartStartSeq = 0");
+  const run = compile("async function startTraining(", deps, "let smartStartSeq = 0; " + cancelStaleTrainStartSource());
   const a = run("all_lines"); await vi.waitFor(() => expect(deps.postJson).toHaveBeenCalledTimes(1));
   const b = run("all_lines"); await vi.waitFor(() => expect(deps.postJson).toHaveBeenCalledTimes(2));
   second.resolve({ session_id: "new", prompt: {}, lines: [] }); await b;

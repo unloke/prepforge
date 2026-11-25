@@ -53,7 +53,7 @@ describe("openTrain", () => {
     await createTrainHome(deps).openTrain({ mode: "smart", repertoireId: "r1" });
     expect(appState.trainScope).toEqual({ repertoireId: "r1", label: "Italian" });
     expect(deps.switchView).toHaveBeenCalledWith("train");
-    expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: "r1", targetNodeIds: [] });
+    expect(deps.startTraining).toHaveBeenCalledWith("smart", expect.objectContaining({ fresh: false, repertoireId: "r1", targetNodeIds: [] }));
     expect(doc.getElementById("view-train").dataset.trainScreen).toBe("session");
     expect(doc.getElementById("train-scope-chip").textContent).toBe("Italian");
   });
@@ -63,7 +63,7 @@ describe("openTrain", () => {
     await createTrainHome(deps).openTrain({ mode: "smart" });
     expect(appState.trainScope.repertoireId).toBeNull();
     expect(trainScopeLabel(appState)).toBe("All repertoires");
-    expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: null, targetNodeIds: [] });
+    expect(deps.startTraining).toHaveBeenCalledWith("smart", expect.objectContaining({ fresh: false, repertoireId: null, targetNodeIds: [] }));
   });
 
   it("a guarded route entry does not reopen Train after losing the route", async () => {
@@ -91,7 +91,7 @@ describe("openTrain", () => {
   it("picked targets always build a fresh queue", async () => {
     const { deps } = setup();
     await createTrainHome(deps).openTrain({ mode: "smart", repertoireId: "r1", targets: ["n1", "n2"] });
-    expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: true, repertoireId: "r1", targetNodeIds: ["n1", "n2"] });
+    expect(deps.startTraining).toHaveBeenCalledWith("smart", expect.objectContaining({ fresh: true, repertoireId: "r1", targetNodeIds: ["n1", "n2"] }));
   });
 
   it("a shared repertoire can be rehearsed like an owned one", async () => {

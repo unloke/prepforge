@@ -51,7 +51,18 @@ describe("guarded Train route entry", () => {
   it("matches Train routes semantically rather than by query-string order", () => {
     vi.stubGlobal("window", { location: { href: "http://local.test/#/train?mode=smart&rep=r1" } });
     expect(trainRouteMatches({ view: "train", repertoireId: "r1", trainMode: "smart" })).toBe(true);
+    expect(trainRouteMatches({ view: "train", repertoireId: "r1", trainMode: null })).toBe(true);
     expect(trainRouteMatches({ view: "train", repertoireId: "r2", trainMode: "smart" })).toBe(false);
-    expect(trainRouteMatches({ view: "train", repertoireId: "r1", trainMode: null })).toBe(false);
+    expect(trainRouteMatches({ view: "train", repertoireId: "r1", trainMode: "all_lines" })).toBe(false);
+    expect(trainRouteMatches({ view: "train", repertoireId: null, trainMode: null })).toBe(false);
+  });
+
+  it("keeps plain Train distinct from an explicit mixed smart route", () => {
+    vi.stubGlobal("window", { location: { href: "http://local.test/#/train?mode=smart" } });
+    expect(trainRouteMatches({ view: "train", repertoireId: null, trainMode: "smart" })).toBe(true);
+    expect(trainRouteMatches({ view: "train", repertoireId: null, trainMode: null })).toBe(false);
+    vi.stubGlobal("window", { location: { href: "http://local.test/#/train" } });
+    expect(trainRouteMatches({ view: "train", repertoireId: null, trainMode: null })).toBe(true);
+    expect(trainRouteMatches({ view: "train", repertoireId: null, trainMode: "smart" })).toBe(false);
   });
 });

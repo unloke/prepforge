@@ -151,7 +151,7 @@ function paintActions(screen, mode) {
 // repertoire", a picked move, the palette. The scope is set explicitly, so a
 // one-repertoire queue is never served from "all repertoires".
 export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false, isCurrent = null } = {}) {
-  const state = appState, wasInTrain = state.currentView === "train", entrySeq = isCurrent ? state.trainEntryVersion : (state.trainEntryVersion = (state.trainEntryVersion || 0) + 1), current = isCurrent || (() => state.trainEntryVersion === entrySeq && (!wasInTrain || state.currentView === "train"));
+  const state = appState, wasInTrain = state.currentView === "train", entryToken = {}, entrySeq = isCurrent ? state.trainEntryVersion : (state.trainEntryVersion = (state.trainEntryVersion || 0) + 1), current = isCurrent || (() => state.trainEntryVersion === entrySeq && (!wasInTrain || state.currentView === "train"));
   if (!(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return;
   closeTrainPicker(); if (state.smart) await flushTrainSync();
   if (!current()) return;
@@ -160,7 +160,7 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
   state.trainMode = mode;
   if (mode === "smart") setDueScope(repertoireId);
   if (mode === "all_lines" && repertoireId) state.trainingRepertoireId = String(repertoireId);
-  if (autostart) state.trainStarting = true;
+  if (autostart) { state.trainStarting = true; state.trainStartToken = entryToken; }
   const enter = () => {
     if (state.currentView !== "train") { state.trainEntering = true; try { switchView("train"); } finally { delete state.trainEntering; } }
     syncTrainScreen();
@@ -169,7 +169,7 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
   syncWorkspaceUrl();
   if (!autostart) return;
   if (mode === "play") return startPlaySessionTracked();
-  return startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
+  return startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
 }
 
 function resetSessions() {
@@ -182,7 +182,7 @@ function resetSessions() {
   state.training = null;
   state.trainResult = null;
   state.trainBusy = false;
-  state.trainStarting = false;
+  state.trainStarting = false; state.trainStartToken = null;
   clearBlitzTimer();
   setBlitzBarVisible(false);
 }

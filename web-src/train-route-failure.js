@@ -32,5 +32,6 @@ export function retryTrainEntry(isActive, enter, onFailure = showTrainModuleLoad
 
 export function trainRouteMatches(loc, href = window.location.href) {
   const now = parseWorkspaceLocation(href);
-  return now.view === "train" && (now.repertoireId || null) === (loc.repertoireId || null) && (now.trainMode || null) === (loc.trainMode || null);
+  const mode = (route) => route.trainMode || (route.repertoireId ? "smart" : null);
+  return now.view === "train" && (now.repertoireId || null) === (loc.repertoireId || null) && mode(now) === mode(loc);
 }

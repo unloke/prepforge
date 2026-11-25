@@ -204,6 +204,8 @@ function trainStatsReset() {
   appState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0, learned: 0, learnedRetry: 0 };
 }
 
+function cancelStaleTrainStart(options) { if (!appState.trainStarting || appState.trainStartToken !== options.entryToken) return; appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", ""); syncTrainSessionControls(); }
+
 function sideToMoveFromFen(fen) {
   return (fen || "").split(" ")[1] === "b" ? "black" : "white";
 }
@@ -250,7 +252,7 @@ export async function startTraining(mode, options = {}) {
   // before the server walks the tree into lines.
   try {
     await hardFlushBuild();
-    if (!isCurrent()) return;
+    if (!isCurrent()) return cancelStaleTrainStart(options);
   } catch (error) {
     if (isCurrent()) failed(error.message);
     return;
@@ -259,7 +261,7 @@ export async function startTraining(mode, options = {}) {
   const body = { seed: 13, mode, repertoire_id: repertoireId, fresh };
   try {
     const payload = await postJson("/api/train/start", body);
-    if (!isCurrent()) return;
+    if (!isCurrent()) return cancelStaleTrainStart(options);
     if (!payload.prompt) return failed("No moves to rehearse. Add lines in Repertoire.");
     appState.training = payload;
     appState.trainAttempt = 1;
@@ -277,7 +279,7 @@ export async function startTraining(mode, options = {}) {
     await renderTraining(payload);
     syncWorkspaceUrl();
   } catch (error) {
-    if (!isCurrent()) return;
+    if (!isCurrent()) return cancelStaleTrainStart(options);
     failed(isNothingToTrainError(error) ? "No moves to rehearse. Add lines in Repertoire." : error.message);
   }
 }
@@ -1264,7 +1266,7 @@ async function startSmartTraining(options = {}) {
     hardFlushBuild(), flushTrainSync(), loadTrainResume(),
     trainSessionMemo || import("../train-session-memo.js"),
   ]);
-  if (!isCurrent()) return;
+  if (!isCurrent()) return cancelStaleTrainStart(options);
   if (buildSaved.status === "rejected" || buildSaved.value === false) {
     failed("Couldn't save your repertoire edits. Try again in a moment.");
     return;
@@ -1292,7 +1294,7 @@ async function startSmartTraining(options = {}) {
       ...(targets.length ? { target_node_ids: targets } : {}),
     });
   } catch (error) {
-    if (!isCurrent()) return;
+    if (!isCurrent()) return cancelStaleTrainStart(options);
     if (isAuthError(error)) {
       failed("");
       accountService().handleAuthRequired("Sign in to start training");
@@ -1301,7 +1303,7 @@ async function startSmartTraining(options = {}) {
     failed(isNothingToTrainError(error) ? "Nothing to train here. Add lines in Repertoire." : "Couldn't build your queue. Try again in a moment.");
     return;
   }
-  if (!isCurrent()) return;
+  if (!isCurrent()) return cancelStaleTrainStart(options);
   // The URL names the repertoire the queue drills; a mixed queue drills all of
   // them, so it names none. Keeping the anchor here would write ?rep=<anchor>
   // into a Train link that is not about that repertoire.
