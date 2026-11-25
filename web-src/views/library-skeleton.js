@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { storedSession } from "../controllers/session-store.js";
 
 // Rows use the loaded row's classes. The count comes from the stored session
 // when a returning account knows it; otherwise one row is the honest minimum.
@@ -22,4 +23,15 @@ export function dashboardTodaySkeleton() {
     <div class="today-body" aria-hidden="true"><p class="today-queue skeleton-text">0 due now</p><p class="today-more skeleton-text">0 new moves to learn</p></div>
     <div class="today-aside" aria-hidden="true"><p class="today-recap skeleton-text">0 reviewed in 7 days · 0 mastered · 0 weak spots</p><p class="today-counts skeleton-text">0 analyses · 0 repertoires · 0 sessions</p></div>
     <span class="btn primary skeleton-text" aria-hidden="true">Train</span>`;
+}
+
+export function paintDashboardSkeleton(doc) {
+  const session = storedSession();
+  const rows = doc.getElementById("dashboard-repertoires");
+  if (rows) rows.innerHTML = libraryRowsSkeleton(session?.repertoire_count);
+  const today = doc.getElementById("dashboard-today");
+  if (session && today) {
+    today.innerHTML = dashboardTodaySkeleton();
+    today.hidden = false;
+  }
 }
