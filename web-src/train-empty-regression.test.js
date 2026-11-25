@@ -70,6 +70,31 @@ it("posts the scope it was given: one repertoire, or all of them", async () => {
   expect(post).toHaveBeenLastCalledWith("/api/train/smart/start", { mixed: false, fresh: true, repertoire_id: "r1", target_node_ids: ["n1"] });
 });
 
+it("does not post a queue after its navigation entry is invalidated", async () => {
+  const post = vi.fn(rejecting("unexpected"));
+  let release;
+  const { run } = harness(post, new Promise((done) => { release = done; }));
+  let active = true;
+  const attempt = run({ repertoireId: "r1", isCurrent: () => active });
+  active = false;
+  release({});
+  await attempt;
+  expect(post).not.toHaveBeenCalled();
+});
+
+it("does not adopt a queue after its navigation entry is invalidated mid-post", async () => {
+  let release, active = true;
+  const post = vi.fn(() => new Promise((done) => { release = done; }));
+  const { run, deps } = harness(post, { mapTrainUiSession: () => ({ queue: [{}], sessionId: "s1" }) });
+  const attempt = run({ repertoireId: "r1", isCurrent: () => active });
+  await vi.waitFor(() => expect(post).toHaveBeenCalled());
+  active = false;
+  release({ card_kinds: [], requeue_gap: 3 });
+  await attempt;
+  expect(deps.trainStatsReset).not.toHaveBeenCalled();
+  expect(deps.appState.smart).toBeUndefined();
+});
+
 it("a resumed queue raises no toast: Home already said Resume", () => {
   const code = startSmartTrainingSource();
   expect(code).not.toMatch(/setStatus\(/);

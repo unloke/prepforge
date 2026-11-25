@@ -151,10 +151,10 @@ function paintActions(screen, mode) {
 // repertoire", a picked move, the palette. The scope is set explicitly, so a
 // one-repertoire queue is never served from "all repertoires".
 export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false, isCurrent = null } = {}) {
-  const state = appState;
-  if (!(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game")) || (isCurrent && !isCurrent())) return;
+  const state = appState, wasInTrain = state.currentView === "train", entrySeq = isCurrent ? state.trainEntryVersion : (state.trainEntryVersion = (state.trainEntryVersion || 0) + 1), current = isCurrent || (() => state.trainEntryVersion === entrySeq && (!wasInTrain || state.currentView === "train"));
+  if (!(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return;
   closeTrainPicker(); if (state.smart) await flushTrainSync();
-  if (isCurrent && !isCurrent()) return;
+  if (!current()) return;
   resetSessions();
   for (const key of Object.keys(rowErrors)) rowErrors[key] = "";
   state.trainMode = mode;
@@ -162,14 +162,14 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
   if (mode === "all_lines" && repertoireId) state.trainingRepertoireId = String(repertoireId);
   if (autostart) state.trainStarting = true;
   const enter = () => {
-    if (state.currentView !== "train") switchView("train");
+    if (state.currentView !== "train") { state.trainEntering = true; try { switchView("train"); } finally { delete state.trainEntering; } }
     syncTrainScreen();
   };
   enter();
   syncWorkspaceUrl();
   if (!autostart) return;
   if (mode === "play") return startPlaySessionTracked();
-  return startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets });
+  return startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
 }
 
 function resetSessions() {

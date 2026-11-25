@@ -230,7 +230,7 @@ export async function startTraining(mode, options = {}) {
   // ----- line rehearsal (all_lines) below -----
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === smartStartSeq && owner === currentOwnerId() && appState.trainMode === mode;
+  const entryCurrent = options.isCurrent || (() => true), isCurrent = () => entryCurrent() && seq === smartStartSeq && owner === currentOwnerId() && appState.trainMode === mode;
   appState.smart = null;
   clearBlitzTimer();
   setBlitzBarVisible(false);
@@ -1244,7 +1244,7 @@ let smartStartSeq = 0;
 async function startSmartTraining(options = {}) {
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
-  const isCurrent = () => seq === smartStartSeq && owner === currentOwnerId() && (appState.trainMode || "smart") === "smart";
+  const entryCurrent = options.isCurrent || (() => true), isCurrent = () => entryCurrent() && seq === smartStartSeq && owner === currentOwnerId() && (appState.trainMode || "smart") === "smart";
   const fresh = !!options.fresh;
   appState.trainResult = null;
   const failed = (text) => {

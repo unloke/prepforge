@@ -30,7 +30,7 @@ export function retryTrainEntry(isActive, enter, onFailure = showTrainModuleLoad
   return attempt().catch((error) => { if (isActive()) onFailure(error, attempt); });
 }
 
-export function trainRouteMatches(loc) {
-  const now = parseWorkspaceLocation(window.location.href);
+export function trainRouteMatches(loc, href = window.location.href) {
+  const now = parseWorkspaceLocation(href);
   return now.view === "train" && (now.repertoireId || null) === (loc.repertoireId || null) && (now.trainMode || null) === (loc.trainMode || null);
 }

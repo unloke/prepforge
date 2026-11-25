@@ -10,8 +10,9 @@ function runtime(hash, { signedIn = true, smart = null } = {}) {
     appState: { signedIn, currentView: "train", smart },
     parseWorkspaceLocation, trainQueueRepertoireId, loadReturnState: () => null,
     switchView: vi.fn(), openTrain: vi.fn(async () => {}),
-    loadTrainSession: vi.fn(async () => ({ syncTrainControls: vi.fn() })), loadTrainRepertoireOptions: vi.fn(async () => {}), retryTrainEntry, trainRouteMatches,
+    loadTrainSession: vi.fn(async () => ({ syncTrainControls: vi.fn() })), loadTrainRepertoireOptions: vi.fn(async () => {}), retryTrainEntry, trainRouteMatches: null, invalidateTrainEntries: vi.fn(),
   };
+  deps.trainRouteMatches = (loc) => trainRouteMatches(loc, deps.window.location.href);
   const compile = marker => {
     const start = source.indexOf(marker);
     const body = source.slice(start, source.indexOf("\n}\n", start) + 2);

@@ -210,8 +210,8 @@ describe("app boot holds auth-dependent state until the session is known", () =>
     expect(src).toMatch(/enterTrain = async/);
     expect(src).toMatch(/trainRouteMatches\(loc\)/);
     expect(src).toMatch(/isCurrent: stillActive/);
-    expect(src).toMatch(/void loadTrainRepertoireOptions\(\);/);
-    expect(src).toMatch(/!deferTrainEntry\) void retryTrainEntry/);
+    expect(src).toMatch(/void loadTrainRepertoireOptions\(\)\.catch\(\(\) => \{\}\);/);
+    expect(src).toMatch(/!deferTrainEntry && !appState\.trainEntering\) void retryTrainEntry/);
   });
 
   it("holds the account chip too: an unread session is not a signed-out one", () => {

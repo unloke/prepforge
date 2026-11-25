@@ -75,6 +75,13 @@ describe("openTrain", () => {
     expect(deps.startTraining).not.toHaveBeenCalled();
   });
 
+  it("a start begun on Train does not continue after the user leaves", async () => {
+    const { deps } = setup({ currentView: "train" });
+    deps.confirmAbandonGame.mockImplementation(async () => { deps.switchView("games"); return true; });
+    await createTrainHome(deps).openTrain({ mode: "smart", repertoireId: "r1" });
+    expect(deps.startTraining).not.toHaveBeenCalled();
+  });
+
   it("a Feeling Lucky game names its source in the scope chip", () => {
     const play = { book: "maia", userColor: "white", luckyReason: "titled-game", luckyPhase: "middlegame", luckySource: "lichess-tv" };
     expect(trainScopeLabel({ trainMode: "play", play })).toBe("Live Lichess game · middlegame");

@@ -24,9 +24,10 @@ function runtime(extra = {}) {
     parseWorkspaceLocation, loadReturnState: () => null,
     switchView: vi.fn((view) => { state.currentView = view; }), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(async () => {}),
     loadTrainSession: vi.fn(async () => ({ syncTrainControls: vi.fn() })),
-    loadTrainRepertoireOptions: vi.fn(async () => {}), retryTrainEntry, trainRouteMatches,
+    loadTrainRepertoireOptions: vi.fn(async () => {}), retryTrainEntry, trainRouteMatches: null, invalidateTrainEntries: vi.fn(),
     api: vi.fn(), hydrateBuild: vi.fn(), showAnalysisPly: vi.fn(), ...extra,
   };
+  context.trainRouteMatches = (loc) => trainRouteMatches(loc, context.window.location.href);
   context.ANALYSIS_ROOT_PATH = "root";
   context.parsePgn = parsePgn;
   runInNewContext(`${restore}\n${restoreFactory}\n`
@@ -97,13 +98,14 @@ function popstateRuntime(extra = {}) {
     parseWorkspaceLocation,
     trainQueueRepertoireId,
     switchView: vi.fn(),
-    openTrain: vi.fn(async () => {}),
+    openTrain: vi.fn(async () => {}), retryTrainEntry, trainRouteMatches: null, loadTrainRepertoireOptions: vi.fn(async () => {}), invalidateTrainEntries: vi.fn(), deferTrainEntry: false,
     // The Analyze branch compares the current position's stable path.
     selectedNodePath: () => null,
     showAnalysisPly: vi.fn(),
     restoreAnalysisNodePath: vi.fn(async () => {}),
     ...extra,
   };
+  context.trainRouteMatches = (loc) => trainRouteMatches(loc, context.window.location.href);
   runInNewContext(`${popstate}\nglobalThis.run = handleWorkspacePopstate;`, context);
   return context;
 }
@@ -114,6 +116,14 @@ it("rebuilds Train's queue for an in-page ?rep change", async () => {
   expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
   expect(ctx.openTrain).toHaveBeenCalledTimes(1);
   expect(ctx.openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: "r2" }));
+});
+
+it("enters that in-page Train queue through the retryable entry path", async () => {
+  const retry = vi.fn((isActive, enter) => enter());
+  const ctx = popstateRuntime({ retryTrainEntry: retry });
+  await ctx.run();
+  expect(retry).toHaveBeenCalledTimes(1);
+  expect(ctx.openTrain).toHaveBeenCalledWith(expect.objectContaining({ repertoireId: "r2" }));
 });
 
 it("keeps the live queue when the popstate names the repertoire it drills", async () => {
