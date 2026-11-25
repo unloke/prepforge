@@ -333,6 +333,7 @@ describe("updateMoveTreeSelection", () => {
     const full = String(renderMoveTree(root, opts));
     const single = String(renderMoveVariation(root.children[1], opts));
     expect(single).toContain('data-collapse-id="alt"');
+    expect(single).toContain('aria-expanded="false"');
     expect(single).toContain('<span class="mtree-collapsed">1…c5 …</span>');
     expect(full).toContain(single);
   });

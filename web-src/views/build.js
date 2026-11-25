@@ -342,8 +342,12 @@ export function createBuildView({
       const varNode = treeNode(id);
       const varEl = toggle.closest?.(".mtree-var");
       if (renderer?.renderMoveVariation && varNode && varEl && "outerHTML" in varEl) {
+        const restoreFocus = document.activeElement === toggle;
         const { children } = getBuildTree(appState.build);
         varEl.outerHTML = String(renderer.renderMoveVariation(varNode, moveTreeOptions(children)));
+        if (restoreFocus) {
+          container.querySelector(`[data-collapse-id="${id}"]`)?.focus({ preventScroll: true });
+        }
         finishPreviewEntrance(container);
         collaboration?.markMoves();
         return;

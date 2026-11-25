@@ -116,7 +116,7 @@ export function createMoveTreeRenderer() {
       const summary = `${number}${firstNode.san}`;
       const title = collapsed ? `Expand ${summary} variation` : "Collapse variation";
       chunks.push(
-        `<button class="mtree-collapse" type="button" data-collapse-id="${escapeHtml(firstNode.id)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="mtree-collapse-icon" aria-hidden="true">${collapsed ? "▸" : "▾"}</span>`,
+        `<button class="mtree-collapse" type="button" data-collapse-id="${escapeHtml(firstNode.id)}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}" aria-expanded="${collapsed ? "false" : "true"}"><span class="mtree-collapse-icon" aria-hidden="true">${collapsed ? "▸" : "▾"}</span>`,
       );
       if (collapsed) chunks.push(`<span class="mtree-collapsed">${escapeHtml(`${summary} …`)}</span>`);
       chunks.push(`</button>`);
