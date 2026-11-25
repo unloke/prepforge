@@ -64,6 +64,26 @@ it("switching tabs reports the pane left and the pane entered", () => {
   expect(onPane).toHaveBeenCalledTimes(2);
 });
 
+it("uses the visible pane when storage refuses writes", () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => null,
+    setItem: () => { throw new Error("quota"); },
+    clear: () => {},
+  });
+  const onPane = vi.fn();
+  bindTrainPhone(vi.fn(), onPane);
+
+  tapTab("play");
+  expect(view.dataset.trainPane).toBe("play");
+  tapTab("drill");
+
+  expect(view.dataset.trainPane).toBe("drill");
+  expect(onPane).toHaveBeenCalledTimes(2);
+  expect(onPane).toHaveBeenLastCalledWith("play", "drill");
+  tapTab("drill");
+  expect(onPane).toHaveBeenCalledTimes(2);
+});
+
 it("retapping the active tab is not a switch and reports nothing", () => {
   const onPane = vi.fn();
   bindTrainPhone(vi.fn(), onPane);

@@ -150,10 +150,12 @@ describe("‹ Train", () => {
 
   it("keeps a live game when the player says no", async () => {
     const play = { active: true, history: ["e2e4"] };
-    const { appState, deps } = setup({ currentView: "train", trainMode: "play", play });
+    const { appState, deps } = setup({ currentView: "train", trainMode: "play", play, trainEntryVersion: 4 });
+    const flush = vi.fn(async () => true); provideApp({ flushTrainSync: flush });
     deps.confirmAbandonGame.mockResolvedValueOnce(false);
     await createTrainHome(deps).leaveToHome();
     expect(appState.play).toBe(play);
+    expect(appState.trainEntryVersion).toBe(4); expect(flush).not.toHaveBeenCalled(); expect(deps.resetTrainBoardIdle).not.toHaveBeenCalled();
   });
 
   it("invalidates a pending start and drops its scoped route", async () => {

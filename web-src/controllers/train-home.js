@@ -191,13 +191,13 @@ function resetSessions() {
 // "‹ Train": drills keep their progress (Home then offers "Resume"), a live
 // game asks first.
 export async function leaveToHome() {
-  if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
-  if (appState.smart && !(await flushTrainSync())) return;
-  appState.trainEntryVersion = (appState.trainEntryVersion || 0) + 1; delete appState.trainPendingRoute;
+  const state = appState, entrySeq = state.trainEntryVersion || 0, current = () => (state.trainEntryVersion || 0) === entrySeq && state.currentView === "train";
+  if (!current() || !(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return;
+  if (state.smart && !(await flushTrainSync()) || !current()) return;
+  state.trainEntryVersion = entrySeq + 1; delete state.trainPendingRoute;
   resetSessions(); setTrainBanner("move", "", "");
   syncWorkspaceUrl(); invalidateTrainPreview();
-  syncTrainScreen();
-  void resetTrainBoardIdle("");
+  syncTrainScreen(); void resetTrainBoardIdle("");
 }
 
 // ---------------------------------------------------------------- Home
@@ -437,27 +437,27 @@ export function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
 
 // The listing every row reads: own + shared repertoires, then the Home repaint.
 export async function loadTrainRepertoireOptions() {
-  const state = appState;
+  const state = appState, owner = currentOwnerId(), generation = state.ownerGeneration || 0;
+  const current = () => currentOwnerId() === owner && (state.ownerGeneration || 0) === generation;
   if (state.signedIn) { state.trainRepertoireOptionsError = ""; paintRowErrors(); }
-  if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(currentOwnerId(), state.trainScope?.repertoireId, state.trainHomeReady);
+  if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(owner, state.trainScope?.repertoireId, state.trainHomeReady);
   if (state.signedIn) {
     try {
-      const listing = fetchRepertoireListing(api, currentOwnerId(), state.ownerGeneration || 0);
+      const listing = fetchRepertoireListing(api, owner, generation);
       const payload = await listing;
-      if (payload && acceptRepertoireListing(listing, currentOwnerId(), state.ownerGeneration || 0)) {
+      if (payload && current() && acceptRepertoireListing(listing, owner, generation)) {
         state.repertoireList = payload.repertoires || [];
         state.sharedRepertoireList = payload.shared || [];
-        state.repertoireListGeneration = state.ownerGeneration || 0;
+        state.repertoireListGeneration = generation;
       }
     } catch (error) {
-      if (!repertoireListingKnown(state)) state.trainRepertoireOptionsError = error.message || "Could not load repertoires";
-      setStatusError(error.message);
+      if (current() && !repertoireListingKnown(state)) state.trainRepertoireOptionsError = error.message || "Could not load repertoires";
+      if (current()) setStatusError(error.message);
     }
   }
-  const key = playRepertoireStorageKey();
+  if (!current()) return; const key = playRepertoireStorageKey();
   if (state.playRepertoirePreferenceKey !== key) {
-    state.playRepertoirePreferenceKey = key;
-    let stored = null;
+    state.playRepertoirePreferenceKey = key; let stored = null;
     try { stored = JSON.parse(localStorage.getItem(key) || "null"); } catch (_) { /* malformed */ }
     state.playRepertoireIds = Array.isArray(stored) ? stored.map(String) : ownActive().map((r) => String(r.id));
   }

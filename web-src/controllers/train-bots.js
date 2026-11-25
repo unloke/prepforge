@@ -64,9 +64,10 @@ export function bindTrainPhone(onBook, onPane) {
   document.getElementById("train-tabs").addEventListener("click", (e) => {
     const tab = e.target.closest(".seg-btn");
     if (!tab) return;
-    const before = trainPane();
-    setTrainPane(tab.dataset.pane);
-    const now = trainPane();
+    const visible = document.getElementById("view-train")?.dataset.trainPane;
+    const before = visible === "play" || visible === "drill" ? visible : trainPane();
+    const now = tab.dataset.pane === "play" ? "play" : "drill";
+    setTrainPane(now);
     if (now !== before) onPane?.(before, now);
   });
   paintTrainPane();

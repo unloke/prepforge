@@ -45,6 +45,27 @@ describe("leaving the Practice pane", () => {
     expect(setTrainBanner).toHaveBeenCalledWith("move", "", "");
   });
 
+  it("cancels on Practice → Drill even when pane storage refuses writes", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      setItem: () => { throw new Error("quota"); },
+      removeItem: () => {},
+      clear: () => {},
+    });
+    const setTrainBanner = vi.fn();
+    const { appState } = setup({ currentView: "train", trainMode: "play", playStartToken: 1 });
+    provideApp({ setTrainBanner });
+    tapTab("play");
+    const run = beginLuckyDiscovery(appState);
+
+    tapTab("drill");
+
+    expect(appState.luckyRun).toBeNull();
+    expect(run.controller.signal.aborted).toBe(true);
+    expect(luckyDiscoveryCurrent(appState, run)).toBe(false);
+    expect(setTrainBanner).toHaveBeenCalledWith("move", "", "");
+  });
+
   it("retapping the Practice tab keeps the discovery running", () => {
     const setTrainBanner = vi.fn();
     const { appState } = setup({ currentView: "train", trainMode: "play", playStartToken: 1 });
