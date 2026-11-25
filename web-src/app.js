@@ -376,7 +376,7 @@ async function restoreWorkspaceLocation() {
   if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply, loc.node);
   // #/train is Train Home; a link that names a repertoire opens its Due queue,
   // with that scope on the session's chip. A failed chunk leaves a retry instead of an inert skeleton.
-  const trainEntrySeq = trainRouteSeq, enterTrain = async (stillActive) => { if (!stillActive()) return; (await loadTrainSession()).syncTrainControls(); if (!stillActive()) return; void loadTrainRepertoireOptions(); if (appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId, isCurrent: stillActive }); };
+  if (loc.view === "train" && (loc.repertoireId || loc.trainMode === "smart")) appState.trainPendingRoute = { repertoireId: loc.repertoireId || null, trainMode: loc.trainMode || "smart" }; const trainEntrySeq = trainRouteSeq, enterTrain = async (stillActive) => { if (!stillActive()) return; (await loadTrainSession()).syncTrainControls(); if (!stillActive()) return; void loadTrainRepertoireOptions(); if (appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId, isCurrent: stillActive }); };
   if (loc.view === "train") await retryTrainEntry(() => appState.currentView === "train" && (trainRouteSeq === trainEntrySeq || trainRouteMatches(loc)), enterTrain);
 }
 
@@ -428,9 +428,9 @@ async function handleWorkspacePopstate() {
     if (loc.node && loc.node !== current) await restoreAnalysisNodePath(loc.node);
     else if (!loc.node && loc.ply && loc.ply !== appState.analysisPly) await showAnalysisPly(loc.ply);
   }
+  if (loc.view === "train" && !loc.repertoireId && !loc.trainMode) delete appState.trainPendingRoute;
   if (loc.view === "train" && appState.signedIn) {
-    const mode = loc.trainMode || "smart";
-    const needsQueue = loc.repertoireId
+    const mode = loc.trainMode || "smart"; const needsQueue = loc.repertoireId
       ? loc.repertoireId !== trainQueueRepertoireId(appState) || mode !== appState.trainMode
       : loc.trainMode === "smart" && (!appState.smart?.mixed || appState.trainResult);
     if (needsQueue) await openTrain({ mode, repertoireId: loc.repertoireId });
@@ -1120,7 +1120,7 @@ function loadTrainSession() {
 const viaTrainSession = (name) => (...args) => loadTrainSession().then((train) => train[name](...args));
 const loadTrainRepertoireOptions = viaTrainSession("loadTrainRepertoireOptions");
 const onFeelingLucky = viaTrainSession("onFeelingLucky");
-const openTrain = viaTrainSession("openTrain");
+const openTrainBase = viaTrainSession("openTrain"), openTrain = (options = {}) => { const seq = workspaceNavigationSeq, mode = options.mode || "smart", intent = mode === "smart" || mode === "all_lines" ? { repertoireId: options.repertoireId || null, trainMode: mode } : null; if (intent) appState.trainPendingRoute = intent; return openTrainBase({ ...options, isCurrent: options.isCurrent || (() => workspaceNavigationSeq === seq) }).finally(() => { if (intent && appState.trainPendingRoute === intent) delete appState.trainPendingRoute; }); };
 const submitTrainingMove = viaTrainSession("submitTrainingMove");
 
 // ----- Sync indicator (Google-Docs style chip by the Build board label) -------

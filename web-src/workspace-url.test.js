@@ -184,6 +184,9 @@ describe("workspace URL codec", () => {
       expect(formatWorkspaceHash(loc)).not.toContain("rep=");
     }
   });
+  it("pending Train route keeps its scope until the start outcome", () => {
+    expect(formatWorkspaceHash(workspaceLocationFromState({ currentView: "train", trainPendingRoute: { repertoireId: "r1", trainMode: "smart" } }))).toBe("#/train?rep=r1&mode=smart");
+  });
 });
 
 describe("games/scout deep links", () => {

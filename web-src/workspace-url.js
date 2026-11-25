@@ -153,17 +153,18 @@ export function trainQueueRepertoireId(state) {
 
 export function workspaceLocationFromState(state = {}) {
   const view = asView(state.currentView || state.view);
+  const activeTrainMode = state.training?.prompt ? "all_lines" : state.smart?.mixed && !state.trainResult ? "smart" : null;
+  const pendingTrain = view === "train" ? state.trainPendingRoute : null;
   return {
     view,
-    ...(view === "train" && state.training?.prompt ? { trainMode: "all_lines" } : {}),
-    ...(view === "train" && state.smart?.mixed && !state.trainResult ? { trainMode: "smart" } : {}),
+    ...(view === "train" && (activeTrainMode || pendingTrain?.trainMode) ? { trainMode: activeTrainMode || pendingTrain.trainMode } : {}),
     replaySection:
       view === "replay"
         ? asReplaySection(state.replaySection || state.replay_section)
         : null,
     repertoireId:
       view === "train"
-        ? trainQueueRepertoireId(state)
+        ? trainQueueRepertoireId(state) || pendingTrain?.repertoireId || null
         : REPERTOIRE_VIEW_SET.has(view)
           ? (state.build && state.build.repertoire_id) ||
             state.trainingRepertoireId ||
