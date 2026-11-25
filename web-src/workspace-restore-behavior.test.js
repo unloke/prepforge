@@ -110,6 +110,18 @@ function popstateRuntime(extra = {}) {
   return context;
 }
 
+it("restores a Build popstate without pushing another history entry", async () => {
+  const editRepertoire = vi.fn(async () => {});
+  const ctx = popstateRuntime({
+    appState: { signedIn: true, currentView: "dashboard" },
+    window: { location: { href: "http://local/#/build?rep=r2" } },
+    editRepertoire,
+    shownOrLoadingRepertoireId: () => null,
+  });
+  await ctx.run();
+  expect(editRepertoire).toHaveBeenCalledWith("r2", null, { fromUrl: true });
+});
+
 it("rebuilds Train's queue for an in-page ?rep change", async () => {
   const ctx = popstateRuntime();
   await ctx.run();

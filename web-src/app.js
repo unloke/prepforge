@@ -414,7 +414,7 @@ async function handleWorkspacePopstate() {
   // editor showing a different tree than its URL survived only until a reload.
   if (loc.view === "build" && loc.repertoireId && appState.signedIn &&
       loc.repertoireId !== shownOrLoadingRepertoireId()) {
-    await editRepertoire(loc.repertoireId);
+    await editRepertoire(loc.repertoireId, null, { fromUrl: true });
     return;
   }
   const trainMode = loc.trainMode || "smart", trainNeedsQueue = loc.view === "train" && appState.signedIn && (loc.repertoireId ? loc.repertoireId !== trainQueueRepertoireId(appState) || trainMode !== appState.trainMode : loc.trainMode === "smart" && (!appState.smart?.mixed || appState.trainResult)); deferTrainEntry = trainNeedsQueue; switchView(loc.view, { fromUrl: true }); deferTrainEntry = false;
@@ -612,8 +612,8 @@ function switchView(name, { fromUrl = false } = {}) {
 
 
 let buildLoadSeq = 0;
-async function editRepertoire(repertoireId, nodeId = null) {
-  // Picking a repertoire is navigation; its loading skeleton defers URL sync.
+async function editRepertoire(repertoireId, nodeId = null, { fromUrl = false } = {}) {
+  // Picking a repertoire is navigation; a URL restore must not push over its entry.
   workspaceNavigationSeq += 1;
   if (!workspaceUrlReady) navigatedDuringBoot = true;
   // Switching repertoires replaces the local Build tree — flush pending moves of
@@ -627,6 +627,7 @@ async function editRepertoire(repertoireId, nodeId = null) {
   // previous tree, so a route back to that tree must not read as "already open".
   appState.buildLoadTarget = repertoireId;
   setBuildLoading(true);
+  if (!fromUrl) syncWorkspaceUrl({ push: true });
   try {
     await hardFlushBuild();
   } catch (error) {
@@ -652,9 +653,8 @@ async function editRepertoire(repertoireId, nodeId = null) {
     if (loadSeq !== buildLoadSeq) return;
     setBuildLoading(false, { restore: false });
     appState.trainingRepertoireId = payload.repertoire_id;
-    // The rail remains usable during loading; a response must not pull the
-    // user back after they have navigated to another page.
-    syncWorkspaceUrl();
+    // The rail remains usable during loading; the opening navigation already
+    // owns the URL, so a late response must not rewrite it.
     updateBuildReadOnlyUi(payload);
   } catch (error) {
     if (loadSeq !== buildLoadSeq) return;
@@ -666,8 +666,8 @@ async function editRepertoire(repertoireId, nodeId = null) {
 }
 
 // Repertoire loading state: switch to the view (without touching the URL —
-// the caller syncs it once the tree is in) and show a skeleton in place of the
-// previous tree. Turning it off restores whatever is actually loaded.
+// the opening navigation owns any history write) and show a skeleton in place
+// of the previous tree. Turning it off restores whatever is actually loaded.
 function setBuildLoading(on, { restore = true } = {}) {
   appState.buildLoading = on;
   const view = document.getElementById("view-build");

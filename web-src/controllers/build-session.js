@@ -134,7 +134,7 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
     scheduleBuildFlush();
   }
   renderBuildSync();
-  syncWorkspaceUrl();
+  if (!appState.buildLoading) syncWorkspaceUrl();
 }
 
 function openBuildMenu(event) {

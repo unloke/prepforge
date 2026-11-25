@@ -166,7 +166,8 @@ export function workspaceLocationFromState(state = {}) {
       view === "train"
         ? trainQueueRepertoireId(state) || pendingTrain?.repertoireId || null
         : REPERTOIRE_VIEW_SET.has(view)
-          ? (state.build && state.build.repertoire_id) ||
+          ? (state.buildLoading && state.buildLoadTarget) ||
+            (state.build && state.build.repertoire_id) ||
             state.trainingRepertoireId ||
             state.repertoireId ||
             null

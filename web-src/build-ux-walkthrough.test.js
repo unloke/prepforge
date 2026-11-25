@@ -328,7 +328,7 @@ describe("Notices report finished work in past tense", () => {
 
 describe("Repertoire opens immediately with a loading state (P2-5)", () => {
   it("switches view and shows a skeleton before the load resolves", () => {
-    const edit = extractByMarker("async function editRepertoire(repertoireId, nodeId = null) {");
+    const edit = extractByMarker("async function editRepertoire(");
     expect(edit.indexOf("setBuildLoading(true)")).toBeLessThan(edit.indexOf("await api("));
     const loading = extractByMarker("function setBuildLoading(on, { restore = true } = {}) {");
     expect(loading).toContain('switchView("build", { fromUrl: true })');

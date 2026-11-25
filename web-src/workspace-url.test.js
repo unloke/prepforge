@@ -140,6 +140,18 @@ describe("workspace URL codec", () => {
     ).toEqual({ view: "build", replaySection: null, repertoireId: "r2", ply: null, node: null });
   });
 
+  it("names the repertoire Build is loading rather than the tree it replaces", () => {
+    expect(
+      workspaceLocationFromState({
+        currentView: "build",
+        buildLoading: true,
+        buildLoadTarget: "B",
+        build: { repertoire_id: "A" },
+        trainingRepertoireId: "A",
+      }).repertoireId,
+    ).toBe("B");
+  });
+
   it("keeps Build's open repertoire out of an Analyze link", () => {
     // Opening a game from Games lands on Analyze; the URL used to carry the
     // repertoire Build last had open, though no repertoire is involved.

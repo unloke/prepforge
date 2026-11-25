@@ -3,6 +3,7 @@ import { paintBuildSkeleton } from "./views/build-skeleton.js";
 import { describe, expect, it, vi } from "vitest";
 import { localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
+import { serializeWorkspaceLocation, workspaceLocationFromState } from "./workspace-url.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -49,6 +50,20 @@ function harness() {
     appState.build = payload;
     board.setPosition({ fen: FEN, legalMoves: localBoardInfo(FEN).legal_moves });
   });
+  const urlOperations = [];
+  const window = { location: { href: "http://test/#/dashboard", pathname: "/", search: "", hash: "#/dashboard" } };
+  const remember = (href) => {
+    const url = new URL(href, "http://test");
+    Object.assign(window.location, { href: url.href, pathname: url.pathname, search: url.search, hash: url.hash });
+  };
+  const history = {
+    pushState(_loc, _unused, href) { urlOperations.push({ href, push: true }); remember(href); },
+    replaceState(_loc, _unused, href) { urlOperations.push({ href, push: false }); remember(href); },
+  };
+  const syncStart = source.indexOf("function syncWorkspaceUrl(");
+  const syncBody = source.slice(syncStart, source.indexOf("\n}\n", syncStart) + 2);
+  const syncWorkspaceUrl = new Function("window", "history", "workspaceLocationFromState", "serializeWorkspaceLocation", "appState",
+    `let workspaceUrlReady = true; return (${syncBody});`)(window, history, workspaceLocationFromState, serializeWorkspaceLocation, appState);
   const deps = {
     ...common, setBuildLoading: loading, hardFlushBuild: vi.fn(async () => {}),
     ensureMoveTreeRenderer: vi.fn(async () => {}),
@@ -56,7 +71,7 @@ function harness() {
       const id = new URL(path, "http://test").searchParams.get("repertoire_id");
       const request = { ...deferred(), signal }; requests.set(id, request); return request.promise;
     }),
-    hydrateBuild, setStatusError: vi.fn(), syncWorkspaceUrl: vi.fn(), updateBuildReadOnlyUi: vi.fn(),
+    hydrateBuild, setStatusError: vi.fn(), syncWorkspaceUrl, updateBuildReadOnlyUi: vi.fn(),
   };
   // Keep the real request sequence in one closure, like the application.
   const start = source.indexOf("async function editRepertoire(");
@@ -68,7 +83,7 @@ function harness() {
   const move = compile("async function onBuildBoardMove(", {
     ...common, optimisticBoardMove, isBuildReadOnly: () => false,
   });
-  return { appState, board, edit, move, requests, hydrateBuild, optimisticBoardMove, deps, getElementById };
+  return { appState, board, edit, move, requests, hydrateBuild, optimisticBoardMove, deps, getElementById, urlOperations };
 }
 async function waitForRequest(h, id) {
   await vi.waitFor(() => expect(h.requests.has(id)).toBe(true));
@@ -96,6 +111,71 @@ describe("repertoire load isolation", () => {
     expect(h.board.legalMoves).toContain("e2e4");
   });
 
+  it("pushes the scoped Build URL when the opening navigation starts", async () => {
+    const h = harness();
+    const load = h.edit("B");
+    await waitForRequest(h, "B");
+    const opening = [{ href: "/#/build?rep=B", push: true }];
+    expect(h.urlOperations).toEqual(opening);
+    h.requests.get("B").resolve(payload("B"));
+    await load;
+    expect(h.urlOperations).toEqual(opening);
+  });
+
+  it("does not push or rewrite the URL for a URL-restored opening", async () => {
+    const h = harness();
+    const load = h.edit("B", null, { fromUrl: true });
+    await waitForRequest(h, "B");
+    expect(h.urlOperations).toEqual([]);
+    h.requests.get("B").resolve(payload("B"));
+    await load;
+    expect(h.urlOperations).toEqual([]);
+  });
+
+  it("does not touch the URL when a load finishes after leaving Build", async () => {
+    const h = harness();
+    const load = h.edit("B");
+    await waitForRequest(h, "B");
+    h.urlOperations.length = 0;
+    h.appState.currentView = "teams";
+    h.requests.get("B").resolve(payload("B"));
+    await load;
+    expect(h.urlOperations).toEqual([]);
+  });
+
+  it("reselecting the same open Build does not add another history entry", async () => {
+    const h = harness();
+    const first = h.edit("B");
+    await waitForRequest(h, "B");
+    h.requests.get("B").resolve(payload("B"));
+    await first;
+    h.requests.delete("B");
+    const second = h.edit("B");
+    await waitForRequest(h, "B");
+    h.requests.get("B").resolve(payload("B"));
+    await second;
+    expect(h.urlOperations).toEqual([{ href: "/#/build?rep=B", push: true }]);
+  });
+
+  it("hydration during a Build load cannot rewrite its URL", async () => {
+    const appState = {
+      buildLoading: true, build: null, buildNodeById: new Map(),
+      buildPending: [], buildPendingDeletes: [], buildIdMap: {},
+    };
+    const syncWorkspaceUrl = vi.fn();
+    const hydrate = compile("async function hydrateBuild(", {
+      appState, coverageView: null, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(),
+      renderBuildRepHeader: vi.fn(), selectBuildNode: vi.fn(async () => {}),
+      reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
+      indexBuildNodes: (nodes) => new Map(nodes.map((node) => [node.id, node])),
+      resolveBuildId: (id) => id, buildOpMatchesRepertoire: () => true,
+      renderBuildSync: vi.fn(), syncWorkspaceUrl, hasPendingBuildOpsFor: () => false,
+      setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
+    });
+    await hydrate({ repertoire_id: "B", nodes: [{ id: "root", depth: 0 }], selected_node_id: "root" });
+    expect(syncWorkspaceUrl).not.toHaveBeenCalled();
+  });
+
   it("restores the old board after a failed load", async () => {
     const h = harness();
     const load = h.edit("B");
@@ -108,6 +188,7 @@ describe("repertoire load isolation", () => {
     expect(h.board.legalMoves).toContain("e2e4");
     expect(h.board.setAnnotations).toHaveBeenLastCalledWith(["Ga1a2"], ["Gb3"]);
     expect(h.deps.setStatusError).toHaveBeenCalledWith("offline");
+    expect(h.urlOperations).toEqual([{ href: "/#/build?rep=B", push: true }]);
   });
 
   it("asks to reveal a valid explicit target when opening from another view", async () => {
