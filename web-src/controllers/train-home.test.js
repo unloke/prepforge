@@ -177,6 +177,50 @@ describe("the Due row", () => {
     expect(appState.repertoireList[0].id).toBe("new");
   });
 
+  it("does not let a redirected refresh overwrite a newer Train listing", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    const oldRead = new Promise(() => {});
+    let resolveRefresh;
+    const renamedPayload = { repertoires: [{ id: "r1", name: "Audit renamed opening", color: "white", is_active: true }], shared: [] };
+    const stalePayload = { repertoires: [{ id: "r1", name: "Open games — UX branches", color: "white", is_active: true }], shared: [] };
+    let listingCalls = 0;
+    deps.api.mockImplementation((url) => {
+      if (url === "/api/repertoires") {
+        listingCalls += 1;
+        if (listingCalls === 1) return oldRead;
+        if (listingCalls === 2) return new Promise((done) => { resolveRefresh = done; });
+        return Promise.resolve(renamedPayload);
+      }
+      return Promise.resolve({ next_session: { cards: 1, new: 1 }, outlook: { now: 1, today: 1, week: 1 } });
+    });
+    const initialLoad = loadTrainRepertoireOptions();
+    const refresh = refreshRepertoireListing(deps.api, "u1", 7);
+    expect(listingCalls).toBe(2);
+    const newerLoad = loadTrainRepertoireOptions();
+    await newerLoad;
+    expect(appState.repertoireList[0].name).toBe("Audit renamed opening");
+    resolveRefresh(stalePayload);
+    await initialLoad;
+    await refresh.catch(() => {});
+    expect(appState.repertoireList[0].name).toBe("Audit renamed opening");
+  });
+
+  it("does not write a listing issued for a prior owner generation", async () => {
+    const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
+    let resolveOld;
+    deps.api.mockImplementation((url) => {
+      if (url === "/api/repertoires") return new Promise((done) => { resolveOld = done; });
+      return Promise.resolve({ next_session: { cards: 1, new: 1 }, outlook: { now: 1, today: 1, week: 1 } });
+    });
+    const load = loadTrainRepertoireOptions();
+    appState.accountUserId = "u2";
+    appState.ownerGeneration = 8;
+    resolveOld({ repertoires: [{ id: "a-only", name: "A account repertoire", color: "white", is_active: true }], shared: [] });
+    await load;
+    expect(appState.repertoireList.some((rep) => rep.id === "a-only")).toBe(false);
+    expect(appState.repertoireListGeneration).not.toBe(8);
+  });
+
   it("marks a successful options load for this owner generation", async () => {
     const { appState, deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1 });
     deps.api.mockResolvedValueOnce({ repertoires: [{ id: "r9", name: "Sicilian" }], shared: [] });

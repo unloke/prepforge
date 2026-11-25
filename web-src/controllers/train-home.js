@@ -12,7 +12,7 @@ export { dueIn, dueMeta, dueStartState, outlookHtml, outlookShape } from "./trai
 import { appState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
-import { fetchRepertoireListing } from "../repertoire-listing.js";
+import { acceptRepertoireListing, fetchRepertoireListing } from "../repertoire-listing.js";
 import { flushTrainSync, lichessAccounts, requireSignIn, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
 import { blitzEnabled, clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setBlitzEnabled,
@@ -440,8 +440,9 @@ export async function loadTrainRepertoireOptions() {
   if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(currentOwnerId(), state.trainScope?.repertoireId, state.trainHomeReady);
   if (state.signedIn) {
     try {
-      const payload = await fetchRepertoireListing(api, currentOwnerId(), state.ownerGeneration || 0);
-      if (payload) {
+      const listing = fetchRepertoireListing(api, currentOwnerId(), state.ownerGeneration || 0);
+      const payload = await listing;
+      if (payload && acceptRepertoireListing(listing, currentOwnerId(), state.ownerGeneration || 0)) {
         state.repertoireList = payload.repertoires || [];
         state.sharedRepertoireList = payload.shared || [];
         state.repertoireListGeneration = state.ownerGeneration || 0;

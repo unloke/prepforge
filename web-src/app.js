@@ -50,6 +50,7 @@ import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { paintDashboardSkeleton } from "./views/library-skeleton.js";
 import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
+import { acceptRepertoireListing, refreshRepertoireListing } from "./repertoire-listing.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { provideApp } from "./core/app-context.js";
@@ -1138,10 +1139,11 @@ async function refreshRepertoireHead() {
       reloadOpenBuildTree(),
     ]);
   } else if (appState.signedIn) {
-    const listing = await api("/api/repertoires");
-    appState.repertoireList = listing.repertoires || [];
-    appState.sharedRepertoireList = listing.shared || [];
-    appState.repertoireListGeneration = appState.ownerGeneration || 0;
+    const listing = refreshRepertoireListing(api, currentOwnerId(), appState.ownerGeneration || 0);
+    const payload = await listing;
+    if (payload && acceptRepertoireListing(listing, currentOwnerId(), appState.ownerGeneration || 0)) Object.assign(appState, {
+      repertoireList: payload.repertoires || [], sharedRepertoireList: payload.shared || [], repertoireListGeneration: appState.ownerGeneration || 0,
+    });
   }
   renderBuildRepHeader();
   syncViewHeads();

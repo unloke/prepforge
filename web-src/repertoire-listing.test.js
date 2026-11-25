@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { fetchRepertoireListing, refreshRepertoireListing } from "./repertoire-listing.js";
+import { acceptRepertoireListing, fetchRepertoireListing, refreshRepertoireListing } from "./repertoire-listing.js";
 
 function deferred() {
   let resolve, reject;
@@ -88,6 +88,33 @@ describe("shared repertoire listing requests", () => {
     await expect(initial).resolves.toEqual({ repertoires: [{ id: "r2" }], shared: [] });
   });
 
+  it("retires an older refresh once a newer passive listing is accepted", async () => {
+    const oldRequest = deferred();
+    const refreshRequest = deferred();
+    const passiveRequest = deferred();
+    const api = vi.fn()
+      .mockImplementationOnce(() => oldRequest.promise)
+      .mockImplementationOnce(() => refreshRequest.promise)
+      .mockImplementationOnce(() => passiveRequest.promise);
+    const initial = fetchRepertoireListing(api, "u-ordering", 7);
+    const refresh = refreshRepertoireListing(api, "u-ordering", 7);
+    const passive = fetchRepertoireListing(api, "u-ordering", 7);
+    passiveRequest.resolve({ repertoires: [{ id: "renamed" }], shared: [] });
+    expect(acceptRepertoireListing(passive, "u-ordering", 7)).toBe(true);
+    await expect(refresh).resolves.toBeNull();
+    await expect(initial).resolves.toBeNull();
+    refreshRequest.resolve({ repertoires: [{ id: "stale" }], shared: [] });
+    oldRequest.resolve({ repertoires: [{ id: "older" }], shared: [] });
+    await passive;
+  });
+
+  it("refuses to accept a listing under a different owner generation", async () => {
+    const api = vi.fn(async () => ({ repertoires: [{ id: "a" }], shared: [] }));
+    const listing = fetchRepertoireListing(api, "u-owner-a", 7);
+    await listing;
+    expect(acceptRepertoireListing(listing, "u-owner-b", 8)).toBe(false);
+  });
+
   it("does not share across owner generations or after settlement", async () => {
     const api = vi.fn(async () => ({ repertoires: [], shared: [] }));
     await fetchRepertoireListing(api, "u-generations", 7);
@@ -96,11 +123,12 @@ describe("shared repertoire listing requests", () => {
     expect(api).toHaveBeenCalledTimes(3);
   });
 
-  it("is the listing read shared by Train and Library", () => {
+  it("is the listing read shared by every shared-state writer", () => {
     const train = readFileSync(new URL("./controllers/train-home.js", import.meta.url), "utf8");
     const dashboard = readFileSync(new URL("./views/dashboard.js", import.meta.url), "utf8");
-    expect(train).toContain('fetchRepertoireListing(api, currentOwnerId()');
-    expect(dashboard).toContain("refreshRepertoireListing");
+    const app = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+    const palette = readFileSync(new URL("./palette.js", import.meta.url), "utf8");
+    for (const source of [train, dashboard, app, palette]) expect(source).toContain("acceptRepertoireListing");
     expect(dashboard).not.toContain('await api("/api/repertoires")');
   });
 });

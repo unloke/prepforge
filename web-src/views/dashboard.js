@@ -4,7 +4,7 @@ import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { reveal } from "../list-enter.js";
 import { createLibraryRows } from "./library-rows.js";
-import { fetchRepertoireListing, refreshRepertoireListing } from "../repertoire-listing.js";
+import { acceptRepertoireListing, fetchRepertoireListing, refreshRepertoireListing } from "../repertoire-listing.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
 import {
@@ -618,8 +618,9 @@ export function createDashboardView({
       }).catch(() => {});
     }
     const read = authoritativeRefresh ? refreshRepertoireListing : fetchRepertoireListing;
-    const payload = await read(api, appState.accountUserId, appState.ownerGeneration || 0);
-    if (!payload || !isCurrent()) return false;
+    const listing = read(api, appState.accountUserId, appState.ownerGeneration || 0);
+    const payload = await listing;
+    if (!payload || !isCurrent() || !acceptRepertoireListing(listing, appState.accountUserId, appState.ownerGeneration || 0)) return false;
     const status = document.getElementById("library-refresh-status");
     if (status) status.hidden = true;
     appState.repertoireList = payload.repertoires || [];
