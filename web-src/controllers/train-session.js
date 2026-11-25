@@ -20,6 +20,7 @@ import { coachTipMayReplace, promptCueSan, teachWhy, trainTeachLine, wrongMoveBa
 import { createTrainRecovery } from "../train-recovery.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { playBookName, playTrailRows, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
+import { beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent } from "../train-lucky-control.js";
 import { createPlayMoveHandler } from "../train-play-input.js";
 import { analysisRecallSeq, invalidateAnalysisSource } from "./analyze-entry.js";
 import { isNothingToTrainError } from "../train-start.js";
@@ -778,25 +779,16 @@ const submitPlayMove = createPlayMoveHandler({
 });
 
 export async function onFeelingLucky() {
-  if (appState.luckyBusy) return;
-  appState.luckyBusy = true;
-  const luckyButton = document.getElementById("feeling-lucky");
-  if (luckyButton) {
-    luckyButton.disabled = true;
-    luckyButton.setAttribute("aria-busy", "true");
-  }
+  const run = beginLuckyDiscovery(appState);
+  if (!run) return;
   try {
-    return await runFeelingLuckyClick();
+    return await runFeelingLuckyClick(run);
   } finally {
-    appState.luckyBusy = false;
-    if (luckyButton) {
-      luckyButton.disabled = false;
-      luckyButton.removeAttribute("aria-busy");
-    }
+    finishLuckyDiscovery(appState, run);
   }
 }
 
-async function runFeelingLuckyClick() {
+async function runFeelingLuckyClick(run) {
   // Feeling Lucky is on-demand live-data discovery: after this click, Lichess
   // supplies a fresh titled-player feed and the client replays/scores it
   // locally. The slower Masters walk remains a quality fallback when live
@@ -807,25 +799,30 @@ async function runFeelingLuckyClick() {
   // The live game feed itself is anonymous, but keeping this gate preserves
   // the existing training/account contract. The modal this opens is transient —
   // tab navigation dismisses it (dismissTransientOverlays).
+  const luckyCurrent = () => luckyDiscoveryCurrent(appState, run);
   if (!appState.accountUsername) {
     try {
       await refreshAuthStatus();
     } catch (_) {
       // fall through to the sign-in prompt below
     }
+    if (!luckyCurrent()) return;
   }
   if (!appState.accountUsername) {
-    openAuthModal("login", { notice: "Sign in first, then try a random position." });
+    if (luckyCurrent()) openAuthModal("login", { notice: "Sign in first, then try a random position." });
     return;
   }
   // No Lichess-link hard gate: the live Lichess game-feed endpoints are
   // public/anonymous. Do not refresh link status here; that would add a
   // needless network round trip before the actual on-demand game request.
-  let dbPicked = null, luckyToken = appState.playStartToken = (appState.playStartToken || 0) + 1, luckyCurrent = () => appState.playStartToken === luckyToken;
+  let dbPicked = null;
   try {
+    if (!luckyCurrent()) return;
     setTrainBanner("runin", "Finding a position…", "Discovering a fresh titled player");
     const { runFeelingLucky } = await import("../feeling-lucky.js");
+    if (!luckyCurrent()) return;
     dbPicked = await runFeelingLucky({
+      signal: run.controller.signal,
       storage: typeof localStorage === "undefined" ? null : localStorage,
       exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
       rating: effectiveMaiaRating(),
@@ -838,6 +835,7 @@ async function runFeelingLuckyClick() {
       },
     });
   } catch (error) {
+    if (!luckyCurrent()) return;
     const msg = error && error.message ? error.message : String(error);
     setStatus(msg);
     // Lucky's own runFeelingLucky already painted the right banner for every

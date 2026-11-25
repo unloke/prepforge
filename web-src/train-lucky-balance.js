@@ -8,7 +8,7 @@ export function balancedPracticeEval(pv) {
 }
 
 // One worker per click, reused while checking candidates and always released.
-export function createLuckyBalanceCheck() {
+export function createLuckyBalanceCheck({ signal = null } = {}) {
   let provider = null;
   return {
     async evaluate(fen) {
@@ -17,7 +17,7 @@ export function createLuckyBalanceCheck() {
         provider = createStockfishWasmProvider({ maxDepth: 14, maxNodes: 250000, priority: "interactive" });
       }
       await provider.open({ fen, multipv: 1 });
-      const snap = await waitForEngineSearch(provider, { targetDepth: 14, timeoutMs: 10000, fen });
+      const snap = await waitForEngineSearch(provider, { targetDepth: 14, timeoutMs: 10000, fen, cancelled: () => signal?.aborted });
       return snap.pvs[0];
     },
     close() { provider?.close(); },

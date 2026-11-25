@@ -170,8 +170,7 @@ async function runPaletteItem(item) {
   }
   if (item.action === "feeling-lucky") {
     dismissTransientOverlays();
-    await openTrain({ mode: "play", autostart: false });
-    onFeelingLucky();
+    if (await openTrain({ mode: "play", autostart: false })) onFeelingLucky();
     return;
   }
   if (item.action === "analyze") {

@@ -12,23 +12,32 @@
 import { luckyDbStart } from "./train-lucky-db.js";
 import { luckyTitledStart } from "./train-lucky-titled.js";
 import { balancedPracticeEval, createLuckyBalanceCheck } from "./train-lucky-balance.js";
+import { cancellationError, isCancellation, throwIfCancelled } from "./cancellation.js";
 
 export async function runFeelingLucky(options = {}) {
-  const balance = createLuckyBalanceCheck();
+  const signal = options.signal || null;
+  const balance = createLuckyBalanceCheck({ signal });
   let confirmedFen = null;
   const acceptPosition = async (fen) => {
+    throwIfCancelled(signal);
     options.setBanner?.("runin", "Checking position…", "Stockfish · −1.5 to +1.5");
     let pv;
     try { pv = await (options.evaluatePosition || balance.evaluate)(fen); }
-    catch (cause) { const error = new Error(cause?.message || String(cause)); error.balanceCheck = true; throw error; }
+    catch (cause) {
+      if (isCancellation(cause) || signal?.aborted) throw cancellationError();
+      const error = new Error(cause?.message || String(cause)); error.balanceCheck = true; throw error;
+    }
+    throwIfCancelled(signal);
     const accepted = balancedPracticeEval(pv);
     confirmedFen = accepted ? fen : null;
     return accepted;
   };
   try {
+    throwIfCancelled(signal);
     return await runFeelingLuckySelection({ ...options, acceptPosition,
       isConfirmed: (fen) => confirmedFen === fen });
   } catch (error) {
+    if (isCancellation(error) || signal?.aborted) return null;
     const message = error?.message || String(error);
     options.onStatus?.(message);
     options.setBanner?.("idle", "Could not verify position", "Retry — Stockfish must confirm an evaluation between −1.5 and +1.5.");
@@ -52,7 +61,9 @@ async function runFeelingLuckySelection({
   startSession = async () => {},
   acceptPosition,
   isConfirmed,
+  signal = null,
 } = {}) {
+  throwIfCancelled(signal);
   setBanner(
     "runin",
     "Finding a position…",
@@ -61,10 +72,13 @@ async function runFeelingLuckySelection({
   let dbError = null;
   let sessionFailed = null;
   const beginSession = async (picked) => {
+    throwIfCancelled(signal);
     if (!isConfirmed(picked.fen) && !await acceptPosition(picked.fen)) {
+      throwIfCancelled(signal);
       setBanner("idle", "No balanced position found", "Try again · evaluation must be between −1.5 and +1.5.");
       return false;
     }
+    throwIfCancelled(signal);
     // startSession (Play-session paint) failures are product failures, not
     // sampler failures: never relabel them as "Database unavailable" /
     // "Nothing sharp". Surface the real message and stop.
@@ -80,8 +94,10 @@ async function runFeelingLuckySelection({
         source: picked.source,
         sourceUrl: picked.sourceUrl,
       });
+      throwIfCancelled(signal);
       if (started === false) throw new Error("Could not start that position");
     } catch (error) {
+      if (isCancellation(error) || signal?.aborted) throw cancellationError();
       sessionFailed = error;
       const msg = (error && error.message) || String(error);
       onStatus(msg);
@@ -100,16 +116,20 @@ async function runFeelingLuckySelection({
   // Explorer client, so the normal click stays at discovery + one feed read.
   let explorerPromise = null;
   const lazyFetchStats = async (db, fen, opts) => {
+    throwIfCancelled(signal);
     if (!explorerPromise) {
       explorerPromise = (typeof ensureExplorer === "function"
         ? Promise.resolve().then(() => ensureExplorer())
         : Promise.reject(new Error("Lichess explorer is unavailable")));
     }
     const client = await explorerPromise;
+    throwIfCancelled(signal);
     if (!client || typeof client.fetchStats !== "function") {
       throw new Error("Lichess explorer is unavailable");
     }
-    return client.fetchStats(db, fen, opts);
+    const stats = await client.fetchStats(db, fen, opts);
+    throwIfCancelled(signal);
+    return stats;
   };
 
   const runDb = async (fetchStats) =>
@@ -122,6 +142,7 @@ async function runFeelingLuckySelection({
       maia: null,
       onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
       acceptPosition,
+      signal,
     });
 
 
@@ -131,19 +152,23 @@ async function runFeelingLuckySelection({
     // an explicit test/emergency opt-in for the reference seam.
     setBanner("runin", "Finding a position…", "Fetching fresh titled games from Lichess");
     try {
+      throwIfCancelled(signal);
       const picked = await luckyTitledStartFn({
         storage,
         exclude,
         allowReferences: Boolean(allowReferences),
         acceptPosition,
+        signal,
         onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
       });
+      throwIfCancelled(signal);
       if (picked) {
         if (await beginSession(picked)) return picked;
         return null;
       }
     } catch (error) {
       if (error.balanceCheck) throw error;
+      if (isCancellation(error) || signal?.aborted) throw cancellationError();
       const msg = (error && error.message) || String(error);
       if (!isNoQuality(msg) || isTransport(msg)) {
         onStatus(msg);
@@ -158,13 +183,16 @@ async function runFeelingLuckySelection({
     // therefore never adds serial Explorer latency to a successful feed click.
     if (typeof ensureExplorer === "function") {
       try {
+        throwIfCancelled(signal);
         const picked = await runDb(lazyFetchStats);
+        throwIfCancelled(signal);
         if (picked) {
           if (await beginSession(picked)) return picked;
           return null;
         }
       } catch (error) {
         if (error.balanceCheck) throw error;
+        if (isCancellation(error) || signal?.aborted) throw cancellationError();
         dbError = error;
         const msg = (error && error.message) || String(error);
         if (isTransport(msg)) {
@@ -175,6 +203,7 @@ async function runFeelingLuckySelection({
       }
     }
 
+  throwIfCancelled(signal);
   if (dbError) onStatus(dbError.message || String(dbError));
   else onStatus("No sharp database game found — try again.");
   setBanner(

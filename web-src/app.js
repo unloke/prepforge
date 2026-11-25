@@ -27,6 +27,7 @@ import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { buildRole } from "./share-roles.js";
 import { createTrainEntry, preloadTrainView, renderBuildSync, setBuildSync } from "./train-entry.js";
+import { cancelLuckyDiscovery } from "./train-lucky-control.js";
 import { showUndoToast } from "./undo.js";
 import { analysisGameName } from "./analyze-name.js";
 import { setBoardCaption } from "./board-caption.js";
@@ -1112,16 +1113,15 @@ function loadTrainSession() {
   return trainSessionLoading;
 }
 function cancelActiveTrainStart() {
-  if (appState.play?.active) return;
-  appState.playStartToken = (appState.playStartToken || 0) + 1; if (!appState.trainStarting && !appState.playStarting && !appState.luckyBusy) return;
-  if (appState.playStarting) { appState.playStarting = null; boards.train?.setPremove(null); }
-  appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", "");
+  const canceledLucky = cancelLuckyDiscovery(appState); if (appState.play?.active) return;
+  appState.playStartToken = (appState.playStartToken || 0) + 1; if (!canceledLucky && !appState.trainStarting && !appState.playStarting) return;
+  if (appState.playStarting) { appState.playStarting = null; boards.train?.setPremove(null); } appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", "");
   void trainSessionLoading?.then((train) => train.syncTrainControls()).catch(() => {});
 }
 const viaTrainSession = (name) => (...args) => loadTrainSession().then((train) => train[name](...args));
 const loadTrainRepertoireOptions = viaTrainSession("loadTrainRepertoireOptions");
 const onFeelingLucky = viaTrainSession("onFeelingLucky");
-const openTrain = (options = {}) => { invalidateTrainEntries(); const seq = appState.trainEntryVersion, mode = options.mode || "smart", intent = mode === "smart" || mode === "all_lines" ? { repertoireId: options.repertoireId || null, trainMode: mode } : null; if (intent) appState.trainPendingRoute = intent; const args = { ...options, isCurrent: options.isCurrent ? () => options.isCurrent() && appState.trainEntryVersion === seq : () => appState.trainEntryVersion === seq }; return loadTrainSession().then((train) => train.openTrain(args).finally(() => { if (intent && appState.trainPendingRoute === intent) delete appState.trainPendingRoute; })); };
+const openTrain = (options = {}) => { invalidateTrainEntries(); const seq = appState.trainEntryVersion, mode = options.mode || "smart", intent = mode === "smart" || mode === "all_lines" ? { repertoireId: options.repertoireId || null, trainMode: mode } : null; if (intent) appState.trainPendingRoute = intent; const args = { ...options, isCurrent: options.isCurrent ? () => options.isCurrent() && appState.trainEntryVersion === seq : () => appState.trainEntryVersion === seq }; return loadTrainSession().then((train) => (args.isCurrent() ? train.openTrain(args) : Promise.resolve(false)).finally(() => { if (intent && appState.trainPendingRoute === intent) delete appState.trainPendingRoute; })); };
 const submitTrainingMove = viaTrainSession("submitTrainingMove");
 
 // ----- Sync indicator (Google-Docs style chip by the Build board label) -------

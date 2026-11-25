@@ -96,6 +96,7 @@ export const appState = {
   // One on-demand Lucky round at a time. This protects Lichess's one-request
   // at-a-time guidance and prevents two clicks from racing their Play boards.
   luckyBusy: false,
+  luckyRun: null,
   // Live smart-queue session state (see the Smart queue trainer section).
   smart: null,
   // ---- Local-first Train sync (plan §2) -----------------------------------

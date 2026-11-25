@@ -72,7 +72,7 @@ describe("Play opponent response ownership", () => {
   });
 
   it("the palette's practice and Lucky actions open Train the way its Home rows do", async () => {
-    const openTrain = vi.fn(async () => {});
+    const openTrain = vi.fn(async () => true);
     const onFeelingLucky = vi.fn();
     const palette = readFileSync(new URL("./palette.js", import.meta.url), "utf8");
     const at = palette.indexOf("async function runPaletteItem(");
@@ -85,6 +85,18 @@ describe("Play opponent response ownership", () => {
     expect(onFeelingLucky).toHaveBeenCalled();
     await run({ action: "start-training" });
     expect(openTrain).toHaveBeenLastCalledWith({ mode: "smart" });
+  });
+
+  it("the palette's Lucky action stops when Train entry is not confirmed", async () => {
+    const openTrain = vi.fn(async () => false);
+    const onFeelingLucky = vi.fn();
+    const palette = readFileSync(new URL("./palette.js", import.meta.url), "utf8");
+    const at = palette.indexOf("async function runPaletteItem(");
+    const run = new Function("closePalette", "switchView", "openTrain", "onFeelingLucky", "appState", "requireSignIn", "setReplaySection", "dismissTransientOverlays",
+      `return (${palette.slice(at, palette.indexOf("\n}\n", at) + 2)});`)(vi.fn(), vi.fn(), openTrain, onFeelingLucky, { signedIn: true }, vi.fn(), vi.fn(), vi.fn());
+    await run({ action: "feeling-lucky" });
+    expect(openTrain).toHaveBeenCalledWith({ mode: "play", autostart: false });
+    expect(onFeelingLucky).not.toHaveBeenCalled();
   });
   function startHarness() {
     const info = deferred();

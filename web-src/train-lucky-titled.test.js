@@ -211,6 +211,33 @@ describe("luckyTitledStart live selection", () => {
     expect(h.fetchCurrentGamePgn).not.toHaveBeenCalled();
   });
 
+  it("aborts in-flight player discovery and never starts a game feed", async () => {
+    const controller = new AbortController();
+    let requestSignal = null;
+    const fetchTopPlayers = vi.fn((perf, count, { signal } = {}) => {
+      requestSignal = signal;
+      return new Promise((resolve, reject) => {
+        signal?.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })), { once: true });
+        setTimeout(() => controller.abort(), 0);
+        setTimeout(() => reject(new Error("unabortable request")), 30);
+      });
+    });
+    const fetchPgn = vi.fn(async () => GAME_A);
+
+    await expect(luckyTitledStart({
+      storage: memoryStorage(),
+      players: [],
+      signal: controller.signal,
+      fetchTopPlayers,
+      fetchPgn,
+      allowCurrentGame: false,
+      maxRequests: 3,
+    })).rejects.toThrow(/abort|cancel/i);
+
+    expect(requestSignal?.aborted).toBe(true);
+    expect(fetchPgn).not.toHaveBeenCalled();
+  });
+
   it("deduplicates a recently served live game", async () => {
     const storage = memoryStorage();
     const { rememberLuckyGame } = await import("./train-lucky-db.js");

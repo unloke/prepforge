@@ -104,9 +104,30 @@ describe("openTrain", () => {
   it("a live game is only left after the player agrees", async () => {
     const { appState, deps } = setup({ play: { active: true, history: ["e2e4"] }, trainMode: "play" });
     deps.confirmAbandonGame.mockResolvedValueOnce(false);
-    await createTrainHome(deps).openTrain({ mode: "smart" });
+    await expect(createTrainHome(deps).openTrain({ mode: "smart" })).resolves.toBe(false);
     expect(deps.startTraining).not.toHaveBeenCalled();
     expect(appState.play).toEqual({ active: true, history: ["e2e4"] });
+  });
+
+  it("Random position does not start when the player keeps the live game", async () => {
+    const play = { active: true, history: ["e2e4"] };
+    const { appState, deps } = setup({ currentView: "train", play, trainMode: "play" });
+    deps.confirmAbandonGame.mockResolvedValueOnce(false);
+    createTrainHome(deps);
+    await doc.getElementById("feeling-lucky").listeners.click();
+    expect(deps.onFeelingLucky).not.toHaveBeenCalled();
+    expect(deps.startPlaySessionTracked).not.toHaveBeenCalled();
+    expect(appState.play).toBe(play);
+  });
+
+  it("Random position starts after the player leaves the live game", async () => {
+    const play = { active: true, history: ["e2e4"] };
+    const { appState, deps } = setup({ currentView: "train", play, trainMode: "play" });
+    deps.confirmAbandonGame.mockResolvedValueOnce(true);
+    createTrainHome(deps);
+    await doc.getElementById("feeling-lucky").listeners.click();
+    expect(deps.onFeelingLucky).toHaveBeenCalledTimes(1);
+    expect(appState.play).toBeNull();
   });
 
   it("Play starts a game without touching the drill endpoints", async () => {

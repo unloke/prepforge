@@ -1,5 +1,6 @@
 import { Chess } from "chess.js";
 import { LUCKY_MAX_ABS_CP } from "./train-lucky-balance.js";
+import { cancellationError, isCancellation, throwIfCancelled } from "./cancellation.js";
 // I'm Feeling Lucky — live titled-game round.
 //
 // Production's fast path chooses a titled/high-rated player at click time,
@@ -79,18 +80,19 @@ function storageSet(storage, key, value) {
   }
 }
 
-function timeoutSignal(ms) {
+function timeoutSignal(ms, parent = null) {
   // AbortSignal.timeout is missing on older browsers — fall back to a
   // manual AbortController so those browsers degrade to "no timeout"
   // instead of failing every fetch synchronously.
+  let timeout;
   try {
     if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
-      return AbortSignal.timeout(ms);
+      timeout = AbortSignal.timeout(ms);
     }
   } catch (_) {
     // fall through to the controller below
   }
-  if (typeof AbortController !== "undefined") {
+  if (!timeout && typeof AbortController !== "undefined") {
     const controller = new AbortController();
     setTimeout(() => {
       try {
@@ -103,9 +105,25 @@ function timeoutSignal(ms) {
         }
       }
     }, ms);
-    return controller.signal;
+    timeout = controller.signal;
   }
-  return undefined;
+  if (!parent) return timeout; if (parent.aborted || !timeout) return parent;
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.any === "function") return AbortSignal.any([parent, timeout]);
+  const controller = new AbortController();
+  const relay = (source) => {
+    try {
+      controller.abort(source.reason);
+    } catch (_) {
+      try {
+        controller.abort();
+      } catch (_) {
+        // ignore
+      }
+    }
+  };
+  parent.addEventListener("abort", () => relay(parent), { once: true });
+  timeout.addEventListener?.("abort", () => relay(timeout), { once: true });
+  return controller.signal;
 }
 
 function roll(rng) {
@@ -275,6 +293,7 @@ export async function luckyTitledStart({
   discoverPlayers = true,
   discoveryCount = TITLED_PLAYER_DISCOVERY_COUNT,
   discoveryPerfType = TITLED_PLAYER_DISCOVERY_PERF,
+  signal = null,
   // Explicit test/emergency seam. Production leaves this false, so the
   // immutable references below can never become the source of normal clicks.
   allowReferences = false,
@@ -293,9 +312,10 @@ export async function luckyTitledStart({
   const budget = Math.max(1, Math.min(3, Number(maxRequests) || TITLED_MAX_REQUESTS));
   const deadlineAt = Date.now() + Math.max(1000, Math.min(15000, Number(clickDeadlineMs) || TITLED_CLICK_DEADLINE_MS));
   const requestOptions = () => {
+    throwIfCancelled(signal);
     const remaining = deadlineAt - Date.now();
     if (remaining <= 0) return null;
-    return { signal: timeoutSignal(Math.min(TITLED_FETCH_TIMEOUT_MS, remaining)) };
+    return { signal: timeoutSignal(Math.min(TITLED_FETCH_TIMEOUT_MS, remaining), signal) };
   };
   const exhausted = () => {
     const error = new Error("Lichess request budget exhausted — try again");
@@ -323,9 +343,11 @@ export async function luckyTitledStart({
       requestCount += 1;
       say("Finding a fresh titled player on Lichess…");
       const payload = await fetchTopPlayers(discoveryPerfType, discoveryCount, options);
+      throwIfCancelled(signal);
       discoveredNames = leaderboardPlayerNames(payload);
     } catch (error) {
       if (error.balanceCheck) throw error;
+      if (isCancellation(error) || signal?.aborted) throw cancellationError();
       if (isTransportError(error)) transportError = error;
     }
   }
@@ -361,8 +383,10 @@ export async function luckyTitledStart({
       requestCount += 1;
       say(`Fetching fresh games from ${username}…`);
       raw = await fetchPgn(username, gamesPerPlayer, options);
+      throwIfCancelled(signal);
     } catch (error) {
       if (error.balanceCheck) throw error;
+      if (isCancellation(error) || signal?.aborted) throw cancellationError();
       if (isTransportError(error)) transportError = error;
       // A 429/5xx/network error is not retried against another user feed in
       // the same click. The bounded current-game path below is the only
@@ -370,6 +394,7 @@ export async function luckyTitledStart({
       if (transportError) break;
       continue;
     }
+    throwIfCancelled(signal);
     const pick = await pickFromBlocks(splitPgnBlocks(raw), targetPhase, {
       storage,
       rng,
@@ -394,6 +419,7 @@ export async function luckyTitledStart({
       requestCount += 1;
       say(`Trying ${attemptedPlayer}'s current game…`);
       const raw = await fetchCurrentGamePgn(attemptedPlayer, options);
+      throwIfCancelled(signal);
       const pick = await pickFromBlocks(splitPgnBlocks(raw), targetPhase, {
         storage,
         rng,
@@ -408,6 +434,7 @@ export async function luckyTitledStart({
       if (pick) return { ...pick, source: "lichess-current-game", player: attemptedPlayer };
     } catch (error) {
       if (error.balanceCheck) throw error;
+      if (isCancellation(error) || signal?.aborted) throw cancellationError();
       if (isTransportError(error)) transportError = error;
     }
   }
@@ -430,11 +457,14 @@ export async function luckyTitledStart({
         const options = requestOptions();
         if (!options) throw exhausted();
         raw = await fetchSinglePgn(gameId, options);
+        throwIfCancelled(signal);
       } catch (error) {
         if (error.balanceCheck) throw error;
+        if (isCancellation(error) || signal?.aborted) throw cancellationError();
         if (isTransportError(error)) transportError = error;
         continue;
       }
+      throwIfCancelled(signal);
       const pick = await pickFromBlocks(splitPgnBlocks(raw), targetPhase, {
         storage,
         rng,
@@ -450,7 +480,7 @@ export async function luckyTitledStart({
     }
   }
 
-  if (transportError) throw transportError;
+  throwIfCancelled(signal); if (transportError) throw transportError;
   throw new Error("No sharp titled game found — try again");
 }
 

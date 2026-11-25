@@ -15,6 +15,7 @@ import { showConfirmModal } from "../core/modals.js";
 import { acceptRepertoireListing, fetchRepertoireListing } from "../repertoire-listing.js";
 import { flushTrainSync, lichessAccounts, requireSignIn, setTrainBanner, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
+import { cancelLuckyDiscovery } from "../train-lucky-control.js";
 import { blitzEnabled, clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setBlitzEnabled,
   skipTrainingLine, startPlaySessionTracked, startTraining, takebackPlaySession, trainHint } from "./train-session.js";
 // Train is one loop, Home → Session → Result, shared by the Due queue, line
@@ -152,9 +153,8 @@ function paintActions(screen, mode) {
 // one-repertoire queue is never served from "all repertoires".
 export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false, isCurrent = null } = {}) {
   const state = appState, wasInTrain = state.currentView === "train", entryToken = {}, entrySeq = isCurrent ? state.trainEntryVersion : (state.trainEntryVersion = (state.trainEntryVersion || 0) + 1), current = isCurrent || (() => state.trainEntryVersion === entrySeq && (!wasInTrain || state.currentView === "train"));
-  if (!(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return;
-  closeTrainPicker(); if (state.smart) await flushTrainSync();
-  if (!current()) return;
+  if (!current() || !(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return false;
+  closeTrainPicker(); if (state.smart) await flushTrainSync(); if (!current()) return false;
   resetSessions();
   for (const key of Object.keys(rowErrors)) rowErrors[key] = "";
   state.trainMode = mode;
@@ -167,13 +167,14 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
   };
   enter();
   syncWorkspaceUrl();
-  if (!autostart) return;
-  if (mode === "play") return startPlaySessionTracked();
-  return startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
+  if (!autostart) return true;
+  if (mode === "play") await startPlaySessionTracked(); else await startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
+  return true;
 }
 
 function resetSessions() {
   const state = appState;
+  cancelLuckyDiscovery(state);
   state.playStartToken = (state.playStartToken || 0) + 1;
   state.playStarting = null;
   boards.train?.setPremove(null);
@@ -513,8 +514,7 @@ function bind() {
     void paintTrainHome();
   });
   $("feeling-lucky").addEventListener("click", async () => {
-    await openTrain({ mode: "play", autostart: false });
-    void onFeelingLucky();
+    if (await openTrain({ mode: "play", autostart: false })) void onFeelingLucky();
   });
   $("train-back").addEventListener("click", () => void leaveToHome());
   $("train-summary-home").addEventListener("click", () => void leaveToHome());
