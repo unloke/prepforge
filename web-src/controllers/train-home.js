@@ -440,7 +440,7 @@ export async function loadTrainRepertoireOptions() {
   if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(currentOwnerId(), state.trainScope?.repertoireId, state.trainHomeReady);
   if (state.signedIn) {
     try {
-      const payload = await fetchRepertoireListing(api, currentOwnerId(), state.ownerGeneration || 0, true);
+      const payload = await fetchRepertoireListing(api, currentOwnerId(), state.ownerGeneration || 0);
       if (payload) {
         state.repertoireList = payload.repertoires || [];
         state.sharedRepertoireList = payload.shared || [];

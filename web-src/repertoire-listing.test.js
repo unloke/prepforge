@@ -1,85 +1,98 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { fetchRepertoireListing } from "./repertoire-listing.js";
+import { fetchRepertoireListing, refreshRepertoireListing } from "./repertoire-listing.js";
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
 
 describe("shared repertoire listing requests", () => {
-  it("shares one in-flight request for the same owner generation", async () => {
-    let resolve;
-    const api = vi.fn(() => new Promise((done) => { resolve = done; }));
-    const first = fetchRepertoireListing(api, "u1", 7, true);
-    const second = fetchRepertoireListing(api, "u1", 7, true);
+  it("shares one passive in-flight request for the same owner generation", async () => {
+    const pending = deferred();
+    const api = vi.fn(() => pending.promise);
+    const first = fetchRepertoireListing(api, "u-share", 7);
+    const second = fetchRepertoireListing(api, "u-share", 7);
     expect(api).toHaveBeenCalledTimes(1);
-    resolve({ repertoires: [], shared: [] });
+    pending.resolve({ repertoires: [], shared: [] });
     await expect(first).resolves.toEqual({ repertoires: [], shared: [] });
     await second;
   });
 
-  it("lets mutation refreshes bypass the shared initial read", async () => {
-    let resolveShared;
+  it("moves stale readers to the newer refresh without waiting for the old request", async () => {
+    const oldRequest = deferred();
+    const refreshRequest = deferred();
     const api = vi.fn()
-      .mockImplementationOnce(() => new Promise((done) => { resolveShared = done; }))
-      .mockResolvedValueOnce({ repertoires: [{ id: "new" }], shared: [] });
-    const initial = fetchRepertoireListing(api, "u1", 7, true);
-    const refresh = fetchRepertoireListing(api, "u1", 7);
-    expect(api).toHaveBeenCalledTimes(2);
-    await refresh;
-    resolveShared({ repertoires: [{ id: "old" }], shared: [] });
-    await initial;
-  });
-
-  it("moves stale shared readers to the newer in-flight refresh", async () => {
-    let resolveOld;
-    let resolveRefresh;
-    let calls = 0;
-    const api = vi.fn(() => {
-      calls += 1;
-      return new Promise((done) => {
-        if (calls === 1) resolveOld = done;
-        else resolveRefresh = done;
-      });
-    });
-    const initial = fetchRepertoireListing(api, "u1", 7, true);
-    const refresh = fetchRepertoireListing(api, "u1", 7);
-    resolveOld({ repertoires: [{ id: "old" }], shared: [] });
-    resolveRefresh({ repertoires: [{ id: "new" }], shared: [] });
+      .mockImplementationOnce(() => oldRequest.promise)
+      .mockImplementationOnce(() => refreshRequest.promise);
+    const initial = fetchRepertoireListing(api, "u-release", 7);
+    const refresh = refreshRepertoireListing(api, "u-release", 7);
+    let settled = false;
+    const watching = initial.finally(() => { settled = true; });
+    refreshRequest.resolve({ repertoires: [{ id: "new" }], shared: [] });
+    await new Promise((done) => setTimeout(done, 0));
+    expect(settled).toBe(true);
     await expect(initial).resolves.toEqual({ repertoires: [{ id: "new" }], shared: [] });
     await expect(refresh).resolves.toEqual({ repertoires: [{ id: "new" }], shared: [] });
+    oldRequest.resolve({ repertoires: [{ id: "old" }], shared: [] });
+    await watching;
   });
 
-  it("starts a fresh read instead of attaching to an invalidated request", async () => {
-    let resolveOld;
+  it("lets a later passive read recover independently of a pending refresh", async () => {
+    const refreshRequest = deferred();
+    const passiveRequest = deferred();
+    const api = vi.fn()
+      .mockImplementationOnce(() => refreshRequest.promise)
+      .mockImplementationOnce(() => passiveRequest.promise);
+    const refresh = refreshRepertoireListing(api, "u-independent", 7);
+    const passive = fetchRepertoireListing(api, "u-independent", 7);
+    expect(api).toHaveBeenCalledTimes(2);
+    refreshRequest.reject(new Error("background refresh failed"));
+    await expect(refresh).rejects.toThrow("background refresh failed");
+    passiveRequest.resolve({ repertoires: [{ id: "passive" }], shared: [] });
+    await expect(passive).resolves.toEqual({ repertoires: [{ id: "passive" }], shared: [] });
+  });
+
+  it("gives stale readers the newer failure instead of the old request's failure", async () => {
+    const oldRequest = deferred();
+    const refreshRequest = deferred();
+    const api = vi.fn()
+      .mockImplementationOnce(() => oldRequest.promise)
+      .mockImplementationOnce(() => refreshRequest.promise);
+    const initial = fetchRepertoireListing(api, "u-failure", 7);
+    refreshRepertoireListing(api, "u-failure", 7);
+    let settled = false;
+    const watching = initial.finally(() => { settled = true; });
+    refreshRequest.reject(new Error("refresh failed"));
+    await expect(initial).rejects.toThrow("refresh failed");
+    expect(settled).toBe(true);
+    oldRequest.reject(new Error("old failure"));
+    await watching.catch(() => {});
+  });
+
+  it("starts a fresh passive read instead of attaching to an invalidated request", async () => {
+    const oldRequest = deferred();
     let calls = 0;
     const api = vi.fn(() => {
       calls += 1;
-      if (calls === 1) return new Promise((done) => { resolveOld = done; });
+      if (calls === 1) return oldRequest.promise;
       return Promise.resolve({ repertoires: [{ id: `r${calls}` }], shared: [] });
     });
-    const initial = fetchRepertoireListing(api, "u1", 7, true);
-    await fetchRepertoireListing(api, "u1", 7);
-    const later = fetchRepertoireListing(api, "u1", 7, true);
+    const initial = fetchRepertoireListing(api, "u-fresh", 7);
+    await refreshRepertoireListing(api, "u-fresh", 7);
+    const later = fetchRepertoireListing(api, "u-fresh", 7);
     expect(api).toHaveBeenCalledTimes(3);
     await expect(later).resolves.toEqual({ repertoires: [{ id: "r3" }], shared: [] });
-    resolveOld({ repertoires: [{ id: "old" }], shared: [] });
-    await expect(initial).resolves.toEqual({ repertoires: [{ id: "r3" }], shared: [] });
-  });
-
-  it("gives stale readers the newer failure instead of a silent empty load", async () => {
-    let resolveOld;
-    const failure = new Error("refresh failed");
-    const api = vi.fn()
-      .mockImplementationOnce(() => new Promise((done) => { resolveOld = done; }))
-      .mockRejectedValueOnce(failure);
-    const initial = fetchRepertoireListing(api, "u1", 7, true);
-    await expect(fetchRepertoireListing(api, "u1", 7)).rejects.toThrow("refresh failed");
-    resolveOld({ repertoires: [{ id: "old" }], shared: [] });
-    await expect(initial).rejects.toThrow("refresh failed");
+    oldRequest.resolve({ repertoires: [{ id: "old" }], shared: [] });
+    await expect(initial).resolves.toEqual({ repertoires: [{ id: "r2" }], shared: [] });
   });
 
   it("does not share across owner generations or after settlement", async () => {
     const api = vi.fn(async () => ({ repertoires: [], shared: [] }));
-    await fetchRepertoireListing(api, "u1", 7, true);
-    await fetchRepertoireListing(api, "u1", 7, true);
-    await fetchRepertoireListing(api, "u1", 8, true);
+    await fetchRepertoireListing(api, "u-generations", 7);
+    await fetchRepertoireListing(api, "u-generations", 7);
+    await fetchRepertoireListing(api, "u-generations", 8);
     expect(api).toHaveBeenCalledTimes(3);
   });
 
@@ -87,7 +100,7 @@ describe("shared repertoire listing requests", () => {
     const train = readFileSync(new URL("./controllers/train-home.js", import.meta.url), "utf8");
     const dashboard = readFileSync(new URL("./views/dashboard.js", import.meta.url), "utf8");
     expect(train).toContain('fetchRepertoireListing(api, currentOwnerId()');
-    expect(dashboard).toContain('fetchRepertoireListing(api, appState.accountUserId');
+    expect(dashboard).toContain("refreshRepertoireListing");
     expect(dashboard).not.toContain('await api("/api/repertoires")');
   });
 });

@@ -7,7 +7,7 @@ import {
   createTrainHome, dueIn, dueMeta, dueStartState, loadTrainRepertoireOptions, outlookHtml, outlookShape, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
 } from "./train-home.js";
 import { readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
-import { fetchRepertoireListing } from "../repertoire-listing.js";
+import { refreshRepertoireListing } from "../repertoire-listing.js";
 import { saveRun } from "../train-history.js";
 import { provideApp } from "../core/app-context.js";
 import { formatWorkspaceHash, workspaceLocationFromState } from "../workspace-url.js";
@@ -166,7 +166,7 @@ describe("the Due row", () => {
       return Promise.resolve({ next_session: { cards: 1, new: 1 }, outlook: { now: 1, today: 1, week: 1 } });
     });
     const load = loadTrainRepertoireOptions();
-    await fetchRepertoireListing(deps.api, "u1", 7).then((payload) => {
+    await refreshRepertoireListing(deps.api, "u1", 7).then((payload) => {
       appState.repertoireList = payload.repertoires || [];
       appState.sharedRepertoireList = payload.shared || [];
       appState.repertoireListGeneration = appState.ownerGeneration || 0;

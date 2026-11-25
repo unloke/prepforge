@@ -4,7 +4,7 @@ import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { reveal } from "../list-enter.js";
 import { createLibraryRows } from "./library-rows.js";
-import { fetchRepertoireListing } from "../repertoire-listing.js";
+import { fetchRepertoireListing, refreshRepertoireListing } from "../repertoire-listing.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
 import {
@@ -610,14 +610,15 @@ export function createDashboardView({
 
   // Fetches and renders the listing; throws on failure so each caller picks
   // its own error composition.
-  async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq), joinInFlight = false) {
+  async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq), authoritativeRefresh = false) {
     // Team names are optional and never block usable repertoire rows.
     if (appState.signedIn) {
       void loadTeamDirectory(appState, api).then((teams) => {
         if (teams !== null && isCurrent() && repListLoaded) renderRepertoireList();
       }).catch(() => {});
     }
-    const payload = await fetchRepertoireListing(api, appState.accountUserId, appState.ownerGeneration || 0, joinInFlight);
+    const read = authoritativeRefresh ? refreshRepertoireListing : fetchRepertoireListing;
+    const payload = await read(api, appState.accountUserId, appState.ownerGeneration || 0);
     if (!payload || !isCurrent()) return false;
     const status = document.getElementById("library-refresh-status");
     if (status) status.hidden = true;
@@ -654,7 +655,7 @@ export function createDashboardView({
     const seq = ++loadSeq;
     const isCurrent = currentLoad(seq);
     try {
-      return await fetchDashboardRepertoires(seq, isCurrent);
+      return await fetchDashboardRepertoires(seq, isCurrent, true);
     } catch (error) {
       if (!isCurrent()) return false;
       reportListFailure(error.message);
@@ -744,7 +745,7 @@ export function createDashboardView({
         throw error;
       }
     })();
-    const listing = fetchDashboardRepertoires(seq, isCurrent, true).catch((error) => {
+    const listing = fetchDashboardRepertoires(seq, isCurrent).catch((error) => {
       if (isCurrent()) reportListFailure(error.message);
       throw error;
     });

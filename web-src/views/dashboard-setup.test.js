@@ -449,6 +449,31 @@ describe("dashboard setup checklist", () => {
     expect(String(todayCard.innerHTML)).toContain("2 new moves to learn");
   });
 
+  it("a full Library load can recover independently of a pending background refresh", async () => {
+    let rejectRefresh, resolvePassive;
+    const refreshRequest = new Promise((yes, no) => { rejectRefresh = no; });
+    const passiveRequest = new Promise((yes) => { resolvePassive = yes; });
+    let listingCalls = 0;
+    const newRep = { id: "new", name: "New repertoire", color: "white", is_active: true };
+    api.mockImplementation((url) => {
+      if (String(url).startsWith("/api/dashboard")) return Promise.resolve(dashboardPayload({ repertoires: 1 }));
+      if (url === "/api/repertoires") {
+        listingCalls += 1;
+        return listingCalls === 1 ? refreshRequest : passiveRequest;
+      }
+      return Promise.resolve({ teams: [] });
+    });
+    const backgroundRefresh = view.loadDashboardRepertoires();
+    const fullLoad = view.loadDashboard();
+    await vi.waitFor(() => expect(listingCalls).toBe(2));
+    rejectRefresh(new Error("background refresh failed"));
+    await expect(backgroundRefresh).resolves.toBe(false);
+    resolvePassive({ repertoires: [newRep], shared: [] });
+    await fullLoad;
+    expect(appState.repertoireList[0].id).toBe("new");
+    expect(String(container.innerHTML)).toContain("New repertoire");
+  });
+
   it("does not attach a later Library load to a stale pre-refresh listing", async () => {
     let resolveOld;
     let listingCalls = 0;
