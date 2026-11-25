@@ -180,8 +180,20 @@ describe("the Due row", () => {
     expect(doc.getElementById("start-play").disabled).toBe(false);
     expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
     expect(doc.getElementById("train-due-retry").hidden).toBe(false);
+    let listResolve;
+    deps.api.mockImplementation((url) => url === "/api/repertoires" ? new Promise((done) => { listResolve = done; }) : new Promise(() => {}));
     doc.getElementById("train-due-retry").click();
-    expect(deps.api).toHaveBeenCalledWith("/api/repertoires");
+    expect(doc.getElementById("train-due-retry").hidden).toBe(true);
+    doc.getElementById("train-due-retry").click();
+    expect(deps.api.mock.calls.filter(([url]) => url === "/api/repertoires")).toHaveLength(1);
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBe("");
+    listResolve({ repertoires: [{ id: "r1", name: "Italian", color: "white", is_active: true }], shared: [] });
+    await vi.waitFor(() => expect(deps.api.mock.calls.some(([url]) => String(url).startsWith("/api/train/smart/summary"))).toBe(true));
+    expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
+    expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("train-due-scope").getAttribute("inert")).toBeNull();
   });
 
   it("holds its loaded shape while the first preview is pending", async () => {
@@ -195,6 +207,8 @@ describe("the Due row", () => {
     expect(doc.getElementById("start-train").dataset.action).toBe("start");
     expect(doc.getElementById("start-train").getAttribute("inert")).toBe("");
     expect(doc.getElementById("start-train").classList.contains("skeleton-control")).toBe(true);
+    expect(doc.getElementById("train-due-scope").getAttribute("inert")).toBeNull();
+    expect(doc.getElementById("train-due-scope").disabled).toBe(false);
     expect(doc.getElementById("train-home").getAttribute("aria-busy")).toBeNull();
     expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBeNull();
     expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();

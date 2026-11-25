@@ -6,12 +6,13 @@ import { recentRuns } from "../train-history.js";
 import { loadRehearsal } from "../train-rehearsal.js";
 import { lineTail } from "../views/train.js";
 import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
-import { createTrainPreview, paintTrainDueLoading, paintTrainHomeLoading, paintTrainPreviewLoading, readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
+import { createTrainPreview, paintTrainHomeLoading, paintTrainListingLoading, paintTrainStartLoading, paintTrainPreviewLoading, readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
 import { dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
 export { dueIn, dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
 import { appState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
+import { fetchRepertoireListing } from "../repertoire-listing.js";
 import { flushTrainSync, lichessAccounts, requireSignIn, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
 import { blitzEnabled, clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setBlitzEnabled,
@@ -44,10 +45,6 @@ function isSignedIn() {
 
 function repertoireListingKnown(state = appState) {
   return state.repertoireListGeneration === (state.ownerGeneration || 0);
-}
-
-function paintTrainListingLoading(state) {
-  paintTrainHomeLoading(true); paintTrainPreviewLoading(true, readTrainPreviewShape(currentOwnerId(), state.trainScope?.repertoireId));
 }
 
 function paintRowErrors() {
@@ -276,10 +273,9 @@ export async function paintTrainHome() {
   const listingKnown = repertoireListingKnown(state);
   const optionsFailed = signedIn && !listingKnown && state.trainRepertoireOptionsError;
   if (signedIn && !listingKnown && !optionsFailed) {
-    paintTrainListingLoading(state);
+    paintTrainListingLoading(currentOwnerId(), state.trainScope?.repertoireId, state.trainHomeReady);
     return;
   }
-  const firstPaint = !state.trainHomeReady;
   // Due queue
   setChip("train-due-scope", dueScopeLabel(), !signedIn || !ownActive().length && !reps.length);
   const due = document.getElementById("start-train");
@@ -347,8 +343,8 @@ export async function paintTrainHome() {
   }
   const owner = currentOwnerId();
   const scope = state.trainScope?.repertoireId;
-  if (firstPaint) paintTrainHomeLoading(false);
-  paintTrainDueLoading(!currentPreview);
+  paintTrainHomeLoading(false);
+  paintTrainStartLoading(!currentPreview);
   paintTrainPreviewLoading(!currentPreview, readTrainPreviewShape(owner, scope));
   await preview.load(url);
   if (trainScreenOf(state) !== "home" || previewUrl() !== url || !preview.current(url)) return;
@@ -440,11 +436,11 @@ export function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
 // The listing every row reads: own + shared repertoires, then the Home repaint.
 export async function loadTrainRepertoireOptions() {
   const state = appState;
-  if (state.signedIn) state.trainRepertoireOptionsError = "";
-  if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(state);
+  if (state.signedIn) { state.trainRepertoireOptionsError = ""; paintRowErrors(); }
+  if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(currentOwnerId(), state.trainScope?.repertoireId, state.trainHomeReady);
   if (state.signedIn) {
     try {
-      const payload = await api("/api/repertoires");
+      const payload = await fetchRepertoireListing(api, currentOwnerId(), state.ownerGeneration || 0, true);
       state.repertoireList = payload.repertoires || [];
       state.sharedRepertoireList = payload.shared || [];
       state.repertoireListGeneration = state.ownerGeneration || 0;

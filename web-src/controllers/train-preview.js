@@ -70,8 +70,18 @@ function skeletonControl(el, busy) {
 // repertoire listing is inert and masked in place. A later refresh over real
 // content never uses this state; it keeps the content and marks only the row
 // being refreshed busy.
-export function paintTrainDueLoading(busy) {
-  for (const id of ["start-train", "train-due-scope"]) skeletonControl(document.getElementById(id), busy);
+export function paintTrainStartLoading(busy) {
+  skeletonControl(document.getElementById("start-train"), busy);
+}
+
+export function paintTrainListingDependentLoading(busy) {
+  for (const id of ["start-train", "train-due-scope", "start-rehearse", "train-rehearse-scope"]) skeletonControl(document.getElementById(id), busy);
+}
+
+export function paintTrainListingLoading(owner, scope, retrying = false) {
+  if (retrying) paintTrainListingDependentLoading(true);
+  else paintTrainHomeLoading(true);
+  paintTrainPreviewLoading(true, readTrainPreviewShape(owner, scope));
 }
 
 export function paintTrainHomeLoading(busy) {

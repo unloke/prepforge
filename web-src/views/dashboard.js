@@ -4,6 +4,7 @@ import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { reveal } from "../list-enter.js";
 import { createLibraryRows } from "./library-rows.js";
+import { fetchRepertoireListing } from "../repertoire-listing.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
 import {
@@ -609,14 +610,14 @@ export function createDashboardView({
 
   // Fetches and renders the listing; throws on failure so each caller picks
   // its own error composition.
-  async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq)) {
+  async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq), sharedListing = false) {
     // Team names are optional and never block usable repertoire rows.
     if (appState.signedIn) {
       void loadTeamDirectory(appState, api).then((teams) => {
         if (teams !== null && isCurrent() && repListLoaded) renderRepertoireList();
       }).catch(() => {});
     }
-    const payload = await api("/api/repertoires");
+    const payload = await fetchRepertoireListing(api, appState.accountUserId, appState.ownerGeneration || 0, sharedListing);
     if (!isCurrent()) return false;
     const status = document.getElementById("library-refresh-status");
     if (status) status.hidden = true;
@@ -743,7 +744,7 @@ export function createDashboardView({
         throw error;
       }
     })();
-    const listing = fetchDashboardRepertoires(seq, isCurrent).catch((error) => {
+    const listing = fetchDashboardRepertoires(seq, isCurrent, true).catch((error) => {
       if (isCurrent()) reportListFailure(error.message);
       throw error;
     });
