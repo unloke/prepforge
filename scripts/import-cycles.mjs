@@ -3,7 +3,9 @@
 // non-zero when there is one. Static imports, re-exports and dynamic import()
 // with a literal specifier all count as edges; a lazy import() that closes a
 // loop is still a loop in the dependency direction even though it is split into
-// its own chunk. Test files and test fixtures are not part of the graph.
+// its own chunk. Specifiers resolve the way Vite resolves them (see
+// resolveSpecifier), so an import that leaves off the extension or names a
+// directory is an edge too. Test files and test fixtures are not part of the graph.
 //
 //   node scripts/import-cycles.mjs          # fail on any cycle
 //   node scripts/import-cycles.mjs --stats  # also print module / edge counts
@@ -16,14 +18,19 @@ import { KEYS } from "eslint-visitor-keys";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = join(ROOT, "web-src");
 const SKIP_DIRS = new Set(["public", "node_modules"]);
-const isTest = (file) => /\.(test|fixture)\.js$/.test(file);
+// Vite's default resolve.extensions, in its order (vite.config.js sets none).
+// .json resolves but imports nothing, so it is not a node of the graph.
+const EXTENSIONS = [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"];
+const MODULE_EXT = /\.(mjs|js|mts|ts|jsx|tsx)$/;
+const isTest = (file) => /\.(test|spec|fixture)\.(mjs|js|mts|ts|jsx|tsx)$/.test(file);
+const isFile = (path) => existsSync(path) && statSync(path).isFile();
 
 function listModules(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) {
       if (!SKIP_DIRS.has(name)) listModules(path, out);
-    } else if (name.endsWith(".js") && !isTest(name)) {
+    } else if (MODULE_EXT.test(name) && !isTest(name)) {
       out.push(path);
     }
   }
@@ -31,7 +38,7 @@ function listModules(dir, out = []) {
 }
 
 function specifiers(source) {
-  const ast = espree.parse(source, { ecmaVersion: "latest", sourceType: "module" });
+  const ast = espree.parse(source, { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true } });
   const found = [];
   const visit = (node) => {
     if (!node || typeof node.type !== "string") return;
@@ -52,19 +59,45 @@ function specifiers(source) {
   return found;
 }
 
-function resolveSpecifier(from, spec) {
-  if (!spec.startsWith(".")) return null; // packages and absolute URLs
-  const path = resolve(dirname(from), spec.split("?")[0]);
-  return existsSync(path) && path.endsWith(".js") && !isTest(path) ? path : null;
+// Mirrors Vite's file resolution for relative and root-absolute ("/x", from
+// the Vite root) specifiers: the path itself, then each default extension, then
+// a directory's package.json entry or index file. Query strings and hashes
+// (?url, ?worker, #x) are dropped. Packages and URLs are not edges.
+function resolveFile(path) {
+  if (isFile(path)) return path;
+  for (const ext of EXTENSIONS) if (isFile(path + ext)) return path + ext;
+  if (!existsSync(path) || !statSync(path).isDirectory()) return null;
+  const pkgPath = join(path, "package.json");
+  if (isFile(pkgPath)) {
+    let pkg = {};
+    try { pkg = JSON.parse(readFileSync(pkgPath, "utf8")); } catch { /* not a package entry */ }
+    for (const entry of [pkg.module, pkg.main]) {
+      if (typeof entry !== "string") continue;
+      const found = resolveFile(resolve(path, entry));
+      if (found) return found;
+    }
+  }
+  for (const ext of EXTENSIONS) if (isFile(join(path, "index" + ext))) return join(path, "index" + ext);
+  return null;
 }
 
-export function importGraph() {
-  const modules = listModules(SRC);
+export function resolveSpecifier(from, spec, root = SRC) {
+  const bare = spec.split(/[?#]/)[0];
+  let path;
+  if (bare.startsWith("./") || bare.startsWith("../") || bare === "." || bare === "..") path = resolve(dirname(from), bare);
+  else if (bare.startsWith("/") && !bare.startsWith("//")) path = join(root, bare);
+  else return null; // packages, URLs, data: and the like
+  const found = resolveFile(path);
+  return found && MODULE_EXT.test(found) && !isTest(found) ? found : null;
+}
+
+export function importGraph(root = SRC) {
+  const modules = listModules(root);
   const graph = new Map();
   for (const file of modules) {
     const deps = new Set();
     for (const spec of specifiers(readFileSync(file, "utf8"))) {
-      const target = resolveSpecifier(file, spec);
+      const target = resolveSpecifier(file, spec, root);
       if (target) deps.add(target);
     }
     graph.set(file, deps);
