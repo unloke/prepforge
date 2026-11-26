@@ -44,7 +44,7 @@ from prepforge_chess.services.browser_compute import (
 from prepforge_chess.services.pgn_import import PgnImportOptions, PgnImportService
 from prepforge_chess.services.browser_compute import MissingEvaluationError
 from prepforge_chess.services.replay_maia import ReplayMaia
-from prepforge_chess.storage.repositories.games import GameRepository
+from prepforge_chess.storage.ports import AnalyzeRoutes, GameStore
 
 router = APIRouter(prefix="/api", tags=["analyze"])
 
@@ -52,7 +52,7 @@ router = APIRouter(prefix="/api", tags=["analyze"])
 
 
 def _import_pgn_for_analysis(
-    repo: GameRepository,
+    repo: GameStore,
     pgn_text: str,
     owner: str,
     *,
@@ -209,7 +209,7 @@ def analyze_prepare(
     request: Request,
     body: PreparePayload,
     owner: str = Depends(current_owner),
-    repo: GameRepository = Depends(get_repository),
+    repo: AnalyzeRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Import a PGN and return the positions the browser must evaluate.
 
@@ -298,7 +298,7 @@ def analyze_classify_save(
     request: Request,
     body: ClassifySavePayload,
     owner: str = Depends(current_owner),
-    repo: GameRepository = Depends(get_repository),
+    repo: AnalyzeRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Classify + persist a game from browser-computed per-position evals.
 
@@ -427,7 +427,7 @@ def _parse_cursor(cursor: str | None) -> tuple[datetime, str] | None:
 @router.get("/analyses")
 def list_analyses(
     owner: str = Depends(current_owner),
-    repo: GameRepository = Depends(get_repository),
+    repo: GameStore = Depends(get_repository),
     limit: int = 50,
     cursor: str | None = None,
     lichess_id: str | None = None,
@@ -453,7 +453,7 @@ def analysis_save_status(
     game_id: str,
     request_id: UUID,
     owner: str = Depends(current_owner),
-    repo: GameRepository = Depends(get_repository),
+    repo: GameStore = Depends(get_repository),
 ) -> dict[str, bool]:
     return {"saved": repo.has_analysis_save(game_id, str(request_id), owner)}
 
@@ -462,7 +462,7 @@ def analysis_save_status(
 def recall_analysis(
     game_id: str,
     owner: str = Depends(current_owner),
-    repo: GameRepository = Depends(get_repository),
+    repo: GameStore = Depends(get_repository),
 ) -> dict[str, Any]:
     """Recall the latest saved analysis for one of this owner's games. A foreign or
     unanalyzed game is 404 (the owner-scoped load returns None either way)."""
@@ -486,7 +486,7 @@ def save_analysis_study(
     game_id: str,
     body: AnalysisStudyPayload,
     owner: str = Depends(current_owner),
-    repo: GameRepository = Depends(get_repository),
+    repo: GameStore = Depends(get_repository),
 ) -> dict[str, bool]:
     game = repo.load_game(game_id, owner_user_id=owner)
     if game is None or repo.load_latest_analysis_result(game_id, owner_user_id=owner) is None:
@@ -507,7 +507,7 @@ def delete_analyses(
     request: Request,
     game_id: str,
     owner: str = Depends(current_owner),
-    repo: GameRepository = Depends(get_repository),
+    repo: GameStore = Depends(get_repository),
 ) -> dict[str, bool]:
     """Delete every saved analysis for one of this owner's games. A foreign or
     unanalyzed game is 404, so a stale row in the UI reports rather than

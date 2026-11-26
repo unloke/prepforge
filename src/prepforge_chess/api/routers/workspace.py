@@ -38,12 +38,15 @@ from prepforge_chess.services.opening_builder import (
     PlanSummary,
 )
 from prepforge_chess.services import streak
+from prepforge_chess.services.workflows import (
+    compose_build_payload_with_training_state,
+    delete_repertoire_and_archive_training,
+)
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_payload
-from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
 from prepforge_chess.storage.repositories.repertoires import NodeGone
-from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from prepforge_chess.storage.ports import AccessStore, BuildPayloadStore, EditGate, RepertoireReader, RepertoireWriter, SettingsStore, SharingStore, WorkspaceRoutes
 
 router = APIRouter(prefix="/api", tags=["workspace"])
 T = TypeVar("T")
@@ -56,7 +59,7 @@ def _repertoire_cap(user: User, settings: Settings) -> int | None:
 
 
 def _repertoire_access(
-    repo: WorkspaceRepository, repertoire_id: str, user_id: str, need: str = "view"
+    repo: AccessStore, repertoire_id: str, user_id: str, need: str = "view"
 ) -> dict[str, Any]:
     """The one access gate. Returns the repertoire's meta with the caller's
     ``role`` (owner / edit / copy / view). 404 when the caller has no access at
@@ -76,7 +79,7 @@ _DENIED = {
 }
 
 
-def _owned_repertoire(repo: WorkspaceRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
+def _owned_repertoire(repo: EditGate, repertoire_id: str, owner: str) -> dict[str, Any]:
     """Owner-only actions: rename, delete, enable/disable, sharing.
     Tags the writes this request makes with their author for the op log."""
     meta = _repertoire_access(repo, repertoire_id, owner, "owner")
@@ -85,7 +88,7 @@ def _owned_repertoire(repo: WorkspaceRepository, repertoire_id: str, owner: str)
 
 
 def _editable_repertoire(
-    repo: WorkspaceRepository, repertoire_id: str, user_id: str, kind: str
+    repo: EditGate, repertoire_id: str, user_id: str, kind: str
 ) -> dict[str, Any]:
     """Edit gate for tree mutations: the owner or an ``edit`` grant (404 without
     access, 403 below edit). Tags the writes this request makes with their author
@@ -96,7 +99,7 @@ def _editable_repertoire(
     return meta
 
 
-def _rebased(repo: WorkspaceRepository, meta: dict[str, Any], apply: Callable[[], T]) -> T:
+def _rebased(repo: RepertoireWriter, meta: dict[str, Any], apply: Callable[[], T]) -> T:
     """Apply against the current tree while holding its database write lock.
     A rejected edit (``ValueError``) is a 400."""
     try:
@@ -106,7 +109,7 @@ def _rebased(repo: WorkspaceRepository, meta: dict[str, Any], apply: Callable[[]
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
-def _load(repo: WorkspaceRepository, repertoire_id: str) -> Repertoire:
+def _load(repo: RepertoireReader, repertoire_id: str) -> Repertoire:
     """The repertoire's tree; 404 when the row vanished after the access gate."""
     repertoire = repo.load_repertoire(repertoire_id)
     if repertoire is None:
@@ -115,75 +118,26 @@ def _load(repo: WorkspaceRepository, repertoire_id: str) -> Repertoire:
 
 
 def _save_new(
-    repo: WorkspaceRepository, repertoire: Repertoire, owner: str, user: User, settings: Settings
+    repo: RepertoireWriter, repertoire: Repertoire, owner: str, user: User, settings: Settings
 ) -> None:
     """Store a freshly made repertoire as the caller's, under their plan's cap."""
     repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
-
-
-def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:
-    """Remove the owner's personal training colour from a payload someone else sees.
-
-    Share links and grants must not leak health or per-node mastery derived from
-    the owner's training progress."""
-    payload.pop("health", None)
-    for node in payload.get("nodes", []):
-        node.pop("mastery", None)
-
-
-def _payload(repo: WorkspaceRepository, meta: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
-    """The Build payload as the caller may see it. Always computed against the
-    owner's progress (so the cached health badge stays the owner's), then stripped
-    of that progress for anyone else. ``role``/``writable`` drive the client."""
-    payload = build_workspace_payload(repo, meta["id"], owner_user_id=meta["owner_user_id"], **kwargs)
-    payload["role"] = meta["role"]
-    payload["writable"] = ROLE_RANK[meta["role"]] >= ROLE_RANK["edit"]
-    if meta["role"] != "owner":
-        _strip_readonly_build_payload(payload)
-        payload["shared"] = True
-    return payload
 
 
 @router.get("/dashboard")
 def dashboard(
     local_date: str | None = None,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Owner-scoped counters for the home screen. Sessions count the caller's own,
     shared repertoires included.
     ``local_date`` is the client's calendar day, used only to phrase the daily
     streak (is it alive? trained today?) in the player's timezone."""
     now = datetime.now(timezone.utc)
-    reps = t.repertoires
-    with repo.engine.connect() as conn:
-        games = conn.execute(
-            select(func.count())
-            .select_from(t.games)
-            .where(t.games.c.owner_user_id == owner)
-        ).scalar_one()
-        repertoires = conn.execute(
-            select(func.count()).select_from(reps).where(reps.c.owner_user_id == owner)
-        ).scalar_one()
-        active_ids = set(conn.scalars(select(reps.c.id).where(
-            reps.c.owner_user_id == owner, reps.c.is_active == 1,
-        )))
-        sessions = conn.execute(
-            select(func.count())
-            .select_from(t.training_sessions)
-            .where(t.training_sessions.c.owner_user_id == owner)
-        ).scalar_one()
-        tp = t.training_progress
-        # Moves reviewed in the last 7 days: one progress row per move, so a
-        # move reviewed five times counts once.
-        reviews_7d = conn.execute(
-            select(func.count())
-            .select_from(tp)
-            .where(
-                tp.c.owner_user_id == owner,
-                tp.c.last_reviewed_at >= now - timedelta(days=7),
-            )
-        ).scalar_one()
+    stored = repo.owner_activity_counts(owner, now=now)
+    games, repertoires, active_ids = stored["games"], stored["repertoires"], stored["active_ids"]
+    sessions, reviews_7d = stored["sessions"], stored["reviews_7d"]
     week_ago_iso = (now - timedelta(days=7)).isoformat()
     # Today and the recap describe what the Smart queue can schedule now: the
     # Library's buckets (effective-enabled own moves, weak before due before
@@ -227,7 +181,7 @@ _RECAP_SNAPSHOT_KEY = "recap.weekly_snapshot"
 
 
 def _weekly_recap(
-    repo: WorkspaceRepository,
+    repo: SettingsStore,
     owner: str,
     local_day,
     *,
@@ -287,7 +241,7 @@ def _listing_health(health: dict[str, Any] | None) -> dict[str, Any] | None:
 @router.get("/repertoires")
 def list_repertoires(
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """The caller's own repertoires (metadata + a cached ``health`` badge — no tree
     load and no per-row health walk; the badge is refreshed off the Build payload and
@@ -321,12 +275,12 @@ def list_repertoires(
 def build_load(
     repertoire_id: str,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """The Build-view payload for a repertoire the caller can read, with their
     ``role``; ``writable`` for the owner and editors. Computes no chess — pure
     serialization of the stored tree + training progress."""
-    return _payload(repo, _repertoire_access(repo, repertoire_id, owner))
+    return compose_build_payload_with_training_state(repo, _repertoire_access(repo, repertoire_id, owner))
 
 
 @router.get("/build/changes")
@@ -334,7 +288,7 @@ def build_changes(
     repertoire_id: str,
     since: int = Query(ge=0),
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """What changed in a readable repertoire after revision ``since``: the current
     state of every node written since then, the ids deleted since then, the name,
@@ -351,7 +305,7 @@ def build_changes(
     ops = repo.repertoire_ops_since(repertoire_id, since)
     if not ops or ops[0]["revision"] != since + 1 or any(op.get("reset") for op in ops):
         return {"revision": revision, "role": role, "reset": True}
-    view = _payload(repo, meta)
+    view = compose_build_payload_with_training_state(repo, meta)
     removed = {node_id for op in ops for node_id in op.get("removed", ())}
     written = {node_id for op in ops for node_id in op.get("nodes", ())} - removed
     nodes = [node for node in view["nodes"] if node["id"] in written]
@@ -380,7 +334,7 @@ def build_changes(
 Role = Literal["view", "copy", "edit"]
 
 
-def _access_state(repo: WorkspaceRepository, meta: dict[str, Any], secret: str) -> dict[str, Any]:
+def _access_state(repo: SharingStore, meta: dict[str, Any], secret: str) -> dict[str, Any]:
     link = _share_state(meta)
     if link["share_enabled"]:
         link["url"] = "/?shared={0}".format(mint_share_token(meta["id"], secret, link["share_rev"]))
@@ -391,7 +345,7 @@ def _access_state(repo: WorkspaceRepository, meta: dict[str, Any], secret: str) 
 def repertoire_access(
     repertoire_id: str,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """The Share dialog's state: the link (with its URL while on) and every grant."""
@@ -426,7 +380,7 @@ def grant_access(
     body: GrantBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
@@ -468,7 +422,7 @@ class RevokeBody(BaseModel):
 def revoke_access(
     body: RevokeBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Stop sharing with one team or person. Their access ends with their next request."""
@@ -487,11 +441,11 @@ class DeleteRepertoireRequest(BaseModel):
 def delete_repertoire(
     body: DeleteRepertoireRequest,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Delete one of this owner's repertoires (cascades to its nodes/training)."""
     _owned_repertoire(repo, body.repertoire_id, owner)
-    repo.delete_repertoire(body.repertoire_id)
+    delete_repertoire_and_archive_training(repo, body.repertoire_id)
     return {"deleted": body.repertoire_id}
 
 
@@ -504,7 +458,7 @@ class SetActiveRequest(BaseModel):
 def set_repertoire_active(
     body: SetActiveRequest,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Toggle a repertoire's active flag (drives trainer eligibility in the SPA)."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
@@ -556,7 +510,7 @@ def create_repertoire(
     body: CreateRepertoireBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Create a new repertoire owned by the caller and return its Build payload.
@@ -638,7 +592,7 @@ def _share_link_live(meta: dict[str, Any], token_rev: int, now: datetime) -> boo
 
 
 def _resolve_share_link(
-    repo: WorkspaceRepository, token: str, secret: str
+    repo: RepertoireReader, token: str, secret: str
 ) -> dict[str, Any]:
     """The meta of the repertoire a token currently opens, with the link's role.
     Bad, revoked, rotated and expired links are all 404 (F-01)."""
@@ -658,7 +612,7 @@ class ShareLinkBody(BaseModel):
 
 
 def _set_link(
-    repo: WorkspaceRepository, body: ShareLinkBody, settings: Settings, *, rotate: bool
+    repo: SharingStore, body: ShareLinkBody, settings: Settings, *, rotate: bool
 ) -> dict[str, Any]:
     """Update the link (rotating mints a fresh token and turns it on) and return
     its state with the current token and URL."""
@@ -676,7 +630,7 @@ def _set_link(
 def create_share_link(
     body: ShareLinkBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Turn on (or update) the public link for one of the caller's OWN repertoires.
@@ -692,7 +646,7 @@ def create_share_link(
 def rotate_share_link(
     body: ShareLinkBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Regenerate the public link: bumps the share revision so every previously
@@ -705,7 +659,7 @@ def rotate_share_link(
 def revoke_share_link(
     body: ShareLinkBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Turn the public link OFF. Grants are untouched — the two are
     independent controls (F-01)."""
@@ -716,7 +670,7 @@ def revoke_share_link(
 @router.get("/shared/{token}")
 def shared_repertoire(
     token: str,
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: BuildPayloadStore = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Public (unauthenticated) read of a shared repertoire's tree.
@@ -725,12 +679,12 @@ def shared_repertoire(
     read-only mode — minus the owner's training colour (health/mastery). ``role``
     is the link's (view / copy). Revoked / rotated / expired links are 404 (F-01)."""
     meta = _resolve_share_link(repo, token, settings.secret_key)
-    payload = _payload(repo, meta)
+    payload = compose_build_payload_with_training_state(repo, meta)
     payload["writable"] = False
     return payload
 
 
-def _fork(repo: WorkspaceRepository, repertoire_id: str, owner: str, user: User, settings: Settings) -> dict[str, Any]:
+def _fork(repo: RepertoireWriter, repertoire_id: str, owner: str, user: User, settings: Settings) -> dict[str, Any]:
     repertoire = _load(repo, repertoire_id)
     _reassign_ids(repertoire)  # fresh ids -> caller's own copy, no cross-tenant clobber
     _save_new(repo, repertoire, owner, user, settings)
@@ -742,7 +696,7 @@ def fork_shared_repertoire(
     token: str,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: RepertoireWriter = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Copy a shared repertoire into the caller's account (fresh ids, caller-owned)
@@ -764,7 +718,7 @@ def fork_repertoire(
     body: ForkRepertoireBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Copy a repertoire shared with the caller (role copy or edit) into their own
@@ -787,7 +741,7 @@ class RenameRepertoireBody(BaseModel):
 def build_rename(
     body: RenameRepertoireBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Rename one of the caller's repertoires and return its refreshed Build payload."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
@@ -795,7 +749,7 @@ def build_rename(
     # Last writer wins: a concurrent rename on another device is replaced.
     _rebased(repo, meta, lambda: OpeningBuilderService(repo).rename_repertoire(
         body.repertoire_id, body.name))
-    return _payload(repo, meta)
+    return compose_build_payload_with_training_state(repo, meta)
 
 
 class AddMoveBody(BaseModel):
@@ -808,7 +762,7 @@ class AddMoveBody(BaseModel):
 def build_add_move(
     body: AddMoveBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Append a manual move under a parent node and return the refreshed Build payload.
     Classifies ownership: a move played on the owner's turn is flagged
@@ -834,7 +788,7 @@ def build_add_move(
         return repertoire, node
 
     repertoire, node = _rebased(repo, meta, apply)
-    return _payload(
+    return compose_build_payload_with_training_state(
         repo, meta, selected_node_id=node.id, repertoire=repertoire,
         summary=asdict(PlanSummary(added_nodes=1)),
     )
@@ -856,14 +810,14 @@ class AddMovesItem(BaseModel):
 
 
 def _batch_receipt(
-    repo: WorkspaceRepository, owner: str, kind: str, body: BaseModel, meta: dict[str, Any]
+    repo: WorkspaceRoutes, owner: str, kind: str, body: BaseModel, meta: dict[str, Any]
 ) -> tuple[str, dict[str, Any] | None]:
     """The batch's receipt key, and the payload to answer a retry with when this
     exact request (its complete body is the retry identity) already landed."""
     digest = hashlib.sha256(json.dumps(body.model_dump(), sort_keys=True).encode()).hexdigest()
     key = "build-receipt:" + kind + ":" + digest
     receipt = repo.get_user_setting(owner, key)
-    return key, None if receipt is None else {**_payload(repo, meta), **receipt}
+    return key, None if receipt is None else {**compose_build_payload_with_training_state(repo, meta), **receipt}
 
 
 class AddMovesBody(BaseModel):
@@ -877,7 +831,7 @@ def build_add_moves(
     request: Request,
     body: AddMovesBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Apply a batch of manual moves (local-first Build flush) and return the
     refreshed Build payload plus an ``id_map`` of ``tempId -> real node id``.
@@ -895,7 +849,7 @@ def build_add_moves(
         [item.model_dump() for item in body.moves],
         receipt_target=(owner, key),
     ))
-    payload = _payload(repo, meta, repertoire=repertoire, summary=asdict(summary))
+    payload = compose_build_payload_with_training_state(repo, meta, repertoire=repertoire, summary=asdict(summary))
     payload["id_map"] = id_map
     payload["dropped"] = service.dropped_temp_ids
     return payload
@@ -912,7 +866,7 @@ def build_delete_nodes(
     request: Request,
     body: DeleteNodesBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Delete a batch of subtrees (local-first Build flush) and return the
     refreshed Build payload.
@@ -930,7 +884,7 @@ def build_delete_nodes(
     removed = _rebased(repo, meta, lambda: service.delete_nodes_batch(
         body.repertoire_id, list(body.node_ids), receipt_target=(owner, key)
     ))
-    payload = _payload(repo, meta, repertoire=service.loaded_repertoire)
+    payload = compose_build_payload_with_training_state(repo, meta, repertoire=service.loaded_repertoire)
     payload["removed_node_ids"] = removed
     return payload
 
@@ -956,7 +910,7 @@ def build_apply_plan(
     request: Request,
     body: ApplyPlanBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Apply a browser-built Build-Generate plan and return the refreshed payload.
 
@@ -976,7 +930,7 @@ def build_apply_plan(
         if receipt is not None:
             if receipt.get("digest") != digest:
                 raise HTTPException(status_code=409, detail="operation_id reused with a different plan")
-            payload = _payload(repo, meta, summary=receipt["summary"])
+            payload = compose_build_payload_with_training_state(repo, meta, summary=receipt["summary"])
             payload["id_map"] = receipt.get("id_map", {})
             return payload
         receipt_target = (owner, key, digest)
@@ -984,7 +938,7 @@ def build_apply_plan(
     repertoire, summary = _rebased(repo, meta, lambda: builder.apply_generation_plan(
         body.repertoire_id, body.root_node_id, body.plan, receipt_target=receipt_target
     ))
-    payload = _payload(
+    payload = compose_build_payload_with_training_state(
         repo, meta, selected_node_id=body.root_node_id, repertoire=repertoire,
         summary=asdict(summary),
     )
@@ -1021,7 +975,7 @@ class NodeActionBody(BaseModel):
 def build_action(
     body: NodeActionBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Apply a node action (set-mainline / prepared / disable / enable / delete /
     comment / tag / queue / critical) and return the refreshed Build payload.
@@ -1054,7 +1008,7 @@ def build_action(
             builder.add_tag(rid, node_id, "critical")
         return node_id
 
-    return _payload(
+    return compose_build_payload_with_training_state(
         repo, meta, selected_node_id=_rebased(repo, meta, apply), repertoire=builder.loaded_repertoire
     )
 
@@ -1072,7 +1026,7 @@ def build_annotations(
     request: Request,
     body: AnnotationsBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Persist a node's arrows/circles and echo them back (the SPA ignores the rest of
     a Build payload here, so no full reserialization)."""
@@ -1098,7 +1052,7 @@ class ExportBody(BaseModel):
 def build_export(
     body: ExportBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Serialize a repertoire to a downloadable blob: ``json`` (full package) or
     ``pgn`` (mainline, or the path to ``node_id`` when given). Pure serialization."""
@@ -1125,7 +1079,7 @@ def build_export(
 def export_tree_pgn(
     repertoire_id: str,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Full tree-with-variations PGN for the top-level "Export PGN" action (the SPA's
     per-line export goes through ``/build/export``). Pure serialization, owner-gated."""
@@ -1154,7 +1108,7 @@ def import_repertoire(
     body: ImportPackageBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Import a repertoire from a saved ``.prepforge.json`` package, owned by the caller."""
@@ -1188,7 +1142,7 @@ def import_repertoire_pgn(
     body: ImportPgnBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: WorkspaceRoutes = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Import a repertoire from a tree PGN (variations become branches), owned by the caller."""

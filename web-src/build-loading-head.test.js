@@ -4,6 +4,7 @@ import { html } from "./html.js";
 import { paintBuildSkeleton } from "./views/build-skeleton.js";
 import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 
@@ -18,7 +19,7 @@ function harness() {
   const appState = { buildLoading: false, buildNodeById: new Map(), buildCurrentNodeId: null, currentView: "build", build: null };
   const painted = [];
   const deps = {
-    appState,
+    ...asSlices(appState), 
     html,
     paintBuildSkeleton,
     boards: { build: { setPosition: vi.fn(), setBranchArrows: vi.fn(), setAnnotations: vi.fn() } },
@@ -31,14 +32,14 @@ function harness() {
     syncViewHeads: vi.fn(),
   };
   const setBuildLoading = compile("function setBuildLoading(", deps);
-  return { setBuildLoading, appState, painted, deps };
+  return { setBuildLoading, ...asSlices(appState), appState, painted, deps };
 }
 
 describe("build loading repaints the panel", () => {
   it("repaints when the skeleton goes up", () => {
     const h = harness();
     h.setBuildLoading(true);
-    expect(h.appState.buildLoading).toBe(true);
+    expect(h.buildState.buildLoading).toBe(true);
     // The empty state is what the panel's bands give way to while the tree loads.
     expect(h.painted).toEqual(["empty"]);
   });
@@ -46,7 +47,7 @@ describe("build loading repaints the panel", () => {
   it("re-renders the tree instead when the skeleton comes down", () => {
     const h = harness();
     h.setBuildLoading(false);
-    expect(h.appState.buildLoading).toBe(false);
+    expect(h.buildState.buildLoading).toBe(false);
     expect(h.painted).toEqual([]);
   });
 });

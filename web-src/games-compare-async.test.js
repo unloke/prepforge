@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { MAX_FETCH } from "./generated/shared-constants.js";
 import { countOf } from "./plural.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function harness() {
@@ -11,7 +12,7 @@ function harness() {
   const button = { disabled: false, textContent: "Check games", setAttribute() {}, removeAttribute() {} };
   const resultsHost = { innerHTML: "" };
   const deps = {
-    appState, countOf, MAX_FETCH, requireSignIn: () => true,
+    ...asSlices(appState), countOf, MAX_FETCH, requireSignIn: () => true,
     gamesSourceSelection: () => selection, lichessAccounts: () => [],
     resolveFetchUsernames: ({ selection }) => selection.external,
     gamesSourceAccountIds: () => [], normalizeSelection: (s) => s,
@@ -25,7 +26,7 @@ function harness() {
   const start = source.indexOf("async function runLichessCompare(");
   const end = source.indexOf("\n}\n", start) + 2;
   const run = new Function(...Object.keys(deps), `return (${source.slice(start, end)});`)(...Object.values(deps));
-  return { appState, requests, button, deps, resultsHost, run, change: () => { selection = { ...selection, external: ["second"] }; } };
+  return { ...asSlices(appState), appState, requests, button, deps, resultsHost, run, change: () => { selection = { ...selection, external: ["second"] }; } };
 }
 
 it("shows the ledger skeleton while the check is in flight", async () => {
@@ -45,7 +46,7 @@ it("drops an automatic Games response when its sources change", async () => {
   h.change();
   h.requests[0]({ games: [], count: 0 });
   await pending;
-  expect(h.appState.replayResults).toBeUndefined();
+  expect(h.replayState.replayResults).toBeUndefined();
   expect(h.deps.renderReplayResults).not.toHaveBeenCalled();
   expect(h.button.disabled).toBe(false);
 });
@@ -60,7 +61,7 @@ it("lets the latest Check own results and its busy state", async () => {
   expect(h.deps.renderReplayResults).not.toHaveBeenCalled();
   h.requests[1]({ games: [], count: 2 });
   await second;
-  expect(h.appState.replayResults.count).toBe(2);
+  expect(h.replayState.replayResults.count).toBe(2);
   expect(h.button.disabled).toBe(false);
 });
 

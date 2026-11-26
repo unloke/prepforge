@@ -1,5 +1,5 @@
 import { html } from "./html.js";
-import { appState, boards, notices } from "./core/state.js";
+import { appState, analysisState, buildState, settingsState, teamsState, boards, notices } from "./core/state.js";
 import { api, currentOwnerId, postJson, setStatus } from "./core/api.js";
 import { refreshAutoMaiaRating } from "./core/prefs.js";
 import { showConfirmModal } from "./core/modals.js";
@@ -84,8 +84,8 @@ export function initAccountController() {
           appState.keepAnalyzeOnSessionEnd = {
             pgn,
             gameId: null,
-            ply: saved?.ply ?? Math.max(0, Number(appState.analysisPly) || 0),
-            node: saved?.node || appState.analysisNodePath || "root",
+            ply: saved?.ply ?? Math.max(0, Number(analysisState.analysisPly) || 0),
+            node: saved?.node || analysisState.analysisNodePath || "root",
           };
         }
       }
@@ -109,17 +109,17 @@ export function initAccountController() {
       const latestButton = document.getElementById('fetch-my-game');
       if (latestButton) { delete latestButton.dataset.wasDisabled; latestButton.disabled = false; }
       clearCoverage();
-      appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
-      appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
-      appState.settingsSaving = null;
-      appState.buildMutationSaving = null;
+      settingsState.settingsRequestSeq = (settingsState.settingsRequestSeq || 0) + 1;
+      settingsState.settingsReadSeq = (settingsState.settingsReadSeq || 0) + 1;
+      settingsState.settingsSaving = null;
+      buildState.buildMutationSaving = null;
       analyzeEntry?.invalidateHistory();
       live("teamsController")?.invalidateRequests();
-      appState.teamsRequestSeq = (appState.teamsRequestSeq || 0) + 1;
-      appState.teams = [];
-      appState.teamsCache = null;
-      appState.analysisRetryCheckpoint = null;
-      appState.analysisUnsavedCheckpoint = null;
+      teamsState.teamsRequestSeq = (teamsState.teamsRequestSeq || 0) + 1;
+      teamsState.teams = [];
+      teamsState.teamsCache = null;
+      analysisState.analysisRetryCheckpoint = null;
+      analysisState.analysisUnsavedCheckpoint = null;
       hideAnalysisRetrySave();
       for (const id of ["analysis-history", "teams-list", "teams-shared"]) {
         const host = document.getElementById(id);
@@ -628,8 +628,8 @@ ${black || ""}`;
 // Which side of the Analyze game is the user ("white" | "black" | null): the PGN box's
 // White/Black tags, else the recalled analysis, matched against linked Lichess names.
 export function analysisSelfSide() {
-  const tags = analyzeHeaderTags(appState.analysis?.pgn ?? document.getElementById("pgn-input")?.value ?? "");
-  const analysis = appState.analysis || {};
+  const tags = analyzeHeaderTags(analysisState.analysis?.pgn ?? document.getElementById("pgn-input")?.value ?? "");
+  const analysis = analysisState.analysis || {};
   return selfSide(tags.White || analysis.white, tags.Black || analysis.black, [
     appState.lichessUsername,
     ...lichessAccounts().map((a) => a.username),

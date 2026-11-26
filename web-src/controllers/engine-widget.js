@@ -9,7 +9,7 @@ import { paintUnlocks } from "../engine-unlock.js";
 import { subscribeDownloads } from "../engine/engine-downloads.js";
 import { createPassFeed } from "./engine-pass-feed.js";
 
-import { START_FEN, appState, boards } from "../core/state.js";
+import { START_FEN, analysisState, buildState, boards } from "../core/state.js";
 import { activeViewName, setStatusError } from "../core/api.js";
 import { effectiveStockfishDepth } from "../core/prefs.js";
 
@@ -126,13 +126,13 @@ class EngineWidget {
   /** FEN of whichever board the active tab is showing. */
   currentFen() {
     if (activeViewName() === "build") {
-      const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+      const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
       if (node && node.fen) return node.fen;
       // No repertoire open: analyse what the Build board shows, never the
       // Analyze board's position.
       return (boards.build && boards.build.fen) || START_FEN;
     }
-    return appState.analysisBoardFen || START_FEN;
+    return analysisState.analysisBoardFen || START_FEN;
   }
 
   // The full net's unlock row sits above the lines, named for the view it is in;
@@ -400,7 +400,7 @@ class EngineWidget {
     // The rows belong to the position the search was asked for: once the board
     // has moved on they are on their way out, and their moves no longer start
     // from the position on screen.
-    if (!line || line.baseFen !== appState.analysisBoardFen) return;
+    if (!line || line.baseFen !== analysisState.analysisBoardFen) return;
     const session = getAnalyzeSession();
     if (!session) return;
     const at = clampPly(line, ply);
@@ -412,7 +412,7 @@ class EngineWidget {
       await session.onAnalysisBoardMove(step.uci, step.fenBefore);
       // A move that did not land (illegal from here, or a newer board took over)
       // makes the rest of the line meaningless from this position.
-      if (appState.analysisBoardFen !== step.fen) return;
+      if (analysisState.analysisBoardFen !== step.fen) return;
     }
   }
 

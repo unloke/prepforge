@@ -56,7 +56,7 @@ export function filterLibraryRows(rows, { filter = "all", query = "" } = {}) {
 }
 
 export function createDashboardView({
-  appState,
+  appState, buildState, teamsState, trainState,
   api,
   postJson,
   setStatus,
@@ -545,7 +545,7 @@ export function createDashboardView({
       .sort((a, b) => (a.is_active === false ? 1 : 0) - (b.is_active === false ? 1 : 0));
     // The repertoire open in Build is the selected row: one created or opened
     // elsewhere (Build's New repertoire, the palette, a link) is the one to mark.
-    const openId = appState.build?.repertoire_id ? String(appState.build.repertoire_id) : null;
+    const openId = buildState.build?.repertoire_id ? String(buildState.build.repertoire_id) : null;
     if (openId && shownOwn.some((item) => String(item.id) === openId)) selectedRepId = openId;
     if (!selectedRepId || !shownOwn.some((item) => String(item.id) === selectedRepId)) {
       selectedRepId = shownOwn.length ? String(shownOwn[0].id) : null;
@@ -618,7 +618,7 @@ export function createDashboardView({
   async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq), authoritativeRefresh = false) {
     // Team names are optional and never block usable repertoire rows.
     if (appState.signedIn) {
-      void loadTeamDirectory(appState, api).then((teams) => {
+      void loadTeamDirectory(appState, teamsState, api).then((teams) => {
         if (teams !== null && isCurrent() && repListLoaded) renderRepertoireList();
       }).catch(() => {});
     }
@@ -825,7 +825,7 @@ export function createDashboardView({
         }
         const payload = await postJson("/api/repertoires/import", { package_json: text });
         await hydrateBuild(payload, payload.selected_node_id);
-        appState.trainingRepertoireId = payload.repertoire_id;
+        trainState.trainingRepertoireId = payload.repertoire_id;
         await loadDashboardRepertoires();
         setStatus(`Imported ${payload.name}`);
       } catch (error) {

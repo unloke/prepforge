@@ -5,7 +5,7 @@
 // and its variations on Analyze) is selected there, as clicking it in the move list
 // would. A line the tree does not have is not played anywhere: a note or a coach
 // sentence never adds a move. Every other view leaves the token to its row.
-import { appState, boards } from "./core/state.js";
+import { analysisState, buildState, boards } from "./core/state.js";
 import { activeViewName } from "./core/api.js";
 import { initPeeks, initMoveLinks, tokenPosition } from "./line-preview.js";
 import { plyOfFen } from "./move-text.js";
@@ -34,22 +34,22 @@ export function treeNodeForLine(line, ply, { nodes, fenOf, childrenOf, currentId
 }
 
 function buildTree() {
-  const nodes = appState.build?.nodes || [];
+  const nodes = buildState.build?.nodes || [];
   return {
     nodes,
     fenOf: (n) => n.fen,
     childrenOf: (n) => nodes.filter((c) => c.parent_id === n.id),
-    currentId: appState.buildCurrentNodeId,
+    currentId: buildState.buildCurrentNodeId,
   };
 }
 
 function analysisTree() {
-  const tree = appState.analysisTree;
+  const tree = analysisState.analysisTree;
   return {
     nodes: tree ? Array.from(tree.byId.values()) : [],
     fenOf: (n) => n.fenAfter,
     childrenOf: (n) => n.children || [],
-    currentId: appState.analysisCurrentNodeId,
+    currentId: analysisState.analysisCurrentNodeId,
   };
 }
 
@@ -59,10 +59,10 @@ function analysisTree() {
  * (the game's mainline before the first move).
  */
 export function analysisTextContext() {
-  const ctx = appState.explainContext || {};
-  const tree = appState.analysisTree;
+  const ctx = analysisState.explainContext || {};
+  const tree = analysisState.analysisTree;
   const path = [];
-  for (let n = tree?.byId.get(appState.analysisCurrentNodeId || "root"); n; n = n.parent) path.push(n.fenAfter);
+  for (let n = tree?.byId.get(analysisState.analysisCurrentNodeId || "root"); n; n = n.parent) path.push(n.fenAfter);
   return {
     fen: ctx.prevFen || ctx.fen,
     pawns: "prose",

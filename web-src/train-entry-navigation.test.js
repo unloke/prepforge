@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { beginLuckyDiscovery, cancelLuckyDiscovery } from "./train-lucky-control.js";
+import { asSlices, sliceArgs } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 
@@ -11,8 +12,8 @@ function wrapperRuntime() {
   const invalidateTrainEntries = () => { appState.trainEntryVersion = (appState.trainEntryVersion || 0) + 1; };
   const start = source.indexOf("const openTrain = (options = {}) =>");
   const body = source.slice(start, source.indexOf("\nconst submitTrainingMove", start));
-  const openTrain = new Function("appState", "loadTrainSession", "invalidateTrainEntries", `${body}; return openTrain;`)(appState, loadTrainSession, invalidateTrainEntries);
-  return { appState, train, loadTrainSession, openTrain, invalidateTrainEntries };
+  const openTrain = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "loadTrainSession", "invalidateTrainEntries", `${body}; return openTrain;`)(...sliceArgs(appState), loadTrainSession, invalidateTrainEntries);
+  return { ...asSlices(appState), appState, train, loadTrainSession, openTrain, invalidateTrainEntries };
 }
 
 describe("Train entry navigation ordering", () => {
@@ -73,9 +74,9 @@ describe("Train entry navigation ordering", () => {
   });
 
   it("plain Train navigation centrally cancels a pending scoped route and start state", () => {
-    expect(source).toContain('if (name !== "train" || name === "train" && !appState.trainEntering)');
+    expect(source).toContain('if (name !== "train" || name === "train" && !trainState.trainEntering)');
     expect(source).toContain("cancelActiveTrainStart();");
-    expect(source).toContain("delete appState.trainPendingRoute;");
+    expect(source).toContain("delete trainState.trainPendingRoute;");
   });
 
   it("Train this repertoire enters the guarded wrapper before waiting on Build sync", async () => {
@@ -95,7 +96,7 @@ describe("Train entry navigation ordering", () => {
     const train = { syncTrainControls: vi.fn() };
     const setTrainBanner = vi.fn();
     const boards = { train: { setPremove: vi.fn() } };
-    const cancel = new Function("appState", "setTrainBanner", "trainSessionLoading", "boards", "cancelLuckyDiscovery", `${body}; return cancelActiveTrainStart;`)(appState, setTrainBanner, Promise.resolve(train), boards, cancelLuckyDiscovery);
+    const cancel = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "setTrainBanner", "trainSessionLoading", "boards", "cancelLuckyDiscovery", `${body}; return cancelActiveTrainStart;`)(...sliceArgs(appState), setTrainBanner, Promise.resolve(train), boards, cancelLuckyDiscovery);
     cancel();
     expect(appState.trainStarting).toBe(false);
     expect(appState.trainStartToken).toBeNull();
@@ -113,7 +114,7 @@ describe("Train entry navigation ordering", () => {
     const run = beginLuckyDiscovery(appState);
     const train = { syncTrainControls: vi.fn() };
     const setTrainBanner = vi.fn();
-    const cancel = new Function("appState", "setTrainBanner", "trainSessionLoading", "boards", "cancelLuckyDiscovery", `${body}; return cancelActiveTrainStart;`)(appState, setTrainBanner, Promise.resolve(train), { train: { setPremove: vi.fn() } }, cancelLuckyDiscovery);
+    const cancel = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "setTrainBanner", "trainSessionLoading", "boards", "cancelLuckyDiscovery", `${body}; return cancelActiveTrainStart;`)(...sliceArgs(appState), setTrainBanner, Promise.resolve(train), { train: { setPremove: vi.fn() } }, cancelLuckyDiscovery);
     cancel();
     expect(appState.luckyBusy).toBe(false);
     expect(appState.luckyRun).toBeNull();
@@ -127,7 +128,7 @@ describe("Train entry navigation ordering", () => {
     const play = { active: true };
     const appState = { play, trainStarting: true, playStarting: Promise.resolve(), playStartToken: 3 };
     const train = { syncTrainControls: vi.fn() };
-    const cancel = new Function("appState", "setTrainBanner", "trainSessionLoading", "boards", "cancelLuckyDiscovery", `${body}; return cancelActiveTrainStart;`)(appState, vi.fn(), Promise.resolve(train), { train: { setPremove: vi.fn() } }, cancelLuckyDiscovery);
+    const cancel = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "setTrainBanner", "trainSessionLoading", "boards", "cancelLuckyDiscovery", `${body}; return cancelActiveTrainStart;`)(...sliceArgs(appState), vi.fn(), Promise.resolve(train), { train: { setPremove: vi.fn() } }, cancelLuckyDiscovery);
     cancel();
     expect(appState.play).toBe(play);
     expect(appState.playStartToken).toBe(3);

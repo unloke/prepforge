@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createBuildView } from "./build.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // A fork can hold thirty continuations (a generated tree leaves one chip for
 // every reply). Painted whole, six rows of "Next move" took the panel's height
@@ -97,7 +98,7 @@ function makeHarness({ nodes, currentNodeId, choiceId }) {
     buildBranchChoiceId: choiceId,
   };
   const view = createBuildView({
-    appState,
+    ...asSlices(appState), 
     boards: { build: { setBranchArrows: vi.fn() } },
     getMoveTreeRenderer: () => ({
       renderMoveTree: () => '<div class="mtree"></div>',
@@ -114,7 +115,7 @@ function makeHarness({ nodes, currentNodeId, choiceId }) {
       return { options, choiceId: picked.id };
     },
   });
-  return { view, bar: elements["build-branchbar"], appState };
+  return { view, bar: elements["build-branchbar"], ...asSlices(appState), appState,  };
 }
 
 const chipIds = (markup) => [...String(markup).matchAll(/class="fork-chip[^"]*" type="button" data-node-id="([^"]+)"/g)].map((m) => m[1]);

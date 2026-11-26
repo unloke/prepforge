@@ -3,6 +3,7 @@ import { createAnalysisStudySaver } from "./analyze-study.js";
 import { parsePgn } from "./analyze-pgn.js";
 import { createAnalyzeView } from "./views/analyze.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -22,13 +23,13 @@ describe("Analyze study saves", () => {
     const pgn = `{intro}\n[Event "Custom"]\n[Site "Paris"]\n[Round "3"]\n[SetUp "1"]\n[FEN "${fen}"]\n\n9. Nf3 Nc6 *`;
     const parsed = parsePgn(pgn);
     const appState = { analysisPgnStale: false };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ ...asSlices(appState), START_FEN });
     const { moves, varNodes } = view.adaptParsedTree(parsed.root);
     appState.analysis = { game_id: gameId, moves, pgn };
     appState.analysisVarNodes = varNodes;
     const input = { value: pgn };
     const sync = compile("syncPgnFromTree", {
-      appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
+      ...asSlices(appState), document: { getElementById: () => input }, analysisRecallSeq: 1,
       ensureAnalyzeView: async () => view,
     });
     await sync();
@@ -73,14 +74,14 @@ describe("Analyze study saves", () => {
 
   it("serializes new tree branches and queues the accepted PGN, not a textarea draft", async () => {
     const appState = { analysisVarNodes: new Map(), analysisPgnStale: true };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ ...asSlices(appState), START_FEN });
     const { moves, varNodes } = view.adaptParsedTree(parsePgn(PGN).root);
     appState.analysis = { game_id: "g1", moves, pgn: PGN };
     appState.analysisVarNodes = varNodes;
     const input = { value: "1. Qh9" };
     const queue = vi.fn();
     const sync = compile("syncPgnFromTree", {
-      appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
+      ...asSlices(appState), document: { getElementById: () => input }, analysisRecallSeq: 1,
       ensureAnalyzeView: async () => view, analysisStudy: { queue }, currentOwnerId: () => "owner",
     });
     await sync();
@@ -107,7 +108,7 @@ describe("Analyze study saves", () => {
       .replace("e5 2.", "e5 ;Black's reply\n2.")
       .replace("Nf3", "Nf3!?").replace("(2... d6)", "({Alternative} 2... d6 $5 {Philidor})");
     const appState = { analysisPgnStale: true };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ ...asSlices(appState), START_FEN });
     const extended = annotated.replace("Nc6 (", "Nc6 (2... Nf6) (");
     const { moves, varNodes } = view.adaptParsedTree(parsePgn(extended).root);
     appState.analysis = { game_id: "g1", moves, pgn: annotated };
@@ -115,7 +116,7 @@ describe("Analyze study saves", () => {
     const input = { value: annotated };
     const queue = vi.fn();
     const sync = compile("syncPgnFromTree", {
-      appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
+      ...asSlices(appState), document: { getElementById: () => input }, analysisRecallSeq: 1,
       ensureAnalyzeView: async () => view, analysisStudy: { queue }, currentOwnerId: () => "owner",
     });
     await sync();
@@ -150,13 +151,13 @@ describe("Analyze study saves", () => {
 describe("Recent analyses study restore", () => {
   function harness(flush = vi.fn(async () => {})) {
     const appState = { analysisVarNodes: new Map() };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ ...asSlices(appState), START_FEN });
     const { moves } = view.adaptParsedTree(parsePgn("1. e4 e5 2. Nf3 Nc6").root);
     const payload = { game_id: "g1", moves, pgn: PGN };
     const input = { value: '[Event "Other game"]' };
     const picker = { hidden: false };
     const deps = {
-      appState, analysisRecallSeq: 1, analysisStudy: { flush }, parsePgn, currentOwnerId: () => "owner",
+      ...asSlices(appState), analysisRecallSeq: 1, analysisStudy: { flush }, parsePgn, currentOwnerId: () => "owner",
       api: vi.fn(async () => payload), ensureAnalyzeView: async () => ({ ...view, renderAnalysis: vi.fn() }),
       document: { getElementById: (id) => id === "pgn-input" ? input : id === "analysis-import-picker" ? picker : null, querySelector: () => null },
       invalidateAnalysisSource: () => { appState.analysisMultiPgn = null; return 1; },
@@ -164,16 +165,16 @@ describe("Recent analyses study restore", () => {
       orientAnalysisForSelf: vi.fn(), showAnalysisPly: vi.fn(), syncViewHeads: vi.fn(),
       revealAnalysisResults: vi.fn(), syncPgnFromTree: vi.fn(), setStatusError: vi.fn(),
     };
-    return { recall: compile("recallAnalysis", deps), deps, input, appState, payload, view, picker };
+    return { recall: compile("recallAnalysis", deps), deps, input, ...asSlices(appState), appState, payload, view, picker };
   }
 
   it("hides the previous batch picker when Recent analyses opens Morphy", async () => {
     const h = harness();
-    h.appState.analysisMultiPgn = "Alice-Bob and Carol-Dave batch";
-    h.appState.analysis = { game_id: "batch-game", white: "Alice", black: "Bob" };
+    h.analysisState.analysisMultiPgn = "Alice-Bob and Carol-Dave batch";
+    h.analysisState.analysis = { game_id: "batch-game", white: "Alice", black: "Bob" };
     expect(await h.recall("g1")).toBe(true);
-    expect(h.appState.analysis).toBe(h.payload);
-    expect(h.appState.analysisMultiPgn).toBeNull();
+    expect(h.analysisState.analysis).toBe(h.payload);
+    expect(h.analysisState.analysisMultiPgn).toBeNull();
     expect(h.picker.hidden).toBe(true);
   });
 
@@ -183,8 +184,8 @@ describe("Recent analyses study restore", () => {
     expect(await h.recall("g1", null, { sourceSeq: 1 })).toBe(true);
     expect(h.deps.analysisStudy.flush.mock.invocationCallOrder[0]).toBeLessThan(h.deps.api.mock.invocationCallOrder[0]);
     expect(h.input.value).toBe(PGN);
-    expect(h.appState.analysis).toBe(h.payload);
-    expect(h.appState.analysis.moves[3].classification).toBe("blunder");
+    expect(h.analysisState.analysis).toBe(h.payload);
+    expect(h.analysisState.analysis.moves[3].classification).toBe("blunder");
     expect([...h.appState.analysisVarNodes.values()].map(n => n.san)).toContain("d6");
     const exported = h.view.serializeAnalysisPgn(h.input.value);
     for (const tag of ["Event", "Site", "Date", "Round"]) expect(exported).toContain(`[${tag} `);
@@ -196,7 +197,7 @@ describe("Recent analyses study restore", () => {
     expect(await h.recall("g1", null, { sourceSeq: 1 })).toBe(false);
     expect(h.deps.api).not.toHaveBeenCalled();
     expect(h.deps.setStatusError).toHaveBeenCalledWith("offline");
-    expect(h.appState.analysis).toBeUndefined();
+    expect(h.analysisState.analysis).toBeUndefined();
   });
 
   it.each([404, 409])("reports an unavailable saved report (%s) to the batch flow without showing an error", async status => {

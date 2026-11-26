@@ -6,7 +6,7 @@ vi.mock("./train-shell.css", () => ({}));
 vi.mock("./build-entry.js", () => ({ isBuildReadOnly: () => false }));
 
 import { renderSyncChip } from "./train-entry.js";
-import { appState } from "./core/state.js";
+import { buildState } from "./core/state.js";
 import { hooks } from "./core/hooks.js";
 
 function fakeChip() {
@@ -37,7 +37,7 @@ describe("sync chip keyboard access", () => {
     const el = fakeChip();
     const authRequired = vi.fn();
     hooks.authRequired = authRequired;
-    appState.buildSyncState = "blocked";
+    buildState.buildSyncState = "blocked";
     renderSyncChip(el, "blocked");
     for (const key of ["Enter", " "]) {
       const event = { key, preventDefault: vi.fn() };
@@ -46,7 +46,7 @@ describe("sync chip keyboard access", () => {
     }
     el.listeners.keydown({ key: "a", preventDefault: vi.fn() });
     expect(authRequired).toHaveBeenCalledTimes(2);
-    appState.buildSyncState = "saved";
+    buildState.buildSyncState = "saved";
     el.listeners.keydown({ key: "Enter", preventDefault: vi.fn() });
     expect(authRequired).toHaveBeenCalledTimes(2);
   });
