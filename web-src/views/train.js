@@ -27,7 +27,7 @@ function lineTailHtml(line, plies = 2) {
 }
 
 export function createTrainView({
-  appState,
+  trainState,
   boards,
   renderSyncChip,
   setTrainBanner,
@@ -54,15 +54,15 @@ export function createTrainView({
   function renderTrainSync() {
     const el = document.getElementById("train-sync");
     if (!el) return;
-    const quiet = !TRAINING_SYNC_TEXT.includes(appState.trainSyncState);
-    renderSyncChip(el, appState.trainSyncState, "training");
+    const quiet = !TRAINING_SYNC_TEXT.includes(trainState.trainSyncState);
+    renderSyncChip(el, trainState.trainSyncState, "training");
     el.hidden = quiet;
     if (quiet) el.textContent = "";
   }
 
   // One stats line: the run and the misses, first answers only.
   function renderTrainStats() {
-    const s = appState.trainStats || { correct: 0, mistakes: 0, streak: 0 };
+    const s = trainState.trainStats || { correct: 0, mistakes: 0, streak: 0 };
     onStreakRendered(s.streak);
     const parts = [];
     if (s.streak) parts.push(`${s.streak} in a row`);
@@ -111,19 +111,19 @@ export function createTrainView({
     const upnext = document.getElementById("train-upnext");
     if (upnext) upnext.hidden = true;
     paintProgress(prompt.current_index || 0, prompt.total_lines || 1, "Line");
-    const name = (appState.training && appState.training.repertoire_name) || "Repertoire";
-    const color = (appState.training && appState.training.color) || "white";
+    const name = (trainState.training && trainState.training.repertoire_name) || "Repertoire";
+    const color = (trainState.training && trainState.training.color) || "white";
     document.getElementById("train-board-label").textContent = `${name} · you play ${color}`;
   }
 
   // "Up next" preview: the next few cards in the real queue, so a mixed session
-  // hopping between repertoires never surprises. Reads only appState.smart.queue —
+  // hopping between repertoires never surprises. Reads only trainState.smart.queue —
   // no second source of truth, nothing rendered when the queue is missing.
   let paintedQueue = null, paintedIndex = -1, paintedLength = -1;
   function renderUpNext() {
     const host = document.getElementById("train-upnext");
     if (!host) return;
-    const smart = appState.smart;
+    const smart = trainState.smart;
     const queue = smart && smart.queue;
     if (queue && queue === paintedQueue && smart.cardIndex === paintedIndex && queue.length === paintedLength) return;
     paintedQueue = queue;
@@ -176,7 +176,7 @@ export function createTrainView({
     if (kind === "new") kind = null;
     chip.hidden = !kind;
     chip.className = kind ? `kchip k-${kind}` : "kchip";
-    chip.textContent = kind ? appState.smart?.cardKinds[kind]?.label || kind : "";
+    chip.textContent = kind ? trainState.smart?.cardKinds[kind]?.label || kind : "";
   }
 
   // How the card's position arose. One line showing its end; a tap shows it all.

@@ -8,7 +8,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from collections import OrderedDict
 from threading import BoundedSemaphore, RLock
 from typing import List, Optional
@@ -26,10 +26,8 @@ from prepforge_chess.services.repertoire_matching import (
     RepertoireMatchResult,
     match_game_against_repertoires,
 )
-from fsrs import Rating
+from prepforge_chess.storage.ports import RepertoireReader
 
-from prepforge_chess.services.srs import review
-from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 
 LICHESS_USER_PGN_URL = "https://lichess.org/api/games/user/{username}"
@@ -521,7 +519,7 @@ def determine_user_color(white: Optional[str], black: Optional[str], username: s
 
 
 def compare_recent_games(
-    repository: RepertoireRepository,
+    repository: RepertoireReader,
     username: str,
     count: int,
     *,
@@ -567,7 +565,7 @@ def _summarize_fetched(entry, username, core, active_repertoires):
 
 
 def compare_many_identities(
-    repository: RepertoireRepository,
+    repository: RepertoireReader,
     usernames: list,
     count: int,
     *,
@@ -649,102 +647,6 @@ def compare_many_identities(
     # (Lichess returns newest first) after every timestamped game.
     merged.sort(key=lambda pair: pair[0].finished_at or "", reverse=True)
     return merged[:count]
-
-
-# Per-owner list of lichess game ids whose departure already became a training miss,
-# so re-running compare on the same games never double-counts. Capped: 50 games is the
-# compare fetch maximum, so 300 remembered ids is several full pages of history.
-DEPARTURE_INGESTED_KEY = "lichess.departure_misses_ingested"
-_DEPARTURE_INGESTED_CAP = 300
-
-
-def record_departure_misses(
-    repository: RepertoireRepository,
-    summaries: List[GameMatchSummary],
-    *,
-    owner_user_id: Optional[str] = None,
-    verified_usernames: frozenset[str] = frozenset(),
-) -> int:
-    """Close the play→train loop: each game where the USER left their own prep is
-    recorded as a recall miss on the expected repertoire node, so the smart queue
-    schedules exactly the move they forgot (due within minutes; weak if repeated).
-
-    Opponent novelties are NOT misses — there was nothing to recall. Idempotent per
-    game via a per-owner ingested-ids list; marks each summary it recorded through
-    ``training_recorded`` so the UI can say "added to training". Returns the count.
-
-    Only identities verified for this authenticated owner may supply automatic
-    evidence. Callers must obtain verified_usernames server-side, never from the
-    request selection. Missing provenance fails closed. Filter before locking
-    the ledger, since the lock helper can insert its initial row.
-
-    Atomic: the progress write and the ingested-id ledger commit in ONE
-    transaction with the ledger row locked (``lock_user_setting``). A failure
-    mid-batch rolls back everything and a retry applies each game exactly once —
-    the old write-then-ledger order could leave a progress miss committed while
-    its ledger id was lost, so the retried compare deducted the same game again.
-    """
-    if owner_user_id is None:
-        return 0
-    verified = {name.strip().lower() for name in verified_usernames}
-    summaries = [
-        summary for summary in summaries
-        if summary.source_account
-        and summary.source_account.strip().lower() in verified
-        and determine_user_color(summary.white, summary.black, summary.source_account)
-        == Color(summary.user_color)
-    ]
-    if not summaries:
-        return 0
-    recorded = 0
-    with repository.engine.begin() as conn:
-        stored = repository.lock_user_setting(
-            conn, owner_user_id, DEPARTURE_INGESTED_KEY, []
-        )
-        ingested = [str(item) for item in stored] if isinstance(stored, list) else []
-        seen = set(ingested)
-        updates = {}
-        for summary in summaries:
-            if summary.departure_reason != "user_left_preparation":
-                continue
-            if not (summary.lichess_id and summary.repertoire_id and summary.expected_node_id):
-                continue
-            if summary.lichess_id in seen:
-                continue
-            target = (summary.repertoire_id, summary.expected_node_id)
-            if target not in updates:
-                updates[target] = repository.lock_training_progress(
-                    conn,
-                    repertoire_id=summary.repertoire_id,
-                    node_id=summary.expected_node_id,
-                    owner_user_id=owner_user_id,
-                )
-            progress = updates[target]
-            updated = review(progress, Rating.Again)
-            # An in-session miss retries after 10 minutes; a miss from a REAL game should
-            # land in the very next session, so it is due immediately.
-            updated = replace(updated, due_at=updated.last_reviewed_at)
-            updates[target] = updated
-            repository.write_review(conn, owner_user_id=owner_user_id, node_id=summary.expected_node_id,
-                                    rating=Rating.Again, reviewed_at=updated.last_reviewed_at)
-            seen.add(summary.lichess_id)
-            ingested.append(summary.lichess_id)
-            summary.training_recorded = True
-            recorded += 1
-        # The locked ledger serializes this owner's ingest. Repeated misses on
-        # one target need one locked read and one final write, not SQL per game.
-        for (repertoire_id, _), progress in updates.items():
-            repository.write_training_progress(
-                conn, repertoire_id=repertoire_id, progress=progress, owner_user_id=owner_user_id
-            )
-        if recorded:
-            repository.write_user_setting(
-                conn,
-                owner_user_id,
-                DEPARTURE_INGESTED_KEY,
-                ingested[-_DEPARTURE_INGESTED_CAP:],
-            )
-    return recorded
 
 
 def _build_summary(

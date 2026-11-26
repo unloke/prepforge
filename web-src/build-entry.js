@@ -1,5 +1,5 @@
 import { html } from "./html.js";
-import { appState, boards } from "./core/state.js";
+import { appState, buildState, boards } from "./core/state.js";
 import { OUTBOX_TAB_ID, activeViewName, api, currentOwnerId, setStatus, setStatusError } from "./core/api.js";
 import { effectiveStockfishDepth } from "./core/prefs.js";
 import { createEngineProvider } from "./engine/stockfish-provider.js";
@@ -37,7 +37,7 @@ let explorerLoading = null;
 // One explorer client for Build and practice games, imported on first use.
 export function isBuildReadOnly() {
   return !!(
-    appState.sharedToken || (appState.build && appState.build.writable === false)
+    appState.sharedToken || (buildState.build && buildState.build.writable === false)
   );
 }
 
@@ -102,7 +102,7 @@ class ExplorerEvalEngine {
   // Candidate moves on screen for the current node, most-played first.
   _candidates() {
     const rows = document.getElementById("explorer-rows");
-    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
     const fen = (node && node.fen) || null;
     if (!rows || !fen || !sameFenPosition(rows.dataset.fen, fen)) return null;
     const moves = [];
@@ -282,7 +282,7 @@ export function renderBuilderTreeEmptyState() {
 
 export function renderBuilderTree(options) {
   hooks.build?.coverageView?.sync();
-  if (!appState.build) {
+  if (!buildState.build) {
     renderBuilderTreeEmptyState();
     return;
   }
@@ -304,15 +304,15 @@ export function renderBuilderTree(options) {
 // loss on close). The tab id keeps ids unique per tab while still matching the
 // server's 'tmp-' prefix rule.
 export function mintBuildTmpId() {
-  return `tmp-${OUTBOX_TAB_ID}-${++appState.buildTmpCounter}`;
+  return `tmp-${OUTBOX_TAB_ID}-${++buildState.buildTmpCounter}`;
 }
 
 // True when the parent already has at least one enabled child — used to decide a
 // provisional move's display-only `is_mainline` (first move wins). The server
 // recomputes the authoritative value on reconcile.
 export function someEnabledChildOf(parentId) {
-  if (!appState.build) return false;
-  return appState.build.nodes.some((n) => n.parent_id === parentId && n.is_enabled);
+  if (!buildState.build) return false;
+  return buildState.build.nodes.some((n) => n.parent_id === parentId && n.is_enabled);
 }
 
 // Resolve a possibly-stale `tmp-` id to its real id once a flush has reconciled
@@ -320,7 +320,7 @@ export function someEnabledChildOf(parentId) {
 // queueBuildDelete) so they carry their target too; plain ids still work.
 export function resolveBuildId(ref) {
   const id = ref && typeof ref === "object" ? ref.id : ref;
-  return (id && appState.buildIdMap[id]) || id;
+  return (id && buildState.buildIdMap[id]) || id;
 }
 
 // R-02: every queued op records WHICH repertoire it belongs to. A flush may
@@ -331,9 +331,9 @@ export function buildOpMatchesRepertoire(entry, repertoireId) {
 }
 
 export function queueBuildDelete(nodeId) {
-  appState.buildPendingDeletes.push({
+  buildState.buildPendingDeletes.push({
     id: nodeId,
-    repertoire_id: appState.build ? appState.build.repertoire_id : null,
+    repertoire_id: buildState.build ? buildState.build.repertoire_id : null,
   });
 }
 
@@ -342,21 +342,21 @@ export function queueBuildDelete(nodeId) {
 export function queueBuildAdd(node) {
   // A save can acknowledge the parent while local move calculation awaits.
   node.parent_id = resolveBuildId(node.parent_id);
-  appState.build.nodes.push(node);
-  appState.buildNodeById.set(node.id, node);
-  appState.buildPending.push({
+  buildState.build.nodes.push(node);
+  buildState.buildNodeById.set(node.id, node);
+  buildState.buildPending.push({
     tempId: node.id,
     parentRef: node.parent_id,
     uci: node.uci,
     node,
-    repertoire_id: appState.build.repertoire_id,
+    repertoire_id: buildState.build.repertoire_id,
   });
 }
 
 export function hasPendingBuildOpsFor(repertoireId) {
   return (
-    appState.buildPending.some((m) => buildOpMatchesRepertoire(m, repertoireId)) ||
-    appState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repertoireId))
+    buildState.buildPending.some((m) => buildOpMatchesRepertoire(m, repertoireId)) ||
+    buildState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repertoireId))
   );
 }
 
@@ -375,7 +375,7 @@ export function hasPendingBuildOpsFor(repertoireId) {
 // any of those changes abandons the read. A failed read leaves the current tree
 // alone: a stale count beats a half-loaded builder.
 export async function reloadOpenBuildTree() {
-  const build = appState.build;
+  const build = buildState.build;
   const repertoireId = build && build.repertoire_id;
   if (!repertoireId || !appState.signedIn || !hooks.build?.session) return false;
   const revision = build.revision;
@@ -389,11 +389,11 @@ export async function reloadOpenBuildTree() {
       generation === appState.ownerGeneration &&
       // Same tree object AND same revision: a confirmed edit both replaces the
       // object and moves the revision, and the payload predates either.
-      appState.build === build &&
+      buildState.build === build &&
       build.revision === revision &&
       build.repertoire_id === repertoireId;
     if (!unchanged) return false;
-    const selection = appState.buildCurrentNodeId;
+    const selection = buildState.buildCurrentNodeId;
     await hooks.build.session.hydrateBuild(payload, selection);
     // A reload after a role change: the banner and Copy follow the new role.
     hooks.build.updateBuildReadOnlyUi?.(payload);
@@ -406,7 +406,7 @@ export async function reloadOpenBuildTree() {
 // The open repertoire follows edits made on other devices and tabs.
 export function startBuildLive() {
   createBuildLive({
-    api, appState, reload: reloadOpenBuildTree, activeView: activeViewName, notify: setStatus, tabId: OUTBOX_TAB_ID,
+    api, appState, buildState, reload: reloadOpenBuildTree, activeView: activeViewName, notify: setStatus, tabId: OUTBOX_TAB_ID,
     hydrate: (payload, selection) => hooks.build.session.hydrateBuild(payload, selection),
   }).start();
 }
@@ -418,7 +418,7 @@ export function buildProvisionalNode(parent, uci, after) {
   const parts = String(parent.fen || "").split(" ");
   const moveSide = parts[1] === "b" ? "black" : "white";
   const moveNumber = Number(parts[5]) || parent.move_number || 1;
-  const repColor = appState.build && appState.build.color === "black" ? "black" : "white";
+  const repColor = buildState.build && buildState.build.color === "black" ? "black" : "white";
   return {
     id: mintBuildTmpId(),
     parent_id: parent.id,
@@ -455,23 +455,23 @@ export function reapplyPendingBuildNodes(pending, idMap) {
   for (const entry of pending) {
     const node = entry.node;
     // A restored queue may already have materialised this node.
-    if (!node || appState.buildNodeById.has(node.id)) continue;
+    if (!node || buildState.buildNodeById.has(node.id)) continue;
     const realParent = idMap[entry.parentRef] || entry.parentRef;
     entry.parentRef = realParent;
     node.parent_id = realParent;
-    const parent = appState.buildNodeById.get(realParent);
+    const parent = buildState.buildNodeById.get(realParent);
     if (parent) node.depth = (parent.depth || 0) + 1;
     // Dedupe: the server may have already materialised this child (e.g. the same
     // line existed). If so, adopt the real id and drop the provisional.
-    const dup = appState.build.nodes.find(
+    const dup = buildState.build.nodes.find(
       (n) => n.parent_id === realParent && n.uci === node.uci && n.id !== node.id
     );
     if (dup) {
-      appState.buildIdMap[node.id] = dup.id;
+      buildState.buildIdMap[node.id] = dup.id;
       continue;
     }
-    appState.build.nodes.push(node);
-    appState.buildNodeById.set(node.id, node);
+    buildState.build.nodes.push(node);
+    buildState.buildNodeById.set(node.id, node);
   }
 }
 
@@ -482,15 +482,15 @@ export function pruneLocalBuildSubtree(rootId) {
   let grew = true;
   while (grew) {
     grew = false;
-    for (const n of appState.build.nodes) {
+    for (const n of buildState.build.nodes) {
       if (!doomed.has(n.id) && doomed.has(n.parent_id)) {
         doomed.add(n.id);
         grew = true;
       }
     }
   }
-  appState.build.nodes = appState.build.nodes.filter((n) => !doomed.has(n.id));
-  for (const id of doomed) appState.buildNodeById.delete(id);
+  buildState.build.nodes = buildState.build.nodes.filter((n) => !doomed.has(n.id));
+  for (const id of doomed) buildState.buildNodeById.delete(id);
   return doomed;
 }
 
@@ -501,15 +501,15 @@ export function reapplyPendingBuildDeletes() {
   // Undo-window prunes count too: the server still has those subtrees, so a
   // hydrate resurrects them just like queued-but-unflushed deletes.
   const ids = [
-    ...appState.buildPendingDeletes.filter((entry) =>
-      buildOpMatchesRepertoire(entry, appState.build.repertoire_id),
+    ...buildState.buildPendingDeletes.filter((entry) =>
+      buildOpMatchesRepertoire(entry, buildState.build.repertoire_id),
     ),
-    ...appState.buildUndoDeletes,
+    ...buildState.buildUndoDeletes,
   ];
-  if (!appState.build || !ids.length) return;
+  if (!buildState.build || !ids.length) return;
   for (const id of ids) {
     const resolved = resolveBuildId(id);
-    const node = appState.buildNodeById.get(resolved);
+    const node = buildState.buildNodeById.get(resolved);
     if (!node) continue;
     pruneLocalBuildSubtree(resolved);
   }
@@ -519,12 +519,12 @@ export function reapplyPendingBuildDeletes() {
 // open repertoire through the ordinary local-first delete below (its Undo card
 // puts it back). Moves already gone, or another repertoire's, are skipped.
 export async function undoLastBuildAdd() {
-  if (!appState.build || isBuildReadOnly()) return;
-  const added = appState.buildAddedIds;
+  if (!buildState.build || isBuildReadOnly()) return;
+  const added = buildState.buildAddedIds;
   while (added.length) {
     const entry = added.pop();
     const id = resolveBuildId(entry.id);
-    if (entry.repertoireId !== appState.build.repertoire_id || !appState.buildNodeById.has(id)) continue;
+    if (entry.repertoireId !== buildState.build.repertoire_id || !buildState.buildNodeById.has(id)) continue;
     await deleteBuildNodeLocal(id, { isUndo: true });
     return;
   }
@@ -537,34 +537,34 @@ export async function undoLastBuildAdd() {
 // subtree root for the debounced delete flush. A node that never reached the
 // server (its add is still pending) is cancelled outright — no server op at all.
 export async function deleteBuildNodeLocal(nodeId, { isUndo = false } = {}) {
-  const node = appState.buildNodeById.get(nodeId);
-  if (!node || !appState.build) return;
+  const node = buildState.buildNodeById.get(nodeId);
+  if (!node || !buildState.build) return;
   if (!node.parent_id) {
     setStatus("Can't delete the starting position");
     return;
   }
-  const repId = appState.build.repertoire_id;
+  const repId = buildState.build.repertoire_id;
   const parentId = node.parent_id;
-  const prevSelection = appState.buildCurrentNodeId;
-  const prevBranchChoice = appState.buildBranchChoiceId;
-  const nodesBefore = appState.build.nodes;
+  const prevSelection = buildState.buildCurrentNodeId;
+  const prevBranchChoice = buildState.buildBranchChoiceId;
+  const nodesBefore = buildState.build.nodes;
   const doomed = pruneLocalBuildSubtree(nodeId);
   const removedNodes = nodesBefore.filter((n) => doomed.has(n.id));
   // Park pending adds inside the subtree with the undo entry. If the root itself
   // was one of them the server never saw it, so no delete needs to flush for it;
   // descendants of a real root are deleted server-side by the subtree delete anyway.
-  const rootWasLocalOnly = appState.buildPending.some((m) => m.tempId === nodeId);
-  const parkedAdds = appState.buildPending.filter((m) => doomed.has(m.tempId));
-  appState.buildPending = appState.buildPending.filter((m) => !doomed.has(m.tempId));
-  if (appState.buildBranchChoiceId && doomed.has(appState.buildBranchChoiceId)) {
-    appState.buildBranchChoiceId = null;
+  const rootWasLocalOnly = buildState.buildPending.some((m) => m.tempId === nodeId);
+  const parkedAdds = buildState.buildPending.filter((m) => doomed.has(m.tempId));
+  buildState.buildPending = buildState.buildPending.filter((m) => !doomed.has(m.tempId));
+  if (buildState.buildBranchChoiceId && doomed.has(buildState.buildBranchChoiceId)) {
+    buildState.buildBranchChoiceId = null;
   }
   // Publish the tombstone and rebuild before selecting: selection only moves
   // the existing DOM mark, and its board lookup can yield to a save response.
-  appState.buildUndoDeletes.add(nodeId);
+  buildState.buildUndoDeletes.add(nodeId);
   renderBuilderTree();
   hooks.build.syncViewHeads();
-  if (doomed.has(appState.buildCurrentNodeId)) {
+  if (doomed.has(buildState.buildCurrentNodeId)) {
     await hooks.build.selectBuildNode(parentId);
   }
   // The delete doesn't queue for the server until the undo window closes; until
@@ -579,41 +579,41 @@ export async function deleteBuildNodeLocal(nodeId, { isUndo = false } = {}) {
     title,
     message: extra,
     onCommit: () => {
-      appState.buildUndoCommitByMove.delete(undoMoveKey);
-      appState.buildUndoDeletes.delete(nodeId);
-      if (!appState.build || appState.build.repertoire_id !== repId) return;
+      buildState.buildUndoCommitByMove.delete(undoMoveKey);
+      buildState.buildUndoDeletes.delete(nodeId);
+      if (!buildState.build || buildState.build.repertoire_id !== repId) return;
       if (!rootWasLocalOnly) queueBuildDelete(nodeId);
-      if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+      if (buildState.buildPending.length || buildState.buildPendingDeletes.length) {
         hooks.build.setBuildSync("dirty");
         hooks.build.scheduleBuildFlush();
       }
     },
     onUndo: async () => {
-      appState.buildUndoCommitByMove.delete(undoMoveKey);
-      appState.buildUndoDeletes.delete(nodeId);
-      if (!appState.build || appState.build.repertoire_id !== repId) return;
+      buildState.buildUndoCommitByMove.delete(undoMoveKey);
+      buildState.buildUndoDeletes.delete(nodeId);
+      if (!buildState.build || buildState.build.repertoire_id !== repId) return;
       for (const n of removedNodes) {
-        if (!appState.buildNodeById.has(n.id)) {
-          appState.build.nodes.push(n);
-          appState.buildNodeById.set(n.id, n);
+        if (!buildState.buildNodeById.has(n.id)) {
+          buildState.build.nodes.push(n);
+          buildState.buildNodeById.set(n.id, n);
         }
       }
       for (const m of parkedAdds) {
         // The parent may have reconciled tmp -> real while the add was parked.
         m.parentRef = resolveBuildId(m.parentRef);
         m.node.parent_id = m.parentRef;
-        appState.buildPending.push(m);
+        buildState.buildPending.push(m);
       }
       if (
-        !appState.buildBranchChoiceId &&
+        !buildState.buildBranchChoiceId &&
         prevBranchChoice &&
-        appState.buildNodeById.has(prevBranchChoice)
+        buildState.buildNodeById.has(prevBranchChoice)
       ) {
-        appState.buildBranchChoiceId = prevBranchChoice;
+        buildState.buildBranchChoiceId = prevBranchChoice;
       }
       renderBuilderTree();
       hooks.build.syncViewHeads();
-      if (prevSelection && appState.buildNodeById.has(prevSelection)) {
+      if (prevSelection && buildState.buildNodeById.has(prevSelection)) {
         await hooks.build.selectBuildNode(prevSelection);
       }
       if (parkedAdds.length) {
@@ -622,5 +622,5 @@ export async function deleteBuildNodeLocal(nodeId, { isUndo = false } = {}) {
       }
     },
   });
-  appState.buildUndoCommitByMove.set(undoMoveKey, undoCommit);
+  buildState.buildUndoCommitByMove.set(undoMoveKey, undoCommit);
 }

@@ -4,9 +4,9 @@ import { sideToMove } from "./train-play.js";
 
 // A player's move lands synchronously. Only the opponent's reply is async, so
 // a second gesture cannot race a half-applied move or mutate a replaced game.
-export function createPlayMoveHandler({ appState, boards, advanceNode, recordPly, cursorSnapshot, endGame, opponentReply }) {
+export function createPlayMoveHandler({ trainState, boards, advanceNode, recordPly, cursorSnapshot, endGame, opponentReply }) {
   return async function submitPlayMove(playedUci) {
-    const play = appState.play;
+    const play = trainState.play;
     if (!play?.active || !playedUci) return;
     const fen = play.fen;
     if (sideToMove(fen) !== play.userColor) {

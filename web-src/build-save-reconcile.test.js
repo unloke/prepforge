@@ -4,7 +4,8 @@ import { indexBuildNodes } from "./build-tree.js";
 import { createSyncController } from "./controllers/sync.js";
 import { loadDurableOutbox } from "./sync-queue.js";
 import { appSource } from "./test-app-source.js";
-import { appState as sharedState } from "./core/state.js";
+import { appState as sharedState, buildState, trainState } from "./core/state.js";
+import { resetState } from "./state/state-view.fixture.js";
 import { postJson, setStatus, setStatusError } from "./core/api.js";
 import { setBuildSync } from "./train-entry.js";
 import { provideApp } from "./core/app-context.js";
@@ -31,9 +32,9 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function harness() {
   const root = node("root", null, 0), saved = node("saved", "root", 1);
   const pending = node("tmp-next", "saved", 2);
-  // The sync controller reads the shared appState, so the harness fills that one.
-  for (const key of Object.keys(sharedState)) delete sharedState[key];
-  const appState = Object.assign(sharedState, {
+  // The sync controller reads the shared state, so the harness fills that, each
+  // field on the slice that owns it.
+  const appState = resetState({
     build: { repertoire_id: "r", nodes: [root, saved, pending] },
     buildNodeById: new Map([root, saved, pending].map(n => [n.id, n])),
     buildCurrentNodeId: pending.id, buildIdMap: {},
@@ -42,11 +43,11 @@ function harness() {
   });
   const positions = [];
   const deps = {
-    appState, coverageView: null, indexBuildNodes, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
+    appState: sharedState, buildState, trainState, coverageView: null, indexBuildNodes, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
     boards: { build: { setPosition: vi.fn(p => positions.push(p.fen)), setAnnotations: vi.fn() } },
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
-    resolveBuildId: ref => { const id = ref && typeof ref === "object" ? ref.id : ref; return appState.buildIdMap[id] || id; },
-    hasPendingBuildOpsFor: () => appState.buildPending.length > 0,
+    resolveBuildId: ref => { const id = ref && typeof ref === "object" ? ref.id : ref; return buildState.buildIdMap[id] || id; },
+    hasPendingBuildOpsFor: () => buildState.buildPending.length > 0,
     setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(), renderBuildSync: vi.fn(), syncWorkspaceUrl: vi.fn(),
     boardInfo: vi.fn(async () => ({ legal_moves: [] })),
     document: { getElementById: () => ({}) }, buildView: { updateBuildTreeSelection: vi.fn() },

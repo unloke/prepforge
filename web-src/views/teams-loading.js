@@ -1,6 +1,6 @@
 import { html } from "../html.js";
 import { teamRowsSkeleton, memberRowsSkeleton } from "./team-skeleton.js";
-import { appState } from "../core/state.js";
+import { teamsState } from "../core/state.js";
 import { PHONE_QUERY } from "../phone-layout.js";
 import teamsStylesHref from "./teams.css?url";
 
@@ -22,7 +22,7 @@ void ensureStyles().catch(() => {});
 // Paint the entire workspace before either lazy module is available.
 function paintTeamsLoading() {
   const list = document.getElementById("teams-list");
-  list.innerHTML = teamRowsSkeleton(appState.teams.length || 1);
+  list.innerHTML = teamRowsSkeleton(teamsState.teams.length || 1);
   list.setAttribute("aria-busy", "true");
   document.querySelector("#view-teams .team-empty").hidden = true;
   document.querySelector("#view-teams .incoming").hidden = false;
@@ -30,7 +30,7 @@ function paintTeamsLoading() {
   if (!incoming.children.length) incoming.innerHTML = html`<div class="empty-state" aria-hidden="true"><span class="skeleton-text">Incoming repertoire</span></div>`;
   const detail = document.getElementById("team-detail-card");
   if (!globalThis.matchMedia(PHONE_QUERY).matches && detail.hidden) {
-    const known = appState.teams.find((team) => team.id === appState.selectedTeamId) || appState.teams[0];
+    const known = teamsState.teams.find((team) => team.id === teamsState.selectedTeamId) || teamsState.teams[0];
     detail.hidden = false;
     detail.inert = true;
     detail.setAttribute("aria-busy", "true");
@@ -64,7 +64,7 @@ export function loadTeamsWithShell(load) {
 }
 
 export function clearTeamDetail(render) {
-  appState.selectedTeamId = null;
+  teamsState.selectedTeamId = null;
   const card = document.getElementById("team-detail-card");
   if (card) { card.hidden = true; card.inert = false; }
   render?.();

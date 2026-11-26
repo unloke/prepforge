@@ -3,11 +3,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createTrainView } from "./train.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 function view(appState, streaks = []) {
   const line = { textContent: "" };
   globalThis.document = { getElementById: (id) => (id === "train-stats-line" ? line : null), querySelector: () => null, querySelectorAll: () => [] };
-  const train = createTrainView({ appState, boards: {}, renderSyncChip: () => {}, setTrainBanner: () => {}, updateTrainTurnBadge: () => {}, onStreakRendered: (s) => streaks.push(s) });
+  const train = createTrainView({ ...asSlices(appState), boards: {}, renderSyncChip: () => {}, setTrainBanner: () => {}, updateTrainTurnBadge: () => {}, onStreakRendered: (s) => streaks.push(s) });
   return { train, line };
 }
 

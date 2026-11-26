@@ -2,7 +2,7 @@ import { html } from "./html.js";
 import { moveTokenHtml, plyOfFen } from "./move-text.js";
 // Analyze's repertoire cache and departure actions load with the view.
 export function createBookActions({
-  bookState, appState, currentOwnerId, api, loadCoach, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire, analysisSelfSide,
+  bookState, appState, analysisState, currentOwnerId, api, loadCoach, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire, analysisSelfSide,
 }) {
 async function ensureBookLoaded() {
   if (bookState.loaded) return;
@@ -113,14 +113,14 @@ async function updateBookline() {
   if (!el) return;
   if (!appState.signedIn) return hideBookline();
   const { buildBookline } = await loadCoach();
-  const nodeId = appState.analysisCurrentNodeId || "root";
+  const nodeId = analysisState.analysisCurrentNodeId || "root";
   await ensureBookLoaded();
   // Re-read after the await — the user may have navigated while the trees loaded.
-  if ((appState.analysisCurrentNodeId || "root") !== nodeId) return;
+  if ((analysisState.analysisCurrentNodeId || "root") !== nodeId) return;
   const side = analysisSelfSide();
   const reps = side ? bookState.reps.filter((rep) => rep.color === side) : bookState.reps;
   if (!reps.length) return hideBookline();
-  const tree = appState.analysisTree;
+  const tree = analysisState.analysisTree;
   const node = tree && tree.byId.get(nodeId);
   if (!node || !node.parent) return hideBookline(); // root: nothing played yet
   const path = analysisNodePath(node);
@@ -174,11 +174,11 @@ async function updateBookline() {
       rememberHandoff({
         source: "analyze",
         reason: "practice-missed-move",
-        gameId: appState.analysis?.game_id || null,
+        gameId: analysisState.analysis?.game_id || null,
         lineUcis: [...prefix, prescribed.uci],
         ply: path.length,
         anchorFen: node.fenBefore,
-        rootFen: appState.analysis?.moves?.[0]?.fen_before || null,
+        rootFen: analysisState.analysis?.moves?.[0]?.fen_before || null,
         side: rep.color,
         repertoireId: rep.id,
       });
@@ -214,11 +214,11 @@ async function updateBookline() {
       rememberHandoff({
         source: "analyze",
         reason: "extend-book",
-        gameId: appState.analysis?.game_id || null,
+        gameId: analysisState.analysis?.game_id || null,
         lineUcis: [...prefix, node.uci, ...(reply ? [reply.uci] : [])],
         ply: path.length,
         anchorFen: node.fenBefore,
-        rootFen: appState.analysis?.moves?.[0]?.fen_before || null,
+        rootFen: analysisState.analysis?.moves?.[0]?.fen_before || null,
         side: rep.color,
         repertoireId: rep.id,
       });

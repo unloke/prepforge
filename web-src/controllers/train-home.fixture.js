@@ -7,7 +7,7 @@
 import { vi } from "vitest";
 import { createTrainHome } from "./train-home.js";
 import * as session from "./train-session.js";
-import { appState } from "../core/state.js";
+import { resetState, stateView as appState } from "../state/state-view.fixture.js";
 import { api, localDateString } from "../core/api.js";
 import { provideApp } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
@@ -81,8 +81,7 @@ export function setup(state = {}) {
       clear: () => memory.clear(),
     });
   }
-  for (const key of Object.keys(appState)) delete appState[key];
-  Object.assign(appState, { signedIn: true, accountUserId: "u1", currentView: "dashboard", ownerGeneration: 7, repertoireListGeneration: 7, trainHomeReady: false, repertoireList: [
+  resetState({ signedIn: true, accountUserId: "u1", currentView: "dashboard", ownerGeneration: 7, repertoireListGeneration: 7, trainHomeReady: false, repertoireList: [
     { id: "r1", name: "Italian", color: "white", is_active: true, health: { trainable: 4 } },
   ], sharedRepertoireList: [{ id: "s1", name: "Coach QGD", color: "black" }], ...state });
   vi.clearAllMocks();

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import func, select
 from sqlalchemy.engine import Connection
 from prepforge_chess.storage import sa_tables as t
@@ -49,6 +49,25 @@ class ReceiptRepository(Repository):
             ).returning(t.train_attempt_receipts.c.attempt_uuid)
         )
         return result.first() is not None
+
+    def attempt_receipts(
+        self, conn: Connection, session_id: str, attempt_uuids: List[Optional[str]]
+    ) -> Dict[Optional[str], Tuple[str, int]]:
+        """``attempt_uuid -> (node_id, correct)`` for the attempts already claimed."""
+        r = t.train_attempt_receipts
+        return {row.attempt_uuid: (row.node_id, row.correct) for row in conn.execute(
+            select(r.c.attempt_uuid, r.c.node_id, r.c.correct)
+            .where(r.c.session_id == session_id, r.c.attempt_uuid.in_(attempt_uuids))
+        )}
+
+    def claimed_attempt(self, conn: Connection, session_id: str, attempt_uuid: str) -> Any:
+        """``(node_id, correct)`` of an attempt another writer claimed first."""
+        r = t.train_attempt_receipts
+        return conn.execute(
+            select(r.c.node_id, r.c.correct).where(
+                r.c.session_id == session_id, r.c.attempt_uuid == attempt_uuid,
+            )
+        ).one()
 
     def count_receipts_before(self, cutoff: datetime) -> int:
         with self.engine.connect() as conn:

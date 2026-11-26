@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { sliceArgs } from "./state/as-slices.fixture.js";
 
 import {
   beginLuckyDiscovery,
@@ -21,14 +22,14 @@ function luckyEntry(appState, refreshAuthStatus, openAuthModal) {
   const end = source.indexOf("\nexport async function takebackPlaySession", start);
   const body = source.slice(start, end);
   return new Function(
-    "appState",
+    "appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState",
     "refreshAuthStatus",
     "openAuthModal",
     "beginLuckyDiscovery",
     "finishLuckyDiscovery",
     "luckyDiscoveryCurrent",
     `${body}; return { onFeelingLucky };`,
-  )(appState, refreshAuthStatus, openAuthModal, beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent);
+  )(...sliceArgs(appState), refreshAuthStatus, openAuthModal, beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent);
 }
 
 describe("Random discovery auth ownership", () => {

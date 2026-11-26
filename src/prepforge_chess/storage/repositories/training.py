@@ -11,7 +11,7 @@ from prepforge_chess.core.sr_config import SR_CONFIG, STATE_RELEARNING, STATE_RE
 from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.common import _insert, _json_dump, _json_load, _upsert
 from prepforge_chess.storage.repositories.settings import SettingsRepository
-from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY
+from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
 
 
 # Collected once: the row's shape does not depend on the caller's lookup.
@@ -430,6 +430,68 @@ class TrainingRepository(SettingsRepository):
         for row in rows:
             grouped.setdefault(row["repertoire_id"], []).append(self._training_progress_from_row(row))
         return grouped
+
+    def recent_reviews_on_nodes(
+        self, conn: Connection, node_ids: List[str], *, since: datetime,
+        repertoire_id: Optional[str] = None,
+    ) -> List[Any]:
+        """``(owner_user_id, last_reviewed_at)`` of progress on these nodes
+        reviewed since ``since``: what a node delete would cascade away."""
+        tp = t.training_progress
+        where = [tp.c.node_id.in_(node_ids), tp.c.last_reviewed_at >= since]
+        if repertoire_id is not None:
+            where = [tp.c.repertoire_id == repertoire_id, *where]
+        return conn.execute(select(tp.c.owner_user_id, tp.c.last_reviewed_at).where(*where)).all()
+
+    def release_session_cursors(self, conn: Connection, node_ids: List[str]) -> None:
+        """Clear live sessions' ``current_node_id`` on these nodes: the reference
+        does not cascade, so it would block deleting them."""
+        conn.execute(
+            update(t.training_sessions)
+            .where(t.training_sessions.c.current_node_id.in_(node_ids))
+            .values(current_node_id=None)
+        )
+
+    def archive_reviews(self, conn: Connection, reviewed, week_ago: datetime) -> None:
+        """Keep this week's review timestamps of rows about to be deleted, so the
+        dashboard's 7-day review count does not drop. ``reviewed`` rows are
+        ``(owner_user_id, last_reviewed_at)``."""
+        by_owner: Dict[str, List[str]] = {}
+        for owner, stamp in reviewed:
+            if owner:
+                by_owner.setdefault(owner, []).append(stamp.isoformat())
+        for owner, stamps in sorted(by_owner.items()):
+            cur = self.lock_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, [])
+            self.write_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, prune_review_archive(
+                (cur if isinstance(cur, list) else []) + stamps, week_ago.isoformat()
+            ))
+
+    def archive_repertoire_training(self, conn: Connection, repertoire_id: str, week_ago: datetime) -> None:
+        """The dashboard counts sessions and this week's reviews through the
+        repertoire's rows, so deleting the repertoire must move those counts into
+        each trainer's archives first (same as deleting nodes)."""
+        tp = t.training_progress
+        reviewed = conn.execute(
+            select(tp.c.owner_user_id, tp.c.last_reviewed_at).where(
+                tp.c.repertoire_id == repertoire_id,
+                tp.c.last_reviewed_at.is_not(None),
+                tp.c.last_reviewed_at >= week_ago,
+            )
+        ).all()
+        self.archive_reviews(conn, reviewed, week_ago)
+        ts = t.training_sessions
+        sessions_by_owner = conn.execute(
+            select(ts.c.owner_user_id, func.count())
+            .where(ts.c.repertoire_id == repertoire_id)
+            .group_by(ts.c.owner_user_id)
+            .order_by(ts.c.owner_user_id)
+        ).all()
+        for owner, sessions in sessions_by_owner:
+            cur = self.lock_user_setting(conn, owner, PLAYED_SESSIONS_KEY, 0)
+            self.write_user_setting(
+                conn, owner, PLAYED_SESSIONS_KEY,
+                (cur if isinstance(cur, int) and cur >= 0 else 0) + sessions,
+            )
 
     def _training_session_from_row(self, row: Mapping[str, Any]) -> TrainingSession:
         created_at = row["created_at"]

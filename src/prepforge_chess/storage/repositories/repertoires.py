@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager, nullcontext
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.engine import Connection
@@ -13,7 +13,6 @@ from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.common import _bool_to_int, _insert, _int_to_bool, _json_dump, _json_load, _upsert
 from prepforge_chess.storage.repositories.evaluations import EvaluationRepository
 from prepforge_chess.storage.repositories.training import TrainingRepository
-from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
 
 
 # view < copy < edit < owner: each role can do everything the one before it can.
@@ -93,7 +92,8 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
 
     @contextmanager
     def repertoire_edit(self, repertoire_id: str):
-        """Lock before reading; commit the tree, op and receipt together."""
+        """Lock before reading; commit the tree, op and receipt together.
+        Yields the locked connection for writes that join the same commit."""
         with self.engine.begin() as conn:
             if conn.dialect.name == "sqlite":
                 # Claim SQLite's writer lock and read metadata in one statement.
@@ -109,12 +109,13 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             self._edit_connection = conn
             self._edit_repertoire_row = row
             try:
-                yield
+                yield conn
             finally:
                 self._edit_connection = None
                 self._edit_repertoire_row = None
 
-    def _edit_write(self):
+    def edit_transaction(self):
+        """The open ``repertoire_edit`` connection, else a fresh transaction."""
         return (nullcontext(self._edit_connection) if self._edit_connection is not None
                 else self.engine.begin())
 
@@ -122,7 +123,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         """Fence a request's writes at commit, not just at its earlier HTTP read."""
         self._expected_revisions[repertoire_id] = revision
 
-    def _bump_revision(
+    def bump_revision(
         self, conn: Connection, repertoire_id: str, *,
         nodes: Iterable[str] = (), removed: Iterable[str] = (),
         meta: bool = False, reset: bool = False, before: Optional[dict] = None,
@@ -284,13 +285,13 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 conn, repertoire.root_node.walk(), pos_cache
             )
             self._upsert_opening_node_rows(conn, rows)
-            self._bump_revision(conn, repertoire.id, reset=True)
+            self.bump_revision(conn, repertoire.id, reset=True)
 
     def update_opening_nodes(self, repertoire_id: str, changes: List[Dict[str, Any]]) -> None:
         """Update only the supplied fields on existing nodes in one transaction."""
         if not changes:
             return
-        with self._edit_write() as conn:
+        with self.edit_transaction() as conn:
             before = self._node_rows(conn, repertoire_id, [change["id"] for change in changes])
             groups: Dict[str, Dict[str, Any]] = {}
             for change in changes:
@@ -305,10 +306,10 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     .where(t.opening_nodes.c.repertoire_id == repertoire_id)
                     .values(**group["values"])
                 )
-            self._bump_revision(conn, repertoire_id, nodes=[change["id"] for change in changes], before=before)
+            self.bump_revision(conn, repertoire_id, nodes=[change["id"] for change in changes], before=before)
 
     def set_node_annotations(self, repertoire_id: str, node_id: str, arrows: List[str], circles: List[str]) -> None:
-        with self._edit_write() as conn:
+        with self.edit_transaction() as conn:
             before = self._node_rows(conn, repertoire_id, [node_id])
             changed = conn.execute(update(t.opening_nodes).where(
                 t.opening_nodes.c.id == node_id,
@@ -319,16 +320,16 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             ))
             if changed.rowcount != 1:
                 raise NodeGone(node_id)
-            self._bump_revision(conn, repertoire_id, nodes=[node_id], before=before)
+            self.bump_revision(conn, repertoire_id, nodes=[node_id], before=before)
 
     def save_changed_nodes(self, repertoire_id: str, nodes: List[OpeningNode], *, receipt: Optional[tuple] = None) -> None:
         """Persist changed or new nodes without walking the rest of the tree."""
         if not nodes:
             if receipt is not None:
-                with self._edit_write() as conn:
+                with self.edit_transaction() as conn:
                     self.write_user_setting(conn, *receipt)
             return
-        with self._edit_write() as conn:
+        with self.edit_transaction() as conn:
             before = self._node_rows(conn, repertoire_id, [node.id for node in nodes])
             for node in nodes:
                 if node.repertoire_id != repertoire_id:
@@ -337,7 +338,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             rows = self._build_opening_node_rows(conn, nodes, pos_cache)
             self._upsert_opening_node_rows(conn, rows)
             after_rows = {row["id"]: row for row in rows}
-            self._bump_revision(
+            self.bump_revision(
                 conn,
                 repertoire_id,
                 nodes=[node.id for node in nodes],
@@ -352,7 +353,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             return
         if fields.keys() - {"name", "is_active"}:
             raise ValueError("unsupported repertoire fields")
-        with self._edit_write() as conn:
+        with self.edit_transaction() as conn:
             row = conn.execute(select(t.repertoires).where(t.repertoires.c.id == repertoire_id)).mappings().one()
             before = {key: row[key] for key in fields}
             conn.execute(
@@ -360,7 +361,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 .where(t.repertoires.c.id == repertoire_id)
                 .values(**fields, updated_at=datetime.now(timezone.utc))
             )
-            self._bump_revision(conn, repertoire_id, meta=True, metadata_before=before)
+            self.bump_revision(conn, repertoire_id, meta=True, metadata_before=before)
 
     def _repertoire_from_rows(
         self,
@@ -842,89 +843,35 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 .values(owner_user_id=owner_user_id)
             )
 
-    def delete_repertoire(self, repertoire_id: str) -> None:
-        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-        with self.engine.begin() as conn:
-            # The dashboard counts sessions and this week's reviews through the
-            # repertoire's rows, so deleting the repertoire must move those
-            # counts into each trainer's archives first (same as deleting nodes).
-            tp = t.training_progress
-            reviewed = conn.execute(
-                select(tp.c.owner_user_id, tp.c.last_reviewed_at).where(
-                    tp.c.repertoire_id == repertoire_id,
-                    tp.c.last_reviewed_at.is_not(None),
-                    tp.c.last_reviewed_at >= week_ago,
-                )
-            ).all()
-            self._archive_reviews(conn, reviewed, week_ago)
-            ts = t.training_sessions
-            sessions_by_owner = conn.execute(
-                select(ts.c.owner_user_id, func.count())
-                .where(ts.c.repertoire_id == repertoire_id)
-                .group_by(ts.c.owner_user_id)
-                .order_by(ts.c.owner_user_id)
-            ).all()
-            for owner, sessions in sessions_by_owner:
-                cur = self.lock_user_setting(conn, owner, PLAYED_SESSIONS_KEY, 0)
-                self.write_user_setting(
-                    conn, owner, PLAYED_SESSIONS_KEY,
-                    (cur if isinstance(cur, int) and cur >= 0 else 0) + sessions,
-                )
-            # Activity snapshots in other repertoires may still use shared evaluations.
-            conn.execute(delete(t.repertoires).where(t.repertoires.c.id == repertoire_id))
+    def remove_repertoire(self, conn: Connection, repertoire_id: str) -> None:
+        """Delete the repertoire row; its tree, progress and sessions cascade.
+        Activity snapshots in other repertoires may still use shared evaluations.
+        Callers archive what the dashboard counts first
+        (``services.workflows.delete_repertoire_and_archive_training``)."""
+        conn.execute(delete(t.repertoires).where(t.repertoires.c.id == repertoire_id))
 
-    def _archive_reviews(self, conn: Connection, reviewed, week_ago: datetime) -> None:
-        """Keep this week's review timestamps of rows about to be deleted, so the
-        dashboard's 7-day review count does not drop. ``reviewed`` rows are
-        ``(owner_user_id, last_reviewed_at)``."""
-        by_owner: Dict[str, List[str]] = {}
-        for owner, stamp in reviewed:
-            if owner:
-                by_owner.setdefault(owner, []).append(stamp.isoformat())
-        for owner, stamps in sorted(by_owner.items()):
-            cur = self.lock_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, [])
-            self.write_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, prune_review_archive(
-                (cur if isinstance(cur, list) else []) + stamps, week_ago.isoformat()
-            ))
+    def remove_opening_nodes(self, conn: Connection, repertoire_id: str, node_ids: List[str]) -> None:
+        """Delete nodes (their subtrees and progress cascade) and log the op.
+        References that don't cascade must be released first, or the delete
+        trips a FOREIGN KEY constraint
+        (``services.workflows.delete_repertoire_subtree_and_archive_training``)."""
+        before = self._node_rows(conn, repertoire_id, node_ids)
+        conn.execute(
+            delete(t.opening_nodes).where(
+                t.opening_nodes.c.repertoire_id == repertoire_id,
+                t.opening_nodes.c.id.in_(node_ids),
+            )
+        )
+        self.bump_revision(conn, repertoire_id, removed=node_ids, before=before)
 
-    def delete_opening_nodes(self, repertoire_id: str, node_ids: List[str], *, receipt: Optional[tuple] = None) -> None:
-        if not node_ids:
-            if receipt is not None:
-                with self._edit_write() as conn:
-                    self.write_user_setting(conn, *receipt)
-            return
-        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-        with self._edit_write() as conn:
-            before = self._node_rows(conn, repertoire_id, node_ids)
-            # Progress rows cascade away with their nodes; keep the review
-            # timestamps of this week so the dashboard's review count stays put.
-            tp = t.training_progress
-            reviewed = conn.execute(
-                select(tp.c.owner_user_id, tp.c.last_reviewed_at).where(
-                    tp.c.repertoire_id == repertoire_id,
-                    tp.c.node_id.in_(node_ids),
-                    tp.c.last_reviewed_at.is_not(None),
-                    tp.c.last_reviewed_at >= week_ago,
-                )
-            ).all()
-            # Clear references that don't cascade, otherwise the node delete trips
-            # a FOREIGN KEY constraint (e.g. a live training session still points
-            # at one of these nodes via current_node_id).
-            conn.execute(
-                update(t.training_sessions)
-                .where(t.training_sessions.c.current_node_id.in_(node_ids))
-                .values(current_node_id=None)
-            )
-            conn.execute(
-                delete(t.opening_nodes).where(
-                    t.opening_nodes.c.repertoire_id == repertoire_id,
-                    t.opening_nodes.c.id.in_(node_ids),
-                )
-            )
-            self._bump_revision(conn, repertoire_id, removed=node_ids, before=before)
-            if receipt is not None:
-                self.write_user_setting(conn, *receipt)
-            self._archive_reviews(conn, reviewed, week_ago)
+    def node_repertoire_ids(
+        self, conn: Connection, repertoire_ids: Iterable[str], node_ids: Iterable[Optional[str]]
+    ) -> Dict[str, str]:
+        """Which of ``repertoire_ids`` each live node belongs to (node id -> repertoire id)."""
+        return dict(conn.execute(select(
+            t.opening_nodes.c.id, t.opening_nodes.c.repertoire_id,
+        ).where(t.opening_nodes.c.repertoire_id.in_(repertoire_ids),
+                t.opening_nodes.c.id.in_(list(node_ids)))).all())
 
     @staticmethod
     def _opening_node_row(

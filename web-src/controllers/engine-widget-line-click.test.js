@@ -10,6 +10,7 @@ import { html } from "../html.js";
 import { clampPly, decodeLine, encodeLine, moveLineHtml, walkLine } from "../move-text.js";
 import { createPassFeed } from "./engine-pass-feed.js";
 import { createLinesPicker } from "./engine-lines-picker.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const widgetSource = readFileSync(new URL("./engine-widget.js", import.meta.url), "utf8");
@@ -51,7 +52,7 @@ function harness({ view = "analyze", boardFen = START, lands = true, withSession
   const deps = {
     html, setEngineBestArrow: vi.fn(), localGameOver: () => null, pvSan: () => [],
     activeViewName: () => view, effectiveStockfishDepth: () => 16,
-    createSharedEvaluationProvider: vi.fn(), appState, boards: {}, START_FEN: START,
+    createSharedEvaluationProvider: vi.fn(), ...asSlices(appState), boards: {}, START_FEN: START,
     explorerEvalEngine: { repaint: vi.fn() }, formatEngineEval: () => "0.00",
     getAnalyzeSession: () => (withSession ? session : null),
     paintUnlocks: () => {}, createPassFeed, createLinesPicker, hooks: {},
@@ -66,7 +67,7 @@ function harness({ view = "analyze", boardFen = START, lands = true, withSession
   });
   widget._bindControls();
   widget.lastFen = boardFen;
-  return { widget, appState, session, deps };
+  return { widget, ...asSlices(appState), appState, session, deps };
 }
 
 const LINE = encodeLine(START, ["e2e4", "e7e5", "g1f3"]);

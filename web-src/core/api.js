@@ -1,4 +1,4 @@
-import { appState, boards, notices } from "./state.js";
+import { appState, buildState, boards, notices } from "./state.js";
 import { hooks } from "./hooks.js";
 import { createCsrfTokenSource, headersWithCsrf } from "../csrf.js";
 import { withRequestDeadline } from "../sync-queue.js";
@@ -189,14 +189,14 @@ export function localDayOf(iso) {
 }
 
 export async function postJson(path, body, options = {}) {
-  const build = appState.build;
+  const build = buildState.build;
   const owner = currentOwnerId();
   const generation = appState.ownerGeneration;
   // Build writes run one at a time so each is applied on top of the last.
   // The server rebases every edit onto the current tree, so none carries the
   // revision it was made on.
   const mutation = BUILD_MUTATIONS.has(path);
-  const previous = mutation ? appState.buildMutationSaving : null;
+  const previous = mutation ? buildState.buildMutationSaving : null;
   const task = (async () => {
     if (previous) await previous.catch(() => {});
     if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) throw new Error("Account changed");
@@ -206,12 +206,12 @@ export async function postJson(path, body, options = {}) {
       // Exactly the next revision means nobody else wrote in between, so the
       // open tree (which already shows this edit) is now at that revision.
       // Otherwise the change feed fills the gap.
-      if (appState.build === build && payload?.revision === before + 1) build.revision = payload.revision;
+      if (buildState.build === build && payload?.revision === before + 1) build.revision = payload.revision;
       announceBuildWrite(body.repertoire_id);
     }
     return payload;
   })();
-  if (mutation) appState.buildMutationSaving = task;
+  if (mutation) buildState.buildMutationSaving = task;
   try { return await task; }
-  finally { if (appState.buildMutationSaving === task) appState.buildMutationSaving = null; }
+  finally { if (buildState.buildMutationSaving === task) buildState.buildMutationSaving = null; }
 }

@@ -1,5 +1,5 @@
 import { html } from "../html.js";
-import { appState } from "../core/state.js";
+import { appState, analysisState } from "../core/state.js";
 import { api, currentOwnerId, localDayOf, setStatus, setStatusError } from "../core/api.js";
 import { holdNewGameNudge, markLichessSeen, orientAnalysisForSelf, syncFetchMyGameButton } from "../account-entry.js";
 import { analysisHistoryResult } from "../analyze-orient.js";
@@ -86,7 +86,7 @@ export async function importLatestGame(game, context = null) {
     }
     // The review on screen is this game already: running it again would only
     // wipe its grades while the same game is analyzed a second time.
-    if (appState.analysisSourcePgn && document.getElementById("pgn-input").value.trim() === pgn.trim()) {
+    if (analysisState.analysisSourcePgn && document.getElementById("pgn-input").value.trim() === pgn.trim()) {
       setStatus("Your latest game is already analyzed here");
       return true;
     }
@@ -168,7 +168,7 @@ export async function loadAnalysisHistory({ ifStale = false } = {}) {
       const spoken = (a) => [label(a), resultOf(a).label, localDayOf(a.analyzed_at)].filter(Boolean).join(", ");
       // A row whose delete is still in its undo window stays gone: a refresh while
       // the window is open (a save lands, the drawer reopens) must not bring it back.
-      const shown = [...rows.values()].filter((a) => !appState.pendingAnalysisDeletes.has(String(a.game_id)));
+      const shown = [...rows.values()].filter((a) => !analysisState.pendingAnalysisDeletes.has(String(a.game_id)));
       host.innerHTML = shown.length ? html`${shown.map((a) =>
         html`<div class="history-item" data-game-id="${a.game_id}"><button class="hi-open" type="button" aria-label="${spoken(a)}"><span class="hi-players">${label(a)}</span><span class="hi-meta">${meta(a)}</span></button><button class="btn icon sm hi-delete" type="button" data-history-delete="${a.game_id}" data-history-label="${label(a)}" title="Delete this analysis" aria-label="Delete analysis of ${label(a)}"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
       )}` : html`<div class="muted hint">No saved analyses yet.</div>`;
@@ -207,10 +207,10 @@ export async function loadAnalysisHistory({ ifStale = false } = {}) {
 export function deleteSavedAnalysis(delButton) {
   const gameId = delButton.dataset.historyDelete;
   const label = delButton.dataset.historyLabel || "this game";
-  if (!gameId || appState.pendingAnalysisDeletes.has(gameId)) return;
-  appState.pendingAnalysisDeletes.add(gameId);
+  if (!gameId || analysisState.pendingAnalysisDeletes.has(gameId)) return;
+  analysisState.pendingAnalysisDeletes.add(gameId);
   const restore = () => {
-    appState.pendingAnalysisDeletes.delete(gameId);
+    analysisState.pendingAnalysisDeletes.delete(gameId);
     void loadAnalysisHistory();
   };
   showUndoToast({
@@ -222,7 +222,7 @@ export function deleteSavedAnalysis(delButton) {
     },
     onCommit: () => {
       api(`/api/analyses/${encodeURIComponent(gameId)}`, { method: "DELETE" })
-        .then(() => appState.pendingAnalysisDeletes.delete(gameId))
+        .then(() => analysisState.pendingAnalysisDeletes.delete(gameId))
         .catch((error) => {
           setStatus(`Delete failed — ${error.message}`, { severity: "error" });
           restore();
@@ -239,9 +239,9 @@ export function deleteSavedAnalysis(delButton) {
 }
 
 export function invalidateAnalysisSource() {
-  appState.analysisFileSeq = null;
+  analysisState.analysisFileSeq = null;
   // A new source supersedes the batch an import picker may still be listing.
-  appState.analysisMultiPgn = null;
+  analysisState.analysisMultiPgn = null;
   clearTimeout(analyzePgnInputTimer);
   return ++analysisRecallSeq;
 }
@@ -256,7 +256,7 @@ const analysisStudy = createAnalysisStudySaver({
 
 export async function recallAnalysis(gameId, listItem = null, { sourceSeq = invalidateAnalysisSource(), quiet = false, onMissing = null } = {}) {
   const seq = sourceSeq;
-  appState.analysisSourcePgn = null;
+  analysisState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   const sidebar = document.getElementById("analyze-sidebar");
   sidebar?.setAttribute("aria-busy", "true");
@@ -271,7 +271,7 @@ export async function recallAnalysis(gameId, listItem = null, { sourceSeq = inva
     for (const key of ["white", "black", "result", "lichess_id"]) {
       if (!payload[key] && listItem?.[key]) payload[key] = listItem[key];
     }
-    appState.analysis = payload;
+    analysisState.analysis = payload;
     const pgnInput = document.getElementById("pgn-input");
     if (pgnInput) pgnInput.value = payload.pgn || "";
     orientAnalysisForSelf(payload.white, payload.black);
@@ -280,14 +280,14 @@ export async function recallAnalysis(gameId, listItem = null, { sourceSeq = inva
       const parsed = parsePgn(payload.pgn);
       if (!parsed.ok) throw new Error(parsed.error);
       const { varNodes } = view.adaptParsedTree(parsed.root, payload.moves.length);
-      appState.analysisVarNodes = varNodes;
-      appState.analysisVarCounter = varNodes.size;
+      analysisState.analysisVarNodes = varNodes;
+      analysisState.analysisVarCounter = varNodes.size;
     }
     await showAnalysisPly(0);
     if (seq !== analysisRecallSeq) return false;
     view.renderAnalysis(payload);
     const picker = document.getElementById("analysis-import-picker");
-    if (picker && !appState.analysisMultiPgn) picker.hidden = true;
+    if (picker && !analysisState.analysisMultiPgn) picker.hidden = true;
     syncViewHeads();
     revealAnalysisResults();
     // The list sits at the panel's foot; open the new game at its summary.
@@ -334,20 +334,20 @@ let analyzePgnWriting = false;
 export async function syncPgnFromTree() {
   const input = document.getElementById("pgn-input");
   if (!input) return;
-  const analysis = appState.analysis;
+  const analysis = analysisState.analysis;
   const seq = analysisRecallSeq;
   const original = input.value;
   const moves = analysis ? analysis.moves : [];
-  const hasVars = appState.analysisVarNodes && appState.analysisVarNodes.size;
+  const hasVars = analysisState.analysisVarNodes && analysisState.analysisVarNodes.size;
   if ((!moves || !moves.length) && !hasVars) return;
-  if (document.activeElement === input && !appState.analysisPgnStale) return;
+  if (document.activeElement === input && !analysisState.analysisPgnStale) return;
   const view = await ensureAnalyzeView();
   if (seq !== analysisRecallSeq || input.value !== original) return;
   const next = view.serializeAnalysisPgn(input.value);
   if (!next) return;
-  if (analysis?.game_id && appState.analysisPgnStale) analysisStudy.queue(analysis.game_id, next, currentOwnerId());
+  if (analysis?.game_id && analysisState.analysisPgnStale) analysisStudy.queue(analysis.game_id, next, currentOwnerId());
   if (analysis) analysis.pgn = next;
-  appState.analysisPgnStale = false;
+  analysisState.analysisPgnStale = false;
   if (next !== input.value) {
     analyzePgnWriting = true;
     input.value = next;
@@ -367,11 +367,11 @@ export function bindAnalyzePgnInput() {
     // what they are writing any more, and a serialization already in flight must not
     // write over it. Bumping the source epoch now (not only when the debounced
     // reload runs) fences those continuations.
-    appState.analysisPgnStale = false;
+    analysisState.analysisPgnStale = false;
     invalidateAnalysisSource();
     analyzePgnInputTimer = setTimeout(() => {
       void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).then((loaded) => {
-        if (loaded) orientAnalysisFromPgn(appState.analysis?.pgn || "");
+        if (loaded) orientAnalysisFromPgn(analysisState.analysis?.pgn || "");
       }).catch(
         () => {}
       );

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
 import { parseWorkspaceLocation, serializeWorkspaceLocation, workspaceLocationFromState } from "./workspace-url.js";
+import { asSlices, sliceArgs } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -39,7 +40,7 @@ function harness() {
     setAnnotations: vi.fn(),
   };
   const common = {
-    appState, boards: { build: board }, document: { getElementById }, localBoardInfo,
+    ...asSlices(appState), boards: { build: board }, document: { getElementById }, localBoardInfo,
     takeBuildPreview: vi.fn(), renderBuildRepHeader: vi.fn(), renderBuilderTree: vi.fn(), syncViewHeads: vi.fn(),
     paintBuildEmpty: vi.fn(),
     switchView: (name) => { appState.currentView = name; },
@@ -62,8 +63,8 @@ function harness() {
   };
   const syncStart = source.indexOf("function syncWorkspaceUrl(");
   const syncBody = source.slice(syncStart, source.indexOf("\n}\n", syncStart) + 2);
-  const syncWorkspaceUrl = new Function("window", "history", "workspaceLocationFromState", "serializeWorkspaceLocation", "appState",
-    `let workspaceUrlReady = true; return (${syncBody});`)(window, history, workspaceLocationFromState, serializeWorkspaceLocation, appState);
+  const syncWorkspaceUrl = new Function("window", "history", "workspaceLocationFromState", "serializeWorkspaceLocation", "appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState",
+    `let workspaceUrlReady = true; return (${syncBody});`)(window, history, workspaceLocationFromState, serializeWorkspaceLocation, ...sliceArgs(appState));
   const deps = {
     ...common, setBuildLoading: loading, hardFlushBuild: vi.fn(async () => {}),
     ensureMoveTreeRenderer: vi.fn(async () => {}),
@@ -84,7 +85,7 @@ function harness() {
   const move = compile("async function onBuildBoardMove(", {
     ...common, optimisticBoardMove, isBuildReadOnly: () => false,
   });
-  return { appState, board, edit, move, requests, hydrateBuild, optimisticBoardMove, deps, getElementById, urlOperations, window, history };
+  return { ...asSlices(appState), appState, board, edit, move, requests, hydrateBuild, optimisticBoardMove, deps, getElementById, urlOperations, window, history };
 }
 async function waitForRequest(h, id) {
   await vi.waitFor(() => expect(h.requests.has(id)).toBe(true));
@@ -103,11 +104,11 @@ describe("repertoire load isolation", () => {
     expect(h.board.legalMoves).toEqual([]);
     await h.move("e2e4");
     expect(h.optimisticBoardMove).not.toHaveBeenCalled();
-    expect(h.appState.buildPending).toEqual([]);
+    expect(h.buildState.buildPending).toEqual([]);
     h.requests.get("B").resolve(payload("B"));
     await load;
-    expect(h.appState.build.repertoire_id).toBe("B");
-    expect(h.appState.buildLoading).toBe(false);
+    expect(h.buildState.build.repertoire_id).toBe("B");
+    expect(h.buildState.buildLoading).toBe(false);
     expect(h.getElementById("view-build").inert).toBe(false);
     expect(h.board.legalMoves).toContain("e2e4");
   });
@@ -165,7 +166,7 @@ describe("repertoire load isolation", () => {
     };
     const syncWorkspaceUrl = vi.fn();
     const hydrate = compile("async function hydrateBuild(", {
-      appState, coverageView: null, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(),
+      ...asSlices(appState), coverageView: null, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(),
       renderBuildRepHeader: vi.fn(), selectBuildNode: vi.fn(async () => {}),
       reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
       indexBuildNodes: (nodes) => new Map(nodes.map((node) => [node.id, node])),
@@ -184,8 +185,8 @@ describe("repertoire load isolation", () => {
     expect(h.board.setAnnotations).toHaveBeenLastCalledWith([], []);
     h.requests.get("B").reject(Object.assign(new Error("Service unavailable"), { status: 503 }));
     await load;
-    expect(h.appState.build.repertoire_id).toBe("A");
-    expect(h.appState.buildLoading).toBe(false);
+    expect(h.buildState.build.repertoire_id).toBe("A");
+    expect(h.buildState.buildLoading).toBe(false);
     expect(h.board.legalMoves).toContain("e2e4");
     expect(h.board.setAnnotations).toHaveBeenLastCalledWith(["Ga1a2"], ["Gb3"]);
     expect(h.deps.setStatusError).toHaveBeenCalledWith("Service unavailable");
@@ -199,12 +200,12 @@ describe("repertoire load isolation", () => {
   it("keeps unsaved cached-tree edits when their flush fails", async () => {
     const h = harness();
     const pending = { tempId: "tmp-e4", parentRef: "A-root", node: { id: "tmp-e4" }, repertoire_id: "A" };
-    h.appState.buildPending.push(pending);
+    h.buildState.buildPending.push(pending);
     h.deps.hardFlushBuild.mockRejectedValueOnce(new Error("flush offline"));
     await h.edit("B");
     expect(h.deps.api).not.toHaveBeenCalled();
-    expect(h.appState.buildPending).toEqual([pending]);
-    expect(h.appState.build.repertoire_id).toBe("A");
+    expect(h.buildState.buildPending).toEqual([pending]);
+    expect(h.buildState.build.repertoire_id).toBe("A");
     expect(h.deps.setStatusError).toHaveBeenCalledWith("flush offline");
     expect(h.urlOperations).toEqual([
       { href: "/#/build?rep=B", push: true },
@@ -243,10 +244,10 @@ describe("repertoire load isolation", () => {
     expect(h.requests.get("C").signal.aborted).toBe(false);
     h.requests.get("B").resolve(payload("B")); await first;
     expect(h.hydrateBuild).not.toHaveBeenCalled();
-    expect(h.appState.buildLoading).toBe(true);
+    expect(h.buildState.buildLoading).toBe(true);
     h.requests.get("C").resolve(payload("C")); await second;
-    expect(h.appState.build.repertoire_id).toBe("C");
-    expect(h.appState.buildLoadRequest).toBeNull();
+    expect(h.buildState.build.repertoire_id).toBe("C");
+    expect(h.buildState.buildLoadRequest).toBeNull();
   });
 
   it("does not navigate back when the user leaves during loading", async () => {
@@ -255,18 +256,18 @@ describe("repertoire load isolation", () => {
     h.appState.currentView = "teams";
     h.requests.get("B").resolve(payload("B")); await load;
     expect(h.appState.currentView).toBe("teams");
-    expect(h.appState.buildLoading).toBe(false);
+    expect(h.buildState.buildLoading).toBe(false);
   });
 });
 
 describe("route back to the shown tree while another loads", () => {
   it("compares the URL against the loading target, not the stale tree", async () => {
     const h = harness();
-    const shown = compile("function shownOrLoadingRepertoireId(", { appState: h.appState });
+    const shown = compile("function shownOrLoadingRepertoireId(", { ...asSlices(h.appState),  });
     expect(shown()).toBe("A");
     const load = h.edit("B"); await waitForRequest(h, "B");
     // Still showing A's tree, but B is what will land: a route to A must reopen A.
-    expect(h.appState.build.repertoire_id).toBe("A");
+    expect(h.buildState.build.repertoire_id).toBe("A");
     expect(shown()).toBe("B");
     h.requests.get("B").resolve(payload("B")); await load;
     expect(shown()).toBe("B");

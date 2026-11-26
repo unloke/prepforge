@@ -30,6 +30,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
+from prepforge_chess.storage.ports import MaintenanceStore
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 # Proposed windows, not currently enforced by the server or SPA. Do not enable
@@ -43,7 +44,7 @@ assert RECEIPT_RETENTION_DAYS > OFFLINE_RETRY_DAYS  # noqa: S101 - contract guar
 
 
 def lifecycle_report(
-    repository: WorkspaceRepository,
+    repository: MaintenanceStore,
     *,
     now: Optional[datetime] = None,
 ) -> Dict[str, Any]:
@@ -66,7 +67,7 @@ def lifecycle_report(
 
 
 def reclaim_orphans(
-    repository: WorkspaceRepository,
+    repository: MaintenanceStore,
     *,
     dry_run: bool = True,
     trim_analyses: bool = False,

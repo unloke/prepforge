@@ -24,6 +24,7 @@ import {
   ANALYSIS_ROOT_PATH, analysisNodeIdFromPath, analysisNodePath, isAnalysisNodePath,
 } from "./analyze-node-path.js";
 import { formatWorkspaceHash, parseWorkspaceHash, workspaceLocationFromState } from "./workspace-url.js";
+import { asSlices, sliceArgs } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -40,7 +41,7 @@ function buildTree(pgn) {
   const parsed = parsePgn(pgn);
   expect(parsed.ok).toBe(true);
   const state = { analysisVarNodes: new Map(), analysis: null };
-  const view = createAnalyzeView({ appState: state, START_FEN });
+  const view = createAnalyzeView({ ...asSlices(state), START_FEN });
   const { moves, varNodes } = view.adaptParsedTree(parsed.root);
   state.analysis = { moves };
   state.analysisVarNodes = varNodes;
@@ -82,7 +83,7 @@ function harness({
   const saves = [];
   let sourceSeq = 1;
   const deps = {
-    appState, START_FEN,
+    ...asSlices(appState), START_FEN,
     boardInfo: vi.fn(boardInfo),
     boards: { analysis: board },
     boardAfterMove: vi.fn(boardAfterMove),
@@ -110,7 +111,7 @@ function harness({
   });
   api = createAnalysisSelection(deps);
   return {
-    ...api, appState, board, deps, fixture, input, saves,
+    ...api, ...asSlices(appState), appState, board, deps, fixture, input, saves,
     bumpSource: () => { sourceSeq += 1; },
     syncPgnFromTree: deps.syncPgnFromTree,
   };
@@ -128,11 +129,11 @@ describe("a user-created branch is the same position after a reload", () => {
   it("creates A at move 1 then B at move 3, switches A/B, and restores B", async () => {
     const h = harness();
     await h.selectAnalysisNode("m1");
-    await h.onAnalysisBoardMove("d7d6", h.appState.analysisBoardFen);   // A: 1... d6
-    const A = { path: h.selectedNodePath(), fen: h.appState.analysisBoardFen };
+    await h.onAnalysisBoardMove("d7d6", h.analysisState.analysisBoardFen);   // A: 1... d6
+    const A = { path: h.selectedNodePath(), fen: h.analysisState.analysisBoardFen };
     await h.selectAnalysisNode("m3");
-    await h.onAnalysisBoardMove("a7a6", h.appState.analysisBoardFen);   // B: 2... a6
-    const B = { path: h.selectedNodePath(), fen: h.appState.analysisBoardFen };
+    await h.onAnalysisBoardMove("a7a6", h.analysisState.analysisBoardFen);   // B: 2... a6
+    const B = { path: h.selectedNodePath(), fen: h.analysisState.analysisBoardFen };
     // Ordinary browsing: back to A, then B again (by the ids the tree created).
     const ids = [...h.appState.analysisVarNodes.keys()];
     await h.selectAnalysisNode(ids[0]);
@@ -159,7 +160,7 @@ describe("a user-created branch is the same position after a reload", () => {
   it("keeps the position through the URL and through Back/Forward", async () => {
     const h = harness();
     await h.selectAnalysisNode("m3");
-    await h.onAnalysisBoardMove("a7a6", h.appState.analysisBoardFen);
+    await h.onAnalysisBoardMove("a7a6", h.analysisState.analysisBoardFen);
     const path = h.selectedNodePath();
     const url = formatWorkspaceHash(workspaceLocationFromState({
       currentView: "analyze", analysisPly: -1, analysisNodePath: path,
@@ -174,10 +175,10 @@ describe("a user-created branch is the same position after a reload", () => {
     // the state carries no path for it, so the URL keeps its old shape.
     await h.selectAnalysisNode("m4");
     expect(h.selectedNodePath()).toBe("e2e4-e7e5-g1f3-b8c6");
-    expect(h.appState.analysisNodePath).toBeNull();
+    expect(h.analysisState.analysisNodePath).toBeNull();
     expect(formatWorkspaceHash(workspaceLocationFromState({
-      currentView: "analyze", analysisPly: h.appState.analysisPly,
-      analysisNodePath: h.appState.analysisNodePath,
+      currentView: "analyze", analysisPly: h.analysisState.analysisPly,
+      analysisNodePath: h.analysisState.analysisNodePath,
     }))).toBe("#/analyze?ply=4");
   });
 
@@ -185,10 +186,10 @@ describe("a user-created branch is the same position after a reload", () => {
     // rebuildAnalysisVariations (a recalled review, a finished run) clears the
     // lazily built tree; a reload restoring ?ply= / ?node= must still land.
     const h = harness();
-    h.appState.analysisTree = null;
+    h.analysisState.analysisTree = null;
     await expect(h.selectAnalysisNodePath("e2e4-e7e5")).resolves.not.toBe(false);
-    expect(h.appState.analysisTree).not.toBeNull();
-    expect(h.appState.analysisCurrentNodeId).toBe("m2");
+    expect(h.analysisState.analysisTree).not.toBeNull();
+    expect(h.analysisState.analysisCurrentNodeId).toBe("m2");
   });
 
   it("does not select an unrelated position when the saved branch is gone", async () => {
@@ -196,7 +197,7 @@ describe("a user-created branch is the same position after a reload", () => {
     // decline, not fall back to whatever node holds a similar id.
     const h = harness();
     const fresh = buildTree(BASE);
-    const api = createAnalysisSelection({ ...h.deps, appState: { ...h.appState, analysisTree: fresh.tree } });
+    const api = createAnalysisSelection({ ...h.deps, ...asSlices({ ...h.appState, analysisTree: fresh.tree }),  });
     await expect(api.selectAnalysisNodePath("e2e4-d7d6")).resolves.toBe(false);
     // A sequence id is not a path at all.
     await expect(api.selectAnalysisNodePath("v2")).resolves.toBe(false);
@@ -213,12 +214,12 @@ describe("rebuildAnalysisVariations parses only the analyzed game", () => {
   const MULTI = `${G1}\n\n${G2}\n`;
 
   // The real function from the session module.
-  const rebuild = new Function("parsePgn", "ensureAnalyzeView", "appState",
+  const rebuild = new Function("parsePgn", "ensureAnalyzeView", "analysisState",
     `${source.slice(source.indexOf("async function rebuildAnalysisVariations("),
       source.indexOf("\n}\n", source.indexOf("async function rebuildAnalysisVariations(")) + 2)}
     return rebuildAnalysisVariations;`);
 
-  const viewFor = (appState) => createAnalyzeView({ appState, START_FEN });
+  const viewFor = (appState) => createAnalyzeView({ ...asSlices(appState), START_FEN });
   // `text` is what the caller hands the rebuild: the analyzed game's own PGN in
   // production, the whole textarea in the failure this pins.
   const rebuildWith = (appState, text) =>
@@ -301,7 +302,7 @@ describe("a continuation belongs to the source it was started for", () => {
   it("a branch whose board read lands after the source changed is not recorded", async () => {
     const slow = deferred();
     const h = harness({ boardAfterMove: () => slow.promise });
-    const before = h.appState.analysisVarNodes.size;
+    const before = h.analysisState.analysisVarNodes.size;
     await h.selectAnalysisNode("root");
     // A brand-new move from the root (no existing continuation to step into).
     const pending = h.onAnalysisBoardMove("d2d4", START_FEN);
@@ -309,7 +310,7 @@ describe("a continuation belongs to the source it was started for", () => {
     h.bumpSource();
     slow.resolve(boardAfter(START_FEN, "d2d4"));
     await pending;
-    expect(h.appState.analysisVarNodes.size).toBe(before);
+    expect(h.analysisState.analysisVarNodes.size).toBe(before);
     // Only the root selection painted; the branch never reached the board.
     expect(h.board.setPosition).toHaveBeenCalledTimes(1);
     expect(h.board.setPosition).toHaveBeenLastCalledWith(expect.objectContaining({ lastMove: null }));
@@ -325,7 +326,7 @@ describe("a continuation belongs to the source it was started for", () => {
     h.bumpSource();
     gate.resolve(h.fixture.view);
     await pending;
-    expect(h.appState.analysisCurrentNodeId).toBe("m4");
+    expect(h.analysisState.analysisCurrentNodeId).toBe("m4");
     expect(h.board.setPosition).toHaveBeenCalledTimes(1);
   });
 });
@@ -342,11 +343,11 @@ describe("serialization never clobbers a textarea the user is editing", () => {
       analysisPgnStale: false,
     };
     const doc = { getElementById: () => input, activeElement: active ? input : null };
-    const sync = new Function("appState", "document", "analysisRecallSeq", "ensureAnalyzeView",
+    const sync = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "document", "analysisRecallSeq", "ensureAnalyzeView",
       `${body} return syncPgnFromTree;`)(
-      appState, doc, 1, async () => fixture.view,
+      ...sliceArgs(appState), doc, 1, async () => fixture.view,
     );
-    return { sync, input, appState };
+    return { sync, input, ...asSlices(appState), appState,  };
   }
 
   it("leaves a focused box the user has typed into alone", async () => {
@@ -358,12 +359,12 @@ describe("serialization never clobbers a textarea the user is editing", () => {
 
   it("writes free-play moves without an analysis payload", async () => {
     const appState = { analysis: null, analysisVarNodes: new Map(), analysisPgnStale: true };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ ...asSlices(appState), START_FEN });
     appState.analysisVarNodes = view.adaptParsedTree(parsePgn("1. e4 e5").root, 0).varNodes;
     const input = { value: "" };
     const doc = { getElementById: () => input, activeElement: null };
-    const sync = new Function("appState", "document", "analysisRecallSeq", "ensureAnalyzeView",
-      `let analyzePgnWriting = false; ${body} return syncPgnFromTree;`)(appState, doc, 1, async () => view);
+    const sync = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "document", "analysisRecallSeq", "ensureAnalyzeView",
+      `let analyzePgnWriting = false; ${body} return syncPgnFromTree;`)(...sliceArgs(appState), doc, 1, async () => view);
 
     await expect(sync()).resolves.toBeUndefined();
     expect(input.value).toBe("1. e4 e5");
@@ -375,14 +376,14 @@ describe("serialization never clobbers a textarea the user is editing", () => {
     // A branch exists only in the tree until the box carries it; the box was not
     // edited since (analysisPgnStale), so this is not the user's keystroke.
     const h = syncHarness({ value: BASE, active: true });
-    h.appState.analysisVarNodes.set("v1", {
+    h.analysisState.analysisVarNodes.set("v1", {
       id: "v1", seq: 1, parentId: "m1", uci: "d7d6", san: "d6",
       fenBefore: START_FEN, fenAfter: START_FEN, moveNumber: 1, side: "black",
     });
-    h.appState.analysisPgnStale = true;
+    h.analysisState.analysisPgnStale = true;
     await h.sync();
     expect(h.input.value).toContain("(1... d6)");
-    expect(h.appState.analysisPgnStale).toBe(false);
+    expect(h.analysisState.analysisPgnStale).toBe(false);
   });
 
   it("a user edit clears the branch-write permission immediately", async () => {
@@ -392,7 +393,7 @@ describe("serialization never clobbers a textarea the user is editing", () => {
       source.indexOf('pgnInput.addEventListener("input",'),
       source.indexOf("\n  });", source.indexOf('pgnInput.addEventListener("input",')) + 6,
     );
-    expect(inputBinding).toContain("appState.analysisPgnStale = false");
+    expect(inputBinding).toContain("analysisState.analysisPgnStale = false");
     expect(inputBinding).toContain("invalidateAnalysisSource()");
     // ...and the bump happens on input, not only in the debounced reload.
     expect(inputBinding.indexOf("invalidateAnalysisSource()"))
@@ -413,19 +414,19 @@ describe("the saved snapshot and the box agree", () => {
       analysisPly: -1, analysisPgnStale: stale,
     };
     const doc = { getElementById: () => input, activeElement: active ? input : null };
-    const persist = new Function("appState", "document", "clearReturnState", "saveReturnState",
+    const persist = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "document", "clearReturnState", "saveReturnState",
       "syncPgnFromTree", "selectedNodePath", "ANALYSIS_ROOT_PATH",
       `${persistBody} return persistAnalysisSession;`)(
-      appState, doc, vi.fn(), (view, state) => saves.push(state),
+      ...sliceArgs(appState), doc, vi.fn(), (view, state) => saves.push(state),
       async () => { input.value = fixture.view.serializeAnalysisPgn(input.value); appState.analysisPgnStale = false; },
       () => "e2e4-d7d6", ANALYSIS_ROOT_PATH,
     );
-    return { persist, input, appState, saves };
+    return { persist, input, ...asSlices(appState), appState, saves };
   }
 
   it("saves the serialized tree, so a just-created branch survives the reload", async () => {
     const h = persistHarness();
-    h.appState.analysisVarNodes.set("v1", {
+    h.analysisState.analysisVarNodes.set("v1", {
       id: "v1", seq: 1, parentId: "m1", uci: "d7d6", san: "d6",
       fenBefore: START_FEN, fenAfter: START_FEN, moveNumber: 1, side: "black",
     });
@@ -443,7 +444,7 @@ describe("the saved snapshot and the box agree", () => {
 
   it("still saves a branch into a focused box that has no user edit", async () => {
     const h = persistHarness({ active: true, stale: true });
-    h.appState.analysisVarNodes.set("v1", {
+    h.analysisState.analysisVarNodes.set("v1", {
       id: "v1", seq: 1, parentId: "m1", uci: "d7d6", san: "d6",
       fenBefore: START_FEN, fenAfter: START_FEN, moveNumber: 1, side: "black",
     });
@@ -483,8 +484,8 @@ describe("a line played into the tree move by move", () => {
   // what gives the next move of a line its parent, so it is rebuilt here too.
   const play = async (h, ucis) => {
     for (const uci of ucis) {
-      await h.onAnalysisBoardMove(uci, h.appState.analysisBoardFen);
-      h.appState.analysisTree = h.fixture.view.buildAnalysisTree(h.appState.analysis.moves);
+      await h.onAnalysisBoardMove(uci, h.analysisState.analysisBoardFen);
+      h.analysisState.analysisTree = h.fixture.view.buildAnalysisTree(h.analysisState.analysis.moves);
     }
   };
 
@@ -492,23 +493,23 @@ describe("a line played into the tree move by move", () => {
     const h = harness();
     await play(h, ["d2d4", "d7d5"]);
     expect(h.selectedNodePath()).toBe("d2d4-d7d5");
-    expect(h.appState.analysisVarNodes.size).toBe(2);
-    const tip = h.appState.analysisBoardFen;
+    expect(h.analysisState.analysisVarNodes.size).toBe(2);
+    const tip = h.analysisState.analysisBoardFen;
     expect(h.saves.at(-1).pgn).toContain("(1. d4 d5)");
 
     // Back to the position the line was played from, then the same click again.
     await h.selectAnalysisNode("root");
     await play(h, ["d2d4", "d7d5"]);
-    expect(h.appState.analysisVarNodes.size).toBe(2);
+    expect(h.analysisState.analysisVarNodes.size).toBe(2);
     expect(h.selectedNodePath()).toBe("d2d4-d7d5");
-    expect(h.appState.analysisBoardFen).toBe(tip);
+    expect(h.analysisState.analysisBoardFen).toBe(tip);
   });
 
   it("takes the mainline when the line follows it, without a variation", async () => {
     const h = harness();
     await play(h, ["e2e4", "e7e5"]);
-    expect(h.appState.analysisVarNodes.size).toBe(0);
-    expect(h.appState.analysisPly).toBe(2);
-    expect(h.appState.analysisCurrentNodeId).toBe("m2");
+    expect(h.analysisState.analysisVarNodes.size).toBe(0);
+    expect(h.analysisState.analysisPly).toBe(2);
+    expect(h.analysisState.analysisCurrentNodeId).toBe("m2");
   });
 });

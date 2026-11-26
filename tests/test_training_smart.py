@@ -15,6 +15,7 @@ from prepforge_chess.core.models import Color, TrainingMode, TrainingProgress
 from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
 from prepforge_chess.services.scheduler import CARD_DUE, decode_card
 from prepforge_chess.services.training_smart import REQUEUE_GAP, SmartTrainingService
+from prepforge_chess.services.workflows import delete_repertoire_subtree_and_archive_training
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 from api_helpers import insert_users
@@ -160,7 +161,7 @@ def test_deleted_review_archive_and_nodes_commit_together(monkeypatch):
     monkeypatch.setattr(repository, "write_user_setting", fail)
     monkeypatch.setattr(repository, "mutate_user_setting", fail)
     with pytest.raises(RuntimeError, match="archive write failed"):
-        repository.delete_opening_nodes(repertoire.id, [ids["bb5"]])
+        delete_repertoire_subtree_and_archive_training(repository, repertoire.id, [ids["bb5"]])
     assert ids["bb5"] in {n.id for n in repository.load_repertoire(repertoire.id).root_node.walk()}
 
 
@@ -414,7 +415,7 @@ def test_stale_card_is_skipped():
     assert len(session.line_order) == 2
     # Build deletes the first card's target out from under the session.
     first_card = decode_card(session.line_order[0])
-    repository.delete_opening_nodes(repertoire.id, [first_card.last_target_id])
+    delete_repertoire_subtree_and_archive_training(repository, repertoire.id, [first_card.last_target_id])
     # The Build edit and the resumed read are separate HTTP requests in
     # production, each with its own service (a service caches the repertoire tree
     # for one request's lifetime). A fresh service reads the post-edit tree and

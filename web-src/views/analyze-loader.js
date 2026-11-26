@@ -1,5 +1,5 @@
 import { html } from "../html.js";
-import { START_FEN, appState, boards } from "../core/state.js";
+import { START_FEN, analysisState, boards } from "../core/state.js";
 import { syncAnalysisEvalCard } from "../core/engine.js";
 // The report's "left prep at" row walks the repertoire trees the Analyze coach
 // already loads, so the view reads that one cache rather than fetching again.
@@ -44,7 +44,7 @@ export async function ensureAnalyzeView() {
   const [mod] = await Promise.all([preloadAnalyzeView(), loadAnalyzeSession()]);
   if (!analyzeView) {
     analyzeView = mod.createAnalyzeView({
-      appState,
+      analysisState,
       START_FEN,
       showAnalysisPly,
       selectAnalysisNode,
@@ -61,15 +61,15 @@ export async function ensureAnalyzeView() {
 
 
 function analysisTreeHasContent(movesArg) {
-  const moves = movesArg || (appState.analysis ? appState.analysis.moves : []);
+  const moves = movesArg || (analysisState.analysis ? analysisState.analysis.moves : []);
   if (moves && moves.length) return true;
-  return !!(appState.analysisVarNodes && appState.analysisVarNodes.size);
+  return !!(analysisState.analysisVarNodes && analysisState.analysisVarNodes.size);
 }
 
 export function renderAnalysisTreeEmptyState() {
   const container = document.getElementById("analysis-moves");
   if (!container) return;
-  appState.analysisTree = null;
+  analysisState.analysisTree = null;
   container.innerHTML =
     html`<div class="empty-state">Play on the board, or analyze a PGN.</div>`;
 }

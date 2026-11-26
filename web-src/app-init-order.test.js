@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createTeamsView } from "./views/teams.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 // Top-level `createX({ ... })` calls in app.js run while the module evaluates. Passing a
 // `const` declared further down throws in dev (TDZ) and hands the controller `undefined`
@@ -95,7 +96,7 @@ describe("teams paints nothing owner-scoped until auth is known (C2)", () => {
       querySelector: () => null,
     };
     const view = createTeamsView({
-      appState,
+      ...asSlices(appState), 
       api: async () => ({ teams: [] }),
       hideTeamDetail: () => {},
       openTeamDetail: async () => {},
@@ -211,7 +212,7 @@ describe("app boot holds auth-dependent state until the session is known", () =>
     expect(src).toMatch(/trainRouteMatches\(loc\)/);
     expect(src).toMatch(/isCurrent: stillActive/);
     expect(src).toMatch(/void loadTrainRepertoireOptions\(\)\.catch\(\(\) => \{\}\);/);
-    expect(src).toMatch(/!deferTrainEntry && !appState\.trainEntering\) void retryTrainEntry/);
+    expect(src).toMatch(/!deferTrainEntry && !trainState\.trainEntering\) void retryTrainEntry/);
   });
 
   it("holds the account chip too: an unread session is not a signed-out one", () => {

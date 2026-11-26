@@ -10,15 +10,15 @@ const ACTIONS = {
 const stamp = (value) => new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const keyOf = (fen) => String(fen).split(" ").slice(0, 4).join(" ");
 
-export function createBuildCollaboration({ appState, api, postJson, hydrateBuild, selectBuildNode, showInputModal, miniBoard }) {
+export function createBuildCollaboration({ appState, buildState, api, postJson, hydrateBuild, selectBuildNode, showInputModal, miniBoard }) {
   let data = null, discussions = [], loadedKey = null, sequence = 0;
   let scope = null, generation = appState.ownerGeneration, hadMarkedMoves = false;
   const dialogs = new Set();
   const drafts = new Map();
-  const rid = () => appState.build?.repertoire_id;
-  const node = () => appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const rid = () => buildState.build?.repertoire_id;
+  const node = () => buildState.buildNodeById.get(buildState.buildCurrentNodeId);
   const label = (id) => {
-    const n = appState.buildNodeById.get(id);
+    const n = buildState.buildNodeById.get(id);
     return n?.san ? `${n.move_number}${n.move_side === "black" ? "…" : "."} ${n.san}` : "Start";
   };
 
@@ -44,7 +44,7 @@ export function createBuildCollaboration({ appState, api, postJson, hydrateBuild
 
   async function load(force = false) {
     if (!rid() || appState.sharedToken || !appState.signedIn) return;
-    const key = `${appState.ownerGeneration}:${rid()}:${appState.build.revision}`;
+    const key = `${appState.ownerGeneration}:${rid()}:${buildState.build.revision}`;
     if (!force && key === loadedKey) return;
     loadedKey = key;
     const request = ++sequence;
@@ -85,7 +85,7 @@ export function createBuildCollaboration({ appState, api, postJson, hydrateBuild
     const paint = () => {
       if (!dialog.open || rid() !== repertoireId) return;
       body.innerHTML = html`<div class="activity-tools"><span>${data.truncated ? "Recent edits" : "All recent edits"}</span><button type="button" class="btn sm" data-refresh>Refresh</button><button type="button" class="btn sm" data-seen>Mark read</button></div><ol class="activity-list">${data.entries.length ? data.entries.map((entry) => {
-        const target = entry.nodes.find((id) => appState.buildNodeById.has(id));
+        const target = entry.nodes.find((id) => buildState.buildNodeById.has(id));
         const counts = [entry.added ? `+${entry.added}` : "", entry.deleted ? `−${entry.deleted}` : "", entry.edited ? `${entry.edited} edited` : ""].filter(Boolean).join(" · ");
         return html`<li class="activity-entry${entry.unread ? " is-unread" : ""}"><span class="person-initial" aria-hidden="true">${entry.actor.slice(0, 1)}</span><div><header><b>${entry.actor}</b><time datetime="${entry.created_at}" title="${stamp(entry.created_at)}">${stamp(entry.created_at)}</time></header><span class="activity-action">${ACTIONS[entry.kind] || "Updated repertoire"}</span>${counts ? html`<span class="activity-count">${counts}</span>` : ""}<div class="activity-actions">${target ? html`<button class="btn sm ghost" type="button" data-jump="${target}">${label(target)} →</button>` : ""}${entry.discussion_id ? html`<button class="btn sm ghost" type="button" data-thread="${entry.discussion_id}">Discussion →</button>` : ""}${entry.can_revert ? html`<button class="btn sm ghost" type="button" data-revert="${entry.revision}">Restore edit</button>` : entry.reverted ? html`<span class="muted">Restored</span>` : ""}</div></div><span class="activity-revision">r${entry.revision}</span></li>`;
       }) : html`<li class="muted">No edits yet.</li>`}</ol>`;
@@ -107,7 +107,7 @@ export function createBuildCollaboration({ appState, api, postJson, hydrateBuild
             fields: [{ name: "scope", type: "note", label: "Restore this tree edit. Subsequent changes are checked for conflicts. Training history is not restored." }],
             onSubmit: async (values, finish) => {
               const payload = await postJson("/api/build/activity/revert", { repertoire_id: repertoireId, revision: Number(button.dataset.revert) });
-              if (rid() === repertoireId) await hydrateBuild(payload, appState.buildCurrentNodeId);
+              if (rid() === repertoireId) await hydrateBuild(payload, buildState.buildCurrentNodeId);
               finish(values);
               await refresh();
             },

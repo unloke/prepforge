@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createSettingsView } from "./settings.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 function el(extra = {}) {
   return {
@@ -57,7 +58,7 @@ function setup({ appState = {}, api, pref = () => false, effective = 2377 } = {}
   const state = { lichessUsername: "me", maiaAutoRating: 2377, maiaRatingPinned: null, ...appState };
   const saveSettings = vi.fn(async () => {});
   const view = createSettingsView({
-    appState: state,
+    ...asSlices(state), 
     setStatus: vi.fn(),
     saveSettings,
     loadSettings: vi.fn(),
@@ -92,7 +93,7 @@ describe("settings strength controls", () => {
   });
 
   it("Auto off: slider enabled and the readout follows the slider", () => {
-    const { view, elements } = setup({ appState: { maiaRatingPinned: 1800 }, effective: 1800 });
+    const { view, elements } = setup({ ...asSlices({ maiaRatingPinned: 1800 }), effective: 1800 });
     view.renderStrengthControls();
     expect(elements["settings-maia-rating"].disabled).toBe(false);
     expect(elements["settings-maia-rating-readout"].textContent).toBe("1800");
@@ -118,7 +119,7 @@ describe("settings chess accounts loading state", () => {
     let resolve;
     const api = vi.fn(() => new Promise((r) => (resolve = r)));
     const { view, elements } = setup({
-      appState: { signedIn: true, lichessUsername: null, lichessAccounts: undefined },
+      ...asSlices({ signedIn: true, lichessUsername: null, lichessAccounts: undefined }), 
       api,
     });
     const pending = view.renderConnections();
@@ -133,7 +134,7 @@ describe("settings chess accounts loading state", () => {
   it("known state renders immediately without a fetch", async () => {
     const api = vi.fn();
     const { view, elements } = setup({
-      appState: { signedIn: true, lichessUsername: null, lichessAccounts: [] },
+      ...asSlices({ signedIn: true, lichessUsername: null, lichessAccounts: [] }), 
       api,
     });
     await view.renderConnections();

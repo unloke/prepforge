@@ -55,7 +55,11 @@ CLIENT_ID_HEADER = "X-PF-Client"
 
 
 def get_repository(request: Request) -> WorkspaceRepository:
-    """Domain repository bound to the app's shared SQLAlchemy engine."""
+    """The request's single unit of work, bound to the app's shared engine.
+
+    Routes annotate it with the narrow port they use (``storage.ports``); every
+    port is a view of this one instance, so one request still shares one
+    revision fence and can run one transaction across domains."""
     repo = WorkspaceRepository(get_engine())
     repo.op_client = (request.headers.get(CLIENT_ID_HEADER) or "")[:64] or None
     return repo

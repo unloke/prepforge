@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 from prepforge_chess.core.models import EngineEvaluation, OpeningNode, Repertoire
 from prepforge_chess.services.progress import compute_health, mastery_map
-from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
+from prepforge_chess.storage.ports import BuildPayloadStore
 
 _EMPTY_SUMMARY = {"added_nodes": 0, "updated_nodes": 0, "high_probability_unprepared": 0}
 
@@ -65,7 +65,7 @@ def opening_node_to_json(
 
 
 def build_workspace_payload(
-    repository: RepertoireRepository,
+    repository: BuildPayloadStore,
     repertoire_id: str,
     *,
     selected_node_id: Optional[str] = None,

@@ -1,6 +1,6 @@
-export function createBatchSwitcher({ appState, recallAnalysis, runAnalysis, invalidateAnalysisSource, sourceIsCurrent, isBusy, setStatus }) {
+export function createBatchSwitcher({ analysisState, recallAnalysis, runAnalysis, invalidateAnalysisSource, sourceIsCurrent, isBusy, setStatus }) {
   return async (summary, index, host) => {
-    const batchPgn = appState.analysisMultiPgn;
+    const batchPgn = analysisState.analysisMultiPgn;
     if (!batchPgn) {
       host.hidden = true;
       host.innerHTML = "";
@@ -16,7 +16,7 @@ export function createBatchSwitcher({ appState, recallAnalysis, runAnalysis, inv
       return;
     }
     const seq = invalidateAnalysisSource();
-    appState.analysisMultiPgn = batchPgn;
+    analysisState.analysisMultiPgn = batchPgn;
     host.setAttribute("aria-busy", "true");
     if (select) select.disabled = true;
     let missing = false;
@@ -26,7 +26,7 @@ export function createBatchSwitcher({ appState, recallAnalysis, runAnalysis, inv
       if (loaded) {
         summary.selected_index = index;
         summary.selected_game_id = game.game_id;
-        appState.analysisSourcePgn = appState.analysis.pgn;
+        analysisState.analysisSourcePgn = analysisState.analysis.pgn;
         setStatus("");
       } else if (missing) {
         host.setAttribute("aria-busy", "false");

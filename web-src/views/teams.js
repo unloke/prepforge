@@ -11,7 +11,7 @@ import { PHONE_QUERY } from "../phone-layout.js";
 import { GRANT_ROLES, canCopy, roleAllows, roleLabel } from "../share-roles.js";
 
 export function createTeamsView({
-  appState,
+  appState, teamsState,
   api,
   hideTeamDetail,
   openTeamDetail,
@@ -120,7 +120,7 @@ export function createTeamsView({
     if (newTeam) newTeam.hidden = false;
     if (!list.innerHTML) list.innerHTML = teamRowsSkeleton(1);
     try {
-      const directory = loadTeamDirectory(appState, api, { refresh: true });
+      const directory = loadTeamDirectory(appState, teamsState, api, { refresh: true });
       loadSharedRepertoires();
       const teams = await directory;
       if (!isCurrent() || teams === null) return;
@@ -128,15 +128,15 @@ export function createTeamsView({
       // The team the user picked reopens (a reload, or a member add/remove).
       // Beside the directory the detail pane would otherwise be a blank card, so
       // the first team opens; a phone shows the list first.
-      const picked = appState.teams.some((team) => team.id === appState.selectedTeamId)
-        ? appState.selectedTeamId
-        : !globalThis.matchMedia?.(PHONE_QUERY).matches && appState.teams[0]?.id;
+      const picked = teamsState.teams.some((team) => team.id === teamsState.selectedTeamId)
+        ? teamsState.selectedTeamId
+        : !globalThis.matchMedia?.(PHONE_QUERY).matches && teamsState.teams[0]?.id;
       if (picked) {
         await openTeamDetail(picked);
       } else {
         hideTeamDetail();
       }
-      renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
+      renderTeamEmptyCard(teamsState.teams.length ? "choose" : "no-teams");
     } catch (error) {
       if (!isCurrent()) return;
       hideTeamDetail();
@@ -203,7 +203,7 @@ export function createTeamsView({
     bindTeamTabs();
     // Nothing to search until there is a team (signed out or none yet).
     const searchField = search?.closest?.(".search-field");
-    if (searchField) searchField.hidden = !(appState.signedIn && appState.teams.length);
+    if (searchField) searchField.hidden = !(appState.signedIn && teamsState.teams.length);
     // A guest already gets the Sign in button in the main card; a second
     // primary "New team" beside it only competes with it.
     const newTeam = document.getElementById("teams-new");
@@ -221,22 +221,22 @@ export function createTeamsView({
     }
     // No teams: the card beside the directory already says "No teams yet" and how
     // to start one, so the directory is just empty.
-    if (!appState.teams.length) {
+    if (!teamsState.teams.length) {
       list.innerHTML = "";
       return;
     }
     const query = (search?.value || "").trim().toLocaleLowerCase();
-    const visibleTeams = appState.teams.filter((team) => team.name.toLocaleLowerCase().includes(query));
+    const visibleTeams = teamsState.teams.filter((team) => team.name.toLocaleLowerCase().includes(query));
     list.innerHTML = visibleTeams.length ? html`${visibleTeams
       .map((team) => {
         const id = team.id;
         const name = team.name;
         const role = teamRoleLabel(team.role);
         const countLabel = teamMemberCountLabel(team.member_count);
-        const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
+        const selectedCls = teamsState.selectedTeamId === team.id ? " is-selected" : "";
         const roleKey = team.role || "member";
         return html`
-        <div class="team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-pressed="${appState.selectedTeamId === team.id}">
+        <div class="team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-pressed="${teamsState.selectedTeamId === team.id}">
           <span class="tr-text">
             <span class="name">${name}</span>
             <span class="sub">${countLabel}</span>

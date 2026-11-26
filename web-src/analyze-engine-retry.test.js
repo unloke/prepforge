@@ -3,6 +3,7 @@ import { appSource } from "./test-app-source.js";
 import { createEngineProfileManager, CRASH_KEY } from "./engine/engine-profile.js";
 import { createPositionAnalysisStore } from "./engine/position-analysis-store.js";
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const start = source.indexOf("async function runAnalysis(");
@@ -42,7 +43,7 @@ function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === posit
     document: { getElementById: id => id === "pgn-input" ? { value: "1. e4" } : button },
     notices: { isBusy: () => false, startJob: vi.fn(job => { if (cancel) job.onCancel(); }),
       updateJob: vi.fn(), lockJob: vi.fn(), completeJob: vi.fn(), cancelJob: vi.fn(), failJob: vi.fn() },
-    invalidateAnalysisSource: () => 1, analysisRecallSeq: 1, currentOwnerId: () => "owner", appState: {},
+    invalidateAnalysisSource: () => 1, analysisRecallSeq: 1, currentOwnerId: () => "owner", ...asSlices({}), 
     hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true, engineLifecycleMark: vi.fn(() => 0),
     postJson: vi.fn(async path => path === "/api/analyze/prepare"
       ? { game_id: "game", pgn: "1. e4", positions, depth: 12, brilliant: { enabled: !!assess }, moves: [{}] } : (save ? save() : { moves: [] })),

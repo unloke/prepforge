@@ -19,6 +19,7 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
+from prepforge_chess.services.workflows import delete_repertoire_and_archive_training
 from prepforge_chess.storage import codec, sa_tables
 from api_helpers import insert_users
 from prepforge_chess.storage.database import apply_schema, connect_database
@@ -199,7 +200,7 @@ def test_delete_repertoire_cascades_opening_nodes():
     )
 
     repo.save_repertoire(repertoire)
-    repo.delete_repertoire("delete-rep")
+    delete_repertoire_and_archive_training(repo, "delete-rep")
 
     assert repo.load_repertoire("delete-rep") is None
 

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 import { createBuildView } from "./build.js";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // A repertoire's notes read in the tree, under their moves; the line's named
 // opening sits at the end of the position trail; and every move has a pointer
@@ -32,7 +33,7 @@ function harness({ readOnly = false } = {}) {
   globalThis.document = { getElementById: (id) => elements[id] || null, querySelector: () => null };
   const renderer = createMoveTreeRenderer();
   const view = createBuildView({
-    appState,
+    ...asSlices(appState), 
     boards: { build: { setBranchArrows: vi.fn() } },
     getMoveTreeRenderer: () => ({ ...renderer, bindMoveTreeClicks: vi.fn(), scrollIntoViewWithin: vi.fn() }),
     ensureMoveTreeRenderer: () => Promise.resolve(),
@@ -41,7 +42,7 @@ function harness({ readOnly = false } = {}) {
     buildBranchContext: () => null,
     isReadOnly: () => readOnly,
   });
-  return { view, elements, appState };
+  return { view, elements, ...asSlices(appState), appState,  };
 }
 
 describe("Build tree notes, opening and move menu", () => {
@@ -84,9 +85,9 @@ describe("Ctrl/Cmd+Z in Repertoire", () => {
   const entry = readFileSync(new URL("../build-entry.js", import.meta.url), "utf8");
 
   it("takes back the newest move this tab added through the ordinary delete", () => {
-    expect(session).toContain("appState.buildAddedIds.push({ repertoireId: appState.build.repertoire_id, id: node.id });");
+    expect(session).toContain("buildState.buildAddedIds.push({ repertoireId: buildState.build.repertoire_id, id: node.id });");
     const undo = entry.slice(entry.indexOf("export async function undoLastBuildAdd("), entry.indexOf("export async function deleteBuildNodeLocal("));
-    expect(undo).toContain("if (entry.repertoireId !== appState.build.repertoire_id || !appState.buildNodeById.has(id)) continue;");
+    expect(undo).toContain("if (entry.repertoireId !== buildState.build.repertoire_id || !buildState.buildNodeById.has(id)) continue;");
     expect(undo).toContain("await deleteBuildNodeLocal(id, { isUndo: true });");
   });
 
