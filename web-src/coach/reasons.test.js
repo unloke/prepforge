@@ -3,7 +3,7 @@ import MOVES from "./fixtures/reason-moves.json";
 import { soundReason, reasonPhrase } from "./reasons.js";
 import { buildCommentary } from "./commentary.js";
 
-// Real positions and Stockfish 19 lines (depth 14), as sampled in research/coach-precision.
+// Real positions and Stockfish 19 lines (depth 14), as sampled in research/coach-precision (history branch).
 const move = (id) => MOVES.find((m) => m.id === id).features;
 
 describe("proven reasons on real positions", () => {

@@ -28,7 +28,7 @@
 | [Backend consistency](backend-consistency.md) | Analysis snapshots, training transactions and sync versions |
 | [Training flow and I/O](training-flow.md) | Continuous practice, deletion feedback and measured SQL work |
 | [Repertoire collaboration](repertoire-collaboration.md) | Recent activity, inverse edits, position discussions and Atlas Preparation index |
-| [Atlas research](../research/atlas-quality/README.md) | 38-study move-graph audit, local Preparation diagnostics and rejected quality-grading methods |
+| [Atlas research](https://github.com/unloke/prepforge/tree/f7487ee1c5c5f0f7aa829d2394bb98f1709c4baa/research/atlas-quality) | 38-study move-graph audit, local Preparation diagnostics and rejected quality-grading methods (removed from the tree; link is the last commit that had it) |
 
 ## Keeping documentation current
 

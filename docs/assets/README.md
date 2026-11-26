@@ -74,7 +74,7 @@ Use the same database for any before/after pair. New-feature comparisons show
 the old workspace where that feature was absent; operation comparisons must
 be labelled separately (for example detached → reattached).
 
-The menu and loading review is in `designs/loading-alignment/index.html`, with
+The menu and loading review was in `designs/loading-alignment/index.html` ([last commit with it](https://github.com/unloke/prepforge/tree/f7487ee1c5c5f0f7aa829d2394bb98f1709c4baa/designs/loading-alignment)), with
 desktop and phone before/after images plus CSS-pixel geometry JSON. Its baseline
 is `5aea536c`, after the original collaboration implementation. The earlier
 22 functional comparisons against `799b4e38` are retained in its

@@ -86,7 +86,7 @@ review. A failed load reports an error instead of analyzing a previous game.
 `train-play-async.test.js` covers ongoing book reads, the Maia takeover and
 rechecking after takeback. `controllers/train-session-handoff.test.js` covers
 automatic review, load failures, normalized PGN and ownership changes.
-The real browser evidence under `designs/atlas-analysis/real/` includes a
+The real browser evidence under `designs/atlas-analysis/real/` ([last commit with it](https://github.com/unloke/prepforge/tree/f7487ee1c5c5f0f7aa829d2394bb98f1709c4baa/designs/atlas-analysis/real)) includes a
 controlled 2-second Explorer response: only the initial miss queries Explorer;
 three subsequent replies take 75–86 ms. The auto-review smoke reaches prepare
 and classify-save successfully without pressing Review a second time. These

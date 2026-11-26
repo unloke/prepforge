@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const base = process.env.PRACTICE_SMOKE_URL || "http://127.0.0.1:5191/static/";
-const output = new URL("../../../designs/practice-repair/after/", import.meta.url);
+const output = new URL("../../../artifacts/practice-repair/", import.meta.url);
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ channel: "msedge", headless: true });
 try {

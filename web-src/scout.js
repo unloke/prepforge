@@ -64,24 +64,15 @@ const CLK_ANNOTATION_RE = /\[%clk\s+(\d+:\d+:\d+(?:\.\d+)?)\]/;
 const SAN_TOKEN_RE =
   /^([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?[+#]?|O-O-O[+#]?|O-O[+#]?)/;
 
-export function wilsonInterval(w, d, l, tail, z = 1.96) {
+/** Wilson lower bound of score% (draw = 0.5). Used for display, not ranking. */
+export function wilsonScorePct(w, d, l, z = 1.96) {
   const n = (w || 0) + (d || 0) + (l || 0);
-  if (!n) return 0.5;
+  if (!n) return 50;
   const p = ((w || 0) + 0.5 * (d || 0)) / n;
   const denom = 1 + (z * z) / n;
   const center = p + (z * z) / (2 * n);
   const margin = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n);
-  return tail === "upper" ? (center + margin) / denom : (center - margin) / denom;
-}
-
-/** Wilson lower bound of score% (draw = 0.5). Used for display, not ranking. */
-export function wilsonScorePct(w, d, l) {
-  return Math.round(wilsonInterval(w, d, l, "lower") * 100);
-}
-
-/** Wilson upper bound; kept for the archived research prior (`research/scout-legacy-prior.js`). */
-export function wilsonScoreUpperPct(w, d, l) {
-  return Math.round(wilsonInterval(w, d, l, "upper") * 100);
+  return Math.round(((center - margin) / denom) * 100);
 }
 
 /** Convert one UCI move from a FEN; falls back to the UCI string on replay failure. */

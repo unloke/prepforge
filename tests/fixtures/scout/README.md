@@ -23,15 +23,12 @@ Engine fixture SHA256 (repository LF bytes): `b7832e2ad53cbe12babd9b222c54268513
 Reproduce offline:
 
 ```sh
-node scripts/scout-selection-v2-study.mjs
 npx vitest run web-src/scout-selection-v2.test.js
 ```
 
-To regenerate engine reads using the installed package:
-
-```sh
-node scripts/scout-selection-v2-study.mjs --refresh-engine
-```
+The study script that regenerated these engine reads
+(`scripts/scout-selection-v2-study.mjs`) was removed with `research/` after
+commit f7487ee1; the fixture itself is frozen.
 
 Results are descriptive regression evidence, not held-out prediction accuracy or
 measured improvement in human preparation outcomes.

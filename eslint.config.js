@@ -97,7 +97,6 @@ export default [
       "tmp/**",
       "out/**",
       "src/prepforge_chess/web/static/**",
-      "research/**",
       // Vendored/generated engine runtimes are not authored product JavaScript;
       // lint their callers, not their bundled assets. Scout modules remain
       // authored source even when a URL or build flag gates their runtime path.
