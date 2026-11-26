@@ -230,14 +230,9 @@ function harness() {
   };
   // Real selection module for showAnalysisPly/resetAnalysisVariations' consumers.
   const showAnalysisPly = vi.fn(async (ply) => { appState.analysisPly = ply; });
-  const resetAnalysisVariations = () => {
-    appState.analysisVarNodes = new Map();
-    appState.analysisVarCounter = 0;
-    appState.analysisCurrentNodeId = "root";
-    appState.analysisNodePath = null;
-    appState.analysisTree = null;
-  };
   const functions = [
+    body("function resetAnalysisVariations("),
+    body("function classifyPositions("),
     body("async function finishAnalyzeCheckpoint("),
     body("async function rebuildAnalysisVariations("),
     body("async function loadPgnIntoAnalyze("),
@@ -245,7 +240,7 @@ function harness() {
     body("function renderImportPicker("),
   ].join("\n");
   const params = {
-    ...deps, resetAnalysisVariations, showAnalysisPly,
+    ...deps, showAnalysisPly,
     createBatchSwitcher, recallAnalysis: vi.fn(async (_id, _game, { onMissing }) => { onMissing(); return false; }),
     selectedNodePath: () => appState.analysisNodePath || "root", ANALYSIS_ROOT_PATH: "root",
     selectAnalysisNodePath: vi.fn(async () => true),

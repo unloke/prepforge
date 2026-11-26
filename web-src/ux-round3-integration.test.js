@@ -32,7 +32,7 @@ function harness(realBoard = false) {
     appState, document: doc, START_FEN, parsePgn,
     analysisStudy: { flush: async () => {} },
     api: () => pending.promise, ensureAnalyzeView: vi.fn(async () => view),
-    hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(async () => {}),
+    hideAnalysisHandoff: vi.fn(), showAnalysisPly: vi.fn(async () => {}),
     revealAnalysisResults: vi.fn(), syncViewHeads: vi.fn(), setStatus: vi.fn(), setStatusError: vi.fn(),
     orientAnalysisForSelf: vi.fn(), orientAnalysisFromPgn: vi.fn(),
     isBrowserEngineAvailable: () => true, notices: { isBusy: () => false }, requireSignIn: () => true,
@@ -58,7 +58,7 @@ function harness(realBoard = false) {
       analysisVariationLabel: () => "",
     }).showAnalysisPly;
   }
-  const functions = ["async function recallAnalysis(", "async function renderAnalysis(",
+  const functions = ["function resetAnalysisVariations(", "function classifyPositions(", "async function recallAnalysis(", "async function renderAnalysis(",
     "async function syncPgnFromTree(",
     "async function finishAnalyzeCheckpoint(", "async function loadPgnIntoAnalyze(", "async function runAnalysis(", "async function retryAnalyzeSave("].map(body).join("\n");
   const actions = new Function(...Object.keys(deps), "pgnInput", `
