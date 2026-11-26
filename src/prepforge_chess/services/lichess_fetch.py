@@ -24,7 +24,7 @@ from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import Color, MoveSource, Game
 from prepforge_chess.services.repertoire_matching import (
     RepertoireMatchResult,
-    match_game_against_repertoires,
+    RepertoireMatcher,
 )
 from prepforge_chess.storage.ports import RepertoireReader
 
@@ -531,17 +531,17 @@ def compare_recent_games(
     core = chess_core or ChessCore()
     # Owner-scoped: only compare against this user's own repertoires, never everyone's.
     all_repertoires = repository.list_repertoires(owner_user_id=owner_user_id)
-    active_repertoires = [rep for rep in all_repertoires if getattr(rep, "is_active", True)]
+    matcher = RepertoireMatcher(rep for rep in all_repertoires if getattr(rep, "is_active", True))
 
     summaries: List[GameMatchSummary] = []
     for entry in fetched:
-        summary = _summarize_fetched(entry, username, core, active_repertoires)
+        summary = _summarize_fetched(entry, username, core, matcher)
         if summary is not None:
             summaries.append(summary)
     return summaries
 
 
-def _summarize_fetched(entry, username, core, active_repertoires):
+def _summarize_fetched(entry, username, core, matcher: RepertoireMatcher):
     try:
         games = core.import_pgn_games(entry.pgn, source=MoveSource.IMPORTED_PGN)
     except ValueError:
@@ -552,11 +552,7 @@ def _summarize_fetched(entry, username, core, active_repertoires):
     user_color = determine_user_color(entry.white, entry.black, username)
     if user_color is None:
         return None
-    match = match_game_against_repertoires(
-        game.moves,
-        active_repertoires,
-        user_color,
-    )
+    match = matcher.match(game.moves, user_color)
     san_history = [move.san for move in game.moves]
     summary = _build_summary(entry, user_color, match, san_history, game)
     summary.source_account = username
@@ -593,34 +589,34 @@ def compare_many_identities(
     validate_fetch_budget(names, count)
     per_account = count
     core = chess_core or ChessCore()
-    all_repertoires = repository.list_repertoires(owner_user_id=owner_user_id)
-    active_repertoires = [rep for rep in all_repertoires if getattr(rep, "is_active", True)]
 
     def _one(username: str) -> tuple:
         try:
-            fetched = fetch_recent_pgns(username, per_account, timeout=timeout)
+            return username, fetch_recent_pgns(username, per_account, timeout=timeout), None
         except LichessFetchError as exc:
             return username, [], exc
-        out = []
-        for entry in fetched or []:
-            summary = _summarize_fetched(entry, username, core, active_repertoires)
-            if summary is not None:
-                out.append((summary, username))
-        return username, out, None
 
     workers = max(1, min(_SELF_FANOUT_MAX_WORKERS, len(names)))
     collected: list = []
     errors: list = []
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(_one, name): name for name in names}
+        futures = [pool.submit(_one, name) for name in names]
+        # The repertoire load runs while the fetches are in flight, not before.
+        all_repertoires = repository.list_repertoires(owner_user_id=owner_user_id)
+        matcher = RepertoireMatcher(
+            rep for rep in all_repertoires if getattr(rep, "is_active", True)
+        )
         for future in futures:
-            username, pairs, error = future.result()
+            username, fetched, error = future.result()
             if error is not None:
                 errors.append(error)
                 if source_errors is not None:
                     source_errors.append({"username": username, "message": str(error)})
                 continue
-            collected.extend(pairs)
+            for entry in fetched or []:
+                summary = _summarize_fetched(entry, username, core, matcher)
+                if summary is not None:
+                    collected.append((summary, username))
     # Resolve duplicate perspectives before truncation. A linked self perspective
     # wins over an external opponent, regardless of source collection order.
     # Canonical name breaks ties (including games between two linked identities).
