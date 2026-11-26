@@ -8,7 +8,7 @@ const source = appSource();
 function compileLoad(deps) {
   deps = { html, analysisHistoryResult, localDayOf: String, currentOwnerId: () => "owner", ...deps };
   const body = (marker) => { const start = source.indexOf(marker); return source.slice(start, source.indexOf("\n}\n", start) + 2); };
-  return new Function(...Object.keys(deps), `let analysisHistorySeq = 0, historyFreshFor = null;
+  return new Function(...Object.keys(deps), `let analysisHistorySeq = 0, historyFreshFor = null, historySaves = 0;
     ${body("export function refreshAnalysisHistoryIfOpen(").replace("export ", "")}
     const loadAnalysisHistory = ${body("async function loadAnalysisHistory(")};
     return Object.assign(loadAnalysisHistory, { refreshAnalysisHistoryIfOpen });`)(...Object.values(deps));
@@ -93,5 +93,27 @@ describe("Recent analyses list states", () => {
     await load({ ifStale: true });
     expect(api).toHaveBeenCalledTimes(2);
     expect(host.innerHTML).toContain("No saved analyses yet.");
+  });
+
+  it("a read in flight when a save lands cannot mark the list fresh", async () => {
+    const host = hostElement(), drawer = { open: true };
+    let answer;
+    const api = vi.fn()
+      .mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }))
+      .mockResolvedValue({ analyses: [{ game_id: "saved", white: "A" }] });
+    const load = compileLoad({ appState: { pendingAnalysisDeletes: new Set(), signedIn: true },
+      document: { getElementById: (id) => (id === "history-drawer" ? drawer : host) }, api });
+    const first = load({ ifStale: true });
+    await vi.waitFor(() => expect(api).toHaveBeenCalledTimes(1));
+    // The drawer closes mid-load, a save lands, then the older read answers
+    // without the analysis just saved.
+    drawer.open = false;
+    load.refreshAnalysisHistoryIfOpen();
+    answer({ analyses: [] });
+    await first;
+    drawer.open = true;
+    await load({ ifStale: true });
+    expect(api).toHaveBeenCalledTimes(2);
+    expect(host.innerHTML).toContain('data-game-id="saved"');
   });
 });
