@@ -86,7 +86,7 @@ export function uciToSan(fen, uci) {
       promotion: uci[4] || undefined,
     });
     return move?.san || uci;
-  } catch (_) {
+  } catch {
     return uci;
   }
 }
@@ -347,13 +347,7 @@ function medianOf(values) {
 }
 
 function madOf(values, med) {
-  const devs = values
-    .filter((v) => v != null && Number.isFinite(v))
-    .map((v) => Math.abs(v - med))
-    .sort((a, b) => a - b);
-  if (!devs.length) return 0;
-  const mid = Math.floor(devs.length / 2);
-  return devs.length % 2 ? devs[mid] : (devs[mid - 1] + devs[mid]) / 2;
+  return medianOf(values.filter((v) => v != null).map((v) => Math.abs(v - med))) ?? 0;
 }
 
 function openingClockAfterPly(game) {
@@ -470,7 +464,7 @@ export function parseGameBlock(block, username) {
     let move;
     try {
       move = chess.move(san);
-    } catch (_) {
+    } catch {
       break;
     }
     if (!move) break;
@@ -545,9 +539,11 @@ function incrementSelection(node, score, weight) {
 }
 
 function incrementResult(node, score) {
-  if (score === 1) node.w += 1;
-  else if (score === 0.5) node.d += 1;
-  else node.l += 1;
+  node[score === 1 ? "w" : score === 0.5 ? "d" : "l"] += 1;
+}
+
+function wdlScorePct(w, d, n) {
+  return n > 0 ? Math.round(((w + 0.5 * d) / n) * 100) : 0;
 }
 
 // The newest game timestamp in a set — the anchor the display trie's recency decay is
@@ -769,9 +765,7 @@ export function aggregateOpeningBranches(
         if (game.gameId) seenAncestors.add(game.gameId);
         const ancestor = ancestorFreq.get(fenBefore);
         ancestor.count += 1;
-        if (game.score === 1) ancestor.w += 1;
-        else if (game.score === 0.5) ancestor.d += 1;
-        else ancestor.l += 1;
+        incrementResult(ancestor, game.score);
       }
     }
     const key = terminal.ucis.join(">");
@@ -806,9 +800,7 @@ export function aggregateOpeningBranches(
     }
     row.branchScore += R * L * T;
     row.games += 1;
-    if (game.score === 1) row.w += 1;
-    else if (game.score === 0.5) row.d += 1;
-    else row.l += 1;
+    incrementResult(row, game.score);
     if (game.datestamp > row.lastDatestamp) row.lastDatestamp = game.datestamp;
   }
 
@@ -823,7 +815,7 @@ export function aggregateOpeningBranches(
       w: row.w,
       d: row.d,
       l: row.l,
-      scorePct: n > 0 ? Math.round(((row.w + 0.5 * row.d) / n) * 100) : 0,
+      scorePct: wdlScorePct(row.w, row.d, n),
       share: 0,
       rawShare: 0,
       count: row.branchScore,
@@ -841,9 +833,8 @@ export function aggregateOpeningBranches(
   const ancestorTotalGames = filtered.length || 1;
   for (const info of ancestorFreq.values()) {
     info.frequency = info.count / ancestorTotalGames;
-    const n = (info.w || 0) + (info.d || 0) + (info.l || 0);
-    info.games = n;
-    info.scorePct = n > 0 ? Math.round(((info.w + 0.5 * info.d) / n) * 100) : 0;
+    info.games = info.w + info.d + info.l;
+    info.scorePct = wdlScorePct(info.w, info.d, info.games);
   }
   return { branches, droppedCount, ancestorFreq };
 }
@@ -869,10 +860,6 @@ export function selectionBaselineFromTrie(trie) {
       d: ((x?.d || 0) + smoothing) / (weight + 3 * smoothing), l: ((x?.l || 0) + smoothing) / (weight + 3 * smoothing) } };
 }
 
-/**
- * Downweight prep value when the opponent performs at/above baseline.
- * Returns 1 when empirical data is missing (do not penalize rare samples).
- */
 /**
  * Walk the opening trie along a UCI path. The trie keys children by `${uci}|${san}`,
  * so we match on the uci prefix. Returns per-ply nodes with their w/d/l, scorePct, and
@@ -906,7 +893,7 @@ export function triePrefixStats(trie, ucis) {
       w: child.w || 0,
       d: child.d || 0,
       l: child.l || 0,
-      scorePct: gc > 0 ? Math.round(((child.w + 0.5 * child.d) / gc) * 100) : 0,
+      scorePct: wdlScorePct(child.w || 0, child.d || 0, gc),
       moveShare: parentGames > 0 ? gc / parentGames : 0,
     });
     node = child;
@@ -1106,32 +1093,19 @@ export function rankGamePlan(
 
 /** Production Module B selector alias — keep rankGamePlan as the implementation. */
 /** Prefer an enabled mainline child; otherwise pick deterministically by UCI. */
-function pickRepertoireReplyChild(children) {
-  if (!children?.size) return null;
-  const entries = [...children.entries()].map(([uci, meta]) => ({
-    uci,
-    id: meta.id,
-    is_mainline: !!meta.is_mainline,
-    is_enabled: meta.is_enabled !== false,
-  }));
-  const enabled = entries.filter((e) => e.is_enabled);
-  if (!enabled.length) return null;
-  const mainlines = enabled.filter((e) => e.is_mainline);
-  if (mainlines.length) {
-    mainlines.sort((a, b) => a.uci.localeCompare(b.uci));
-    return mainlines[0];
-  }
-  enabled.sort((a, b) => a.uci.localeCompare(b.uci));
-  return enabled[0];
+function pickRepertoireReplyUci(children) {
+  const enabled = [...(children || [])]
+    .filter(([, meta]) => meta.is_enabled !== false)
+    .sort(([a], [b]) => a.localeCompare(b));
+  return (enabled.find(([, meta]) => meta.is_mainline) || enabled[0])?.[0] || null;
 }
 
 /** Next move in the player's repertoire after the opponent line (mainline-aware). */
 export function suggestReplyFromRepertoire(lookup, lineUcis) {
   const { covered, deepestNodeId } = lineCoverage(lookup, lineUcis);
   if (covered < lineUcis.length || !deepestNodeId) return null;
-  const children = lookup.childUci.get(deepestNodeId);
-  const picked = pickRepertoireReplyChild(children);
-  return picked?.uci ? { uci: picked.uci, source: "repertoire" } : null;
+  const uci = pickRepertoireReplyUci(lookup.childUci.get(deepestNodeId));
+  return uci ? { uci, source: "repertoire" } : null;
 }
 
 /** Attach a recommended player reply from repertoire coverage or engine refutation. */
@@ -1313,80 +1287,56 @@ export function gradeLines(lookup, lines) {
 // FEN + opponent profile
 // ---------------------------------------------------------------------------
 
-// Scout re-aggregates every branch on each streaming render, and most games
-// share their opening lines — replaying each one through chess.js every time
-// was a quarter of the render cost. Pure in `ucis`, so memoize (bounded).
-//
-// Bound is ~850 bytes per entry (the joined-UCI key dominates: a 60-move game
-// is ~720 chars, plus the FEN and the Map slot). 4000 entries is a few MB —
-// far more than one render's working set — and evicts ONE oldest entry at a
-// time. A wholesale clear() at the cap was a cliff: every cached replay
-// rebuilt at once, right after the 4499th distinct game.
-const FEN_BEFORE_LAST_CACHE_MAX = 4000;
-const fenBeforeLastCache = new Map();
+// Scout re-aggregates every branch on each streaming render, and the prefilter,
+// selector and report replay every ranked route on each pass; most games share
+// their opening lines, so replaying each through chess.js every time was a
+// quarter of the render cost. Both replays are pure in `ucis`: memoize them in a
+// bounded LRU. ~850 bytes per entry (the joined-UCI key dominates), so 4000 is a
+// few MB, and eviction drops one oldest entry at a time rather than clearing.
+const UCI_REPLAY_CACHE_MAX = 4000;
 
-export function fenBeforeLastMove(ucis) {
-  if (!ucis?.length) return null;
-  const key = ucis.join(" ");
-  if (fenBeforeLastCache.has(key)) {
-    // Re-insert so a game stays warm while the streaming render keeps asking
-    // for it; Map iteration order is insertion order, so the first key is the
-    // least recently used.
-    const fen = fenBeforeLastCache.get(key);
-    fenBeforeLastCache.delete(key);
-    fenBeforeLastCache.set(key, fen);
-    return fen;
-  }
-  const fen = replayFenBeforeLastMove(ucis);
-  if (fenBeforeLastCache.size >= FEN_BEFORE_LAST_CACHE_MAX) {
-    const oldest = fenBeforeLastCache.keys().next().value;
-    fenBeforeLastCache.delete(oldest);
-  }
-  fenBeforeLastCache.set(key, fen);
-  return fen;
-}
-
-function replayFenBeforeLastMove(ucis) {
-  const chess = new Chess();
-  for (let i = 0; i < ucis.length - 1; i += 1) {
-    const uci = ucis[i];
-    try {
-      chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-    } catch (_) {
-      return null;
+function lruUciMemo(replay) {
+  const cache = new Map();
+  return (ucis) => {
+    const key = ucis.join(" ");
+    if (cache.has(key)) {
+      // Map iteration order is insertion order: re-insert to mark as recent.
+      const fen = cache.get(key);
+      cache.delete(key);
+      cache.set(key, fen);
+      return fen;
     }
-  }
-  return chess.fen();
-}
-
-// Same bounded memo as fenBeforeLastMove: every ranked route is replayed by the
-// prefilter, the selector and the report on each pass.
-const fenAfterLineCache = new Map();
-
-export function fenAfterLine(ucis) {
-  const key = (ucis || []).join(" ");
-  if (fenAfterLineCache.has(key)) {
-    const fen = fenAfterLineCache.get(key);
-    fenAfterLineCache.delete(key);
-    fenAfterLineCache.set(key, fen);
+    const fen = replay(ucis);
+    if (cache.size >= UCI_REPLAY_CACHE_MAX) cache.delete(cache.keys().next().value);
+    cache.set(key, fen);
     return fen;
-  }
-  const fen = replayFenAfterLine(ucis || []);
-  if (fenAfterLineCache.size >= FEN_BEFORE_LAST_CACHE_MAX) fenAfterLineCache.delete(fenAfterLineCache.keys().next().value);
-  fenAfterLineCache.set(key, fen);
-  return fen;
+  };
 }
 
-function replayFenAfterLine(ucis) {
+// Replays `ucis`; an illegal move yields null when `strict`, otherwise the
+// position reached before it.
+function replayUcis(ucis, strict) {
   const chess = new Chess();
   for (const uci of ucis) {
     try {
       chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-    } catch (_) {
+    } catch {
+      if (strict) return null;
       break;
     }
   }
   return chess.fen();
+}
+
+const fenBeforeLastMemo = lruUciMemo((ucis) => replayUcis(ucis.slice(0, -1), true));
+const fenAfterLineMemo = lruUciMemo((ucis) => replayUcis(ucis, false));
+
+export function fenBeforeLastMove(ucis) {
+  return ucis?.length ? fenBeforeLastMemo(ucis) : null;
+}
+
+export function fenAfterLine(ucis) {
+  return fenAfterLineMemo(ucis || []);
 }
 
 // The player's own first decision: the first move with White, the reply to
@@ -1402,6 +1352,13 @@ function decisionShares(games) {
   const shares = new Map();
   for (const [key, n] of counts) shares.set(key, n / games.length);
   return shares;
+}
+
+// First entry with the highest share (ties keep the earlier key).
+function topDecision(shares) {
+  let top = [null, -1];
+  for (const entry of shares) if (entry[1] > top[1]) top = entry;
+  return top;
 }
 
 export const RECENT_CHANGE_MIN_GAMES = 3;
@@ -1424,38 +1381,24 @@ function detectRecentChange(last20, prev20) {
     if (last.length < RECENT_CHANGE_MIN_GAMES || prev.length < RECENT_CHANGE_MIN_GAMES) {
       return false;
     }
-    const lastShares = decisionShares(last);
     const prevShares = decisionShares(prev);
-    let top = null;
-    for (const [key, share] of lastShares) if (!top || share > top.share) top = { key, share };
-    let prevTop = null;
-    for (const [key, share] of prevShares) if (!prevTop || share > prevTop.share) prevTop = { key, share };
-    if (!top || !prevTop || top.key === prevTop.key) return false;
-    return top.share - (prevShares.get(top.key) || 0) >= RECENT_CHANGE_MIN_SHIFT;
+    const [topKey, topShare] = topDecision(decisionShares(last));
+    if (topKey === topDecision(prevShares)[0]) return false;
+    return topShare - (prevShares.get(topKey) || 0) >= RECENT_CHANGE_MIN_SHIFT;
   };
   return { white: changed("white"), black: changed("black") };
 }
 
 function colorResultStats(games, color) {
   const filtered = games.filter((g) => g.color === color);
-  let w = 0;
-  let d = 0;
-  let l = 0;
+  const wdl = { w: 0, d: 0, l: 0 };
   let scoreSum = 0;
   for (const g of filtered) {
-    if (g.score === 1) w += 1;
-    else if (g.score === 0.5) d += 1;
-    else l += 1;
+    incrementResult(wdl, g.score);
     scoreSum += g.score;
   }
   const n = filtered.length;
-  return {
-    games: n,
-    w,
-    d,
-    l,
-    scorePct: n > 0 ? Math.round((scoreSum / n) * 100) : 0,
-  };
+  return { games: n, ...wdl, scorePct: n > 0 ? Math.round((scoreSum / n) * 100) : 0 };
 }
 
 export function opponentProfile(games) {
@@ -1562,7 +1505,7 @@ async function streamPgn(resp, username, onGame, signal) {
   } finally {
     try {
       reader.cancel?.();
-    } catch (_) {
+    } catch {
       /* reader may already be closed */
     }
     if (!signal?.aborted) emitBlock(buffer);
