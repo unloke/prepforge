@@ -60,8 +60,7 @@ from prepforge_chess.services.scheduler import (
     preorder_index,
     sibling_moves,
 )
-from prepforge_chess.services.srs import rating_for
-from prepforge_chess.services.training import record_attempt
+from prepforge_chess.services.training import grade_attempt
 from prepforge_chess.services.training_view import heuristic_strategy, piece_name_at
 from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.codec import hydrate_opening_paths
@@ -806,8 +805,9 @@ class SmartTrainingService:
                 receipts[attempt_uuid] = (node_id, correct)
                 # The session lock is held for this entire batch. Fold every
                 # attempt into that locked snapshot, then write it once.
-                session, _ = self._grade(
-                    conn, session, rep_id, node_id, correct, bool(item.get("hinted")), session_owner
+                session, _ = grade_attempt(
+                    self.repository, conn, session, rep_id, node_id,
+                    correct=correct, hinted=bool(item.get("hinted")), owner_user_id=session_owner,
                 )
                 written += 1
 
@@ -885,8 +885,9 @@ class SmartTrainingService:
             progress: Optional[TrainingProgress] = None
             sr_written = attempt <= 1
             if sr_written:
-                session, progress = self._grade(
-                    conn, session, card_rep.id, expected.id, correct, hinted, self._owner_or_raise()
+                session, progress = grade_attempt(
+                    self.repository, conn, session, card_rep.id, expected.id,
+                    correct=correct, hinted=hinted, owner_user_id=self._owner_or_raise(),
                 )
 
             card_completed = False
@@ -949,28 +950,6 @@ class SmartTrainingService:
             reply_san=reply_san,
             fen_after_reply=fen_after_reply,
         )
-
-    def _grade(
-        self, conn, session: TrainingSession, repertoire_id: str, node_id: str,
-        correct: bool, hinted: bool, owner_user_id: Optional[str],
-    ) -> Tuple[TrainingSession, TrainingProgress]:
-        """Record a first attempt: read-modify-write the progress row under its
-        lock inside ``conn``'s transaction (so a concurrent attempt on the same
-        node is never lost to a stale snapshot) and log the review."""
-        stored = self.repository.lock_training_progress(
-            conn, repertoire_id=repertoire_id, node_id=node_id, owner_user_id=owner_user_id
-        )
-        session, progress = record_attempt(
-            session=session, progress=stored, node_id=node_id, correct=correct, hinted=hinted
-        )
-        self.repository.write_training_progress(
-            conn, repertoire_id=repertoire_id, progress=progress, owner_user_id=owner_user_id
-        )
-        self.repository.write_review(
-            conn, owner_user_id=owner_user_id, node_id=node_id,
-            rating=rating_for(correct, hinted=hinted), reviewed_at=progress.last_reviewed_at,
-        )
-        return session, progress
 
     def _requeue_card(
         self, session: TrainingSession, card: TrainingCard
