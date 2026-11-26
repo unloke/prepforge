@@ -1,0 +1,162 @@
+/* Lazy Library guest-stage & Today masthead styles (imported by views/dashboard.js). */
+
+.today-flame {
+  width: 13px;
+  height: 13px;
+  margin-right: 4px;
+  vertical-align: -2px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.today-streak[data-lit="1"] .today-flame { color: var(--accent-text); }
+:root[data-theme="dark"] .lib-cell-rep .color-dot.black {
+  background: #141311;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+@media (min-width: 761px) {
+  #view-dashboard .lib .today {
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    padding: 12px 0 24px;
+    gap: 10px 28px;
+  }
+  #view-dashboard .today-streak {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    padding-right: 28px;
+    border-right: 1px solid var(--line);
+  }
+  #view-dashboard .today-count {
+    font: 300 68px/0.9 var(--serif);
+    letter-spacing: -0.03em;
+  }
+  #view-dashboard .today-unit {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  #view-dashboard .today-flame { margin-right: 0; vertical-align: 0; }
+  #view-dashboard .today-queue {
+    font: 400 28px/1.18 var(--serif);
+    letter-spacing: -0.015em;
+  }
+  #view-dashboard:has(#dashboard-today:not([hidden]) #dashboard-train-now) #dashboard-new-rep.primary {
+    background: var(--surface-3);
+    border-color: transparent;
+    color: var(--text);
+  }
+  #view-dashboard:has(#dashboard-today:not([hidden]) #dashboard-train-now) #dashboard-new-rep.primary:hover:not(:disabled) {
+    background: var(--line);
+    color: var(--text);
+  }
+}
+
+#view-dashboard .guest-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+  text-align: left;
+  padding: 28px 24px;
+}
+#view-dashboard .guest-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+#view-dashboard .guest-title {
+  margin: 0;
+  font: 300 34px/1.05 var(--serif);
+  letter-spacing: -0.025em;
+  color: var(--text);
+  max-width: 12ch;
+}
+#view-dashboard .guest-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 40ch;
+}
+#view-dashboard .guest-cta { margin-top: 6px; }
+#view-dashboard .guest-try {
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+  width: 100%;
+  max-width: 340px;
+  border-top: 1px solid var(--line);
+}
+#view-dashboard .guest-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+#view-dashboard .guest-link:hover { color: var(--text); }
+#view-dashboard .guest-specimen { display: none; }
+
+@media (min-width: 900px) {
+  #view-dashboard:has([data-testid="library-signed-out"]) :is(.page-head, .lib-list > .card-head, #dashboard-steps, .guest-cta [data-lib-action="import"]) {
+    display: none;
+  }
+  #view-dashboard:has([data-testid="library-signed-out"]) .lib {
+    min-height: calc(100dvh - 48px);
+    justify-content: center;
+  }
+  #view-dashboard:has([data-testid="library-signed-out"]) .lib-list {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+  #view-dashboard .guest-stage {
+    grid-template-columns: minmax(0, 1.15fr) auto;
+    gap: 56px;
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 36px 24px;
+  }
+  #view-dashboard .guest-title { font-size: 56px; line-height: 1.02; }
+  #view-dashboard .guest-specimen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #view-dashboard .guest-board {
+    display: grid;
+    grid-template-columns: repeat(4, 60px);
+    grid-template-rows: repeat(4, 60px);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42), inset 0 0 0 1px var(--line);
+  }
+  #view-dashboard .guest-board .sq { display: grid; place-items: center; padding: 4px; }
+  #view-dashboard .guest-board .sq.l { background: var(--square-light); }
+  #view-dashboard .guest-board .sq.d { background: var(--square-dark); }
+  #view-dashboard .guest-board .sq.is-hi { background: color-mix(in srgb, var(--square-light) 70%, var(--accent)); }
+  #view-dashboard .guest-board .piece { width: 86%; height: 86%; }
+}

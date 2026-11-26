@@ -225,14 +225,43 @@
   padding: 8px 0;
 }
 .conn-name {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
   overflow: hidden;
-  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.conn-name .conn-user {
+  order: 1;
+  font-weight: 600;
+  color: var(--text);
+}
+.conn-name .status-pill {
+  order: 2;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--label);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.conn-name .conn-primary {
+  order: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent-text);
+}
+.conn-name .conn-primary::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 .conn-actions {
   position: relative;
@@ -331,12 +360,12 @@
 .acct-id-name b {
   min-width: 0;
   overflow: hidden;
-  font-size: 16px;
+  font: 400 18px/1.15 var(--serif);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .acct-id-name b.is-placeholder { color: var(--muted); font-weight: 500; }
-.acct-edit { padding-inline: 6px; color: var(--muted); }
+.acct-edit { padding-inline: 8px; background: var(--surface-3); color: var(--text); }
 .acct-id-email {
   overflow: hidden;
   color: var(--muted);
@@ -345,6 +374,8 @@
   white-space: nowrap;
 }
 .acct-id-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.acct-id-meta .status-pill { padding: 0; border: 0; background: transparent; color: var(--label); font-size: 12px; font-weight: 400; }
+.acct-id-meta .status-pill + .status-pill::before { content: "·"; margin-right: 6px; color: var(--line-strong); }
 .acct-signout { flex: none; align-self: flex-start; margin-top: 4px; }
 .acct-row-text { display: grid; gap: 1px; min-width: 0; }
 .acct-row > .btn { flex: none; white-space: nowrap; }
@@ -611,6 +642,100 @@
   border-radius: 3px;
   overflow: hidden;
   box-shadow: 0 0 0 1px var(--line-strong);
+}
+/* Desktop Appearance: content-hugging options so Amber, Wood, and Staunton Pro
+   each draw their 2px selection underline at an identical 6px gap below their
+   own visual content (instead of a shared 44px box producing uneven heights). */
+@media (min-width: 761px) {
+  #set-appearance .pf-row { padding: 12px 0; }
+  #set-appearance .accent-swatch,
+  #set-appearance .board-color-swatch,
+  #view-settings #piece-style-picker .piece-style-option {
+    position: relative;
+    min-height: 0;
+    height: auto;
+    padding: 0 0 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--muted);
+    line-height: 1.2;
+  }
+  #view-settings #piece-style-picker {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    gap: 16px;
+  }
+  #view-settings #piece-style-picker .piece-style-option {
+    padding: 6px 10px 8px;
+    border-radius: 6px 6px 0 0;
+  }
+  #set-appearance .accent-swatch[aria-pressed="true"],
+  #set-appearance .board-color-swatch[aria-pressed="true"],
+  #view-settings #piece-style-picker .piece-style-option.is-active {
+    background: transparent;
+    color: var(--text);
+    font-weight: 500;
+  }
+  #view-settings #piece-style-picker .piece-style-option.is-active {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  #set-appearance .accent-swatch[aria-pressed="true"]::after,
+  #set-appearance .board-color-swatch[aria-pressed="true"]::after,
+  #view-settings #piece-style-picker .piece-style-option.is-active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+}
+/* Account Desktop: align Password, Chess accounts, and Your data on one shared
+   200px left-label axis, with Delete account separated in its own bottom zone. */
+@media (min-width: 1200px) {
+  #set-account .acct-id { padding: 4px 0 18px; border-bottom: 1px solid var(--line); }
+  #set-account .acct-row { padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
+  #set-account #set-connections {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+    margin-top: 0;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  #set-account #set-connections > .acct-block-head { grid-column: 1; grid-row: 1; padding: 6px 0 0; font-weight: 500; color: var(--muted); }
+  #set-account #set-connections > :not(.acct-block-head) { grid-column: 2; justify-self: start; }
+  #set-account #set-connections > #settings-lichess-accounts { width: 100%; }
+  #set-account #settings-account-data {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+    margin-top: 0;
+    padding-top: 14px;
+  }
+  #set-account #settings-account-data > .acct-block-head { grid-column: 1; grid-row: 1; padding: 8px 0 0; font-weight: 500; color: var(--muted); }
+  #set-account #settings-account-data > .acct-row {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0 14px;
+    border-bottom: 0;
+  }
+  #set-account #settings-account-data > .acct-row > .acct-row-text { display: none; }
+  #set-account #settings-account-data > .acct-danger-zone {
+    grid-column: 1 / -1;
+    margin-top: 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
 }
 .board-square { width: 14px; height: 14px; }
 .board-square.light { background: var(--square-light); }

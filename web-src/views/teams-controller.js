@@ -583,9 +583,9 @@ async function loadSharedRepertoires() {
         const team = item.team_id ? teamById(item.team_id) : null;
         const via = item.team_id ? `via ${team ? team.name : "a team"}` : item.owner_display_name || "";
         return html`
-          <div class="mem-row shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}" aria-label="Open ${name}">
+          <div class="mem-row shared-rep-row" data-repertoire-id="${id}">
             <span class="color-dot ${color}"></span>
-            <span class="mem-id">
+            <span class="mem-id" role="button" tabindex="0">
               <span class="name">${name}</span>
               ${via ? html`<span class="sub"><span class="sub-role">${roleLabel(item.role)} · </span>${via}</span>` : ""}
             </span>
@@ -602,8 +602,7 @@ async function loadSharedRepertoires() {
         if (event.target.closest(".team-copy")) return;
         open();
       });
-      row.addEventListener("keydown", (event) => {
-        if (event.target !== row) return;
+      row.querySelector(".mem-id")?.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           open();

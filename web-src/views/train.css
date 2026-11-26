@@ -205,12 +205,13 @@
   border-radius: 6px;
 }
 
-/* Contrasting disc so the side-to-move's king always pops. */
-.train-turn-badge[data-side="white"] { background: var(--text); }
+/* Board-matched square so the side-to-move's king matches the active board theme. */
+.train-turn-badge[data-side="white"] { background: var(--square-dark); border-color: var(--line); }
 
-.train-turn-badge[data-side="black"] { background: var(--dot-white); }
+.train-turn-badge[data-side="black"] { background: var(--square-light); border-color: var(--line); }
 
 .train-turn-badge .piece { width: 78%; height: 78%; }
+#view-train .train-coach-title .move-ref { text-decoration: none; }
 
 /* Cards. A .tcard is the section unit the Games triage builds its ledger and
    focus cards from: a bordered, panel-filled block whose quiet inner rows and

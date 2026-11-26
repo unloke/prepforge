@@ -67,6 +67,9 @@
 
   /* Ink on an accent fill: near-black on the amber in both themes. */
   --accent-ink: #1c1306;
+  /* Ink on --accent-strong hover fills: white clears AA on dark light-mode
+     hover fills (amber 6.9:1, blue 8.3:1, orange 5.9:1). */
+  --accent-strong-ink: #ffffff;
   /* Text-safe companion for --accent (AA on panel/panel-soft/bg and on
      --accent-soft; pinned by visual-system.test.js). */
   --accent-text: #7d5210;
@@ -271,6 +274,7 @@
   --accent-text: #e0b46e;
   --on-accent: #ffffff;
   --accent-ink: #1c1306;
+  --accent-strong-ink: var(--accent-ink);
 
   /* Semantic status */
   --danger: #ef6b5b;
@@ -346,16 +350,16 @@
 :root, .board-color-swatch[data-board="wood"] { --square-light: #e6dac5; --square-dark: #a98b6d; }
 
 
-:root[data-board="slate"], .board-color-swatch[data-board="slate"] { --square-light: #dee3e6; --square-dark: #8ca2ad; --coord-on-light: #4a6170; --coord-on-dark: #16232b; }
+:root[data-board="slate"], .board-color-swatch[data-board="slate"] { --square-light: #dee3e6; --square-dark: #8ca2ad; --coord-on-light: #4a6170; --coord-on-dark: #16232b; --board-frame: #586974; }
 
 
 :root[data-board="classic"], .board-color-swatch[data-board="classic"] { --square-light: #f0d9b5; --square-dark: #b58863; }
 
 
-:root[data-board="green"], .board-color-swatch[data-board="green"] { --square-light: #eeeed2; --square-dark: #769656; }
+:root[data-board="green"], .board-color-swatch[data-board="green"] { --square-light: #eeeed2; --square-dark: #769656; --coord-on-light: #465c32; --coord-on-dark: #14220d; --board-frame: #4c6139; }
 
 
-:root[data-board="walnut"], .board-color-swatch[data-board="walnut"] { --square-light: #e6c9a0; --square-dark: #8a5a33; }
+:root[data-board="walnut"], .board-color-swatch[data-board="walnut"] { --square-light: #e6c9a0; --square-dark: #8a5a33; --coord-on-light: #5c3a1e; --coord-on-dark: #f8eedc; --board-frame: #6b4628; }
 
 
 /* ---- Accent presets ------------------------------------------------------

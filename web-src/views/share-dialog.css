@@ -2,6 +2,7 @@
    with access, and the link. Wider than a confirm so a row's name, role and
    remove sit on one line. */
 .share-modal { width: min(520px, calc(100vw - 24px)); }
+.share-modal-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 10px; }
 /* The column is the dialog's width, never its widest control's. */
 .share-body { grid-template-columns: minmax(0, 1fr); }
 

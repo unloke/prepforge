@@ -229,17 +229,25 @@ async function runViewport(vp) {
     await page.locator('[data-testid="train-tab-drill"]').click();
     await page.waitForTimeout(250);
   } else {
-    // Practice: the opponent picker opens from its chip.
+    // Practice: opponents are native tabs directly in the Practice row.
     await page.locator('[data-testid="train-tab-play"]').click();
     check(!await page.locator("#start-train").isVisible(), "desktop Practice hides Drill");
     check(await page.locator("#start-play").isVisible(), "desktop Practice shows Play");
-    await page.locator("#train-play-book").click();
-    await page.waitForTimeout(250);
-    const picker = await page.locator('[role="listbox"]:visible, .train-picker:visible').count();
-    check(picker >= 1, "the opponent chip opens a picker");
-    await shot("play-picker");
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(200);
+    const bots = await page.locator("#train-bots .train-bot").evaluateAll((els) =>
+      els.map((b) => ({ book: b.dataset.book, pressed: b.getAttribute("aria-pressed") === "true", disabled: b.disabled })));
+    check(bots.length === 3 && bots.filter((b) => b.pressed).length === 1,
+      `desktop Practice shows all 3 opponent tabs with one picked: ${JSON.stringify(bots)}`);
+    const other = bots.find((b) => !b.pressed && !b.disabled);
+    check(!!other, `another desktop opponent can be picked: ${JSON.stringify(bots)}`);
+    if (other) {
+      await page.locator(`#train-bots .train-bot[data-book="${other.book}"]`).click();
+      await page.waitForTimeout(200);
+      check(await page.locator(`#train-bots .train-bot[data-book="${other.book}"]`).getAttribute("aria-pressed") === "true",
+        "clicking a desktop opponent tab picks that opponent");
+      await shot("play-picker");
+      await page.locator('#train-bots .train-bot[data-book="maia"]').click();
+      await page.waitForTimeout(150);
+    }
     await page.locator('[data-testid="train-tab-drill"]').click();
   }
 

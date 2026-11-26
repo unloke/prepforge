@@ -57,21 +57,21 @@ export function shareDialogBodyHtml(model) {
         <button type="button" class="btn icon share-remove" data-grant-remove="${g.key}" data-focus="remove:${g.key}" title="Remove access" aria-label="Remove ${g.name}"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
       </li>`);
   return html`
-    <div class="modal-title">Share “${model.name}”</div>
+    <div class="modal-title share-modal-title"><span>Share “${model.name}”</span><button type="button" class="auth-close" data-action="done" aria-label="Close">×</button></div>
     <div class="modal-body share-body">
       <form class="share-add${target ? " has-target" : ""}" data-share-add novalidate>
         ${target}
         <input class="share-person" type="text" data-share-person data-focus="add-person" value="${draft.person}"${draft.target ? " hidden" : ""} placeholder="Email or Lichess username" aria-label="Email or Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false" />
         <select class="share-role" data-share-add-role data-focus="add-role" aria-label="Role">${roleOptions(GRANT_ROLES, draft.role)}</select>
-        <button class="btn" type="submit" data-focus="add-submit">Share</button>
+        <button class="btn primary" type="submit" data-focus="add-submit">Share</button>
       </form>
       ${model.error ? html`<p class="share-error" role="alert">${model.error}</p>` : ""}
       ${rows.length ? html`<ul class="share-list" aria-label="Who has access">${rows}</ul>` : ""}
       <div class="share-link">
         <div class="share-link-head">
-          <button type="button" class="pf-switch${link.on ? " is-on" : ""}" role="switch" aria-checked="${link.on}" aria-labelledby="share-link-label" data-link-toggle data-focus="link-toggle"><span class="pf-knob"></span></button>
           <span class="share-link-label" id="share-link-label">Anyone with the link</span>
           ${link.on ? html`<select class="share-role" data-link-role data-focus="link-role" aria-label="Role for anyone with the link">${roleOptions(LINK_ROLES, link.role)}</select>` : ""}
+          <button type="button" class="pf-switch${link.on ? " is-on" : ""}" role="switch" aria-checked="${link.on}" aria-labelledby="share-link-label" data-link-toggle data-focus="link-toggle"><span class="pf-knob"></span></button>
         </div>
         ${link.url ? html`<div class="share-link-url">
           <input type="text" readonly value="${link.url}" data-link-url aria-label="Share link" />
@@ -81,7 +81,7 @@ export function shareDialogBodyHtml(model) {
     </div>
     <div class="modal-footer">
       ${link.on ? html`<button class="btn ghost share-reset" type="button" data-action="rotate" data-focus="rotate">Reset link</button>` : ""}
-      <button class="btn primary" type="button" data-action="done" data-focus="done">Done</button>
+      <button class="btn" type="button" data-action="done" data-focus="done">Done</button>
     </div>`;
 }
 

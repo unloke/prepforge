@@ -223,23 +223,10 @@ async function checkAtlas(atlas, check, empty = false) {
       paths.reduce((sum, path) => sum + (path.getAttribute("d").match(/C/g) || []).length, 0));
     check(edges === moves, `tree SVG has ${moves} edges, got ${edges}`);
   };
-  check(await atlas.locator("button, select").count() === 2, "Atlas has only close and scope controls");
+  check(await atlas.locator("button, select").count() === 1, "Atlas has only the close control");
   check(await atlas.locator("[data-assess], [data-depth]").count() === 0, "Atlas has no engine assessment or horizon controls");
   check(await atlas.getByRole("button", { name: "Close", exact: true }).isVisible(), "Atlas close is available");
-  const scope = atlas.getByRole("combobox", { name: "Atlas scope", exact: true });
-  check(await scope.isVisible() && await scope.isEnabled(), "Atlas scope is available");
-  check(await scope.locator("option").count() === (empty ? 1 : 2), "scope offers the whole repertoire and an available current position");
   await checkTree(empty ? 0 : 7, empty ? 0 : 2, empty ? 0 : 1, empty ? 0 : 3);
-  const whole = await checkProfile();
-  if (!empty) {
-    await scope.selectOption("n5");
-    check(await scope.inputValue() === "n5", "current-position scope can be selected");
-    await checkTree(2, 2, 1, 3);
-    check(await checkProfile() !== whole, "scope recomputes the move-graph diagnostics immediately");
-    await scope.selectOption("n0");
-    await checkTree(7, 2, 1, 3);
-    check(await checkProfile() === whole, "whole-repertoire scope restores its diagnostics");
-  }
 }
 
 async function runViewport(vp) {

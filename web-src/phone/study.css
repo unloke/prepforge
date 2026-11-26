@@ -475,13 +475,9 @@
     grid-template-columns: minmax(44px, 56px) minmax(40px, 48px) minmax(60px, 68px) minmax(0, 1fr);
     column-gap: 6px;
   }
-  /* The Explorer's engine card keeps one line: on a 360px phone the button's
-     size note goes before the engine's name is clipped mid-word. */
-  /* The line picker's cells are 32px: a thumb's size, five in a 160px row. */
-  .engine-lines > button { width: 32px; height: 32px; }
   /* Above the board the engine is one row: the line, then "N lines" (the
-     picker opens under it) and × to turn it off. Name, depth and the download
-     offer stay off the board screen; Settings keeps the download. */
+     picker opens in a viewport-safe popover) and × to turn it off. Name, depth
+     and the download offer stay off the board screen; Settings keeps the download. */
   #build-engine-slot { padding: 2px 12px 4px; }
   #build-engine-slot .engine-window.is-docked { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 6px; }
   #build-engine-slot .engine-window-head { grid-area: 1 / 2; padding: 0; }
@@ -490,9 +486,6 @@
   #view-build .engine-pv { height: auto; align-items: start; }
   #view-build .engine-pv-line { white-space: normal; overflow-wrap: anywhere; }
   #build-engine-slot :is(.engine-head-meta, .engine-window-unlock) { display: none; }
-  #build-engine-slot .engine-lines { display: none; position: absolute; top: 100%; right: 0; z-index: var(--z-tool); background: var(--float); box-shadow: var(--shadow-2); }
-  #build-engine-slot .engine-lines.is-open { display: inline-flex; }
-  #build-engine-slot .engine-lines-more { display: inline-flex; }
   /* The fork is one row, as Lichess lays out its next-move choices: the label,
      then the chips in a line that scrolls sideways. Chips are drawn 36px with
      centred text and a 44px target round each. */
@@ -522,10 +515,11 @@
      36px pitch (side lines 32px) and each move's hit area fills its line, while
      the drawn token keeps the score sheet's size (its current-move fill and
      due/weak dot stay on the text, not on the line's box). */
-  #view-build .mtree { line-height: 36px; }
-  #builder-tree .mtree-line.is-main > .mtree-var { line-height: 32px; }
-  #view-build .mtree-move { position: relative; line-height: 1.6; }
-  #view-build .mtree-move::after { content: ""; position: absolute; inset: -8px -1px; }
+  #view-build .mtree { line-height: 46px; padding-block: 6px; }
+  #builder-tree .mtree-var { line-height: 46px; }
+  #view-build .mtree-move { position: relative; display: inline-block; min-width: 44px; margin-right: 2px; box-sizing: border-box; text-align: left; line-height: 1.6; }
+  #view-build .mtree-move::after,
+  #view-build .mtree-move.is-gap::before { content: ""; position: absolute; inset: -11px 0; }
   #view-build .mtree-collapse { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }
   /* The empty answer is a card under the board. Three buttons side by side
      clipped "New repertoire" at 390px, so the one action gets the row and the

@@ -516,10 +516,11 @@
   width: min(560px, calc(100vw - 32px));
   max-width: none;
   max-height: calc(88vh - 16px);
+  border: 1px solid var(--line);
   background: var(--float);
   color: var(--text);
   border-radius: var(--radius-card);
-  box-shadow: 0 16px 40px color-mix(in srgb, var(--text) 18%, transparent); /* taste-skill-ignore: the command sheet is a real overlay */
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.42); /* taste-skill-ignore: the command sheet is a real overlay */
   overflow: hidden;
   transform-origin: 50% 0;
   transition:
@@ -555,14 +556,22 @@
 }
 
 
-.palette-input {
+.palette .palette-input {
   width: 100%;
-  height: 44px;
+  height: 46px;
   border: 0;
   border-bottom: 1px solid var(--line); /* taste-skill-ignore: the palette field needs an underline */
-  padding: 0 14px;
-  background: var(--panel);
+  border-radius: 0;
+  padding: 0 16px;
+  background: var(--float);
   color: var(--text);
+}
+.palette .palette-input:focus,
+.palette .palette-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
 }
 
 
@@ -575,13 +584,23 @@
 }
 
 
+.palette-group {
+  padding: 8px 10px 4px;
+  color: var(--label);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.palette-group:first-child { padding-top: 4px; }
+
+
 .palette-item {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: var(--control-h);
+  min-height: 36px;
   padding: 6px 10px;
   border: 0;
   border-radius: var(--radius);
@@ -591,15 +610,63 @@
 }
 
 
+.palette-item-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+
+.palette-ic {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--muted);
+}
+
+
+.palette-dot { flex: none; margin: 0 3px; }
+
+
 .palette-item:hover,
 .palette-item.is-active {
-  background: var(--accent-soft);
+  background: var(--surface-3);
 }
+
+
+.palette-item.is-active .palette-ic { color: var(--text); }
 
 
 .palette-item-label {
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+
+.palette-item-enter {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0;
+}
+.palette-item.is-active .palette-item-enter { opacity: 1; }
 
 
 .palette-item-hint {

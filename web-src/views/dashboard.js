@@ -1,4 +1,6 @@
+import "./library-stage.css";
 import { html } from "../html.js";
+import { pieceSvg } from "../board/ui.js";
 import { nounOf } from "../plural.js";
 import { repertoireLimitMessage } from "../repertoire-limit.js";
 import { loadTeamDirectory } from "../team-directory.js";
@@ -413,7 +415,7 @@ export function createDashboardView({
     <div class="today-streak" data-lit="${streak.trained_today ? "1" : "0"}" data-count="${streak.current}"
          title="Calendar days with at least one graded move${streak.best > 1 ? `; best ${streak.best}` : ""}">
       <span class="today-count">${streak.current}</span>
-      <span class="today-unit">day streak</span>
+      <span class="today-unit"><svg class="today-flame" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.5 3.5c.6 3.2-1.8 5-1.8 7.5 0 1.4 1 2.4 2.2 2.4 1.5 0 2.5-1.3 2.5-3.1 2.1 1.7 3.1 4 3.1 6.2A6.5 6.5 0 0 1 12 22a6.5 6.5 0 0 1-6.5-6.5c0-4 2.9-7.1 7-12Z"/></svg>day streak</span>
     </div>
     <div class="today-body">
       ${queuePending
@@ -538,7 +540,9 @@ export function createDashboardView({
     // Selection follows the visible list: narrowing the table moves the
     // selection to the first shown row when the old one is filtered out — the
     // same rule the unfiltered table has for a row that disappears.
-    const shownOwn = shown.filter((item) => !item.sharedRow);
+    const shownOwn = shown
+      .filter((item) => !item.sharedRow)
+      .sort((a, b) => (a.is_active === false ? 1 : 0) - (b.is_active === false ? 1 : 0));
     // The repertoire open in Build is the selected row: one created or opened
     // elsewhere (Build's New repertoire, the palette, a link) is the one to mark.
     const openId = appState.build?.repertoire_id ? String(appState.build.repertoire_id) : null;
@@ -550,7 +554,7 @@ export function createDashboardView({
     // settled on screen, so narrowing the table does not replay the entrance.
     const painted = libraryRows.render(
       container,
-      shown.filter((item) => !item.sharedRow),
+      shownOwn,
       shown.filter((item) => item.sharedRow),
       { selectedRepId },
     );
@@ -568,12 +572,13 @@ export function createDashboardView({
     }
   }
 
-  // role=option rows need a real listbox owner; empty states drop the role.
+  // Semantic list of repertoire rows (each row carries interactive queue chips
+  // and an actions menu, so listbox/option semantics would violate ARIA).
   function setListboxRole(container, on) {
     const cols = document.getElementById("lib-cols");
     if (cols) cols.hidden = !on;
     if (on) {
-      container.setAttribute("role", "listbox");
+      container.setAttribute("role", "list");
       container.setAttribute("aria-label", "Repertoires");
     } else {
       container.removeAttribute("role");
@@ -680,12 +685,26 @@ export function createDashboardView({
     setListboxRole(container, false);
     setLibraryEmpty(true);
     paint(container, html`
-      <div class="empty-state big" data-testid="library-signed-out">
-        <h3>Sign in to start your library.</h3>
-        <p>Sign in, then create a repertoire or import a PGN.</p>
-        <div class="row gap">
-          <button type="button" class="btn primary" data-lib-action="signin">Sign in</button>
-          <button type="button" class="btn" data-lib-action="import">Import PGN</button>
+      <div class="empty-state big guest-stage" data-testid="library-signed-out">
+        <div class="guest-copy">
+          <h3 class="guest-title">Study openings you actually play.</h3>
+          <p class="guest-sub">Build a living repertoire, review real games, and drill the lines opponents actually test.</p>
+          <div class="row gap guest-cta">
+            <button type="button" class="btn primary" data-lib-action="signin">Sign in</button>
+            <button type="button" class="btn" data-lib-action="import">Import PGN</button>
+          </div>
+          <div class="guest-try">
+            <button type="button" class="guest-link" data-lib-action="analyze"><span>Analyze a game</span><span aria-hidden="true">→</span></button>
+            <button type="button" class="guest-link" data-lib-action="train"><span>Practice vs Lichess</span><span aria-hidden="true">→</span></button>
+          </div>
+        </div>
+        <div class="guest-specimen" aria-hidden="true">
+          <div class="guest-board">
+            <span class="sq l"></span><span class="sq d">${pieceSvg("p")}</span><span class="sq l"></span><span class="sq d"></span>
+            <span class="sq d">${pieceSvg("p")}</span><span class="sq l"></span><span class="sq d"></span><span class="sq l"></span>
+            <span class="sq l"></span><span class="sq d"></span><span class="sq l">${pieceSvg("P")}</span><span class="sq d"></span>
+            <span class="sq d"></span><span class="sq l"></span><span class="sq d"></span><span class="sq l is-hi">${pieceSvg("N")}</span>
+          </div>
         </div>
       </div>`);
     selectedRepId = null;

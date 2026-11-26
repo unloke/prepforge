@@ -128,7 +128,7 @@
   text-transform: capitalize;
 }
 .team-role-badge.r-owner { background: var(--warn-soft); color: var(--warn-text); }
-.team-role-badge.r-admin { background: var(--accent-soft); color: var(--accent); }
+.team-role-badge.r-admin { background: var(--accent-soft); color: var(--accent-text); }
 /* A repertoire role ("Can edit") is a sentence-case chip, not a team role. */
 .team-role-badge.share-role-badge { font-weight: 500; text-transform: none; }
 
@@ -165,6 +165,7 @@
 }
 .teams .tabs button.is-active {
   color: var(--text);
+  border-bottom-color: var(--accent);
 }
 /* An inactive tab brightens under the pointer: the strip sits on the quiet
    panel fill, so a fill would not read. */
@@ -468,7 +469,7 @@ select.team-role-select {
     padding: 4px 6px;
   }
   #view-teams .team-detail > .card-head > :is(.spacer, #team-detail-invite, #team-detail-rename, #team-detail-delete) { display: none; }
-  #team-detail-close { grid-column: 1; grid-row: 1; width: 36px; height: 36px; font-size: 0; color: var(--text); }
+  #team-detail-close { grid-column: 1; grid-row: 1; width: 36px; height: 36px; border: 0; background: transparent; font-size: 0; color: var(--text); }
   #team-detail-close::before {
     content: "";
     width: 10px;
