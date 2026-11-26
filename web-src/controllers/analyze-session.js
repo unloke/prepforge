@@ -1164,22 +1164,7 @@ async function runAnalysis(options = {}) {
         request_id: checkpoint.requestId,
         engine: runEngineId,
         depth: prep.depth,
-        positions: positions.map((fen) => {
-          const ev = evals.get(fen) || {};
-          return {
-            fen,
-            score_cp: ev.score_cp ?? null,
-            mate_in: ev.mate_in ?? null,
-            best_move_uci: ev.best_move_uci ?? null,
-            pv: ev.pv || [],
-            // Actual depth reached (a timeout may have accepted a shallower
-            // result) — the server stores this per position instead of the
-            // requested `depth` above. `nodes` is the real search effort and
-            // is part of the stored evaluation's identity.
-            depth: ev.depth ?? null,
-            nodes: ev.nodes ?? null,
-          };
-        }),
+        positions: classifyPositions(positions, evals),
         maia_assessments: maiaAssessments,
       }).then((response) => {
         engineLifecycleMark("analyze-classify-save-response", tAnalyze);
@@ -1300,6 +1285,25 @@ async function runAnalysis(options = {}) {
   }
 }
 
+// The classify-save body's per-position evaluations. `depth` is the depth actually
+// reached (a timeout may have accepted a shallower result): the server stores it
+// per position instead of the requested depth. `nodes` is the real search effort
+// and is part of the stored evaluation's identity.
+function classifyPositions(positions, evals) {
+  return positions.map((fen) => {
+    const ev = evals.get(fen) || {};
+    return {
+      fen,
+      score_cp: ev.score_cp ?? null,
+      mate_in: ev.mate_in ?? null,
+      best_move_uci: ev.best_move_uci ?? null,
+      pv: ev.pv || [],
+      depth: ev.depth ?? null,
+      nodes: ev.nodes ?? null,
+    };
+  });
+}
+
 // F-04: after a batch import, name what was stored and which game is being
 // analyzed, and let the user switch to another imported game.
 function renderImportPicker(summary, mode) {
@@ -1386,18 +1390,7 @@ async function retryAnalyzeSave() {
       request_id: checkpoint.requestId,
       engine: checkpoint.engine,
       depth: checkpoint.depth,
-      positions: (checkpoint.positions || []).map((fen) => {
-        const ev = evals.get(fen) || {};
-        return {
-          fen,
-          score_cp: ev.score_cp ?? null,
-          mate_in: ev.mate_in ?? null,
-          best_move_uci: ev.best_move_uci ?? null,
-          pv: ev.pv || [],
-          depth: ev.depth ?? null,
-          nodes: ev.nodes ?? null,
-        };
-      }),
+      positions: classifyPositions(checkpoint.positions || [], evals),
       maia_assessments: checkpoint.maiaAssessments || [],
     });
     await finishAnalyzeCheckpoint(checkpoint);
@@ -1586,9 +1579,9 @@ async function persistAnalysisSession() {
   });
 }
 
-function resetAnalysisVariations() {
-  appState.analysisVarNodes = new Map();
-  appState.analysisVarCounter = 0;
+function resetAnalysisVariations(varNodes = new Map()) {
+  appState.analysisVarNodes = varNodes;
+  appState.analysisVarCounter = varNodes.size;
   appState.analysisCurrentNodeId = "root";
   appState.analysisNodePath = null;
   appState.analysisTree = null;
@@ -1630,27 +1623,9 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onIn
   const view = await ensureAnalyzeView();
   if (sourceSeq !== analysisRecallSeq) return false;
   const { moves, varNodes } = view.adaptParsedTree(parsed.root);
-  if (!moves.length && !varNodes.size) {
-    // Check for FEN-only PGN (has FEN header but no moves)
-    const fenHeader = parsed.headers.FEN;
-    if (fenHeader) {
-      // FEN-only PGN: show the FEN position without any moves
-      appState.analysis = { pgn: pgnText, moves: [], eval_graph: [], engine: null, depth: null, initialFen: fenHeader };
-      appState.analysisVarNodes = new Map();
-      appState.analysisVarCounter = 0;
-      appState.analysisCurrentNodeId = "root";
-      appState.analysisNodePath = null;
-      appState.analysisTree = null;
-      appState.analysisSourcePgn = null;
-      view.renderAnalysisTree([]);
-      view.renderEvalChart([]);
-      view.renderReport([]);
-      hideAnalysisHandoff();
-      revealAnalysisResults();
-      // Use the same guarded board path as a movetext PGN or recall.
-      await showAnalysisPly(0);
-      return true;
-    }
+  // A FEN header with no moves shows that position on its own.
+  const fenOnly = !moves.length && !varNodes.size ? parsed.headers.FEN : null;
+  if (!moves.length && !varNodes.size && !fenOnly) {
     // Emptied box → clear the move list and eval chart, drop any analyzed game.
     appState.analysis = null;
     resetAnalysisVariations();
@@ -1663,15 +1638,11 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onIn
   }
   // A typed/edited game replaces any prior analysis (classifications are dropped
   // until the user re-runs Analyze). Synthetic payload keeps showAnalysisPly happy.
-  appState.analysis = { pgn: pgnText, moves, eval_graph: [], engine: null, depth: null };
-  appState.analysisVarNodes = varNodes;
-  appState.analysisVarCounter = varNodes.size;
-  appState.analysisCurrentNodeId = "root";
-  appState.analysisNodePath = null;
-  appState.analysisTree = null;
+  appState.analysis = { pgn: pgnText, moves, eval_graph: [], engine: null, depth: null, ...(fenOnly && { initialFen: fenOnly }) };
+  resetAnalysisVariations(varNodes);
   appState.analysisSourcePgn = null;
   // The box and this tree are one source again.
-  appState.analysisPgnStale = false;
+  if (!fenOnly) appState.analysisPgnStale = false;
   view.renderAnalysisTree(moves);
   view.renderEvalChart([]);
   view.renderReport([]);

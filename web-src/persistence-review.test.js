@@ -101,7 +101,7 @@ it('Retry save has only one request in flight',async()=>{
   const response=deferred(),checkpoint={ownerId:'owner',gameId:'g'},appState={analysisUnsavedCheckpoint:checkpoint};
   const postJson=vi.fn(()=>response.promise),run=compile('async function retryAnalyzeSave(',{
     appState,currentOwnerId:()=> 'owner',loadCheckpoint:()=>null,invalidateAnalysisSource:()=>1,analysisRecallSeq:2,
-    document:{getElementById:()=>null},evalMapFrom:()=>new Map(),postJson,finishAnalyzeCheckpoint:vi.fn(),clearCheckpoint:vi.fn(),hideAnalysisRetrySave:vi.fn(),
+    document:{getElementById:()=>null},evalMapFrom:()=>new Map(),classifyPositions:compile('function classifyPositions(',{}),postJson,finishAnalyzeCheckpoint:vi.fn(),clearCheckpoint:vi.fn(),hideAnalysisRetrySave:vi.fn(),
     refreshAnalysisHistoryIfOpen:vi.fn(),isAuthError:()=>false,showAnalysisRetrySave:vi.fn()});
   const a=run(),b=run(); expect(postJson).toHaveBeenCalledTimes(1);response.resolve({});await Promise.all([a,b]);
 });

@@ -110,6 +110,8 @@ const PATH_GUARD_DEBOUNCE_MS = 300;
 // A replay that no longer matches its recorded run re-runs the guard at most this often per scope.
 const PATH_GUARD_MAX_RERUNS = 3;
 
+const perColor = (make) => ({ white: make("white"), black: make("black") });
+
 function scoutErrorHtml(title, message, action = null) {
   return html`<div class="scout-error" role="alert">
     <p class="scout-error-title">${title}</p>
@@ -182,6 +184,12 @@ export function createScoutView(deps) {
   let scoutOpGen = 0;
   let deepScanAbort = null;
   const initGuard = createScoutInitGuard();
+
+  async function loadScoutModule() {
+    scoutModule ||= await import("../scout.js");
+    scoutClient ||= scoutModule.createScoutClient({});
+    return scoutModule;
+  }
 
   function getResultsEl() {
     return document.getElementById("scout-results");
@@ -339,29 +347,14 @@ export function createScoutView(deps) {
     const state = scoutSession?.state || "idle";
 
     if (btn) {
-      if (initGuard.isInitializing) {
-        btn.textContent = "Start";
-        btn.dataset.scoutAction = "start";
-        btn.disabled = true;
-      } else if (state === "running") {
-        btn.textContent = "Stop";
-        btn.dataset.scoutAction = "stop";
-        btn.disabled = false;
-      } else if (state === "paused") {
-        // A full batch pauses on its own; the same button pulls the next, older one.
-        btn.textContent = scoutSession?.batchFull ? "Load older" : "Resume";
-        btn.title = scoutSession?.batchFull ? `Fetch up to ${SCOUT_STREAM_BATCH} older games per account` : "";
-        btn.dataset.scoutAction = "resume";
-        btn.disabled = false;
-      } else if (state === "done") {
-        btn.textContent = "Start";
-        btn.dataset.scoutAction = "start";
-        btn.disabled = false;
-      } else {
-        btn.textContent = "Start";
-        btn.dataset.scoutAction = "start";
-        btn.disabled = false;
-      }
+      const action = initGuard.isInitializing ? "start"
+        : state === "running" ? "stop" : state === "paused" ? "resume" : "start";
+      // A full batch pauses on its own; the same button pulls the next, older one.
+      const older = action === "resume" && scoutSession?.batchFull;
+      btn.textContent = { start: "Start", stop: "Stop", resume: older ? "Load older" : "Resume" }[action];
+      if (action === "resume") btn.title = older ? `Fetch up to ${SCOUT_STREAM_BATCH} older games per account` : "";
+      btn.dataset.scoutAction = action;
+      btn.disabled = initGuard.isInitializing;
     }
     if (resetBtn) {
       resetBtn.hidden = state === "idle" || state === "running";
@@ -531,13 +524,8 @@ export function createScoutView(deps) {
       profileEl.hidden = false;
     }
     scoutState.sections = {};
-    scoutState.maiaResults = scoutState.maiaResults || new Map();
-    if (scoutState.games?.length) {
-      scoutState.maiaRatings = {
-        white: medianOpponentRating(scoutState.games, "white"),
-        black: medianOpponentRating(scoutState.games, "black"),
-      };
-    }
+    scoutState.maiaResults ||= new Map();
+    if (scoutState.games?.length) scoutState.maiaRatings = perColor((c) => medianOpponentRating(scoutState.games, c));
     const whiteReport = buildSectionReport("white");
     if (whiteReport.sectionData) scoutState.sections.white = whiteReport.sectionData;
     const blackReport = buildSectionReport("black");
@@ -581,7 +569,7 @@ export function createScoutView(deps) {
     if (force) updateLiveCounter();
     patchEngineProgressUI();
     if (!isStreaming() && !isEnrichmentInFlight()) {
-      schedulePrefilterEnrich();
+      prefilterEnrich.schedule();
     }
   }
 
@@ -619,8 +607,8 @@ export function createScoutView(deps) {
     scoutState.engineAggByColor = {};
     renderScoutReport();
     if (!isStreaming()) {
-      scheduleExplorerEnrich();
-      scheduleEngineAggregation();
+      explorerEnrich.schedule();
+      engineAgg.schedule();
     }
   }
 
@@ -637,14 +625,7 @@ export function createScoutView(deps) {
     pathGuard.cancel();
   }
 
-  function schedulePrefilterEnrich() {
-    prefilterEnrich.schedule();
-  }
 
-  // Re-runs the guard after the selector input changed (for example once Maia lands).
-  function schedulePathGuard() {
-    pathGuard.schedule();
-  }
 
   // The recorded guard run for one colour, replayed by the report without engine reads.
   function pathGuardOption(oppColor) {
@@ -657,7 +638,7 @@ export function createScoutView(deps) {
         if (!replay.diverged || rec.diverged) return;
         rec.diverged = true;
         console.debug("[scout-path-guard] input changed; re-running", oppColor);
-        if (rec.reruns < PATH_GUARD_MAX_RERUNS) schedulePathGuard();
+        if (rec.reruns < PATH_GUARD_MAX_RERUNS) pathGuard.schedule();
       },
     };
   }
@@ -681,8 +662,8 @@ export function createScoutView(deps) {
   async function runPathGuardForColor(oppColor, engine, isCurrent, overrides = {}) {
     const section = buildSectionReport(oppColor, { ...overrides, pathGuard: null }).sectionData;
     if (!section?.gamePlanSource?.length) return true;
-    scoutState.pathGuard = scoutState.pathGuard || { white: null, black: null };
-    scoutState.pathGuardVerdicts = scoutState.pathGuardVerdicts || { white: new Map(), black: new Map() };
+    scoutState.pathGuard ||= { white: null, black: null };
+    scoutState.pathGuardVerdicts ||= { white: new Map(), black: new Map() };
     const prev = scoutState.pathGuard[oppColor];
     const baseline = section.baselineScorePct;
     const candidates = gamePlanCandidates(section.gamePlanSource, baseline, { oppColor });
@@ -734,9 +715,6 @@ export function createScoutView(deps) {
     }
   }
 
-  function scheduleMaiaEnrich() {
-    maiaEnrich.schedule();
-  }
 
   function openingBranchBundleForColor(section, oppColor) {
     if (!scoutState?.games?.length || !scoutModule?.rankedOpeningBranches) {
@@ -758,7 +736,7 @@ export function createScoutView(deps) {
 
   function allOpeningLinesForColor(section, oppColor) {
     const { branches, ancestorFreq } = openingBranchBundleForColor(section, oppColor);
-    scoutState.ancestorFreq = scoutState.ancestorFreq || { white: new Map(), black: new Map() };
+    scoutState.ancestorFreq ||= { white: new Map(), black: new Map() };
     scoutState.ancestorFreq[oppColor] = ancestorFreq;
     return branches;
   }
@@ -785,10 +763,7 @@ export function createScoutView(deps) {
 
   function syncMaiaScope() {
     if (!scoutState?.games?.length) return;
-    scoutState.maiaRatings = {
-      white: medianOpponentRating(scoutState.games, "white"),
-      black: medianOpponentRating(scoutState.games, "black"),
-    };
+    scoutState.maiaRatings = perColor((c) => medianOpponentRating(scoutState.games, c));
     const scopeKey = computeMaiaScopeKey({
       activeSpeed: scoutState.activeSpeed,
       gameCount: scoutState.games.length,
@@ -809,21 +784,14 @@ export function createScoutView(deps) {
     );
   }
 
-  function prefilterBaselineByColor() {
-    return {
-      white: baselineScorePctForColor("white"),
-      black: baselineScorePctForColor("black"),
-    };
-  }
-
   function globalMaiaRankedPool() {
     return mergeGlobalPrefilterRanked(scoutState?.prefilterRanked || {}, {
-      baselineByColor: prefilterBaselineByColor(),
+      baselineByColor: perColor(baselineScorePctForColor),
     });
   }
 
   function snapshotStockfishDisplayLine(oppColor, lines) {
-    scoutState.stockfishDisplayLines = scoutState.stockfishDisplayLines || { white: [], black: [] };
+    scoutState.stockfishDisplayLines ||= { white: [], black: [] };
     scoutState.stockfishDisplayLines[oppColor] = lines;
   }
 
@@ -839,8 +807,8 @@ export function createScoutView(deps) {
 
   function refreshGamePlanDisplayLines() {
     if (!scoutState?.games?.length || !scoutModule) return;
-    scoutState.stockfishDisplayLines = scoutState.stockfishDisplayLines || { white: [], black: [] };
-    scoutState.prefilteredLines = scoutState.prefilteredLines || { white: [], black: [] };
+    scoutState.stockfishDisplayLines ||= { white: [], black: [] };
+    scoutState.prefilteredLines ||= { white: [], black: [] };
     for (const oppColor of ["white", "black"]) {
       const stockfish = scoutState.stockfishDisplayLines[oppColor]?.length
         ? scoutState.stockfishDisplayLines[oppColor]
@@ -863,27 +831,25 @@ export function createScoutView(deps) {
     };
   }
 
+  function prefilterSettled() {
+    return [PREFILTER_READY, PREFILTER_FAILED].includes(scoutState.prefilterEnrichState);
+  }
+
   async function enrichPrefilterReads(gen) {
     if (!scoutState?.games?.length || !scoutModule) return;
     if (gen !== prefilterEnrich.generation) return;
     const scopeKey = currentPrefilterScopeKey();
-    const prefilterSettled =
-      scoutState.prefilterEnrichState === PREFILTER_READY ||
-      scoutState.prefilterEnrichState === PREFILTER_FAILED;
-    if (
-      prefilterSettled &&
-      scoutState.prefilterScopeKey === scopeKey
-    ) {
-      if (globalMaiaRankedPool().length) scheduleMaiaEnrich();
+    if (prefilterSettled() && scoutState.prefilterScopeKey === scopeKey) {
+      if (globalMaiaRankedPool().length) maiaEnrich.schedule();
       return;
     }
 
     scoutState.prefilterEnrichState = PREFILTER_LOADING;
     scoutState.engineProgress = { phase: "stockfish", done: 0, total: 0 };
-    scoutState.prefilterPools = scoutState.prefilterPools || { white: [], black: [] };
-    scoutState.prefilterRanked = scoutState.prefilterRanked || { white: [], black: [] };
-    scoutState.prefilteredLines = scoutState.prefilteredLines || { white: [], black: [] };
-    scoutState.prefilterCache = scoutState.prefilterCache || new Map();
+    scoutState.prefilterPools ||= { white: [], black: [] };
+    scoutState.prefilterRanked ||= { white: [], black: [] };
+    scoutState.prefilteredLines ||= { white: [], black: [] };
+    scoutState.prefilterCache ||= new Map();
     renderScoutReport();
 
     // Carry positions counted in earlier colours so the bar climbs monotonically across
@@ -921,7 +887,7 @@ export function createScoutView(deps) {
         sfBaseDone += lastColorProgress.done;
         sfBaseTotal += lastColorProgress.total;
         if (gen !== prefilterEnrich.generation) return;
-        scoutState.funnel = scoutState.funnel || {};
+        scoutState.funnel ||= {};
         scoutState.funnel[oppColor] = result.funnel;
         if (!result.ranked?.length && (!result.funnel ||
           result.funnel.scoreDrops?.noEval === result.funnel.totalLines)) {
@@ -941,7 +907,7 @@ export function createScoutView(deps) {
       if (gen !== prefilterEnrich.generation) return;
       scoutState.prefilterEnrichState = PREFILTER_READY;
       scoutState.prefilterScopeKey = scopeKey;
-    } catch (_) {
+    } catch {
       if (gen === prefilterEnrich.generation && scoutState) {
         for (const oppColor of ["white", "black"]) {
           if (scoutState.prefilterPools?.[oppColor]?.length) continue;
@@ -956,35 +922,30 @@ export function createScoutView(deps) {
       prefilterEnrich.settled(gen);
       if (gen === prefilterEnrich.generation && scoutState) {
         renderScoutReport();
-        scheduleMaiaEnrich();
+        maiaEnrich.schedule();
       }
     }
   }
 
-  function summarizeMaiaOutcomes() {
-    if (!scoutState?.maiaResults || !scoutModule) {
-      return { resolved: 0, failed: 0, missing: 0, expected: 0 };
-    }
-    return countGlobalMaiaOutcomes(globalMaiaRankedPool(), {
+  // Redraws the plan from the Maia reads so far, records the funnel, and returns the
+  // enrichment state those reads add up to.
+  function settledMaiaState() {
+    refreshGamePlanDisplayLines();
+    const outcomes = countGlobalMaiaOutcomes(globalMaiaRankedPool(), {
       successTarget: SCOUT_MAIA_SUCCESS_TARGET,
       ...maiaPoolContext(),
     });
-  }
-
-  function stashMaiaFunnel(outcomes) {
-    scoutState.funnel = scoutState.funnel || {};
+    const { resolved, failed, missing, expected } = outcomes;
+    scoutState.funnel ||= {};
     scoutState.funnel.maia = {
       globalPool: globalMaiaRankedPool().length,
       attempts: scoutState.maiaAttemptsUsed || 0,
-      resolved: outcomes.resolved,
-      failed: outcomes.failed,
-      missing: outcomes.missing,
-      expected: outcomes.expected,
+      resolved, failed, missing, expected,
     };
+    return classifyMaiaEnrichState(outcomes);
   }
 
   function maiaWorkRemaining() {
-    if (!scoutState?.maiaResults || !scoutModule) return false;
     return globalMaiaPoolNeedsWork(globalMaiaRankedPool(), {
       successTarget: SCOUT_MAIA_SUCCESS_TARGET,
       attemptsUsed: scoutState.maiaAttemptsUsed || 0,
@@ -996,7 +957,7 @@ export function createScoutView(deps) {
     // Scout's Maia enrichment is an explicitly Maia-powered read of the
     // opponent's human-likeness. When analysis-layer Maia is OFF the report
     // states the requirement instead of silently changing shape.
-    if (typeof maiaAnalysisEnabled === "function" && !maiaAnalysisEnabled()) {
+    if (!maiaAnalysisEnabled()) {
       if (scoutState && scoutState.maiaEnrichState !== MAIA_ENRICH_OFF) {
         scoutState.maiaEnrichState = MAIA_ENRICH_OFF;
         renderScoutReport();
@@ -1006,21 +967,14 @@ export function createScoutView(deps) {
     if (!scoutState?.games?.length || !scoutModule) return;
     if (gen !== maiaEnrich.generation) return;
     if (prefilterEnrich.inFlight) return;
-    const prefilterState = scoutState.prefilterEnrichState;
-    const prefilterDone =
-      prefilterState === PREFILTER_READY || prefilterState === PREFILTER_FAILED;
-    if (!prefilterDone || !globalMaiaRankedPool().length) return;
+    if (!prefilterSettled() || !globalMaiaRankedPool().length) return;
 
-    scoutState.maiaResults = scoutState.maiaResults || new Map();
-    scoutState.maiaCache = scoutState.maiaCache || new Map();
+    scoutState.maiaResults ||= new Map();
+    scoutState.maiaCache ||= new Map();
     syncMaiaScope();
 
-    const needsWork = maiaWorkRemaining();
-    if (!needsWork) {
-      refreshGamePlanDisplayLines();
-      const outcomes = summarizeMaiaOutcomes();
-      stashMaiaFunnel(outcomes);
-      const nextState = classifyMaiaEnrichState(outcomes);
+    if (!maiaWorkRemaining()) {
+      const nextState = settledMaiaState();
       if (scoutState.maiaEnrichState !== nextState) {
         scoutState.maiaEnrichState = nextState;
         renderScoutReport();
@@ -1032,7 +986,7 @@ export function createScoutView(deps) {
     }
 
     scoutState.maiaEnrichState = MAIA_ENRICH_LOADING;
-    scoutState.maiaAttemptsUsed = scoutState.maiaAttemptsUsed || 0;
+    scoutState.maiaAttemptsUsed ||= 0;
     scoutState.engineProgress = { phase: "maia", done: 0, total: 0 };
     renderScoutReport();
 
@@ -1042,18 +996,11 @@ export function createScoutView(deps) {
       const provider = getSharedMaia3Provider();
       const maiaNotice = watchMaiaInit(provider, {
         notices,
-        onRetry: () => scheduleMaiaEnrich(),
+        onRetry: () => maiaEnrich.schedule(),
       });
       try {
-        const globalPool = globalMaiaRankedPool();
-        if (
-          globalMaiaPoolNeedsWork(globalPool, {
-            successTarget: SCOUT_MAIA_SUCCESS_TARGET,
-            attemptsUsed: scoutState.maiaAttemptsUsed,
-            ...maiaPoolContext(),
-          })
-        ) {
-          const { attempts } = await enrichGlobalMaiaPool(globalPool, {
+        if (maiaWorkRemaining()) {
+          const { attempts } = await enrichGlobalMaiaPool(globalMaiaRankedPool(), {
             successTarget: SCOUT_MAIA_SUCCESS_TARGET,
             attemptsUsed: scoutState.maiaAttemptsUsed,
             provider,
@@ -1078,11 +1025,8 @@ export function createScoutView(deps) {
       }
 
       if (gen !== maiaEnrich.generation) return;
-      refreshGamePlanDisplayLines();
-      const outcomes = summarizeMaiaOutcomes();
-      stashMaiaFunnel(outcomes);
-      scoutState.maiaEnrichState = classifyMaiaEnrichState(outcomes);
-    } catch (_) {
+      scoutState.maiaEnrichState = settledMaiaState();
+    } catch {
       if (gen === maiaEnrich.generation && scoutState) {
         for (const entry of globalMaiaRankedPool()) {
           markUnattemptedMaiaFailures([entry.line], {
@@ -1091,10 +1035,7 @@ export function createScoutView(deps) {
             fenAfterLine: scoutModule.fenAfterLine,
           });
         }
-        refreshGamePlanDisplayLines();
-        const outcomes = summarizeMaiaOutcomes();
-        stashMaiaFunnel(outcomes);
-        scoutState.maiaEnrichState = classifyMaiaEnrichState(outcomes);
+        scoutState.maiaEnrichState = settledMaiaState();
       }
     } finally {
       maiaEnrich.settled(gen);
@@ -1104,9 +1045,6 @@ export function createScoutView(deps) {
     }
   }
 
-  function scheduleEngineAggregation() {
-    engineAgg.schedule();
-  }
 
   async function computeEngineAggregation(gen) {
     if (!scoutState?.games?.length) return;
@@ -1120,9 +1058,8 @@ export function createScoutView(deps) {
       const next = {};
       for (const color of ["white", "black"]) {
         if (gen !== engineAgg.generation) return;
-        const scan = scoutState.engineByColor?.[color];
-        if (!scan?.scanRecords?.length) continue;
-        if (scan.speedFilter && scan.speedFilter !== scoutState.activeSpeed) continue;
+        const scan = engineScanForColor(color);
+        if (!scan) continue;
         const scope = scoutEngineModule.selectEngineScope(scoutState.games, {
           color,
           speedFilter: scoutState.activeSpeed,
@@ -1141,14 +1078,11 @@ export function createScoutView(deps) {
       if (Object.keys(next).length) {
         renderScoutReport();
       }
-    } catch (_) {
+    } catch {
       /* engine aggregation is optional */
     }
   }
 
-  function scheduleExplorerEnrich() {
-    explorerEnrich.schedule();
-  }
 
   async function enrichExplorerReads(gen) {
     if (!scoutState?.games?.length || !scoutModule) return;
@@ -1158,12 +1092,11 @@ export function createScoutView(deps) {
         scoutExplorerModule = await import("../scout-explorer.js");
       }
       if (gen !== explorerEnrich.generation) return;
-      const explorerMod = await import("../explorer.js");
-      if (!scoutExplorerClient) scoutExplorerClient = explorerMod.createExplorerClient({});
+      const client = await explorerClient();
       if (gen !== explorerEnrich.generation) return;
 
       const rating = scoutState.profile?.ratingLast ?? scoutState.profile?.ratingMax;
-      scoutState.explorerByColor = scoutState.explorerByColor || {};
+      scoutState.explorerByColor ||= {};
       let changed = false;
 
       for (const oppColor of ["white", "black"]) {
@@ -1176,7 +1109,7 @@ export function createScoutView(deps) {
           { oppColor },
         );
         const reads = await scoutExplorerModule.fetchExplorerReads({
-          fetchStats: scoutExplorerClient.fetchStats.bind(scoutExplorerClient),
+          fetchStats: client.fetchStats.bind(client),
           positions,
           opponentRating: rating,
           shouldCancel: () => gen !== explorerEnrich.generation,
@@ -1189,9 +1122,14 @@ export function createScoutView(deps) {
       if (changed && gen === explorerEnrich.generation) {
         renderScoutReport();
       }
-    } catch (_) {
+    } catch {
       /* explorer reads are optional — hide on failure */
     }
+  }
+
+  async function explorerClient() {
+    return scoutExplorerClient || import("../explorer.js")
+      .then(({ createExplorerClient }) => (scoutExplorerClient ||= createExplorerClient({})));
   }
 
   function localScoutLineDetailHtml(line, idx, oppColor, rowKind = "line") {
@@ -1218,18 +1156,15 @@ export function createScoutView(deps) {
         const opening = await consumeEcoCacheEntry(cached);
         if (opening) applyEcoToLine(lineEl, opening);
         else scoutState.ecoCache.delete(key);
-      } catch (_) {
+      } catch {
         scoutState.ecoCache.delete(key);
       }
       return;
     }
 
-    const pending = (async () => {
-      const explorerMod = await import("../explorer.js");
-      if (!scoutExplorerClient) scoutExplorerClient = explorerMod.createExplorerClient({});
-      const stats = await scoutExplorerClient.fetchStats("masters", fen, {});
-      return stats?.opening || null;
-    })();
+    const pending = explorerClient()
+      .then((client) => client.fetchStats("masters", fen, {}))
+      .then((stats) => stats?.opening || null);
     scoutState.ecoCache.set(key, pending);
     try {
       const opening = await pending;
@@ -1239,7 +1174,7 @@ export function createScoutView(deps) {
       } else {
         scoutState.ecoCache.delete(key);
       }
-    } catch (_) {
+    } catch {
       scoutState.ecoCache.delete(key);
     }
   }
@@ -1312,7 +1247,7 @@ export function createScoutView(deps) {
   }
 
   async function scoutWriteLineToRep(line, repId, { reload = true, flush = true, side = null } = {}) {
-    if (!scoutModule) scoutModule = await import("../scout.js");
+    await loadScoutModule();
     const build = getBuildState();
     if (reload || !build || build.repertoire_id !== repId) await editRepertoire(repId);
     const freshBuild = getBuildState();
@@ -1339,7 +1274,7 @@ export function createScoutView(deps) {
       }
       if (!parent) { complete = false; break; }
       let after;
-      try { after = await boardAfterMove(parent.fen, uci); } catch (_) { complete = false; break; }
+      try { after = await boardAfterMove(parent.fen, uci); } catch { complete = false; break; }
       const node = buildProvisionalNode(parent, uci, after);
       queueBuildAdd(node);
       if (!freshBuild.nodes.includes(node)) freshBuild.nodes.push(node);
@@ -1415,10 +1350,10 @@ export function createScoutView(deps) {
         if (res && typeof res === "object" && res.alreadyPresent) alreadyPresent++;
         else if (res) written++;
         else failed++;
-      } catch (_) { failed++; }
+      } catch { failed++; }
       done++;
     }
-    const message = `Added ${written} line${written === 1 ? "" : "s"} to prep${alreadyPresent ? ` (${alreadyPresent} already present)` : ""}${failed ? ` · ${failed} failed` : ""}`;
+    const message = `Added ${countOf(written, "line")} to prep${alreadyPresent ? ` (${alreadyPresent} already present)` : ""}${failed ? ` · ${failed} failed` : ""}`;
     notices.completeJob({
       title: ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
       message,
@@ -1432,7 +1367,7 @@ export function createScoutView(deps) {
     try {
       await navigator.clipboard.writeText(text);
       setStatus("Scout report copied to clipboard");
-    } catch (_) {
+    } catch {
       setStatus("Could not copy. Check clipboard permissions.");
     }
   }
@@ -1448,9 +1383,7 @@ export function createScoutView(deps) {
     }
     const opGen = scoutOpGen;
     const state = scoutState;
-    if (!scoutModule) {
-      scoutModule = await import("../scout.js");
-    }
+    await loadScoutModule();
     if (!canApplyDeepScan(opGen, state)) return;
     const engineMod = await import("../scout-engine.js");
     if (!canApplyDeepScan(opGen, state)) return;
@@ -1467,7 +1400,7 @@ export function createScoutView(deps) {
       total,
       onCancel: () => ctrl.abort(),
     });
-    state.engineByColor = state.engineByColor || {};
+    state.engineByColor ||= {};
     let done = 0;
     try {
       for (const color of colors) {
@@ -1500,11 +1433,11 @@ export function createScoutView(deps) {
       }
       state.engineAggByColor = {};
       renderScoutReport({ force: true });
-      scheduleEngineAggregation();
+      engineAgg.schedule();
       bindScoutEvents();
       notices.completeJob({
         title: "Deep scan done",
-        message: `Engine patterns for ${done} colour${done === 1 ? "" : "s"}`,
+        message: `Engine patterns for ${countOf(done, "colour")}`,
       });
     } catch (error) {
       if (!canApplyDeepScan(opGen, state)) {
@@ -1562,25 +1495,16 @@ export function createScoutView(deps) {
     delete distCol.dataset.drillUci;
   }
 
+  // Only exposed when SCOUT_E2E_BUILD_ENABLED (see the returned API).
   async function mountE2eRefutationScenario(scenarioId) {
-    if (SCOUT_E2E_BUILD_ENABLED) {
-      return mountE2eRefutationScenarioEnabled(scenarioId);
-    }
-    throw new Error("Scout E2E fixtures are not enabled in this build");
-  }
-
-  async function mountE2eRefutationScenarioEnabled(scenarioId) {
     const { SCOUT_E2E_REFUTATION_SCENARIOS, scoutE2eSeedGames, buildE2ePrepSection } = await import(
       "../scout-e2e-fixtures.js"
     );
-    const scenario = SCOUT_E2E_REFUTATION_SCENARIOS[scenarioId];
-    if (!scenario) {
+    if (!SCOUT_E2E_REFUTATION_SCENARIOS[scenarioId]) {
       throw new Error(`Unknown scout E2E refutation scenario: ${scenarioId}`);
     }
 
-    if (!scoutModule) {
-      scoutModule = await import("../scout.js");
-    }
+    await loadScoutModule();
     bindScoutEvents();
 
     const seedGames = scoutE2eSeedGames();
@@ -1604,16 +1528,11 @@ export function createScoutView(deps) {
     updateScoutControls();
     updateLiveCounter();
 
-    const profileEl = getProfileEl();
-    if (profileEl) {
-      profileEl.innerHTML = renderScoutProfile(scoutState.profile, scoutState.username, scoutState.activeSpeed);
-      profileEl.hidden = false;
-    }
-
     const results = getResultsEl();
-    if (!results) {
-      throw new Error("scout-results element missing");
-    }
+    const profileEl = getProfileEl();
+    if (!results || !profileEl) throw new Error("Scout results or profile element missing");
+    profileEl.innerHTML = renderScoutProfile(scoutState.profile, scoutState.username, scoutState.activeSpeed);
+    profileEl.hidden = false;
 
     const { html: markup, sectionData } = buildE2ePrepSection(scenarioId);
     results.innerHTML = markup;
@@ -1639,9 +1558,9 @@ export function createScoutView(deps) {
             }
             cancelEnrichmentQueues();
             renderScoutReport({ force: true });
-            scheduleExplorerEnrich();
-            scheduleEngineAggregation();
-            schedulePrefilterEnrich();
+            explorerEnrich.schedule();
+            engineAgg.schedule();
+            prefilterEnrich.schedule();
           },
           callbacks: {
             copyScoutReport,
@@ -1708,10 +1627,7 @@ export function createScoutView(deps) {
   }
 
   async function initScoutState(usernames, color, initToken) {
-    if (!scoutModule) {
-      scoutModule = await import("../scout.js");
-      scoutClient = scoutModule.createScoutClient({});
-    }
+    await loadScoutModule();
     if (!initGuard.isCurrent(initToken)) return false;
 
     const myReps = ((await api("/api/repertoires")).repertoires || []).filter(
@@ -1728,7 +1644,7 @@ export function createScoutView(deps) {
           rep,
           lookup: scoutModule.repertoireChildLookup(payload.nodes),
         });
-      } catch (_) {
+      } catch {
         /* unreadable repertoire — skip it */
       }
     }
@@ -1814,7 +1730,6 @@ export function createScoutView(deps) {
     }
     session.acceptedThisBatch += 1;
     // R-05: per-source counts feed the coverage chips.
-    if (!session.acceptedByUser) session.acceptedByUser = {};
     if (game.scoutUsername) {
       session.acceptedByUser[game.scoutUsername] =
         (session.acceptedByUser[game.scoutUsername] || 0) + 1;
@@ -1830,13 +1745,7 @@ export function createScoutView(deps) {
     session.gamesSinceRender = 0;
     session.controller = null;
 
-    if (session.userStopped) {
-      session.state = "paused";
-    } else if (!session.batchFull) {
-      session.state = "done";
-    } else {
-      session.state = "paused";
-    }
+    session.state = session.userStopped || session.batchFull ? "paused" : "done";
     session.userStopped = false;
     if (accepted > 0) {
       invalidatePrefilterState();
@@ -1847,17 +1756,19 @@ export function createScoutView(deps) {
 
     if (!scoutState?.games?.length && session.state === "done") {
       showScoutEmptyState(session, scoutSourceFailureMessage(session) || SCOUT_ERR_NO_GAMES);
-      return;
     }
   }
 
+  function failedSources(session) {
+    return Object.keys(session.sourceStatus || {}).filter((user) => session.sourceStatus[user].status === "failed");
+  }
+
   function scoutSourceFailureMessage(session) {
-    const failed = Object.entries(session.sourceStatus || {})
-      .filter(([, status]) => status.status === "failed");
+    const failed = failedSources(session);
     if (!failed.length) return null;
     if (failed.length === 1) {
-      const [username, status] = failed[0];
-      return status.error ? `${username}: ${status.error}` : `${username} could not be read. Try again.`;
+      const error = session.sourceStatus[failed[0]].error;
+      return error ? `${failed[0]}: ${error}` : `${failed[0]} could not be read. Try again.`;
     }
     return `${failed.length} sources could not be read. Retry the ones that failed.`;
   }
@@ -1865,9 +1776,7 @@ export function createScoutView(deps) {
   function showScoutEmptyState(session, message) {
     const results = getResultsEl();
     session.emptyStateMessage = message;
-    const failedUsers = Object.entries(session.sourceStatus || {})
-      .filter(([, status]) => status.status === "failed")
-      .map(([username]) => username);
+    const failedUsers = failedSources(session);
     if (results) results.innerHTML = scoutErrorHtml(failedUsers.length ? "Couldn't scout this player" : "No games to scout", message, failedUsers.length > 0);
     results?.querySelector?.("#scout-retry-failed")?.addEventListener("click", () => {
       if (!failedUsers.length) return;
@@ -1884,7 +1793,6 @@ export function createScoutView(deps) {
   // it covers — a partial fetch used to look like a complete one. Cursors are
   // per source too, so a failed source is never skipped over on Resume.
   function recordSourceOutcome(session, username, outcome) {
-    if (!session.sourceStatus) session.sourceStatus = {};
     session.sourceStatus[username] = outcome;
     renderSourceWarnings(session);
   }
@@ -1924,12 +1832,10 @@ export function createScoutView(deps) {
       });
     const failedCount = statuses.length;
     bar.innerHTML =
-      html`<div class="source-warn-text" title="The report covers only the sources that returned games">${failedCount} source${failedCount === 1 ? "" : "s"} incomplete</div><div class="source-chips">${chips}</div><button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
+      html`<div class="source-warn-text" title="The report covers only the sources that returned games">${countOf(failedCount, "source")} incomplete</div><div class="source-chips">${chips}</div><button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
     bar.querySelector("#scout-retry-failed")?.addEventListener("click", () => {
       bar.remove();
-      const failedUsers = Object.entries(session.sourceStatus || {})
-        .filter(([, s]) => s.status === "failed")
-        .map(([user]) => user);
+      const failedUsers = failedSources(session);
       if (!failedUsers.length) return;
       void runStream({ session, only: failedUsers });
     });
@@ -1952,7 +1858,6 @@ export function createScoutView(deps) {
     session.userStopped = false;
     session.acceptedThisBatch = 0;
     session.batchFull = false;
-    if (!session.oldestDatestampByUser) session.oldestDatestampByUser = {};
     updateScoutControls();
 
     try {
@@ -2045,10 +1950,10 @@ export function createScoutView(deps) {
     }
   }
 
-  function stopScout() {
-    if (!scoutSession || scoutSession.state !== "running") return;
-    scoutSession.userStopped = true;
-    scoutSession.controller?.abort();
+  function stopStream(session) {
+    if (!session?.controller) return;
+    session.userStopped = true;
+    session.controller.abort();
   }
 
   function resetScout() {
@@ -2056,15 +1961,8 @@ export function createScoutView(deps) {
     scoutOpGen += 1;
     deepScanAbort?.abort();
     deepScanAbort = null;
-    cancelEnrichmentQueues();
-    const ending = scoutSession;
-    if (ending?.controller) {
-      ending.userStopped = true;
-      ending.controller.abort();
-    }
-    renderPipeline.cancel();
-    explorerEnrich.cancel();
-    engineAgg.cancel();
+    stopStream(scoutSession);
+    for (const pipeline of [prefilterEnrich, maiaEnrich, pathGuard, renderPipeline, explorerEnrich, engineAgg]) pipeline.cancel();
     scoutState = null;
     scoutSession = null;
     scoutSourceNames = null;
@@ -2105,7 +2003,7 @@ export function createScoutView(deps) {
     // Single source of truth: the shared Source Composer selection (Self group
     // + linked picks + composer external usernames unioned). The standalone
     // username textbox is gone — no typed fallback.
-    const usernames = typeof scoutPickedUsernames === "function" ? scoutPickedUsernames() : [];
+    const usernames = scoutPickedUsernames();
     if (!usernames.length) {
       initGuard.finish(initToken);
       updateScoutControls();
@@ -2117,11 +2015,7 @@ export function createScoutView(deps) {
     const results = getResultsEl();
     const profile = getProfileEl();
 
-    const prev = scoutSession;
-    if (prev?.controller) {
-      prev.userStopped = true;
-      prev.controller.abort();
-    }
+    stopStream(scoutSession);
     cancelEnrichmentQueues();
 
     updateScoutControls();
@@ -2170,19 +2064,9 @@ export function createScoutView(deps) {
 
   async function handleScoutAction() {
     const action = scoutSession?.state;
-    if (action === "running") {
-      stopScout();
-      return;
-    }
-    if (action === "paused") {
-      await resumeScout();
-      return;
-    }
-    await startScout();
-  }
-
-  async function runScout() {
-    await handleScoutAction();
+    if (action === "running") stopStream(scoutSession);
+    else if (action === "paused") await resumeScout();
+    else await startScout();
   }
 
   function bindControls() {
@@ -2198,16 +2082,13 @@ export function createScoutView(deps) {
     }
 
     bindScoutEvents();
-    import("../scout.js").then((mod) => {
-      if (!scoutModule) scoutModule = mod;
-      if (!scoutClient) scoutClient = mod.createScoutClient({});
-    });
+    void loadScoutModule();
 
     updateScoutControls();
   }
 
   return {
-    runScout, handleScoutAction, bindControls,
+    runScout: handleScoutAction, handleScoutAction, bindControls,
     __testHandleAddToPrep: scoutAddToPrep,
     __testHandlePrepareAll: scoutPrepareAll,
     onShow: syncVisibleState,
@@ -2215,7 +2096,7 @@ export function createScoutView(deps) {
     discardReport: resetScout,
     syncSources,
     // Maia analysis turned on: an open report takes its Maia reads now.
-    onMaiaGate() { if (scoutState?.games?.length) scheduleMaiaEnrich(); },
+    onMaiaGate() { if (scoutState?.games?.length) maiaEnrich.schedule(); },
     ...(SCOUT_E2E_BUILD_ENABLED ? { mountE2eRefutationScenario } : {}),
     preload: () => import("../scout.js"),
   };

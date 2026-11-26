@@ -3,6 +3,7 @@
 // the PGN (or the recalled analysis) carries. Empty when no game is loaded, so
 // the caller leaves its slot blank instead of explaining the blank.
 import { pgnHeaderTags } from "./analyze-pgn.js";
+import { countOf } from "./plural.js";
 
 export function analysisGameName(appState, pgnText) {
   const analysis = appState?.analysis;
@@ -18,7 +19,7 @@ export function analysisGameName(appState, pgnText) {
   const bits = [known(tags.Result) || known(analysis.result), known(tags.Event) || known(analysis.event), known(tags.Date)]
     .filter(Boolean);
   const plies = analysis.moves?.length || 0;
-  return [playersText, bits.length ? bits.join(" · ") : plies ? `${plies} half-move${plies === 1 ? "" : "s"}` : ""]
+  return [playersText, bits.length ? bits.join(" · ") : plies ? countOf(plies, "half-move") : ""]
     .filter(Boolean)
     .join(" · ");
 }

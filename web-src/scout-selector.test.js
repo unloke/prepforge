@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  PRODUCTION_MODULE_B_ID,
-  PRODUCTION_ROUTE_BUDGET,
-  selectProductionRoutes,
-} from "./scout-selector.js";
-import {
   SCOUT_GAME_PLAN_LIMIT,
   opponentProfile,
   rankGamePlan,
@@ -91,31 +86,28 @@ function makeCorpus() {
   return games;
 }
 
-describe("production Module B contract (Scout v2)", () => {
-  it("names Scout v2 as the production selector with exact budget 12", () => {
-    expect(PRODUCTION_MODULE_B_ID).toBe("scout-v2");
-    expect(PRODUCTION_ROUTE_BUDGET).toBe(12);
-    expect(PRODUCTION_ROUTE_BUDGET).toBe(SCOUT_GAME_PLAN_LIMIT);
+describe("game plan route selection", () => {
+  it("caps the game plan at 12 routes", () => {
+    expect(SCOUT_GAME_PLAN_LIMIT).toBe(12);
   });
 
   it("selects at most the exact route budget and is deterministic", () => {
     const games = makeCorpus();
     const { branches } = rankedOpeningBranches(games, "white");
-    const first = selectProductionRoutes(branches, 50, { oppColor: "white", games });
-    const second = selectProductionRoutes(branches, 50, { oppColor: "white", games });
+    const first = rankGamePlan(branches, 50, { oppColor: "white", games });
+    const second = rankGamePlan(branches, 50, { oppColor: "white", games });
     expect(first.length).toBeGreaterThan(0);
-    expect(first.length).toBeLessThanOrEqual(PRODUCTION_ROUTE_BUDGET);
+    expect(first.length).toBeLessThanOrEqual(SCOUT_GAME_PLAN_LIMIT);
     expect(first.map((r) => r.line || r.ucis.join(">"))).toEqual(
       second.map((r) => r.line || r.ucis.join(">")),
     );
-    expect(first).toEqual(rankGamePlan(branches, 50, { oppColor: "white", games }));
   });
 
   it("normalizes each selected route so the terminal ply is the opponent's move", () => {
     const games = makeCorpus();
     for (const color of ["white", "black"]) {
       const { branches } = rankedOpeningBranches(games, color);
-      const selected = selectProductionRoutes(branches, 50, { oppColor: color, games });
+      const selected = rankGamePlan(branches, 50, { oppColor: color, games });
       expect(selected.length).toBeGreaterThan(0);
       for (const route of selected) {
         expect(terminalMoveIsOpponent(route.ucis, color)).toBe(true);
@@ -154,7 +146,7 @@ describe("production Module B contract (Scout v2)", () => {
       d: 0,
       l: 2,
     };
-    const selected = selectProductionRoutes([a, b], 50, { oppColor: "white" });
+    const selected = rankGamePlan([a, b], 50, { oppColor: "white" });
     expect(selected).toHaveLength(2);
     expect(new Set(selected.map((r) => r.ucis.join(">"))).size).toBe(2);
   });
@@ -186,8 +178,8 @@ describe("production Module B contract (Scout v2)", () => {
       d: 0,
       l: 2,
     };
-    const first = selectProductionRoutes([twinB, twinA], 50, { oppColor: "white" });
-    const second = selectProductionRoutes([twinA, twinB], 50, { oppColor: "white" });
+    const first = rankGamePlan([twinB, twinA], 50, { oppColor: "white" });
+    const second = rankGamePlan([twinA, twinB], 50, { oppColor: "white" });
     const keys = first.map((r) => r.ucis.join(">"));
     expect(keys).toEqual(second.map((r) => r.ucis.join(">")));
     expect(first).toHaveLength(2);
@@ -203,8 +195,8 @@ describe("production Module B contract (Scout v2)", () => {
       futureResult: 1,
       holdoutLabel: "win",
     }));
-    const clean = selectProductionRoutes(branches, 50, { oppColor: "white", games });
-    const dirty = selectProductionRoutes(poisoned, 50, { oppColor: "white", games });
+    const clean = rankGamePlan(branches, 50, { oppColor: "white", games });
+    const dirty = rankGamePlan(poisoned, 50, { oppColor: "white", games });
     expect(dirty.map((r) => r.ucis.join(">"))).toEqual(clean.map((r) => r.ucis.join(">")));
   });
 
@@ -230,10 +222,8 @@ describe("production Module B contract (Scout v2)", () => {
       { username: "acceptance" },
     );
     expect(String(html)).toContain("scout-section");
-    expect(String(html)).toContain(`data-module-b="${PRODUCTION_MODULE_B_ID}"`);
-    expect(sectionData.moduleB).toBe(PRODUCTION_MODULE_B_ID);
     expect(sectionData.prepTargets.length).toBeGreaterThan(0);
-    expect(sectionData.prepTargets.length).toBeLessThanOrEqual(PRODUCTION_ROUTE_BUDGET);
+    expect(sectionData.prepTargets.length).toBeLessThanOrEqual(SCOUT_GAME_PLAN_LIMIT);
     for (const target of sectionData.prepTargets) {
       expect(terminalMoveIsOpponent(target.ucis, "white")).toBe(true);
     }

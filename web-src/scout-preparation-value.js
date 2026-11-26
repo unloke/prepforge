@@ -73,6 +73,33 @@ export function preparationValue(route, baseline = 50) {
 const MIN_ROW_PLIES = 8;
 
 export const canonicalPosition = fen => fen ? fen.trim().split(/\s+/).slice(0, 4).join(" ") : null;
+/** The position a row ends in, so no two shown rows end in the same one. */
+export const terminalPositionKey = (route) => canonicalPosition(route.terminalFen) ?? routeKey(route);
+/** Lines that stop within the first moves are a last resort: rows reach the end of the opening. */
+export const isFullRow = (row) => row.route.ucis.length >= MIN_ROW_PLIES;
+export const sharedPlies = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i; };
+
+/** Engine-cleared candidate rows, strongest evidence first. */
+export function rankedPreparationRows(routes, baseline) {
+  const rows = [];
+  for (const route of routes || []) {
+    if (!route.ucis?.length) continue;
+    const evidence = preparationValue(route, baseline);
+    if (!evidence.engineOk) continue;
+    if (route.routeReach != null && route.routeReach < 0.1) continue;
+    const anchorUcis = route.anchorUcis ?? route.ucis;
+    rows.push({ route, evidence, anchorUcis, anchor: anchorUcis.join(">"), share: route.continuationShare ?? 1 });
+  }
+  return rows.sort((a, b) => b.evidence.value - a.evidence.value || b.evidence.softValue - a.evidence.softValue ||
+    b.share - a.share || routeKey(a.route).localeCompare(routeKey(b.route)));
+}
+
+/** More games behind the first differing move after ply `from` = more common. */
+export const typicalAfter = (from) => (a, b) => {
+  const x = a.route.pathGames ?? [], y = b.route.pathGames ?? [];
+  for (let i = from; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return y[i] - x[i];
+  return b.share - a.share || routeKey(a.route).localeCompare(routeKey(b.route));
+};
 
 /**
  * Up to `limit` full opening lines. A row's evidence is its anchor (the
@@ -87,37 +114,16 @@ export const canonicalPosition = fen => fen ? fen.trim().split(/\s+/).slice(0, 4
 export function selectPreparationRoutes(routes, { limit = 12, baseline = 50 } = {}) {
   const budget = Math.min(12, Math.max(0, Math.floor(limit)));
   if (!budget) return [];
-  const rows = [];
-  for (const route of routes || []) {
-    if (!route.ucis?.length) continue;
-    const evidence = preparationValue(route, baseline);
-    if (!evidence.engineOk) continue;
-    if (route.routeReach != null && route.routeReach < 0.1) continue;
-    const anchorUcis = route.anchorUcis ?? route.ucis;
-    rows.push({ route, evidence, anchorUcis, anchor: anchorUcis.join(">"), share: route.continuationShare ?? 1 });
-  }
-  const order = (a, b) => b.evidence.value - a.evidence.value || b.evidence.softValue - a.evidence.softValue ||
-    b.share - a.share || routeKey(a.route).localeCompare(routeKey(b.route));
-  rows.sort(order);
+  const rows = rankedPreparationRows(routes, baseline);
   const picked = [], keys = new Set(), positions = new Set();
-  const free = row => !keys.has(routeKey(row.route)) &&
-    !positions.has(canonicalPosition(row.route.terminalFen) ?? routeKey(row.route));
+  const free = row => !keys.has(routeKey(row.route)) && !positions.has(terminalPositionKey(row.route));
   // A row parts from every picked line no later than its own anchor.
-  const shared = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i; };
-  const distinct = row => picked.every(route => shared(row.route.ucis, route.ucis) <= row.anchorUcis.length);
+  const distinct = row => picked.every(route => sharedPlies(row.route.ucis, route.ucis) <= row.anchorUcis.length);
   const take = (row) => {
     if (picked.length >= budget || !free(row) || !distinct(row)) return;
     keys.add(routeKey(row.route));
-    positions.add(canonicalPosition(row.route.terminalFen) ?? routeKey(row.route));
+    positions.add(terminalPositionKey(row.route));
     picked.push({ ...row.route, preparationEvidence: row.evidence });
-  };
-  // Lines that stop within the first moves are a last resort: rows reach the end of the opening.
-  const full = row => row.route.ucis.length >= MIN_ROW_PLIES;
-  // More games behind the first differing move after the anchor = more common.
-  const typical = (from) => (a, b) => {
-    const x = a.route.pathGames ?? [], y = b.route.pathGames ?? [];
-    for (let i = from; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return y[i] - x[i];
-    return b.share - a.share || routeKey(a.route).localeCompare(routeKey(b.route));
   };
   // Pass 1: one line per anchor, best anchor first: the most common observed
   // line through it. A weak anchor is shown by a line that is itself weak (its
@@ -128,14 +134,14 @@ export function selectPreparationRoutes(routes, { limit = 12, baseline = 50 } = 
     if (picked.length >= budget) break;
     // A branch already shown by a picked line needs no second row.
     if (picked.some(route => anchorRow.anchorUcis.every((move, i) => route.ucis[i] === move))) continue;
-    const through = rows.filter(row => full(row) && free(row) && distinct(row) &&
+    const through = rows.filter(row => isFullRow(row) && free(row) && distinct(row) &&
       anchorRow.anchorUcis.every((move, i) => row.route.ucis[i] === move));
     const weakThrough = through.filter(row => row.evidence.value > 0);
-    const line = (weakThrough.length ? weakThrough : through).sort(typical(anchorRow.anchorUcis.length))[0];
+    const line = (weakThrough.length ? weakThrough : through).sort(typicalAfter(anchorRow.anchorUcis.length))[0];
     if (line) take(line);
   }
   // Pass 2: further lines, strongest evidence first; then shorter ones.
-  for (const row of rows) if (full(row)) take(row);
+  for (const row of rows) if (isFullRow(row)) take(row);
   for (const row of rows) take(row);
   return picked;
 }

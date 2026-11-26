@@ -76,27 +76,28 @@ import { bindEvalChart, createAnalyzeView, ensureAnalyzeView, ensureMoveTreeRend
   renderAnalysisTree } from "./views/analyze-loader.js";
 import { createAnalyzeEntry, analysisRecallSeq } from "./controllers/analyze-entry.js";
 
+// A controller chunk loaded on first use. `via(name)` calls straight through once it
+// has loaded and waits for it before that; a failed load is retried on the next call.
+function lazyModule(load) {
+  const lazy = { current: null, loading: null };
+  lazy.load = () => (lazy.loading ||= load().then((mod) => (lazy.current = mod)).catch((error) => {
+    lazy.loading = null;
+    throw error;
+  }));
+  lazy.via = (name) => (...args) => (lazy.current
+    ? lazy.current[name](...args)
+    : lazy.load().then((loaded) => loaded[name](...args)));
+  return lazy;
+}
+
 // Teams: loaded with the Teams view, but the shell needs its entry points
 // early (the rail, a ?join= link, a resumed sign-in action).
-let teamsController = null;
-let teamsControllerLoading = null;
-function loadTeamsController() {
-  teamsControllerLoading ||= import("./views/teams-controller.js").then((mod) => {
-    teamsController = mod.createTeamsController({
-      switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn,
-    });
-    return teamsController;
-  }).catch((error) => {
-    teamsControllerLoading = null;
-    throw error;
-  });
-  return teamsControllerLoading;
-}
-const viaTeams = (name) => (...args) => (teamsController
-  ? teamsController[name](...args)
-  : loadTeamsController().then((loaded) => loaded[name](...args)));
+const teamsLazy = lazyModule(() => import("./views/teams-controller.js").then((mod) => mod.createTeamsController({
+  switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn,
+})));
+const viaTeams = teamsLazy.via;
 const loadTeams = () => loadTeamsWithShell(viaTeams("loadTeams"));
-const hideTeamDetail = () => clearTeamDetail(teamsController?.renderTeamsList);
+const hideTeamDetail = () => clearTeamDetail(teamsLazy.current?.renderTeamsList);
 const createTeam = viaTeams("createTeam");
 
 // The Library entry: its chunk, the listing load and PGN import. Bound in init,
@@ -150,25 +151,12 @@ const refreshAnalysisHistoryIfOpen = viaAnalyzeEntry("refreshAnalysisHistoryIfOp
 const invalidateAnalysisSource = viaAnalyzeEntry("invalidateAnalysisSource");
 
 // Settings: the view chunk, its readiness gate and the /api/settings actions.
-let settingsController = null;
-let settingsControllerLoading = null;
-function loadSettingsController() {
-  settingsControllerLoading ||= import("./views/settings-controller.js").then((mod) => {
-    settingsController = mod.createSettingsController({
-      switchView, accountEntry, refreshLichessStatus, startLichessOAuth,
-      get analyzeSession() { return analyzeSession; },
-      explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
-    });
-    return settingsController;
-  }).catch((error) => {
-    settingsControllerLoading = null;
-    throw error;
-  });
-  return settingsControllerLoading;
-}
-const viaSettings = (name) => (...args) => (settingsController
-  ? settingsController[name](...args)
-  : loadSettingsController().then((loaded) => loaded[name](...args)));
+const settingsLazy = lazyModule(() => import("./views/settings-controller.js").then((mod) => mod.createSettingsController({
+  switchView, accountEntry, refreshLichessStatus, startLichessOAuth,
+  get analyzeSession() { return analyzeLazy.current; },
+  explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
+})));
+const viaSettings = settingsLazy.via;
 const preloadSettingsView = viaSettings("preloadSettingsView");
 const loadSettings = viaSettings("loadSettings");
 const whenSettingsReady = viaSettings("whenSettingsReady");
@@ -176,25 +164,12 @@ const openSettingsSection = viaSettings("openSettingsSection");
 
 // Scout: the report, its source tray and the Start guard. Loaded on first use;
 // the shell paints the tray and wires Start at boot, so those wait for it.
-let scoutController = null;
-let scoutControllerLoading = null;
-function loadScoutController() {
-  scoutControllerLoading ||= import("./views/scout-controller.js").then((mod) => {
-    scoutController = mod.createScoutController({
-      requireSignIn, switchView, editRepertoire, createRepertoirePrompt, buildProvisionalNode,
-      hardFlushBuild, selectBuildNode, resolveBuildId, setBuildSync, queueBuildAdd, loadPgnIntoAnalyze,
-      startLichessOAuth, lichessAccounts,
-    });
-    return scoutController;
-  }).catch((error) => {
-    scoutControllerLoading = null;
-    throw error;
-  });
-  return scoutControllerLoading;
-}
-const viaScout = (name) => (...args) => (scoutController
-  ? scoutController[name](...args)
-  : loadScoutController().then((loaded) => loaded[name](...args)));
+const scoutLazy = lazyModule(() => import("./views/scout-controller.js").then((mod) => mod.createScoutController({
+  requireSignIn, switchView, editRepertoire, createRepertoirePrompt, buildProvisionalNode,
+  hardFlushBuild, selectBuildNode, resolveBuildId, setBuildSync, queueBuildAdd, loadPgnIntoAnalyze,
+  startLichessOAuth, lichessAccounts,
+})));
+const viaScout = scoutLazy.via;
 const scoutSelection = viaScout("scoutSelection");
 const paintScoutSource = viaScout("paintScoutSource");
 const bindScoutSource = viaScout("bindScoutSource");
@@ -204,24 +179,11 @@ const ensureScoutView = viaScout("ensureScoutView");
 // Games: the comparison, its source tray and the ledger's row actions. Loaded
 // on first use; the shell needs the entry points at boot (the tray paint, the
 // Check button), so every one of them waits for the chunk.
-let gamesController = null;
-let gamesControllerLoading = null;
-function loadGamesController() {
-  gamesControllerLoading ||= import("./views/games-controller.js").then((mod) => {
-    gamesController = mod.createGamesController({
-      requireSignIn, switchView, editRepertoire, isBuildReadOnly, onBuildBoardMove, trainRepertoire,
-      orientAnalysisForSelf, loadPgnIntoAnalyze, showAnalysisPly, openSettingsSection, lichessAccounts,
-    });
-    return gamesController;
-  }).catch((error) => {
-    gamesControllerLoading = null;
-    throw error;
-  });
-  return gamesControllerLoading;
-}
-const viaGames = (name) => (...args) => (gamesController
-  ? gamesController[name](...args)
-  : loadGamesController().then((loaded) => loaded[name](...args)));
+const gamesLazy = lazyModule(() => import("./views/games-controller.js").then((mod) => mod.createGamesController({
+  requireSignIn, switchView, editRepertoire, isBuildReadOnly, onBuildBoardMove, trainRepertoire,
+  orientAnalysisForSelf, loadPgnIntoAnalyze, showAnalysisPly, openSettingsSection, lichessAccounts,
+})));
+const viaGames = gamesLazy.via;
 const runLichessCompare = viaGames("runLichessCompare");
 const gamesSourceSelection = viaGames("gamesSourceSelection");
 const paintGamesSource = viaGames("paintGamesSource");
@@ -247,11 +209,12 @@ const BoardController = createBoardController({
 });
 
 
-// Build-session wrappers resolve the lazy module on call, so they can exist before it loads
+// The repertoire editor lives in controllers/build-session.js, loaded with the Build view.
+// Its wrappers resolve the lazy module on call, so they can exist before it loads
 // (the sync controller below takes some of them).
-const viaBuildSession = (name) => (...args) => (buildSession
-  ? buildSession[name](...args)
-  : loadBuildSession().then((loaded) => loaded[name](...args)));
+const buildLazy = lazyModule(() => import("./controllers/build-session.js").then((mod) => mod.createBuildSession()));
+const loadBuildSession = buildLazy.load;
+const viaBuildSession = buildLazy.via;
 const buildBranchContext = viaBuildSession("buildBranchContext");
 const buildBranchKey = viaBuildSession("buildBranchKey");
 const buildGoBack = viaBuildSession("buildGoBack");
@@ -529,10 +492,10 @@ function switchView(name, { fromUrl = false } = {}) {
     delete appState.trainPendingRoute;
     cancelActiveTrainStart();
   }
-  if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
+  if (appState.currentView === "teams" && name !== "teams") teamsLazy.current?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
   document.getElementById("app-rail")?.classList.add("is-nav-collapsed");
-  if (name !== "analyze") analyzeSession?.positionCoach.cancel();
+  if (name !== "analyze") analyzeLazy.current?.positionCoach.cancel();
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -967,22 +930,9 @@ async function refreshAnalyzeRecovery() {
 // Analyze (runs, move list, position coach) lives in controllers/analyze-session.js,
 // loaded with the Analyze view. Once loaded the wrappers below call straight through;
 // before that they wait for it.
-let analyzeSession = null;
-let analyzeSessionLoading = null;
-function loadAnalyzeSession() {
-  analyzeSessionLoading ||= import("./controllers/analyze-session.js").then((mod) => {
-    analyzeSession = mod.createAnalyzeSession();
-
-    return analyzeSession;
-  }).catch((error) => {
-    analyzeSessionLoading = null;
-    throw error;
-  });
-  return analyzeSessionLoading;
-}
-const viaAnalyzeSession = (name) => (...args) => (analyzeSession
-  ? analyzeSession[name](...args)
-  : loadAnalyzeSession().then((loaded) => loaded[name](...args)));
+const analyzeLazy = lazyModule(() => import("./controllers/analyze-session.js").then((mod) => mod.createAnalyzeSession()));
+const loadAnalyzeSession = analyzeLazy.load;
+const viaAnalyzeSession = analyzeLazy.via;
 const analysisTreeNav = viaAnalyzeSession("analysisTreeNav");
 const reviewNav = viaAnalyzeSession("reviewNav");
 const discardAnalyzeCheckpoint = viaAnalyzeSession("discardAnalyzeCheckpoint");
@@ -1013,21 +963,6 @@ export let appReadyPromise = null;
 // The Analyze view chunk and its move tree (views/analyze-loader.js).
 let analyzeLoader = null;
 
-// The repertoire editor lives in controllers/build-session.js, loaded with the Build view.
-// Once loaded the wrappers below call straight through; before that they wait for it.
-let buildSession = null;
-let buildSessionLoading = null;
-function loadBuildSession() {
-  buildSessionLoading ||= import("./controllers/build-session.js").then((mod) => {
-    buildSession = mod.createBuildSession();
-
-    return buildSession;
-  }).catch((error) => {
-    buildSessionLoading = null;
-    throw error;
-  });
-  return buildSessionLoading;
-}
 
 let buildModule = null;
 let buildView = null;
@@ -1483,7 +1418,7 @@ function bindEvents() {
 
   createPalette({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
     requireSignIn, openTrain, onFeelingLucky, toggleTheme,
-    editBuildNote: (id) => buildSession?.handleNodeContextAction("add_comment", id) });
+    editBuildNote: (id) => buildLazy.current?.handleNodeContextAction("add_comment", id) });
   bindCommandPalette();
   installMoveLinks({ selectBuildNode, selectAnalysisNode });
   window.addEventListener("popstate", () => {
@@ -1602,9 +1537,9 @@ async function init() {
     switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut, persistOutbox, loadTeams,
     clearCoverage: () => coverageEntry?.coverageView?.clear(),
     get dashboardView() { return libraryEntry?.dashboardView; },
-    get scoutController() { return scoutController; },
+    get scoutController() { return scoutLazy.current; },
     paintGamesSource, paintScoutSource,
-    get teamsController() { return teamsController; },
+    get teamsController() { return teamsLazy.current; },
     get appReadyPromise() { return appReadyPromise; },
     get hideTeamDetail() { return hideTeamDetail; },
     get runAnalysis() { return runAnalysis; },
@@ -1641,7 +1576,7 @@ async function init() {
   hooks.build = {
     get view() { return buildView; },
     selectBuildNode, scheduleBuildFlush, setBuildSync,
-    get session() { return buildSession; },
+    get session() { return buildLazy.current; },
     get coverageView() { return coverageEntry?.coverageView; },
     ensureBuildView, paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
     ensureCoverageView: () => coverageEntry.ensureCoverageView(),
@@ -1950,7 +1885,7 @@ async function loadSignedInWorkspace() {
   const owner = currentOwnerId();
   const generation = appState.ownerGeneration;
   const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration;
-  loadSettingsController().then((settings) =>
+  settingsLazy.load().then((settings) =>
     isCurrent() ? settings.loadSettingsOnce({ render: false }) : null
   ).catch((error) => { if (isCurrent()) setStatusError(error.message); });
   // The Library paints itself when its read lands (and shows its own failure);
@@ -1995,13 +1930,13 @@ async function loadSignedInWorkspace() {
 // The seams the core modules use to reach the views and the lazily loaded
 // sessions they must not import: each one is a live read of the shell's own
 // binding, so it is registered once here, after every binding exists.
-hooks.settingsPainted = () => settingsController?.renderThemeControl();
-hooks.strengthPainted = () => settingsController?.renderStrengthControls();
+hooks.settingsPainted = () => settingsLazy.current?.renderThemeControl();
+hooks.strengthPainted = () => settingsLazy.current?.renderStrengthControls();
 // The handler lives on the account service, not on the entry object: calling
 // it on the entry threw on every 401 and the sign-in dialog never opened.
 hooks.authRequired = () => accountEntry && accountService().handleAuthRequired();
 hooks.explorerEvals = explorerEvalEngine;
-hooks.analyzeSession = () => analyzeSession;
+hooks.analyzeSession = () => analyzeLazy.current;
 // The one pref change a view has to react to: Coverage only shows in the
 // inspector, and repainting it re-reads the Maia gate.
 hooks.prefApplied = (name) => {
@@ -2009,9 +1944,9 @@ hooks.prefApplied = (name) => {
   if (buildDockTab === "coverage") setBuildInspector("coverage");
   // The analysis layers that read the gate take Maia in place: the coach re-reads
   // the position on the board, and an open Scout report adds its Maia reads.
-  const coach = analyzeSession?.positionCoach;
+  const coach = analyzeLazy.current?.positionCoach;
   if (coach && activeViewName() === "analyze" && coach.fen) { coach.cancel(); coach.update(coach.fen, coach.ctx); }
-  scoutController?.onMaiaGate();
+  scoutLazy.current?.onMaiaGate();
 };
 
 appReadyPromise = init()

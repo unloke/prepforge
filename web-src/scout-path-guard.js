@@ -2,10 +2,14 @@
 // preparing-side move in a shown line is below the existing leaf gate. No browser
 // dependencies: the engine is supplied by the caller.
 import {
-  preparationValue,
-  routeKey,
   canonicalPosition,
+  isFullRow,
+  rankedPreparationRows,
+  routeKey,
   selectPreparationRoutes,
+  sharedPlies,
+  terminalPositionKey,
+  typicalAfter,
 } from "./scout-preparation-value.js";
 
 // The existing v10 leaf gate, applied to every position after a preparing-side move.
@@ -22,7 +26,6 @@ export const AUDIT_NODE_BUDGET = AUDIT_NODE_SHARE * V10_QUEUE_READS * NODES_PER_
 export const SCREEN_DEPTH = 6;
 export const GATE_DEPTH = 8;
 export const SCREEN_MARGIN_CP = 50;
-const MIN_ROW_PLIES = 8;
 
 const moverOf = (ply) => (ply % 2 ? "white" : "black");
 
@@ -121,44 +124,25 @@ function* guardedSelection(routes, { limit = 12, baseline = 50 } = {}) {
   const control = selectPreparationRoutes(routes, { limit, baseline });
   const v10Keys = new Set(control.map(routeKey));
   const weakTarget = control.filter((r) => r.preparationEvidence.value > 0).length;
-  const rows = [];
-  for (const route of routes || []) {
-    if (!route.ucis?.length) continue;
-    const evidence = preparationValue(route, baseline);
-    if (!evidence.engineOk) continue;
-    if (route.routeReach != null && route.routeReach < 0.1) continue;
-    const anchorUcis = route.anchorUcis ?? route.ucis;
-    rows.push({ route, evidence, anchorUcis, anchor: anchorUcis.join(">"), share: route.continuationShare ?? 1 });
-  }
-  const order = (a, b) => b.evidence.value - a.evidence.value || b.evidence.softValue - a.evidence.softValue ||
-    b.share - a.share || routeKey(a.route).localeCompare(routeKey(b.route));
-  rows.sort(order);
+  const rows = rankedPreparationRows(routes, baseline);
   const picked = [], keys = new Set(), positions = new Set(), rejectedAnchors = new Set();
   let anchorRejections = 0;
-  const positionOf = (route) => canonicalPosition(route.terminalFen) ?? routeKey(route);
-  const free = (row) => !keys.has(routeKey(row.route)) && !positions.has(positionOf(row.route));
-  const shared = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i; };
-  const distinct = (row) => picked.every((route) => shared(row.route.ucis, route.ucis) <= row.anchorUcis.length);
+  const free = (row) => !keys.has(routeKey(row.route)) && !positions.has(terminalPositionKey(row.route));
+  const distinct = (row) => picked.every((route) => sharedPlies(row.route.ucis, route.ucis) <= row.anchorUcis.length);
   const commit = (row, pathStatus) => {
     keys.add(routeKey(row.route));
-    positions.add(positionOf(row.route));
+    positions.add(terminalPositionKey(row.route));
     picked.push({ ...row.route, preparationEvidence: row.evidence, pathStatus });
   };
   const open = (row) => picked.length < budget && free(row) && distinct(row);
-  const full = (row) => row.route.ucis.length >= MIN_ROW_PLIES;
-  const typical = (from) => (a, b) => {
-    const x = a.route.pathGames ?? [], y = b.route.pathGames ?? [];
-    for (let i = from; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return y[i] - x[i];
-    return b.share - a.share || routeKey(a.route).localeCompare(routeKey(b.route));
-  };
   const anchorRows = new Map();
   for (const row of rows) if (!anchorRows.has(row.anchor)) anchorRows.set(row.anchor, row);
   const covered = (anchorRow) => picked.some((route) => anchorRow.anchorUcis.every((move, i) => route.ucis[i] === move));
   const throughLines = (anchorRow) => {
     const weak = anchorRow.evidence.value > 0;
-    return rows.filter((row) => full(row) && free(row) && distinct(row) &&
+    return rows.filter((row) => isFullRow(row) && free(row) && distinct(row) &&
       (row.anchor === anchorRow.anchor || (weak ? row.evidence.value > 0 : true)) &&
-      anchorRow.anchorUcis.every((move, i) => row.route.ucis[i] === move)).sort(typical(anchorRow.anchorUcis.length));
+      anchorRow.anchorUcis.every((move, i) => row.route.ucis[i] === move)).sort(typicalAfter(anchorRow.anchorUcis.length));
   };
   const weakPicked = () => picked.filter((r) => r.preparationEvidence.value > 0).length;
   // Weak anchors after `current` that could still take a slot (geometry only, no reads).
@@ -211,13 +195,13 @@ function* guardedSelection(routes, { limit = 12, baseline = 50 } = {}) {
     if (accept(row, v)) commit(row, v.status);
     else if (v.status === "unsafe") log.push({ pass: 2, key: routeKey(row.route), failPly: v.failPly });
   }
-  for (const row of rows) if (full(row)) yield* fill(row);
+  for (const row of rows) if (isFullRow(row)) yield* fill(row);
   for (const row of rows) yield* fill(row);
   // Never fewer weak rows than v10: put back a v10 weak row in place of a replacement fill.
   const uncommit = (route) => {
     picked.splice(picked.indexOf(route), 1);
     keys.delete(routeKey(route));
-    positions.delete(positionOf(route));
+    positions.delete(terminalPositionKey(route));
   };
   const byKey = new Map(rows.map((r) => [routeKey(r.route), r]));
   for (const lost of control.filter((r) => r.preparationEvidence.value > 0 && !keys.has(routeKey(r)))) {

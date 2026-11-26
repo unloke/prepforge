@@ -86,7 +86,7 @@ export function uciToSan(fen, uci) {
       promotion: uci[4] || undefined,
     });
     return move?.san || uci;
-  } catch (_) {
+  } catch {
     return uci;
   }
 }
@@ -151,12 +151,6 @@ export function mergeEngineIntoTargets(targets, enginePatterns) {
     return { ...target, enginePattern: pattern, hasEngineMistake: true };
   });
 }
-// v4: fetchGames now excludes bullet at the source (excludeBullet:true). The v3
-// cache may hold older results that still contain bullet games, so the key is
-// bumped to force a clean re-fetch rather than re-serving contaminated data.
-const CACHE_KEY = "prepforge.scout.cache.v4";
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // opponents play new games constantly
-const CACHE_CAP = 8;
 
 // ---------------------------------------------------------------------------
 // PGN parsing (multi-game export -> per-game opening records)
@@ -353,13 +347,7 @@ function medianOf(values) {
 }
 
 function madOf(values, med) {
-  const devs = values
-    .filter((v) => v != null && Number.isFinite(v))
-    .map((v) => Math.abs(v - med))
-    .sort((a, b) => a - b);
-  if (!devs.length) return 0;
-  const mid = Math.floor(devs.length / 2);
-  return devs.length % 2 ? devs[mid] : (devs[mid - 1] + devs[mid]) / 2;
+  return medianOf(values.filter((v) => v != null).map((v) => Math.abs(v - med))) ?? 0;
 }
 
 function openingClockAfterPly(game) {
@@ -476,7 +464,7 @@ export function parseGameBlock(block, username) {
     let move;
     try {
       move = chess.move(san);
-    } catch (_) {
+    } catch {
       break;
     }
     if (!move) break;
@@ -505,8 +493,7 @@ export function parseGameBlock(block, username) {
 
   // Coarse end-state, for the collapse down-weight rule. Lichess PGN marks resign and
   // checkmate alike as [Termination "Normal"]; the trailing "#" separates mate from a
-  // resignation, and time forfeits carry their own termination. The ND-JSON path later
-  // overrides this with Lichess's authoritative `status` (see parseGameFromJson).
+  // resignation, and time forfeits carry their own termination.
   const termination = (headerValue(block, "Termination") || "").toLowerCase();
   const lastSan = replayedSans[replayedSans.length - 1] || "";
   let status = null;
@@ -536,52 +523,6 @@ export function parseGameBlock(block, username) {
   };
 }
 
-/**
- * One ND-JSON game object (with `pgnInJson=true&clocks=true`) -> a scout record.
- * The embedded `pgn` reuses the full PGN reader so every derived field is identical to
- * the PGN path; we only *attach* the raw centisecond `clocks` array + the precise
- * initial/increment, which the PGN `[%clk]` annotation rounds to whole seconds.
- */
-export function parseGameFromJson(obj, username) {
-  if (!obj || typeof obj !== "object") return null;
-  const pgnText = typeof obj.pgn === "string" ? obj.pgn : null;
-  if (!pgnText) return null;
-  const game = parseGameBlock(pgnText, username);
-  if (!game) return null;
-  if (Array.isArray(obj.clocks) && obj.clocks.length) {
-    game.clockCsAfterPly = obj.clocks
-      .slice(0, game.ucis.length)
-      .map((c) => (Number.isFinite(c) ? c : null));
-  }
-  if (obj.clock && typeof obj.clock === "object") {
-    if (Number.isFinite(obj.clock.initial)) game.clockInitialSeconds = obj.clock.initial;
-    if (Number.isFinite(obj.clock.increment)) game.clockIncrementSeconds = obj.clock.increment;
-  }
-  // Authoritative end-state ("resign" / "mate" / "outoftime" / "draw" / …), which the
-  // PGN reader can only approximate — the collapse rule needs a reliable "resign".
-  if (typeof obj.status === "string") game.status = obj.status;
-  if (Number.isFinite(obj.createdAt)) game.datestamp = obj.createdAt;
-  return game;
-}
-
-/** Parse a Lichess ND-JSON games export (one JSON object per line). */
-export function parseNdjsonGames(text, username) {
-  const games = [];
-  for (const line of String(text || "").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    let obj;
-    try {
-      obj = JSON.parse(trimmed);
-    } catch (_) {
-      continue; // tolerate blank/partial lines
-    }
-    const game = parseGameFromJson(obj, username);
-    if (game) games.push(game);
-  }
-  return games;
-}
-
 // ---------------------------------------------------------------------------
 // Opening aggregation (trie of the opponent's moves)
 // ---------------------------------------------------------------------------
@@ -598,9 +539,11 @@ function incrementSelection(node, score, weight) {
 }
 
 function incrementResult(node, score) {
-  if (score === 1) node.w += 1;
-  else if (score === 0.5) node.d += 1;
-  else node.l += 1;
+  node[score === 1 ? "w" : score === 0.5 ? "d" : "l"] += 1;
+}
+
+function wdlScorePct(w, d, n) {
+  return n > 0 ? Math.round(((w + 0.5 * d) / n) * 100) : 0;
 }
 
 // The newest game timestamp in a set — the anchor the display trie's recency decay is
@@ -691,22 +634,12 @@ export const SCOUT_COLLAPSE_MIN_CLOCK_FRAC = 0.5; // ≥ half the clock left →
 // The scouted player's remaining-clock fraction (0..1) at their last recorded move, or
 // null when it can't be determined (the collapse rule then abstains rather than guesses).
 function opponentEndClockFraction(game) {
-  const initial = Number.isFinite(game?.clockInitialSeconds)
-    ? game.clockInitialSeconds
-    : Number.isFinite(game?.timeControl?.baseSeconds)
-      ? game.timeControl.baseSeconds
-      : null;
-  if (!initial || initial <= 0) return null;
-  const parity = game?.color === "white" ? 0 : 1; // clocks[p] is after ply p: even = White
-  const cs = game?.clockCsAfterPly;
-  const secs = game?.clockAfterPly;
-  const len = Math.max(cs?.length || 0, secs?.length || 0);
-  for (let p = len - 1; p >= 0; p -= 1) {
-    if (p % 2 !== parity) continue;
-    const fromCs = cs && Number.isFinite(cs[p]) ? cs[p] / 100 : null;
-    const fromSecs = secs && Number.isFinite(secs[p]) ? secs[p] : null;
-    const remaining = fromCs != null ? fromCs : fromSecs;
-    if (remaining != null) return remaining / initial;
+  const initial = game?.timeControl?.baseSeconds;
+  if (!(initial > 0)) return null;
+  const clocks = game.clockAfterPly || [];
+  const parity = game.color === "white" ? 0 : 1; // clocks[p] is after ply p: even = White
+  for (let p = clocks.length - 1; p >= 0; p -= 1) {
+    if (p % 2 === parity && Number.isFinite(clocks[p])) return clocks[p] / initial;
   }
   return null;
 }
@@ -832,9 +765,7 @@ export function aggregateOpeningBranches(
         if (game.gameId) seenAncestors.add(game.gameId);
         const ancestor = ancestorFreq.get(fenBefore);
         ancestor.count += 1;
-        if (game.score === 1) ancestor.w += 1;
-        else if (game.score === 0.5) ancestor.d += 1;
-        else ancestor.l += 1;
+        incrementResult(ancestor, game.score);
       }
     }
     const key = terminal.ucis.join(">");
@@ -869,9 +800,7 @@ export function aggregateOpeningBranches(
     }
     row.branchScore += R * L * T;
     row.games += 1;
-    if (game.score === 1) row.w += 1;
-    else if (game.score === 0.5) row.d += 1;
-    else row.l += 1;
+    incrementResult(row, game.score);
     if (game.datestamp > row.lastDatestamp) row.lastDatestamp = game.datestamp;
   }
 
@@ -886,7 +815,7 @@ export function aggregateOpeningBranches(
       w: row.w,
       d: row.d,
       l: row.l,
-      scorePct: n > 0 ? Math.round(((row.w + 0.5 * row.d) / n) * 100) : 0,
+      scorePct: wdlScorePct(row.w, row.d, n),
       share: 0,
       rawShare: 0,
       count: row.branchScore,
@@ -904,9 +833,8 @@ export function aggregateOpeningBranches(
   const ancestorTotalGames = filtered.length || 1;
   for (const info of ancestorFreq.values()) {
     info.frequency = info.count / ancestorTotalGames;
-    const n = (info.w || 0) + (info.d || 0) + (info.l || 0);
-    info.games = n;
-    info.scorePct = n > 0 ? Math.round(((info.w + 0.5 * info.d) / n) * 100) : 0;
+    info.games = info.w + info.d + info.l;
+    info.scorePct = wdlScorePct(info.w, info.d, info.games);
   }
   return { branches, droppedCount, ancestorFreq };
 }
@@ -932,10 +860,6 @@ export function selectionBaselineFromTrie(trie) {
       d: ((x?.d || 0) + smoothing) / (weight + 3 * smoothing), l: ((x?.l || 0) + smoothing) / (weight + 3 * smoothing) } };
 }
 
-/**
- * Downweight prep value when the opponent performs at/above baseline.
- * Returns 1 when empirical data is missing (do not penalize rare samples).
- */
 /**
  * Walk the opening trie along a UCI path. The trie keys children by `${uci}|${san}`,
  * so we match on the uci prefix. Returns per-ply nodes with their w/d/l, scorePct, and
@@ -969,7 +893,7 @@ export function triePrefixStats(trie, ucis) {
       w: child.w || 0,
       d: child.d || 0,
       l: child.l || 0,
-      scorePct: gc > 0 ? Math.round(((child.w + 0.5 * child.d) / gc) * 100) : 0,
+      scorePct: wdlScorePct(child.w || 0, child.d || 0, gc),
       moveShare: parentGames > 0 ? gc / parentGames : 0,
     });
     node = child;
@@ -1168,40 +1092,20 @@ export function rankGamePlan(
 }
 
 /** Production Module B selector alias — keep rankGamePlan as the implementation. */
-export function selectProductionRoutes(lines, baselineScorePct, options = {}) {
-  return rankGamePlan(lines, baselineScorePct, {
-    ...options,
-    limit: options.limit ?? SCOUT_GAME_PLAN_LIMIT,
-  });
-}
-
 /** Prefer an enabled mainline child; otherwise pick deterministically by UCI. */
-function pickRepertoireReplyChild(children) {
-  if (!children?.size) return null;
-  const entries = [...children.entries()].map(([uci, meta]) => ({
-    uci,
-    id: meta.id,
-    is_mainline: !!meta.is_mainline,
-    is_enabled: meta.is_enabled !== false,
-  }));
-  const enabled = entries.filter((e) => e.is_enabled);
-  if (!enabled.length) return null;
-  const mainlines = enabled.filter((e) => e.is_mainline);
-  if (mainlines.length) {
-    mainlines.sort((a, b) => a.uci.localeCompare(b.uci));
-    return mainlines[0];
-  }
-  enabled.sort((a, b) => a.uci.localeCompare(b.uci));
-  return enabled[0];
+function pickRepertoireReplyUci(children) {
+  const enabled = [...(children || [])]
+    .filter(([, meta]) => meta.is_enabled !== false)
+    .sort(([a], [b]) => a.localeCompare(b));
+  return (enabled.find(([, meta]) => meta.is_mainline) || enabled[0])?.[0] || null;
 }
 
 /** Next move in the player's repertoire after the opponent line (mainline-aware). */
 export function suggestReplyFromRepertoire(lookup, lineUcis) {
   const { covered, deepestNodeId } = lineCoverage(lookup, lineUcis);
   if (covered < lineUcis.length || !deepestNodeId) return null;
-  const children = lookup.childUci.get(deepestNodeId);
-  const picked = pickRepertoireReplyChild(children);
-  return picked?.uci ? { uci: picked.uci, source: "repertoire" } : null;
+  const uci = pickRepertoireReplyUci(lookup.childUci.get(deepestNodeId));
+  return uci ? { uci, source: "repertoire" } : null;
 }
 
 /** Attach a recommended player reply from repertoire coverage or engine refutation. */
@@ -1383,80 +1287,56 @@ export function gradeLines(lookup, lines) {
 // FEN + opponent profile
 // ---------------------------------------------------------------------------
 
-// Scout re-aggregates every branch on each streaming render, and most games
-// share their opening lines — replaying each one through chess.js every time
-// was a quarter of the render cost. Pure in `ucis`, so memoize (bounded).
-//
-// Bound is ~850 bytes per entry (the joined-UCI key dominates: a 60-move game
-// is ~720 chars, plus the FEN and the Map slot). 4000 entries is a few MB —
-// far more than one render's working set — and evicts ONE oldest entry at a
-// time. A wholesale clear() at the cap was a cliff: every cached replay
-// rebuilt at once, right after the 4499th distinct game.
-const FEN_BEFORE_LAST_CACHE_MAX = 4000;
-const fenBeforeLastCache = new Map();
+// Scout re-aggregates every branch on each streaming render, and the prefilter,
+// selector and report replay every ranked route on each pass; most games share
+// their opening lines, so replaying each through chess.js every time was a
+// quarter of the render cost. Both replays are pure in `ucis`: memoize them in a
+// bounded LRU. ~850 bytes per entry (the joined-UCI key dominates), so 4000 is a
+// few MB, and eviction drops one oldest entry at a time rather than clearing.
+const UCI_REPLAY_CACHE_MAX = 4000;
 
-export function fenBeforeLastMove(ucis) {
-  if (!ucis?.length) return null;
-  const key = ucis.join(" ");
-  if (fenBeforeLastCache.has(key)) {
-    // Re-insert so a game stays warm while the streaming render keeps asking
-    // for it; Map iteration order is insertion order, so the first key is the
-    // least recently used.
-    const fen = fenBeforeLastCache.get(key);
-    fenBeforeLastCache.delete(key);
-    fenBeforeLastCache.set(key, fen);
-    return fen;
-  }
-  const fen = replayFenBeforeLastMove(ucis);
-  if (fenBeforeLastCache.size >= FEN_BEFORE_LAST_CACHE_MAX) {
-    const oldest = fenBeforeLastCache.keys().next().value;
-    fenBeforeLastCache.delete(oldest);
-  }
-  fenBeforeLastCache.set(key, fen);
-  return fen;
-}
-
-function replayFenBeforeLastMove(ucis) {
-  const chess = new Chess();
-  for (let i = 0; i < ucis.length - 1; i += 1) {
-    const uci = ucis[i];
-    try {
-      chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-    } catch (_) {
-      return null;
+function lruUciMemo(replay) {
+  const cache = new Map();
+  return (ucis) => {
+    const key = ucis.join(" ");
+    if (cache.has(key)) {
+      // Map iteration order is insertion order: re-insert to mark as recent.
+      const fen = cache.get(key);
+      cache.delete(key);
+      cache.set(key, fen);
+      return fen;
     }
-  }
-  return chess.fen();
-}
-
-// Same bounded memo as fenBeforeLastMove: every ranked route is replayed by the
-// prefilter, the selector and the report on each pass.
-const fenAfterLineCache = new Map();
-
-export function fenAfterLine(ucis) {
-  const key = (ucis || []).join(" ");
-  if (fenAfterLineCache.has(key)) {
-    const fen = fenAfterLineCache.get(key);
-    fenAfterLineCache.delete(key);
-    fenAfterLineCache.set(key, fen);
+    const fen = replay(ucis);
+    if (cache.size >= UCI_REPLAY_CACHE_MAX) cache.delete(cache.keys().next().value);
+    cache.set(key, fen);
     return fen;
-  }
-  const fen = replayFenAfterLine(ucis || []);
-  if (fenAfterLineCache.size >= FEN_BEFORE_LAST_CACHE_MAX) fenAfterLineCache.delete(fenAfterLineCache.keys().next().value);
-  fenAfterLineCache.set(key, fen);
-  return fen;
+  };
 }
 
-function replayFenAfterLine(ucis) {
+// Replays `ucis`; an illegal move yields null when `strict`, otherwise the
+// position reached before it.
+function replayUcis(ucis, strict) {
   const chess = new Chess();
   for (const uci of ucis) {
     try {
       chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-    } catch (_) {
+    } catch {
+      if (strict) return null;
       break;
     }
   }
   return chess.fen();
+}
+
+const fenBeforeLastMemo = lruUciMemo((ucis) => replayUcis(ucis.slice(0, -1), true));
+const fenAfterLineMemo = lruUciMemo((ucis) => replayUcis(ucis, false));
+
+export function fenBeforeLastMove(ucis) {
+  return ucis?.length ? fenBeforeLastMemo(ucis) : null;
+}
+
+export function fenAfterLine(ucis) {
+  return fenAfterLineMemo(ucis || []);
 }
 
 // The player's own first decision: the first move with White, the reply to
@@ -1472,6 +1352,13 @@ function decisionShares(games) {
   const shares = new Map();
   for (const [key, n] of counts) shares.set(key, n / games.length);
   return shares;
+}
+
+// First entry with the highest share (ties keep the earlier key).
+function topDecision(shares) {
+  let top = [null, -1];
+  for (const entry of shares) if (entry[1] > top[1]) top = entry;
+  return top;
 }
 
 export const RECENT_CHANGE_MIN_GAMES = 3;
@@ -1494,38 +1381,24 @@ function detectRecentChange(last20, prev20) {
     if (last.length < RECENT_CHANGE_MIN_GAMES || prev.length < RECENT_CHANGE_MIN_GAMES) {
       return false;
     }
-    const lastShares = decisionShares(last);
     const prevShares = decisionShares(prev);
-    let top = null;
-    for (const [key, share] of lastShares) if (!top || share > top.share) top = { key, share };
-    let prevTop = null;
-    for (const [key, share] of prevShares) if (!prevTop || share > prevTop.share) prevTop = { key, share };
-    if (!top || !prevTop || top.key === prevTop.key) return false;
-    return top.share - (prevShares.get(top.key) || 0) >= RECENT_CHANGE_MIN_SHIFT;
+    const [topKey, topShare] = topDecision(decisionShares(last));
+    if (topKey === topDecision(prevShares)[0]) return false;
+    return topShare - (prevShares.get(topKey) || 0) >= RECENT_CHANGE_MIN_SHIFT;
   };
   return { white: changed("white"), black: changed("black") };
 }
 
 function colorResultStats(games, color) {
   const filtered = games.filter((g) => g.color === color);
-  let w = 0;
-  let d = 0;
-  let l = 0;
+  const wdl = { w: 0, d: 0, l: 0 };
   let scoreSum = 0;
   for (const g of filtered) {
-    if (g.score === 1) w += 1;
-    else if (g.score === 0.5) d += 1;
-    else l += 1;
+    incrementResult(wdl, g.score);
     scoreSum += g.score;
   }
   const n = filtered.length;
-  return {
-    games: n,
-    w,
-    d,
-    l,
-    scorePct: n > 0 ? Math.round((scoreSum / n) * 100) : 0,
-  };
+  return { games: n, ...wdl, scorePct: n > 0 ? Math.round((scoreSum / n) * 100) : 0 };
 }
 
 export function opponentProfile(games) {
@@ -1561,30 +1434,6 @@ export function opponentProfile(games) {
 // ---------------------------------------------------------------------------
 // Fetching (with a small per-username cache)
 // ---------------------------------------------------------------------------
-
-export function scoutUrl(username, max, { pgnInJson = false, excludeBullet = false } = {}) {
-  const safe = encodeURIComponent(String(username || "").trim());
-  // Bullet think-times are too compressed to tell a real preparation gap from a
-  // mouse-slip, so bullet is dropped at the source. The production scout
-  // (streamGames / scoutStreamUrl) also excludes bullet now.
-  const perfType = excludeBullet ? "blitz,rapid,classical" : "bullet,blitz,rapid,classical";
-  const params = new URLSearchParams({
-    moves: "true",
-    clocks: "true",
-    evals: "false",
-    opening: "false",
-    perfType,
-    variant: "standard",
-  });
-  // pgnInJson lets the ND-JSON export carry both the PGN (parsed by the existing
-  // PGN reader) AND the raw centisecond `clocks` array the PGN `[%clk]` rounds away.
-  if (pgnInJson) params.set("pgnInJson", "true");
-  const maxN = Number(max);
-  if (max != null && Number.isFinite(maxN) && maxN > 0) {
-    params.set("max", String(Math.max(10, Math.round(maxN))));
-  }
-  return `https://lichess.org/api/games/user/${safe}?${params}`;
-}
 
 /** Streaming export URL — adds colour filter and since/until for resume pagination. */
 export function scoutStreamUrl(username, { color = "both", since, until, max } = {}) {
@@ -1656,7 +1505,7 @@ async function streamPgn(resp, username, onGame, signal) {
   } finally {
     try {
       reader.cancel?.();
-    } catch (_) {
+    } catch {
       /* reader may already be closed */
     }
     if (!signal?.aborted) emitBlock(buffer);
@@ -1664,14 +1513,8 @@ async function streamPgn(resp, username, onGame, signal) {
   return { accepted, emitted: accepted, received, lastDatestamp };
 }
 
-export function createScoutClient({ fetchImpl, storage, now } = {}) {
+export function createScoutClient({ fetchImpl } = {}) {
   const doFetch = fetchImpl || ((...args) => fetch(...args));
-  const clock = now || (() => Date.now());
-  const store =
-    storage ||
-    (typeof localStorage === "undefined"
-      ? { getItem: () => null, setItem: () => {} }
-      : localStorage);
 
   // The games export 404s both for a missing account and for an existing one
   // whose games Lichess will not export; only the profile lookup tells them
@@ -1691,50 +1534,6 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
     return new Error(`Lichess did not export ${username}'s games, and Scout couldn't verify the account. Try again in a moment.`);
   }
 
-  function readCache() {
-    try {
-      const parsed = JSON.parse(store.getItem(CACHE_KEY) || "null");
-      return parsed && parsed.entries ? parsed : { entries: {} };
-    } catch (_) {
-      return { entries: {} };
-    }
-  }
-
-  // fetchGames(username, {max}) -> parsed game records (cached for a few hours).
-  async function fetchGames(username, { max, signal } = {}) {
-    const key = `${username.toLowerCase()}:${max ?? "all"}`;
-    const cache = readCache();
-    const hit = cache.entries[key];
-    if (hit && clock() - hit.at < CACHE_TTL_MS) return hit.games;
-
-    // ND-JSON (not PGN) so we keep the raw centisecond `clocks` array that `[%clk]`
-    // rounds to whole seconds — the time-discrimination features need sub-second think.
-    const resp = await doFetch(scoutUrl(username, max, { pgnInJson: true, excludeBullet: true }), {
-      headers: { Accept: "application/x-ndjson" },
-      signal,
-    });
-    if (resp.status === 404) throw await notFoundError(username, signal);
-    if (resp.status === 429) throw new Error(SCOUT_ERR_RATE_LIMIT);
-    if (!resp.ok) throw new Error(`Lichess responded ${resp.status}`);
-    const games = parseNdjsonGames(await resp.text(), username);
-
-    const fresh = readCache();
-    fresh.entries[key] = { at: clock(), games };
-    const keys = Object.keys(fresh.entries);
-    if (keys.length > CACHE_CAP) {
-      keys
-        .sort((a, b) => fresh.entries[a].at - fresh.entries[b].at)
-        .slice(0, keys.length - CACHE_CAP)
-        .forEach((k) => delete fresh.entries[k]);
-    }
-    try {
-      store.setItem(CACHE_KEY, JSON.stringify(fresh));
-    } catch (_) {
-      /* best-effort cache */
-    }
-    return games;
-  }
-
   // streamGames(username, {color, since, until, onGame, signal}) -> {accepted, lastDatestamp}
   async function streamGames(username, { color, since, until, max, onGame, signal } = {}) {
     const resp = await doFetch(scoutStreamUrl(username, { color, since, until, max }), {
@@ -1747,5 +1546,5 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
     return streamPgn(resp, username, onGame, signal);
   }
 
-  return { fetchGames, streamGames };
+  return { streamGames };
 }
