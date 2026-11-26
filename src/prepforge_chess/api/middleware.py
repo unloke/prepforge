@@ -16,9 +16,10 @@ from __future__ import annotations
 import secrets
 from collections.abc import Iterable
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
+from starlette.datastructures import MutableHeaders
+from starlette.requests import HTTPConnection
 from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from prepforge_chess.api.config import get_settings
 
@@ -72,51 +73,92 @@ def build_csp(*, script_hashes: tuple[str, ...] = ()) -> str:
 _CSP = build_csp()
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        response: Response = await call_next(request)
-        headers = response.headers
-        headers.setdefault("Content-Security-Policy", _CSP)
-        headers.setdefault("X-Content-Type-Options", "nosniff")
-        headers.setdefault("X-Frame-Options", "DENY")
-        headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-        headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-        if get_settings().is_production:
-            headers.setdefault(
-                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
-            )
-        return response
+_SECURITY_HEADERS = (
+    ("Content-Security-Policy", _CSP),
+    ("X-Content-Type-Options", "nosniff"),
+    ("X-Frame-Options", "DENY"),
+    ("Referrer-Policy", "strict-origin-when-cross-origin"),
+    ("Permissions-Policy", "geolocation=(), microphone=(), camera=()"),
+)
+_HSTS = ("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
+# Both middlewares below are plain ASGI: they only touch the response's start
+# message, so the body streams straight through instead of being re-wrapped in
+# a second response the way Starlette's BaseHTTPMiddleware does.
 
 
-class CSRFMiddleware(BaseHTTPMiddleware):
+class SecurityHeadersMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        production = get_settings().is_production
+
+        async def send_with_headers(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                for name, value in _SECURITY_HEADERS:
+                    headers.setdefault(name, value)
+                if production:
+                    headers.setdefault(*_HSTS)
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+def set_cookie_header(message: Message, set_cookie) -> None:
+    """Append to a response start message the ``Set-Cookie`` header that
+    ``set_cookie(response)`` would put on a Starlette response, so a plain ASGI
+    middleware sets a cookie exactly as a route does."""
+    shaped = Response()
+    set_cookie(shaped)
+    headers = MutableHeaders(scope=message)
+    for value in shaped.headers.getlist("set-cookie"):
+        headers.append("set-cookie", value)
+
+
+class CSRFMiddleware:
     """Stateless double-submit CSRF. Exempt paths (machine-to-machine, verified
     by their own signature — e.g. the Stripe webhook) are injected at
     ``create_app()`` time rather than mutated on a module-level global."""
 
-    def __init__(self, app, exempt_paths: Iterable[str] | None = None):
-        super().__init__(app)
+    def __init__(self, app: ASGIApp, exempt_paths: Iterable[str] | None = None) -> None:
+        self.app = app
         self._exempt_paths = frozenset(exempt_paths or ())
 
-    async def dispatch(self, request: Request, call_next):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        connection = HTTPConnection(scope)
         # Immutable assets must be shareable by HTTP/CDN caches, including on a
         # fresh browser's first request. Bootstrap CSRF on app/API pages instead.
-        if request.url.path.startswith("/static/"):
-            response: Response = await call_next(request)
-            if "set-cookie" in response.headers:
-                del response.headers["set-cookie"]
-            return response
+        if connection.url.path.startswith("/static/"):
 
-        cookie_token = request.cookies.get(CSRF_COOKIE)
+            async def send_without_cookies(message: Message) -> None:
+                if message["type"] == "http.response.start":
+                    headers = MutableHeaders(scope=message)
+                    if "set-cookie" in headers:
+                        del headers["set-cookie"]
+                await send(message)
+
+            await self.app(scope, receive, send_without_cookies)
+            return
+
+        cookie_token = connection.cookies.get(CSRF_COOKIE)
         # Mint a token up front when none exists, so a bootstrap endpoint
         # (/api/csrf) can return it via request.state in the same round-trip.
         minted = None if cookie_token else secrets.token_urlsafe(32)
-        request.state.csrf_token = cookie_token or minted
+        connection.state.csrf_token = cookie_token or minted
 
         if (
-            request.method not in _SAFE_METHODS
-            and request.url.path not in self._exempt_paths
+            scope["method"] not in _SAFE_METHODS
+            and connection.url.path not in self._exempt_paths
         ):
-            header_token = request.headers.get(CSRF_HEADER)
+            header_token = connection.headers.get(CSRF_HEADER)
             # Validate against the SUBMITTED cookie only — a freshly minted token
             # the client never received must not satisfy the check.
             if (
@@ -124,21 +166,28 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 or not header_token
                 or not secrets.compare_digest(cookie_token, header_token)
             ):
-                return JSONResponse(
-                    {"detail": "CSRF token missing or invalid"}, status_code=403
-                )
+                response = JSONResponse({"detail": "CSRF token missing or invalid"}, status_code=403)
+                await response(scope, receive, send)
+                return
 
-        response: Response = await call_next(request)
+        if not minted:
+            await self.app(scope, receive, send)
+            return
 
         # Set the cookie on first contact so the SPA has a token to echo. Not
         # HttpOnly (JS must read it); SameSite=Lax; Secure in prod.
-        if minted:
-            response.set_cookie(
-                key=CSRF_COOKIE,
-                value=minted,
-                httponly=False,
-                secure=get_settings().is_production,
-                samesite="lax",
-                path="/",
-            )
-        return response
+        secure = get_settings().is_production
+
+        async def send_with_cookie(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                set_cookie_header(message, lambda response: response.set_cookie(
+                    key=CSRF_COOKIE,
+                    value=minted,
+                    httponly=False,
+                    secure=secure,
+                    samesite="lax",
+                    path="/",
+                ))
+            await send(message)
+
+        await self.app(scope, receive, send_with_cookie)
