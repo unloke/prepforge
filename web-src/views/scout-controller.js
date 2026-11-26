@@ -1,12 +1,14 @@
 import { html } from "../html.js";
 import { appState, buildState, notices } from "../core/state.js";
-import { api, setStatus } from "../core/api.js";
+import { api, currentOwnerId, setStatus } from "../core/api.js";
 import { showInputModal } from "../core/modals.js";
 import { effectiveMaiaRating, effectiveStockfishDepth, maiaAnalysisEnabled } from "../core/prefs.js";
 import { boardAfterMove, parseFenBoard, pieceSvg } from "../board/ui.js";
 import { rememberHandoff } from "../handoff-context.js";
 import { openSourceComposer, resolveFetchUsernames, sameFetchSources, selectionChips } from "./shared/source-composer.js";
 import { readSourceStore, writeSourceStore } from "./shared/source-store.js";
+import { scoutHistory } from "../scout-history.js";
+import { createScoutHistoryUi } from "./scout-history-ui.js";
 
 // Scout: the opponent scouting report, its source tray and the Start guard that
 // covers the few milliseconds before the report chunk is bound. The source
@@ -208,13 +210,48 @@ async function ensureScoutView() {
   return scoutView;
 }
 
+// ----- Scout history: the runs this browser keeps, opened from the toolbar ----
+let historyUi = null;
+
+// The saved run's accounts become the Scout selection: a linked account by its
+// id, any other name as an external username. Then the colour, then a Start,
+// which opens the saved report and reads only the games played since.
+async function openSavedRun(entry) {
+  const byName = new Map(lichessAccounts().map((a) => [String(a.username || "").toLowerCase(), a.id]));
+  const accountIds = [];
+  const external = [];
+  for (const name of entry.usernames || []) {
+    const id = byName.get(String(name).toLowerCase());
+    if (id) accountIds.push(id); else external.push(name);
+  }
+  writeScoutSelection({ linkedMode: accountIds.length ? "subset" : "none", accountIds, external });
+  paintScoutSource();
+  const color = document.getElementById("scout-color");
+  if (color) color.value = entry.color || "both";
+  const view = await ensureScoutView();
+  await view.startScout();
+}
+
+function bindScoutHistory() {
+  if (historyUi) return historyUi;
+  historyUi = createScoutHistoryUi({
+    root: document.getElementById("scout-history"),
+    history: scoutHistory,
+    owner: currentOwnerId,
+    onOpen: (entry) => { void openSavedRun(entry); },
+  });
+  return historyUi;
+}
+
 
 // Bind the view and let it paint the section's current state. The chunk is
 // already in flight by the time Scout is shown, so this only resolves it.
 async function ensureScoutUi() {
   const view = await ensureScoutView();
+  view.useHistory?.({ scoutHistory, currentOwnerId, onScoutHistorySaved: () => historyUi?.refresh() });
   view.bindControls();
   view.onShow?.();
+  bindScoutHistory();
   return view;
 }
 
@@ -226,6 +263,8 @@ function preloadScoutUi() {
       throw err;
     });
   }
+  // The History list is read each time Scout is shown (the account may have changed), never at boot.
+  scoutUiPromise.then(() => historyUi?.refresh()).catch(() => {});
   return scoutUiPromise;
 }
 

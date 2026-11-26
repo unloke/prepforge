@@ -626,6 +626,14 @@
                 <span class="src-label">Opponent</span>
                 <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
                 <button type="button" class="btn sm ghost" id="scout-source-add" data-testid="scout-source-add" title="Add Scout source" aria-label="Add Scout source"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add</button>
+                <details class="scout-history" id="scout-history" data-testid="scout-history" hidden>
+                  <summary class="btn sm ghost">History</summary>
+                  <div class="scout-history-panel" role="group" aria-label="Saved Scout runs">
+                    <p class="scout-history-note muted">Kept in this browser. Open one to read only the games played since.</p>
+                    <ul class="scout-history-list"></ul>
+                    <button type="button" class="btn sm ghost" data-scout-history-clear>Clear all</button>
+                  </div>
+                </details>
               </div>
               <label class="inline-field" for="scout-color" title="Only the games where the scouted player had this color">
                 <span>Color</span>
