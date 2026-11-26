@@ -35,7 +35,7 @@ export function healthDelta(before, now) {
 }
 
 export function drillResult(training, stats) {
-  const lines = Number(training?.lines?.length) || 0;
+  const lines = Number(training?.line_order?.length) || 0;
   const missed = stats.mistakes || 0;
   return {
     mode: "all_lines",

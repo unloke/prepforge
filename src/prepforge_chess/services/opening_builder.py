@@ -34,6 +34,21 @@ from prepforge_chess.storage.repositories.repertoires import NodeGone
 MAINLINE_THRESHOLD = 0.10
 
 
+class MoveRejected(ValueError):
+    """One move of an add-moves batch is invalid; ``temp_id`` names it. Nothing
+    of the batch landed. The API answers 400 ``move_rejected``."""
+
+    def __init__(self, temp_id: str, message: str):
+        super().__init__(message)
+        self.temp_id = temp_id
+
+
+class BatchTooDeep(ValueError):
+    """A batch's line runs past ``MAX_PLAN_DEPTH`` from an existing node. The
+    batch is at fault, not the move that crossed the limit, so no move is named:
+    the same move sent in a later batch lands."""
+
+
 @dataclass
 class PlanSummary:
     added_nodes: int = 0
@@ -383,74 +398,83 @@ class OpeningBuilderService:
 
         summary = PlanSummary()
         id_map: dict = {}
-        for move in moves:
-            if not isinstance(move, dict):
-                raise ValueError("each move must be an object")
-            move_uci = move.get("uci")
-            if not move_uci or not isinstance(move_uci, str):
-                raise ValueError("each move requires a uci string")
-            temp_id = self._validate_plan_temp_id(
-                move.get("tempId"), seen_temp_ids, nodes_by_id
-            )
-            seen_temp_ids.add(temp_id)
-            parent_ref = move.get("parentRef")
-            if isinstance(parent_ref, str) and parent_ref not in temp_to_node and parent_ref not in nodes_by_id and (
-                not parent_ref.startswith("tmp-") or parent_ref in self.dropped_temp_ids
-            ):
-                self.dropped_temp_ids.append(temp_id)
-                continue
-            parent = self._resolve_plan_parent(parent_ref, nodes_by_id, temp_to_node)
-
-            is_prepared = parent.side_to_move is repertoire.color
-            existing = child_by_uci(parent, move_uci)
-            if existing is not None:
-                # Dedupe — parity with add_move's existing-child branch: prepared
-                # is OR-merged and the prepared tag added once; no new node, no
-                # added count. A real persisted node is a fresh anchor (depth 0).
-                existing.is_user_prepared_move = (
-                    existing.is_user_prepared_move or is_prepared
+        current = None
+        try:
+            for move in moves:
+                current = move.get("tempId") if isinstance(move, dict) else None
+                if not isinstance(move, dict):
+                    raise ValueError("each move must be an object")
+                move_uci = move.get("uci")
+                if not move_uci or not isinstance(move_uci, str):
+                    raise ValueError("each move requires a uci string")
+                temp_id = self._validate_plan_temp_id(
+                    move.get("tempId"), seen_temp_ids, nodes_by_id
                 )
-                if is_prepared and "prepared" not in existing.tags:
-                    existing.tags.append("prepared")
-                temp_to_node[temp_id] = existing
-                temp_depth[temp_id] = 0
-                id_map[temp_id] = existing.id
-                continue
+                seen_temp_ids.add(temp_id)
+                parent_ref = move.get("parentRef")
+                if isinstance(parent_ref, str) and parent_ref not in temp_to_node and parent_ref not in nodes_by_id and (
+                    not parent_ref.startswith("tmp-") or parent_ref in self.dropped_temp_ids
+                ):
+                    self.dropped_temp_ids.append(temp_id)
+                    continue
+                parent = self._resolve_plan_parent(parent_ref, nodes_by_id, temp_to_node)
 
-            child_depth = temp_depth.get(parent_ref, 0) + 1
-            if child_depth > MAX_PLAN_DEPTH:
-                raise ValueError(
-                    "batch exceeds the max depth {0} from an existing node".format(
-                        MAX_PLAN_DEPTH
+                is_prepared = parent.side_to_move is repertoire.color
+                existing = child_by_uci(parent, move_uci)
+                if existing is not None:
+                    # Dedupe — parity with add_move's existing-child branch: prepared
+                    # is OR-merged and the prepared tag added once; no new node, no
+                    # added count. A real persisted node is a fresh anchor (depth 0).
+                    existing.is_user_prepared_move = (
+                        existing.is_user_prepared_move or is_prepared
                     )
-                )
+                    if is_prepared and "prepared" not in existing.tags:
+                        existing.tags.append("prepared")
+                    temp_to_node[temp_id] = existing
+                    temp_depth[temp_id] = 0
+                    id_map[temp_id] = existing.id
+                    continue
 
-            # New child — re-validate legality SERVER-SIDE. apply_uci raises on an
-            # illegal/unparseable move, aborting the whole batch before any save.
-            move_obj = self.chess_core.apply_uci(
-                parent.fen, move_uci, source=MoveSource.MANUAL
-            )
-            # is_mainline / is_user_prepared_move are RECOMPUTED, never trusted
-            # from the client — same rule the add-move endpoint applies.
-            is_mainline = not any(child.is_enabled for child in parent.children)
-            child = OpeningNode(
-                id=str(uuid.uuid4()),
-                repertoire_id=repertoire.id,
-                parent_id=parent.id,
-                move=move_obj,
-                fen=move_obj.fen_after,
-                side_to_move=move_obj.side_to_move.opponent,
-                is_mainline=is_mainline,
-                is_user_prepared_move=is_prepared,
-                tags=["prepared"] if is_prepared else [],
-                source=MoveSource.MANUAL,
-            )
-            parent.children.append(child)
-            nodes_by_id[child.id] = child
-            temp_to_node[temp_id] = child
-            temp_depth[temp_id] = child_depth
-            id_map[temp_id] = child.id
-            summary.added_nodes += 1
+                child_depth = temp_depth.get(parent_ref, 0) + 1
+                if child_depth > MAX_PLAN_DEPTH:
+                    raise BatchTooDeep(
+                        "batch exceeds the max depth {0} from an existing node".format(
+                            MAX_PLAN_DEPTH
+                        )
+                    )
+
+                # New child — re-validate legality SERVER-SIDE. apply_uci raises on an
+                # illegal/unparseable move, aborting the whole batch before any save.
+                move_obj = self.chess_core.apply_uci(
+                    parent.fen, move_uci, source=MoveSource.MANUAL
+                )
+                # is_mainline / is_user_prepared_move are RECOMPUTED, never trusted
+                # from the client — same rule the add-move endpoint applies.
+                is_mainline = not any(child.is_enabled for child in parent.children)
+                child = OpeningNode(
+                    id=str(uuid.uuid4()),
+                    repertoire_id=repertoire.id,
+                    parent_id=parent.id,
+                    move=move_obj,
+                    fen=move_obj.fen_after,
+                    side_to_move=move_obj.side_to_move.opponent,
+                    is_mainline=is_mainline,
+                    is_user_prepared_move=is_prepared,
+                    tags=["prepared"] if is_prepared else [],
+                    source=MoveSource.MANUAL,
+                )
+                parent.children.append(child)
+                nodes_by_id[child.id] = child
+                temp_to_node[temp_id] = child
+                temp_depth[temp_id] = child_depth
+                id_map[temp_id] = child.id
+                summary.added_nodes += 1
+        except ValueError as exc:
+            # Name the move so the client drops it (and its line) and resends
+            # the rest in one batch instead of one request per move.
+            if isinstance(current, str) and current and not isinstance(exc, BatchTooDeep):
+                raise MoveRejected(current, str(exc)) from exc
+            raise
 
         receipt = (*receipt_target, {"id_map": id_map}) if receipt_target else None
         self.repository.save_changed_nodes(repertoire_id, self._changed_nodes(repertoire, before), receipt=receipt)

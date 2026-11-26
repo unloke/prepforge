@@ -1,5 +1,5 @@
 import {
-  createSyncQueue, flushGroups, groupAttempts, loadDurableOutbox, orderPendingBuildAdds, outboxHasWork,
+  createSyncQueue, flushGroups, groupAttempts, loadDurableOutbox, outboxHasWork,
   ungroupAttempts,
 } from "../sync-queue.js";
 import { buildAddId, buildDeleteId, trainAttemptId } from "../outbox-state.js";
@@ -14,6 +14,8 @@ import { buildOpMatchesRepertoire, hasPendingBuildOpsFor, resolveBuildId } from 
 import { invalidateBuildTree } from "../build-tree.js";
 import { setBuildSync, setTrainSyncState } from "../train-entry.js";
 import { captureBuildContext, hydrateBuild } from "../core/app-context.js";
+import { applyFlushReply, flushSince, postBuildAdds } from "../build-flush.js";
+import { isolateRejectedBuildOps } from "../build-isolate.js";
 
 // The two outbox queues, built once by createSyncController.
 let buildQueue, trainQueue;
@@ -81,6 +83,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
   }
   const hasBuildWork = () => buildState.buildPending.length || buildState.buildPendingDeletes.length;
   setBuildSync("syncing");
+  const since = flushSince(repertoireId); // one ``since`` for both requests: the last answer covers both
 
   return (async () => {
     let acknowledged = false;
@@ -96,20 +99,18 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       let payload = null;
       if (deleteIds.length) {
         payload = await postJson("/api/build/delete-nodes", {
-          repertoire_id: repertoireId,
+          repertoire_id: repertoireId, since,
           node_ids: deleteIds,
         });
         if (!ownsQueue()) return false;
         await persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
         deleteBatch.length = 0;
       }
-      if (batch.length) {
-        // The add response supersedes the delete payload (it's newer truth).
-        payload = await postJson("/api/build/add-moves", {
-          repertoire_id: repertoireId,
-          moves: batch.map((m) => ({ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci })),
-        });
-      }
+      // The add answer supersedes the delete's: it reports both.
+      if (batch.length) payload = await postBuildAdds(repertoireId, batch, since, { owns: ownsQueue });
+      // Another account took over mid-flush: what was not sent stays in this
+      // account's durable outbox.
+      if (!ownsQueue()) return false;
       // Both batches can drain to nothing (e.g. deletes of never-flushed tmp
       // nodes): nothing reached the server, so there's nothing to reconcile.
       if (!payload) {
@@ -150,7 +151,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       // Hydration merges queued edits before selecting, so an unsaved child
       // remains visible throughout reconciliation.
       if (isCurrent()) {
-        await hydrateBuild(payload, buildState.buildCurrentNodeId);
+        await applyFlushReply(payload, hydrateBuild);
       }
       if (!ownsQueue()) return false;
       // Moves whose line another device deleted first: the delete won.
@@ -183,13 +184,12 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       }
       const info = classifySyncError(error);
       const inFlightCount = batch.length + deleteBatch.length;
-      if (info.kind === "validation" || info.kind === "conflict") {
-        // Isolate invalid siblings without rejecting a legal parent/child chain.
+      if (info.kind === "validation" || info.kind === "conflict" || info.kind === "forbidden") {
+        // Drop what the server refused without rejecting a legal parent/child chain.
         const { rejected, settled, idMap, payload } = await isolateRejectedBuildOps(
-          batch,
-          deleteBatch,
-          repertoireId,
+          batch, deleteBatch, repertoireId, error, since, ownsQueue,
         );
+        if (!ownsQueue()) return false;
         if (idMap && Object.keys(idMap).length) {
           // Ops that landed mid-isolation have real ids now; the local tree and
           // any queued children must be reconciled against them (R-05).
@@ -202,9 +202,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
               invalidateBuildTree(buildState.build);
             }
           }
-          if (payload && isCurrent()) {
-            await hydrateBuild(payload, buildState.buildCurrentNodeId);
-          }
+          if (payload && isCurrent()) await applyFlushReply(payload, hydrateBuild);
         }
         // Rejected edits are reported here once and dropped: the server will
         // never accept them, and there is nothing to review them with.
@@ -241,67 +239,6 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       return false;
     }
   })();
-}
-
-async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
-  const rejected = [];
-  const settled = { build: [], deletes: [], train: [] };
-  const idMap = {};
-  let lastPayload = null;
-
-  for (let i = 0; i < deleteBatch.length; i += 1) {
-    const entry = deleteBatch[i];
-    const id = resolveBuildId(entry);
-    if (String(id).startsWith("tmp-")) {
-      settled.deletes.push(buildDeleteId(entry)); // never reached the server
-      continue;
-    }
-    try {
-      await postJson("/api/build/delete-nodes", { repertoire_id: repertoireId, node_ids: [id] });
-      settled.deletes.push(buildDeleteId(entry));
-    } catch (err) {
-      const info = classifySyncError(err);
-      if (info.retriable) {
-        // Sign-out/network blip mid-isolation: stop here and keep this delete
-        // plus every later one queued for the next flush.
-        buildState.buildPendingDeletes = deleteBatch.slice(i).concat(buildState.buildPendingDeletes);
-        break;
-      }
-      settled.deletes.push(buildDeleteId(entry));
-      rejected.push({ kind: "delete", id, message: err.message, status: err.status ?? null });
-    }
-  }
-
-  const ordered = orderPendingBuildAdds(batch);
-  for (let i = 0; i < ordered.length; i += 1) {
-    const m = ordered[i];
-    // A parent from this same isolation round now has a real id.
-    const parentRef = idMap[m.parentRef] || resolveBuildId(m.parentRef);
-    try {
-      const payload = await postJson("/api/build/add-moves", {
-        repertoire_id: repertoireId,
-        moves: [{ tempId: m.tempId, parentRef, uci: m.uci }],
-      });
-      if (payload && payload.id_map) Object.assign(idMap, payload.id_map);
-      if (payload && payload.nodes) lastPayload = payload;
-      settled.build.push(buildAddId(m));
-    } catch (err) {
-      const info = classifySyncError(err);
-      if (info.retriable) {
-        buildState.buildPending = ordered.slice(i).concat(buildState.buildPending);
-        break;
-      }
-      settled.build.push(buildAddId(m));
-      rejected.push({
-        kind: "add",
-        tempId: m.tempId,
-        uci: m.uci,
-        message: err.message,
-        status: err.status ?? null,
-      });
-    }
-  }
-  return { rejected, settled, idMap, payload: lastPayload };
 }
 
 async function settleBuildOutbox() {

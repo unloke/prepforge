@@ -30,25 +30,35 @@ export async function replayToAnalyze(game, deps) {
   const movetext = history.map((san, i) => i % 2 === 0 ? `${i / 2 + 1}. ${san}` : san).join(" ");
   const input = document.getElementById("pgn-input");
   if (!input) return;
-  input.value = `${headers}\n\n${movetext} ${game.result || "*"}`;
+  const pgn = `${headers}\n\n${movetext} ${game.result || "*"}`;
   const drawer = document.getElementById("pgn-drawer");
   if (drawer) drawer.open = true;
   switchView("analyze");
-  orientAnalysisForSelf(game.white, game.black);
   // Games used to reparse every entry as a fresh PGN, dropping a saved review's
   // classifications and chart. Resolve its owner-scoped saved game first.
+  // The box and the board keep naming one game: nothing is written until it is
+  // known which of the two loads, so a lookup error or a failed recall leaves both
+  // on the game Analyze already shows (recallAnalysis writes the box on success).
   const saved = game.lichess_id
     ? (await api(`/api/analyses?lichess_id=${encodeURIComponent(game.lichess_id)}&limit=1`)).analyses[0]
     : null;
   if (!isCurrent()) return;
-  const loaded = saved
-    ? await recallAnalysis(saved.game_id, saved, { sourceSeq })
-    : await loadPgnIntoAnalyze(input.value, { goToEnd: false, quiet: true, sourceSeq });
-  if (!loaded || !isCurrent()) return;
+  // A review deleted since the lookup falls back to the game itself.
+  let missing = false;
+  let loaded = saved ? await recallAnalysis(saved.game_id, saved, { sourceSeq, onMissing: () => { missing = true; } }) : false;
+  if (saved && !missing) {
+    if (!loaded || !isCurrent()) return;
+  } else {
+    if (!isCurrent()) return;
+    input.value = pgn;
+    orientAnalysisForSelf(game.white, game.black);
+    loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq });
+    if (!loaded || !isCurrent()) return;
+  }
   const handoff = takeHandoff({ reason: "review-in-analyze", gameId: game.lichess_id || undefined });
   const ply = (handoff?.ply ?? Number(game.departure_ply)) || 1;
   await showAnalysisPly(Math.max(0, ply - 1));
-  if (isCurrent()) setStatus(saved
+  if (isCurrent()) setStatus(saved && !missing
     ? `Loaded saved analysis for ${game.white || "?"} vs ${game.black || "?"}.`
     : `Loaded ${game.white || "?"} vs ${game.black || "?"}. Press Review.`);
 }

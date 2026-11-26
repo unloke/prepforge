@@ -11,7 +11,7 @@ const stamp = (value) => new Date(value).toLocaleString([], { month: "short", da
 const keyOf = (fen) => String(fen).split(" ").slice(0, 4).join(" ");
 
 export function createBuildCollaboration({ appState, buildState, api, postJson, hydrateBuild, selectBuildNode, showInputModal, miniBoard }) {
-  let data = null, discussions = [], loadedKey = null, sequence = 0;
+  let data = null, discussions = [], loadedKey = null, sequence = 0, discussionsAt = null;
   let scope = null, generation = appState.ownerGeneration, hadMarkedMoves = false;
   const dialogs = new Set();
   const drafts = new Map();
@@ -42,21 +42,38 @@ export function createBuildCollaboration({ appState, buildState, api, postJson, 
     markMoves();
   }
 
-  async function load(force = false) {
+  // Discussions are read when one may have changed since the last read: the
+  // activity feed lists every discussion write. A tree edit alone (most
+  // revisions) needs only the activity feed, which is far cheaper.
+  const discussionsChanged = (activity) => {
+    if (discussionsAt === null) return true;
+    const newer = activity.entries.filter((entry) => entry.revision > discussionsAt);
+    if (newer.some((entry) => String(entry.kind).startsWith("discussion"))) return true;
+    // A feed cut short may have dropped a discussion write between the two reads.
+    return !!activity.truncated && activity.entries.every((entry) => entry.revision > discussionsAt + 1);
+  };
+
+  async function load(force = false, { withDiscussions = force } = {}) {
     if (!rid() || appState.sharedToken || !appState.signedIn) return;
     const key = `${appState.ownerGeneration}:${rid()}:${buildState.build.revision}`;
     if (!force && key === loadedKey) return;
     loadedKey = key;
     const request = ++sequence;
     const repertoireId = rid();
+    const readThreads = () => api(`/api/build/discussions?repertoire_id=${encodeURIComponent(repertoireId)}`);
     try {
-      const [activity, threads] = await Promise.all([
+      const [activity, early] = await Promise.all([
         api(`/api/build/activity?repertoire_id=${encodeURIComponent(repertoireId)}`),
-        api(`/api/build/discussions?repertoire_id=${encodeURIComponent(repertoireId)}`),
+        withDiscussions ? readThreads() : null,
       ]);
       if (request !== sequence || rid() !== repertoireId) return;
+      const threads = early || (discussionsChanged(activity) ? await readThreads() : null);
+      if (request !== sequence || rid() !== repertoireId) return;
       data = activity;
-      discussions = threads.threads;
+      if (threads) {
+        discussions = threads.threads;
+        discussionsAt = activity.revision;
+      }
       paintButtons();
     } catch (error) {
       if (request !== sequence) return;
@@ -194,6 +211,7 @@ export function createBuildCollaboration({ appState, buildState, api, postJson, 
       for (const close of dialogs) close();
       data = null;
       discussions = [];
+      discussionsAt = null;
       loadedKey = null;
       sequence++;
       scope = nextScope;

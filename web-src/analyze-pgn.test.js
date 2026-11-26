@@ -272,6 +272,24 @@ describe("treeToMovetext", () => {
   it("returns empty string for an empty root", () => {
     expect(treeToMovetext({ san: null, children: [] })).toBe("");
   });
+
+  it("reads each source's own annotations when the source changes between calls", () => {
+    const tree = () => parsePgn("1. e4 e5 2. Nf3").root;
+    const first = "1. e4 {first} e5 2. Nf3";
+    const second = "1. e4 e5 {second} 2. Nf3 $1";
+    expect(treeToMovetext(tree(), first)).toBe("1. e4 {first} e5 2. Nf3");
+    expect(treeToMovetext(tree(), first)).toBe("1. e4 {first} e5 2. Nf3");
+    expect(treeToMovetext(tree(), second)).toBe("1. e4 e5 {second} 2. Nf3 $1");
+    expect(treeToMovetext(tree(), first)).toBe("1. e4 {first} e5 2. Nf3");
+    expect(treeToMovetext(tree(), "1. Qh9")).toBe("1. e4 e5 2. Nf3");
+  });
+
+  it("leaves the shared source tree unchanged for the next call", () => {
+    const source = "1. e4 {note} e5 (1... c5) 2. Nf3";
+    const withBranch = parsePgn("1. e4 e5 (1... c5) (1... e6) 2. Nf3").root;
+    expect(treeToMovetext(withBranch, source)).toBe("1. e4 {note} e5 (1... c5) (1... e6) 2. Nf3");
+    expect(treeToMovetext(parsePgn("1. e4 e5 2. Nf3").root, source)).toBe("1. e4 {note} e5 2. Nf3");
+  });
 });
 
 describe("round-trip", () => {

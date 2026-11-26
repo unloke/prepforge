@@ -4,7 +4,7 @@ import random
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from prepforge_chess.core.models import (
     MoveRecord,
@@ -14,18 +14,17 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
-from prepforge_chess.services.scheduler import own_move_nodes_on, path_to_node, sibling_moves
+from prepforge_chess.services.scheduler import (
+    index_nodes,
+    own_move_nodes_on,
+    path_to_node,
+    sibling_moves,
+    target_run_in,
+)
 from prepforge_chess.services.srs import rating_for, review
+from prepforge_chess.services.training_hints import node_annotation
+from prepforge_chess.storage.codec import hydrate_opening_paths
 from prepforge_chess.storage.ports import TrainerStore, TrainingStore
-
-
-@dataclass(frozen=True)
-class TrainingLine:
-    line_node_id: str
-    node_ids: List[str]
-    own_move_node_ids: List[str]
-    san: str
-    uci: str
 
 
 @dataclass(frozen=True)
@@ -39,8 +38,13 @@ class TrainingPrompt:
     expected_move_uci: str
     expected_move_san: str
     fen_before: str
-    line_san: str
     remaining_mistakes: int
+    # The prompt's place among the line's asked moves (0 = the line starts) and
+    # the moves the client plays before asking, from ``start_fen``.
+    target_index: int = 0
+    start_fen: str = ""
+    run_in: Tuple[OpeningNode, ...] = ()
+    annotation: str = ""
 
 
 @dataclass(frozen=True)
@@ -94,6 +98,14 @@ def create_training_session(
 
 
 class TrainingService:
+    """Line rehearsal: every line in a shuffled order, played from move 1.
+
+    Each own move is asked once per run, on the first line in the order that
+    reaches it; later lines play it themselves on the way to their new moves,
+    and a line that brings no new own move is dropped from the run. Skipping a
+    line therefore skips its new moves too. The tree loads unhydrated and only
+    the lines a response shows get SAN/FEN."""
+
     def __init__(self, repository: TrainerStore, owner_user_id: str | None = None):
         self.repository = repository
         self.owner_user_id = owner_user_id
@@ -107,26 +119,26 @@ class TrainingService:
         fresh: bool = False,
     ) -> TrainingSession:
         existing = self.repository.load_latest_training_session(repertoire_id, self._owner_or_raise(), mode)
+        tree = self._load(repertoire_id)
         if existing is not None:
-            repertoire = self._load_repertoire_or_raise(repertoire_id)
             intact = bool(existing.line_order) and all(
-                repertoire.root_node.find(node_id) is not None
-                for node_id in existing.line_order
+                node_id in tree.index for node_id in existing.line_order
             )
             complete = existing.current_index >= len(existing.line_order)
             if intact and not complete and not fresh:
-                return existing
+                line_order = tree.trim(existing.line_order, existing.current_index)
+                if line_order == existing.line_order:
+                    return existing
+                resumed = replace(existing, line_order=line_order, updated_at=_utc_now())
+                self.repository.save_training_session(resumed)
+                return resumed
             # Either the session finished (restart it) or the repertoire changed
             # under it (stale node ids) — rebuild a fresh run from the current
             # tree instead of returning an empty/broken session.
-            line_ids = (
-                existing.line_order
-                if intact
-                else [line.line_node_id for line in self.training_lines(repertoire, mode)]
-            )
+            line_ids = existing.line_order if intact else tree.line_ids()
             refreshed = replace(
                 existing,
-                line_order=line_ids,
+                line_order=tree.trim(line_ids),
                 current_index=0,
                 current_node_id=None,
                 updated_at=_utc_now(),
@@ -134,33 +146,21 @@ class TrainingService:
             self.repository.save_training_session(refreshed)
             return refreshed
 
-        repertoire = self._load_repertoire_or_raise(repertoire_id)
-        line_ids = [line.line_node_id for line in self.training_lines(repertoire, mode)]
         session = create_training_session(
             repertoire_id=repertoire_id,
             owner_user_id=self._owner_or_raise(),
-            line_ids=line_ids,
+            line_ids=tree.line_ids(),
             mode=mode,
             seed=seed,
         )
+        session = replace(session, line_order=tree.trim(session.line_order))
         self.repository.save_training_session(session)
         return session
-
-    def training_lines(
-        self,
-        repertoire: Repertoire,
-        mode: TrainingMode = TrainingMode.ALL_LINES,
-    ) -> List[TrainingLine]:
-        return [
-            self._line_from_path(path)
-            for path in self._leaf_paths(repertoire.root_node)
-            if own_move_nodes_on(path, repertoire.color)
-        ]
 
     def current_prompt(self, session_id: str, *, skip: bool = False) -> Optional[TrainingPrompt]:
         """The session's current prompt; ``skip`` first moves past the current line."""
         session = self._load_session_or_raise(session_id)
-        repertoire = self._load_repertoire_or_raise(session.repertoire_id)
+        tree = self._load(session.repertoire_id)
         if skip:
             if session.current_index >= len(session.line_order):
                 return None
@@ -169,7 +169,7 @@ class TrainingService:
                 updated_at=_utc_now(),
             )
             self.repository.save_training_session(session)
-        return self._prompt_for_session(repertoire, session)
+        return tree.prompt(session)
 
     def skip_current_line(self, session_id: str) -> Optional[TrainingPrompt]:
         return self.current_prompt(session_id, skip=True)
@@ -184,16 +184,14 @@ class TrainingService:
             session = self.repository.lock_training_session(conn, session_id=session_id)
             if session is None:
                 raise ValueError("training session not found")
-            repertoire = self.repository.load_repertoire(session.repertoire_id, conn=conn)
-            if repertoire is None:
-                raise ValueError("repertoire not found")
-            prompt = self._prompt_for_session(repertoire, session)
+            tree = self._load(session.repertoire_id, conn=conn)
+            prompt = tree.prompt(session)
             if prompt is None:
                 raise ValueError("training session has no current prompt")
 
             correct = played_uci == prompt.expected_move_uci
             if not correct:
-                alternative = self._alternative(repertoire, session, prompt, played_uci)
+                alternative = tree.alternative(session, prompt.expected_node_id, played_uci)
                 if alternative is not None:
                     return TrainingAttemptResult(
                         correct=False,
@@ -211,17 +209,13 @@ class TrainingService:
             updated_session, updated_progress = session, None
             if attempt <= 1:
                 updated_session, updated_progress = grade_attempt(
-                    self.repository, conn, session, repertoire.id, prompt.expected_node_id,
+                    self.repository, conn, session, tree.repertoire.id, prompt.expected_node_id,
                     correct=correct, hinted=hinted, owner_user_id=self._owner_or_raise(),
                 )
 
             completed_line = False
             if correct:
-                next_expected = self._next_expected_node_after(
-                    repertoire,
-                    updated_session,
-                    prompt.expected_node_id,
-                )
+                next_expected = tree.next_asked(updated_session, prompt.expected_node_id)
                 if next_expected is None:
                     completed_line = True
                     updated_session = replace(
@@ -255,11 +249,11 @@ class TrainingService:
         fen_after_player = None
         reply_uci = reply_san = fen_after_reply = None
         if correct:
-            played_node = repertoire.root_node.find(prompt.expected_node_id)
+            played_node = tree.index.get(prompt.expected_node_id)
             if played_node is not None and played_node.move is not None:
                 played_san = played_node.move.san
                 fen_after_player = played_node.move.fen_after
-            reply = self._reply_after(repertoire, updated_session, prompt.expected_node_id)
+            reply = tree.reply_after(session, prompt.expected_node_id)
             if reply is not None and reply.move is not None:
                 reply_uci = reply.move.uci
                 reply_san = reply.move.san
@@ -273,7 +267,7 @@ class TrainingService:
             completed_line=completed_line,
             session=updated_session,
             progress=updated_progress,
-            next_prompt=self._prompt_for_session(repertoire, updated_session),
+            next_prompt=tree.prompt(updated_session),
             played_san=played_san,
             fen_after_player=fen_after_player,
             reply_uci=reply_uci,
@@ -281,131 +275,11 @@ class TrainingService:
             fen_after_reply=fen_after_reply,
         )
 
-    def _alternative(
-        self,
-        repertoire: Repertoire,
-        session: TrainingSession,
-        prompt: TrainingPrompt,
-        played_uci: str,
-    ) -> Optional[OpeningNode]:
-        path = path_to_node(repertoire.root_node, session.line_order[session.current_index])
-        expected = next((node for node in path if node.id == prompt.expected_node_id), None)
-        if expected is None:
-            return None
-        return next(
-            (node for node in sibling_moves(repertoire.root_node, path, expected)
-             if node.move.uci == played_uci),
-            None,
-        )
-
-    def _reply_after(
-        self,
-        repertoire: Repertoire,
-        session: TrainingSession,
-        played_node_id: str,
-    ) -> Optional[OpeningNode]:
-        """The opponent's reply node immediately following the player's move."""
-        if session.current_index >= len(session.line_order):
-            return None
-        try:
-            path = path_to_node(
-                repertoire.root_node, session.line_order[session.current_index]
-            )
-        except ValueError:
-            return None
-        for index, node in enumerate(path):
-            if node.id == played_node_id and index + 1 < len(path):
-                return path[index + 1]
-        return None
-
-    def _prompt_for_session(
-        self,
-        repertoire: Repertoire,
-        session: TrainingSession,
-    ) -> Optional[TrainingPrompt]:
-        if session.current_index >= len(session.line_order):
-            return None
-
-        line_node_id = session.line_order[session.current_index]
-        path = path_to_node(repertoire.root_node, line_node_id)
-        expected_nodes = own_move_nodes_on(path, repertoire.color)
-        if not expected_nodes:
-            return None
-
-        by_id = {node.id: node for node in expected_nodes}
-        expected = by_id.get(session.current_node_id or "") or expected_nodes[0]
-        move = self._move_or_raise(expected)
-        line = self._line_from_path(path)
-        return TrainingPrompt(
-            session_id=session.id,
-            repertoire_id=session.repertoire_id,
-            line_node_id=line_node_id,
-            current_index=session.current_index,
-            total_lines=len(session.line_order),
-            expected_node_id=expected.id,
-            expected_move_uci=move.uci,
-            expected_move_san=move.san,
-            fen_before=move.fen_before,
-            line_san=line.san,
-            remaining_mistakes=len(session.mistakes),
-        )
-
-    def _next_expected_node_after(
-        self,
-        repertoire: Repertoire,
-        session: TrainingSession,
-        node_id: str,
-    ) -> Optional[OpeningNode]:
-        if session.current_index >= len(session.line_order):
-            return None
-        path = path_to_node(repertoire.root_node, session.line_order[session.current_index])
-        expected_nodes = own_move_nodes_on(path, repertoire.color)
-        for index, node in enumerate(expected_nodes):
-            if node.id == node_id:
-                if index + 1 < len(expected_nodes):
-                    return expected_nodes[index + 1]
-                return None
-        return expected_nodes[0] if expected_nodes else None
-
-    def _leaf_paths(self, root: OpeningNode) -> List[List[OpeningNode]]:
-        paths: List[List[OpeningNode]] = []
-
-        def visit(node: OpeningNode, path: List[OpeningNode]) -> None:
-            enabled_children = [child for child in node.children if child.is_enabled]
-            if not enabled_children:
-                if path:
-                    paths.append(path)
-                return
-            for child in enabled_children:
-                visit(child, path + [child])
-
-        visit(root, [])
-        return paths
-
-    def _line_from_path(self, path: List[OpeningNode]) -> TrainingLine:
-        moves = [self._move_or_raise(node) for node in path if node.move is not None]
-        own_ids = [node.id for node in path if node.move is not None and node.is_user_prepared_move]
-        if not own_ids:
-            own_ids = [node.id for node in path if node.move is not None]
-        leaf = path[-1]
-        return TrainingLine(
-            line_node_id=leaf.id,
-            node_ids=[node.id for node in path],
-            own_move_node_ids=own_ids,
-            san=" ".join(move.san for move in moves),
-            uci=" ".join(move.uci for move in moves),
-        )
-
-    def _move_or_raise(self, node: OpeningNode) -> MoveRecord:
-        if node.move is None:
-            raise ValueError("opening node has no move: {0}".format(node.id))
-        return node.move
-
-    def _load_repertoire_or_raise(self, repertoire_id: str) -> Repertoire:
-        repertoire = self.repository.load_repertoire(repertoire_id)
+    def _load(self, repertoire_id: str, *, conn=None) -> "_RehearsalTree":
+        repertoire = self.repository.load_repertoire(repertoire_id, conn=conn, hydrate=False)
         if repertoire is None:
             raise ValueError("repertoire not found: {0}".format(repertoire_id))
-        return repertoire
+        return _RehearsalTree(repertoire, index_nodes(repertoire.root_node))
 
     def _load_session_or_raise(self, session_id: str) -> TrainingSession:
         session = self.repository.load_training_session(session_id)
@@ -417,6 +291,138 @@ class TrainingService:
         if not self.owner_user_id:
             raise ValueError("training service requires an owner")
         return self.owner_user_id
+
+
+@dataclass
+class _RehearsalTree:
+    """One request's structural tree plus its node index."""
+
+    repertoire: Repertoire
+    index: Dict[str, OpeningNode]
+
+    def line_ids(self) -> List[str]:
+        """Leaf ids of every enabled line that holds an own move, in tree order."""
+        out: List[str] = []
+        color = self.repertoire.color
+
+        def visit(node: OpeningNode, has_own: bool) -> None:
+            enabled = [child for child in node.children if child.is_enabled]
+            if not enabled:
+                if has_own and node is not self.repertoire.root_node:
+                    out.append(node.id)
+                return
+            for child in enabled:
+                own = child.move is not None and child.move.side_to_move is color
+                visit(child, has_own or own)
+
+        visit(self.repertoire.root_node, False)
+        return out
+
+    def path(self, line_id: str) -> List[OpeningNode]:
+        return path_to_node(self.repertoire.root_node, line_id, index=self.index)
+
+    def own_ids(self, line_id: str) -> List[str]:
+        try:
+            path = self.path(line_id)
+        except ValueError:
+            return []
+        return [node.id for node in own_move_nodes_on(path, self.repertoire.color)]
+
+    def trim(self, line_order: Sequence[str], start: int = 0) -> List[str]:
+        """Drop the lines from ``start`` on that ask no own move an earlier line
+        has not already asked."""
+        seen = {node_id for line_id in line_order[:start] for node_id in self.own_ids(line_id)}
+        kept = list(line_order[:start])
+        for line_id in line_order[start:]:
+            own = self.own_ids(line_id)
+            if not seen.issuperset(own):
+                kept.append(line_id)
+                seen.update(own)
+        return kept
+
+    def asked(self, session: TrainingSession, path: List[OpeningNode]) -> List[OpeningNode]:
+        """The line's own moves no earlier line in the run reaches."""
+        covered = {
+            node_id
+            for line_id in session.line_order[: session.current_index]
+            for node_id in self.own_ids(line_id)
+        }
+        return [node for node in own_move_nodes_on(path, self.repertoire.color) if node.id not in covered]
+
+    def prompt(self, session: TrainingSession) -> Optional[TrainingPrompt]:
+        if session.current_index >= len(session.line_order):
+            return None
+        line_node_id = session.line_order[session.current_index]
+        path = self.path(line_node_id)
+        expected_nodes = self.asked(session, path)
+        if not expected_nodes:
+            return None
+        hydrate_opening_paths(self.repertoire.root_node, [line_node_id])
+        by_id = {node.id: node for node in expected_nodes}
+        expected = by_id.get(session.current_node_id or "") or expected_nodes[0]
+        target_index = expected_nodes.index(expected)
+        run_in = target_run_in(path, expected_nodes, target_index)
+        move = _move_or_raise(expected)
+        return TrainingPrompt(
+            session_id=session.id,
+            repertoire_id=session.repertoire_id,
+            line_node_id=line_node_id,
+            current_index=session.current_index,
+            total_lines=len(session.line_order),
+            expected_node_id=expected.id,
+            expected_move_uci=move.uci,
+            expected_move_san=move.san,
+            fen_before=move.fen_before,
+            remaining_mistakes=len(session.mistakes),
+            target_index=target_index,
+            start_fen=run_in[0].move.fen_before if run_in else move.fen_before,
+            run_in=tuple(run_in),
+            annotation=node_annotation(expected),
+        )
+
+    def alternative(
+        self, session: TrainingSession, expected_node_id: str, played_uci: str
+    ) -> Optional[OpeningNode]:
+        path = self.path(session.line_order[session.current_index])
+        expected = next((node for node in path if node.id == expected_node_id), None)
+        if expected is None:
+            return None
+        other = next(
+            (node for node in sibling_moves(self.repertoire.root_node, path, expected)
+             if node.move.uci == played_uci),
+            None,
+        )
+        if other is not None:
+            hydrate_opening_paths(self.repertoire.root_node, [other.id])
+        return other
+
+    def reply_after(self, session: TrainingSession, played_node_id: str) -> Optional[OpeningNode]:
+        """The opponent's reply right after the player's move on the session's line."""
+        if session.current_index >= len(session.line_order):
+            return None
+        try:
+            path = self.path(session.line_order[session.current_index])
+        except ValueError:
+            return None
+        for index, node in enumerate(path):
+            if node.id == played_node_id and index + 1 < len(path):
+                return path[index + 1]
+        return None
+
+    def next_asked(self, session: TrainingSession, node_id: str) -> Optional[OpeningNode]:
+        if session.current_index >= len(session.line_order):
+            return None
+        expected_nodes = self.asked(session, self.path(session.line_order[session.current_index]))
+        for index, node in enumerate(expected_nodes):
+            if node.id == node_id:
+                return expected_nodes[index + 1] if index + 1 < len(expected_nodes) else None
+        return expected_nodes[0] if expected_nodes else None
+
+
+def _move_or_raise(node: OpeningNode) -> MoveRecord:
+    if node.move is None:
+        raise ValueError("opening node has no move: {0}".format(node.id))
+    return node.move
 
 
 def grade_attempt(

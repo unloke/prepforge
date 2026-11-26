@@ -208,3 +208,74 @@ def test_rehearsal_accepts_another_repertoire_move_without_grading():
     ) is None
     graded = service.submit_move(session.id, prompt.expected_move_uci, attempt=1)
     assert graded.correct and graded.progress.attempts == 1
+
+
+def _branching_repertoire(repository):
+    """1.e4 e5 (1...c5 2.Nf3) 2.Nf3 Nc6 (2...Nf6 3.Nxe5): White lines share 1.e4."""
+    builder = OpeningBuilderService(repository)
+    rep = builder.create_repertoire(CreateRepertoireRequest(name="Rehearse", color=Color.WHITE))
+    e4 = builder.add_move(rep.id, rep.root_node.id, "e2e4", is_user_prepared_move=True)
+    e5 = builder.add_move(rep.id, e4.id, "e7e5")
+    nf3 = builder.add_move(rep.id, e5.id, "g1f3", is_user_prepared_move=True)
+    builder.add_move(rep.id, nf3.id, "b8c6")
+    nf6 = builder.add_move(rep.id, nf3.id, "g8f6")
+    builder.add_move(rep.id, nf6.id, "f3e5", is_user_prepared_move=True)
+    c5 = builder.add_move(rep.id, e4.id, "c7c5")
+    builder.add_move(rep.id, c5.id, "g1f3", is_user_prepared_move=True)
+    return repository.load_repertoire(rep.id)
+
+
+def _rehearse(service, session_id):
+    asked = []
+    prompt = service.current_prompt(session_id)
+    while prompt is not None:
+        asked.append(prompt.expected_node_id)
+        prompt = service.submit_move(session_id, prompt.expected_move_uci).next_prompt
+    return asked
+
+
+def test_rehearsal_asks_each_own_move_once():
+    # 1.e4 sits on every line; it used to be asked once per line.
+    repository = _training_repository()
+    repertoire = _branching_repertoire(repository)
+    service = TrainingService(repository, "t-owner")
+    session = service.start_or_resume_session(repertoire.id, seed=3)
+    asked = _rehearse(service, session.id)
+    own = [n.id for n in repertoire.root_node.walk() if n.move and n.move.side_to_move is Color.WHITE]
+    assert sorted(asked) == sorted(own)
+    # 3 leaves, but 2...Nc6 brings no new White move after 2...Nf6 3.Nxe5 (or the
+    # other way round), so the run keeps the lines that teach something.
+    assert len(session.line_order) == 2
+
+
+def test_rehearsal_prompt_plays_the_known_moves_first():
+    repository = _training_repository()
+    repertoire = _branching_repertoire(repository)
+    service = TrainingService(repository, "t-owner")
+    session = service.start_or_resume_session(repertoire.id, seed=3)
+    first = service.current_prompt(session.id)
+    assert first.target_index == 0 and first.run_in == ()
+    service.submit_move(session.id, first.expected_move_uci)
+    # Finish the first line, then the second line starts from move 1 with
+    # 1.e4 played for the player and only its new move asked.
+    prompt = service.current_prompt(session.id)
+    while prompt.current_index == 0:
+        prompt = service.submit_move(session.id, prompt.expected_move_uci).next_prompt
+    assert prompt.target_index == 0
+    assert prompt.run_in[0].move.uci == "e2e4"
+    assert prompt.start_fen == repertoire.root_fen
+    assert prompt.run_in[-1].move.fen_after == prompt.fen_before
+
+
+def test_rehearsal_loads_the_tree_unhydrated(monkeypatch):
+    repository = _training_repository()
+    repertoire = _branching_repertoire(repository)
+    service = TrainingService(repository, "t-owner")
+    session = service.start_or_resume_session(repertoire.id, seed=3)
+    calls = []
+    load = repository.load_repertoire
+    monkeypatch.setattr(repository, "load_repertoire",
+                        lambda *a, **k: calls.append(k.get("hydrate", True)) or load(*a, **k))
+    prompt = service.current_prompt(session.id)
+    service.submit_move(session.id, prompt.expected_move_uci)
+    assert calls and not any(calls)

@@ -1,3 +1,5 @@
+import { planTrainRunIn, playTrainRunIn } from "./train-flow.js";
+
 const key = (owner, rep) => `pf.rehearsal.${encodeURIComponent(owner)}.${encodeURIComponent(rep)}`;
 
 export function loadRehearsal(owner, rep) {
@@ -26,4 +28,23 @@ export function restoreRehearsal(owner, training) {
   const samePrompt = ["current_index", "line_node_id", "fen_before"].every(name =>
     memo.training.prompt[name] === training.prompt[name]);
   return { stats: memo.stats, attempt: samePrompt && Number.isInteger(memo.attempt) && memo.attempt > 0 ? memo.attempt : 1 };
+}
+
+// Play the moves a rehearsal prompt already knows (from move 1 when a line
+// starts, own moves asked on an earlier line included) before asking. The same
+// prompt shown again after a miss or a recovery is not replayed. Returns false
+// when the session moved on mid-animation.
+export async function playRehearsalRunIn(board, state, prompt, { sleep, setTrainBanner }) {
+  const training = state.training;
+  if (!board || !training || !prompt.run_in || training.runInAt === prompt.fen_before) return true;
+  const plan = planTrainRunIn(prompt, board.fen, training.runInPath || []);
+  Object.assign(training, { runInPath: plan.path, runInAt: prompt.fen_before });
+  if (!plan.moves.length && !plan.rewind?.length) return true;
+  state.trainBusy = true;
+  setTrainBanner("runin", prompt.target_index ? "Continue the line" : "Next line", plan.moves.at(-1)?.san || "");
+  const played = await playTrainRunIn(board, plan, {
+    active: () => state.training === training && !state.smart && training.prompt === prompt, sleep,
+  });
+  if (!played.stopped) state.trainBusy = false;
+  return !played.stopped;
 }

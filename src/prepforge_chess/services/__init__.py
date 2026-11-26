@@ -6,7 +6,6 @@ from prepforge_chess.services.pgn_import import PgnImportOptions, PgnImportResul
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.training import (
     TrainingAttemptResult,
-    TrainingLine,
     TrainingPrompt,
     TrainingService,
 )
@@ -20,7 +19,6 @@ __all__ = [
     "PgnImportService",
     "RepertoireExportService",
     "TrainingAttemptResult",
-    "TrainingLine",
     "TrainingPrompt",
     "TrainingService",
 ]

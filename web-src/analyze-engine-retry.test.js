@@ -55,7 +55,7 @@ function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === posit
     }) }),
     analysisStore: async () => store, ensureAnalyzeView: async () => ({ liveEvalChart: () => vi.fn() }),
     createEngineAnalysisRun: manager.createEngineAnalysisRun, readyIfCached: manager.readyIfCached,
-    engineIdentity,
+    engineIdentity, savedRunReads: async () => null, api: vi.fn(),
     saveCheckpoint: vi.fn(async () => true), finishAnalyzeCheckpoint: vi.fn(async () => {}),
     refreshAnalysisHistoryIfOpen: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(),
     rebuildAnalysisVariations: vi.fn(async () => true),
