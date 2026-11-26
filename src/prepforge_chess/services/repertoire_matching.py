@@ -157,37 +157,77 @@ def _root_index(moves: List[MoveRecord], root_fen: str) -> Optional[int]:
     return None
 
 
+class RepertoirePositions:
+    """One repertoire's enabled nodes grouped by piece placement, for reentry.
+
+    Reused for every game compared against the same repertoire, and built on
+    the first game that leaves preparation, so the tree is walked once. Hydrated
+    FENs have canonical piece placement, so a game position can only reenter at
+    nodes sharing its placement; only those nodes are ever parsed, each at most
+    once."""
+
+    def __init__(self, repertoire: Repertoire) -> None:
+        self._repertoire = repertoire
+        self._by_placement: Optional[dict[str, list[OpeningNode]]] = None
+        self._keys: dict[str, Optional[str]] = {}
+
+    def _index(self) -> dict[str, list[OpeningNode]]:
+        # Built into a local and published whole: worker threads may share one
+        # index, and none may see it half filled (a duplicate build is harmless).
+        if self._by_placement is None:
+            by_placement: dict[str, list[OpeningNode]] = {}
+            pending = [self._repertoire.root_node]
+            seen: set[str] = set()
+            while pending:
+                node = pending.pop()
+                if node.id in seen or not node.is_enabled:
+                    continue
+                seen.add(node.id)
+                by_placement.setdefault(node.fen.split(" ", 1)[0], []).append(node)
+                pending.extend(node.children)
+            self._by_placement = by_placement
+        return self._by_placement
+
+    def _key(self, fen: str) -> Optional[str]:
+        if fen not in self._keys:
+            self._keys[fen] = _position_key(fen)
+        return self._keys[fen]
+
+    def reentry(self, moves: List[MoveRecord], from_ply: int) -> Optional[tuple[int, tuple[str, ...]]]:
+        """The first game ply at or after ``from_ply`` whose position is in the
+        tree, with every node id holding that position."""
+        by_placement = self._index()
+        for move in moves:
+            if move.ply < from_ply:
+                continue
+            nodes = by_placement.get(move.fen_after.split(" ", 1)[0])
+            if not nodes:
+                continue
+            key = _position_key(move.fen_after)
+            if key is None:
+                continue
+            ids = [node.id for node in nodes if self._key(node.fen) == key]
+            if ids:
+                return move.ply, tuple(sorted(ids))
+        return None
+
+
 def match_game_to_repertoire(
-    moves: List[MoveRecord], repertoire: Repertoire, user_color: Color
+    moves: List[MoveRecord],
+    repertoire: Repertoire,
+    user_color: Color,
+    positions: Optional[RepertoirePositions] = None,
 ) -> Optional[RepertoireMatchResult]:
+    """Match one game. Pass ``positions`` (built from this same repertoire)
+    when comparing many games, so the tree is indexed once, not per game."""
     result = _match_game_path(moves, repertoire, user_color)
     if result is None or result.departure_ply is None:
         return result
-    game_positions = [
-        (move.ply, _position_key(move.fen_after))
-        for move in moves if move.ply >= result.departure_ply
-    ]
-    # Hydrated FENs have canonical piece placement. A different placement cannot
-    # reenter: avoid parsing, validating and serializing every unrelated node.
-    placements = {key.split(" ", 1)[0] for _, key in game_positions if key is not None}
-    positions: dict[str, list[str]] = {}
-    pending = [repertoire.root_node]
-    seen: set[str] = set()
-    while pending:
-        node = pending.pop()
-        if node.id in seen or not node.is_enabled:
-            continue
-        seen.add(node.id)
-        if node.fen.split(" ", 1)[0] in placements:
-            key = _position_key(node.fen)
-            if key is not None:
-                positions.setdefault(key, []).append(node.id)
-        pending.extend(node.children)
-    for ply, key in game_positions:
-        if key in positions:
-            return replace(result, reentry_ply=ply,
-                           reentry_node_ids=tuple(sorted(positions[key])))
-    return result
+    found = (positions or RepertoirePositions(repertoire)).reentry(moves, result.departure_ply)
+    if found is None:
+        return result
+    ply, ids = found
+    return replace(result, reentry_ply=ply, reentry_node_ids=ids)
 
 
 def _pick_expected_child(node: OpeningNode) -> Optional[OpeningNode]:
@@ -207,11 +247,25 @@ def select_deepest_match(matches: Iterable[RepertoireMatchResult]) -> Optional[R
     return ordered[0] if ordered else None
 
 
+class RepertoireMatcher:
+    """Matches many games against one fixed set of repertoires, indexing each
+    repertoire's positions at most once across all of them."""
+
+    def __init__(self, repertoires: Iterable[Repertoire]) -> None:
+        self._repertoires = [(rep, RepertoirePositions(rep)) for rep in repertoires]
+
+    def match(self, moves: List[MoveRecord], user_color: Color) -> Optional[RepertoireMatchResult]:
+        matches = (
+            match_game_to_repertoire(moves, rep, user_color, positions)
+            for rep, positions in self._repertoires
+            if rep.color is user_color
+        )
+        return select_deepest_match(match for match in matches if match is not None)
+
+
 def match_game_against_repertoires(
     moves: List[MoveRecord],
     repertoires: Iterable[Repertoire],
     user_color: Color,
 ) -> Optional[RepertoireMatchResult]:
-    relevant = [rep for rep in repertoires if rep.color is user_color]
-    matches = (match_game_to_repertoire(moves, rep, user_color) for rep in relevant)
-    return select_deepest_match(match for match in matches if match is not None)
+    return RepertoireMatcher(repertoires).match(moves, user_color)

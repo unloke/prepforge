@@ -125,8 +125,16 @@ def test_reentry_normalizes_only_positions_with_game_piece_placement(monkeypatch
     monkeypatch.setattr(matching, "_position_key", counted)
     result = matching.match_game_to_repertoire(moves, rep, Color.WHITE)
     assert result.reentry_node_ids == ("legal-4",)
-    # Four game positions and only the one tree position that could reenter.
-    assert len(calls) == 5
+    # Only the game position sharing a tree placement, and that one tree node.
+    assert len(calls) == 2
+    # A matcher indexes the tree once: a second game parses its own position only.
+    matcher = matching.RepertoireMatcher([rep])
+    calls.clear()
+    assert matcher.match(moves, Color.WHITE).reentry_node_ids == ("legal-4",)
+    assert len(calls) == 2
+    calls.clear()
+    assert matcher.match(moves, Color.WHITE).reentry_node_ids == ("legal-4",)
+    assert len(calls) == 1
 
 
 def test_reentry_still_validates_candidate_positions_and_en_passant():
