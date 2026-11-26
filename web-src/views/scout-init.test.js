@@ -117,7 +117,7 @@ describe("scout view initialization reentrancy", () => {
       repsResolve = resolve;
     });
     api.mockImplementation(async (url) => {
-      if (url === "/api/repertoires") return repsGate;
+      if (url === "/api/scout/trees") return repsGate; // the one start-up read of your trees
       return { nodes: [{ id: "root", depth: 0, parent_id: null, uci: null }] };
     });
 

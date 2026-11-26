@@ -34,6 +34,7 @@ from prepforge_chess.api.routers import (
     google_auth,
     legal,
     lichess,
+    scout,
     teams,
     train,
     workspace,
@@ -160,6 +161,7 @@ def create_app() -> FastAPI:
     app.include_router(google_auth.router)
     app.include_router(lichess.router)
     app.include_router(workspace.router)
+    app.include_router(scout.router)
     app.include_router(activity.router)
     app.include_router(discussions.router)
     app.include_router(analyze.router)
