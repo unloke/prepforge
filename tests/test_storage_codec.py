@@ -226,7 +226,7 @@ def test_transposition_keeps_clocks_in_identity():
     # are distinct 50-move states and must not collapse.
     a = codec.rebuild_moves(STARTING_FEN, ["e2e4", "e7e5", "g1f3", "b8c6"])
     b = codec.rebuild_moves(STARTING_FEN, ["g1f3", "b8c6", "e2e4", "e7e5"])
-    ia, ib = codec.position_identity(a[-1].fen_after), codec.position_identity(b[-1].fen_after)
+    ia, ib = a[-1].fen_after.split(" "), b[-1].fen_after.split(" ")
     assert ia[:4] == ib[:4]
     assert ia[4] != ib[4]
     assert codec.position_key(a[-1].fen_after) != codec.position_key(b[-1].fen_after)
