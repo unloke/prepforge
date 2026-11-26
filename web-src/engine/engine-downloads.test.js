@@ -132,6 +132,19 @@ describe("engine downloads", () => {
     expect((await store.startDownload("maia")).phase).toBe("ready");
   });
 
+  it("a second caller waits for the download already running, not its in-progress state", async () => {
+    let finish;
+    const { store } = harness({ warmup: () => new Promise((resolve) => { finish = resolve; }) });
+    await store.refreshDownloads();
+    // Settings starts Maia, then Find great moves asks for it before it lands.
+    const fromSettings = store.startDownload("maia");
+    const fromAnalyze = store.startDownload("maia");
+    await settle();
+    finish();
+    expect((await fromAnalyze).phase).toBe("ready");
+    expect((await fromSettings).phase).toBe("ready");
+  });
+
   it("marks a download that could not be stored as this visit only", async () => {
     const { store } = harness({ cachedMaia: false });
     await store.refreshDownloads();

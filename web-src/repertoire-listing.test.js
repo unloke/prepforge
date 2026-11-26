@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { acceptRepertoireListing, fetchRepertoireListing, refreshRepertoireListing } from "./repertoire-listing.js";
+import { acceptRepertoireListing, cachedRepertoireList, fetchRepertoireListing, finishRepertoireDelete, refreshRepertoireListing } from "./repertoire-listing.js";
 
 function deferred() {
   let resolve, reject;
@@ -130,5 +130,47 @@ describe("shared repertoire listing requests", () => {
     const palette = readFileSync(new URL("./palette.js", import.meta.url), "utf8");
     for (const source of [train, dashboard, app, palette]) expect(source).toContain("acceptRepertoireListing");
     expect(dashboard).not.toContain('await api("/api/repertoires")');
+  });
+});
+
+describe("cached repertoire list", () => {
+  it("reads the listing once per account and the cache after that", async () => {
+    const state = { ownerGeneration: 3 };
+    const api = vi.fn(async () => ({ repertoires: [{ id: 1 }], shared: [] }));
+    await expect(cachedRepertoireList(state, api, "u-cache")).resolves.toEqual([{ id: 1 }]);
+    await expect(cachedRepertoireList(state, api, "u-cache")).resolves.toEqual([{ id: 1 }]);
+    expect(api).toHaveBeenCalledTimes(1);
+    expect(state.repertoireListGeneration).toBe(3);
+  });
+
+  it("reads again for another account generation", async () => {
+    const state = { ownerGeneration: 4, repertoireListGeneration: 3, repertoireList: [{ id: "old" }] };
+    const api = vi.fn(async () => ({ repertoires: [], shared: [] }));
+    await expect(cachedRepertoireList(state, api, "u-next")).resolves.toEqual([]);
+    expect(api).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails as the request fails, leaving the listing unknown", async () => {
+    const state = { ownerGeneration: 5 };
+    await expect(cachedRepertoireList(state, async () => { throw new Error("offline"); }, "u-fail")).rejects.toThrow("offline");
+    expect(state.repertoireListGeneration).toBeUndefined();
+  });
+});
+
+describe("finishing a repertoire delete", () => {
+  it("drops a committed delete from the listing and the count as its mark lifts", () => {
+    const state = { repertoireList: [{ id: 1 }, { id: 2 }], account: { repertoireCount: 2 }, pendingRepDeletes: new Set(["1"]) };
+    finishRepertoireDelete(state, "1", { committed: true });
+    expect(state.repertoireList).toEqual([{ id: 2 }]);
+    expect(state.account.repertoireCount).toBe(1);
+    expect(state.pendingRepDeletes.size).toBe(0);
+  });
+
+  it("keeps a failed delete listed, so it comes back", () => {
+    const state = { repertoireList: [{ id: 1 }], account: { repertoireCount: 1 }, pendingRepDeletes: new Set(["1"]) };
+    finishRepertoireDelete(state, "1", { committed: false });
+    expect(state.repertoireList).toEqual([{ id: 1 }]);
+    expect(state.account.repertoireCount).toBe(1);
+    expect(state.pendingRepDeletes.size).toBe(0);
   });
 });

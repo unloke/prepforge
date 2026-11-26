@@ -24,7 +24,7 @@ describe("Recent analyses refresh ordering", () => {
     const host = { setAttribute() {}, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [], querySelector: () => null };
     const deps = { appState: { pendingAnalysisDeletes: new Set() }, currentOwnerId: () => "owner", document: { getElementById: () => host }, localDayOf: (iso) => String(iso || "").slice(0, 10),
       api: vi.fn().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise) };
-    const load = compile("async function loadAnalysisHistory(", deps, "let analysisHistorySeq = 0;");
+    const load = compile("async function loadAnalysisHistory(", deps, "let analysisHistorySeq = 0, historyFreshFor = null;");
     const first = load();
     const second = load();
     fresh.resolve({ analyses: [{ game_id: "new", white: "Me", black: "Opp" }] });

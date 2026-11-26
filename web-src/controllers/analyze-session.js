@@ -27,6 +27,7 @@ import { analysisTextContext } from "../move-links.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
 import { repertoireLimitMessage } from "../repertoire-limit.js";
+import { cachedRepertoireList } from "../repertoire-listing.js";
 import { clearReturnState, saveReturnState } from "../handoff-context.js";
 import { createAnalysisSelection } from "./analyze-selection.js";
 
@@ -1436,16 +1437,10 @@ function hideAnalysisHandoff() {
   if (btn) btn.disabled = false;
 }
 
+// Unknown (the listing failed) counts as having one: no hint.
 async function userHasAnyRepertoire() {
-  try {
-    const payload = await api("/api/repertoires");
-    const visible = (payload.repertoires || []).filter(
-      (item) => !appState.pendingRepDeletes.has(String(item.id)),
-    );
-    return visible.length > 0;
-  } catch (_) {
-    return true;
-  }
+  const list = await cachedRepertoireList(appState, api, currentOwnerId()).catch(() => null);
+  return !list || list.some((item) => !appState.pendingRepDeletes.has(String(item.id)));
 }
 
 async function updateAnalysisHandoff() {

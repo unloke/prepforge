@@ -79,3 +79,30 @@ export function refreshRepertoireListing(api, owner, generation) {
   }
   return refresh.promise;
 }
+
+// The caller's own repertoires, read from the network only when the cache holds
+// no listing for this account yet. Every create, import and delete keeps the
+// cache current, so a check that runs often (Analyze's "turn this game into a
+// repertoire" hint) reads it instead of /api/repertoires. Null when unknown.
+export async function cachedRepertoireList(state, api, owner) {
+  const generation = state.ownerGeneration || 0;
+  if (state.repertoireListGeneration !== generation) {
+    const listing = fetchRepertoireListing(api, owner, generation);
+    const payload = await listing;
+    if (payload && acceptRepertoireListing(listing, owner, generation)) {
+      Object.assign(state, { repertoireList: payload.repertoires || [], sharedRepertoireList: payload.shared || [], repertoireListGeneration: generation });
+    }
+  }
+  return state.repertoireListGeneration === generation ? state.repertoireList || [] : null;
+}
+
+// A repertoire delete's request came back: its pending-delete mark is lifted.
+// A delete the server committed also leaves the cached listing and the account's
+// count first, or lifting the mark would bring the row back.
+export function finishRepertoireDelete(state, id, { committed }) {
+  if (committed) {
+    state.repertoireList = (state.repertoireList || []).filter((rep) => String(rep.id) !== String(id));
+    if (state.account?.repertoireCount > 0) state.account.repertoireCount -= 1;
+  }
+  state.pendingRepDeletes.delete(String(id));
+}

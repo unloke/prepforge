@@ -7,9 +7,11 @@ import { appSource } from "./test-app-source.js";
 const source = appSource();
 function compileLoad(deps) {
   deps = { html, analysisHistoryResult, localDayOf: String, currentOwnerId: () => "owner", ...deps };
-  const start = source.indexOf("async function loadAnalysisHistory(");
-  const end = source.indexOf("\n}\n", start) + 2;
-  return new Function(...Object.keys(deps), `let analysisHistorySeq = 0;\nreturn (${source.slice(start, end)});`)(...Object.values(deps));
+  const body = (marker) => { const start = source.indexOf(marker); return source.slice(start, source.indexOf("\n}\n", start) + 2); };
+  return new Function(...Object.keys(deps), `let analysisHistorySeq = 0, historyFreshFor = null;
+    ${body("export function refreshAnalysisHistoryIfOpen(").replace("export ", "")}
+    const loadAnalysisHistory = ${body("async function loadAnalysisHistory(")};
+    return Object.assign(loadAnalysisHistory, { refreshAnalysisHistoryIfOpen });`)(...Object.values(deps));
 }
 
 function hostElement() {
@@ -57,12 +59,39 @@ describe("Recent analyses list states", () => {
     const host = hostElement();
     const api = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ analyses: [{ game_id: "one", white: "A" }] });
     const deps = { appState: { pendingAnalysisDeletes: new Set() }, document: { getElementById: () => host }, api };
-    const load = compileLoad({ ...deps, loadAnalysisHistory: () => load() });
+    const load = compileLoad(deps);
     await load();
     expect(host.innerHTML).toContain("offline");
     const retry = host.listeners.get("[data-history-retry]");
     expect(retry).toBeTypeOf("function");
     retry();
     await vi.waitFor(() => expect(host.innerHTML).toContain('data-game-id="one"'));
+  });
+
+  it("reopening the drawer keeps the list it read, until a save lands", async () => {
+    const host = hostElement(), drawer = { open: false };
+    const api = vi.fn(async () => ({ analyses: [{ game_id: "one", white: "A" }] }));
+    const load = compileLoad({ appState: { pendingAnalysisDeletes: new Set(), signedIn: true },
+      document: { getElementById: (id) => (id === "history-drawer" ? drawer : host) }, api });
+    await load({ ifStale: true });
+    await load({ ifStale: true });
+    expect(api).toHaveBeenCalledTimes(1);
+    // A save while the drawer is closed: the next open reads the list again.
+    load.refreshAnalysisHistoryIfOpen();
+    await load({ ifStale: true });
+    expect(api).toHaveBeenCalledTimes(2);
+    // Entering Analyze (no ifStale) always reads it.
+    await load();
+    expect(api).toHaveBeenCalledTimes(3);
+  });
+
+  it("a first page that failed is read again on the next open", async () => {
+    const host = hostElement();
+    const api = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ analyses: [] });
+    const load = compileLoad({ appState: { pendingAnalysisDeletes: new Set() }, document: { getElementById: () => host }, api });
+    await load({ ifStale: true });
+    await load({ ifStale: true });
+    expect(api).toHaveBeenCalledTimes(2);
+    expect(host.innerHTML).toContain("No saved analyses yet.");
   });
 });

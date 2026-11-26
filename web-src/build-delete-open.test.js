@@ -78,6 +78,6 @@ describe("Recent analyses follow the signed-in owner", () => {
   it("runs on sign-in and the toggle needs a signed-in owner", () => {
     const signIn = source.slice(source.indexOf("async function loadSignedInWorkspace("));
     expect(signIn.slice(0, signIn.indexOf("\n}\n"))).toContain("syncAnalysisHistoryDrawer();");
-    expect(source).toContain("if (historyDrawer.open && appState.signedIn) loadAnalysisHistory();");
+    expect(source).toContain("if (historyDrawer.open && appState.signedIn) loadAnalysisHistory({ ifStale: true });");
   });
 });
