@@ -55,6 +55,12 @@ const api = (path) => {
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "T", email: "t@x" };
   if (path.startsWith("/api/auth/providers")) return { google: false };
   if (path.startsWith("/api/csrf")) return { csrf_token: "x" };
+  // Scout reads every repertoire tree in one request at Start.
+  if (path.startsWith("/api/scout/trees")) {
+    return { repertoires: [
+      { id: "rep-1", name: "Caro-Kann: Advance", color: "black", is_active: true, nodes: [] },
+    ] };
+  }
   if (path.startsWith("/api/repertoires")) {
     return { repertoires: [
       { id: "rep-1", name: "Caro-Kann: Advance", color: "black", is_active: true, health: { trainable: 10, mastered: 3, weak: 2, due: 4, learning: 1, untrained: 0, mastery_pct: 30 } },
