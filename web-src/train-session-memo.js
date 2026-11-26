@@ -17,7 +17,7 @@ function key(ownerId, sessionId, generation = "") {
 function defaultStorage() {
   try {
     return globalThis.localStorage || null;
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -27,7 +27,7 @@ export function saveSessionMemo(ownerId, sessionId, memo, storage = defaultStora
   try {
     storage.setItem(key(ownerId, sessionId, memo.generation), JSON.stringify({ ...memo, sessionId: String(sessionId) }));
     return true;
-  } catch (_) {
+  } catch {
     return false;
   }
 }
@@ -50,7 +50,7 @@ export function loadSessionMemo(ownerId, sessionId, generation = "", storage = d
     if (memo.cardIndex > memo.queue.length) return null;
     if (memo.cardIndex < memo.queue.length && memo.targetIndex >= memo.queue[memo.cardIndex].targets.length) return null;
     return memo;
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -59,7 +59,7 @@ export function clearSessionMemo(ownerId, sessionId, generation = "", storage = 
   if (!storage || !ownerId || !sessionId) return;
   try {
     storage.removeItem(key(ownerId, sessionId, generation));
-  } catch (_) {
+  } catch {
     /* best-effort */
   }
 }

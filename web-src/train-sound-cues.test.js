@@ -60,6 +60,7 @@ function harness({ kind = "due", correct = true } = {}) {
     trackPreparationPractice: noop,
     wrongMoveBanner,
     renderTrainStats: async () => {},
+    tallyAnswer: noop,
     boardAfterMove: async (fen, uci) => ({
       board: { fen: `after-${uci}` },
       move: { san: "Nf3" },

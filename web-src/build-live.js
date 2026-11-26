@@ -32,7 +32,7 @@ let active = null;
 // edit from elsewhere may have landed just before ours). Editing also keeps
 // polling at the fast rate while collaborators are quiet.
 export function announceBuildWrite(repertoireId) {
-  try { channel?.postMessage({ repertoire_id: repertoireId }); } catch (_) { /* best effort */ }
+  try { channel?.postMessage({ repertoire_id: repertoireId }); } catch { /* best effort */ }
   active?.poke();
 }
 

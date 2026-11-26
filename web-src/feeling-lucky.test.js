@@ -6,7 +6,6 @@ const PICKED = {
   fen: "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 1",
   reason: "db-critical",
   phase: "middlegame",
-  nodeId: null,
 };
 
 function harness({
@@ -77,7 +76,6 @@ describe("I'm Feeling Lucky entry", () => {
     const picked = await runFeelingLucky({ ...h.deps, ensureExplorer });
     expect(picked).toEqual(live);
     expect(h.luckyTitledStartFn).toHaveBeenCalledTimes(1);
-    expect(h.luckyTitledStartFn.mock.calls[0][0].allowReferences).toBe(false);
     expect(h.luckyDbStartFn).not.toHaveBeenCalled();
     expect(ensureExplorer).not.toHaveBeenCalled();
     expect(h.calls.banner[0]).toEqual([
@@ -108,7 +106,6 @@ describe("I'm Feeling Lucky entry", () => {
       gameId: "live1",
       white: "AlphaGM",
       black: "BetaIM",
-      source: "lichess-user-feed",
     });
   });
 

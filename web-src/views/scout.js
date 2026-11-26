@@ -1128,8 +1128,8 @@ export function createScoutView(deps) {
   }
 
   async function explorerClient() {
-    scoutExplorerClient ||= (await import("../explorer.js")).createExplorerClient({});
-    return scoutExplorerClient;
+    return scoutExplorerClient || import("../explorer.js")
+      .then(({ createExplorerClient }) => (scoutExplorerClient ||= createExplorerClient({})));
   }
 
   function localScoutLineDetailHtml(line, idx, oppColor, rowKind = "line") {

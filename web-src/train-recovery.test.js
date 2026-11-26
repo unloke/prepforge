@@ -67,6 +67,7 @@ function harness({ move, read } = {}) {
     syncTrainSessionControls: vi.fn(),
     boardAfterMove: vi.fn(async () => ({ board: { fen: "after" }, move: { san: "e4" } })),
     renderTrainStats: vi.fn(),
+    tallyAnswer: compile("function tallyAnswer(", {}),
     sleep: async () => {},
     playSound: vi.fn(),
     enterReviewRound: vi.fn(),

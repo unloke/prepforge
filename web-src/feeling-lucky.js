@@ -2,17 +2,19 @@
 //
 // Production asks Lichess for a fresh titled/high-rated player, fetches a
 // small recent-game PGN feed on demand, and performs replay, phase selection,
-// critical scoring and dedup locally. No position pool or maintained game-ID
-// dataset is bundled. The slower Masters walk remains an explicit quality
-// fallback when live game feeds are empty, and is never prefetched.
-// The personal flow (miss / departure / fork from the user's own games and
-// trees) stays available as an independent capability in its own module for
-// other callers — it is intentionally not referenced from this module.
+// critical scoring and dedup locally. The slower Masters walk is a lazy
+// quality fallback when live feeds are empty, and is never prefetched. Every
+// pick must pass a Stockfish balance check before practice starts.
 
 import { luckyDbStart } from "./train-lucky-db.js";
 import { luckyTitledStart } from "./train-lucky-titled.js";
 import { balancedPracticeEval, createLuckyBalanceCheck } from "./train-lucky-balance.js";
 import { cancellationError, isCancellation, throwIfCancelled } from "./cancellation.js";
+
+const FINDING = "Finding a position…";
+const TRANSPORT = /rate limit|429|too many requests|responded 4\d\d|responded 5\d\d|network|failed to fetch|load failed|timeout|timed out|timeouterror|aborterror|offline|enotfound|econn|dns|unavailable|link your lichess/i;
+const NO_QUALITY = /no sharp (?:database|titled) game|try again/i;
+const messageOf = (error) => error?.message || String(error);
 
 export async function runFeelingLucky(options = {}) {
   const signal = options.signal || null;
@@ -25,7 +27,7 @@ export async function runFeelingLucky(options = {}) {
     try { pv = await (options.evaluatePosition || balance.evaluate)(fen); }
     catch (cause) {
       if (isCancellation(cause) || signal?.aborted) throw cancellationError();
-      const error = new Error(cause?.message || String(cause)); error.balanceCheck = true; throw error;
+      throw Object.assign(new Error(messageOf(cause)), { balanceCheck: true });
     }
     throwIfCancelled(signal);
     const accepted = balancedPracticeEval(pv);
@@ -34,12 +36,10 @@ export async function runFeelingLucky(options = {}) {
   };
   try {
     throwIfCancelled(signal);
-    return await runFeelingLuckySelection({ ...options, acceptPosition,
-      isConfirmed: (fen) => confirmedFen === fen });
+    return await runFeelingLuckySelection({ ...options, acceptPosition, isConfirmed: (fen) => confirmedFen === fen });
   } catch (error) {
     if (isCancellation(error) || signal?.aborted) return null;
-    const message = error?.message || String(error);
-    options.onStatus?.(message);
+    options.onStatus?.(messageOf(error));
     options.setBanner?.("idle", "Could not verify position", "Retry — Stockfish must confirm an evaluation between −1.5 and +1.5.");
     return null;
   } finally {
@@ -50,8 +50,6 @@ export async function runFeelingLucky(options = {}) {
 async function runFeelingLuckySelection({
   luckyDbStartFn = luckyDbStart,
   luckyTitledStartFn = luckyTitledStart,
-  // Reference feeds are an explicit emergency/test-only opt-in.
-  allowReferences = false,
   ensureExplorer = null,
   storage = null,
   exclude = [],
@@ -64,152 +62,89 @@ async function runFeelingLuckySelection({
   signal = null,
 } = {}) {
   throwIfCancelled(signal);
-  setBanner(
-    "runin",
-    "Finding a position…",
-    "Discovering a fresh titled player on Lichess",
-  );
-  let dbError = null;
-  let sessionFailed = null;
+  setBanner("runin", FINDING, "Discovering a fresh titled player on Lichess");
+  const progress = (msg) => setBanner("runin", FINDING, msg);
+  const unavailable = (error, sub) => {
+    onStatus(messageOf(error));
+    setBanner("idle", "Database unavailable", sub);
+    return null;
+  };
+  // A sampler error: balance-check failures and cancellation propagate.
+  const rethrow = (error) => {
+    if (error.balanceCheck) throw error;
+    if (isCancellation(error) || signal?.aborted) throw cancellationError();
+  };
   const beginSession = async (picked) => {
     throwIfCancelled(signal);
     if (!isConfirmed(picked.fen) && !await acceptPosition(picked.fen)) {
       throwIfCancelled(signal);
       setBanner("idle", "No balanced position found", "Try again · evaluation must be between −1.5 and +1.5.");
-      return false;
+      return null;
     }
     throwIfCancelled(signal);
-    // startSession (Play-session paint) failures are product failures, not
-    // sampler failures: never relabel them as "Database unavailable" /
-    // "Nothing sharp". Surface the real message and stop.
+    // Play-session start failures are product failures, not sampler failures:
+    // surface the real message rather than "Database unavailable".
     try {
-      const started = await startSession({
-        fen: picked.fen,
-        reason: picked.reason,
-        phase: picked.phase,
-        nodeId: picked.nodeId,
-        gameId: picked.gameId,
-        white: picked.white,
-        black: picked.black,
-        source: picked.source,
-        sourceUrl: picked.sourceUrl,
-      });
+      const { fen, reason, phase, gameId, white, black, sourceUrl } = picked;
+      const started = await startSession({ fen, reason, phase, gameId, white, black, sourceUrl });
       throwIfCancelled(signal);
       if (started === false) throw new Error("Could not start that position");
     } catch (error) {
       if (isCancellation(error) || signal?.aborted) throw cancellationError();
-      sessionFailed = error;
-      const msg = (error && error.message) || String(error);
-      onStatus(msg);
-      setBanner("idle", "Could not start that position", msg);
-      return false;
+      onStatus(messageOf(error));
+      setBanner("idle", "Could not start that position", messageOf(error));
+      return null;
     }
-    return true;
-  };
-  const isNoQuality = (message) => /no sharp (?:database|titled) game|try again/i.test(String(message || ""));
-  const isTransport = (message) =>
-    /rate limit|429|too many requests|responded 4\d\d|responded 5\d\d|network|failed to fetch|load failed|timeout|timed out|timeouterror|aborterror|offline|enotfound|econn|dns|unavailable|link your lichess/i.test(
-      String(message || ""),
-    );
-
-  // Explorer is deliberately lazy. A successful live feed never opens the
-  // Explorer client, so the normal click stays at discovery + one feed read.
-  let explorerPromise = null;
-  const lazyFetchStats = async (db, fen, opts) => {
-    throwIfCancelled(signal);
-    if (!explorerPromise) {
-      explorerPromise = (typeof ensureExplorer === "function"
-        ? Promise.resolve().then(() => ensureExplorer())
-        : Promise.reject(new Error("Lichess explorer is unavailable")));
-    }
-    const client = await explorerPromise;
-    throwIfCancelled(signal);
-    if (!client || typeof client.fetchStats !== "function") {
-      throw new Error("Lichess explorer is unavailable");
-    }
-    const stats = await client.fetchStats(db, fen, opts);
-    throwIfCancelled(signal);
-    return stats;
+    return picked;
   };
 
-  const runDb = async (fetchStats) =>
-    luckyDbStartFn({
-      storage,
-      exclude,
-      rating,
-      fetchStats,
-      engine: null,
-      maia: null,
-      onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
-      acceptPosition,
-      signal,
-    });
+  // Fast path: live leaderboard discovery followed by one recent-games feed.
+  let dbError = null;
+  setBanner("runin", FINDING, "Fetching fresh titled games from Lichess");
+  try {
+    throwIfCancelled(signal);
+    const picked = await luckyTitledStartFn({ storage, exclude, acceptPosition, signal, onStatus: progress });
+    throwIfCancelled(signal);
+    if (picked) return beginSession(picked);
+  } catch (error) {
+    rethrow(error);
+    const msg = messageOf(error);
+    if (!NO_QUALITY.test(msg) || TRANSPORT.test(msg)) {
+      return unavailable(error, "Try again — Lichess game export is unavailable or rate-limited.");
+    }
+    dbError = error;
+  }
 
-
-    // Fast production path: live leaderboard discovery followed by one
-    // recent-games feed. A healthy click therefore uses two small requests;
-    // no fixed game ID is consulted. `allowReferences` is retained only as
-    // an explicit test/emergency opt-in for the reference seam.
-    setBanner("runin", "Finding a position…", "Fetching fresh titled games from Lichess");
+  // Masters fallback when live feeds are empty. The Explorer client opens
+  // lazily, so a successful feed click never pays for it.
+  if (typeof ensureExplorer === "function") {
+    let explorer = null;
+    const fetchStats = async (db, fen, opts) => {
+      throwIfCancelled(signal);
+      explorer ||= Promise.resolve().then(() => ensureExplorer());
+      const client = await explorer;
+      throwIfCancelled(signal);
+      if (typeof client?.fetchStats !== "function") throw new Error("Lichess explorer is unavailable");
+      const stats = await client.fetchStats(db, fen, opts);
+      throwIfCancelled(signal);
+      return stats;
+    };
     try {
       throwIfCancelled(signal);
-      const picked = await luckyTitledStartFn({
-        storage,
-        exclude,
-        allowReferences: Boolean(allowReferences),
-        acceptPosition,
-        signal,
-        onStatus: (msg) => setBanner("runin", "Finding a position…", msg),
-      });
+      const picked = await luckyDbStartFn({ storage, exclude, rating, fetchStats, onStatus: progress, acceptPosition });
       throwIfCancelled(signal);
-      if (picked) {
-        if (await beginSession(picked)) return picked;
-        return null;
-      }
+      if (picked) return beginSession(picked);
     } catch (error) {
-      if (error.balanceCheck) throw error;
-      if (isCancellation(error) || signal?.aborted) throw cancellationError();
-      const msg = (error && error.message) || String(error);
-      if (!isNoQuality(msg) || isTransport(msg)) {
-        onStatus(msg);
-        setBanner("idle", "Database unavailable", "Try again — Lichess game export is unavailable or rate-limited.");
-        return null;
-      }
+      rethrow(error);
       dbError = error;
-    }
-
-    // If live feeds are empty, retain the Masters sampler as an explicit
-    // quality fallback when an Explorer provider is available. It is lazy and
-    // therefore never adds serial Explorer latency to a successful feed click.
-    if (typeof ensureExplorer === "function") {
-      try {
-        throwIfCancelled(signal);
-        const picked = await runDb(lazyFetchStats);
-        throwIfCancelled(signal);
-        if (picked) {
-          if (await beginSession(picked)) return picked;
-          return null;
-        }
-      } catch (error) {
-        if (error.balanceCheck) throw error;
-        if (isCancellation(error) || signal?.aborted) throw cancellationError();
-        dbError = error;
-        const msg = (error && error.message) || String(error);
-        if (isTransport(msg)) {
-          onStatus(msg);
-          setBanner("idle", "Database unavailable", "Try again — Lichess game export or Explorer is unavailable.");
-          return null;
-        }
+      if (TRANSPORT.test(messageOf(error))) {
+        return unavailable(error, "Try again — Lichess game export or Explorer is unavailable.");
       }
     }
+  }
 
   throwIfCancelled(signal);
-  if (dbError) onStatus(dbError.message || String(dbError));
-  else onStatus("No sharp database game found — try again.");
-  setBanner(
-    "idle",
-    "No balanced position found",
-    "Try again · −1.5 to +1.5 from fresh Lichess games.",
-  );
+  onStatus(dbError ? messageOf(dbError) : "No sharp database game found — try again.");
+  setBanner("idle", "No balanced position found", "Try again · −1.5 to +1.5 from fresh Lichess games.");
   return null;
 }
