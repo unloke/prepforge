@@ -835,7 +835,6 @@ export function createScoutView(deps) {
     scoutState.prefilterRanked[oppColor] = fallback.ranked;
     scoutState.prefilteredLines[oppColor] = fallback.ranked.map(entry => entry.line);
     snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
-    if (section?.trie) prefilterCandidateCache.delete(section.trie);
   }
 
   function refreshGamePlanDisplayLines() {
@@ -937,7 +936,6 @@ export function createScoutView(deps) {
           scoutState.prefilterRanked[oppColor] = result.ranked;
           scoutState.prefilteredLines[oppColor] = rankedLines;
           snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
-          if (section?.trie) prefilterCandidateCache.delete(section.trie);
         }
       }
       if (gen !== prefilterEnrich.generation) return;
