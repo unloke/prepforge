@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
 import { cssSource, eagerCss as STYLES } from "../test-styles-source.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // The chart rules ship in a lazy sheet (loaded with the Analyze view) so the
 // eager styles.css stays under its deploy budget. The token contract spans both:
@@ -145,14 +146,14 @@ function setup() {
   const showAnalysisPly = vi.fn(async () => {});
   const peek = vi.fn();
   const view = createAnalyzeView({
-    appState,
+    ...asSlices(appState), 
     START_FEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     showAnalysisPly,
     selectAnalysisNode: vi.fn(async () => {}),
     revealAnalysisResults: vi.fn(),
     peek,
   });
-  return { doc, chart, tooltip, appState, showAnalysisPly, peek, view };
+  return { doc, chart, tooltip, ...asSlices(appState), appState, showAnalysisPly, peek, view };
 }
 
 function allElements(chart) {

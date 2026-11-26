@@ -1,11 +1,11 @@
 import {
-  buildAddId, buildDeleteId, createSyncQueue, flushGroups, groupAttempts,
-  loadDurableOutbox, orderPendingBuildAdds, outboxHasWork,
-  trainAttemptId, ungroupAttempts,
+  createSyncQueue, flushGroups, groupAttempts, loadDurableOutbox, orderPendingBuildAdds, outboxHasWork,
+  ungroupAttempts,
 } from "../sync-queue.js";
+import { buildAddId, buildDeleteId, trainAttemptId } from "../outbox-state.js";
 import { classifySyncError, describeSyncError } from "../sync-errors.js";
 
-import { appState } from "../core/state.js";
+import { appState, buildState, trainState } from "../core/state.js";
 import { hooks } from "../core/hooks.js";
 import { OUTBOX_TAB_ID, currentOwnerId, localDateString, postJson, setStatus, setStatusError } from "../core/api.js";
 import { CSRF_HEADER, readCsrfCookie } from "../csrf.js";
@@ -19,13 +19,13 @@ import { captureBuildContext, hydrateBuild } from "../core/app-context.js";
 let buildQueue, trainQueue;
 
 export function createSyncController() {
-  const buildState = {
-    get timer() { return appState.buildFlushTimer; },
-    set timer(value) { appState.buildFlushTimer = value; },
-    get flushing() { return appState.buildFlushing; },
-    set flushing(value) { appState.buildFlushing = value; },
-    get retry() { return appState.buildSyncRetry; },
-    set retry(value) { appState.buildSyncRetry = value; },
+  const buildQueueState = {
+    get timer() { return buildState.buildFlushTimer; },
+    set timer(value) { buildState.buildFlushTimer = value; },
+    get flushing() { return buildState.buildFlushing; },
+    set flushing(value) { buildState.buildFlushing = value; },
+    get retry() { return buildState.buildSyncRetry; },
+    set retry(value) { buildState.buildSyncRetry = value; },
   };
   const common = { owner: currentOwnerId, generation: () => appState.ownerGeneration,
     serialize: outboxSnapshot, tabId: OUTBOX_TAB_ID, onPersist(ok) {
@@ -35,11 +35,11 @@ export function createSyncController() {
         setStatus("This browser is not letting us store your unsynced edits — they stay in this tab only. Don't close it.", { severity: "warning" });
       }
     } };
-  buildQueue = createSyncQueue({ ...common, key: "build", state: () => buildState,
-    hasWork: () => appState.buildPending.length || appState.buildPendingDeletes.length,
+  buildQueue = createSyncQueue({ ...common, key: "build", state: () => buildQueueState,
+    hasWork: () => buildState.buildPending.length || buildState.buildPendingDeletes.length,
     idleMs: 2000, flush: flushBuildMoves });
-  trainQueue = createSyncQueue({ ...common, key: "train", state: () => appState.trainSync,
-    hasWork: () => appState.trainSync.pending.length || appState.trainSync.dirty,
+  trainQueue = createSyncQueue({ ...common, key: "train", state: () => trainState.trainSync,
+    hasWork: () => trainState.trainSync.pending.length || trainState.trainSync.dirty,
     idleMs: 4000, flush: flushTrainSync });
   return { scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt, markTrainPositionDirty, scheduleTrainSync, beaconFlushTrain,
     flushBuildMoves: buildQueue.flush, flushTrainSync: trainQueue.flush,
@@ -54,20 +54,20 @@ function scheduleBuildFlush() {
 function flushBuildMoves(durableCheckpoint, ownsQueue) {
   // The open tree first, then any other repertoire's queued edits, which save
   // without being shown. Edits made during the request stay queued.
-  const open = appState.build?.repertoire_id;
+  const open = buildState.build?.repertoire_id;
   const repertoireId = hasPendingBuildOpsFor(open)
     ? open
-    : (appState.buildPending[0] || appState.buildPendingDeletes[0]).repertoire_id;
+    : (buildState.buildPending[0] || buildState.buildPendingDeletes[0]).repertoire_id;
   const buildCurrent = captureBuildContext();
-  const isCurrent = () => ownsQueue() && buildCurrent() && appState.build?.repertoire_id === repertoireId;
-  const batch = appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repertoireId));
-  appState.buildPending = appState.buildPending.filter(
+  const isCurrent = () => ownsQueue() && buildCurrent() && buildState.build?.repertoire_id === repertoireId;
+  const batch = buildState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repertoireId));
+  buildState.buildPending = buildState.buildPending.filter(
     (m) => !buildOpMatchesRepertoire(m, repertoireId),
   );
-  const deleteBatch = appState.buildPendingDeletes.filter((entry) =>
+  const deleteBatch = buildState.buildPendingDeletes.filter((entry) =>
     buildOpMatchesRepertoire(entry, repertoireId),
   );
-  appState.buildPendingDeletes = appState.buildPendingDeletes.filter(
+  buildState.buildPendingDeletes = buildState.buildPendingDeletes.filter(
     (entry) => !buildOpMatchesRepertoire(entry, repertoireId),
   );
   // A delete of an in-flight add needs that add's acknowledged real ID.
@@ -76,10 +76,10 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
   const inFlightAdds = new Set(batch.map((op) => op.tempId));
   for (let i = deleteBatch.length - 1; i >= 0; i--) {
     if (inFlightAdds.has(resolveBuildId(deleteBatch[i]))) {
-      appState.buildPendingDeletes.push(...deleteBatch.splice(i, 1));
+      buildState.buildPendingDeletes.push(...deleteBatch.splice(i, 1));
     }
   }
-  const hasBuildWork = () => appState.buildPending.length || appState.buildPendingDeletes.length;
+  const hasBuildWork = () => buildState.buildPending.length || buildState.buildPendingDeletes.length;
   setBuildSync("syncing");
 
   return (async () => {
@@ -129,7 +129,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       if (!ownsQueue()) return false;
       acknowledged = true;
       const idMap = payload.id_map || {};
-      Object.assign(appState.buildIdMap, idMap);
+      Object.assign(buildState.buildIdMap, idMap);
       // Tombstone confirmed identities against stale-tab replay.
       const settled = {
         build: batch.map(buildAddId),
@@ -139,18 +139,18 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       if (!ownsQueue()) return false;
 
       // Re-point this repertoire's queued children through acknowledged parent IDs.
-      for (const m of appState.buildPending) {
+      for (const m of buildState.buildPending) {
         if (buildOpMatchesRepertoire(m, repertoireId) && idMap[m.parentRef]) {
           m.parentRef = idMap[m.parentRef];
           m.node.parent_id = m.parentRef;
-          invalidateBuildTree(appState.build);
+          invalidateBuildTree(buildState.build);
         }
       }
 
       // Hydration merges queued edits before selecting, so an unsaved child
       // remains visible throughout reconciliation.
       if (isCurrent()) {
-        await hydrateBuild(payload, appState.buildCurrentNodeId);
+        await hydrateBuild(payload, buildState.buildCurrentNodeId);
       }
       if (!ownsQueue()) return false;
       // Moves whose line another device deleted first: the delete won.
@@ -193,17 +193,17 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         if (idMap && Object.keys(idMap).length) {
           // Ops that landed mid-isolation have real ids now; the local tree and
           // any queued children must be reconciled against them (R-05).
-          Object.assign(appState.buildIdMap, idMap);
-          const stillPending = appState.buildPending;
+          Object.assign(buildState.buildIdMap, idMap);
+          const stillPending = buildState.buildPending;
           for (const m of stillPending) {
             if (idMap[m.parentRef]) {
               m.parentRef = idMap[m.parentRef];
               m.node.parent_id = m.parentRef;
-              invalidateBuildTree(appState.build);
+              invalidateBuildTree(buildState.build);
             }
           }
           if (payload && isCurrent()) {
-            await hydrateBuild(payload, appState.buildCurrentNodeId);
+            await hydrateBuild(payload, buildState.buildCurrentNodeId);
           }
         }
         // Rejected edits are reported here once and dropped: the server will
@@ -224,8 +224,8 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         return false;
       }
       // Requeue unconfirmed operations ahead of newer work, identities intact.
-      appState.buildPending = batch.concat(appState.buildPending);
-      appState.buildPendingDeletes = deleteBatch.concat(appState.buildPendingDeletes);
+      buildState.buildPending = batch.concat(buildState.buildPending);
+      buildState.buildPendingDeletes = deleteBatch.concat(buildState.buildPendingDeletes);
       persistOutbox();
       setStatus(describeSyncError(info, { count: inFlightCount }));
       if (info.pauseForAuth) {
@@ -264,7 +264,7 @@ async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
       if (info.retriable) {
         // Sign-out/network blip mid-isolation: stop here and keep this delete
         // plus every later one queued for the next flush.
-        appState.buildPendingDeletes = deleteBatch.slice(i).concat(appState.buildPendingDeletes);
+        buildState.buildPendingDeletes = deleteBatch.slice(i).concat(buildState.buildPendingDeletes);
         break;
       }
       settled.deletes.push(buildDeleteId(entry));
@@ -288,7 +288,7 @@ async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
     } catch (err) {
       const info = classifySyncError(err);
       if (info.retriable) {
-        appState.buildPending = ordered.slice(i).concat(appState.buildPending);
+        buildState.buildPending = ordered.slice(i).concat(buildState.buildPending);
         break;
       }
       settled.build.push(buildAddId(m));
@@ -305,12 +305,12 @@ async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
 }
 
 async function settleBuildOutbox() {
-  if (!appState.build) return;
+  if (!buildState.build) return;
   try {
-    if (appState.buildFlushing) await appState.buildFlushing;
-    if (appState.buildPending.length || appState.buildPendingDeletes.length) {
-      clearTimeout(appState.buildFlushTimer);
-      appState.buildFlushTimer = null;
+    if (buildState.buildFlushing) await buildState.buildFlushing;
+    if (buildState.buildPending.length || buildState.buildPendingDeletes.length) {
+      clearTimeout(buildState.buildFlushTimer);
+      buildState.buildFlushTimer = null;
       await buildQueue.flush();
     }
   } catch (_) {
@@ -322,22 +322,22 @@ async function hardFlushBuild() {
   // Open undo windows must close first: server truth has to include those
   // deletes (or the undone restore) before any operation depends on it.
   commitPendingUndos();
-  if (!appState.build) return;
-  const repId = appState.build.repertoire_id;
+  if (!buildState.build) return;
+  const repId = buildState.build.repertoire_id;
   const ownerId = currentOwnerId();
-  if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
+  if (buildState.buildFlushing) await buildState.buildFlushing.catch(() => {});
   // R-02: drain THIS repertoire's ops. Ops queued for another tree are not
   // part of this request (and must not spin the loop) — they stay on the
   // device until their own repertoire is open.
   const hasWorkForThisRep = () =>
-    appState.buildPending.some((m) => buildOpMatchesRepertoire(m, repId)) ||
-    appState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repId));
+    buildState.buildPending.some((m) => buildOpMatchesRepertoire(m, repId)) ||
+    buildState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repId));
   while (hasWorkForThisRep()) {
-    if (ownerId !== currentOwnerId() || appState.build?.repertoire_id !== repId) {
+    if (ownerId !== currentOwnerId() || buildState.build?.repertoire_id !== repId) {
       throw new Error("Repertoire changed before sync completed ? reopen it and try again");
     }
     const ok = await buildQueue.flush();
-    if (appState.buildFlushing) await appState.buildFlushing.catch(() => {});
+    if (buildState.buildFlushing) await buildState.buildFlushing.catch(() => {});
     if (!ok) {
       throw new Error("Couldn't sync your latest moves — check your connection and try again");
     }
@@ -349,12 +349,12 @@ function beaconFlushBuild() {
   // delete commit is itself keepalive-safe).
   commitPendingUndos();
   void persistOutbox(); // Best effort only at unload; normal flush checkpoints first.
-  if (!appState.build) return;
-  const repId = appState.build.repertoire_id;
+  if (!buildState.build) return;
+  const repId = buildState.build.repertoire_id;
   // R-02: only this repertoire's ops — a queued op for another tree must not
   // ride this keepalive into the open tree.
-  const pending = appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repId));
-  const pendingDeletes = appState.buildPendingDeletes.filter((entry) =>
+  const pending = buildState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repId));
+  const pendingDeletes = buildState.buildPendingDeletes.filter((entry) =>
     buildOpMatchesRepertoire(entry, repId),
   );
   if (!pending.length && !pendingDeletes.length) return;
@@ -395,7 +395,7 @@ function beaconFlushBuild() {
 }
 
 function queueTrainAttempt(smart, nodeId, correct, hinted = false) {
-  appState.trainSync.pending.push({
+  trainState.trainSync.pending.push({
     session_id: smart.sessionId,
     session_generation: smart.generation,
     node_id: nodeId,
@@ -408,7 +408,7 @@ function queueTrainAttempt(smart, nodeId, correct, hinted = false) {
 }
 
 function markTrainPositionDirty() {
-  appState.trainSync.dirty = true;
+  trainState.trainSync.dirty = true;
   setTrainSyncState("dirty");
   scheduleTrainSync();
 }
@@ -418,12 +418,12 @@ function scheduleTrainSync() {
 }
 
 function flushTrainSync(durableCheckpoint, isCurrent) {
-  const sync = appState.trainSync;
+  const sync = trainState.trainSync;
   const batch = sync.pending;
   sync.pending = [];
   sync.dirty = false;
   // Capture the session position; abandoned-session attempts retain their own target.
-  const smart = appState.smart;
+  const smart = trainState.smart;
   const position = smart ? { card_index: smart.cardIndex, queue: smart.queue.map((c) => c.encoded), state_version: smart.stateVersion } : null;
   const groups = groupAttempts(batch, smart ? smart.sessionId : null, smart?.generation);
   setTrainSyncState("syncing");
@@ -441,7 +441,7 @@ function flushTrainSync(durableCheckpoint, isCurrent) {
       }
       try {
         const result = await postJson("/api/train/smart/sync", body);
-        if (isCurrent() && appState.smart === smart && body.state_version != null) {
+        if (isCurrent() && trainState.smart === smart && body.state_version != null) {
           if (result.state_applied) smart.stateVersion = result.state_version;
           else if (result.state_applied === false) {
             setStatus("Training session changed elsewhere. Resume it to sync your position.", { severity: "error" });
@@ -466,7 +466,7 @@ function flushTrainSync(durableCheckpoint, isCurrent) {
       .map((attempt) => trainAttemptId(attempt))
       .filter((id) => !unsettled.has(id));
     if (rejectedCount) {
-      appState.trainRejected = (appState.trainRejected || []).concat(outcome.rejectedGroups);
+      trainState.trainRejected = (trainState.trainRejected || []).concat(outcome.rejectedGroups);
     }
     if (settledAttempts.length) await persistOutbox({ train: settledAttempts });
     if (!isCurrent()) return false;
@@ -508,7 +508,7 @@ function flushTrainSync(durableCheckpoint, isCurrent) {
     persistOutbox();
     // Only re-mark the position dirty if the current session's group is the
     // one that failed — other sessions carry no position payload.
-    if (smart && smart === appState.smart && outcome.failedGroups.some(([sessionId]) => sessionId === smart.sessionId)) {
+    if (smart && smart === trainState.smart && outcome.failedGroups.some(([sessionId]) => sessionId === smart.sessionId)) {
       sync.dirty = true;
     }
     if (info && info.pauseForAuth) {
@@ -522,11 +522,11 @@ function flushTrainSync(durableCheckpoint, isCurrent) {
 }
 
 function beaconFlushTrain() {
-  const sync = appState.trainSync;
+  const sync = trainState.trainSync;
   void persistOutbox(); // Unload cannot guarantee completion of an IDB transaction.
   if (!sync.pending.length && !sync.dirty) return;
   const token = readCsrfCookie();
-  const smart = appState.smart;
+  const smart = trainState.smart;
   const groups = groupAttempts(sync.pending, smart ? smart.sessionId : null, smart?.generation);
   for (const [sessionId, attempts] of groups) {
     const generation = attempts.length ? attempts[0].session_generation : (smart?.sessionId === sessionId ? smart.generation : undefined);
@@ -552,9 +552,9 @@ function beaconFlushTrain() {
 
 function outboxSnapshot() {
   return {
-    build: { pending: appState.buildPending, pendingDeletes: appState.buildPendingDeletes,
-      idMap: appState.buildIdMap },
-    train: { pending: appState.trainSync.pending, rejected: appState.trainRejected || [] },
+    build: { pending: buildState.buildPending, pendingDeletes: buildState.buildPendingDeletes,
+      idMap: buildState.buildIdMap },
+    train: { pending: trainState.trainSync.pending, rejected: trainState.trainRejected || [] },
   };
 }
 
@@ -568,34 +568,34 @@ async function restoreOutbox() {
   if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) return null;
   const rejectedCount = (outbox.train.rejected || []).length;
   if (!outboxHasWork(outbox) && !rejectedCount) return null;
-  appState.buildPending = outbox.build.pending.concat(appState.buildPending);
-  appState.buildPendingDeletes = outbox.build.pendingDeletes.concat(
-    appState.buildPendingDeletes,
+  buildState.buildPending = outbox.build.pending.concat(buildState.buildPending);
+  buildState.buildPendingDeletes = outbox.build.pendingDeletes.concat(
+    buildState.buildPendingDeletes,
   );
-  Object.assign(appState.buildIdMap, outbox.build.idMap);
-  appState.trainRejected = (outbox.train.rejected || []).concat(appState.trainRejected || []);
-  appState.trainSync.pending = outbox.train.pending.concat(appState.trainSync.pending);
-  if (appState.trainSync.pending.length) {
-    appState.trainSync.dirty = true;
+  Object.assign(buildState.buildIdMap, outbox.build.idMap);
+  trainState.trainRejected = (outbox.train.rejected || []).concat(trainState.trainRejected || []);
+  trainState.trainSync.pending = outbox.train.pending.concat(trainState.trainSync.pending);
+  if (trainState.trainSync.pending.length) {
+    trainState.trainSync.dirty = true;
     setTrainSyncState("dirty");
     scheduleTrainSync();
   }
   return {
-    build: appState.buildPending.length + appState.buildPendingDeletes.length,
-    train: appState.trainSync.pending.length,
+    build: buildState.buildPending.length + buildState.buildPendingDeletes.length,
+    train: trainState.trainSync.pending.length,
     rejected: rejectedCount,
   };
 }
 
 async function flushAllPendingForSignOut() {
   await persistOutbox();
-  clearTimeout(appState.buildFlushTimer);
-  appState.buildFlushTimer = null;
-  clearTimeout(appState.trainSync.timer);
-  appState.trainSync.timer = null;
+  clearTimeout(buildState.buildFlushTimer);
+  buildState.buildFlushTimer = null;
+  clearTimeout(trainState.trainSync.timer);
+  trainState.trainSync.timer = null;
   // One repertoire per Build flush: keep going while each one saves.
   const drainBuild = async () => {
-    while (appState.buildPending.length || appState.buildPendingDeletes.length) {
+    while (buildState.buildPending.length || buildState.buildPendingDeletes.length) {
       if (!(await buildQueue.flush().catch(() => false))) return;
     }
   };
@@ -603,8 +603,8 @@ async function flushAllPendingForSignOut() {
   await persistOutbox();
   return {
     pending:
-      appState.buildPending.length +
-      appState.buildPendingDeletes.length +
-      appState.trainSync.pending.length,
+      buildState.buildPending.length +
+      buildState.buildPendingDeletes.length +
+      trainState.trainSync.pending.length,
   };
 }

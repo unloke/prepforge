@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDocument, setup } from "./controllers/train-home.fixture.js";
 import { appSource } from "./test-app-source.js";
 import { createTrainRecovery } from "./train-recovery.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 vi.mock("./core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 vi.mock("./train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 vi.mock("./controllers/train-session.js", () => import("./controllers/train-session.fixture.js"));
@@ -73,7 +74,7 @@ function rehearsalHarness({ move } = {}) {
   const board = { fen: "moved", setPosition: vi.fn((next) => { board.fen = next.fen; }) };
   const pending = deferred();
   const deps = {
-    appState,
+    ...asSlices(appState), 
     currentOwnerId: () => appState.accountUserId,
     boards: { train: board },
     optimisticBoardMove: vi.fn(async () => true),
@@ -92,7 +93,7 @@ function rehearsalHarness({ move } = {}) {
   };
   deps.trainRecovery = createTrainRecovery(deps);
   const submit = compile("async function submitTrainingMove(", deps);
-  return { appState, board, pending, deps, submit };
+  return { ...asSlices(appState), appState, board, pending, deps, submit };
 }
 
 describe("a failed rehearsal answer keeps the same card answerable", () => {
@@ -108,9 +109,9 @@ describe("a failed rehearsal answer keeps the same card answerable", () => {
     });
     expect(h.deps.setTrainBanner).toHaveBeenCalledWith("move", "Your move", "That answer didn't save. Play it again.");
     expect(h.deps.setStatusError).toHaveBeenCalledWith("Failed to fetch");
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainBusy).toBe(false);
     // Nothing was graded, so the card is still the one on screen.
-    expect(h.appState.training.prompt.session_id).toBe("sess-1");
+    expect(h.trainState.training.prompt.session_id).toBe("sess-1");
   });
 
   it("a late failure after the card advanced does not repaint the board", async () => {
@@ -118,7 +119,7 @@ describe("a failed rehearsal answer keeps the same card answerable", () => {
     const attempt = h.submit("e2e4");
     await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
     // The session moved on (another prompt) while the request was in flight.
-    h.appState.training = { prompt: { session_id: "sess-2", fen_before: FEN_BEFORE, legal_moves: [] } };
+    h.trainState.training = { prompt: { session_id: "sess-2", fen_before: FEN_BEFORE, legal_moves: [] } };
     h.pending.reject(Object.assign(new Error("Failed to fetch"), { status: 400 }));
     await attempt;
     expect(h.board.setPosition).not.toHaveBeenCalled();
@@ -131,7 +132,7 @@ describe("a failed rehearsal answer keeps the same card answerable", () => {
       const h = rehearsalHarness();
       const attempt = h.submit("e2e4");
       await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
-      if (change === "mode") h.appState.trainMode = "play";
+      if (change === "mode") h.trainState.trainMode = "play";
       else h.appState.accountUserId = "bob";
       h.pending.reject(Object.assign(new Error("Failed to fetch"), { status: 400 }));
       await attempt;

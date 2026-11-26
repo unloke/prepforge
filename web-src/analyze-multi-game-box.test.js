@@ -21,6 +21,7 @@ import { html } from "./html.js";
 import { parsePgn } from "./analyze-pgn.js";
 import { createAnalyzeView } from "./views/analyze.js";
 import { createBatchSwitcher } from "./analyze-batch.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -51,13 +52,13 @@ const sansOf = (pgn) => {
 
 function serializer({ pgn, analysis, varNodes = new Map() }) {
   const appState = { analysis, analysisVarNodes: varNodes };
-  const view = createAnalyzeView({ appState, START_FEN });
+  const view = createAnalyzeView({ ...asSlices(appState), START_FEN });
   return view.serializeAnalysisPgn(pgn);
 }
 
 function treeOf(pgn) {
   const appState = { analysisVarNodes: new Map(), analysis: null };
-  const view = createAnalyzeView({ appState, START_FEN });
+  const view = createAnalyzeView({ ...asSlices(appState), START_FEN });
   const parsed = parsePgn(pgn);
   const { moves, varNodes } = view.adaptParsedTree(parsed.root);
   return { view, moves, varNodes };
@@ -112,7 +113,7 @@ describe("serializeAnalysisPgn keeps one game's header block", () => {
 // here exactly as it is in production.
 function harness() {
   const viewState = { analysisVarNodes: new Map(), analysis: null };
-  const view = createAnalyzeView({ appState: viewState, START_FEN });
+  const view = createAnalyzeView({ ...asSlices(viewState), START_FEN });
   // The view's RENDERERS paint into the real DOM; the parse/tree/serialize code is
   // what this test exercises, so rendering is recorded rather than drawn.
   for (const name of ["renderAnalysisTree", "renderEvalChart", "renderReport", "renderAnalysis", "liveEvalChart"]) {
@@ -179,7 +180,7 @@ function harness() {
     };
   };
   const deps = {
-    html, appState, document: doc, START_FEN, parsePgn, ANALYSIS_ROOT_PATH: "root",
+    html, ...asSlices(appState), document: doc, START_FEN, parsePgn, ANALYSIS_ROOT_PATH: "root",
     isBrowserEngineAvailable: () => true,
     setStatus: vi.fn(), setStatusError: vi.fn(), setCoachProse: vi.fn(),
     notices: {
@@ -252,14 +253,14 @@ function harness() {
   const session = new Function(...Object.keys(params), `
     let analysisRecallSeq = 0;
     // The real rule: a new source ends the batch and bumps the epoch.
-    const invalidateAnalysisSource = () => { appState.analysisMultiPgn = null; return ++analysisRecallSeq; };
-    const switchBatchAnalysis = createBatchSwitcher({ appState, recallAnalysis, runAnalysis, invalidateAnalysisSource,
+    const invalidateAnalysisSource = () => { analysisState.analysisMultiPgn = null; return ++analysisRecallSeq; };
+    const switchBatchAnalysis = createBatchSwitcher({ analysisState, recallAnalysis, runAnalysis, invalidateAnalysisSource,
       sourceIsCurrent: seq => seq === analysisRecallSeq, isBusy: () => notices.isBusy(), setStatus });
     ${functions}
     return { runAnalysis, renderImportPicker, rebuildAnalysisVariations, loadPgnIntoAnalyze };
   `);
   const built = session(...Object.values(params));
-  return { ...built, appState, input, view, posts, prepared, pickerHost, select, deps: params };
+  return { ...built, ...asSlices(appState), appState, input, view, posts, prepared, pickerHost, select, deps: params };
 }
 
 describe("a multi-game paste analyzes one game at a time", () => {
@@ -267,12 +268,12 @@ describe("a multi-game paste analyzes one game at a time", () => {
     const h = harness();
     h.input.value = PASTE;
     await h.runAnalysis({ mode: "multi", selectIndex: 0 });
-    const displayed = h.appState.analysis;
+    const displayed = h.analysisState.analysis;
     h.deps.postJson.mockRejectedValueOnce(Object.assign(new Error("prepare failed"), { status: 500 }));
     h.select.value = "1";
     h.select.listeners.change();
     await vi.waitFor(() => expect(h.deps.notices.failJob).toHaveBeenCalledWith("prepare failed"));
-    expect(h.appState.analysis).toBe(displayed);
+    expect(h.analysisState.analysis).toBe(displayed);
     expect(h.input.value).toContain('[White "Alice"]');
     expect(h.select.disabled).toBe(false);
     expect(h.select.value).toBe("0");
@@ -302,13 +303,13 @@ describe("a multi-game paste analyzes one game at a time", () => {
     const running = h.runAnalysis();
     await saving;
     const study = treeOf(G1.replace("3. Bc4", "3. Bc4 (3. Bb5)"));
-    h.appState.analysisVarNodes = study.varNodes;
-    h.appState.analysisVarCounter = study.varNodes.size;
+    h.analysisState.analysisVarNodes = study.varNodes;
+    h.analysisState.analysisVarCounter = study.varNodes.size;
     const path = "e2e4-e7e5-d1h5-b8c6-f1b5";
-    h.appState.analysisNodePath = path;
+    h.analysisState.analysisNodePath = path;
     release(); await running;
-    expect(h.appState.analysisVarNodes).toBe(study.varNodes);
-    expect(h.appState.analysisVarNodes.size).toBe(1);
+    expect(h.analysisState.analysisVarNodes).toBe(study.varNodes);
+    expect(h.analysisState.analysisVarNodes.size).toBe(1);
     expect(h.deps.selectAnalysisNodePath).toHaveBeenCalledWith(path);
     expect(h.deps.notices.failJob).not.toHaveBeenCalled();
   });
@@ -325,18 +326,18 @@ describe("a multi-game paste analyzes one game at a time", () => {
     expect(h.input.value.match(/\[Event /g)).toHaveLength(1);
     expect(h.input.value).toContain('[Event "G1"]');
     expect(h.input.value).not.toContain('Event "G2"');
-    expect(h.appState.analysisSourcePgn).toContain('[Event "G1"]');
-    expect(h.appState.analysisSourcePgn).not.toContain('Event "G2"');
-    expect(h.appState.analysis.moves.map((m) => m.san)).toEqual(["e4", "e5", "Qh5", "Nc6", "Bc4", "g6"]);
+    expect(h.analysisState.analysisSourcePgn).toContain('[Event "G1"]');
+    expect(h.analysisState.analysisSourcePgn).not.toContain('Event "G2"');
+    expect(h.analysisState.analysis.moves.map((m) => m.san)).toEqual(["e4", "e5", "Qh5", "Nc6", "Bc4", "g6"]);
     // The paste is still reachable for the picker that was just rendered.
-    expect(h.appState.analysisMultiPgn.trim()).toBe(PASTE);
+    expect(h.analysisState.analysisMultiPgn.trim()).toBe(PASTE);
     expect(h.pickerHost.hidden).toBe(false);
 
     // Switch to game 2 through the picker's own change handler.
     h.select.value = "1";
     h.select.listeners.change();
     await vi.waitFor(() => expect(h.posts).toHaveLength(2));
-    await vi.waitFor(() => expect(h.appState.analysisSourcePgn).toContain('Event "G2"'));
+    await vi.waitFor(() => expect(h.analysisState.analysisSourcePgn).toContain('Event "G2"'));
     // The POST is the paste (the server indexes into it), never the one-game box.
     expect(h.posts[1]).toMatchObject({ mode: "multi", select_index: 1 });
     expect(h.posts[1].pgn).toBe(PASTE);
@@ -344,9 +345,9 @@ describe("a multi-game paste analyzes one game at a time", () => {
     expect(h.input.value).toContain('[Event "G2"]');
     expect(h.input.value).not.toContain('Event "G1"');
     expect(sansOf(h.input.value)).toEqual(["d4", "d5", "c4", "e6"]);
-    expect(h.appState.analysis.moves.map((m) => m.san)).toEqual(["d4", "d5", "c4", "e6"]);
-    expect(h.appState.analysisSourcePgn).toContain('[Event "G2"]');
-    expect(h.appState.analysisVarNodes.size).toBe(0);
+    expect(h.analysisState.analysis.moves.map((m) => m.san)).toEqual(["d4", "d5", "c4", "e6"]);
+    expect(h.analysisState.analysisSourcePgn).toContain('[Event "G2"]');
+    expect(h.analysisState.analysisVarNodes.size).toBe(0);
   });
 
   it("a single-mode re-run of the box after a multi run keeps the selected game's tags and moves", async () => {
@@ -362,7 +363,7 @@ describe("a multi-game paste analyzes one game at a time", () => {
     expect(h.posts.at(-1).pgn).toContain('[Event "G2"]');
     expect(h.posts.at(-1).pgn).not.toContain('Event "G1"');
     expect(sansOf(h.posts.at(-1).pgn)).toEqual(["d4", "d5", "c4", "e6"]);
-    expect(h.appState.analysis.moves.map((m) => m.san)).toEqual(["d4", "d5", "c4", "e6"]);
+    expect(h.analysisState.analysis.moves.map((m) => m.san)).toEqual(["d4", "d5", "c4", "e6"]);
   });
 
   it("a picker left on screen cannot post an index into a box that no longer holds the paste", async () => {
@@ -370,7 +371,7 @@ describe("a multi-game paste analyzes one game at a time", () => {
     h.input.value = PASTE;
     await h.runAnalysis({ mode: "multi", selectIndex: 0 });
     // A new source (a paste, a recall, an account switch) ends the batch.
-    h.appState.analysisMultiPgn = null;
+    h.analysisState.analysisMultiPgn = null;
     h.select.value = "1";
     h.select.listeners.change();
     expect(h.posts).toHaveLength(1);

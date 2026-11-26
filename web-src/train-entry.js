@@ -1,4 +1,4 @@
-import { appState, boards } from "./core/state.js";
+import { buildState, trainState, boards } from "./core/state.js";
 import { hooks } from "./core/hooks.js";
 import { syncChipVariant } from "./sync-chip.js";
 import { isBuildReadOnly } from "./build-entry.js";
@@ -18,7 +18,7 @@ export function createTrainEntry(deps) {
   };
 }
 export function setBuildSync(state) {
-  appState.buildSyncState = state;
+  buildState.buildSyncState = state;
   renderBuildSync();
 }
 
@@ -39,7 +39,7 @@ export function renderSyncChip(el, state, scope = "repertoire") {
   if (el.dataset && !el.dataset.authBound && typeof el.addEventListener === "function") {
     el.dataset.authBound = "true";
     const signIn = () => {
-      const current = scope === "training" ? appState.trainSyncState : appState.buildSyncState;
+      const current = scope === "training" ? trainState.trainSyncState : buildState.buildSyncState;
       if (current === "blocked") hooks.authRequired?.();
     };
     el.addEventListener("click", signIn);
@@ -61,11 +61,11 @@ export function renderBuildSync() {
     if (!el) continue;
     // Nothing to show without an editable repertoire (read-only shared view =
     // no local edits ever happen).
-    if (!appState.build || isBuildReadOnly()) {
+    if (!buildState.build || isBuildReadOnly()) {
       el.hidden = true;
       continue;
     }
-    renderSyncChip(el, appState.buildSyncState);
+    renderSyncChip(el, buildState.buildSyncState);
     shown = true;
   }
   return shown;
@@ -88,13 +88,13 @@ export async function ensureTrainView() {
   const mod = await preloadTrainView();
   if (!trainView) {
     trainView = mod.createTrainView({
-      appState,
+      trainState,
       boards,
       renderSyncChip,
       setTrainBanner,
       updateTrainTurnBadge,
       onStreakRendered: (streak) => {
-        const s = appState.trainStats;
+        const s = trainState.trainStats;
         if (s) s.lastStreak = streak;
       },
     });
@@ -105,18 +105,18 @@ export async function ensureTrainView() {
 // Train's counterpart chip (same look/classes): visible during a smart session
 // or while abandoned-session attempts still wait to land.
 export function setTrainSyncState(state) {
-  appState.trainSyncState = state;
+  trainState.trainSyncState = state;
   void renderTrainSync().catch(() => {});
 }
 
 export async function renderTrainSync() {
   const el = document.getElementById("train-sync");
   if (!el) return;
-  const sync = appState.trainSync;
+  const sync = trainState.trainSync;
   // Nothing to say without a session or pending work, and nothing to say while
   // the debounce simply waits: "Saving progress soon" sat there for seconds at
   // a time between answers.
-  if (!appState.smart && !sync.pending.length && !sync.dirty) {
+  if (!trainState.smart && !sync.pending.length && !sync.dirty) {
     el.hidden = true;
     return;
   }

@@ -1,7 +1,8 @@
 import { stockfishBudget } from "./compute-budget.js";
 import { loadEngineModule, EngineAssetError } from "./engine-assets.js";
 
-import { usableEngineProfile, subscribeUsableEngineProfile, engineStarted, guardEngineStartup, reserveEngineMemory, reportEngineFailure } from "./engine-profile.js";
+import { usableEngineProfile, subscribeUsableEngineProfile, engineStarted, guardEngineStartup, reserveEngineMemory, reportEngineFailure,
+  setProbeEngine } from "./engine-profile.js";
 
 // Both threaded builds are same-origin; pthread workers resolve WASM beside the script.
 export const STOCKFISH = globalThis.__STOCKFISH__;
@@ -41,6 +42,8 @@ function uid() {
 }
 
 const defaultCreateWorker = url => new Worker(url);
+// Detect's probe runs outside the profile and the compute budget it is measuring.
+setProbeEngine(opts => createStockfishWasmProvider({ ...opts, computeBudget: null, profileManaged: false }));
 
 export function createStockfishWasmProvider({
   maxDepth = DEFAULT_MAX_DEPTH,

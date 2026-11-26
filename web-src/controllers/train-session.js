@@ -29,7 +29,7 @@ import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, pl
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
 import { restoreRehearsal, saveRehearsal } from "../train-rehearsal.js";
-import { appState, boards, notices, START_FEN } from "../core/state.js";
+import { appState, buildState, trainState, boards, notices, START_FEN } from "../core/state.js";
 import { api, currentOwnerId, localDateString, postJson, setStatus, setStatusError, sleep } from "../core/api.js";
 import { effectiveMaiaRating } from "../core/prefs.js";
 import { playSound } from "../core/sound.js";
@@ -45,7 +45,7 @@ import { accountService, flushTrainSync, hardFlushBuild, loadPgnIntoAnalyze, mar
 // The session's answer-recovery flow (train-recovery.js), bound to the
 // session functions it repaints through.
 const trainRecovery = createTrainRecovery({
-  api, appState, boards, currentOwnerId, notices, setStatus, setStatusError,
+  api, appState, trainState, boards, currentOwnerId, notices, setStatus, setStatusError,
   setTrainBanner, syncTrainSessionControls, renderTraining, finishTrainingSession,
 });
 
@@ -76,36 +76,36 @@ export function setBlitzEnabled(on) {
 // Binds Train's Home screen (once, when app.js first loads Train) and returns
 // the entry points the shell calls.
 export function createTrainSession() {
-  const home = createTrainHome();
+  const entries = { clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession,
+    setBlitzBarVisible, skipTrainingLine, startPlaySessionTracked, startTraining, takebackPlaySession, trainHint };
+  const home = createTrainHome({ ...entries, blitzEnabled, setBlitzEnabled });
   return {
-    clearBlitzTimer, loadTrainRepertoireOptions, onFeelingLucky, openPlayInAnalyze, openTrain: home.openTrain,
-    resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setPlayPickerColor,
-    skipTrainingLine, startPlaySessionTracked, startTraining, submitTrainingMove,
-    syncTrainControls: syncTrainSessionControls, takebackPlaySession, trainHint,
+    ...entries, loadTrainRepertoireOptions, openTrain: home.openTrain, setPlayPickerColor, submitTrainingMove,
+    syncTrainControls: syncTrainSessionControls,
   };
 }
 
 export async function skipTrainingLine() {
-  if (appState.play && appState.play.active) {
+  if (trainState.play && trainState.play.active) {
     setStatus("Skip is for the spaced-repetition queue. Start or Random position to change position.");
     return;
   }
-  if (appState.smart) {
+  if (trainState.smart) {
     await skipSmartCard();
     return;
   }
-  if (appState.trainBusy) return;
+  if (trainState.trainBusy) return;
   const prompt = currentTrainingPrompt();
   if (!prompt) {
     setStatus("No active training line");
     return;
   }
-  const training = appState.training;
+  const training = trainState.training;
   const owner = currentOwnerId();
-  const mode = appState.trainMode;
-  const stillCurrent = () => appState.training === training && !appState.smart
-    && currentOwnerId() === owner && appState.trainMode === mode;
-  appState.trainBusy = true;
+  const mode = trainState.trainMode;
+  const stillCurrent = () => trainState.training === training && !trainState.smart
+    && currentOwnerId() === owner && trainState.trainMode === mode;
+  trainState.trainBusy = true;
   syncTrainSessionControls();
   let result;
   try {
@@ -116,11 +116,11 @@ export async function skipTrainingLine() {
     return;
   }
   if (!stillCurrent()) return;
-  appState.trainStats.skipped += 1;
-  appState.trainAttempt = 1;
-  appState.trainBusy = false;
+  trainState.trainStats.skipped += 1;
+  trainState.trainAttempt = 1;
+  trainState.trainBusy = false;
   if (result.prompt) {
-    appState.training.prompt = result.prompt;
+    trainState.training.prompt = result.prompt;
     await renderTraining(result.prompt);
   } else {
     finishTrainingSession();
@@ -129,16 +129,16 @@ export async function skipTrainingLine() {
 }
 
 function applyTrainingPromptState(prompt) {
-  if (appState.training) appState.training.prompt = prompt;
-  appState.trainHintLevel = 0;
-  appState.trainHintInfo = null;
+  if (trainState.training) trainState.training.prompt = prompt;
+  trainState.trainHintLevel = 0;
+  trainState.trainHintInfo = null;
 }
 
 async function renderTraining(payloadOrPrompt, options) {
   const prompt = payloadOrPrompt?.prompt || payloadOrPrompt;
   if (!prompt) return;
   applyTrainingPromptState(prompt);
-  saveRehearsal(currentOwnerId(), appState.training, appState.trainStats, appState.trainAttempt);
+  saveRehearsal(currentOwnerId(), trainState.training, trainState.trainStats, trainState.trainAttempt);
   const out = await (await ensureTrainView()).renderTraining(prompt, options);
   syncTrainSessionControls();
   return out;
@@ -153,13 +153,13 @@ async function renderSmartProgress(prompt) {
 function syncTrainSessionControls() {
   const banner = document.getElementById("train-banner");
   const state = banner && banner.dataset.state;
-  const busy = !!appState.trainBusy;
+  const busy = !!trainState.trainBusy;
   const teaching = state === "teach" || state === "reveal" || state === "runin";
   document.getElementById("train-hint").disabled = busy || teaching;
   document.getElementById("train-skip").disabled = busy;
-  const history = appState.play && appState.play.history;
+  const history = trainState.play && trainState.play.history;
   document.getElementById("play-takeback").disabled = !(history && history.length);
-  document.getElementById("play-resign").disabled = !(appState.play && appState.play.active);
+  document.getElementById("play-resign").disabled = !(trainState.play && trainState.play.active);
   syncTrainScreen();
   syncViewHeads();
 }
@@ -196,26 +196,26 @@ function tallyAnswer(stats, recalled) {
 }
 
 function trainStatsReset() {
-  appState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0, learned: 0, learnedRetry: 0, startedAt: Date.now() };
+  trainState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0, learned: 0, learnedRetry: 0, startedAt: Date.now() };
 }
 
-function cancelStaleTrainStart(options) { if (!appState.trainStarting || appState.trainStartToken !== options.entryToken) return; appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", ""); syncTrainSessionControls(); }
+function cancelStaleTrainStart(options) { if (!trainState.trainStarting || trainState.trainStartToken !== options.entryToken) return; trainState.trainStarting = false; trainState.trainStartToken = null; setTrainBanner("move", "", ""); syncTrainSessionControls(); }
 
 function sideToMoveFromFen(fen) {
   return (fen || "").split(" ")[1] === "b" ? "black" : "white";
 }
 
 export async function startTraining(mode, options = {}) {
-  mode = mode || appState.trainMode || "smart";
+  mode = mode || trainState.trainMode || "smart";
   // Practice game starts via startPlaySession; never post "play" to /api/train/start (422).
   if (mode === "play") return;
-  appState.trainMode = mode;
-  appState.trainResult = null;
+  trainState.trainMode = mode;
+  trainState.trainResult = null;
   // Training runs against your own repertoires and review schedule, so a
   // guest gets the sign-in gate — not a "Nothing to train yet" that blames an
   // empty repertoire and a raw "not authenticated".
   if (!appState.signedIn) {
-    appState.trainStarting = false;
+    trainState.trainStarting = false;
     syncTrainSessionControls();
     requireSignIn("Sign in to start training", "train");
     return;
@@ -227,17 +227,17 @@ export async function startTraining(mode, options = {}) {
   // ----- line rehearsal (all_lines) below -----
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
-  const entryCurrent = options.isCurrent || (() => true), isCurrent = () => entryCurrent() && seq === smartStartSeq && owner === currentOwnerId() && appState.trainMode === mode;
-  appState.smart = null;
+  const entryCurrent = options.isCurrent || (() => true), isCurrent = () => entryCurrent() && seq === smartStartSeq && owner === currentOwnerId() && trainState.trainMode === mode;
+  trainState.smart = null;
   clearBlitzTimer();
   setBlitzBarVisible(false);
   // A caller that names the repertoire (a deep link, a repertoire's own Train
   // action) is the source of truth; otherwise Start follows the Home row.
-  const repertoireId = options.repertoireId || appState.trainingRepertoireId;
-  appState.trainingRepertoireId = repertoireId;
+  const repertoireId = options.repertoireId || trainState.trainingRepertoireId;
+  trainState.trainingRepertoireId = repertoireId;
   const failed = (text) => {
-    appState.trainStarting = false;
-    appState.training = null;
+    trainState.trainStarting = false;
+    trainState.training = null;
     trainRowError(mode, text);
     syncTrainSessionControls();
   };
@@ -259,18 +259,18 @@ export async function startTraining(mode, options = {}) {
     const payload = await postJson("/api/train/start", body);
     if (!isCurrent()) return cancelStaleTrainStart(options);
     if (!payload.prompt) return failed("No moves to rehearse. Add lines in Repertoire.");
-    appState.training = payload;
-    appState.trainAttempt = 1;
+    trainState.training = payload;
+    trainState.trainAttempt = 1;
     trainStatsReset();
     const saved = !fresh && restoreRehearsal(currentOwnerId(), payload);
     if (saved) {
-      appState.trainStats = saved.stats;
-      appState.trainAttempt = saved.attempt;
+      trainState.trainStats = saved.stats;
+      trainState.trainAttempt = saved.attempt;
     }
     if (boards.train && payload.color) {
       boards.train.setOrientation(payload.color === "black" ? "black" : "white");
     }
-    appState.trainStarting = false;
+    trainState.trainStarting = false;
     await renderTrainStats();
     await renderTraining(payload);
     syncWorkspaceUrl();
@@ -281,7 +281,7 @@ export async function startTraining(mode, options = {}) {
 }
 
 function playBookLabel(play) {
-  const session = play || appState.play;
+  const session = play || trainState.play;
   const book = playBookName(session && session.book);
   const color = session && session.userColor === "black" ? "Black" : "White";
   const they = session && session.lastOppSan ? ` · they ${session.lastOppSan}` : "";
@@ -296,7 +296,7 @@ function playBookLabel(play) {
 function renderPlayTrail() {
   const el = document.getElementById("train-play-trail");
   if (!el) return;
-  const play = appState.play;
+  const play = trainState.play;
   const rows = play ? playTrailRows(play.history, play.startFen) : [];
   el.hidden = !play;
   // A score sheet: the number, White's move, Black's move. Inline on a phone,
@@ -309,7 +309,7 @@ function renderPlayTrail() {
 }
 
 function recordPlayPly(ply) {
-  const play = appState.play;
+  const play = trainState.play;
   if (!play) return;
   play.history = play.history || [];
   play.history.push(ply);
@@ -317,8 +317,8 @@ function recordPlayPly(ply) {
 }
 
 function playChildren(nodeId) {
-  if (!appState.build || !nodeId) return [];
-  return (appState.build.nodes || []).filter(
+  if (!buildState.build || !nodeId) return [];
+  return (buildState.build.nodes || []).filter(
     (node) => node.parent_id === nodeId && node.is_enabled !== false && node.uci,
   );
 }
@@ -390,7 +390,7 @@ function playRepertoireReplies(play, legalUcis) {
 }
 
 function playAdvanceNode(uci) {
-  const play = appState.play;
+  const play = trainState.play;
   if (!play) return {};
   const before = playCursorSnapshot(play);
   if (play.repertoires?.length) {
@@ -474,15 +474,15 @@ function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, stat
 // Start a practice game and remember the in-flight start, so a move made on the
 // board while it sets up is played into the new game instead of being dropped.
 export function startPlaySessionTracked(options) {
-  appState.trainStarting = true;
+  trainState.trainStarting = true;
   const pending = startPlaySession(options).finally(() => {
-    if (appState.playStarting === pending) {
-      appState.playStarting = null;
-      appState.trainStarting = false;
+    if (trainState.playStarting === pending) {
+      trainState.playStarting = null;
+      trainState.trainStarting = false;
       syncTrainScreen();
     }
   });
-  appState.playStarting = pending;
+  trainState.playStarting = pending;
   syncTrainScreen();
   return pending;
 }
@@ -496,12 +496,12 @@ async function startPlaySession({
   black: luckyBlack,
   sourceUrl: luckySourceUrl,
 } = {}) {
-  if (appState.trainMode !== "play") return false;
-  const startToken = appState.playStartToken = (appState.playStartToken || 0) + 1;
-  const isCurrentStart = () => appState.playStartToken === startToken && appState.trainMode === "play";
-  appState.smart = null;
-  appState.training = null;
-  appState.trainResult = null;
+  if (trainState.trainMode !== "play") return false;
+  const startToken = trainState.playStartToken = (trainState.playStartToken || 0) + 1;
+  const isCurrentStart = () => trainState.playStartToken === startToken && trainState.trainMode === "play";
+  trainState.smart = null;
+  trainState.training = null;
+  trainState.trainResult = null;
   const startFen = fen || START_FEN;
   const book = playBook();
   let nodeId = null;
@@ -563,7 +563,7 @@ async function startPlaySession({
     return false;
   }
   if (!isCurrentStart()) return false;
-  appState.play = {
+  trainState.play = {
     active: true,
     fen: info.fen,
     startFen: info.fen,
@@ -604,7 +604,7 @@ async function startPlaySession({
     banner: sideToMoveFromFen(info.fen) === userColor ? "Your move" : "Opponent thinking…",
     state: "idle",
     sub: `${why}${luckyMeta}`,
-    label: playBookLabel(appState.play),
+    label: playBookLabel(trainState.play),
   });
   renderPlayTrail();
   syncTrainSessionControls();
@@ -625,12 +625,12 @@ function playThinkingSub(play) {
 }
 
 async function playOpponentReply() {
-  const play = appState.play;
+  const play = trainState.play;
   if (!play || !play.active) return;
   const fen = play.fen;
   const seq = (play.replySeq || 0) + 1;
   play.replySeq = seq;
-  const isCurrent = () => appState.play === play && play.active && play.fen === fen && play.replySeq === seq;
+  const isCurrent = () => trainState.play === play && play.active && play.fen === fen && play.replySeq === seq;
   const info = await boardInfo(fen);
   if (!isCurrent()) return;
   const alreadyOver = playPositionAfterReply(info);
@@ -744,17 +744,17 @@ async function playOpponentReply() {
 }
 
 const submitPlayMove = createPlayMoveHandler({
-  appState, boards, advanceNode: playAdvanceNode, recordPly: recordPlayPly,
+  trainState, boards, advanceNode: playAdvanceNode, recordPly: recordPlayPly,
   cursorSnapshot: playCursorSnapshot, endGame: endPlayGame, opponentReply: playOpponentReply,
 });
 
 export async function onFeelingLucky() {
-  const run = beginLuckyDiscovery(appState);
+  const run = beginLuckyDiscovery(trainState);
   if (!run) return;
   try {
     return await runFeelingLuckyClick(run);
   } finally {
-    finishLuckyDiscovery(appState, run);
+    finishLuckyDiscovery(trainState, run);
   }
 }
 
@@ -763,7 +763,7 @@ export async function onFeelingLucky() {
 // it because that fallback and the resulting session need an account; the
 // sign-in modal is transient, so tab navigation dismisses it.
 async function runFeelingLuckyClick(run) {
-  const luckyCurrent = () => luckyDiscoveryCurrent(appState, run);
+  const luckyCurrent = () => luckyDiscoveryCurrent(trainState, run);
   if (!appState.accountUsername) {
     try {
       await refreshAuthStatus();
@@ -783,14 +783,14 @@ async function runFeelingLuckyClick(run) {
     await runFeelingLucky({
       signal: run.controller.signal,
       storage: typeof localStorage === "undefined" ? null : localStorage,
-      exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
+      exclude: [trainState.lastLuckyFen, trainState.play && trainState.play.startFen].filter(Boolean),
       rating: effectiveMaiaRating(),
       ensureExplorer: ensureExplorerClient,
       onStatus: (...args) => luckyCurrent() && setStatus(...args),
       setBanner: (...args) => luckyCurrent() && setTrainBanner(...args),
       startSession: async (session) => {
         if (!luckyCurrent()) return false;
-        appState.lastLuckyFen = session.fen;
+        trainState.lastLuckyFen = session.fen;
         return startPlaySessionTracked(session);
       },
     });
@@ -802,7 +802,7 @@ async function runFeelingLuckyClick(run) {
 }
 
 export async function takebackPlaySession() {
-  const play = appState.play;
+  const play = trainState.play;
   if (!play || !play.history || !play.history.length) return;
   play.premove = null;
   boards.train.setPremove(null);
@@ -839,7 +839,7 @@ export async function takebackPlaySession() {
 }
 
 export function resignPlaySession() {
-  const play = appState.play;
+  const play = trainState.play;
   if (!play || !play.active) return;
   play.result = play.userColor === "black" ? "1-0" : "0-1";
   const last = play.history && play.history[play.history.length - 1];
@@ -850,7 +850,7 @@ export function resignPlaySession() {
 // Every way a practice game ends goes to the shared Result card.
 // A game that could not go on (no opponent) names why and is not a run.
 function endPlayGame(title, failure = "") {
-  const play = appState.play;
+  const play = trainState.play;
   if (!play) return;
   play.premove = null;
   boards.train.setPremove(null);
@@ -870,7 +870,7 @@ function endPlayGame(title, failure = "") {
   showTrainResult({ ...playResult(play), runId: `play:${play.startedAt}` });
 }
 
-export async function openPlayInAnalyze(play = appState.play) {
+export async function openPlayInAnalyze(play = trainState.play) {
   if (!play?.pgn && !play?.history?.length) return;
   const owner = currentOwnerId(), generation = appState.ownerGeneration;
   const sourceSeq = invalidateAnalysisSource();
@@ -897,7 +897,7 @@ export async function openPlayInAnalyze(play = appState.play) {
 // Another repertoire move at this position is prep, not a miss: it lands,
 // slides back, and the same prompt reopens ungraded (Due and Rehearse alike).
 async function answerAlternative({ fen, playedUci, san, still, reopen }) {
-  appState.trainBusy = true;
+  trainState.trainBusy = true;
   await optimisticBoardMove(boards.train, fen, playedUci, false);
   setTrainBanner("review", "Also in your repertoire", `${san} is your prep too. This card drills another move.`);
   await sleep(900);
@@ -906,47 +906,47 @@ async function answerAlternative({ fen, playedUci, san, still, reopen }) {
     await reopen();
   } finally {
     if (still()) {
-      appState.trainBusy = false;
+      trainState.trainBusy = false;
       syncTrainSessionControls();
     }
   }
 }
 
 async function submitTrainingMove(playedUci) {
-  if ((appState.trainMode || "smart") === "play") {
-    if (!(appState.play && appState.play.active)) {
+  if ((trainState.trainMode || "smart") === "play") {
+    if (!(trainState.play && trainState.play.active)) {
       // A move made while Start is still setting up, or on the idle start board,
       // opens the game with that move rather than vanishing.
-      if (appState.playStarting) {
-        const pending = appState.playStarting;
-        if (!await pending || appState.trainMode !== "play") return;
+      if (trainState.playStarting) {
+        const pending = trainState.playStarting;
+        if (!await pending || trainState.trainMode !== "play") return;
       }
-      else if (!appState.play && playPickerColor() === "white") await startPlaySessionTracked();
+      else if (!trainState.play && playPickerColor() === "white") await startPlaySessionTracked();
     }
-    if (appState.play && appState.play.active) return submitPlayMove(playedUci);
+    if (trainState.play && trainState.play.active) return submitPlayMove(playedUci);
     return;
   }
-  if (appState.smart) {
+  if (trainState.smart) {
     return submitSmartMove(playedUci);
   }
   const prompt = currentTrainingPrompt();
-  if (!prompt || !playedUci || appState.trainBusy) return;
+  if (!prompt || !playedUci || trainState.trainBusy) return;
   // A mode switch, another account, or a smart session replaces the training
   // state; every await below re-checks it so an abandoned rehearsal never paints
   // onto whatever took the board (a late failure included).
-  const training = appState.training;
+  const training = trainState.training;
   const owner = currentOwnerId();
-  const mode = appState.trainMode;
-  const superseded = () => appState.training !== training || appState.smart
-    || currentOwnerId() !== owner || appState.trainMode !== mode;
+  const mode = trainState.trainMode;
+  const superseded = () => trainState.training !== training || trainState.smart
+    || currentOwnerId() !== owner || trainState.trainMode !== mode;
   // Land the dragged move on the board right away; the server response below
   // decides whether it advances (correct) or resets (wrong), and its right/wrong
   // cue covers the move, so the landing itself stays quiet.
   await optimisticBoardMove(boards.train, prompt.fen_before, playedUci, false);
   // An answer after a hint advances the line and grades Hard. Only the first
   // attempt at a prompt is graded (the shared wrong-move rule).
-  const hinted = appState.trainHintLevel > 0;
-  const attempt = appState.trainAttempt || 1;
+  const hinted = trainState.trainHintLevel > 0;
+  const attempt = trainState.trainAttempt || 1;
   let result;
   try {
     result = await api("/api/train/move", {
@@ -969,24 +969,24 @@ async function submitTrainingMove(playedUci) {
   }
   if (result.day_streak) appState.dayStreak = result.day_streak;
   if (result.alternative) {
-    const hintLevel = appState.trainHintLevel;
+    const hintLevel = trainState.trainHintLevel;
     return answerAlternative({
       fen: prompt.fen_before, playedUci, san: result.played_san || playedUci, still: () => !superseded(),
       reopen: async () => {
         await renderTraining(result.prompt || prompt, { keepBanner: true });
-        appState.trainHintLevel = hintLevel;
+        trainState.trainHintLevel = hintLevel;
         if (attempt >= 3) boards.train.setEngineArrow(prompt.expected_uci);
       },
     });
   }
-  const stats = appState.trainStats || (trainStatsReset(), appState.trainStats);
+  const stats = trainState.trainStats || (trainStatsReset(), trainState.trainStats);
 
   if (!result.correct) {
     if (attempt === 1) {
       tallyAnswer(stats, false);
       await renderTrainStats();
     }
-    appState.trainBusy = true;
+    trainState.trainBusy = true;
     let playedSan = result.played_san || "";
     try {
       const after = await boardAfterMove(prompt.fen_before, playedUci);
@@ -998,21 +998,21 @@ async function submitTrainingMove(playedUci) {
     playSound("wrong");
     const banner = wrongMoveBanner({ attempt, playedSan, expectedSan: result.expected_san });
     setTrainBanner(banner.state, banner.title, banner.sub);
-    if (appState.training) appState.training.prompt = result.prompt;
+    if (trainState.training) trainState.training.prompt = result.prompt;
     await sleep(950);
     if (superseded()) return;
-    appState.trainBusy = false;
-    appState.trainAttempt = attempt + 1;
+    trainState.trainBusy = false;
+    trainState.trainAttempt = attempt + 1;
     if (result.prompt) await renderTraining(result.prompt, { keepBanner: true });
     if (attempt >= 2) boards.train.setEngineArrow(result.expected_uci);
     return;
   }
-  appState.trainAttempt = 1;
+  trainState.trainAttempt = 1;
   // An answer played after a miss or the reveal moves on and scores nothing.
   if (attempt === 1) tallyAnswer(stats, !hinted);
   await renderTrainStats();
-  if (appState.training) appState.training.prompt = result.prompt;
-  appState.trainBusy = true;
+  if (trainState.training) trainState.training.prompt = result.prompt;
+  trainState.trainBusy = true;
   boards.train.setEngineArrow(null);
 
   // 1) Land the player's own move on the board (board animates), then the
@@ -1042,7 +1042,7 @@ async function submitTrainingMove(playedUci) {
   }
   if (superseded()) return;
 
-  appState.trainBusy = false;
+  trainState.trainBusy = false;
   if (result.prompt) {
     await renderTraining(result.prompt);
   } else {
@@ -1051,10 +1051,10 @@ async function submitTrainingMove(playedUci) {
 }
 
 function finishTrainingSession() {
-  const training = appState.training;
-  const stats = appState.trainStats;
+  const training = trainState.training;
+  const stats = trainState.trainStats;
   if (training) training.prompt = null;
-  saveRehearsal(currentOwnerId(), training, stats, appState.trainAttempt);
+  saveRehearsal(currentOwnerId(), training, stats, trainState.trainAttempt);
   boards.train.setEngineArrow(null);
   updateTrainTurnBadge(null);
   document.getElementById("train-board-label").textContent = "";
@@ -1094,7 +1094,7 @@ function celebrate() {
 // Progressive hint: idea, piece, full answer (with arrow). Each click reveals
 // one more level, so it teaches rather than just spoiling the move.
 export async function trainHint() {
-  if (appState.smart) {
+  if (trainState.smart) {
     smartHint();
     return;
   }
@@ -1105,28 +1105,28 @@ export async function trainHint() {
   }
   // One hint read per position: clicks made while it is in flight wait on the
   // same read and each still reveals one more level.
-  let pending = appState.trainHintInfo;
+  let pending = trainState.trainHintInfo;
   if (!pending || pending.forFen !== prompt.fen_before) {
-    pending = appState.trainHintInfo = {
+    pending = trainState.trainHintInfo = {
       forFen: prompt.fen_before,
       read: postJson("/api/train/hint", { session_id: prompt.session_id }),
     };
-    appState.trainHintLevel = 0;
+    trainState.trainHintLevel = 0;
   }
   let info;
   try {
     info = await pending.read;
   } catch (error) {
-    if (appState.trainHintInfo === pending) appState.trainHintInfo = null;
+    if (trainState.trainHintInfo === pending) trainState.trainHintInfo = null;
     setStatusError(error.message);
     return;
   }
-  if (appState.trainHintInfo === pending) showHint(info);
+  if (trainState.trainHintInfo === pending) showHint(info);
 }
 
 // Reveal the next hint level on the board and banner; returns its line.
 function showHint({ strategy, piece, expected_uci: uci, expected_san: san }) {
-  const level = appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
+  const level = trainState.trainHintLevel = Math.min(3, (trainState.trainHintLevel || 0) + 1);
   const text = level === 1 ? strategy || "Follow your preparation"
     : level === 2 ? piece || "Find the move"
       : san ? `Play ${san}` : "Here it is";
@@ -1138,7 +1138,7 @@ function showHint({ strategy, piece, expected_uci: uci, expected_san: san }) {
 }
 
 function currentTrainingPrompt() {
-  return appState.training ? appState.training.prompt : null;
+  return trainState.training ? trainState.training.prompt : null;
 }
 
 // Mount/unmount the clock for a whole session. During a blitz session the bar
@@ -1149,9 +1149,9 @@ export function setBlitzBarVisible(on) {
 }
 
 export function clearBlitzTimer() {
-  if (appState.blitzTimer) {
-    window.clearTimeout(appState.blitzTimer);
-    appState.blitzTimer = null;
+  if (trainState.blitzTimer) {
+    window.clearTimeout(trainState.blitzTimer);
+    trainState.blitzTimer = null;
   }
   hideBlitzClock();
 }
@@ -1159,9 +1159,9 @@ export function clearBlitzTimer() {
 function startBlitzTimer(smart, prompt) {
   clearBlitzTimer();
   showBlitzClock(BLITZ_SECONDS);
-  appState.blitzTimer = window.setTimeout(() => {
-    appState.blitzTimer = null;
-    const current = appState.smart;
+  trainState.blitzTimer = window.setTimeout(() => {
+    trainState.blitzTimer = null;
+    const current = trainState.smart;
     // Fire only when this exact first attempt is still waiting on screen;
     // a backgrounded tab or a navigated-away view forfeits the clock, not
     // the card.
@@ -1169,7 +1169,7 @@ function startBlitzTimer(smart, prompt) {
       current === smart &&
       current.prompt === prompt &&
       current.attempt === 1 &&
-      !appState.trainBusy &&
+      !trainState.trainBusy &&
       appState.currentView === "train" &&
       !document.hidden;
     clearBlitzTimer();
@@ -1184,11 +1184,11 @@ let smartStartSeq = 0;
 async function startSmartTraining(options = {}) {
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
-  const entryCurrent = options.isCurrent || (() => true), isCurrent = () => entryCurrent() && seq === smartStartSeq && owner === currentOwnerId() && (appState.trainMode || "smart") === "smart";
+  const entryCurrent = options.isCurrent || (() => true), isCurrent = () => entryCurrent() && seq === smartStartSeq && owner === currentOwnerId() && (trainState.trainMode || "smart") === "smart";
   const fresh = !!options.fresh;
-  appState.trainResult = null;
+  trainState.trainResult = null;
   const failed = (text) => {
-    appState.trainStarting = false;
+    trainState.trainStarting = false;
     if (text) trainRowError("smart", text);
     syncTrainSessionControls();
   };
@@ -1224,7 +1224,7 @@ async function startSmartTraining(options = {}) {
     trainResume = resumeLoaded.value;
     if (memoLoaded.status === "fulfilled") trainSessionMemo = memoLoaded.value;
     // The scope is explicit: the entry's repertoire, else the Due row's scope.
-    const repertoireId = options.repertoireId || appState.trainScope?.repertoireId || null;
+    const repertoireId = options.repertoireId || trainState.trainScope?.repertoireId || null;
     payload = await postJson("/api/train/smart/start", {
       mixed: !repertoireId,
       fresh: fresh || !!targets.length,
@@ -1245,15 +1245,15 @@ async function startSmartTraining(options = {}) {
   // The URL names the repertoire the queue drills; a mixed queue drills all of
   // them, so it names none. Keeping the anchor here would write ?rep=<anchor>
   // into a Train link that is not about that repertoire.
-  appState.trainingRepertoireId = payload.mixed ? null : payload.repertoire_id;
+  trainState.trainingRepertoireId = payload.mixed ? null : payload.repertoire_id;
   const mapped = trainResume.mapTrainUiSession(payload, { fresh });
   // A resumed session without a memo must not inherit unrelated counters.
   trainStatsReset();
   invalidateTrainPreview(); // the queue it described is being played now
-  appState.training = null; // leave line rehearsal if it was active
+  trainState.training = null; // leave line rehearsal if it was active
   // A restart can interrupt an in-flight run-in; its early-return leaves the
   // busy flag set, so clear it before the new session takes the board.
-  appState.trainBusy = false;
+  trainState.trainBusy = false;
   clearBlitzTimer();
   // The whole session runs locally off this card bundle (grading, advancement,
   // requeue, skip); only graded attempts + the position sync back, batched.
@@ -1262,7 +1262,7 @@ async function startSmartTraining(options = {}) {
     failed("Nothing to train here. Add lines in Repertoire.");
     return;
   }
-  appState.smart = {
+  trainState.smart = {
     sessionId: mapped.sessionId,
     generation: mapped.generation,
     // The position sync's token: without it the server never applies the
@@ -1292,7 +1292,7 @@ async function startSmartTraining(options = {}) {
   };
   // A reload resumes at the server's card index; bring back this session's
   // own first-try stats and starting health so the summary covers all of it.
-  appState.trainStats = trainSessionMemo?.restoreSmartSession(currentOwnerId(), mapped, appState.smart) || appState.trainStats;
+  trainState.trainStats = trainSessionMemo?.restoreSmartSession(currentOwnerId(), mapped, trainState.smart) || trainState.trainStats;
   rememberSmartSession();
   // F-06: this session is the first practice for every queued "train this
   // mistake" handoff — stamp takenAt so the mistake→practice time is measurable.
@@ -1302,7 +1302,7 @@ async function startSmartTraining(options = {}) {
       card.targets?.some((target) => target.fen_before === handoff.anchorFen));
     if (scheduled && ["pending", "prepared"].includes(handoff.status)) transitionHandoff(handoff.key, "queued");
   }
-  setBlitzBarVisible(appState.smart.blitz);
+  setBlitzBarVisible(trainState.smart.blitz);
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");
   }
@@ -1312,8 +1312,8 @@ async function startSmartTraining(options = {}) {
   document.getElementById("train-board-label").textContent =
     `${payload.repertoire_name} · you play ${payload.color}`;
   syncWorkspaceUrl();
-  const resumedAttempt = appState.smart.attempt;
-  const prompt = smartLocalPrompt(appState.smart);
+  const resumedAttempt = trainState.smart.attempt;
+  const prompt = smartLocalPrompt(trainState.smart);
   if (!prompt) {
     await finishSmartSession();
     return;
@@ -1358,12 +1358,12 @@ function smartLocalPrompt(smart) {
 // position, i.e. mid-card right after the opponent's reply), then open the
 // board for the answer — teach-first when the card is new.
 async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
-  const smart = appState.smart;
+  const smart = trainState.smart;
   if (!smart || !prompt) return;
   smart.prompt = prompt;
   smart.attempt = attempt;
-  appState.trainStarting = false;
-  appState.trainHintLevel = 0;
+  trainState.trainStarting = false;
+  trainState.trainHintLevel = 0;
   setTrainHintLine("");
   await renderSmartProgress(prompt);
   const board = boards.train;
@@ -1381,7 +1381,7 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
   // a move-1 card back at the start) must not keep the old highlight.
   let cueUci = board.fen === prompt.fen_before ? board.lastMove || null : null;
   if (board.fen !== prompt.fen_before) {
-    appState.trainBusy = true;
+    trainState.trainBusy = true;
     syncTrainSessionControls();
     const plan = planTrainRunIn(prompt, board.fen, smart.contextPath);
     smart.contextPath = plan.path;
@@ -1391,14 +1391,14 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
       // The board label already names the repertoire and side.
       setTrainBanner("runin", prompt.target_index ? "Continue the line" : "Next line", cue?.san || "");
       const played = await playTrainRunIn(board, plan, {
-        active: () => appState.smart === smart && smart.prompt === prompt,
+        active: () => trainState.smart === smart && smart.prompt === prompt,
         sleep,
       });
       if (played.stopped) return;
       cueUci = played.cueUci;
     }
-    if (appState.smart !== smart || smart.prompt !== prompt) return;
-    appState.trainBusy = false;
+    if (trainState.smart !== smart || smart.prompt !== prompt) return;
+    trainState.trainBusy = false;
   }
   board.setPosition({
     fen: prompt.fen_before,
@@ -1423,7 +1423,7 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     setTrainBanner(
       "move",
       "Your move",
-      `${appState.smart.cardKinds[prompt.kind]?.label || "Review"} · ${cueSan ? `answer ${cueSan}` : "play your prep"}`,
+      `${trainState.smart.cardKinds[prompt.kind]?.label || "Review"} · ${cueSan ? `answer ${cueSan}` : "play your prep"}`,
     );
     if (smart.blitz && smart.attempt === 1) startBlitzTimer(smart, prompt);
     else clearBlitzTimer();
@@ -1436,9 +1436,9 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
 
 function prefetchTrainCoach(prompt) {
   void import("./train-coach.js").then((mod) => {
-    if (appState.smart?.prompt !== prompt) return;
-    return mod.prefetchTrainCoach(prompt, { appState, maiaPhaseCoach, setTrainBanner, trainTeachLine });
-  }).catch((error) => { if (appState.smart?.prompt === prompt) console.warn("Train coach unavailable", error); });
+    if (trainState.smart?.prompt !== prompt) return;
+    return mod.prefetchTrainCoach(prompt, { trainState, maiaPhaseCoach, setTrainBanner, trainTeachLine });
+  }).catch((error) => { if (trainState.smart?.prompt === prompt) console.warn("Train coach unavailable", error); });
 }
 
 // After a second wrong attempt the card returns a few positions later — unless
@@ -1455,21 +1455,21 @@ function requeueSmartCard(smart) {
 }
 
 async function submitSmartMove(playedUci, { timedOut = false } = {}) {
-  const smart = appState.smart;
-  if (!smart || !smart.prompt || !playedUci || appState.trainBusy) return;
+  const smart = trainState.smart;
+  if (!smart || !smart.prompt || !playedUci || trainState.trainBusy) return;
   clearBlitzTimer(); // answered (or timed out) — stop the countdown right away
   const prompt = smart.prompt;
   const attempt = smart.attempt;
   // Land the dragged move immediately; a blitz timeout has no real move to show.
   // The graded cue below covers the landing, so it stays quiet.
-  appState.trainBusy = true;
+  trainState.trainBusy = true;
   if (!timedOut) await optimisticBoardMove(boards.train, prompt.fen_before, playedUci, false);
-  if (appState.smart !== smart || smart.prompt !== prompt) return;
+  if (trainState.smart !== smart || smart.prompt !== prompt) return;
   const other = !timedOut && (prompt.target?.alternatives || []).find((alt) => alt.uci === playedUci);
   if (other) {
     return answerAlternative({
       fen: prompt.fen_before, playedUci, san: other.san,
-      still: () => appState.smart === smart && smart.prompt === prompt,
+      still: () => trainState.smart === smart && smart.prompt === prompt,
       reopen: () => {
         boards.train.setPosition({ fen: prompt.fen_before, legalMoves: prompt.legal_moves || [], lastMove: null, back: true });
         if (prompt.kind === "new" || attempt >= 3) boards.train.setEngineArrow(prompt.expected_uci);
@@ -1484,14 +1484,14 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // Recall means unaided: an answer after a hint grades Hard on the server and
   // stays out of the first-try stats, and a new move's demonstration (the arrow
   // shows it) is not a recall at all. Its SR write still marks it learned.
-  const hinted = appState.trainHintLevel > 0;
+  const hinted = trainState.trainHintLevel > 0;
   const scored = prompt.kind !== "new";
   if (attempt === 1) queueTrainAttempt(smart, prompt.expected_node_id, correct, hinted);
   if (correct) trackPreparationPractice({
     repertoireId: smart.queue[smart.cardIndex]?.repertoire_id || smart.repertoireId,
     nodeId: prompt.expected_node_id, fen: prompt.fen_before, completed: true,
   });
-  const stats = appState.trainStats || (trainStatsReset(), appState.trainStats);
+  const stats = trainState.trainStats || (trainStatsReset(), trainState.trainStats);
 
   if (!correct) {
     // Only the first answer is graded (matches the synced SR write); the
@@ -1502,7 +1502,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       rememberSmartSession({ attempt: attempt + 1 });
       await renderTrainStats();
     }
-    appState.trainBusy = true;
+    trainState.trainBusy = true;
     let playedSan = "";
     try {
       const after = await boardAfterMove(prompt.fen_before, playedUci);
@@ -1517,7 +1517,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       // First miss: a free retry with the idea as a tip, no reveal. The blitz
       // retry is untimed — the clock tests recall, the retry rebuilds it.
       const missTip = () => wrongMoveTip({
-        hintLevel: appState.trainHintLevel, hint: prompt.hint, expectedSan: prompt.expected_san,
+        hintLevel: trainState.trainHintLevel, hint: prompt.hint, expectedSan: prompt.expected_san,
       });
       const show = (tip) => {
         const banner = wrongMoveBanner({ attempt, playedSan, expectedSan: prompt.expected_san, tip, timedOut });
@@ -1526,11 +1526,11 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       show(missTip());
       maiaPhaseCoach({ fen: prompt.fen_before, expectedUci: prompt.expected_uci, expectedSan: prompt.expected_san, playedUci })
         .then((model) => {
-          if (!(appState.smart && appState.smart.prompt === prompt && model)) return;
+          if (!(trainState.smart && trainState.smart.prompt === prompt && model)) return;
           prompt.phaseCoach = model;
           // A retry can already have succeeded or revealed the answer while
           // this inference was pending; its feedback owns the banner now.
-          if (!coachTipMayReplace(appState.trainHintLevel) || !model.tip) return;
+          if (!coachTipMayReplace(trainState.trainHintLevel) || !model.tip) return;
           if (document.getElementById("train-banner")?.dataset.state === "wrong") show(model.tip);
         })
         .catch(() => {});
@@ -1550,14 +1550,14 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       setTrainBanner(banner.state, banner.title, requeued ? `${banner.sub} It comes back soon.` : banner.sub);
     }
     await sleep(950);
-    if (appState.smart !== smart || smart.prompt !== prompt) return;
+    if (trainState.smart !== smart || smart.prompt !== prompt) return;
     boards.train.setPosition({
       fen: prompt.fen_before,
       legalMoves: prompt.legal_moves || [],
       lastMove: null, back: true, // the tried move travels home, not again
     });
     if (attempt >= 2) boards.train.setEngineArrow(prompt.expected_uci);
-    appState.trainBusy = false;
+    trainState.trainBusy = false;
     smart.attempt = attempt + 1;
     return;
   }
@@ -1576,7 +1576,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // Store the next cursor before animating an already-counted answer.
   rememberSmartSession({ advance: true });
   await renderTrainStats();
-  appState.trainBusy = true;
+  trainState.trainBusy = true;
   boards.train.setEngineArrow(null);
 
   // 1) Land the player's move, 2) after a beat the opponent replies, 3) flow
@@ -1598,7 +1598,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
   if (target.reply && target.reply.uci && target.reply.fen_after) {
     await sleep(240);
-    if (appState.smart !== smart) return; // mode switched mid-animation
+    if (trainState.smart !== smart) return; // mode switched mid-animation
     boards.train.setPosition({
       fen: target.reply.fen_after,
       legalMoves: [],
@@ -1608,7 +1608,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   } else {
     await sleep(300);
   }
-  if (appState.smart !== smart) return;
+  if (trainState.smart !== smart) return;
   // Advance the local session: next target inside the card, else next card.
   const card = smart.queue[smart.cardIndex];
   const lineDone = !(card && smart.targetIndex + 1 < card.targets.length);
@@ -1623,7 +1623,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     smart.targetIndex = 0;
   }
   markTrainPositionDirty();
-  appState.trainBusy = false;
+  trainState.trainBusy = false;
   const next = smartLocalPrompt(smart);
   if (next) {
     await presentSmartPrompt(next);
@@ -1633,14 +1633,14 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
 }
 
 async function skipSmartCard() {
-  const smart = appState.smart;
+  const smart = trainState.smart;
   if (!smart || !smart.prompt) {
     setStatus("No active card");
     return;
   }
-  if (appState.trainBusy) return;
+  if (trainState.trainBusy) return;
   clearBlitzTimer();
-  appState.trainStats.skipped += 1;
+  trainState.trainStats.skipped += 1;
   // Local advance — the position syncs with the next debounced flush.
   smart.cardIndex += 1;
   smart.targetIndex = 0;
@@ -1669,29 +1669,29 @@ function setTrainHintLine(text) {
 // Progressive hint, fully local — the prompt already carries the idea, the
 // piece, and the answer (it's the player's own repertoire, not a quiz).
 function smartHint() {
-  const prompt = appState.smart && appState.smart.prompt;
+  const prompt = trainState.smart && trainState.smart.prompt;
   if (!prompt) {
     setStatus("Start a session first");
     return;
   }
-  if (appState.trainBusy) return;
+  if (trainState.trainBusy) return;
   setTrainHintLine(showHint({ ...prompt.hint, expected_uci: prompt.expected_uci, expected_san: prompt.expected_san }));
 }
 
 let trainSessionMemo = null;
 function rememberSmartSession(progress = {}) {
-  const smart = appState.smart;
-  if (!smart || !smart.sessionId || !appState.trainStats) return;
-  trainSessionMemo?.saveSmartSession(currentOwnerId(), smart, appState.trainStats, progress);
+  const smart = trainState.smart;
+  if (!smart || !smart.sessionId || !trainState.trainStats) return;
+  trainSessionMemo?.saveSmartSession(currentOwnerId(), smart, trainState.trainStats, progress);
 }
 
 // The finished queue's Result is up the moment the last card is answered; the
 // flush and the server summary then fill in what changed (the card reserves
 // that line's height, so nothing shifts).
 async function finishSmartSession() {
-  const smart = appState.smart;
+  const smart = trainState.smart;
   if (!smart) return;
-  const stats = appState.trainStats || {};
+  const stats = trainState.trainStats || {};
   smart.prompt = null;
   trainSessionMemo?.finishSmartSessionMemo(currentOwnerId(), smart, stats);
   clearBlitzTimer();
@@ -1735,7 +1735,7 @@ async function finishSmartSession() {
   void refreshDashboardRepertoires().catch(() => {});
   invalidateTrainPreview();
   // The user may have moved on while the summary loaded.
-  if (appState.smart !== smart || appState.trainResult?.mode !== "smart") return;
-  appState.smart = null;
+  if (trainState.smart !== smart || trainState.trainResult?.mode !== "smart") return;
+  trainState.smart = null;
   showTrainResult({ ...smartResult(smart, stats, after), runId: `${smart.sessionId}:${smart.generation}` });
 }

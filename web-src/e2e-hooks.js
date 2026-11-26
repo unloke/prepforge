@@ -1,4 +1,4 @@
-import { appState, boards } from "./core/state.js";
+import { appState, analysisState, boards } from "./core/state.js";
 import { boardInfo } from "./board/ui.js";
 
 // E2E acceptance hooks. Three deterministic hooks for the Playwright suites:
@@ -121,13 +121,13 @@ function installAnalyzeE2eHook() {
       // Analyze view (and its reveal) isn't switched away underneath us.
       if (appReadyPromise) await appReadyPromise;
       switchView("analyze");
-      appState.analysis = payload;
-      appState.analysisVarNodes = new Map();
-      appState.analysisVarCounter = 0;
-      appState.analysisCurrentNodeId = "root";
-      appState.analysisNodePath = null;
-      appState.analysisTree = null;
-      appState.analysisPly = 0;
+      analysisState.analysis = payload;
+      analysisState.analysisVarNodes = new Map();
+      analysisState.analysisVarCounter = 0;
+      analysisState.analysisCurrentNodeId = "root";
+      analysisState.analysisNodePath = null;
+      analysisState.analysisTree = null;
+      analysisState.analysisPly = 0;
       const view = await ensureAnalyzeView();
       view.renderAnalysis(payload);
       revealAnalysisResults();
@@ -141,7 +141,7 @@ function installAnalyzeE2eHook() {
       return true;
     },
     getCoachProse: () => (document.getElementById("coach-prose") || {}).textContent || "",
-    getPly: () => appState.analysisPly,
+    getPly: () => analysisState.analysisPly,
     // The move the board is on, as the phone's eval row names it ("3... a6", a
     // variation's "12. Qh5 · variation"); empty at the start position.
     getBoardLabel: () =>

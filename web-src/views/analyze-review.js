@@ -5,7 +5,7 @@ import { reviewState } from "./analyze-report.js";
 // The review bar under the coach (Chess.com's Next and Retry): step to the
 // previous or next key moment of the report, and at a mistake try to find the
 // better move on the board. The engine's own line already shows that move.
-export function createReviewBar({ appState, getReport, showAnalysisPly, selectAnalysisNode }) {
+export function createReviewBar({ analysisState, getReport, showAnalysisPly, selectAnalysisNode }) {
   // A Retry in progress: the position before the moment (`fromId`), the move
   // the engine wanted there, and the moment's ply. It ends when the reader
   // leaves that position and its replies.
@@ -16,10 +16,10 @@ export function createReviewBar({ appState, getReport, showAnalysisPly, selectAn
   // The game ply the review reads from: a branch counts as the move it
   // replaces, so a line played at a moment keeps that moment in focus.
   function reviewPly() {
-    const id = appState.analysisCurrentNodeId || "root";
+    const id = analysisState.analysisCurrentNodeId || "root";
     if (retry && id === retry.fromId) return retry.ply;
-    let node = appState.analysisTree?.byId?.get(id);
-    if (!node || node.isMainline) return Number(appState.analysisPly) || 0;
+    let node = analysisState.analysisTree?.byId?.get(id);
+    if (!node || node.isMainline) return Number(analysisState.analysisPly) || 0;
     while (node.parent && !node.parent.isMainline) node = node.parent;
     return (Number(node.parent?.ply) || 0) + 1;
   }
@@ -27,9 +27,9 @@ export function createReviewBar({ appState, getReport, showAnalysisPly, selectAn
   // "try" at the Retry position, "right" on the engine's move played there,
   // "wrong" on another move played during a Retry.
   function triedState(moment) {
-    const id = appState.analysisCurrentNodeId || "root";
+    const id = analysisState.analysisCurrentNodeId || "root";
     if (retry && id === retry.fromId) return "try";
-    const node = appState.analysisTree?.byId?.get(id);
+    const node = analysisState.analysisTree?.byId?.get(id);
     const best = moment?.best?.uci;
     if (best && node?.isVariation && node.parent?.id === `m${moment.ply - 1}`.replace(/^m0$/, "root")) {
       if (node.uci === best) return "right";
@@ -95,7 +95,7 @@ export function createReviewBar({ appState, getReport, showAnalysisPly, selectAn
       retry = null;
       return showAnalysisPly(ply);
     }
-    const fromId = appState.analysisTree?.byId?.get(`m${ply}`)?.parent?.id;
+    const fromId = analysisState.analysisTree?.byId?.get(`m${ply}`)?.parent?.id;
     if (!fromId || !moment.best) return;
     if (kind === "retry") {
       retry = { fromId, best: moment.best.uci, san: moment.best.san, ply };

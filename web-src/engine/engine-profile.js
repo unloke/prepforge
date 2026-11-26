@@ -29,6 +29,12 @@ export const MIN_GAIN = 0.5;
 // A detected profile is measured on one build; a new engine build or probe is measured again.
 const PROBE_ID = `6:${globalThis.__STOCKFISH__?.big?.id}`;
 
+// The unmanaged Stockfish that Detect measures. stockfish-provider.js depends on the
+// profile, so it hands this factory in when it loads (it is in the boot bundle)
+// rather than this module importing it back.
+let probeEngine = () => { throw new Error("Browser engine not loaded"); };
+export function setProbeEngine(create) { probeEngine = create; }
+
 // Inject only browser boundaries for deterministic tests; production owns one manager.
 export function createEngineProfileManager({
   storage = () => globalThis.localStorage,
@@ -44,7 +50,7 @@ export function createEngineProfileManager({
   subscribeAsset = subscribeEngineAsset,
   page = globalThis.document,
   lifecycle = globalThis.window,
-  createEngine = async opts => (await import("./stockfish-provider.js")).createStockfishWasmProvider({ ...opts, computeBudget: null, profileManaged: false }),
+  createEngine = opts => probeEngine(opts),
   maiaLoad = maiaWorkload,
   headroom = holdHeadroom,
 } = {}) {

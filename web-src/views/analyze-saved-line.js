@@ -43,11 +43,11 @@ export function savedLineHtml(evals, fen) {
 }
 
 /** Paint the shown position's saved line into #analysis-saved-line. */
-export function paintSavedLine(appState) {
+export function paintSavedLine(analysisState) {
   const host = typeof document !== "undefined" && document.getElementById("analysis-saved-line");
   if (!host) return;
-  const node = appState.analysisTree?.byId?.get(appState.analysisCurrentNodeId || "root");
-  const markup = savedLineHtml(appState.analysis?.position_evals, node?.fenAfter);
+  const node = analysisState.analysisTree?.byId?.get(analysisState.analysisCurrentNodeId || "root");
+  const markup = savedLineHtml(analysisState.analysis?.position_evals, node?.fenAfter);
   host.innerHTML = markup;
   host.hidden = !markup;
 }

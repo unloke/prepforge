@@ -4,6 +4,7 @@
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { isNothingToTrainError } from "./train-start.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 
@@ -20,7 +21,7 @@ function cancelStaleTrainStartSource() {
 
 function harness(postJson, resume = {}) {
   const deps = {
-    appState: { trainMode: "smart", trainStarting: true }, currentOwnerId: () => "owner",
+    ...asSlices({ trainMode: "smart", trainStarting: true }), currentOwnerId: () => "owner",
     setStatus: vi.fn(), setStatusError: vi.fn(), setTrainBanner: vi.fn(), trainRowError: vi.fn(),
     syncTrainSessionControls: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
     loadTrainResume: async () => resume, isAuthError: () => false, isNothingToTrainError, postJson,
@@ -44,7 +45,7 @@ it.each([
   expect(deps.trainRowError).toHaveBeenCalledWith("smart", "Nothing to train here. Add lines in Repertoire.");
   expect(deps.setStatusError).not.toHaveBeenCalled();
   expect(deps.setStatus).not.toHaveBeenCalled();
-  expect(deps.appState.trainStarting).toBe(false);
+  expect(deps.trainState.trainStarting).toBe(false);
 });
 
 it("a real failure is named as one, still in the row", async () => {
@@ -60,7 +61,7 @@ it("a start the server accepts but fills with no cards goes back to Home with th
   await run();
   expect(deps.trainRowError).toHaveBeenCalledWith("smart", "Nothing to train here. Add lines in Repertoire.");
   expect(deps.setStatus).not.toHaveBeenCalled();
-  expect(deps.appState.trainStarting).toBe(false);
+  expect(deps.trainState.trainStarting).toBe(false);
 });
 
 it("posts the scope it was given: one repertoire, or all of them", async () => {
@@ -68,7 +69,7 @@ it("posts the scope it was given: one repertoire, or all of them", async () => {
   const { run, deps } = harness(post);
   await run({ repertoireId: "r1" });
   expect(post).toHaveBeenLastCalledWith("/api/train/smart/start", { mixed: false, fresh: false, repertoire_id: "r1" });
-  deps.appState.trainScope = { repertoireId: null };
+  deps.trainState.trainScope = { repertoireId: null };
   await run({});
   expect(post).toHaveBeenLastCalledWith("/api/train/smart/start", { mixed: true, fresh: false });
   await run({ repertoireId: "r1", targetNodeIds: ["n1"] });
@@ -97,7 +98,7 @@ it("does not adopt a queue after its navigation entry is invalidated mid-post", 
   release({ card_kinds: [], requeue_gap: 3 });
   await attempt;
   expect(deps.trainStatsReset).not.toHaveBeenCalled();
-  expect(deps.appState.smart).toBeUndefined();
+  expect(deps.trainState.smart).toBeUndefined();
 });
 
 it("a start canceled before its post clears its own starting state", async () => {
@@ -106,14 +107,14 @@ it("a start canceled before its post clears its own starting state", async () =>
   const { run, deps } = harness(post, new Promise((done) => { release = done; }));
   const token = {};
   let active = true;
-  deps.appState.trainStartToken = token;
+  deps.trainState.trainStartToken = token;
   const attempt = run({ repertoireId: "r1", entryToken: token, isCurrent: () => active });
   active = false;
   release({});
   await attempt;
   expect(post).not.toHaveBeenCalled();
-  expect(deps.appState.trainStarting).toBe(false);
-  expect(deps.appState.trainStartToken).toBeNull();
+  expect(deps.trainState.trainStarting).toBe(false);
+  expect(deps.trainState.trainStartToken).toBeNull();
   expect(deps.setTrainBanner).toHaveBeenLastCalledWith("move", "", "");
   expect(deps.syncTrainSessionControls).toHaveBeenCalled();
 });
@@ -123,16 +124,16 @@ it("a start canceled mid-post clears its own starting state without adopting the
   const post = vi.fn(() => new Promise((done) => { release = done; }));
   const { run, deps } = harness(post, { mapTrainUiSession: () => ({ queue: [{}], sessionId: "s1" }) });
   const token = {};
-  deps.appState.trainStartToken = token;
+  deps.trainState.trainStartToken = token;
   const attempt = run({ repertoireId: "r1", entryToken: token, isCurrent: () => active });
   await vi.waitFor(() => expect(post).toHaveBeenCalled());
   active = false;
   release({ card_kinds: [], requeue_gap: 3 });
   await attempt;
   expect(deps.trainStatsReset).not.toHaveBeenCalled();
-  expect(deps.appState.smart).toBeUndefined();
-  expect(deps.appState.trainStarting).toBe(false);
-  expect(deps.appState.trainStartToken).toBeNull();
+  expect(deps.trainState.smart).toBeUndefined();
+  expect(deps.trainState.trainStarting).toBe(false);
+  expect(deps.trainState.trainStartToken).toBeNull();
   expect(deps.syncTrainSessionControls).toHaveBeenCalled();
 });
 
@@ -141,16 +142,16 @@ it("a stale canceled start does not clear a replacement start's state", async ()
   const post = vi.fn(() => new Promise((done) => { release = done; }));
   const { run, deps } = harness(post, { mapTrainUiSession: () => ({ queue: [{}], sessionId: "s1" }) });
   const oldToken = {}, newToken = {};
-  deps.appState.trainStartToken = oldToken;
+  deps.trainState.trainStartToken = oldToken;
   const attempt = run({ repertoireId: "r1", entryToken: oldToken, isCurrent: () => active });
   await vi.waitFor(() => expect(post).toHaveBeenCalled());
   active = false;
-  deps.appState.trainStarting = true;
-  deps.appState.trainStartToken = newToken;
+  deps.trainState.trainStarting = true;
+  deps.trainState.trainStartToken = newToken;
   release({ card_kinds: [], requeue_gap: 3 });
   await attempt;
-  expect(deps.appState.trainStarting).toBe(true);
-  expect(deps.appState.trainStartToken).toBe(newToken);
+  expect(deps.trainState.trainStarting).toBe(true);
+  expect(deps.trainState.trainStartToken).toBe(newToken);
   expect(deps.setTrainBanner).not.toHaveBeenCalledWith("move", "", "");
 });
 

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { html } from "./html.js";
 import { analysisHistoryResult } from "./analyze-orient.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function compileLoad(deps) {
@@ -32,7 +33,7 @@ function hostElement() {
 describe("Recent analyses list states", () => {
   it("says so when there are no saved analyses", async () => {
     const host = hostElement();
-    const load = compileLoad({ appState: { pendingAnalysisDeletes: new Set() }, document: { getElementById: () => host },
+    const load = compileLoad({ ...asSlices({ pendingAnalysisDeletes: new Set() }), document: { getElementById: () => host },
       api: async () => ({ analyses: [] }) });
     await load();
     expect(host.innerHTML).toContain("No saved analyses yet.");
@@ -40,7 +41,7 @@ describe("Recent analyses list states", () => {
 
   it("keeps a row whose delete is still in its undo window out of a refresh", async () => {
     const host = hostElement();
-    const load = compileLoad({ appState: { pendingAnalysisDeletes: new Set(["gone"]) }, document: { getElementById: () => host },
+    const load = compileLoad({ ...asSlices({ pendingAnalysisDeletes: new Set(["gone"]) }), document: { getElementById: () => host },
       api: async () => ({ analyses: [{ game_id: "gone", white: "A" }, { game_id: "kept", white: "B" }] }) });
     await load();
     expect(host.innerHTML).toContain('data-game-id="kept"');
@@ -49,7 +50,7 @@ describe("Recent analyses list states", () => {
 
   it("shows the empty state when every row is waiting to be deleted", async () => {
     const host = hostElement();
-    const load = compileLoad({ appState: { pendingAnalysisDeletes: new Set(["gone"]) }, document: { getElementById: () => host },
+    const load = compileLoad({ ...asSlices({ pendingAnalysisDeletes: new Set(["gone"]) }), document: { getElementById: () => host },
       api: async () => ({ analyses: [{ game_id: "gone", white: "A" }] }) });
     await load();
     expect(host.innerHTML).toContain("No saved analyses yet.");
@@ -58,7 +59,7 @@ describe("Recent analyses list states", () => {
   it("offers a retry when the first page fails", async () => {
     const host = hostElement();
     const api = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ analyses: [{ game_id: "one", white: "A" }] });
-    const deps = { appState: { pendingAnalysisDeletes: new Set() }, document: { getElementById: () => host }, api };
+    const deps = { ...asSlices({ pendingAnalysisDeletes: new Set() }), document: { getElementById: () => host }, api };
     const load = compileLoad(deps);
     await load();
     expect(host.innerHTML).toContain("offline");
@@ -71,7 +72,7 @@ describe("Recent analyses list states", () => {
   it("reopening the drawer keeps the list it read, until a save lands", async () => {
     const host = hostElement(), drawer = { open: false };
     const api = vi.fn(async () => ({ analyses: [{ game_id: "one", white: "A" }] }));
-    const load = compileLoad({ appState: { pendingAnalysisDeletes: new Set(), signedIn: true },
+    const load = compileLoad({ ...asSlices({ pendingAnalysisDeletes: new Set(), signedIn: true }), 
       document: { getElementById: (id) => (id === "history-drawer" ? drawer : host) }, api });
     await load({ ifStale: true });
     await load({ ifStale: true });
@@ -88,7 +89,7 @@ describe("Recent analyses list states", () => {
   it("a first page that failed is read again on the next open", async () => {
     const host = hostElement();
     const api = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ analyses: [] });
-    const load = compileLoad({ appState: { pendingAnalysisDeletes: new Set() }, document: { getElementById: () => host }, api });
+    const load = compileLoad({ ...asSlices({ pendingAnalysisDeletes: new Set() }), document: { getElementById: () => host }, api });
     await load({ ifStale: true });
     await load({ ifStale: true });
     expect(api).toHaveBeenCalledTimes(2);
@@ -101,7 +102,7 @@ describe("Recent analyses list states", () => {
     const api = vi.fn()
       .mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }))
       .mockResolvedValue({ analyses: [{ game_id: "saved", white: "A" }] });
-    const load = compileLoad({ appState: { pendingAnalysisDeletes: new Set(), signedIn: true },
+    const load = compileLoad({ ...asSlices({ pendingAnalysisDeletes: new Set(), signedIn: true }), 
       document: { getElementById: (id) => (id === "history-drawer" ? drawer : host) }, api });
     const first = load({ ifStale: true });
     await vi.waitFor(() => expect(api).toHaveBeenCalledTimes(1));

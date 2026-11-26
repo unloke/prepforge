@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 function el(extra = {}) {
   const classes = new Set();
@@ -38,13 +39,13 @@ function setup() {
   };
   const appState = { evalChartPoints: [], analysisPly: 0 };
   const view = createAnalyzeView({
-    appState,
+    ...asSlices(appState), 
     START_FEN: "",
     showAnalysisPly: () => {},
     selectAnalysisNode: async () => {},
     revealAnalysisResults: () => {},
   });
-  return { view, ids, head, fill, appState };
+  return { view, ids, head, fill, ...asSlices(appState), appState,  };
 }
 
 afterEach(() => {

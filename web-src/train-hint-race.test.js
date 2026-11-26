@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 // Line rehearsal's hint reads /api/train/hint once per position. Clicks made
 // while that read was in flight each started their own read and reset the level,
@@ -18,11 +19,11 @@ describe("Line rehearsal hint", () => {
     const banners = [];
     const appState = { smart: null, training: { prompt: { fen_before: "F", session_id: "s" } }, trainHintInfo: null, trainHintLevel: 0 };
     const showHint = compile({
-      appState, boards: { train: { setEngineArrow: vi.fn(), selectSquare: vi.fn() } },
+      ...asSlices(appState), boards: { train: { setEngineArrow: vi.fn(), selectSquare: vi.fn() } },
       setTrainBanner: (_state, title) => banners.push(title),
     }, "function showHint(");
     const trainHint = compile({
-      appState, postJson, smartHint: () => {}, setStatus: () => {}, setStatusError: () => {},
+      ...asSlices(appState), postJson, smartHint: () => {}, setStatus: () => {}, setStatusError: () => {},
       currentTrainingPrompt: () => appState.training.prompt, showHint,
     });
     const clicks = [trainHint(), trainHint(), trainHint()];

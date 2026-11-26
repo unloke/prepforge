@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 // Finishing a Train session refreshes the open repertoire's tree, because spaced
 // repetition moved its moves from "to train" to learned. That refresh used to
@@ -53,6 +54,7 @@ function harness(overrides = {}) {
   };
   appState.signedIn ??= true;
   appState.ownerGeneration ??= 1;
+  const slices = asSlices(appState);
   let currentOwner = overrides.owner || "user-1";
   const currentOwnerId = () => currentOwner;
   const payload = overrides.payload || { repertoire_id: "rep-1", nodes: [{ id: "n1" }, { id: "n2" }], revision: 4 };
@@ -64,13 +66,13 @@ function harness(overrides = {}) {
   const renderBuildRepHeader = vi.fn();
   const syncViewHeads = vi.fn();
 
-  const reloadOpenBuildTree = buildReload({ appState, api, currentOwnerId, hooks });
+  const reloadOpenBuildTree = buildReload({ ...slices, api, currentOwnerId, hooks });
   const refreshRepertoireHead = buildRefresh({
-    appState, api, libraryEntry, reloadOpenBuildTree, renderBuildRepHeader, syncViewHeads,
+    ...slices, api, libraryEntry, reloadOpenBuildTree, renderBuildRepHeader, syncViewHeads,
   });
 
   return {
-    appState, api, hydrateBuild, hooks, loadDashboardRepertoires, renderBuildRepHeader, syncViewHeads,
+    ...slices, api, hydrateBuild, hooks, loadDashboardRepertoires, renderBuildRepHeader, syncViewHeads,
     reloadOpenBuildTree, refreshRepertoireHead,
     // Simulate the account changing under an in-flight read.
     switchOwner: (id) => { currentOwner = id; },
@@ -114,10 +116,10 @@ describe("Train completion refreshes the open repertoire tree", () => {
 
   it("keeps the current tree when the re-read fails", async () => {
     const h = harness({ api: vi.fn(async () => { throw new Error("offline"); }) });
-    const before = h.appState.build;
+    const before = h.buildState.build;
     await expect(h.refreshRepertoireHead()).resolves.toBeUndefined();
     expect(h.hydrateBuild).not.toHaveBeenCalled();
-    expect(h.appState.build).toBe(before);
+    expect(h.buildState.build).toBe(before);
     expect(h.renderBuildRepHeader).toHaveBeenCalledTimes(1);
   });
 
@@ -134,7 +136,7 @@ describe("Train completion refreshes the open repertoire tree", () => {
     const h = harness({ appState, api });
     await h.refreshRepertoireHead();
     expect(h.hydrateBuild).not.toHaveBeenCalled();
-    expect(h.appState.build.repertoire_id).toBe("rep-2");
+    expect(h.buildState.build.repertoire_id).toBe("rep-2");
   });
 
   it("lets hydration find the surviving ancestor when the open node is gone", async () => {
@@ -172,7 +174,7 @@ describe("Train completion refreshes the open repertoire tree", () => {
     gate.release({ repertoire_id: "rep-1", revision: 4, nodes: [{ id: "n1" }] });
     await pending;
     expect(h.hydrateBuild).not.toHaveBeenCalled();
-    expect(h.appState.build.nodes.map((n) => n.id)).toEqual(["n1", "new"]);
+    expect(h.buildState.build.nodes.map((n) => n.id)).toEqual(["n1", "new"]);
   });
 
   it("drops a read that lands after a confirmed edit moved the same tree's revision", async () => {
@@ -189,7 +191,7 @@ describe("Train completion refreshes the open repertoire tree", () => {
     gate.release({ repertoire_id: "rep-1", revision: 3, nodes: [{ id: "n1" }] });
     await pending;
     expect(h.hydrateBuild).not.toHaveBeenCalled();
-    expect(h.appState.build.revision).toBe(4);
+    expect(h.buildState.build.revision).toBe(4);
   });
 
   it("drops a read that lands after the account changed", async () => {

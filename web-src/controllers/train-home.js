@@ -9,21 +9,23 @@ import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
 import { createTrainPreview, paintTrainHomeLoading, paintTrainListingLoading, paintTrainStartLoading, paintTrainPreviewLoading, readTrainPreviewShape, rememberTrainPreviewShape } from "./train-preview.js";
 import { dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
 export { dueIn, dueMeta, dueStartState, outlookHtml, outlookShape } from "./train-due.js";
-import { appState, boards } from "../core/state.js";
+import { appState, trainState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
 import { acceptRepertoireListing, fetchRepertoireListing } from "../repertoire-listing.js";
 import { flushTrainSync, lichessAccounts, requireSignIn, setTrainBanner, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
 import { cancelLuckyDiscovery, cancelLuckyPractice } from "../train-lucky-control.js";
-import { blitzEnabled, clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setBlitzEnabled,
-  skipTrainingLine, startPlaySessionTracked, startTraining, takebackPlaySession, trainHint } from "./train-session.js";
 // Train is one loop, Home → Session → Result, shared by the Due queue, line
 // rehearsal and practice games. This module owns the loop's chrome: which
 // screen is up (data-train-screen on #view-train), the Home rows and their
 // pickers, the session header with its scope chip, the shared Result card, the
 // board bar's action slot, and the in-Train view transitions. The sessions
 // themselves run in train-session.js.
+
+// The session's entry points (train-session.js), handed in by the session when it
+// creates Home: the session owns this module, so Home never imports it back.
+let session = null;
 
 export const PLAY_COLOR_KEY = "prepforge.play_color";
 
@@ -51,15 +53,16 @@ function repertoireListingKnown(state = appState) {
 function paintRowErrors() {
   for (const [mode, id] of Object.entries(ROW_ERROR_IDS)) {
     const el = document.getElementById(id);
-    const optionsError = mode === "smart" && isSignedIn() && !repertoireListingKnown() && appState.trainRepertoireOptionsError ? "Couldn't load your repertoires." : "";
+    const optionsError = mode === "smart" && isSignedIn() && !repertoireListingKnown() && trainState.trainRepertoireOptionsError ? "Couldn't load your repertoires." : "";
     const text = rowErrors[mode] || optionsError || (mode === "smart" && isSignedIn() && allTrainable().length > 0 && preview?.failed(previewUrl()) ? "Couldn't load the queue. Start still works." : "");
     el.hidden = !text;
     el.textContent = text;
   }
-  const retry = document.getElementById("train-due-retry"); if (retry) retry.hidden = !(isSignedIn() && !repertoireListingKnown() && appState.trainRepertoireOptionsError);
+  const retry = document.getElementById("train-due-retry"); if (retry) retry.hidden = !(isSignedIn() && !repertoireListingKnown() && trainState.trainRepertoireOptionsError);
 }
 
-export function createTrainHome() {
+export function createTrainHome(sessionEntries) {
+  session = sessionEntries;
   preview = createTrainPreview(api);
   bind();
   return { openTrain, paintTrainHome, syncTrainScreen, showTrainResult, leaveToHome };
@@ -78,9 +81,8 @@ export function trainScreenOf(state) {
 export function syncTrainScreen() {
   const view = document.getElementById("view-train");
   if (!view) return;
-  const state = appState;
-  const screen = trainScreenOf(state);
-  const mode = state.trainMode || "smart";
+  const screen = trainScreenOf(trainState);
+  const mode = trainState.trainMode || "smart";
   const before = view.dataset.trainScreen;
   const apply = () => {
     view.dataset.trainScreen = screen;
@@ -90,14 +92,14 @@ export function syncTrainScreen() {
     document.getElementById("train-progress-panel").hidden = screen !== "session";
     document.getElementById("train-summary").hidden = screen !== "result";
     // A finished game's move trail belongs to that game only.
-    if (mode !== "play" || !state.play) document.getElementById("train-play-trail").hidden = true;
+    if (mode !== "play" || !trainState.play) document.getElementById("train-play-trail").hidden = true;
     paintHead(screen, mode);
     paintActions(screen, mode);
     if (screen === "home") void paintTrainHome();
   };
   // Starting is one state change. A route fade already carries its content;
   // another panel entrance during async setup makes it enter twice.
-  if (!before || before === screen || state.trainStarting || state.playStarting ||
+  if (!before || before === screen || trainState.trainStarting || trainState.playStarting ||
       document.documentElement.classList.contains?.("view-swap")) {
     apply();
     return;
@@ -105,7 +107,7 @@ export function syncTrainScreen() {
   animateView(view, apply, { target: view.querySelector(".panel-scroll") });
 }
 
-export function trainScopeLabel(state = appState) {
+export function trainScopeLabel(state = trainState) {
   const mode = state.trainMode || "smart";
   if (mode === "play") {
     const play = state.play;
@@ -140,7 +142,7 @@ function paintActions(screen, mode) {
   const game = session && mode === "play";
   for (const id of ["train-hint", "train-skip"]) document.getElementById(id).hidden = !drill;
   for (const id of ["play-takeback", "play-resign"]) document.getElementById(id).hidden = !game;
-  document.getElementById("play-analyze").hidden = !(screen === "result" && mode === "play" && appState.play?.history?.length);
+  document.getElementById("play-analyze").hidden = !(screen === "result" && mode === "play" && trainState.play?.history?.length);
 }
 
 // ---------------------------------------------------------------- entries
@@ -149,56 +151,55 @@ function paintActions(screen, mode) {
 // repertoire", a picked move, the palette. The scope is set explicitly, so a
 // one-repertoire queue is never served from "all repertoires".
 export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false, isCurrent = null } = {}) {
-  const state = appState, wasInTrain = state.currentView === "train", entryToken = {}, entrySeq = isCurrent ? state.trainEntryVersion : (state.trainEntryVersion = (state.trainEntryVersion || 0) + 1), current = isCurrent || (() => state.trainEntryVersion === entrySeq && (!wasInTrain || state.currentView === "train"));
-  if (!current() || !(await confirmAbandonGame(state.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return false;
-  closeTrainPicker(); if (state.smart) await flushTrainSync(); if (!current()) return false;
+  const state = appState, wasInTrain = state.currentView === "train", entryToken = {}, entrySeq = isCurrent ? trainState.trainEntryVersion : (trainState.trainEntryVersion = (trainState.trainEntryVersion || 0) + 1), current = isCurrent || (() => trainState.trainEntryVersion === entrySeq && (!wasInTrain || state.currentView === "train"));
+  if (!current() || !(await confirmAbandonGame(trainState.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return false;
+  closeTrainPicker(); if (trainState.smart) await flushTrainSync(); if (!current()) return false;
   resetSessions();
   for (const key of Object.keys(rowErrors)) rowErrors[key] = "";
-  state.trainMode = mode;
+  trainState.trainMode = mode;
   if (mode === "smart") setDueScope(repertoireId);
-  if (mode === "all_lines" && repertoireId) state.trainingRepertoireId = String(repertoireId);
-  if (autostart) { state.trainStarting = true; state.trainStartToken = entryToken; }
+  if (mode === "all_lines" && repertoireId) trainState.trainingRepertoireId = String(repertoireId);
+  if (autostart) { trainState.trainStarting = true; trainState.trainStartToken = entryToken; }
   const enter = () => {
-    if (state.currentView !== "train") { state.trainEntering = true; try { switchView("train"); } finally { delete state.trainEntering; } }
+    if (state.currentView !== "train") { trainState.trainEntering = true; try { switchView("train"); } finally { delete trainState.trainEntering; } }
     syncTrainScreen();
   };
   enter();
   syncWorkspaceUrl();
   if (!autostart) return true;
-  if (mode === "play") await startPlaySessionTracked(); else await startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
+  if (mode === "play") await session.startPlaySessionTracked(); else await session.startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
   return true;
 }
 
 function resetSessions() {
-  const state = appState;
-  cancelLuckyDiscovery(state);
-  state.playStartToken = (state.playStartToken || 0) + 1;
-  state.playStarting = null;
+  cancelLuckyDiscovery(trainState);
+  trainState.playStartToken = (trainState.playStartToken || 0) + 1;
+  trainState.playStarting = null;
   boards.train?.setPremove(null);
-  state.play = null;
-  state.smart = null;
-  state.training = null;
-  state.trainResult = null;
-  state.trainBusy = false;
-  state.trainStarting = false; state.trainStartToken = null;
-  clearBlitzTimer();
-  setBlitzBarVisible(false);
+  trainState.play = null;
+  trainState.smart = null;
+  trainState.training = null;
+  trainState.trainResult = null;
+  trainState.trainBusy = false;
+  trainState.trainStarting = false; trainState.trainStartToken = null;
+  session.clearBlitzTimer();
+  session.setBlitzBarVisible(false);
 }
 
 // "‹ Train": drills keep their progress (Home then offers "Resume"), a live
 // game asks first.
 export async function leaveToHome() {
-  const state = appState, entrySeq = state.trainEntryVersion || 0, current = () => (state.trainEntryVersion || 0) === entrySeq && state.currentView === "train";
-  if (!current() || !(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return;
+  const state = appState, entrySeq = trainState.trainEntryVersion || 0, current = () => (trainState.trainEntryVersion || 0) === entrySeq && state.currentView === "train";
+  if (!current() || !(await confirmAbandonGame(trainState.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return;
   // Progress that did not save keeps the session open, and says so: a silent
   // no-op read as a dead back button.
-  const saved = !state.smart || await flushTrainSync();
+  const saved = !trainState.smart || await flushTrainSync();
   if (!saved && current()) setStatusError("Couldn't save your progress yet. Try again in a moment.");
   if (!saved || !current()) return;
-  state.trainEntryVersion = entrySeq + 1; delete state.trainPendingRoute;
+  trainState.trainEntryVersion = entrySeq + 1; delete trainState.trainPendingRoute;
   resetSessions(); setTrainBanner("move", "", "");
   syncWorkspaceUrl(); invalidateTrainPreview();
-  syncTrainScreen(); void resetTrainBoardIdle("");
+  syncTrainScreen(); void session.resetTrainBoardIdle("");
 }
 
 // ---------------------------------------------------------------- Home
@@ -217,13 +218,13 @@ function repertoireName(id) {
 }
 
 function dueScopeLabel() {
-  const id = appState.trainScope?.repertoireId;
+  const id = trainState.trainScope?.repertoireId;
   return id ? repertoireName(id) || "Repertoire" : "All repertoires";
 }
 
 function setDueScope(repertoireId) {
-  appState.trainScope = { repertoireId: repertoireId ? String(repertoireId) : null };
-  appState.trainScope.label = dueScopeLabel();
+  trainState.trainScope = { repertoireId: repertoireId ? String(repertoireId) : null };
+  trainState.trainScope.label = dueScopeLabel();
   invalidateTrainPreview();
 }
 
@@ -232,7 +233,7 @@ export function invalidateTrainPreview() {
 }
 
 function previewUrl() {
-  const id = appState.trainScope?.repertoireId;
+  const id = trainState.trainScope?.repertoireId;
   const scope = id ? `repertoire_id=${encodeURIComponent(id)}` : "mixed=true";
   return `/api/train/smart/summary?${scope}&preview=true&local_date=${encodeURIComponent(localDateString())}&utc_offset=${-new Date().getTimezoneOffset()}`;
 }
@@ -272,9 +273,9 @@ export async function paintTrainHome() {
   const reps = allTrainable();
   paintRecent(document.getElementById("train-recent-home"), signedIn ? recentRuns(currentOwnerId(), 3) : [], "No finished runs yet.");
   const listingKnown = repertoireListingKnown(state);
-  const optionsFailed = signedIn && !listingKnown && state.trainRepertoireOptionsError;
+  const optionsFailed = signedIn && !listingKnown && trainState.trainRepertoireOptionsError;
   if (signedIn && !listingKnown && !optionsFailed) {
-    paintTrainListingLoading(currentOwnerId(), state.trainScope?.repertoireId, state.trainHomeReady, playBook() === "maia");
+    paintTrainListingLoading(currentOwnerId(), trainState.trainScope?.repertoireId, trainState.trainHomeReady, playBook() === "maia");
     return;
   }
   // Due queue
@@ -293,9 +294,9 @@ export async function paintTrainHome() {
   const currentPreview = preview.dataFor(url);
   paintDue(currentPreview?.next_session);
   // Rehearse
-  const rehearse = state.trainingRepertoireId && reps.some((r) => String(r.id) === String(state.trainingRepertoireId))
-    ? state.trainingRepertoireId : reps.find((r) => !(r.health && Number(r.health.trainable) === 0))?.id || null;
-  state.trainingRepertoireId = rehearse ? String(rehearse) : null;
+  const rehearse = trainState.trainingRepertoireId && reps.some((r) => String(r.id) === String(trainState.trainingRepertoireId))
+    ? trainState.trainingRepertoireId : reps.find((r) => !(r.health && Number(r.health.trainable) === 0))?.id || null;
+  trainState.trainingRepertoireId = rehearse ? String(rehearse) : null;
   const rep = reps.find((r) => String(r.id) === String(rehearse));
   setChip("train-rehearse-scope", rep ? rep.name : signedIn ? "No repertoire" : "Your repertoires", !signedIn || !reps.length);
   document.getElementById("train-rehearse-meta").textContent = rep?.health ? countOf(Number(rep.health.trainable) || 0, "move") : "";
@@ -328,7 +329,7 @@ export async function paintTrainHome() {
   if (optionsFailed) {
     paintTrainPreviewLoading(false);
     outlook.innerHTML = ""; outlook.hidden = true; paintDueNext(null);
-    state.trainHomeReady = true; paintTrainHomeLoading(false);
+    trainState.trainHomeReady = true; paintTrainHomeLoading(false);
     for (const id of ["start-train", "start-rehearse", "train-due-scope", "train-rehearse-scope"]) document.getElementById(id).disabled = true;
     paintRowErrors();
     return;
@@ -337,20 +338,20 @@ export async function paintTrainHome() {
     paintTrainPreviewLoading(false);
     outlook.hidden = true;
     paintDueNext(null);
-    if (signedIn) rememberTrainPreviewShape(currentOwnerId(), state.trainScope?.repertoireId, { outlook: "none", upcoming: 0 });
-    state.trainHomeReady = true;
+    if (signedIn) rememberTrainPreviewShape(currentOwnerId(), trainState.trainScope?.repertoireId, { outlook: "none", upcoming: 0 });
+    trainState.trainHomeReady = true;
     paintTrainHomeLoading(false);
     return;
   }
   const owner = currentOwnerId();
-  const scope = state.trainScope?.repertoireId;
+  const scope = trainState.trainScope?.repertoireId;
   paintTrainHomeLoading(false);
   paintTrainStartLoading(!currentPreview);
   paintTrainPreviewLoading(!currentPreview, readTrainPreviewShape(owner, scope));
   await preview.load(url);
-  if (trainScreenOf(state) !== "home" || previewUrl() !== url || !preview.current(url)) return;
+  if (trainScreenOf(trainState) !== "home" || previewUrl() !== url || !preview.current(url)) return;
   paintTrainPreviewLoading(false);
-  if (preview.authFailed?.(url)) { due.textContent = "Sign in to train"; due.dataset.action = "signin"; due.disabled = false; document.getElementById("train-due-meta").textContent = ""; outlook.innerHTML = ""; outlook.hidden = true; paintDueNext(null); state.trainHomeReady = true; paintTrainHomeLoading(false); return; }
+  if (preview.authFailed?.(url)) { due.textContent = "Sign in to train"; due.dataset.action = "signin"; due.disabled = false; document.getElementById("train-due-meta").textContent = ""; outlook.innerHTML = ""; outlook.hidden = true; paintDueNext(null); trainState.trainHomeReady = true; paintTrainHomeLoading(false); return; }
   if (!isSignedIn()) {
     rehearseBtn.textContent = "Sign in to train";
     rehearseBtn.dataset.action = "signin";
@@ -362,7 +363,7 @@ export async function paintTrainHome() {
   outlook.innerHTML = outlookHtml(resolved?.outlook);
   outlook.hidden = !outlook.innerHTML;
   if (resolved) rememberTrainPreviewShape(owner, scope, { outlook: outlookShape(resolved.outlook), upcoming: resolved.next_session?.upcoming?.length || 0 });
-  state.trainHomeReady = true;
+  trainState.trainHomeReady = true;
   paintTrainHomeLoading(false);
 }
 
@@ -378,7 +379,7 @@ function usableBooks() {
 
 // The opponent the next game uses: the picked one when it can play here, else Maia.
 export function playBook() {
-  const want = appState.playBook || "explorer";
+  const want = trainState.playBook || "explorer";
   return usableBooks()[want] ? want : "maia";
 }
 
@@ -422,12 +423,12 @@ function playRepertoireStorageKey() {
 }
 
 function persistPlayRepertoireIds() {
-  try { localStorage.setItem(playRepertoireStorageKey(), JSON.stringify(appState.playRepertoireIds || [])); } catch { /* private mode */ }
+  try { localStorage.setItem(playRepertoireStorageKey(), JSON.stringify(trainState.playRepertoireIds || [])); } catch { /* private mode */ }
 }
 
 export function selectedTrainRepertoireIds() {
   const active = new Set(ownActive().map((r) => String(r.id)));
-  return (Array.isArray(appState.playRepertoireIds) ? appState.playRepertoireIds : []).map(String).filter((id) => active.has(id));
+  return (Array.isArray(trainState.playRepertoireIds) ? trainState.playRepertoireIds : []).map(String).filter((id) => active.has(id));
 }
 
 export function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
@@ -439,8 +440,8 @@ export function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
 export async function loadTrainRepertoireOptions() {
   const state = appState, owner = currentOwnerId(), generation = state.ownerGeneration || 0;
   const current = () => currentOwnerId() === owner && (state.ownerGeneration || 0) === generation;
-  if (state.signedIn) { state.trainRepertoireOptionsError = ""; paintRowErrors(); }
-  if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(owner, state.trainScope?.repertoireId, state.trainHomeReady);
+  if (state.signedIn) { trainState.trainRepertoireOptionsError = ""; paintRowErrors(); }
+  if (state.signedIn && !repertoireListingKnown(state)) paintTrainListingLoading(owner, trainState.trainScope?.repertoireId, trainState.trainHomeReady);
   if (state.signedIn) {
     try {
       const listing = fetchRepertoireListing(api, owner, generation);
@@ -451,18 +452,18 @@ export async function loadTrainRepertoireOptions() {
         state.repertoireListGeneration = generation;
       }
     } catch (error) {
-      if (current() && !repertoireListingKnown(state)) state.trainRepertoireOptionsError = error.message || "Could not load repertoires";
+      if (current() && !repertoireListingKnown(state)) trainState.trainRepertoireOptionsError = error.message || "Could not load repertoires";
       if (current()) setStatusError(error.message);
     }
   }
   if (!current()) return; const key = playRepertoireStorageKey();
-  if (state.playRepertoirePreferenceKey !== key) {
-    state.playRepertoirePreferenceKey = key; let stored = null;
+  if (trainState.playRepertoirePreferenceKey !== key) {
+    trainState.playRepertoirePreferenceKey = key; let stored = null;
     try { stored = JSON.parse(localStorage.getItem(key) || "null"); } catch { /* malformed */ }
-    state.playRepertoireIds = Array.isArray(stored) ? stored.map(String) : ownActive().map((r) => String(r.id));
+    trainState.playRepertoireIds = Array.isArray(stored) ? stored.map(String) : ownActive().map((r) => String(r.id));
   }
-  state.playRepertoireIds = selectedTrainRepertoireIds();
-  if (state.trainScope?.repertoireId && !allTrainable().some((r) => String(r.id) === state.trainScope.repertoireId)) setDueScope(null);
+  trainState.playRepertoireIds = selectedTrainRepertoireIds();
+  if (trainState.trainScope?.repertoireId && !allTrainable().some((r) => String(r.id) === trainState.trainScope.repertoireId)) setDueScope(null);
   syncTrainScreen();
 }
 
@@ -471,8 +472,7 @@ export async function loadTrainRepertoireOptions() {
 // The one Result card: cells, an optional what-changed list, one line of
 // outlook, and the latest runs of any mode.
 export function showTrainResult(result) {
-  const state = appState;
-  state.trainResult = result;
+  trainState.trainResult = result;
   document.getElementById("train-summary-title").textContent = result.title;
   document.getElementById("train-summary-stats").innerHTML =
     html`${result.cells.map(([value, label], i) => html`${i ? html`<span class="sum-sep">·</span>` : ""}<span><b>${value}</b> ${label}</span>`)}`;
@@ -500,11 +500,11 @@ function rowAction(button, start) {
 function bind() {
   const $ = (id) => document.getElementById(id);
   $("start-train").addEventListener("click", (e) => rowAction(e.currentTarget, () =>
-    openTrain({ mode: "smart", repertoireId: appState.trainScope?.repertoireId || null })));
+    openTrain({ mode: "smart", repertoireId: trainState.trainScope?.repertoireId || null })));
   $("start-rehearse").addEventListener("click", (e) => rowAction(e.currentTarget, () =>
-    openTrain({ mode: "all_lines", repertoireId: appState.trainingRepertoireId })));
+    openTrain({ mode: "all_lines", repertoireId: trainState.trainingRepertoireId })));
   $("restart-rehearse").addEventListener("click", () =>
-    openTrain({ mode: "all_lines", repertoireId: appState.trainingRepertoireId, fresh: true }));
+    openTrain({ mode: "all_lines", repertoireId: trainState.trainingRepertoireId, fresh: true }));
   $("start-play").addEventListener("click", () => openTrain({ mode: "play" }));
   $("train-due-retry").addEventListener("click", () => void loadTrainRepertoireOptions());
   $("train-due-next").addEventListener("click", (e) => {
@@ -514,26 +514,26 @@ function bind() {
     void paintTrainHome();
   });
   $("feeling-lucky").addEventListener("click", async () => {
-    if (await openTrain({ mode: "play", autostart: false })) void onFeelingLucky();
+    if (await openTrain({ mode: "play", autostart: false })) void session.onFeelingLucky();
   });
   $("train-back").addEventListener("click", () => void leaveToHome());
   $("train-summary-home").addEventListener("click", () => void leaveToHome());
   $("train-summary-new").addEventListener("click", () => {
-    const mode = appState.trainMode || "smart";
-    const repertoireId = mode === "smart" ? appState.trainScope?.repertoireId : appState.trainingRepertoireId;
+    const mode = trainState.trainMode || "smart";
+    const repertoireId = mode === "smart" ? trainState.trainScope?.repertoireId : trainState.trainingRepertoireId;
     void openTrain({ mode, repertoireId });
   });
   $("train-due-scope").addEventListener("click", (e) => openTrainPicker(e.currentTarget, {
     label: "Due queue from",
     items: [{ id: "", label: "All repertoires" }, ...trainRepertoireItems(appState)],
-    selected: [appState.trainScope?.repertoireId || ""],
+    selected: [trainState.trainScope?.repertoireId || ""],
     onChange: ([id]) => { setDueScope(id || null); void paintTrainHome(); },
   }));
   $("train-rehearse-scope").addEventListener("click", (e) => openTrainPicker(e.currentTarget, {
     label: "Rehearse",
     items: trainRepertoireItems(appState),
-    selected: [appState.trainingRepertoireId || ""],
-    onChange: ([id]) => { appState.trainingRepertoireId = id; void paintTrainHome(); },
+    selected: [trainState.trainingRepertoireId || ""],
+    onChange: ([id]) => { trainState.trainingRepertoireId = id; void paintTrainHome(); },
   }));
   $("train-play-book").addEventListener("click", (e) => {
     const usable = usableBooks();
@@ -544,20 +544,20 @@ function bind() {
         sub: usable[id] ? "" : id === "explorer" ? "Link Lichess in Settings" : "Sign in",
       })),
       selected: [playBook()],
-      onChange: ([id]) => { appState.playBook = id; void paintTrainHome(); },
+      onChange: ([id]) => { trainState.playBook = id; void paintTrainHome(); },
     });
   });
   // A Random-position discovery is the Practice pane's own work: leaving the
   // pane cancels it, so a late position cannot open its game over the Drill
   // rows, and the freed button retries at once back on Practice. Retapping
   // the current tab is not a switch and cancels nothing.
-  bindTrainPhone((book) => { appState.playBook = book; void paintTrainHome(); }, (from) => from === "play" && cancelLuckyPractice(appState));
+  bindTrainPhone((book) => { trainState.playBook = book; void paintTrainHome(); }, (from) => from === "play" && cancelLuckyPractice(trainState));
   $("train-play-reps").addEventListener("click", (e) => openTrainPicker(e.currentTarget, {
     label: "Opponent plays from",
     items: trainRepertoireItems(appState, { shared: false }),
     selected: selectedTrainRepertoireIds(),
     multi: true,
-    onChange: (ids) => { appState.playRepertoireIds = ids; persistPlayRepertoireIds(); void paintTrainHome(); },
+    onChange: (ids) => { trainState.playRepertoireIds = ids; persistPlayRepertoireIds(); void paintTrainHome(); },
   }));
   document.querySelectorAll("#train-play-color .seg-btn").forEach((btn) => {
     btn.addEventListener("click", () => { if (!btn.disabled) setPlayPickerColor(btn.dataset.color); });
@@ -566,27 +566,27 @@ function bind() {
     if (localStorage.getItem(PLAY_COLOR_KEY) === "black") setPlayPickerColor("black", { persist: false });
   } catch { /* private mode */ }
   $("train-blitz-toggle").addEventListener("click", (e) => {
-    const next = !blitzEnabled();
-    setBlitzEnabled(next);
+    const next = !session.blitzEnabled();
+    session.setBlitzEnabled(next);
     e.currentTarget.classList.toggle("is-on", next);
     e.currentTarget.setAttribute("aria-checked", String(next));
   });
-  $("train-blitz-toggle").classList.toggle("is-on", blitzEnabled());
-  $("train-blitz-toggle").setAttribute("aria-checked", String(blitzEnabled()));
+  $("train-blitz-toggle").classList.toggle("is-on", session.blitzEnabled());
+  $("train-blitz-toggle").setAttribute("aria-checked", String(session.blitzEnabled()));
   $("train-history-open").addEventListener("click", async () => {
     if (!requireSignIn("Sign in to view your training history", "train-history")) return;
     const owner = currentOwnerId();
     try {
       const { openTrainingHistory } = await import("../views/train-history.js");
-      if (currentOwnerId() === owner) openTrainingHistory(owner, run => currentOwnerId() === owner && openPlayInAnalyze(run));
+      if (currentOwnerId() === owner) openTrainingHistory(owner, run => currentOwnerId() === owner && session.openPlayInAnalyze(run));
     } catch { setStatusError("Could not open History. Reload and try again."); }
   });
-  $("train-hint").addEventListener("click", () => trainHint());
-  $("train-skip").addEventListener("click", () => skipTrainingLine());
-  $("play-takeback").addEventListener("click", () => takebackPlaySession());
+  $("train-hint").addEventListener("click", () => session.trainHint());
+  $("train-skip").addEventListener("click", () => session.skipTrainingLine());
+  $("play-takeback").addEventListener("click", () => session.takebackPlaySession());
   $("play-resign").addEventListener("click", async () => {
     const ok = await showConfirmModal({ title: "Resign this game?", okLabel: "Resign", cancelLabel: "Keep playing", tone: "danger" });
-    if (ok) resignPlaySession();
+    if (ok) session.resignPlaySession();
   });
-  $("play-analyze").addEventListener("click", () => openPlayInAnalyze());
+  $("play-analyze").addEventListener("click", () => session.openPlayInAnalyze());
 }

@@ -1,4 +1,4 @@
-import { appState, notices } from "./core/state.js";
+import { appState, buildState, notices } from "./core/state.js";
 import { BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, postJson, setStatusError } from "./core/api.js";
 import { effectiveMaiaRating, effectiveStockfishDepth } from "./core/prefs.js";
 import { showConfirmModal } from "./core/modals.js";
@@ -29,9 +29,9 @@ export function ensureCoverageView() {
   if (!coverageViewReady) {
     coverageViewReady = import("./controllers/coverage.js").then(({ createCoverageController }) => {
       coverageView = createCoverageController({
-        getContext: () => ({ build: appState.build, ownerId: currentOwnerId(),
+        getContext: () => ({ build: buildState.build, ownerId: currentOwnerId(),
           ownerGeneration: appState.ownerGeneration, rating: effectiveMaiaRating(),
-          selectedNodeId: appState.buildCurrentNodeId, readOnly: isBuildReadOnly() }),
+          selectedNodeId: buildState.buildCurrentNodeId, readOnly: isBuildReadOnly() }),
         getProvider: () => getSharedMaia3Provider(), selectNode: selectBuildNode,
         previewReplies: previewCoverageReplies, getJob: () => notices,
         onError: (error) => setStatusError(error.message),
@@ -53,7 +53,7 @@ export async function previewCoverageReplies(gaps, options) {
   if (owner !== currentOwnerId() || generation !== appState.ownerGeneration || !options.isValid()) return;
   return mod.previewCoverageReplies(gaps, options, {
     isBuildReadOnly, isBrowserEngineAvailable, unavailableMessage: BROWSER_ENGINE_UNAVAILABLE,
-    notices, hardFlushBuild, captureBuildContext, getBuild: () => appState.build,
+    notices, hardFlushBuild, captureBuildContext, getBuild: () => buildState.build,
     effectiveMaiaRating, effectiveStockfishDepth, getGenerator: () => preloadBuildGen(),
     getProvider: getSharedMaia3Provider, showConfirmModal, postJson, classifySyncError,
     hydrateBuild, trainRepertoire,

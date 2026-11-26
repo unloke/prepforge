@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { html } from "../html.js";
 
 import { createDashboardView } from "./dashboard.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // Library load failures (/api/dashboard or /api/repertoires) share one
 // composition: the empty layout (is-empty + is-error on .lib-list, no filter
@@ -59,7 +60,7 @@ describe("Library error state", () => {
     api = vi.fn(apiImpl);
     statuses = [];
     view = createDashboardView({
-      appState: { signedIn: true, teams: [{ id: "t" }], pendingRepDeletes: new Set() },
+      ...asSlices({ signedIn: true, teams: [{ id: "t" }], pendingRepDeletes: new Set() }), 
       api,
       postJson: vi.fn(),
       setStatus: (m) => statuses.push(["status", m]),

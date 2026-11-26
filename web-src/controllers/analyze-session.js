@@ -9,9 +9,8 @@ import {
 import { isReviewedMove } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
 import { createBatchSwitcher } from "../analyze-batch.js";
-import { recallAnalysis } from "./analyze-entry.js";
+import { analysisRecallSeq, recallAnalysis } from "./analyze-entry.js";
 import { ANALYSIS_ROOT_PATH } from "../analyze-node-path.js";
-import { _coachReady, analysisRecallSeq, analyzeView } from "../app.js";
 import { setPositionCaption } from "../board-caption.js";
 import { isAuthError } from "../auth-gate.js";
 import { localBoardAfterMove, localGameOver, pvSan } from "../chess-local.js";
@@ -35,11 +34,11 @@ import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, engine
   setStatus, setStatusError } from "../core/api.js";
 import { analysisStore, engineWidget, sanLineFromUci, savedPvSan, setEngineBestArrow,
   syncAnalysisEvalCard } from "../core/engine.js";
-import { appState, boards, notices, START_FEN } from "../core/state.js";
+import { appState, analysisState, boards, notices, START_FEN } from "../core/state.js";
 import { boardAfterMove, boardInfo } from "../board/ui.js";
 import { effectiveMaiaRating, effectiveStockfishDepth, maiaAnalysisEnabled, pref } from "../core/prefs.js";
-import { ensureAnalyzeView, renderAnalysisTreeEmptyState } from "../views/analyze-loader.js";
-import { loadPhaseCoach, preloadCoach } from "../coach/coach-loader.js";
+import { analyzeView, ensureAnalyzeView, renderAnalysisTreeEmptyState } from "../views/analyze-loader.js";
+import { _coachReady, loadPhaseCoach, preloadCoach } from "../coach/coach-loader.js";
 import { showConfirmModal, showInputModal } from "../core/modals.js";
 import { updateBookline } from "../analyze-book-state.js";
 import { accountService, analysisSelfSide, defaultRepertoireNameFromPgn, hideAnalysisRetrySave,
@@ -47,7 +46,7 @@ import { accountService, analysisSelfSide, defaultRepertoireNameFromPgn, hideAna
   refreshAnalyzeRecovery, requireSignIn, showAnalysisRetrySave, switchView, syncPgnFromTree,
   syncViewHeads, syncWorkspaceUrl } from "../core/app-context.js";
 
-const switchBatchAnalysis = createBatchSwitcher({ appState, recallAnalysis, runAnalysis, invalidateAnalysisSource,
+const switchBatchAnalysis = createBatchSwitcher({ analysisState, recallAnalysis, runAnalysis, invalidateAnalysisSource,
   sourceIsCurrent: (seq) => seq === analysisRecallSeq,
   isBusy: () => document.getElementById("run-analysis").disabled || notices.isBusy(), setStatus });
 
@@ -59,7 +58,7 @@ export function createAnalyzeSession() {
   ({ analysisTreeNav, onAnalysisBoardMove, selectAnalysisNode, selectAnalysisNodePath,
     selectedNodePath, showAnalysisPly } =
     createAnalysisSelection({
-      appState, START_FEN, boardInfo, boards, classBadgeSymbol, setPositionCaption,
+      analysisState, START_FEN, boardInfo, boards, classBadgeSymbol, setPositionCaption,
       highlightCurrentMove, persistAnalysisSession, syncViewHeads, syncWorkspaceUrl,
       refreshAnalysisExplain, engineWidget, analysisVariationLabel, ensureAnalyzeView,
       boardAfterMove, syncPgnFromTree, setStatusError,
@@ -95,7 +94,7 @@ export function createAnalyzeSession() {
 // mainline), so the coach still computes those live. Cheap linear scan — a game is well under
 // a few hundred plies and this runs once per (debounced) position change.
 function savedAnalysisMove(prevFen, uci, fen) {
-  const analysis = appState.analysis;
+  const analysis = analysisState.analysis;
   const moves = analysis && analysis.moves;
   if (!Array.isArray(moves) || !prevFen || !uci || !fen) return null;
   // Index lazily, memoised on the analysis object and rebuilt only when its `moves` array is
@@ -121,7 +120,7 @@ function savedAnalysisMove(prevFen, uci, fen) {
 // robust lookup). We still verify the transition matches before trusting the index, then fall
 // back to the fen-key scan for free-exploration variations (no ply) or any mismatch.
 function savedMainlineMove(ply, prevFen, uci, fen) {
-  const moves = appState.analysis && appState.analysis.moves;
+  const moves = analysisState.analysis && analysisState.analysis.moves;
   if (Array.isArray(moves) && Number.isInteger(ply) && ply >= 1 && ply <= moves.length) {
     const m = moves[ply - 1];
     if (m && m.fen_before === prevFen && m.uci === uci && m.fen_after === fen) return m;
@@ -130,9 +129,9 @@ function savedMainlineMove(ply, prevFen, uci, fen) {
 }
 
 function savedPositionEvalRead(fen, depth) {
-  const positionEvals = appState.analysis && appState.analysis.position_evals;
+  const positionEvals = analysisState.analysis && analysisState.analysis.position_evals;
   const ev = positionEvals && positionEvals[fen];
-  if (!ev || appState.analysis.engine !== ENGINE_ID) return null;
+  if (!ev || analysisState.analysis.engine !== ENGINE_ID) return null;
   const pvUci = Array.isArray(ev.pv) ? ev.pv.slice() : [];
   const firstUci = ev.best_move_uci || pvUci[0] || null;
   if (!firstUci && ev.score_cp == null && ev.mate_in == null) return null;
@@ -621,7 +620,7 @@ function savedBetterMove(ctx) {
   if (!isReviewedMove({ mover, selfSide: analysisSelfSide(), mainline: Number.isInteger(ctx.ply) })) return null;
   const saved = savedMainlineMove(ctx.ply, ctx.prevFen, ctx.lastUci, ctx.fen);
   if (!saved || !BETTER_ARROW_GRADES.has(String(saved.classification || "").toLowerCase())) return null;
-  const ev = appState.analysis && appState.analysis.position_evals && appState.analysis.position_evals[ctx.prevFen];
+  const ev = analysisState.analysis && analysisState.analysis.position_evals && analysisState.analysis.position_evals[ctx.prevFen];
   const best = ev && (ev.best_move_uci || (Array.isArray(ev.pv) ? ev.pv[0] : null));
   return best && best !== ctx.lastUci ? best : null;
 }
@@ -666,8 +665,8 @@ function setCoachProse(text, tone = "info", state = "instant", quality = null) {
 // The move before the current Analyze node (lets the coach tell a recapture from a
 // fresh capture). null at the root or one move in.
 function previousAnalysisMove() {
-  const tree = appState.analysisTree;
-  const node = tree && tree.byId ? tree.byId.get(appState.analysisCurrentNodeId || "root") : null;
+  const tree = analysisState.analysisTree;
+  const node = tree && tree.byId ? tree.byId.get(analysisState.analysisCurrentNodeId || "root") : null;
   const parent = node && node.parent;
   if (!parent || !parent.uci) return null;
   return { san: parent.san, uci: parent.uci, fenBefore: parent.fenBefore };
@@ -735,14 +734,14 @@ function paintMaiaCoachLine(model) {
 // Play a human pick from the position before the current move (a variation, or the
 // existing continuation when it is the move that was played).
 async function playHumanPick(uci) {
-  const tree = appState.analysisTree;
-  const node = tree && tree.byId ? tree.byId.get(appState.analysisCurrentNodeId || "root") : null;
+  const tree = analysisState.analysisTree;
+  const node = tree && tree.byId ? tree.byId.get(analysisState.analysisCurrentNodeId || "root") : null;
   if (node?.parent) await playMoveAt(node.parent.id, uci);
 }
 
 // Play `uci` from the tree node `nodeId`: the existing move there, or a new branch.
 async function playMoveAt(nodeId, uci) {
-  const from = appState.analysisTree?.byId?.get(nodeId);
+  const from = analysisState.analysisTree?.byId?.get(nodeId);
   if (!from || !uci) return;
   await selectAnalysisNode(from.id);
   await onAnalysisBoardMove(uci, from.fenAfter);
@@ -750,10 +749,10 @@ async function playMoveAt(nodeId, uci) {
 
 function paintPhaseFromFen(fen) {
   if (!fen) return;
-  const ctx = appState.explainContext;
+  const ctx = analysisState.explainContext;
   loadPhaseCoach()
     .then((m) => {
-      if (appState.explainContext !== ctx || activeViewName() !== "analyze") return;
+      if (analysisState.explainContext !== ctx || activeViewName() !== "analyze") return;
       const model = m.buildPhaseCoach({ fen, predictions: [] });
       paintPhaseChip(model.phase, model.title);
     })
@@ -768,7 +767,7 @@ function paintMaiaCoachFromRead(fen, read, extra = {}) {
         predictions: read?.predictions,
         rating: effectiveMaiaRating(),
         ...extra,
-      }, appState.explainContext, paintMaiaCoachLine);
+      }, analysisState.explainContext, paintMaiaCoachLine);
     })
     .catch(() => {});
 }
@@ -776,7 +775,7 @@ function paintMaiaCoachFromRead(fen, read, extra = {}) {
 // Drive the coach from one position-change call: show an instant plain-language read
 // immediately, then let the engine replace it with a graded verdict.
 function refreshAnalysisExplain(ctx) {
-  appState.explainContext = ctx || {};
+  analysisState.explainContext = ctx || {};
   const cached = positionCoach.update(ctx ? ctx.fen : null, ctx || {});
   if (cached) {
     paintPhaseFromFen(ctx.prevFen);
@@ -788,8 +787,8 @@ function refreshAnalysisExplain(ctx) {
 // Instant, engine-free sentence: what the last move did, or whose move it is. This is
 // the placeholder the engine commentary upgrades a beat later.
 function renderInstantCoach() {
-  const ctx = appState.explainContext || {};
-  const fen = ctx.fen || appState.analysisBoardFen || START_FEN;
+  const ctx = analysisState.explainContext || {};
+  const fen = ctx.fen || analysisState.analysisBoardFen || START_FEN;
   const turn = fen.split(" ")[1] === "b" ? "black" : "white";
   if (ctx.prevFen && ctx.lastSan) {
     paintPhaseFromFen(ctx.prevFen || fen);
@@ -803,12 +802,12 @@ function renderInstantCoach() {
     paintMaiaCoachLine(null);
     // A finished whole-game analysis on the start position: summarise the game instead
     // of the empty-board invitation.
-    const summary = hasClassifiedMoves(appState.analysis)
-      ? buildGameSummary({ moves: appState.analysis.moves, selfSide: analysisSelfSide() })
+    const summary = hasClassifiedMoves(analysisState.analysis)
+      ? buildGameSummary({ moves: analysisState.analysis.moves, selfSide: analysisSelfSide() })
       : null;
     // A game is on the board but its review hasn't landed yet: the coach has nothing
     // to grade, and "make a move" would invite one in a game the user is reviewing.
-    const loaded = appState.analysis?.moves?.length > 0;
+    const loaded = analysisState.analysis?.moves?.length > 0;
     setCoachProse(
       summary?.text || (loaded ? "Reading the game…" : "Make a move and I'll tell you what I think."),
       "info",
@@ -820,7 +819,7 @@ function renderInstantCoach() {
       button.type = "button";
       button.className = "coach-bookaction";
       // The move peeks on hover like every move the coach names; the button jumps.
-      const move = appState.analysis.moves.find((m) => Number(m.ply) === turn.ply);
+      const move = analysisState.analysis.moves.find((m) => Number(m.ply) === turn.ply);
       button.innerHTML = html`Turning point ${move?.fen_before && move.uci ? moveTokenHtml(move.fen_before, [move.uci], 0, turn.label, { focusable: false }) : turn.label}`;
       button.addEventListener("click", () => void showAnalysisPly(turn.ply).catch(() => {}));
       prose?.append(" ", button);
@@ -845,7 +844,7 @@ async function runAnalysis(options = {}) {
   // A picker switch names a game inside the batch that is already on screen: the
   // box holds one game now, so the POST carries the paste the picker's list came
   // from. Everything else analyzes what the box holds.
-  const batchPgn = options.fromBatch ? appState.analysisMultiPgn : null;
+  const batchPgn = options.fromBatch ? analysisState.analysisMultiPgn : null;
   const pgn = (batchPgn || document.getElementById("pgn-input").value).trim();
   if (!pgn) {
     setStatus("Paste PGN before analyzing");
@@ -866,11 +865,11 @@ async function runAnalysis(options = {}) {
   const analysisOwnerId = currentOwnerId();
   // Keep the batch this run belongs to (a picker switch re-posts it): the
   // invalidation above dropped it because a new source normally ends it.
-  appState.analysisMultiPgn = batchPgn || (importMode === "multi" ? pgn : null);
+  analysisState.analysisMultiPgn = batchPgn || (importMode === "multi" ? pgn : null);
   // Keep the game on screen while the engine works: (re)load the source into the move
   // list instead of hiding it behind the "Play on the board" placeholder. Only a source
   // that won't parse here (e.g. a multi-game paste) falls back to hiding the old list.
-  appState.analysisSourcePgn = null;
+  analysisState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   // A picker switch names a game inside a paste that is not one game: the selected
   // game's text arrives with `prepare`, and loading the paste first would only show
@@ -1205,8 +1204,8 @@ async function runAnalysis(options = {}) {
     const nodePath = (!userSelectedPath || userSelectedPath === ANALYSIS_ROOT_PATH) && finalMainlinePly > 0
       ? null
       : (userSelectedPath || ANALYSIS_ROOT_PATH);
-    appState.analysis = Object.assign(payload, { pgn: gamePgn });
-    appState.analysisTree = null;
+    analysisState.analysis = Object.assign(payload, { pgn: gamePgn });
+    analysisState.analysisTree = null;
     engineLifecycleMark("analyze-render-start", tAnalyze);
     await timed("render", () => renderAnalysis(payload, { sourceSeq: seq }));
     if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) {
@@ -1242,7 +1241,7 @@ async function runAnalysis(options = {}) {
         actions: [{ label: "Open", primary: true, onClick: () => switchView("analyze") }],
       });
     }
-    appState.analysisSourcePgn = gamePgn;
+    analysisState.analysisSourcePgn = gamePgn;
     revealAnalysisResults();
     // The source has done its job — fold it away so the report gets the room.
     const pgnDrawer = document.getElementById("pgn-drawer");
@@ -1252,7 +1251,7 @@ async function runAnalysis(options = {}) {
     const current = seq === analysisRecallSeq && analysisOwnerId === currentOwnerId();
     if (error && error.cancelled) {
       if (current) {
-        appState.analysisSourcePgn = null;
+        analysisState.analysisSourcePgn = null;
         hideAnalysisHandoff();
         // The coach must not go on reading a game that was stopped.
         setCoachProse("The analysis stopped.", "warn", "error");
@@ -1276,7 +1275,7 @@ async function runAnalysis(options = {}) {
     if (checkpoint && checkpoint.gameId && seq === analysisRecallSeq && analysisOwnerId === currentOwnerId()) {
       // Keep the in-memory-only variant reachable for Retry save — the device
       // copy doesn't exist in that case.
-      appState.analysisUnsavedCheckpoint = checkpoint.inMemoryOnly ? checkpoint : null;
+      analysisState.analysisUnsavedCheckpoint = checkpoint.inMemoryOnly ? checkpoint : null;
       showAnalysisRetrySave(checkpoint, error.message);
     }
   } finally {
@@ -1314,7 +1313,7 @@ function renderImportPicker(summary, mode) {
     host.hidden = true;
     host.innerHTML = "";
     // Nothing to switch between: the batch this picker listed is over.
-    appState.analysisMultiPgn = null;
+    analysisState.analysisMultiPgn = null;
     return;
   }
   const games = summary.games || [];
@@ -1340,38 +1339,38 @@ async function finishAnalyzeCheckpoint(checkpoint) {
   if (!checkpoint.inMemoryOnly) await markCheckpointSaved(checkpoint.gameId, checkpoint.ownerId, checkpoint.requestId);
   const cleared = checkpoint.inMemoryOnly || await clearCheckpoint(checkpoint.gameId, checkpoint.ownerId, checkpoint.requestId);
   if (checkpoint.ownerId !== currentOwnerId()) return;
-  if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
+  if (analysisState.analysisUnsavedCheckpoint === checkpoint) analysisState.analysisUnsavedCheckpoint = null;
   if (!cleared) { showAnalysisRetrySave(checkpoint); return; }
-  if (appState.analysisRetryCheckpoint === checkpoint) appState.analysisRetryCheckpoint = null;
+  if (analysisState.analysisRetryCheckpoint === checkpoint) analysisState.analysisRetryCheckpoint = null;
   await refreshAnalyzeRecovery();
 }
 
 async function discardAnalyzeCheckpoint() {
-  if (appState.analysisSaveInFlight) return;
-  const checkpoint = appState.analysisRetryCheckpoint;
+  if (analysisState.analysisSaveInFlight) return;
+  const checkpoint = analysisState.analysisRetryCheckpoint;
   if (!checkpoint || checkpoint.ownerId !== currentOwnerId()) return;
   if (!checkpoint.inMemoryOnly && !await clearCheckpoint(checkpoint.gameId, checkpoint.ownerId, checkpoint.requestId)) {
     setStatusError("Could not discard analysis: try again");
     return;
   }
   if (checkpoint.ownerId !== currentOwnerId()) return;
-  if (appState.analysisUnsavedCheckpoint === checkpoint) appState.analysisUnsavedCheckpoint = null;
-  if (appState.analysisRetryCheckpoint !== checkpoint) return;
-  appState.analysisRetryCheckpoint = null;
+  if (analysisState.analysisUnsavedCheckpoint === checkpoint) analysisState.analysisUnsavedCheckpoint = null;
+  if (analysisState.analysisRetryCheckpoint !== checkpoint) return;
+  analysisState.analysisRetryCheckpoint = null;
   await refreshAnalyzeRecovery();
   setStatus(checkpoint.serverSaved ? "Device copy removed" : "Discarded unsaved analysis");
 }
 
 // Re-post classify-save from the checkpoint — engine/model work is NOT redone.
 async function retryAnalyzeSave() {
-  if (appState.analysisSaveInFlight) return;
-  appState.analysisSaveInFlight = true;
+  if (analysisState.analysisSaveInFlight) return;
+  analysisState.analysisSaveInFlight = true;
   // Owner-scoped: this only ever retries work saved under the CURRENT account.
   const ownerId = currentOwnerId();
-  const checkpoint = [appState.analysisRetryCheckpoint, appState.analysisUnsavedCheckpoint]
+  const checkpoint = [analysisState.analysisRetryCheckpoint, analysisState.analysisUnsavedCheckpoint]
     .find((candidate) => candidate?.ownerId === ownerId) || await loadCheckpoint(null, ownerId);
   if (!checkpoint || !checkpoint.gameId || ownerId !== currentOwnerId()) {
-    appState.analysisSaveInFlight = false;
+    analysisState.analysisSaveInFlight = false;
     hideAnalysisRetrySave();
     return;
   }
@@ -1406,14 +1405,14 @@ async function retryAnalyzeSave() {
     }
     const input = document.getElementById("pgn-input");
     if (input) input.value = checkpoint.pgn;
-    appState.analysis = payload;
+    analysisState.analysis = payload;
     resetAnalysisVariations();
     await rebuildAnalysisVariations(checkpoint.pgn);
     await showAnalysisPly(0);
     await renderAnalysis(payload, { sourceSeq: seq });
     if (seq !== analysisRecallSeq || ownerId !== currentOwnerId()) return;
     setStatus("Analysis saved", { severity: "success" });
-    appState.analysisSourcePgn = checkpoint.pgn || appState.analysisSourcePgn;
+    analysisState.analysisSourcePgn = checkpoint.pgn || analysisState.analysisSourcePgn;
     revealAnalysisResults();
     await updateAnalysisHandoff();
   } catch (error) {
@@ -1424,7 +1423,7 @@ async function retryAnalyzeSave() {
     }
     showAnalysisRetrySave(checkpoint, error.message);
   } finally {
-    appState.analysisSaveInFlight = false;
+    analysisState.analysisSaveInFlight = false;
     if (retryButton) retryButton.disabled = false;
     if (runButton) runButton.disabled = false;
   }
@@ -1446,14 +1445,14 @@ async function userHasAnyRepertoire() {
 async function updateAnalysisHandoff() {
   const handoff = document.getElementById("analysis-handoff");
   if (!handoff) return;
-  const pgn = (appState.analysisSourcePgn || "").trim();
+  const pgn = (analysisState.analysisSourcePgn || "").trim();
   const show =
     appState.signedIn && pgn.length > 0 && !(await userHasAnyRepertoire());
   handoff.hidden = !show;
 }
 
 async function onCreateRepertoireFromGameClick() {
-  const pgn = (appState.analysisSourcePgn || "").trim();
+  const pgn = (analysisState.analysisSourcePgn || "").trim();
   if (!pgn || !appState.signedIn) return;
   const full = repertoireLimitMessage();
   const btn = document.getElementById("create-repertoire-from-game");
@@ -1475,7 +1474,7 @@ async function onCreateRepertoireFromGameClick() {
     const payload = await importRepertoireFromPgnText(pgn, { name, color });
     switchView("build");
     setStatus(`Repertoire “${payload.name}” created. Edit it in Repertoire.`, { severity: "success" });
-    appState.analysisSourcePgn = null;
+    analysisState.analysisSourcePgn = null;
     hideAnalysisHandoff();
   } catch (error) {
     setStatusError(error.message || "Could not create repertoire. Try again.");
@@ -1488,7 +1487,7 @@ function hideAnalysisResults() {
   if (!panel) return;
   panel.classList.remove("is-visible");
   panel.hidden = true;
-  appState.analysisSourcePgn = null;
+  analysisState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   syncAnalysisEvalCard();
 }
@@ -1509,7 +1508,7 @@ function revealAnalysisResults() {
 
 async function renderAnalysis(payload, { sourceSeq = analysisRecallSeq } = {}) {
   const view = await ensureAnalyzeView();
-  if (sourceSeq !== analysisRecallSeq || appState.analysis !== payload) return;
+  if (sourceSeq !== analysisRecallSeq || analysisState.analysis !== payload) return;
   const rendered = view.renderAnalysis(payload);
   syncViewHeads();
   return rendered;
@@ -1542,9 +1541,9 @@ function updateEvalChartCursor() {
 // for, and an older snapshot never overwrites a newer one.
 async function persistAnalysisSession() {
   const startedAt = selectedNodePath();
-  const analysis = appState.analysis;
+  const analysis = analysisState.analysis;
   const moves = analysis ? analysis.moves || [] : [];
-  if (!moves.length && !(appState.analysisVarNodes && appState.analysisVarNodes.size)) {
+  if (!moves.length && !(analysisState.analysisVarNodes && analysisState.analysisVarNodes.size)) {
     clearReturnState("analyze");
     return;
   }
@@ -1552,10 +1551,10 @@ async function persistAnalysisSession() {
   // has not run): the pair would mix their new text with this tree's position, so
   // leave the previous snapshot alone until the tree follows the box.
   const input = document.getElementById("pgn-input");
-  if (document.activeElement === input && !appState.analysisPgnStale) return;
+  if (document.activeElement === input && !analysisState.analysisPgnStale) return;
   // Serialize first: the saved PGN must contain every branch the tree has now.
   await syncPgnFromTree().catch(() => {});
-  if (analysis !== appState.analysis || selectedNodePath() !== startedAt) return;
+  if (analysis !== analysisState.analysis || selectedNodePath() !== startedAt) return;
   const pgn = input?.value || "";
   if (!pgn.trim()) {
     clearReturnState("analyze");
@@ -1566,7 +1565,7 @@ async function persistAnalysisSession() {
     // A saved review: a reload recalls its grades, chart and report by id instead
     // of re-parsing a bare PGN (which carries none of them).
     gameId: analysis?.game_id || null,
-    ply: Math.max(0, Number(appState.analysisPly) || 0),
+    ply: Math.max(0, Number(analysisState.analysisPly) || 0),
     // The position's stable identity: `root`, or the UCI path that leads to it
     // (`e2e4-d7d6` for 1... d6, `e2e4-e7e5-g1f3-a7a6` for a branch at move 3).
     // A mainline position resolves to the same node either way.
@@ -1575,11 +1574,11 @@ async function persistAnalysisSession() {
 }
 
 function resetAnalysisVariations(varNodes = new Map()) {
-  appState.analysisVarNodes = varNodes;
-  appState.analysisVarCounter = varNodes.size;
-  appState.analysisCurrentNodeId = "root";
-  appState.analysisNodePath = null;
-  appState.analysisTree = null;
+  analysisState.analysisVarNodes = varNodes;
+  analysisState.analysisVarCounter = varNodes.size;
+  analysisState.analysisCurrentNodeId = "root";
+  analysisState.analysisNodePath = null;
+  analysisState.analysisTree = null;
 }
 
 // Re-install the branches the ANALYZED GAME carries. A finished analysis payload
@@ -1595,12 +1594,12 @@ async function rebuildAnalysisVariations(gamePgn) {
   const parsed = parsePgn(gamePgn);
   if (!parsed.ok) return false;
   const view = await ensureAnalyzeView();
-  const { varNodes } = view.adaptParsedTree(parsed.root, appState.analysis?.moves?.length);
-  appState.analysis.pgn = gamePgn;
-  appState.analysisVarNodes = varNodes;
-  appState.analysisVarCounter = varNodes.size;
-  appState.analysisTree = null;
-  appState.analysisPgnStale = false;
+  const { varNodes } = view.adaptParsedTree(parsed.root, analysisState.analysis?.moves?.length);
+  analysisState.analysis.pgn = gamePgn;
+  analysisState.analysisVarNodes = varNodes;
+  analysisState.analysisVarCounter = varNodes.size;
+  analysisState.analysisTree = null;
+  analysisState.analysisPgnStale = false;
   return true;
 }
 
@@ -1622,9 +1621,9 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onIn
   const fenOnly = !moves.length && !varNodes.size ? parsed.headers.FEN : null;
   if (!moves.length && !varNodes.size && !fenOnly) {
     // Emptied box → clear the move list and eval chart, drop any analyzed game.
-    appState.analysis = null;
+    analysisState.analysis = null;
     resetAnalysisVariations();
-    appState.analysisPly = 0;
+    analysisState.analysisPly = 0;
     renderAnalysisTreeEmptyState();
     view.renderEvalChart([]);
     view.renderReport([]);
@@ -1633,11 +1632,11 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onIn
   }
   // A typed/edited game replaces any prior analysis (classifications are dropped
   // until the user re-runs Analyze). Synthetic payload keeps showAnalysisPly happy.
-  appState.analysis = { pgn: pgnText, moves, eval_graph: [], engine: null, depth: null, ...(fenOnly && { initialFen: fenOnly }) };
+  analysisState.analysis = { pgn: pgnText, moves, eval_graph: [], engine: null, depth: null, ...(fenOnly && { initialFen: fenOnly }) };
   resetAnalysisVariations(varNodes);
-  appState.analysisSourcePgn = null;
+  analysisState.analysisSourcePgn = null;
   // The box and this tree are one source again.
-  if (!fenOnly) appState.analysisPgnStale = false;
+  if (!fenOnly) analysisState.analysisPgnStale = false;
   view.renderAnalysisTree(moves);
   view.renderEvalChart([]);
   view.renderReport([]);
@@ -1661,6 +1660,6 @@ function highlightCurrentMove() {
 // a mainline to vary from — the first moves played on an empty board are just the game.
 function analysisVariationLabel(moveNumber, side, san) {
   const base = `${moveNumber}${side === "black" ? "..." : "."} ${san}`;
-  const hasMainline = !!(appState.analysis && appState.analysis.moves && appState.analysis.moves.length);
+  const hasMainline = !!(analysisState.analysis && analysisState.analysis.moves && analysisState.analysis.moves.length);
   return hasMainline ? `${base} · variation` : base;
 }

@@ -1,5 +1,5 @@
 import { html } from "../html.js";
-import { appState, notices } from "../core/state.js";
+import { appState, buildState, notices } from "../core/state.js";
 import { api, setStatus } from "../core/api.js";
 import { showInputModal } from "../core/modals.js";
 import { effectiveMaiaRating, effectiveStockfishDepth, maiaAnalysisEnabled } from "../core/prefs.js";
@@ -190,8 +190,8 @@ async function ensureScoutView() {
       notices,
       parseFenBoard,
       pieceSvg,
-      getBuildState: () => appState.build,
-      getBuildNodeById: (id) => appState.buildNodeById.get(id),
+      getBuildState: () => buildState.build,
+      getBuildNodeById: (id) => buildState.buildNodeById.get(id),
       queueBuildAdd,
       connectLichess: startLichessOAuth,
       loadPgnIntoAnalyze,

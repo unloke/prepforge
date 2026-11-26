@@ -15,8 +15,7 @@ import { formatEngineEval } from "../engine-eval.js";
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
 // outbox and its flushes) stays in app.js so it can run before this loads and on unload.
 
-import { buildView, coverageView } from "../app.js";
-import { buildDockTab, explorerClient, explorerDb, explorerModule } from "../build-entry.js";
+import { coverageView } from "../coverage-entry.js";
 import { pokeBuildLive } from "../build-live.js";
 import { localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
@@ -29,12 +28,12 @@ import { getBuildTree, indexBuildNodes } from "../build-tree.js";
 
 import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, downloadText,
   engineLifecycleMark, OUTBOX_TAB_ID, postJson, setStatus, setStatusError } from "../core/api.js";
-import { appState, boards, notices, START_FEN } from "../core/state.js";
+import { appState, buildState, trainState, boards, notices, START_FEN } from "../core/state.js";
 import { boardAfterMove, boardInfo, optimisticBoardMove } from "../board/ui.js";
-import { buildDockFolded, buildOpMatchesRepertoire, buildProvisionalNode, deleteBuildNodeLocal,
-  ensureExplorerClient, explorerDrawerOpen, explorerEvalEngine, hasPendingBuildOpsFor, isBuildReadOnly,
-  normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes, renderBuilderTree,
-  resolveBuildId, sameFenPosition } from "../build-entry.js";
+import { buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode, buildView,
+  deleteBuildNodeLocal, ensureExplorerClient, explorerClient, explorerDb, explorerDrawerOpen, explorerEvalEngine,
+  explorerModule, hasPendingBuildOpsFor, isBuildReadOnly, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
+  reapplyPendingBuildNodes, renderBuilderTree, resolveBuildId, sameFenPosition } from "../build-entry.js";
 import { effectiveMaiaRating, effectiveStockfishDepth, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "../core/prefs.js";
 import { engineWidget, EXPLORER_EVAL_MAX_LINES } from "../core/engine.js";
 import { invalidateBook } from "../analyze-book-state.js";
@@ -71,32 +70,32 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
   if (!payload || typeof payload !== "object" || !payload.repertoire_id || !Array.isArray(payload.nodes)) {
     throw new TypeError("hydrateBuild needs a /api/build/load payload with repertoire_id and nodes");
   }
-  appState.buildGenerationPreview?.clear(false);
+  buildState.buildGenerationPreview?.clear(false);
   // Opening/switching to a DIFFERENT repertoire must not throw away local-first
   // sync state: callers hard-flush before switching, and anything still queued
   // (a restored queue, a flush that failed) is tagged with its target and kept
   // (R-02). A reconcile re-hydrate keeps the same id, so its pending queue +
   // id map survive — that's the load-bearing distinction for the in-flight case.
-  const prevRepId = appState.build && appState.build.repertoire_id;
-  const previousNodes = appState.buildNodeById;
+  const prevRepId = buildState.build && buildState.build.repertoire_id;
+  const previousNodes = buildState.buildNodeById;
   if (payload.repertoire_id !== prevRepId) {
-    clearTimeout(appState.buildFlushTimer);
-    appState.buildFlushTimer = null;
+    clearTimeout(buildState.buildFlushTimer);
+    buildState.buildFlushTimer = null;
     // R-02: opening a repertoire only changes what is DISPLAYED. Ops queued
     // for ANOTHER tree (restored after a reload, or left by a failed flush)
     // stay on the device for their own repertoire; ops for THIS tree are
     // re-applied onto the fresh payload below.
     // Stale undo windows from the old repertoire become no-ops (their commit
     // guards on repertoire id), but their ids must not prune the new tree.
-    appState.buildUndoDeletes = new Set();
-    appState.buildUndoCommitByMove = new Map();
+    buildState.buildUndoDeletes = new Set();
+    buildState.buildUndoCommitByMove = new Map();
     // buildIdMap is additive and tmp ids are tab-unique, so it stays: another
     // tree's queued children still need their parent translated.
-    appState.buildSyncState = "saved";
-    appState.buildSyncRetry = 0;
+    buildState.buildSyncState = "saved";
+    buildState.buildSyncRetry = 0;
   }
-  appState.build = payload;
-  appState.buildNodeById = indexBuildNodes(payload.nodes);
+  buildState.build = payload;
+  buildState.buildNodeById = indexBuildNodes(payload.nodes);
   invalidateBook();
   // Orient only when a repertoire opens — a reconcile re-hydrate after an
   // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
@@ -106,8 +105,8 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
   // Merge local edits before selecting or painting anything. Selecting a server
   // ancestor first briefly moved the board backwards on every in-flight add.
   reapplyPendingBuildNodes(
-    appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, payload.repertoire_id)),
-    appState.buildIdMap,
+    buildState.buildPending.filter((m) => buildOpMatchesRepertoire(m, payload.repertoire_id)),
+    buildState.buildIdMap,
   );
   reapplyPendingBuildDeletes();
   renderBuildRepHeader();
@@ -116,7 +115,7 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
   // The opening node must exist in this payload. A node that a concurrent edit
   // removed (an anchor passed in, or a stale selection) made selectBuildNode
   // return at once, so the tree was never painted and the skeleton stayed up.
-  const known = (id) => !!id && appState.buildNodeById.has(id);
+  const known = (id) => !!id && buildState.buildNodeById.has(id);
   while (selectedNodeId && !known(resolveBuildId(selectedNodeId))) {
     selectedNodeId = previousNodes?.get(selectedNodeId)?.parent_id;
   }
@@ -124,16 +123,16 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
   const root = payload.nodes.find((node) => node.depth === 0) || payload.nodes[0];
   const nextNodeId = [selectedNodeId, payload.selected_node_id].find(known) || root?.id;
   const branchChoiceId = payload.repertoire_id === prevRepId
-    && nextNodeId === resolveBuildId(appState.buildCurrentNodeId)
-    ? resolveBuildId(appState.buildBranchChoiceId) : null;
+    && nextNodeId === resolveBuildId(buildState.buildCurrentNodeId)
+    ? resolveBuildId(buildState.buildBranchChoiceId) : null;
   await selectBuildNode(nextNodeId, { branchChoiceId: known(branchChoiceId) ? branchChoiceId : null, revealSelection });
-  if (appState.build !== payload) return;
-  if (!appState.buildFlushing && hasPendingBuildOpsFor(payload.repertoire_id)) {
+  if (buildState.build !== payload) return;
+  if (!buildState.buildFlushing && hasPendingBuildOpsFor(payload.repertoire_id)) {
     setBuildSync("dirty");
     scheduleBuildFlush();
   }
   renderBuildSync();
-  if (!appState.buildLoading) syncWorkspaceUrl();
+  if (!buildState.buildLoading) syncWorkspaceUrl();
 }
 
 function openBuildMenu(event) {
@@ -141,14 +140,14 @@ function openBuildMenu(event) {
   event.stopPropagation();
   const menu = document.getElementById("repertoire-context-menu");
   if (!menu) return;
-  const rep = appState.build;
+  const rep = buildState.build;
   const repId = rep?.repertoire_id;
   const editable = !!rep && !isBuildReadOnly();
   const owner = !!rep && !appState.sharedToken && buildRole(rep) === "owner";
   const collaborative = !!rep && !appState.sharedToken && appState.signedIn;
   const meta = (appState.repertoireList || []).find((r) => String(r.id) === String(repId));
   const isActive = meta?.is_active !== false;
-  const node = editable ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
+  const node = editable ? buildState.buildNodeById.get(buildState.buildCurrentNodeId) : null;
   const item = (action, label, extra = {}) => ({ action, label, ...extra });
   const items = [
     ...(node?.san && node.parent_id ? [item("build-node-menu", `Options for ${nodeMenuHeading(node)}…`)] : []),
@@ -190,35 +189,35 @@ function openBuildMenu(event) {
 }
 
 async function renameRepertoire() {
-  if (!appState.build) {
+  if (!buildState.build) {
     setStatus("Open a repertoire first");
     return;
   }
-  const repertoireId = appState.build.repertoire_id;
+  const repertoireId = buildState.build.repertoire_id;
   await promptRenameRepertoire({
-    repertoireId, name: appState.build.name,
+    repertoireId, name: buildState.build.name,
     afterSave: async (payload) => {
-      if (appState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, appState.buildCurrentNodeId);
+      if (buildState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, buildState.buildCurrentNodeId);
     },
   });
 }
 
 async function selectBuildNode(nodeId, { branchChoiceId = null, revealSelection = false, previewUci = null } = {}) {
-  if (!appState.buildNodeById.has(nodeId)) return;
+  if (!buildState.buildNodeById.has(nodeId)) return;
   // Which way the board travels: into the current node's own child is a move
   // being shown; a parent, a sibling or a distant node is a step through or a
   // jump across existing history, so it stays quiet and keeps no move pulse.
   // The pieces themselves come from the positions (board/move-motion.js).
-  const previous = appState.buildNodeById.get(appState.buildCurrentNodeId);
-  const node = appState.buildNodeById.get(nodeId);
-  const build = appState.build;
+  const previous = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
+  const node = buildState.buildNodeById.get(nodeId);
+  const build = buildState.build;
   const back = !previous || previous.id !== node.parent_id;
-  appState.buildCurrentNodeId = nodeId;
+  buildState.buildCurrentNodeId = nodeId;
   // Landing on a position resets the fork pick to the mainline continuation.
-  appState.buildBranchChoiceId = branchChoiceId;
+  buildState.buildBranchChoiceId = branchChoiceId;
   const info = await boardInfo(node.fen);
-  if (appState.build !== build || appState.buildCurrentNodeId !== nodeId
-    || appState.buildNodeById.get(nodeId) !== node) return;
+  if (buildState.build !== build || buildState.buildCurrentNodeId !== nodeId
+    || buildState.buildNodeById.get(nodeId) !== node) return;
   boards.build.setPosition({
     fen: node.fen,
     legalMoves: info.legal_moves,
@@ -511,7 +510,7 @@ function engineScoreCp(pv) {
 function paintExplorerEvals(snapshot, mainSnapshot = null) {
   const rows = document.getElementById("explorer-rows");
   if (!rows || !rows.classList.contains("has-eval")) return;
-  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
   const fen = (node && node.fen) || START_FEN;
   const live = !!snapshot && !snapshot.error && sameFenPosition(snapshot.fen, fen);
   const failed = !!snapshot && !!snapshot.error;
@@ -609,7 +608,7 @@ async function refreshExplorerPanel() {
   const rows = document.getElementById("explorer-rows");
   if (!rows || !explorerDrawerOpen()) return;
   const node =
-    appState.buildCurrentNodeId && appState.buildNodeById.get(appState.buildCurrentNodeId);
+    buildState.buildCurrentNodeId && buildState.buildNodeById.get(buildState.buildCurrentNodeId);
   const fen = node ? node.fen : null;
   if (!fen) {
     showExplorerHint(rows, "Open a repertoire to see real-game stats.");
@@ -693,7 +692,7 @@ function renderExplorerRows(stats, fen) {
   }
   // Dot the continuations already in the repertoire at this node, so gaps between
   // "what people actually play" and "what I've prepared" jump out.
-  const current = appState.buildCurrentNodeId;
+  const current = buildState.buildCurrentNodeId;
   const canAdd = !isBuildReadOnly();
   // Each move's share of the games here: how often the reply has to be met.
   const allGames = stats.moves.reduce((sum, m) => sum + (Number(m.total) || 0), 0);
@@ -762,7 +761,7 @@ function buildChildForUci(parentId, uci) {
 
 async function onExplorerRowClick(rows, uci) {
   const rowsFen = rows.dataset.fen;
-  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
   const currentFen = node ? node.fen : boards.build && boards.build.fen;
   if (!node || !rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
   const existing = buildChildForUci(node.id, uci);
@@ -781,7 +780,7 @@ async function onExplorerRowClick(rows, uci) {
 // is still on their position.
 async function onExplorerRowAdd(rows, uci) {
   const rowsFen = rows.dataset.fen;
-  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
   const currentFen = node ? node.fen : boards.build && boards.build.fen;
   if (!rowsFen || !sameFenPosition(rowsFen, currentFen)) return;
   delete rows.dataset.fen;
@@ -789,7 +788,7 @@ async function onExplorerRowAdd(rows, uci) {
   try {
     await onBuildBoardMove(uci);
   } finally {
-    const now = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    const now = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
     const nowFen = now ? now.fen : boards.build && boards.build.fen;
     if (!rows.dataset.fen && sameFenPosition(rowsFen, nowFen)) {
       rows.dataset.fen = rowsFen;
@@ -799,7 +798,7 @@ async function onExplorerRowAdd(rows, uci) {
 }
 
 function buildRootId() {
-  const nodes = appState.build ? appState.build.nodes : [];
+  const nodes = buildState.build ? buildState.build.nodes : [];
   const root = nodes.find((n) => n.depth === 0);
   return root ? root.id : nodes[0]?.id || null;
 }
@@ -814,7 +813,7 @@ function buildGoRoot() {
 }
 
 function buildGoBack() {
-  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
   if (node && node.parent_id) selectBuildNode(node.parent_id);
 }
 
@@ -826,24 +825,24 @@ function buildGoForward() {
     selectBuildNode(ctx.choiceId);
     return;
   }
-  const child = buildMainlineChild(appState.buildCurrentNodeId);
+  const child = buildMainlineChild(buildState.buildCurrentNodeId);
   if (child) selectBuildNode(child.id);
 }
 
 function buildGoToEnd() {
-  let cur = appState.buildCurrentNodeId;
+  let cur = buildState.buildCurrentNodeId;
   let child = buildMainlineChild(cur);
   while (child) {
     cur = child.id;
     child = buildMainlineChild(cur);
   }
-  if (cur && cur !== appState.buildCurrentNodeId) selectBuildNode(cur);
+  if (cur && cur !== buildState.buildCurrentNodeId) selectBuildNode(cur);
 }
 
 // The next-move branches from a node (its children), mainline first.
 function buildChildrenOf(nodeId) {
-  if (!appState.build || !nodeId) return [];
-  return getBuildTree(appState.build).children.get(nodeId) || [];
+  if (!buildState.build || !nodeId) return [];
+  return getBuildTree(buildState.build).children.get(nodeId) || [];
 }
 
 // The fork picker. ONE mental model everywhere: you stand on a position, and when
@@ -854,10 +853,10 @@ function buildChildrenOf(nodeId) {
 // at this move" and "next-move branches" depending on the node, which meant the
 // same keys did different things at different times.)
 function buildBranchContext() {
-  if (!appState.build || !appState.buildCurrentNodeId) return null;
-  const options = buildChildrenOf(appState.buildCurrentNodeId);
+  if (!buildState.build || !buildState.buildCurrentNodeId) return null;
+  const options = buildChildrenOf(buildState.buildCurrentNodeId);
   if (options.length < 2) return null; // no fork: plain ← → walking
-  const picked = options.find((n) => n.id === appState.buildBranchChoiceId) || options[0];
+  const picked = options.find((n) => n.id === buildState.buildBranchChoiceId) || options[0];
   return { options, choiceId: picked.id };
 }
 
@@ -868,7 +867,7 @@ function buildBranchKey(direction) {
   if (!ctx) return;
   const idx = ctx.options.findIndex((n) => n.id === ctx.choiceId);
   const next = ctx.options[(idx + direction + ctx.options.length) % ctx.options.length];
-  appState.buildBranchChoiceId = next.id;
+  buildState.buildBranchChoiceId = next.id;
   renderBuildBranchBar({ reopen: true });
 }
 
@@ -881,18 +880,18 @@ function renderBuildBranchBar(options) {
 
 async function saveBuildAnnotations(arrows, circles) {
   if (activeViewName() !== "build" || isBuildReadOnly()) return;
-  if (!appState.build || !appState.buildCurrentNodeId) return;
+  if (!buildState.build || !buildState.buildCurrentNodeId) return;
   const ownerId = currentOwnerId();
   const generation = appState.ownerGeneration;
   const isOwner = () => ownerId === currentOwnerId() && generation === appState.ownerGeneration;
-  const repertoireId = appState.build.repertoire_id;
-  const selectedId = appState.buildCurrentNodeId;
-  const idMap = appState.buildIdMap;
+  const repertoireId = buildState.build.repertoire_id;
+  const selectedId = buildState.buildCurrentNodeId;
+  const idMap = buildState.buildIdMap;
   const resolvedId = () => idMap?.[selectedId] || selectedId;
-  const slots = appState.buildAnnotationSlots ||= new Map();
+  const slots = buildState.buildAnnotationSlots ||= new Map();
   const key = JSON.stringify([ownerId, generation, repertoireId, resolvedId()]);
   let slot = slots.get(key);
-  const node = appState.buildNodeById.get(resolvedId());
+  const node = buildState.buildNodeById.get(resolvedId());
   if (!slot) {
     slot = { confirmed: { arrows: (node?.arrows || []).slice(), circles: (node?.circles || []).slice() }, latest: null, task: null };
     slots.set(key, slot);
@@ -900,7 +899,7 @@ async function saveBuildAnnotations(arrows, circles) {
   slot.latest = { arrows: arrows.slice(), circles: circles.slice() };
   if (node) Object.assign(node, slot.latest);
   if (slot.task) return slot.task;
-  const previousSave = appState.buildAnnotationsSaving;
+  const previousSave = buildState.buildAnnotationsSaving;
   const task = (async () => {
     if (previousSave) await previousSave;
     while (slot.latest && isOwner()) {
@@ -924,20 +923,20 @@ async function saveBuildAnnotations(arrows, circles) {
       if (!isOwner()) return;
       // Only the newest visible draft can repaint this position. An earlier
       // success advances confirmation/revision without replaying an old drawing.
-      if (appState.build?.repertoire_id === repertoireId) {
+      if (buildState.build?.repertoire_id === repertoireId) {
         const visible = slot.latest || slot.confirmed;
-        const currentNode = appState.buildNodeById.get(resolvedId());
+        const currentNode = buildState.buildNodeById.get(resolvedId());
         if (currentNode) Object.assign(currentNode, visible);
-        if (resolveBuildId(appState.buildCurrentNodeId) === resolvedId()) boards.build.setAnnotations(visible.arrows, visible.circles);
+        if (resolveBuildId(buildState.buildCurrentNodeId) === resolvedId()) boards.build.setAnnotations(visible.arrows, visible.circles);
       }
     }
   })();
   slot.task = task;
-  appState.buildAnnotationsSaving = task;
+  buildState.buildAnnotationsSaving = task;
   try { await task; }
   finally {
     slots.delete(key);
-    if (appState.buildAnnotationsSaving === task) appState.buildAnnotationsSaving = null;
+    if (buildState.buildAnnotationsSaving === task) buildState.buildAnnotationsSaving = null;
   }
 }
 
@@ -949,10 +948,10 @@ function canonicalBuildUci(fen, uci) {
 }
 
 async function onBuildBoardMove(moveUci) {
-  if (appState.buildLoading) return;
+  if (buildState.buildLoading) return;
   // Explorer castling uses king-to-rook UCI; the board, local tree and
   // durable queue all use the standard king destination instead.
-  const moveParent = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const moveParent = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
   moveUci = canonicalBuildUci(moveParent?.fen || boards.build.fen, moveUci);
   if (isBuildReadOnly()) {
     setStatus("Read-only — copy to your account to edit");
@@ -964,7 +963,7 @@ async function onBuildBoardMove(moveUci) {
   // opens a modal instead.
   const prevFen = boards.build.fen;
   const prevLegal = boards.build.legalMoves;
-  const hadRep = appState.build && appState.buildCurrentNodeId;
+  const hadRep = buildState.build && buildState.buildCurrentNodeId;
   const optimistic = hadRep ? await optimisticBoardMove(boards.build, prevFen, moveUci) : false;
   const rollback = () => {
     if (optimistic && prevFen) {
@@ -999,8 +998,8 @@ async function onBuildBoardMove(moveUci) {
     }
   }
 
-  const parentId = appState.buildCurrentNodeId;
-  const parent = appState.buildNodeById.get(parentId);
+  const parentId = buildState.buildCurrentNodeId;
+  const parent = buildState.buildNodeById.get(parentId);
   if (!parent) {
     rollback();
     return;
@@ -1012,12 +1011,12 @@ async function onBuildBoardMove(moveUci) {
   // add-moves dedupes the replay into the still-living old node, and the queued
   // delete then destroys it (taking the replayed move with it). This is the
   // delete-before-add invariant, enforced across the undo-window boundary.
-  const parkedDeleteCommit = appState.buildUndoCommitByMove.get(`${parentId}:${moveUci}`);
+  const parkedDeleteCommit = buildState.buildUndoCommitByMove.get(`${parentId}:${moveUci}`);
   if (parkedDeleteCommit) parkedDeleteCommit();
 
   // Dedupe (parity with the server): replaying an existing line just navigates to
   // the child — no provisional node, no dirty state.
-  const existing = appState.build.nodes.find(
+  const existing = buildState.build.nodes.find(
     (n) => n.parent_id === parentId && canonicalBuildUci(parent.fen, n.uci) === moveUci
   );
   if (existing) {
@@ -1035,8 +1034,8 @@ async function onBuildBoardMove(moveUci) {
   }
 
   const node = buildProvisionalNode(parent, moveUci, after);
-  appState.buildJustAddedId = node.id;
-  appState.buildAddedIds.push({ repertoireId: appState.build.repertoire_id, id: node.id });
+  buildState.buildJustAddedId = node.id;
+  buildState.buildAddedIds.push({ repertoireId: buildState.build.repertoire_id, id: node.id });
   queueBuildAdd(node);
   await selectBuildNode(node.id);
   setBuildSync("dirty");
@@ -1090,7 +1089,7 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
       try {
         const payload = await postJson("/api/repertoires/create", { name, color });
         await hydrateBuild(payload, payload.selected_node_id);
-        appState.trainingRepertoireId = payload.repertoire_id;
+        trainState.trainingRepertoireId = payload.repertoire_id;
         close(payload);
         setStatus(`Created ${name}`);
         await refreshDashboardRepertoires();
@@ -1112,12 +1111,12 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
 // It mirrors the Build payload shape so the view, tree and board render the
 // empty repertoire with no loading state.
 function optimisticEmptyRepertoire(name, color) {
-  const previous = appState.build;
+  const previous = buildState.build;
   const previousView = appState.currentView || null;
   const rootFen = START_FEN;
   const info = localBoardInfo(rootFen);
   const rootId = `tmp-rep-${OUTBOX_TAB_ID}-${Date.now().toString(36)}`;
-  appState.build = {
+  buildState.build = {
     repertoire_id: null,
     revision: 0,
     name,
@@ -1155,12 +1154,12 @@ function optimisticEmptyRepertoire(name, color) {
       mastery: null,
     }],
   };
-  appState.buildNodeById = new Map(appState.build.nodes.map((node) => [node.id, node]));
-  const previousNodeId = appState.buildCurrentNodeId;
-  appState.buildCurrentNodeId = rootId;
+  buildState.buildNodeById = new Map(buildState.build.nodes.map((node) => [node.id, node]));
+  const previousNodeId = buildState.buildCurrentNodeId;
+  buildState.buildCurrentNodeId = rootId;
   // Queued edits for other repertoires stay queued (R-02, as in hydrateBuild):
   // this empty tree has none of its own, and dropping them lost unsynced moves.
-  appState.buildSyncState = "saved";
+  buildState.buildSyncState = "saved";
   if (boards.build) {
     boards.build.setOrientation(color);
     boards.build.setPosition({ fen: rootFen, legalMoves: info.legal_moves, lastMove: null });
@@ -1176,24 +1175,24 @@ function optimisticEmptyRepertoire(name, color) {
 // Discard an unconfirmed optimistic repertoire and put the previous tree back.
 function rollbackOptimisticRepertoire({ previous, previousView, previousNodeId, rootId }) {
   if (!previous) {
-    appState.build = null;
-    appState.buildNodeById = new Map();
-    appState.buildCurrentNodeId = null;
+    buildState.build = null;
+    buildState.buildNodeById = new Map();
+    buildState.buildCurrentNodeId = null;
   } else {
-    appState.build = previous;
-    appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
+    buildState.build = previous;
+    buildState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
     // The open tree had selected the optimistic root: the move the user was on
     // goes back under the cursor, else the repertoire's own opening node.
-    appState.buildCurrentNodeId = [previousNodeId, previous.selected_node_id].find((id) => appState.buildNodeById.has(id))
+    buildState.buildCurrentNodeId = [previousNodeId, previous.selected_node_id].find((id) => buildState.buildNodeById.has(id))
       || previous.nodes[0]?.id || null;
   }
   if (previousView && previousView !== "build") {
     switchView(previousView);
   }
-  if (boards.build && appState.build) {
-    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  if (boards.build && buildState.build) {
+    const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
     if (node) {
-      boards.build.setOrientation(appState.build.color === "black" ? "black" : "white");
+      boards.build.setOrientation(buildState.build.color === "black" ? "black" : "white");
       // The restored tree stays playable: no legal moves left the board frozen.
       boards.build.setPosition({ fen: node.fen, legalMoves: localBoardInfo(node.fen).legal_moves, lastMove: node.uci });
     }
@@ -1202,10 +1201,10 @@ function rollbackOptimisticRepertoire({ previous, previousView, previousNodeId, 
   renderBuildSync();
   renderBuilderTree();
   syncWorkspaceUrl();
-  if (rootId && appState.build && appState.build.repertoire_id !== null) {
+  if (rootId && buildState.build && buildState.build.repertoire_id !== null) {
     // The optimistic node's id never reaches the server; dropping it from the id
     // map keeps a later flush from translating it onto a real node.
-    appState.buildIdMap?.delete?.(rootId);
+    buildState.buildIdMap?.delete?.(rootId);
   }
 }
 
@@ -1312,8 +1311,8 @@ async function generateFromCurrentNode() {
     return;
   }
   const isCurrent = captureBuildContext();
-  let nodeId = appState.buildCurrentNodeId;
-  if (!appState.build || !nodeId) {
+  let nodeId = buildState.buildCurrentNodeId;
+  if (!buildState.build || !nodeId) {
     setStatus("Open or create a repertoire first");
     return;
   }
@@ -1331,9 +1330,9 @@ async function generateFromCurrentNode() {
     return;
   }
   nodeId = resolveBuildId(nodeId);
-  const generationBuild = appState.build;
-  const ownColor = appState.build.color === "black" ? "black" : "white";
-  const anchorFen = appState.buildNodeById.get(nodeId)?.fen || "";
+  const generationBuild = buildState.build;
+  const ownColor = buildState.build.color === "black" ? "black" : "white";
+  const anchorFen = buildState.buildNodeById.get(nodeId)?.fen || "";
   const userToMove = (anchorFen.split(" ")[1] === "b" ? "black" : "white") === ownColor;
   const existingPlies = generateExistingPlies(generationBuild.nodes, nodeId, GEN_MAX_PLY_DEPTH, ownColor);
   const values = await showBuildGenerateDialog({
@@ -1352,7 +1351,7 @@ async function generateFromCurrentNode() {
   const { plyDepth, mainThreshold, branchThreshold, maiaRating, engineDepth } = generateOptions;
 
   const jobId = `browser-generate-${Date.now()}`;
-  const generatedRepertoireId = appState.build.repertoire_id;
+  const generatedRepertoireId = buildState.build.repertoire_id;
   // Cancel model has two phases. GENERATION (local, before the POST) is
   // cancellable: notices's Stop aborts the controller, the recursion checks the
   // signal, and an explicit re-check below bails before the POST — so Stop here
@@ -1361,13 +1360,13 @@ async function generateFromCurrentNode() {
   // Stop button before the POST rather than imply a cancel that wouldn't hold.
   const controller = new AbortController();
   const preview = createGeneratePreview({
-    byId: appState.buildNodeById,
-    isCurrent: () => isCurrent() && appState.build === generationBuild,
+    byId: buildState.buildNodeById,
+    isCurrent: () => isCurrent() && buildState.build === generationBuild,
     render: (parents) => parents && buildView?.renderGeneratePreview
       ? buildView.renderGeneratePreview(parents) : renderBuilderTree(),
     onClear: () => controller.abort(),
   });
-  appState.buildGenerationPreview = preview;
+  buildState.buildGenerationPreview = preview;
   // Believable progress: estimate a ceiling, advance a little whenever the planner adds
   // nodes, and — when the engine is busy but quiet — inch forward on a timer so the bar
   // never looks stuck. It is capped just below `total` until generation truly finishes,
@@ -1390,7 +1389,7 @@ async function generateFromCurrentNode() {
     });
 
     nudgeTimer = setInterval(() => {
-      if (!isCurrent() || appState.build !== generationBuild) return preview.clear(false);
+      if (!isCurrent() || buildState.build !== generationBuild) return preview.clear(false);
       if (!notices.isBusy()) return;
       if (Date.now() - lastInitAt < 2000) return; // let Maia cold-init progress own the toast
       progress.done = Math.min(progress.total - 3, progress.done + 1);
@@ -1561,14 +1560,14 @@ async function generateFromCurrentNode() {
   } finally {
     if (nudgeTimer) clearInterval(nudgeTimer);
     preview.clear();
-    if (appState.buildGenerationPreview === preview) appState.buildGenerationPreview = null;
+    if (buildState.buildGenerationPreview === preview) buildState.buildGenerationPreview = null;
   }
 }
 
 function openNodeContextMenu(event, nodeId) {
   event.preventDefault();
   if (isBuildReadOnly()) return;
-  const node = appState.buildNodeById.get(nodeId);
+  const node = buildState.buildNodeById.get(nodeId);
   if (!node) return;
   const menu = document.getElementById("node-context-menu");
   // Only what the page can act on and then show. Each entry here changes
@@ -1630,7 +1629,7 @@ function openNodeContextMenu(event, nodeId) {
 
 async function handleNodeContextAction(action, nodeId) {
   closeNodeContextMenu();
-  let node = appState.buildNodeById.get(nodeId);
+  let node = buildState.buildNodeById.get(nodeId);
   if (!node) return;
   // Delete is local-first (and confirmation-free): prune the subtree from the
   // client tree immediately and let the debounced flush tell the server. No
@@ -1649,13 +1648,13 @@ async function handleNodeContextAction(action, nodeId) {
     return;
   }
   nodeId = resolveBuildId(nodeId);
-  node = appState.buildNodeById.get(nodeId) || node;
+  node = buildState.buildNodeById.get(nodeId) || node;
   try {
     if (action === "generate") {
       // The flush above may have reconciled/removed this node. Never anchor Generate
       // on a node that no longer exists (it would open a modal that silently can't
       // apply). Select through the normal path so board + tree + current id stay in sync.
-      if (!appState.buildNodeById.has(nodeId)) {
+      if (!buildState.buildNodeById.has(nodeId)) {
         setStatus("That position is no longer in your repertoire — try again");
         return;
       }
@@ -1670,7 +1669,7 @@ async function handleNodeContextAction(action, nodeId) {
     }
     if (action === "copy_line_pgn") {
       const payload = await postJson("/api/build/export", {
-        repertoire_id: appState.build.repertoire_id,
+        repertoire_id: buildState.build.repertoire_id,
         format: "pgn",
         node_id: nodeId,
       });
@@ -1679,7 +1678,7 @@ async function handleNodeContextAction(action, nodeId) {
       return;
     }
     if (action === "add_comment") {
-      const repertoireId = appState.build.repertoire_id;
+      const repertoireId = buildState.build.repertoire_id;
       await showInputModal({
         title: `Note on ${nodeMenuHeading(node)}`,
         okLabel: "Save",
@@ -1690,17 +1689,17 @@ async function handleNodeContextAction(action, nodeId) {
           const payload = await postJson("/api/build/action", {
             repertoire_id: repertoireId, node_id: nodeId, action, value: result.comment,
           });
-          if (appState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, nodeId);
+          if (buildState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, nodeId);
           close(result);
           setStatus("Note saved");
         },
       });
       return;
     }
-    const repertoireId = appState.build.repertoire_id;
+    const repertoireId = buildState.build.repertoire_id;
     const payload = await postJson("/api/build/action", { repertoire_id: repertoireId, node_id: nodeId, action, value: null });
     // Another repertoire opened meanwhile: this answer must not reopen the old one.
-    if (appState.build?.repertoire_id !== repertoireId) return;
+    if (buildState.build?.repertoire_id !== repertoireId) return;
     await hydrateBuild(payload, nodeId);
     setStatus("Node updated");
   } catch (error) {
@@ -1726,7 +1725,7 @@ function markNodeMenuTarget(nodeId) {
 
 // "Export PGN" in the repertoire's ⋯: the whole tree with its variations.
 // The per-move menu's one line export is a clipboard copy, not a download.
-export async function exportBuild(repertoireId = appState.build?.repertoire_id) {
+export async function exportBuild(repertoireId = buildState.build?.repertoire_id) {
   if (!repertoireId) {
     setStatus("Open a repertoire first");
     return;
@@ -1739,8 +1738,8 @@ export async function exportBuild(repertoireId = appState.build?.repertoire_id) 
     setStatusError(error.message);
     return;
   }
-  if (repertoireId !== appState.build?.repertoire_id &&
-      [appState.buildPending, appState.buildPendingDeletes].some((ops) => ops?.some((op) => buildOpMatchesRepertoire(op, repertoireId)))) {
+  if (repertoireId !== buildState.build?.repertoire_id &&
+      [buildState.buildPending, buildState.buildPendingDeletes].some((ops) => ops?.some((op) => buildOpMatchesRepertoire(op, repertoireId)))) {
     setStatusError("Open this repertoire to sync your latest moves, then export.");
     return;
   }

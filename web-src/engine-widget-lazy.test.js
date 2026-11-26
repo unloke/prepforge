@@ -50,7 +50,7 @@ describe("lazy engine widget", () => {
     expect(h.deps.importWidget).not.toHaveBeenCalled();
   });
 
-  it("imports once, creates the widget without injected deps and opens only the latest request", async () => {
+  it("imports once, hands the widget the facade's engine parts and opens only the latest request", async () => {
     const h = harness();
     const first = h.engineWidget.openForCurrent();
     const second = h.engineWidget.openForCurrent();
@@ -59,7 +59,11 @@ describe("lazy engine widget", () => {
     expect(h.deps.importWidget).toHaveBeenCalledOnce();
     expect(h.createEngineWidget).toHaveBeenCalledOnce();
     expect(h.widget.openForCurrent).toHaveBeenCalledOnce();
-    expect(h.createEngineWidget).toHaveBeenCalledWith();
+    // setEngineOn is the facade's own (it is inside the slice); the rest are bound free.
+    const { analysisStore, createSharedEvaluationProvider, explorerEvalEngine, setEngineBestArrow } = h.deps;
+    expect(h.createEngineWidget).toHaveBeenCalledWith({
+      analysisStore, createSharedEvaluationProvider, explorerEvalEngine, setEngineBestArrow, setEngineOn: expect.any(Function),
+    });
     expect(h.engineWidget.isOpen()).toBe(true);
     expect(h.engineWidget.lastSnapshot).toBe(h.widget.lastSnapshot);
     h.engineWidget.onBoardChanged();
