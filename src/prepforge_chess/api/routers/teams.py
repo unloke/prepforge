@@ -34,7 +34,7 @@ from prepforge_chess.api.deps import current_user, get_repository
 from prepforge_chess.api.models import LinkedAccount, Team, TeamInvite, TeamMember, User
 from prepforge_chess.storage.types import TeamRole
 from prepforge_chess.api.ratelimit import limiter
-from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
+from prepforge_chess.storage.ports import SharingStore
 
 router = APIRouter(prefix="/api/teams", tags=["teams"])
 
@@ -258,7 +258,7 @@ def team_detail(
     team_id: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
-    repo: RepertoireRepository = Depends(get_repository),
+    repo: SharingStore = Depends(get_repository),
 ) -> dict[str, object]:
     """Team + its members + repertoires shared to it (caller must be a member).
     Managers additionally see whether an invite link exists (never the code)."""

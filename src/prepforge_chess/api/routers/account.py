@@ -38,7 +38,7 @@ from prepforge_chess.api.models import (
 )
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.services.repertoire_export import RepertoireExportService
-from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from prepforge_chess.storage.ports import AccountDataStore
 
 router = APIRouter(prefix="/api/account", tags=["account"])
 
@@ -48,7 +48,7 @@ router = APIRouter(prefix="/api/account", tags=["account"])
 def export_account(
     request: Request,
     user: User = Depends(current_user),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: AccountDataStore = Depends(get_repository),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """Download everything this account owns as one JSON bundle.
@@ -133,7 +133,7 @@ def delete_account(
     body: DeleteAccountBody,
     response: Response,
     user: User = Depends(current_user),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: AccountDataStore = Depends(get_repository),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:

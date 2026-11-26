@@ -927,7 +927,7 @@ def test_compare_selects_second_identity_without_changing_primary(client, monkey
         "prepforge_chess.services.lichess_fetch.compare_recent_games", _fake_compare
     )
     monkeypatch.setattr(
-        "prepforge_chess.services.lichess_fetch.record_departure_misses", lambda *a, **k: 0
+        "prepforge_chess.services.workflows.record_game_departure_as_training_miss", lambda *a, **k: 0
     )
 
     body = client.post(
@@ -1141,7 +1141,7 @@ def _evidence_repo():
 @pytest.mark.parametrize("shared", [False, True])
 def test_compare_identity_mixed_and_shared(client, monkeypatch, method, reverse, shared):
     from dataclasses import replace
-    from prepforge_chess.services.lichess_fetch import DEPARTURE_INGESTED_KEY
+    from prepforge_chess.services.workflows import DEPARTURE_INGESTED_KEY
 
     _register(client, "mixed-evidence@example.com")
     _link(client)
@@ -1186,7 +1186,7 @@ def test_compare_identity_mixed_and_shared(client, monkeypatch, method, reverse,
 def test_external_compare_preserves_mastery_health_and_queue(client, monkeypatch, method):
     from datetime import datetime, timedelta, timezone
     from prepforge_chess.core.models import TrainingProgress
-    from prepforge_chess.services.lichess_fetch import DEPARTURE_INGESTED_KEY
+    from prepforge_chess.services.workflows import DEPARTURE_INGESTED_KEY
 
     _register(client, "mastery-evidence@example.com")
     rep = _make_e4_repertoire(client)
@@ -1225,7 +1225,7 @@ def test_external_compare_preserves_mastery_health_and_queue(client, monkeypatch
 
 
 def test_record_miss_is_explicit_adoption_without_link(client, monkeypatch):
-    from prepforge_chess.services.lichess_fetch import DEPARTURE_INGESTED_KEY
+    from prepforge_chess.services.workflows import DEPARTURE_INGESTED_KEY
 
     _register(client, "adopt-evidence@example.com")
     rep = _make_e4_repertoire(client)

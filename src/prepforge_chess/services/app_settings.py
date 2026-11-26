@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Optional
+from prepforge_chess.storage.ports import SettingsStore
 
 
 STOCKFISH_DEPTH_KEY = "stockfish.depth"
@@ -36,7 +37,7 @@ def clamp_maia_rating(value: Any) -> Optional[int]:
     return max(MAIA_RATING_MIN, min(MAIA_RATING_MAX, rating))
 
 
-def owner_maia_rating(repo: Any, owner_user_id: str) -> Optional[int]:
+def owner_maia_rating(repo: SettingsStore, owner_user_id: str) -> Optional[int]:
     """One owner's pinned Maia3 rating, or ``None`` for AUTO (match the player)."""
     stored = repo.get_user_setting(owner_user_id, MAIA_RATING_KEY, None)
     if stored is None:
@@ -44,7 +45,7 @@ def owner_maia_rating(repo: Any, owner_user_id: str) -> Optional[int]:
     return clamp_maia_rating(stored)
 
 
-def owner_stockfish_depth(repo: Any, owner_user_id: str) -> int:
+def owner_stockfish_depth(repo: SettingsStore, owner_user_id: str) -> int:
     """One owner's configured analysis depth (clamped; default when unset)."""
     stored = repo.get_user_setting(owner_user_id, STOCKFISH_DEPTH_KEY, STOCKFISH_DEPTH_DEFAULT)
     return clamp_stockfish_depth(stored)
