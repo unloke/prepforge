@@ -285,8 +285,10 @@ def _clear_explorer_cache():
     from prepforge_chess.api.routers import lichess as lichess_router
 
     lichess_router._explorer_cache.clear()
+    lichess_router._explorer_inflight.clear()
     yield
     lichess_router._explorer_cache.clear()
+    lichess_router._explorer_inflight.clear()
 
 
 def test_explorer_requires_auth(client):
@@ -455,6 +457,67 @@ def test_explorer_masters_default_top_games_zero(client, monkeypatch):
     assert r.status_code == 200, r.text
     assert "topGames=0" in seen["url"]
 
+
+
+def test_explorer_rejects_a_fen_that_is_not_a_position(client, monkeypatch):
+    _register(client, "fen@example.com")
+    _link(client)
+
+    async def _fake_fetch(url, token, **kwargs):  # pragma: no cover - must not be reached
+        raise AssertionError("no upstream call for a bad fen")
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
+    )
+    for bad in ("hello", "8/8/8/8/8/8/8 w - - 0 1", "rnbqkbnr/ppppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                _START_FEN.replace(" w ", " x "), _START_FEN.replace(" 0 1", " a 1")):
+        r = client.get("/api/lichess/explorer/masters", params={"fen": bad})
+        assert r.status_code == 422, bad
+
+
+def test_explorer_cache_ignores_move_counters(client, monkeypatch):
+    _register(client, "counters@example.com")
+    _link(client)
+    calls = []
+
+    async def _fake_fetch(url, token, **kwargs):
+        calls.append(url)
+        return dict(_EXPLORER_RAW), 200
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
+    )
+    after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+    for fen in (after_e4, after_e4.replace(" 0 1", " 3 7"), after_e4.rsplit(" ", 2)[0]):
+        assert client.get("/api/lichess/explorer/masters", params={"fen": fen}).status_code == 200
+    # One position, one upstream request, sent with neutral counters.
+    assert len(calls) == 1
+    assert parse_qs(urlparse(calls[0]).query)["fen"] == [after_e4]
+
+
+def test_explorer_shares_one_upstream_request_between_concurrent_misses(monkeypatch):
+    import asyncio
+
+    from prepforge_chess.api.routers import lichess as lichess_router
+
+    calls = []
+
+    async def _slow_fetch(url, token, **kwargs):
+        calls.append(token)
+        await asyncio.sleep(0.01)
+        return {"n": 1}, 10
+
+    monkeypatch.setattr(
+        "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _slow_fetch
+    )
+
+    async def _three():
+        return await asyncio.gather(*(lichess_router._fetch_explorer_shared("u", f"t{i}") for i in range(3)))
+
+    results = asyncio.run(_three())
+    assert results == [({"n": 1}, 10)] * 3
+    assert calls == ["t0"]
+    assert lichess_router._explorer_inflight == {}
 
 # ---- departure -> training miss (play→train loop) ---------------------------
 

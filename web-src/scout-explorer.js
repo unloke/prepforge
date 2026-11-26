@@ -37,6 +37,11 @@ export function isAuthExplorerError(error) {
   return /link your Lichess account/i.test(msg);
 }
 
+// explorer.js's ExplorerRateLimited (a 429 from Lichess, or its cooldown).
+export function isRateLimitedExplorerError(error) {
+  return error?.name === "ExplorerRateLimited" && Number.isFinite(error.retryInMs);
+}
+
 // Probe only the positions where the SCOUTED player chooses: with White their
 // first move and (under their main first move) their second move; with Black
 // their reply to each of the first moves they usually face. Shares are plain game
@@ -255,10 +260,26 @@ export function buildExplorerReads(positions, { mastersByFen = new Map() } = {})
   };
 }
 
+// One wait for a Lichess rate limit to clear (its cooldown is a minute), checked
+// against cancel so a new Scout run is not held up by the old one.
+export const EXPLORER_RATE_LIMIT_MAX_WAIT_MS = 65 * 1000;
+function waitUnlessCancelled(ms, shouldCancel) {
+  return new Promise((resolve) => {
+    const end = Date.now() + ms;
+    const tick = () => {
+      const left = end - Date.now();
+      if (shouldCancel() || left <= 0) resolve();
+      else setTimeout(tick, Math.min(250, left));
+    };
+    tick();
+  });
+}
+
 export async function fetchExplorerReads({
   fetchStats,
   positions,
   shouldCancel = () => false,
+  wait = waitUnlessCancelled,
 }) {
   if (!positions?.length || typeof fetchStats !== "function") {
     return {
@@ -268,36 +289,41 @@ export async function fetchExplorerReads({
     };
   }
 
-  const mastersByFen = new Map();
+  const cancelled = { available: false, reason: "cancelled", mastersByFen: new Map() };
+  if (shouldCancel()) return cancelled;
+  // A handful of positions (at most two per colour): read them side by side. The
+  // client shares identical in-flight requests and fails fast during a cooldown.
   const uniqueFens = [...new Set(positions.map((p) => p.fen))];
-
-  for (const fen of uniqueFens) {
-    if (shouldCancel()) {
-      return {
-        available: false,
-        reason: "cancelled",
-        mastersByFen: new Map(),
-      };
-    }
+  const readAll = (fens) => Promise.all(fens.map(async (fen) => {
     try {
-      mastersByFen.set(fen, await fetchStats("masters", fen, {}));
+      return { fen, stats: await fetchStats("masters", fen, {}) };
     } catch (error) {
-      if (isAuthExplorerError(error)) {
-        return {
-          available: false,
-          reason: "auth",
-          mastersByFen: new Map(),
-        };
-      }
+      return { fen, error };
     }
+  }));
+  let outcomes = await readAll(uniqueFens);
+  if (shouldCancel()) return cancelled;
+  // Nothing read because Lichess is rate-limiting: wait it out once, then ask again.
+  const limitedFirst = outcomes.every((o) => o.error) && outcomes.find((o) => isRateLimitedExplorerError(o.error));
+  if (limitedFirst && limitedFirst.error.retryInMs <= EXPLORER_RATE_LIMIT_MAX_WAIT_MS
+      && !outcomes.some((o) => isAuthExplorerError(o.error))) {
+    await wait(Math.max(0, limitedFirst.error.retryInMs), shouldCancel);
+    if (shouldCancel()) return cancelled;
+    outcomes = await readAll(uniqueFens);
+    if (shouldCancel()) return cancelled;
   }
+  if (outcomes.some((o) => o.error && isAuthExplorerError(o.error))) {
+    return { available: false, reason: "auth", mastersByFen: new Map() };
+  }
+  const mastersByFen = new Map();
+  for (const o of outcomes) if (!o.error) mastersByFen.set(o.fen, o.stats);
 
   if (!mastersByFen.size) {
-    return {
-      available: false,
-      reason: "masters-unavailable",
-      mastersByFen: new Map(),
-    };
+    // A Lichess rate limit is temporary: say so, with when it is worth asking again.
+    const limited = outcomes.find((o) => isRateLimitedExplorerError(o.error));
+    return limited
+      ? { available: false, reason: "rate-limited", retryInMs: limited.error.retryInMs, mastersByFen: new Map() }
+      : { available: false, reason: "masters-unavailable", mastersByFen: new Map() };
   }
 
   const reads = buildExplorerReads(positions, { mastersByFen });

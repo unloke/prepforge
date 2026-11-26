@@ -11,7 +11,9 @@ so the flow works across multiple workers without a shared store.
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import re
 import time
 import urllib.parse
 from collections import OrderedDict
@@ -333,6 +335,45 @@ _EXPLORER_CACHE_BYTES = 8 * 1024 * 1024
 _explorer_cache: OrderedDict[str, tuple[float, dict, int]] = OrderedDict()
 # The longest legal FEN is under 100 characters.
 _EXPLORER_FEN_MAX = 120
+# url -> the upstream fetch already in flight for it. Concurrent misses for the same
+# position share one upstream request instead of each spending a token's rate limit.
+_explorer_inflight: dict[str, asyncio.Task] = {}
+_FEN_RANK = re.compile(r"^[pnbrqkPNBRQK1-8]+$")
+_FEN_TAIL = re.compile(r"^[wb] (?:-|K?Q?k?q?) (?:-|[a-h][36])$")
+
+
+def _explorer_fen(fen: str) -> str | None:
+    """The position part of a FEN with neutral move counters, or None when it is not
+    a FEN. The explorer's stats depend on the position alone, so two move orders that
+    reach it (different halfmove clocks or move numbers) share one cache entry."""
+    fields = fen.split()
+    if len(fields) not in (4, 6) or (len(fields) == 6 and not all(f.isdigit() for f in fields[4:])):
+        return None
+    ranks = fields[0].split("/")
+    if len(ranks) != 8 or not all(_FEN_RANK.match(r) for r in ranks):
+        return None
+    if any(sum(int(c) if c.isdigit() else 1 for c in r) != 8 for r in ranks):
+        return None
+    if not _FEN_TAIL.match(" ".join(fields[1:4])):
+        return None
+    position = " ".join(fields[:4])
+    return f"{position} 0 1"
+
+
+async def _fetch_explorer_shared(url: str, token: str) -> tuple[dict, int]:
+    task = _explorer_inflight.get(url)
+    if task is None:
+        task = asyncio.ensure_future(lichess_fetch.fetch_explorer_json(url, token))
+        _explorer_inflight[url] = task
+
+        def _done(finished: asyncio.Task) -> None:
+            _explorer_inflight.pop(url, None)
+            if not finished.cancelled():
+                finished.exception()  # retrieved here, so a fetch nobody awaits logs nothing
+
+        task.add_done_callback(_done)
+    # A caller that disconnects must not cancel the fetch the others are waiting on.
+    return await asyncio.shield(task)
 
 
 def _explorer_token(db: Session, user_id: str) -> tuple[str | None, bool]:
@@ -388,11 +429,14 @@ async def explorer_proxy(
     and a cache hit never leaves the event loop."""
     if db_name not in _EXPLORER_DBS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown explorer database")
+    position = _explorer_fen(fen)
+    if position is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="fen is not a valid position")
     if db_name == "masters":
         clamped = max(0, min(4, top_games))
-        params: dict[str, str] = {"fen": fen, "moves": "12", "topGames": str(clamped)}
+        params: dict[str, str] = {"fen": position, "moves": "12", "topGames": str(clamped)}
     else:
-        params = {"fen": fen, "moves": "12"}
+        params = {"fen": position, "moves": "12"}
         params["variant"] = "standard"
         params["speeds"] = "blitz,rapid,classical"
         buckets = [r for r in (ratings or "").split(",") if r in _EXPLORER_RATINGS]
@@ -419,7 +463,7 @@ async def explorer_proxy(
             ),
         )
     try:
-        data, size = await lichess_fetch.fetch_explorer_json(url, token)
+        data, size = await _fetch_explorer_shared(url, token)
     except lichess_fetch.ExplorerRateLimitedError as exc:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

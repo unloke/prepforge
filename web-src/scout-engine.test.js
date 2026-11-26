@@ -258,7 +258,7 @@ describe("scout-engine helpers", () => {
     };
     const depth = 12;
     const plies = 24;
-    const key = `prepforge.scout.engine.v5:g1:d${depth}:p${plies}`;
+    const key = `prepforge.scout.engine.v6:g1:d${depth}:p${plies}`;
     const game = { ucis: ["e2e4"], sans: ["e4"] };
     const provenance = scoutCacheProvenance(game, "white");
     const payload = {
@@ -295,7 +295,7 @@ describe("scout-engine helpers", () => {
     }
     store.setItem(key, JSON.stringify({ ...payload, record: { ...payload.record, eligibleOpponentPlies: 2 } }));
     expect(readGameCache(store, "g1", depth, plies, provenance)).toBeNull();
-    expect(ENGINE_CACHE_SCHEMA).toBe(5);
+    expect(ENGINE_CACHE_SCHEMA).toBe(6);
   });
 
   it("bounds derived cache entries and bytes without pruning user data", () => {
@@ -307,11 +307,13 @@ describe("scout-engine helpers", () => {
       moves: [], mistakes: [], eligibleOpponentPlies: 0, analyzedOpponentPlies: 0, complete: true,
     } };
     for (let i = 0; i < ENGINE_CACHE_MAX_ENTRIES + 5; i++) writeGameCache(store, `g${i}`, 12, 24, payload);
-    expect(data.size).toBe(ENGINE_CACHE_MAX_ENTRIES + 1);
+    // Entries plus the user key plus the cache's own index entry.
+    expect(data.size).toBe(ENGINE_CACHE_MAX_ENTRIES + 2);
+    expect([...data.keys()].filter((key) => /^prepforge\.scout\.engine\.v6:g\d+:/.test(key))).toHaveLength(ENGINE_CACHE_MAX_ENTRIES);
     expect(data.get("prepforge.sync.receipts")).toBe("keep");
     expect(readGameCache(store, "g0", 12, 24, payload.provenance)).toBeNull();
     for (let i = 0; i < 30; i++) writeGameCache(store, `large${i}`, 12, 24, { ...payload, padding: "x".repeat(100000) });
-    const cacheBytes = [...data].filter(([key]) => key.startsWith("prepforge.scout.engine.v5:"))
+    const cacheBytes = [...data].filter(([key]) => key.startsWith("prepforge.scout.engine.v6:"))
       .reduce((sum, [, value]) => sum + value.length * 2, 0);
     expect(cacheBytes).toBeLessThanOrEqual(ENGINE_CACHE_MAX_BYTES);
     writeGameCache(store, "oversize", 12, 24, { ...payload, padding: "x".repeat(ENGINE_CACHE_MAX_BYTES) });

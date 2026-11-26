@@ -294,6 +294,13 @@ describe("scout explorer enrichment generation", () => {
     expect(String(elements.get("scout-results").innerHTML)).toContain("Masters comparison needs your Lichess account linked.");
   });
 
+  it("says Lichess is rate-limiting when the masters read was limited", async () => {
+    await startScoutAndBeginExplorerFetch();
+    pendingExplorerFetches.shift()({ available: false, reason: "rate-limited", retryInMs: 60000, mastersByFen: new Map() });
+    await vi.runOnlyPendingTimersAsync();
+    expect(String(elements.get("scout-results").innerHTML)).toContain("Lichess is limiting requests");
+  });
+
   it("stays quiet when there is nothing to compare", async () => {
     await startScoutAndBeginExplorerFetch();
     pendingExplorerFetches.shift()({ available: false, reason: "no-positions", mastersByFen: new Map() });

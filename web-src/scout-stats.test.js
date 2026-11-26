@@ -257,8 +257,9 @@ describe("predictability", () => {
   it("filters by White/Black", () => {
     const games = [
       game({ color: "white", san: "e4", uci: "e2e4" }),
-      game({ color: "black", san: "e4", uci: "e2e4" }),
-      game({ color: "black", san: "d4", uci: "d2d4", gameId: "b2" }),
+      // Black's first decision is the reply, so a Black game needs both plies.
+      game({ color: "black", sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"] }),
+      game({ color: "black", sans: ["d4", "Nf6"], ucis: ["d2d4", "g8f6"], gameId: "b2" }),
     ];
     expect(predictability(games, "white").moves).toHaveLength(1);
     expect(predictability(games, "black").moves).toHaveLength(2);
@@ -366,7 +367,7 @@ describe("repertoireBreadth", () => {
   it("filters by White/Black", () => {
     const games = [
       ...Array.from({ length: 3 }, (_, i) => game({ color: "white", san: "e4", uci: "e2e4", gameId: `w${i}` })),
-      ...Array.from({ length: 3 }, (_, i) => game({ color: "black", san: "e4", uci: "e2e4", gameId: `b${i}` })),
+      ...Array.from({ length: 3 }, (_, i) => game({ color: "black", sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], gameId: `b${i}` })),
     ];
     expect(repertoireBreadth(games, "white").breadth).toBe(1);
     expect(repertoireBreadth(games, "black").breadth).toBe(1);

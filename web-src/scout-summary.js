@@ -29,6 +29,15 @@ const UNPREDICTABLE = [
   "Hard to guess the first move ({label}{qualifier}).",
 ];
 
+// With Black the choice is the reply to the first move they face.
+const PREDICTABLE_REPLY = [
+  "Replies predictably: {pct}% of the time it is their usual answer to the first move they face{qualifier}.",
+];
+
+const UNPREDICTABLE_REPLY = [
+  "Varied replies to the same first move ({label}{qualifier}).",
+];
+
 const REPERTOIRE_FRESH = [
   "New lately: {line} in {n} of their last {recent} games, almost never before{qualifier}.",
 ];
@@ -95,6 +104,14 @@ const HEADLINE_ATTACK = [
   "{predictable}: punish {line} ({score}% over {n} games).",
 ];
 
+// A weak spot the selector found is Maia's read of how they play the position, so the
+// headline quotes that estimate and the baseline it was measured against, never the
+// games' own score (they may well have won those games).
+const HEADLINE_ATTACK_MAIA = [
+  "{predictable} — hit them in {line}: Maia puts them at {score}% there, against their usual {base}%.",
+  "{predictable}: punish {line} (Maia: {score}% there, usually {base}%).",
+];
+
 const HEADLINE_WEAPON = [
   "{predictable} — have a solid answer to {line} ({share}% of games).",
   "Main weapon {line} ({share}% share) — prepare your reply.",
@@ -133,8 +150,9 @@ function qualifier(conf) {
   return "";
 }
 
-function predictableLabel(predict, persona) {
+function predictableLabel(predict, persona, stats) {
   const top = predict?.topMove;
+  if (stats?.oppColor === "black") return replyLabel(predict, persona, expectationText(stats.firstChoices));
   if (!top) return "Varied opener";
   const pct = Math.round((top.share || 0) * 100);
   const system = persona?.systemSetup?.detected
@@ -143,6 +161,14 @@ function predictableLabel(predict, persona) {
   if (system) return `Predictable 1.${top.san} ${system} player`;
   if (predict.label === "predictable") return `Predictable 1.${top.san} player (${pct}%)`;
   return `Mostly 1.${top.san} (${pct}%)`;
+}
+
+// Black's headline lead: their first move is the other player's, so it names the
+// replies they choose (expectationText), never White's most common first move.
+function replyLabel(predict, persona, expect) {
+  if (persona?.systemSetup?.detected) return `${persona.systemSetup.name || persona.systemSetup.label} player`;
+  if (!expect) return "Varied replies";
+  return predict?.label === "predictable" ? `Predictable replies: ${expect}` : `Usually ${expect}`;
 }
 
 const pctOf = (share) => Math.round((share || 0) * 100);
@@ -192,7 +218,7 @@ function headlineTakesTopWeak(prepTargets, stats) {
 function buildActionableHeadline(prepTargets, stats, username) {
   const predict = stats?.predictability;
   const persona = stats?.personaTags;
-  const predictable = predictableLabel(predict, persona);
+  const predictable = predictableLabel(predict, persona, stats);
   const top = prepTargets?.[0];
   const branches = stats?.openingBranches;
   const games = branches?.games ?? predict?.games ?? 0;
@@ -222,6 +248,14 @@ function buildActionableHeadline(prepTargets, stats, username) {
   }
   // Name the branch where they struggle, not the whole sample game.
   const line = scoutLineText(top.anchorSans?.length ? top.anchorSans : top.sans);
+  if ((top.prepCategory === "attack" || top.belowBaseline > 0) && top.maiaScorePct != null && top.belowBaseline > 0) {
+    return choose({ san: top.sans?.[0], uci: top.ucis?.[0] }, "scout-headline-attack", HEADLINE_ATTACK_MAIA, {
+      predictable,
+      line,
+      score: top.maiaScorePct,
+      base: top.maiaScorePct + top.belowBaseline,
+    });
+  }
   if (top.prepCategory === "attack" || top.belowBaseline > 0) {
     return choose({ san: top.sans?.[0], uci: top.ucis?.[0] }, "scout-headline-attack", HEADLINE_ATTACK, {
       predictable,
@@ -380,7 +414,18 @@ export function buildScoutSectionSummary(
   if (predict?.topMove && predict.games > 0) {
     const pct = Math.round((predict.topMove.share || 0) * 100);
     const qual = qualifier(predict.confidence);
-    if (predict.label === "predictable") {
+    const black = stats.oppColor === "black";
+    if (black) {
+      // A "mixed" reply spread adds nothing to the "As Black they answer" line.
+      const replies = { predictable: PREDICTABLE_REPLY, unpredictable: UNPREDICTABLE_REPLY }[predict.label];
+      if (replies) {
+        bullets.push(choose({ san: "reply" }, "scout-reply-spread", replies, {
+          pct: Math.round((predict.topShare ?? predict.topMove.share ?? 0) * 100),
+          label: predict.label,
+          qualifier: qual,
+        }));
+      }
+    } else if (predict.label === "predictable") {
       bullets.push(
         choose({ san: predict.topMove.san, uci: predict.topMove.uci }, "scout-predictable", PREDICTABLE, {
           san: predict.topMove.san,

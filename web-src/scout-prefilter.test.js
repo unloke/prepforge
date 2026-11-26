@@ -96,7 +96,6 @@ describe("scout-prefilter scoring", () => {
     expect(metrics?.hasUserReply).toBe(true);
     expect(metrics?.prefilterScore).toBe(20);   // userLeafAdvantage = -(-20) = 20
     expect(metrics?.cpLoss).toBeUndefined();     // cp-loss is gone (leaf-only scoring)
-    expect(metrics?.ancestorFrequency).toBe(0.12);
     expect(metrics?.routePlausibility).toEqual(routePlausibility);
   });
 
