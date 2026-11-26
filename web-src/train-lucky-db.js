@@ -130,9 +130,9 @@ export function pickPhaseCandidate(candidates, phase, { rng = Math.random, exclu
   // Fresh critical moments in the phase, then fresh critical anywhere (keeps
   // the critical gate), then fresh best-effort in the phase, then anything
   // fresh; only when every candidate is banned do we recycle.
-  const shortlist = [critical(freshInPhase), critical(fresh), freshInPhase, fresh, list]
-    .map(ranked).find((pool) => pool.length);
-  if (!shortlist) return null;
+  const pool = [critical(freshInPhase), critical(fresh), freshInPhase, fresh, list].find((p) => p.length);
+  if (!pool) return null;
+  const shortlist = ranked(pool);
   const idx = pickKeyIndex(shortlist.map((c, i) => ({ index: i, score: c.score })), { rng });
   return shortlist[idx] || shortlist[0];
 }

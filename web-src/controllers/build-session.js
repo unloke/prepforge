@@ -748,11 +748,10 @@ function explorerSegLabel(pct) {
 // Explorer rows: a click adds the move to the repertoire and goes there; a move
 // already in the repertoire just navigates to it.
 
+// Reads the parent's own child list, so a row costs its siblings, not the tree.
 function buildChildForUci(parentId, uci) {
   const want = normalizeUci(uci);
-  return (appState.build ? appState.build.nodes : []).find(
-    (n) => n.parent_id === parentId && n.depth > 0 && (n.uci === uci || normalizeUci(n.uci) === want),
-  );
+  return buildChildrenOf(parentId).find((n) => n.uci === uci || normalizeUci(n.uci) === want);
 }
 
 async function onExplorerRowClick(rows, uci) {
