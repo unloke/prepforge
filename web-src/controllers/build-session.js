@@ -57,7 +57,6 @@ export function createBuildSession() {
   };
 }
 
-
 // Browser Build → Generate (Phase 3c) ceilings. Deliberately conservative: the
 // recursion runs on the USER's machine (deep × branches is slow) and a large tree
 // risks exceeding the server apply-plan caps (≤2000 changes / depth ≤64). The
@@ -595,6 +594,12 @@ function scheduleExplorerRefresh() {
   explorerTimer = window.setTimeout(refreshExplorerPanel, 350);
 }
 
+// A one-line message in place of the rows; it belongs to no position.
+function showExplorerHint(rows, markup) {
+  delete rows.dataset.shownFen;
+  rows.innerHTML = html`<div class="muted hint">${markup}</div>`;
+}
+
 async function refreshExplorerPanel() {
   const rows = document.getElementById("explorer-rows");
   if (!rows || !explorerDrawerOpen()) return;
@@ -602,14 +607,13 @@ async function refreshExplorerPanel() {
     appState.buildCurrentNodeId && appState.buildNodeById.get(appState.buildCurrentNodeId);
   const fen = node ? node.fen : null;
   if (!fen) {
-    delete rows.dataset.shownFen;
-    rows.innerHTML = html`<div class="muted hint">Open a repertoire to see real-game stats.</div>`;
+    showExplorerHint(rows, "Open a repertoire to see real-game stats.");
     // No rows can belong to a position now, so park the search instead of
     // leaving the old one burning a core at full depth.
     void explorerEvalEngine.sync();
     return;
   }
-  renderExplorerScope();
+  paintInspectorScope();
   const seq = ++explorerSeq;
   const db = explorerDb;
   // Same database, new position: keep the previous rows on screen (dimmed and
@@ -630,15 +634,13 @@ async function refreshExplorerPanel() {
   } else {
     explorerOpeningName = "";
     rows.classList.remove("is-stale");
-    delete rows.dataset.shownFen;
-    rows.innerHTML = html`<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
+    showExplorerHint(rows, `Loading ${db === "lichess" ? "Players" : "Masters"}…`);
   }
   try {
     if (!explorerModule) {
-      delete rows.dataset.shownFen;
-      rows.innerHTML = html`<div class="muted hint">Loading explorer…</div>`;
+      showExplorerHint(rows, "Loading explorer…");
       await ensureExplorerClient();
-      renderExplorerScope(); // now that ratingBucketsFor is available, show the pool
+      paintInspectorScope(); // now that ratingBucketsFor is available, show the pool
     }
     const stats = await explorerClient.fetchStats(db, fen, {
       rating: effectiveMaiaRating(),
@@ -653,29 +655,18 @@ async function refreshExplorerPanel() {
     const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
-      delete rows.dataset.shownFen;
-      rows.innerHTML = html`<div class="muted hint">Lichess asks for a short pause - try again in ~${secs}s.</div>`;
+      showExplorerHint(rows, `Lichess asks for a short pause - try again in ~${secs}s.`);
     } else if (/link your lichess account/i.test(error.message || "")) {
       // Retrying cannot help until an account is linked: offer the link.
-      delete rows.dataset.shownFen;
-      rows.innerHTML =
-        html`<div class="muted hint">${label} needs your Lichess account. <button type="button" class="btn sm" data-explorer-link>Link Lichess</button></div>`;
+      showExplorerHint(rows, html`${label} needs your Lichess account. <button type="button" class="btn sm" data-explorer-link>Link Lichess</button>`);
       rows.querySelector("[data-explorer-link]")?.addEventListener("click", () => {
         openSettingsSection("set-connections").catch(() => {});
       });
     } else {
-      delete rows.dataset.shownFen;
-      rows.innerHTML =
-        html`<div class="muted hint">${label} explorer unavailable: ${error.message} <button type="button" class="btn sm ghost" data-explorer-retry>Retry</button></div>`;
+      showExplorerHint(rows, html`${label} explorer unavailable: ${error.message} <button type="button" class="btn sm ghost" data-explorer-retry>Retry</button>`);
       rows.querySelector("[data-explorer-retry]")?.addEventListener("click", () => refreshExplorerPanel());
     }
   }
-}
-
-// Compact scope: folded into the options popover (inspectorScopeText). The panel
-// itself stays rows-only so moves own the height.
-function renderExplorerScope() {
-  paintInspectorScope();
 }
 
 function renderExplorerRows(stats, fen) {
@@ -690,27 +681,20 @@ function renderExplorerRows(stats, fen) {
   rows.classList.remove("is-stale");
   rows.removeAttribute("aria-busy");
   if (!stats.moves.length) {
-    delete rows.dataset.shownFen;
-    rows.innerHTML = html`<div class="muted hint">No games reached this position - true novelty territory.</div>`;
+    showExplorerHint(rows, "No games reached this position - true novelty territory.");
     void explorerEvalEngine.sync();
     return;
   }
   // Dot the continuations already in the repertoire at this node, so gaps between
   // "what people actually play" and "what I've prepared" jump out.
   const current = appState.buildCurrentNodeId;
-  const inRep = new Set(
-    (appState.build ? appState.build.nodes : [])
-      .filter((n) => n.parent_id === current && n.depth > 0)
-      .map((n) => n.uci),
-  );
-  const inRepNorm = new Set([...inRep].map(normalizeUci));
   const canAdd = !isBuildReadOnly();
   // Each move's share of the games here: how often the reply has to be met.
   const allGames = stats.moves.reduce((sum, m) => sum + (Number(m.total) || 0), 0);
   rows.innerHTML =
     html`<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>${stats.moves
       .map((m) => {
-        const has = inRep.has(m.uci) || inRepNorm.has(normalizeUci(m.uci));
+        const has = !!buildChildForUci(current, m.uci);
         const games = explorerModule.formatGames(m.total);
         const thin = explorerThinSample(m);
         const action = has ? `Go to ${m.san}` : canAdd ? `Add ${m.san} to repertoire` : m.san;
@@ -1039,7 +1023,7 @@ async function onBuildBoardMove(moveUci) {
   let after;
   try {
     after = await boardAfterMove(parent.fen, moveUci);
-  } catch (_) {
+  } catch {
     rollback();
     setStatus("Illegal move");
     return;
@@ -1718,7 +1702,6 @@ async function handleNodeContextAction(action, nodeId) {
     setStatusError(error.message);
   }
 }
-
 
 function closeNodeContextMenu() {
   const menu = document.getElementById("node-context-menu");
