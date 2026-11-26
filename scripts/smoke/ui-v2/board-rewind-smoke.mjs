@@ -375,8 +375,6 @@ async function openBuild(page, repertoireId) {
 }
 
 const nodeFen = (rep, index) => rep.nodes[index].fen;
-const nodeUci = (rep, index) => rep.nodes[index].uci;
-
 async function clickNode(page, id) {
   await page.locator(`#builder-tree .mtree-move[data-node-id="${id}"]`).click();
 }

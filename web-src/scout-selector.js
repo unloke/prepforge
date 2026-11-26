@@ -2,22 +2,12 @@
 
 import {
   SCOUT_GAME_PLAN_LIMIT,
-  SCOUT_SCORING_VERSION,
   rankGamePlan,
 } from "./scout.js";
 
 /** Official production Module B identity. */
 export const PRODUCTION_MODULE_B_ID = "scout-v2";
-export const PRODUCTION_MODULE_B_SCORING_VERSION = SCOUT_SCORING_VERSION;
 export const PRODUCTION_ROUTE_BUDGET = SCOUT_GAME_PLAN_LIMIT;
-
-export const PRODUCTION_MODULE_B = Object.freeze({
-  id: PRODUCTION_MODULE_B_ID,
-  label: "Scout v2",
-  scoringVersion: PRODUCTION_MODULE_B_SCORING_VERSION,
-  routeBudget: PRODUCTION_ROUTE_BUDGET,
-  researchOnly: false,
-});
 
 /**
  * Production Module B entrypoint. Same ranking as rankGamePlan; the named

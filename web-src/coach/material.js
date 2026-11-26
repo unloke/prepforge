@@ -209,8 +209,6 @@ export function seeCapture(chess, targetSq, byColor) {
   return byColor === "w" ? deltaWhite : -deltaWhite;
 }
 
-const COUNT_WORD = { 2: "two", 3: "three", 4: "four" };
-
 function diffMinus(a, b) {
   const out = {};
   for (const t of ["p", "n", "b", "r", "q"]) out[t] = (a?.[t] || 0) - (b?.[t] || 0);

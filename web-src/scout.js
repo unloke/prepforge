@@ -784,21 +784,6 @@ export function enrichPrepTarget(g, baselineScorePct, { maiaScorePct = null } = 
   };
 }
 
-const openingPhaseCache = new Map();
-
-function openingPhaseAt(ucis, cache = openingPhaseCache) {
-  const key = triePathKey(ucis);
-  const hit = cache.get(key);
-  if (hit != null) return hit;
-  const phase = gamePhase(fenAfterLine(ucis));
-  cache.set(key, phase);
-  return phase;
-}
-
-function nextMoverAt(ucis) {
-  return ucis.length % 2 === 0 ? "white" : "black";
-}
-
 // Aggregate one real opening branch per game (no trie bridge / prefix collapse).
 export function aggregateOpeningBranches(
   games,
