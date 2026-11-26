@@ -1,4 +1,3 @@
-import { html } from "./html.js";
 import { appState } from "./core/state.js";
 import { activeViewName, api, currentOwnerId } from "./core/api.js";
 import { acceptRepertoireListing, fetchRepertoireListing } from "./repertoire-listing.js";

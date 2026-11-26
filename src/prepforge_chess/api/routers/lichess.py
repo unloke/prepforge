@@ -331,16 +331,6 @@ def _link_for_account(db: Session, user_id: str, account_id: str | None) -> Link
     return _link_for(db, user_id)
 
 
-def _linked_token(db: Session, user_id: str, account_id: str | None = None) -> str | None:
-    link = _link_for_account(db, user_id, account_id)
-    if link is None or not link.encrypted_token:
-        return None
-    try:
-        return json.loads(decrypt_token(link.encrypted_token)).get("access_token")
-    except Exception:  # noqa: BLE001 - an undecryptable token is just "not linked"
-        return None
-
-
 def _any_linked_token(db: Session, user_id: str) -> str | None:
     """The first usable OAuth token across ALL linked identities, primary first.
 
@@ -434,18 +424,6 @@ def explorer_proxy(
 # watches linked accounts only. Only server-verified linked identities may become
 # automatic training evidence. Comparison matches the caller's own repertoires,
 # and the "you just finished a game" marker lives per-owner.
-
-
-def _linked_username_or_400(
-    db: Session, user_id: str, account_id: str | None = None
-) -> str:
-    link = _link_for_account(db, user_id, account_id)
-    if link is None or not link.provider_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="link your Lichess account first",
-        )
-    return link.provider_user_id
 
 
 def _run_compare(

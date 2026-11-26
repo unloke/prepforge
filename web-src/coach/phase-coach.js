@@ -1,9 +1,9 @@
 // Phase-aware Maia coach — opening / middlegame / endgame tips from policy + prep.
 // Pure: FEN + Maia predictions in, a plain coach object out. No DOM, no worker.
-import { Chess } from "chess.js";
+import { sanOf } from "../chess-local.js";
 import { gamePhase } from "./material.js";
 
-export const PHASE_LABELS = {
+const PHASE_LABELS = {
   opening: "Opening",
   middlegame: "Middlegame",
   endgame: "Endgame",
@@ -12,27 +12,8 @@ export const PHASE_LABELS = {
 const TOP_CLOSE = 0.05; // prepared if expected is within 5 percentage points of Maia's top
 const HUMAN_ALSO_RANK = 3;
 
-export function phaseOfFen(fen) {
-  return gamePhase(fen);
-}
-
 function uciKey(uci) {
   return String(uci || "").toLowerCase();
-}
-
-function sanOf(fen, uci) {
-  if (!fen || !uci) return null;
-  try {
-    const chess = new Chess(fen);
-    const move = chess.move({
-      from: uci.slice(0, 2),
-      to: uci.slice(2, 4),
-      promotion: uci.length > 4 ? uci.slice(4) : undefined,
-    });
-    return move ? move.san : null;
-  } catch (_) {
-    return null;
-  }
 }
 
 function asList(predictions) {
@@ -73,19 +54,6 @@ function agreementOf(sorted, expectedUci) {
 
 function crowd(rating) {
   return Number.isFinite(rating) ? "players at your level" : "players";
-}
-
-const START_PLACEMENT = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
-
-export function isStartFen(fen) {
-  const parts = String(fen || "").trim().split(/\s+/);
-  return parts[0] === START_PLACEMENT && parts[1] === "w";
-}
-
-// The Train "Your move" banner no longer carries canned phase advice ("Develop toward
-// the center...") that had nothing to do with the position. Kept for callers; always "".
-export function promptTipFor() {
-  return "";
 }
 
 function pctText(pct) {
@@ -152,31 +120,6 @@ function humanPicks(fen, sorted, { playedUci, bestUci }) {
     });
 }
 
-export function clusterQueueByPhase(queue) {
-  const counts = { opening: 0, middlegame: 0, endgame: 0 };
-  for (const card of queue || []) {
-    const fen = card && card.targets && card.targets[0] && card.targets[0].fen_before;
-    if (!fen) continue;
-    const phase = phaseOfFen(fen);
-    if (counts[phase] != null) counts[phase] += 1;
-  }
-  const total = counts.opening + counts.middlegame + counts.endgame;
-  let majority = "middlegame";
-  if (total) {
-    if (counts.opening >= counts.middlegame && counts.opening >= counts.endgame) {
-      majority = "opening";
-    } else if (counts.endgame >= counts.middlegame && counts.endgame >= counts.opening) {
-      majority = "endgame";
-    }
-  }
-  return {
-    counts,
-    total,
-    majority,
-    majorityLabel: PHASE_LABELS[majority],
-  };
-}
-
 // A delayed Analyze module import must not restore the previous move's tip.
 export function paintAnalysisCoach(input, context, paint) {
   if (input.fen === context?.prevFen && input.playedUci === context?.lastUci) paint(buildPhaseCoach(input));
@@ -192,7 +135,7 @@ export function buildPhaseCoach({
   rating,
   reveal,
 } = {}) {
-  const phase = phaseOfFen(fen);
+  const phase = gamePhase(fen);
   const phaseLabel = PHASE_LABELS[phase] || PHASE_LABELS.middlegame;
   const sorted = sortedPreds(predictions);
   const top = sorted[0] || null;
@@ -231,7 +174,6 @@ export function buildPhaseCoach({
     tip,
     // Nothing position-specific to say: callers show nothing rather than filler.
     generic: !tip,
-    promptTip: "",
     humanUci,
     humanSan,
     humanPct,

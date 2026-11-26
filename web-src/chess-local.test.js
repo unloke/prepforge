@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine, pvSan, isStartFen } from "./chess-local.js";
+import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine, pvSan } from "./chess-local.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -114,13 +114,5 @@ describe("pvSan", () => {
     expect(pvSan(START, ["e2e4", "e7e5"])).toEqual(["e4", "e5"]);
     expect(pvSan(START, { pv_uci: [] })).toEqual([]);
     expect(pvSan(START, null)).toEqual([]);
-  });
-});
-
-describe("isStartFen", () => {
-  it("is true only for the start position with White to move", () => {
-    expect(isStartFen(START)).toBe(true);
-    expect(isStartFen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")).toBe(false);
-    expect(isStartFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")).toBe(false);
   });
 });

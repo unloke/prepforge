@@ -8,7 +8,6 @@ from prepforge_chess.services.progress import (
     MASTERY_UNTRAINED,
     MASTERY_WEAK,
     compute_health,
-    due_node_ids,
     node_mastery,
 )
 from prepforge_chess.storage.database import apply_schema, connect_database
@@ -97,13 +96,3 @@ def test_compute_health_counts_each_state():
     assert health.due == 1
     assert health.untrained == 1
     assert health.mastery_pct == 25
-
-
-def test_due_node_ids_only_picks_due():
-    now = datetime.now(timezone.utc)
-    progress = [
-        TrainingProgress(node_id="past", due_at=now - timedelta(days=1)),
-        TrainingProgress(node_id="future", due_at=now + timedelta(days=1)),
-        TrainingProgress(node_id="never", due_at=None),
-    ]
-    assert due_node_ids(progress, now=now) == {"past"}

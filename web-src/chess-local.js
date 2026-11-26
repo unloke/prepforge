@@ -4,7 +4,7 @@
 //   localBoardAfterMove(fen,…) → { move, board }
 import { Chess } from "chess.js";
 
-function uciOf(move) {
+export function uciOf(move) {
   // chess.js verbose moves expose `lan` (e.g. "e2e4", "e7e8q") which is exactly
   // UCI; fall back to from+to+promotion for safety.
   return move.lan || move.from + move.to + (move.promotion || "");
@@ -122,10 +122,13 @@ export function fenInCheck(fen) {
   }
 }
 
-// True for the standard start position with White to move (castling and clocks ignored).
-export function isStartFen(fen) {
-  const parts = String(fen || "").trim().split(/\s+/);
-  return parts[0] === "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" && parts[1] === "w";
+// A board for `fen`, or null when chess.js rejects it.
+export function safeChess(fen) {
+  try {
+    return new Chess(fen);
+  } catch (_) {
+    return null;
+  }
 }
 
 // SAN for a UCI line from fen, played on one board. Stops at the first move that
@@ -150,6 +153,11 @@ export function localSanLine(fen, uciLine) {
     }
   }
   return san;
+}
+
+// SAN for one UCI move from fen, or null when either is missing or the move is illegal.
+export function sanOf(fen, uci) {
+  return (fen && uci && localSanLine(fen, [uci])[0]) || null;
 }
 
 // SAN for one engine PV. `pv` is a provider line ({ pv_uci }) or a bare UCI array; a line

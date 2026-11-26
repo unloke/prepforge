@@ -8,8 +8,6 @@ import { loadMaia3Manifest, peekSharedMaia3Provider, getSharedMaia3Provider, dis
 import { hasCachedWeights, clearWeightCache } from "./maia3-weight-cache.js";
 import { maiaErrorText } from "../maia-init-notice.js";
 
-export const ENGINE_IDS = ["stockfish", "maia"];
-
 // Decimal megabytes, the unit every size in the app is quoted in.
 export function formatMB(bytes) {
   return `${Math.max(1, Math.round((bytes || 0) / 1e6))} MB`;

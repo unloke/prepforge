@@ -1,8 +1,8 @@
 import { html } from "./html.js";
 import { appState, boards } from "./core/state.js";
 import { OUTBOX_TAB_ID, activeViewName, api, currentOwnerId, setStatus, setStatusError } from "./core/api.js";
-import { effectiveStockfishDepth, pref } from "./core/prefs.js";
-import { isBrowserEngineAvailable, createEngineProvider } from "./engine/stockfish-provider.js";
+import { effectiveStockfishDepth } from "./core/prefs.js";
+import { createEngineProvider } from "./engine/stockfish-provider.js";
 import { stockfishBudget } from "./engine/compute-budget.js";
 import { EXPLORER_EVAL_MAX_LINES, engineWantedIn, engineWidget } from "./core/engine.js";
 import { hooks } from "./core/hooks.js";
@@ -59,7 +59,6 @@ export const BUILD_DOCK_TABS = ["explorer", "coverage"];
 export let buildDockTab = "explorer";
 
 export function setExplorerDb(next) { explorerDb = next === "lichess" ? "lichess" : "masters"; }
-export function setBuildDockTab(name) { buildDockTab = name; }
 
 export function buildDockFolded() {
   const dock = document.getElementById("build-inspector");

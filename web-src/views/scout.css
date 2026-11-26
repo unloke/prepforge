@@ -369,15 +369,6 @@
 .scout-refutation-card-copy { line-height: 1.4; }
 .scout-refutation-swing { color: var(--danger); font-weight: 500; }
 .scout-refutation-card-board { width: 96px; height: 96px; margin-top: 6px; }
-.scout-refutation-panel { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-.scout-refutation-hit { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-soft); }
-.scout-refutation-line { font-weight: 500; font-variant-numeric: tabular-nums; }
-.scout-refutation-reply { margin-top: 2px; font-size: var(--fs-s); }
-.scout-refutation-uci { font: inherit; font-variant-numeric: tabular-nums; }
-.scout-refutation-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.scout-refutation-stat { color: var(--muted); font-size: var(--fs-s); }
-.scout-refutation-gaps { font-size: var(--fs-s); }
-.scout-refutation-gaps-copy { margin: 0 0 6px; }
 .scout-refutation-gap-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ---- Chart cards ---- */

@@ -14,6 +14,7 @@
 import * as ort from "onnxruntime-web/webgpu";
 import fixture from "./maia3-smoke-fixture.json";
 import { assertManifestContract } from "./maia3-tokenizer.js";
+import { sha256Hex } from "./maia3-weights-loader.js";
 
 ort.env.wasm.wasmPaths = globalThis.__ORT_DIR__;
 ort.env.wasm.numThreads = 1;
@@ -61,13 +62,6 @@ function resolveModelBase(manifest) {
     import.meta.env?.VITE_MAIA3_ASSET_BASE ||
     "/static/maia3/";
   return String(base).replace(/\/?$/, "/");
-}
-
-async function sha256Hex(buf) {
-  const digest = await crypto.subtle.digest("SHA-256", buf);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 // Legal-masked softmax over only the legal logit indices — identical to masking the

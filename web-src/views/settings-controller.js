@@ -1,4 +1,4 @@
-import { START_FEN, appState } from "../core/state.js";
+import { appState } from "../core/state.js";
 import { activeViewName, api, currentOwnerId, postJson, setStatus, setStatusError } from "../core/api.js";
 import { hooks } from "../core/hooks.js";
 import { effectiveMaiaRating, pref, setPref } from "../core/prefs.js";

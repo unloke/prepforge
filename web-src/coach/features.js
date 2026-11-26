@@ -21,7 +21,7 @@ import {
   GREAT_MAX_WIN_BEFORE,
   EXCELLENT_MAX_LOSS, GOOD_MAX_LOSS, INACCURACY_MAX_LOSS, MISTAKE_MAX_LOSS,
 } from "../generated/shared-constants.js";
-import { Chess } from "chess.js";
+import { safeChess } from "../chess-local.js";
 import { evaluationToWin as winWhite, moveAccuracy } from "../explain.js";
 import {
   PIECE_VALUE,
@@ -78,14 +78,6 @@ function captureTargets(chess, byColor) {
     }
   }
   return out.sort((a, b) => b.worth - a.worth);
-}
-
-function safeChess(fen) {
-  try {
-    return new Chess(fen);
-  } catch (_) {
-    return null;
-  }
 }
 
 // Material (pawns) the mover is down after the move AND the engine's reply, relative to

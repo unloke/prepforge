@@ -1,17 +1,9 @@
 // Tactic names for the coach's commentary (lazy coach chunk only): the fork, pin or
 // skewer a move executes, and the piece an error leaves hanging.
-import { Chess } from "chess.js";
+import { safeChess } from "../chess-local.js";
 import { PIECE_NAME } from "./material.js";
 import { detectTactics } from "./tactics.js";
 import { threatOf, playUci } from "./move-facts.js";
-
-function safeChess(fen) {
-  try {
-    return new Chess(fen);
-  } catch (_) {
-    return null;
-  }
-}
 
 // The tactic a move executes, as a verb phrase: a fork that wins material against every
 // defence, or a pin / skewer set up by the moved piece ("pins the knight to the king",

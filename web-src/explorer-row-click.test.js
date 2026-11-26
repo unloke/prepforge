@@ -7,7 +7,7 @@
 // guard, or a click stops adding, these fail.
 import { describe, expect, it, vi } from "vitest";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { localBoardAfterMove, localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
 

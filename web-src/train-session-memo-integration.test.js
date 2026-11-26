@@ -37,7 +37,6 @@ function harness(overrides = {}) {
     requeue_gap: 4, card_kinds: [{ key: "due", label: "Server label", title: "Server title" }],
     health: { new: 18 }, ...overrides };
   const present = vi.fn(async () => {});
-  const phase = deferred();
   const deps = {
     countOf: (n, one) => `${n} ${n === 1 ? one : `${one}s`}`,
     appState, mapTrainUiSession, shouldResetTrainStats, saveSessionMemo, loadSessionMemo, clearSessionMemo, trainSessionMemo,
@@ -51,7 +50,7 @@ function harness(overrides = {}) {
     pendingHandoffs: () => [], setBlitzBarVisible: vi.fn(), boards: {},
     document: { getElementById: () => ({ hidden: false, scrollIntoView() {} }) },
     renderSmartQueueStrip: async () => {}, renderTrainStats: async () => {}, setTrainSyncState: vi.fn(),
-    loadPhaseCoach: () => phase.promise, syncWorkspaceUrl: vi.fn(),
+    syncWorkspaceUrl: vi.fn(),
     smartLocalPrompt: (smart) => smart.cardIndex < smart.queue.length
       ? { cardIndex: smart.cardIndex, targetIndex: smart.targetIndex } : null,
     presentSmartPrompt: present, finishSmartSession: vi.fn(async () => {}),
@@ -63,7 +62,7 @@ function harness(overrides = {}) {
   deps.syncTrainSessionControls = vi.fn();
   deps.celebrate = compile("function celebrate(", deps);
   deps.rememberSmartSession = compile("function rememberSmartSession(", deps);
-  return { appState, deps, start: compile("async function startSmartTraining(", deps), present, phase, payload };
+  return { appState, deps, start: compile("async function startSmartTraining(", deps), present, payload };
 }
 afterEach(() => { delete globalThis.localStorage; });
 
@@ -149,14 +148,6 @@ describe("Smart memo integration at Start", () => {
     await h.start();
     expect(h.present).toHaveBeenCalledWith({ cardIndex: 0, targetIndex: 1 }, { attempt: 2 });
     expect(h.appState.trainStats).toEqual(stats);
-  });
-  it("a late phase-coach load cannot attach the old queue to a replacement session", async () => {
-    const h = harness();
-    await h.start();
-    h.appState.smart = { sessionId: "replacement" };
-    h.phase.resolve({ clusterQueueByPhase: () => "old queue" });
-    await Promise.resolve();
-    expect(h.appState.smart.phaseCluster).toBeUndefined();
   });
   it("uses the fresh server target data while restoring the memo's cursor", async () => {
     const updated = queue.map((card) => ({ ...card, targets: [{ uci: "g1f3" }, { uci: "f1c4" }] }));

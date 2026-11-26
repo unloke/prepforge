@@ -89,17 +89,16 @@ describe("Train keeps the requested hint after a miss (P1-4)", () => {
 
   it("keeps Hint 2 instead of the generic phase tip", () => {
     expect(
-      wrongMoveTip({ hintLevel: 2, hint, coachTip: "Develop your pieces, occupy the center, and get the king safe." }),
+      wrongMoveTip({ hintLevel: 2, hint }),
     ).toBe("Move the pawn");
   });
 
   it("keeps Hint 1 and the revealed answer at their levels", () => {
-    expect(wrongMoveTip({ hintLevel: 1, hint, coachTip: "generic" })).toBe("Fight for the center");
-    expect(wrongMoveTip({ hintLevel: 3, hint, expectedSan: "e4", coachTip: "generic" })).toBe("Play e4");
+    expect(wrongMoveTip({ hintLevel: 1, hint })).toBe("Fight for the center");
+    expect(wrongMoveTip({ hintLevel: 3, hint, expectedSan: "e4" })).toBe("Play e4");
   });
 
-  it("without a requested hint, uses the coach tip, then the line's hints", () => {
-    expect(wrongMoveTip({ hintLevel: 0, hint, coachTip: "Coach says" })).toBe("Coach says");
+  it("without a requested hint, uses the line's hints", () => {
     expect(wrongMoveTip({ hintLevel: 0, hint })).toBe("Fight for the center");
     expect(wrongMoveTip({ hintLevel: 0, hint: {} })).toBe("");
   });

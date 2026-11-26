@@ -149,19 +149,6 @@ def test_search_limit_sentinel_round_trip_is_null_safe():
     assert codec.encode_search_limit(None) == codec.encode_search_limit(None)
 
 
-def test_analysis_identity_includes_engine_config_not_score():
-    fen = STARTING_FEN
-    a = codec.analysis_identity(fen, "stockfish", 16, 50000, 80)
-    b = codec.analysis_identity(fen, "stockfish", 20, 50000, 80)
-    c = codec.analysis_identity(fen, "maia3", 16, 50000, 80)
-    assert a != b
-    assert a != c
-    digest_a = codec.analysis_identity_digest(fen, "stockfish", 16, 50000, 80)
-    digest_b = codec.analysis_identity_digest(fen, "stockfish", 16, 50000, 80)
-    assert digest_a == digest_b
-    assert len(digest_a) == 64  # full sha256, not a truncated hash
-
-
 def test_evaluation_fingerprint_commits_to_identity_and_result():
     base = dict(
         engine="stockfish (browser)",

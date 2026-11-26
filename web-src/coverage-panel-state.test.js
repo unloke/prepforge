@@ -4,7 +4,6 @@
 // instead of sitting at "0 positions" with no explanation.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createCoverageController } from "./controllers/coverage.js";
-import { maiaInitMessage } from "./maia-init-notice.js";
 
 // One query-capable element per selector, like notices.test.js's fakeEl.
 // innerHTML is a real accessor (the controller assigns to it) and the parts it

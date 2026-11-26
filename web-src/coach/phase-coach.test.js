@@ -1,34 +1,10 @@
 import { describe, it, expect } from "vitest";
 
-import {
-  PHASE_LABELS,
-  phaseOfFen,
-  promptTipFor,
-  buildPhaseCoach,
-  clusterQueueByPhase,
-} from "./phase-coach.js";
+import { buildPhaseCoach } from "./phase-coach.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const KP_VS_K = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 40";
 const MIDDLEGAME = "r2q1rk1/pppbbppp/2n2n2/3pp3/3PP3/2NQBN2/PPP1BPPP/R4RK1 w - - 0 10";
-
-describe("phaseOfFen", () => {
-  it("reads the start FEN as opening", () => {
-    expect(phaseOfFen(START)).toBe("opening");
-  });
-
-  it("reads K+P vs K as endgame", () => {
-    expect(phaseOfFen(KP_VS_K)).toBe("endgame");
-  });
-});
-
-describe("PHASE_LABELS", () => {
-  it("names each phase", () => {
-    expect(PHASE_LABELS.opening).toBe("Opening");
-    expect(PHASE_LABELS.middlegame).toBe("Middlegame");
-    expect(PHASE_LABELS.endgame).toBe("Endgame");
-  });
-});
 
 describe("buildPhaseCoach", () => {
   const OPENING_PREDS = [
@@ -47,13 +23,6 @@ describe("buildPhaseCoach", () => {
       expect(coach.tip).toBe("");
       expect(coach.generic).toBe(true);
     }
-  });
-
-  it("never fills the Your-move banner with phase advice", () => {
-    expect(promptTipFor(START, "opening")).toBe("");
-    expect(promptTipFor(MIDDLEGAME, "middlegame")).toBe("");
-    const coach = buildPhaseCoach({ fen: START, predictions: OPENING_PREDS, expectedUci: "e2e4" });
-    expect(coach.promptTip).toBe("");
   });
 
   it("teach card: the prepared move is also the popular one", () => {
@@ -125,21 +94,5 @@ describe("buildPhaseCoach", () => {
     const mid = buildPhaseCoach({ fen: MIDDLEGAME, predictions: [{ move_uci: "e4d5", probability: 0.5 }], expectedUci: "e4d5" });
     expect(mid.phase).toBe("middlegame");
     expect(mid.tip).toBe("Also the most popular move among players.");
-  });
-});
-
-describe("clusterQueueByPhase", () => {
-  it("majority-votes cards by the first target FEN", () => {
-    const cluster = clusterQueueByPhase([
-      { targets: [{ fen_before: START }] },
-      { targets: [{ fen_before: START }] },
-      { targets: [{ fen_before: KP_VS_K }] },
-      { targets: [] },
-    ]);
-    expect(cluster.total).toBe(3);
-    expect(cluster.counts.opening).toBe(2);
-    expect(cluster.counts.endgame).toBe(1);
-    expect(cluster.majority).toBe("opening");
-    expect(cluster.majorityLabel).toBe("Opening");
   });
 });
