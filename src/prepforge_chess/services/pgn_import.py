@@ -31,6 +31,8 @@ class ParsedGame:
     white: Optional[str] = None
     black: Optional[str] = None
     error: Optional[str] = None
+    # The parsed game itself, so importing it never parses ``text`` again.
+    game: Optional[chess.pgn.Game] = field(default=None, repr=False, compare=False)
 
 
 @dataclass
@@ -208,6 +210,7 @@ class PgnImportService:
                         text=str(game),
                         white=game.headers.get("White"),
                         black=game.headers.get("Black"),
+                        game=game,
                     )
                 )
             index += 1
@@ -225,11 +228,14 @@ class PgnImportService:
         # Parse every game first so one signature read covers the whole batch.
         batch: List[tuple[ParsedGame, Optional[List[Game]], Optional[str]]] = []
         for parsed in parsed_games:
-            if parsed.error is not None or not parsed.text:
+            if parsed.error is not None or parsed.game is None:
                 batch.append((parsed, None, None))
                 continue
             try:
-                batch.append((parsed, self.chess_core.import_pgn_games(parsed.text, source=options.source), None))
+                game = self.chess_core.game_from_python_chess(
+                    parsed.game, source=options.source, pgn=parsed.text
+                )
+                batch.append((parsed, [game], None))
             except Exception as exc:  # python-chess raises several parse/illegal move exceptions.
                 batch.append((parsed, None, str(exc)))
         signature_to_id = self._stored_signatures(
