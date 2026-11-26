@@ -39,6 +39,10 @@ def current_user_optional(
         session.last_seen_at = now
         db.commit()
     user = db.get(User, session.user_id)
+    # Release the auth read's pooled connection now. Left open, it stays checked
+    # out for the whole request while the route borrows more connections, and
+    # enough concurrent requests then exhaust the pool waiting on each other.
+    db.commit()
     request.state.user = user
     return user
 
