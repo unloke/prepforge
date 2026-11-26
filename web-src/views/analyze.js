@@ -824,9 +824,14 @@ export function createAnalyzeView({
     });
   }
 
+  function svgChild(parent, tag, attrs = {}) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, String(value));
+    return parent.appendChild(el);
+  }
+
   function renderEvalChart(points) {
     const chart = document.getElementById("eval-chart");
-    const svgNS = "http://www.w3.org/2000/svg";
     measurePlotPads(chart);
     chart.innerHTML = "";
     appState.evalChartPoints = points || [];
@@ -850,26 +855,12 @@ export function createAnalyzeView({
     // New samples extend the series in place; changing point count is not a
     // new scene and must not scale the graph back through zero.
 
-    const axis = document.createElementNS(svgNS, "line");
-    axis.setAttribute("class", "eval-axis");
-    axis.setAttribute("x1", "0");
-    axis.setAttribute("x2", String(width));
-    axis.setAttribute("y1", String(centerY));
-    axis.setAttribute("y2", String(centerY));
-    axis.setAttribute("vector-effect", "non-scaling-stroke");
-    chart.appendChild(axis);
-
+    // Lines and curves keep a non-scaling stroke so the stretched SVG never thickens them.
+    const thin = { "vector-effect": "non-scaling-stroke" };
+    svgChild(chart, "line", { class: "eval-axis", x1: 0, x2: width, y1: centerY, y2: centerY, ...thin });
     // Hover/focus indicator (hidden until the pointer or keyboard asks).
-    const hover = document.createElementNS(svgNS, "line");
-    hover.setAttribute("id", "eval-chart-hover");
-    hover.setAttribute("class", "eval-hover");
-    hover.setAttribute("y1", "0");
-    hover.setAttribute("y2", String(height));
-    hover.setAttribute("x1", "-10");
-    hover.setAttribute("x2", "-10");
-    hover.setAttribute("visibility", "hidden");
-    hover.setAttribute("vector-effect", "non-scaling-stroke");
-    chart.appendChild(hover);
+    const offChart = { x1: -10, x2: -10, y1: 0, y2: height, visibility: "hidden", ...thin };
+    svgChild(chart, "line", { id: "eval-chart-hover", class: "eval-hover", ...offChart });
 
     if (!points || !points.length) {
       hideEvalChartTooltip();
@@ -891,93 +882,45 @@ export function createAnalyzeView({
     const stepStr = coords.map((c) => `${c.x},${c.y}`).join(" ");
     const areaPoints =
       `${coords[0].x},${centerY} ${stepStr} ${coords[coords.length - 1].x},${centerY}`;
-    const defs = document.createElementNS(svgNS, "defs");
+    const defs = svgChild(chart, "defs");
     [["white", 0, centerY], ["black", centerY, height - centerY]].forEach(([side, y, h]) => {
-      const clip = document.createElementNS(svgNS, "clipPath");
-      clip.setAttribute("id", `eval-clip-${side}`);
-      const rect = document.createElementNS(svgNS, "rect");
-      rect.setAttribute("x", "0");
-      rect.setAttribute("y", String(y));
-      rect.setAttribute("width", String(width));
-      rect.setAttribute("height", String(h));
-      clip.appendChild(rect);
-      defs.appendChild(clip);
+      const clip = svgChild(defs, "clipPath", { id: `eval-clip-${side}` });
+      svgChild(clip, "rect", { x: 0, y, width, height: h });
     });
-    chart.appendChild(defs);
     ["white", "black"].forEach((side) => {
-      const area = document.createElementNS(svgNS, "polygon");
-      area.setAttribute("class", `eval-area eval-area-${side}`);
-      area.setAttribute("points", areaPoints);
-      area.setAttribute("clip-path", `url(#eval-clip-${side})`);
-      chart.appendChild(area);
+      svgChild(chart, "polygon", { class: `eval-area eval-area-${side}`, points: areaPoints, "clip-path": `url(#eval-clip-${side})` });
     });
+    svgChild(chart, "polyline", { class: "eval-line", points: stepStr, ...thin });
 
-    // Main line: non-scaling stroke so the stretched SVG never thickens it.
-    const polyline = document.createElementNS(svgNS, "polyline");
-    polyline.setAttribute("class", "eval-line");
-    polyline.setAttribute("points", stepStr);
-    polyline.setAttribute("vector-effect", "non-scaling-stroke");
-    chart.appendChild(polyline);
-
+    const markerClassOf = (c) => {
+      const raw = String(c.classification || "").toLowerCase();
+      return EVAL_MARKER_CLASS[CLASS_GROUP_OF[raw] || raw];
+    };
     // Colour the vertical cliff at each error/brilliant move so bad moves are unmissable.
     coords.forEach((c, i) => {
-      if (i === 0) return;
-      const raw = String(c.classification || "").toLowerCase();
-      const cls = CLASS_GROUP_OF[raw] || raw;
-      const markerClass = EVAL_MARKER_CLASS[cls];
+      const markerClass = i > 0 && markerClassOf(c);
       if (!markerClass) return;
-      const cliff = document.createElementNS(svgNS, "line");
-      cliff.setAttribute("class", `eval-cliff ${markerClass}`);
-      cliff.setAttribute("x1", String(c.x));
-      cliff.setAttribute("x2", String(c.x));
-      cliff.setAttribute("y1", String(coords[i - 1].y));
-      cliff.setAttribute("y2", String(c.y));
-      cliff.setAttribute("vector-effect", "non-scaling-stroke");
-      chart.appendChild(cliff);
+      svgChild(chart, "line", { class: `eval-cliff ${markerClass}`, x1: c.x, x2: c.x, y1: coords[i - 1].y, y2: c.y, ...thin });
     });
 
     coords.forEach((c) => {
-      const raw = String(c.classification || "").toLowerCase();
-      const cls = CLASS_GROUP_OF[raw] || raw;
-      const markerClass = EVAL_MARKER_CLASS[cls];
+      const markerClass = markerClassOf(c);
       if (!markerClass) return;
-      const dot = document.createElementNS(svgNS, "ellipse");
-      dot.classList.add("eval-marker", "eval-dot", markerClass);
-      dot.setAttribute("cx", String(c.x));
-      dot.setAttribute("cy", String(c.y));
-      dot.setAttribute("data-ply", String(c.ply));
+      const dot = svgChild(chart, "ellipse", { class: `eval-marker eval-dot ${markerClass}`, cx: c.x, cy: c.y, "data-ply": c.ply });
       dot.dataset.baseR = "2.8";
       dot.style.cursor = "pointer";
       dot.addEventListener("click", (event) => {
         event.stopPropagation();
         showAnalysisPly(c.ply);
       });
-      chart.appendChild(dot);
     });
     rescaleEvalMarkers();
 
     // Current-ply position: dashed vertical line + a ring on the curve (shape,
     // not colour) above everything else.
-    const marker = document.createElementNS(svgNS, "line");
-    marker.setAttribute("id", "eval-chart-cursor");
-    marker.setAttribute("class", "eval-cursor");
-    marker.setAttribute("y1", "0");
-    marker.setAttribute("y2", String(height));
-    marker.setAttribute("stroke-dasharray", "3 3");
-    marker.setAttribute("x1", "-10");
-    marker.setAttribute("x2", "-10");
-    marker.setAttribute("visibility", "hidden");
-    marker.setAttribute("vector-effect", "non-scaling-stroke");
-    chart.appendChild(marker);
-
-    const ring = document.createElementNS(svgNS, "ellipse");
-    ring.setAttribute("id", "eval-chart-cursor-dot");
-    ring.classList.add("eval-marker", "eval-cursor-dot");
-    ring.setAttribute("cx", "-10");
-    ring.setAttribute("cy", "-10");
-    ring.setAttribute("visibility", "hidden");
+    svgChild(chart, "line", { id: "eval-chart-cursor", class: "eval-cursor", "stroke-dasharray": "3 3", ...offChart });
+    const ring = svgChild(chart, "ellipse", { id: "eval-chart-cursor-dot", class: "eval-marker eval-cursor-dot", cx: -10, cy: -10, visibility: "hidden" });
     ring.dataset.baseR = "4.5";
-    chart.appendChild(ring);
 
     updateEvalChartCursor();
     bindEvalChartInteractions();

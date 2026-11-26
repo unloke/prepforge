@@ -577,6 +577,19 @@ export function openingBranches(
   };
 }
 
+// Each distinct first move with its game count and share, most played first.
+function firstMoveShares(games) {
+  const counts = new Map();
+  for (const game of games) {
+    const uci = game.ucis[0];
+    if (!counts.has(uci)) counts.set(uci, { uci, san: game.sans[0], games: 0 });
+    counts.get(uci).games += 1;
+  }
+  return [...counts.values()]
+    .map((entry) => ({ ...entry, share: entry.games / games.length }))
+    .sort((a, b) => b.games - a.games);
+}
+
 // First-move entropy: low = guessable, high = varied.
 export function predictability(games, color, { speedFilter = "all" } = {}) {
   const filtered = filterGames(games, { color, speedFilter }).filter((g) => g.ucis?.length);
@@ -592,21 +605,8 @@ export function predictability(games, color, { speedFilter = "all" } = {}) {
     };
   }
 
-  const counts = new Map();
-  for (const game of filtered) {
-    const key = game.ucis[0];
-    if (!counts.has(key)) counts.set(key, { uci: key, san: game.sans[0], games: 0 });
-    counts.get(key).games += 1;
-  }
   const total = filtered.length;
-  const moves = [...counts.values()]
-    .map((entry) => ({
-      uci: entry.uci,
-      san: entry.san,
-      games: entry.games,
-      share: entry.games / total,
-    }))
-    .sort((a, b) => b.games - a.games);
+  const moves = firstMoveShares(filtered);
 
   // Mouse-slip / one-off first moves (e.g. a single 1.d3 meant for 1.d4) would
   // otherwise inflate the entropy and mislabel a predictable player as "mixed".
@@ -686,23 +686,8 @@ export function repertoireBreadth(games, color, { speedFilter = "all", minGames 
     };
   }
 
-  const counts = new Map();
-  for (const game of filtered) {
-    const key = game.ucis[0];
-    if (!counts.has(key)) counts.set(key, { uci: key, san: game.sans[0], games: 0 });
-    counts.get(key).games += 1;
-  }
-
   const total = filtered.length;
-  const moves = [...counts.values()]
-    .map((entry) => ({
-      uci: entry.uci,
-      san: entry.san,
-      games: entry.games,
-      share: entry.games / total,
-    }))
-    .filter((entry) => entry.games >= minGames)
-    .sort((a, b) => b.games - a.games);
+  const moves = firstMoveShares(filtered).filter((entry) => entry.games >= minGames);
 
   return {
     breadth: moves.length,

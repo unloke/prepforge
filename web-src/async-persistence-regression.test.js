@@ -1,7 +1,7 @@
 import { html } from "./html.js";
 import { readFileSync } from "node:fs";
-import { createSyncQueue } from "./sync-queue.js";
-import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
+import { countOf } from "./plural.js";
+import { createSyncQueue, flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
 import { createBookActions } from "./analyze-book.js";
 import { indexBuildNodes } from "./build-tree.js";
 import { createSettingsActions } from "./settings-actions.js";
@@ -231,7 +231,7 @@ it("Scout bulk counts only confirmed complete lines and continues after failures
   const notices = { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() };
   const write = vi.fn().mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce("node");
   const run = compile("async function runPrepareAll(", {
-    scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices,
+    scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices, countOf,
     // Bulk add already holds the Scout busy flag, so it picks without the
     // guarded scoutPickRepertoire (which would refuse and do nothing).
     pickRepertoire: async () => "r", scoutWriteLineToRep: write,

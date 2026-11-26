@@ -30,9 +30,7 @@ import {
   opponentProfile,
   parseClkToSeconds,
   parseGameBlock,
-  parseGameFromJson,
   parseMainlineMoves,
-  parseNdjsonGames,
   parseTimeControlHeader,
   parseScoutDatestamp,
   parseSpeedBucket,
@@ -48,7 +46,6 @@ import {
   attachPrepReplies,
   PGN_BLOCK_BOUNDARY,
   scoutStreamUrl,
-  scoutUrl,
   topLines,
 } from "./scout.js";
 
@@ -151,14 +148,6 @@ describe("movetextSans + clock parsing", () => {
     const thinks = computeNextOwnThinkSeconds(clocks, 2, "black");
     expect(thinks[0]).toBe(1);
   });
-  it("scoutUrl requests clocks=true", () => {
-    expect(scoutUrl("Foe")).toContain("clocks=true");
-    expect(scoutStreamUrl("Foe")).toContain("clocks=true");
-  });
-  it("requests only standard chess from Lichess", () => {
-    expect(scoutUrl("Foe")).toContain("variant=standard");
-    expect(scoutStreamUrl("Foe")).toContain("variant=standard");
-  });
   it("parseSpeedBucket uses Lichess base+40*increment", () => {
     expect(parseSpeedBucket("120+12")).toBe("rapid");
     expect(parseSpeedBucket("60+12")).toBe("rapid");
@@ -189,11 +178,6 @@ describe("parseGameBlock", () => {
       parseGameBlock(pgn({ moves: "1. e4 e5", fen: "8/8/8/8/8/8/8/8 w - - 0 1" }), "foe"),
     ).toBeNull();
     expect(parseGameBlock(pgn({ moves: "1. e4 e5", variant: "Standard" }), "foe")).not.toBeNull();
-  });
-  it("prefers Lichess createdAt over date-only PGN midnight", () => {
-    const block = pgn({ moves: "1. e4 e5", utcDate: "2026.06.10" });
-    const game = parseGameFromJson({ pgn: block, createdAt: 1_718_030_000_000 }, "foe");
-    expect(game.datestamp).toBe(1_718_030_000_000);
   });
   it("extracts colour, score and replayed ucis for the scouted player", () => {
     const game = parseGameBlock(pgn({ moves: "1. e4 e5 2. Nf3" }), "foe");
@@ -1287,44 +1271,6 @@ describe("repertoire coverage", () => {
   });
 });
 
-describe("parseGameFromJson / parseNdjsonGames", () => {
-  it("reuses the PGN reader and attaches centisecond clocks + the precise clock object", () => {
-    const game = parseGameFromJson(
-      {
-        pgn: pgn({ moves: "1. e4 e5 2. Nf3 Nc6", white: "Foe", timeControl: "180+2" }),
-        clocks: [18003, 17950, 17820, 17700],
-        clock: { initial: 180, increment: 2, totalTime: 260 },
-      },
-      "Foe",
-    );
-    expect(game.ucis).toEqual(["e2e4", "e7e5", "g1f3", "b8c6"]);
-    expect(game.clockCsAfterPly).toEqual([18003, 17950, 17820, 17700]);
-    expect(game.clockInitialSeconds).toBe(180);
-    expect(game.clockIncrementSeconds).toBe(2);
-  });
-
-  it("returns null without a usable pgn field", () => {
-    expect(parseGameFromJson({ clocks: [1, 2] }, "Foe")).toBeNull();
-  });
-
-  it("parses one game per line and tolerates blanks and garbage", () => {
-    const text = [
-      JSON.stringify({ pgn: pgn({ moves: "1. e4 e5", white: "Foe" }), clocks: [18000, 17900] }),
-      "",
-      "not json",
-      JSON.stringify({ pgn: pgn({ moves: "1. d4 d5", white: "Foe" }) }),
-    ].join("\n");
-    const games = parseNdjsonGames(text, "Foe");
-    expect(games).toHaveLength(2);
-    expect(games[0].clockCsAfterPly).toEqual([18000, 17900]);
-  });
-
-  it("adds pgnInJson to the export URL only when requested", () => {
-    expect(scoutUrl("Foe", null, { pgnInJson: true })).toContain("pgnInJson=true");
-    expect(scoutUrl("Foe")).not.toContain("pgnInJson");
-  });
-});
-
 describe("isEarlyResignCollapse (opening-collapse down-weight)", () => {
   // White resigns on move 3 holding ~91% of a 180s clock: the textbook one-off collapse.
   const base = {
@@ -1332,7 +1278,7 @@ describe("isEarlyResignCollapse (opening-collapse down-weight)", () => {
     score: 0,
     status: "resign",
     totalPly: 6,
-    clockInitialSeconds: 180,
+    timeControl: { baseSeconds: 180, incrementSeconds: 0 },
     clockAfterPly: [175, 178, 172, 176, 165, 174], // White = even indices; last own = 165s
   };
 
@@ -1361,18 +1307,18 @@ describe("isEarlyResignCollapse (opening-collapse down-weight)", () => {
 
   it("abstains when the clock can't be read", () => {
     expect(
-      isEarlyResignCollapse({ ...base, clockAfterPly: [], clockInitialSeconds: undefined, timeControl: null }),
+      isEarlyResignCollapse({ ...base, clockAfterPly: [], timeControl: null }),
     ).toBe(false);
   });
 
-  it("reads Black's clock at odd plies, in centiseconds, and via timeControl.baseSeconds", () => {
+  it("reads Black's clock at odd plies", () => {
     const g = {
       color: "black",
       score: 0,
       status: "resign",
       totalPly: 5,
       timeControl: { baseSeconds: 300, incrementSeconds: 0 },
-      clockCsAfterPly: [29500, 28000, 29000, 27000, 28500], // Black = odd; last own (idx 3) = 270s
+      clockAfterPly: [295, 280, 290, 270, 285], // Black = odd; last own (idx 3) = 270s
     };
     expect(isEarlyResignCollapse(g)).toBe(true);
   });
@@ -1390,13 +1336,13 @@ describe("buildOpeningTrie / aggregateOpeningBranches collapse exclusion", () =>
   const collapse = line({
     score: 0,
     status: "resign",
-    clockInitialSeconds: 180,
+    timeControl: { baseSeconds: 180, incrementSeconds: 0 },
     clockAfterPly: [176, 178, 170],
   });
   const realLoss = line({
     score: 0,
     status: "mate", // mated in the opening: a repeatable trap, kept
-    clockInitialSeconds: 180,
+    timeControl: { baseSeconds: 180, incrementSeconds: 0 },
     clockAfterPly: [60, 55, 40],
   });
 
@@ -1420,75 +1366,16 @@ describe("buildOpeningTrie / aggregateOpeningBranches collapse exclusion", () =>
 });
 
 describe("createScoutClient", () => {
-  // fetchGames now uses the ND-JSON export (pgnInJson) so it can read centisecond clocks.
-  const ndjson = (objs) => objs.map((o) => JSON.stringify(o)).join("\n");
-  const EXPORT = ndjson([
-    { pgn: pgn({ moves: "1. e4 e5" }) },
-    { pgn: pgn({ moves: "1. d4 d5" }) },
-  ]);
-
-  function memoryStorage() {
-    const data = new Map();
-    return {
-      getItem: (k) => (data.has(k) ? data.get(k) : null),
-      setItem: (k, v) => data.set(k, v),
-    };
-  }
-
-  it("fetches the public export once, then serves the cache", async () => {
-    const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, text: async () => EXPORT }));
-    const client = createScoutClient({ fetchImpl, storage: memoryStorage() });
-    const first = await client.fetchGames("Foe", { max: 60 });
-    const second = await client.fetchGames("Foe", { max: 60 });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(first).toHaveLength(2);
-    expect(second).toEqual(first);
-  });
-
-  it("ignores a stale v3 cache entry (bullet-contaminated) and re-fetches", async () => {
-    // The v3 cache could hold pre-excludeBullet results; the v4 key must not read it.
-    const storage = memoryStorage();
-    storage.setItem(
-      "prepforge.scout.cache.v3",
-      JSON.stringify({ entries: { "foe:60": { at: Date.now(), games: [{ stale: true }] } } }),
-    );
-    const fetchImpl = vi.fn(async () => ({ ok: true, status: 200, text: async () => EXPORT }));
-    const client = createScoutClient({ fetchImpl, storage });
-    const games = await client.fetchGames("Foe", { max: 60 });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(games).toHaveLength(2);
-    expect(games).not.toContainEqual({ stale: true });
-  });
-
-  it("fetchGames omits max from the export URL by default", async () => {
-    let fetchedUrl = "";
-    const fetchImpl = vi.fn(async (url) => {
-      fetchedUrl = String(url);
-      return { ok: true, status: 200, text: async () => EXPORT };
-    });
-    const client = createScoutClient({ fetchImpl, storage: memoryStorage() });
-    await client.fetchGames("Foe");
-    expect(fetchedUrl).not.toContain("max=");
-    expect(fetchedUrl).toContain("/api/games/user/Foe");
-  });
-
-  it("maps fetch errors to user-facing messages", () => {
-    expect(scoutFetchErrorMessage(new TypeError("fetch failed"))).toBe(SCOUT_ERR_NETWORK);
-    expect(scoutFetchErrorMessage(new Error(SCOUT_ERR_RATE_LIMIT))).toBe(SCOUT_ERR_RATE_LIMIT);
-    expect(scoutFetchErrorMessage(new Error("other"))).toBeNull();
-  });
 
   it("maps 404 and 429 to friendly errors", async () => {
     const client404 = createScoutClient({
       fetchImpl: async () => ({ ok: false, status: 404, text: async () => "" }),
-      storage: memoryStorage(),
     });
-    await expect(client404.fetchGames("ghost")).rejects.toThrow(/no lichess user/i);
+    await expect(client404.streamGames("ghost")).rejects.toThrow(/no lichess user/i);
     const client429 = createScoutClient({
       fetchImpl: async () => ({ ok: false, status: 429, text: async () => "" }),
-      storage: memoryStorage(),
     });
-    await expect(client429.fetchGames("foe")).rejects.toThrow(/rate limit/i);
+    await expect(client429.streamGames("foe")).rejects.toThrow(/rate limit/i);
   });
 
   it("a 404 export for an account that exists is not reported as a missing user", async () => {
@@ -1497,10 +1384,8 @@ describe("createScoutClient", () => {
         String(url).includes("/api/user/")
           ? { ok: true, status: 200, json: async () => ({ id: "drnykterstein" }) }
           : { ok: false, status: 404, text: async () => "" },
-      storage: memoryStorage(),
     });
-    await expect(client.fetchGames("DrNykterstein")).rejects.toThrow(/won't export DrNykterstein's games/);
-    await expect(client.streamGames("DrNykterstein")).rejects.toThrow(/won't export/);
+    await expect(client.streamGames("DrNykterstein")).rejects.toThrow(/won't export DrNykterstein's games/);
   });
 
   it.each([429, 500, "network"])("an inconclusive profile probe (%s) cannot declare the user missing", async (status) => {
@@ -1510,29 +1395,11 @@ describe("createScoutClient", () => {
         if (status === "network") throw new TypeError("fetch failed");
         return { ok: false, status };
       },
-      storage: memoryStorage(),
     });
-    await expect(client.fetchGames("Foe")).rejects.toThrow(/couldn't verify/i);
     await expect(client.streamGames("Foe")).rejects.toThrow(/couldn't verify/i);
   });
 
-  it("builds an export URL without max by default", () => {
-    const url = scoutUrl("Foe");
-    expect(url).toContain("/api/games/user/Foe?");
-    expect(url).not.toContain("max=");
-    expect(url).toContain("perfType=bullet%2Cblitz%2Crapid%2Cclassical");
-  });
 
-  it("drops bullet from perfType when excludeBullet is set", () => {
-    const url = scoutUrl("Foe", null, { excludeBullet: true });
-    expect(url).toContain("perfType=blitz%2Crapid%2Cclassical");
-    expect(url).not.toContain("bullet");
-  });
-
-  it("passes an explicit max through without capping", () => {
-    const url = scoutUrl("Foe", 9999);
-    expect(url).toContain("max=9999");
-  });
 
   it("builds a streaming URL with colour and pagination params", () => {
     const url = scoutStreamUrl("Foe", { color: "white", until: 1_700_000_000, max: 120 });
@@ -1542,6 +1409,11 @@ describe("createScoutClient", () => {
     const defaultUrl = scoutStreamUrl("Foe", { color: "both" });
     expect(defaultUrl).not.toContain("color=");
     expect(defaultUrl).not.toContain("max=");
+  });
+
+  it("requests clocks and standard chess only, without bullet", () => {
+    expect(scoutStreamUrl("Foe")).toContain("clocks=true");
+    expect(scoutStreamUrl("Foe")).toContain("variant=standard");
   });
 
   it("excludes bullet from the streaming export", () => {
@@ -1570,7 +1442,6 @@ describe("createScoutClient", () => {
     const games = [];
     const client = createScoutClient({
       fetchImpl: async () => ({ ok: true, status: 200, body: stream }),
-      storage: memoryStorage(),
     });
     const result = await client.streamGames("Foe", {
       onGame: (g) => games.push(g),
@@ -1595,7 +1466,6 @@ describe("createScoutClient", () => {
     const games = [];
     const client = createScoutClient({
       fetchImpl: async () => ({ ok: true, status: 200, body: stream }),
-      storage: memoryStorage(),
     });
     ctrl.abort();
     const result = await client.streamGames("Foe", {
@@ -1631,7 +1501,6 @@ describe("createScoutClient", () => {
     const acceptedGames = [];
     const client = createScoutClient({
       fetchImpl: async () => ({ ok: true, status: 200, body: stream }),
-      storage: memoryStorage(),
     });
     const result = await client.streamGames("Foe", {
       onGame: (g) => {
@@ -1663,7 +1532,6 @@ describe("createScoutClient", () => {
     const seen = new Set(["duponly"]);
     const client = createScoutClient({
       fetchImpl: async () => ({ ok: true, status: 200, body: stream }),
-      storage: memoryStorage(),
     });
     const result = await client.streamGames("Foe", {
       onGame: (g) => {
@@ -1698,7 +1566,7 @@ describe("prep badges need a Maia read", () => {
       pgn({ moves: "1. e4 e5", utcDate: "2026.06.12", white: "Foe" }),
       pgn({ moves: "1. d4 d5", utcDate: "2026.06.11", white: "SomeoneElse", black: "Other" }),
     ].join("\n\n");
-    const client = createScoutClient({ fetchImpl: async () => new Response(full), storage: { getItem: () => null, setItem: () => {} } });
+    const client = createScoutClient({ fetchImpl: async () => new Response(full) });
     const result = await client.streamGames("Foe", { onGame: () => false });
     expect(result.accepted).toBe(0);
     expect(result.received).toBe(2);

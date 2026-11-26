@@ -16,6 +16,7 @@ import {
   fenAfterLine,
   mergeEngineIntoTargets,
   opponentColorStats,
+  rankGamePlan,
   scoutLineText,
 } from "./scout.js";
 import { buildScoutStats, formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
@@ -27,7 +28,6 @@ import {
   scoutMaiaRankedNote,
 } from "./scout-maia.js";
 import { buildScoutSectionSummary, expectationText } from "./scout-summary.js";
-import { PRODUCTION_MODULE_B_ID, selectProductionRoutes } from "./scout-selector.js";
 
 export function scoutLineKey(ucis) {
   return (ucis || []).join(">");
@@ -336,7 +336,7 @@ function scoutWeeklyColumns(buckets, { weeks = 12, bucketDays = 7 } = {}) {
   const cols = slots
     .map((s) => {
       const h = s.count ? Math.max(6, Math.round((s.count / max) * 100)) : 0;
-      return html`<i style="height:${h}%" title="${s.count} game${s.count === 1 ? "" : "s"} · week of ${formatShortDate(s.datestamp)}"></i>`;
+      return html`<i style="height:${h}%" title="${countOf(s.count, "game")} · week of ${formatShortDate(s.datestamp)}"></i>`;
     });
   return {
     html: html`<span class="scout-columns">${cols}</span>`,
@@ -569,7 +569,7 @@ export function buildScoutIntelligenceA11ySummary(stats) {
   const breadth = stats.repertoireBreadth;
   if (breadth?.breadth > 0) {
     parts.push(
-      `Repertoire breadth: ${breadth.breadth} first move${breadth.breadth === 1 ? "" : "s"} with at least ${breadth.minGames} game${breadth.minGames === 1 ? "" : "s"}.`,
+      `Repertoire breadth: ${breadth.breadth} first move${breadth.breadth === 1 ? "" : "s"} with at least ${countOf(breadth.minGames, "game")}.`,
     );
   }
 
@@ -859,8 +859,8 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
 export function scoutAnalyzedLabel(analyzed, skipped = 0, { streaming = false } = {}) {
   const a = Number(analyzed) || 0;
   const s = Number(skipped) || 0;
-  if (streaming) return `${a} game${a === 1 ? "" : "s"} so far · still fetching`;
-  return `${a} game${a === 1 ? "" : "s"} analyzed${s ? `, ${s} skipped` : ""}`;
+  if (streaming) return `${countOf(a, "game")} so far · still fetching`;
+  return `${countOf(a, "game")} analyzed${s ? `, ${s} skipped` : ""}`;
 }
 
 export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtml = "", usernames = [], streaming = false } = {}) {
@@ -1030,8 +1030,8 @@ export function scoutDistRowHtml(m, { clickable = true } = {}) {
       <div class="scout-dist-row fm${heat}"${clickAttrs}>
         <b class="scout-dist-san">${m.san}</b>
         <span class="scout-dist-bar share"><i style="width:${Math.round(m.share * 100)}%"></i></span>
-        <span class="scout-dist-share" title="${games} game${games === 1 ? "" : "s"}">${formatSharePct(m.share)}</span>
-        <span class="scout-dist-score sc" title="Their score in these games · ${games} game${games === 1 ? "" : "s"}"><small>scores</small> ${m.scorePct}%</span>
+        <span class="scout-dist-share" title="${countOf(games, "game")}">${formatSharePct(m.share)}</span>
+        <span class="scout-dist-score sc" title="Their score in these games · ${countOf(games, "game")}"><small>scores</small> ${m.scorePct}%</span>
       </div>`;
 }
 
@@ -1273,7 +1273,7 @@ export function buildScoutSectionReport(
       enrichPrepTarget: scoutModule.enrichPrepTarget,
     });
   }
-  let weaknessTargets = selectProductionRoutes(gamePlanSource, baseline, {
+  let weaknessTargets = rankGamePlan(gamePlanSource, baseline, {
     oppColor,
     games,
     speedFilter,
@@ -1328,7 +1328,6 @@ export function buildScoutSectionReport(
   });
 
   const sectionData = {
-    moduleB: PRODUCTION_MODULE_B_ID,
     // The total the section itself states, so the colour tab can quote the same
     // number instead of the raw per-colour total.
     gameCount: trie.gameCount,
@@ -1408,7 +1407,7 @@ export function buildScoutSectionReport(
 
   const heading = oppColor === "white" ? "With White" : "With Black";
   const markup = html`
-    <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-board-side="${oppColor === "white" ? "black" : "white"}" data-module-b="${PRODUCTION_MODULE_B_ID}">
+    <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-board-side="${oppColor === "white" ? "black" : "white"}">
       <h3 class="visually-hidden">${heading} · <span class="scout-games-count">${countOf(trie.gameCount, "game")}</span></h3>
       <section class="color-sec card">
         <div class="scout-section-head cs-head">
@@ -1466,7 +1465,7 @@ export function buildScoutShareText({ username, profile, sections, activeSpeed }
       for (const t of prep) {
         const their = scoutLineText(t.sans);
         const reply = t.suggestedReply?.uci ? ` → your move ${t.suggestedReply.uci}` : t.needsPrep ? " → no answer in your prep" : "";
-        let row = `- After ${their}${reply}: ${Math.round(t.share * 100)}% of their games, they score ${t.scorePct}% (${t.games} game${t.games === 1 ? "" : "s"})`;
+        let row = `- After ${their}${reply}: ${Math.round(t.share * 100)}% of their games, they score ${t.scorePct}% (${countOf(t.games, "game")})`;
         if (t.enginePattern) {
           row += `; often …${t.enginePattern.playedSan}`;
         }

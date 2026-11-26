@@ -6,7 +6,7 @@ vi.mock("../scout.js", async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    createScoutClient: () => ({ streamGames, fetchGames: vi.fn() }),
+    createScoutClient: () => ({ streamGames }),
   };
 });
 

@@ -43,7 +43,8 @@ function attachFinish(deps) {
   const helpers = { ...deps, markCheckpointSaved: vi.fn(), refreshAnalyzeRecovery: vi.fn() };
   deps.finishAnalyzeCheckpoint = new Function(...Object.keys(helpers), `return (${finish});`)(...Object.values(helpers));
 }
-const code = source.slice(source.indexOf("async function retryAnalyzeSave()"), source.indexOf("\nfunction hideAnalysisHandoff("));
+const fnText = (marker) => { const start = source.indexOf(marker); return source.slice(start, source.indexOf("\n}\n", start) + 2); };
+const code = `${fnText("function classifyPositions(")}\n${source.slice(source.indexOf("async function retryAnalyzeSave()"), source.indexOf("\nfunction hideAnalysisHandoff("))}`;
 
 it("Retry save cannot replay a previous owner's in-memory checkpoint", async () => {
   const deps = {
