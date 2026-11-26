@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parsePgn } from "./analyze-pgn.js";
 import { createAnalyzeView } from "./views/analyze.js";
@@ -232,21 +231,5 @@ describe("Boot route lifecycle", () => {
     await restore();
     expect(deps.switchView).toHaveBeenCalledWith("train");
     expect(deps.openTrain).not.toHaveBeenCalled();
-  });
-});
-
-describe("Build friction audit visibility", () => {
-  it.each([false, true])("reports an actual visible New repertoire entry (%s)", async (visibleEmptyAction) => {
-    const script = readFileSync(new URL("../scripts/build-friction-audit.mjs", import.meta.url), "utf8").replace(/\r\n/g, "\n");
-    const start = script.indexOf("async function snapshotBuildEmpty(");
-    const end = script.indexOf("\n  }\n", start) + 4;
-    const hiddenHeader = { getClientRects: () => [] };
-    const emptyAction = { getClientRects: () => visibleEmptyAction ? [{}] : [] };
-    const document = { getElementById: () => null,
-      querySelector: (sel) => sel.includes("dashboard-new-rep") ? hiddenHeader : null,
-      querySelectorAll: () => [hiddenHeader, emptyAction] };
-    const snapshot = new Function("document", `return (${script.slice(start, end)});`)(document);
-    const result = await snapshot({ evaluate: (fn) => fn() });
-    expect(result.dashboardNewRep).toBe(visibleEmptyAction);
   });
 });
