@@ -1,6 +1,6 @@
 ﻿import { describe, expect, it } from "vitest";
 import { appSource } from "./test-app-source.js";
-import { isSelectionEmpty, normalizeSelection } from "./views/shared/source-composer.js";
+import { normalizeSelection } from "./views/shared/source-composer.js";
 
 const source = appSource();
 
@@ -19,7 +19,7 @@ describe("Scout source default", () => {
     expect(read("prepforge.games_source")).toEqual({ linkedMode: "all", accountIds: [], external: [] });
     // Scout defaults to no source, so Start can never silently scout the user.
     const scout = read("prepforge.scout_source", { linkedMode: "none", accountIds: [], external: [] });
-    expect(isSelectionEmpty(scout)).toBe(true);
+    expect(scout).toEqual({ linkedMode: "none", accountIds: [], external: [] });
   });
 
   it("still reads a stored Scout selection", () => {

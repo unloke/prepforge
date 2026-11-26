@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
+import { mapTrainUiSession } from "./train-resume.js";
 import { clearSessionMemo, loadSessionMemo, saveSessionMemo } from "./train-session-memo.js";
 import * as trainSessionMemo from "./train-session-memo.js";
 import { readTrainingHistory } from './train-history.js';
@@ -39,8 +39,8 @@ function harness(overrides = {}) {
   const present = vi.fn(async () => {});
   const deps = {
     countOf: (n, one) => `${n} ${n === 1 ? one : `${one}s`}`,
-    appState, mapTrainUiSession, shouldResetTrainStats, saveSessionMemo, loadSessionMemo, clearSessionMemo, trainSessionMemo,
-    loadTrainResume: async () => ({ mapTrainUiSession, shouldResetTrainStats }),
+    appState, mapTrainUiSession, saveSessionMemo, loadSessionMemo, clearSessionMemo, trainSessionMemo,
+    loadTrainResume: async () => ({ mapTrainUiSession }),
     currentOwnerId: () => appState.accountUserId,
     trainStatsReset: () => { appState.trainStats = mapTrainUiSession(payload).stats; },
     invalidateTrainPreview: vi.fn(), trainRowError: vi.fn(), smartResult,

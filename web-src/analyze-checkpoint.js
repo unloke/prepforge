@@ -38,23 +38,6 @@ async function transaction(mode, action) {
   } finally { db.close(); }
 }
 
-/** Metadata only: never parse other games' analysis payloads during a save. */
-export async function listCheckpointGames(ownerId) {
-  try {
-    return await transaction("readonly", (_, metadata) => {
-      const result = { result: [] };
-      const cursor = metadata.index("owner_saved").openCursor(IDBKeyRange.bound([ownerId || ""], [ownerId || "", []]), "prev");
-      cursor.onsuccess = () => {
-        if (!cursor.result) return;
-        const { gameId, savedAt } = cursor.result.value;
-        result.result.push({ gameId, savedAt });
-        cursor.result.continue();
-      };
-      return result;
-    });
-  } catch (_) { return []; }
-}
-
 export async function saveCheckpoint(checkpoint) {
   try {
     if (!checkpoint.requestId) return false;

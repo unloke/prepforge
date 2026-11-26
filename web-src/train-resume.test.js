@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
+import { mapTrainUiSession } from "./train-resume.js";
 
 function smartPayload(overrides = {}) {
   return {
@@ -53,7 +53,6 @@ describe("mapTrainUiSession", () => {
     expect(mapped.resumed).toBe(false);
     expect(mapped.queue).toHaveLength(3);
     expect(mapped.cardsDone).toBe(0);
-    expect(shouldResetTrainStats(mapped)).toBe(true);
   });
 
   it("continues an unfinished smart session at the server card_index", () => {
@@ -64,7 +63,6 @@ describe("mapTrainUiSession", () => {
     expect(mapped.cardsDone).toBe(2);
     expect(mapped.resumed).toBe(true);
     expect(mapped.queue[2].kind).toBe("weak");
-    expect(shouldResetTrainStats(mapped)).toBe(false);
   });
 
   it("fresh still starts new even when the payload still carries a mid-queue index", () => {

@@ -4,7 +4,6 @@ import {
   PRODUCTION_MODULE_B,
   PRODUCTION_MODULE_B_ID,
   PRODUCTION_ROUTE_BUDGET,
-  getProductionModuleB,
   selectProductionRoutes,
 } from "./scout-selector.js";
 import {
@@ -102,7 +101,6 @@ describe("production Module B contract (Scout v2)", () => {
     expect(PRODUCTION_ROUTE_BUDGET).toBe(12);
     expect(PRODUCTION_ROUTE_BUDGET).toBe(SCOUT_GAME_PLAN_LIMIT);
     expect(PRODUCTION_MODULE_B.scoringVersion).toBe(SCOUT_SCORING_VERSION);
-    expect(getProductionModuleB().select).toBe(selectProductionRoutes);
   });
 
   it("selects at most the exact route budget and is deterministic", () => {

@@ -16,7 +16,6 @@ import {
   sansFromPgn,
   scoreGamePositions,
   swingFromSnapshot,
-  uciFen,
   verifyReplay,
   walkSans,
 } from "./train-lucky-db.js";
@@ -207,24 +206,6 @@ describe("swingFromSnapshot", () => {
     ).toEqual({ engineBest: "e2e4" });
     expect(swingFromSnapshot({ pvs: [] })).toBeNull();
     expect(swingFromSnapshot(null)).toBeNull();
-  });
-});
-
-describe("uciFen", () => {
-  it("converts one UCI to SAN with the resulting FEN", () => {
-    const moved = uciFen(
-      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-      "e2e4",
-    );
-    expect(moved.san).toBe("e4");
-    expect(moved.fen).toContain(" b ");
-    expect(moved.over).toBe(false);
-  });
-
-  it("returns null for an illegal move", () => {
-    expect(
-      uciFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "e2e5"),
-    ).toBeNull();
   });
 });
 

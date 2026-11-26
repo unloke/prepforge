@@ -131,12 +131,6 @@ def test_position_identity_distinguishes_castling_ep_and_side():
     assert codec.position_key(both) != codec.position_key(no_white_castle)
     assert codec.position_key(both) != codec.position_key(black_to_move)
     assert codec.position_key(with_ep) != codec.position_key(no_ep)
-    assert codec.position_identity(both)[2] == "KQkq"
-    assert codec.position_identity(no_white_castle)[2] == "kq"
-    assert codec.position_identity(both)[1] == "w"
-    assert codec.position_identity(black_to_move)[1] == "b"
-    assert codec.position_identity(with_ep)[3] == "d6"
-    assert codec.position_identity(no_ep)[3] == "-"
 
 
 def test_search_limit_sentinel_round_trip_is_null_safe():

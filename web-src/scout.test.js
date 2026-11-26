@@ -32,13 +32,11 @@ import {
   parseGameBlock,
   parseGameFromJson,
   parseMainlineMoves,
-  parseMultiPgn,
   parseNdjsonGames,
   parseTimeControlHeader,
   parseScoutDatestamp,
   parseSpeedBucket,
   mergeEngineIntoTargets,
-  nodeIdAfterFlush,
   rankGamePlan,
   rankedOpeningBranches,
   normalizeToOpponentTerminal,
@@ -169,7 +167,7 @@ describe("movetextSans + clock parsing", () => {
   });
 });
 
-describe("parseGameBlock / parseMultiPgn", () => {
+describe("parseGameBlock", () => {
   it("uses UTCTime so resume until is not midnight UTC", () => {
     const game = parseGameBlock(
       pgn({ moves: "1. e4 e5", utcDate: "2026.06.10", utcTime: "16:30:00" }),
@@ -294,12 +292,8 @@ describe("parseGameBlock / parseMultiPgn", () => {
   it("skips games the player is not in, unfinished games, and junk", () => {
     expect(parseGameBlock(pgn({ moves: "1. e4" }), "someoneelse")).toBeNull();
     expect(parseGameBlock(pgn({ result: "*", moves: "1. e4" }), "foe")).toBeNull();
-    const text = [
-      pgn({ moves: "1. e4 e5" }),
-      pgn({ white: "X", black: "Y", moves: "1. d4" }),
-      pgn({ moves: "1. d4 d5" }),
-    ].join("\n");
-    expect(parseMultiPgn(text, "Foe")).toHaveLength(2);
+    expect(parseGameBlock(pgn({ white: "X", black: "Y", moves: "1. d4" }), "Foe")).toBeNull();
+    expect(parseGameBlock(pgn({ moves: "1. d4 d5" }), "Foe")).not.toBeNull();
   });
 });
 
@@ -1152,15 +1146,6 @@ describe("opponentProfile", () => {
     const older = [{ color: "white", ucis: ["e2e4"], rating: 0, speed: "blitz" }];
     const profile = opponentProfile([...recent, ...older]);
     expect(profile.recentlyChanged.white).toBe(false);
-  });
-});
-
-describe("nodeIdAfterFlush", () => {
-  it("maps provisional tmp ids to reconciled server ids after flush", () => {
-    const idMap = { "tmp-abc": "node-real-42" };
-    expect(nodeIdAfterFlush("tmp-abc", idMap)).toBe("node-real-42");
-    expect(nodeIdAfterFlush("node-existing", idMap)).toBe("node-existing");
-    expect(nodeIdAfterFlush(null, idMap)).toBeNull();
   });
 });
 

@@ -29,10 +29,3 @@ export function selectProductionRoutes(lines, baselineScorePct, options = {}) {
     limit: options.limit ?? PRODUCTION_ROUTE_BUDGET,
   });
 }
-
-export function getProductionModuleB() {
-  return {
-    ...PRODUCTION_MODULE_B,
-    select: selectProductionRoutes,
-  };
-}

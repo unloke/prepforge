@@ -133,11 +133,6 @@ export function scoutLineText(sans) {
   return parts.join(" ");
 }
 
-// After add-moves flush, map a provisional tmp-* id to its reconciled server id.
-export function nodeIdAfterFlush(nodeId, idMap) {
-  return (nodeId && idMap && idMap[nodeId]) || nodeId;
-}
-
 export function mergeEngineIntoTargets(targets, enginePatterns) {
   if (!enginePatterns?.size) return targets;
   return targets.map((target) => {
@@ -425,10 +420,6 @@ export function hashGameIdsForScope(games) {
   return String(h >>> 0);
 }
 
-export function computeScoutBranchScopeKey({ username, activeSpeed, games } = {}) {
-  return `${String(username || "").toLowerCase()}|${activeSpeed || "all"}|${hashGameIdsForScope(games)}|${SCOUT_SCORING_VERSION}`;
-}
-
 // One exported game -> a scout record from the SCOUTED player's point of view.
 // Returns null when the player isn't in the game or the moves don't replay.
 export function parseGameBlock(block, username) {
@@ -543,16 +534,6 @@ export function parseGameBlock(block, username) {
     openingEndPly,
     nextOwnThinkSeconds,
   };
-}
-
-export function parseMultiPgn(text, username) {
-  const games = [];
-  // Lichess exports separate games by a blank line before the next [Event tag.
-  for (const block of String(text || "").split(/\n\s*\n(?=\[Event )/)) {
-    const game = parseGameBlock(block, username);
-    if (game) games.push(game);
-  }
-  return games;
 }
 
 /**
@@ -804,11 +785,6 @@ export function enrichPrepTarget(g, baselineScorePct, { maiaScorePct = null } = 
 }
 
 const openingPhaseCache = new Map();
-
-/** Clear cached opening-phase lookups (tests or long sessions). */
-export function clearOpeningPhaseCache() {
-  openingPhaseCache.clear();
-}
 
 function openingPhaseAt(ucis, cache = openingPhaseCache) {
   const key = triePathKey(ucis);

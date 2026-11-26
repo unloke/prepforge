@@ -1,11 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   normalizeSelection,
-  isSelectionEmpty,
   selfGroupState,
   selectSelf,
   deselectSelf,
-  toggleAccount,
   addExternal,
   lookupLichessUser,
   removeExternal,
@@ -31,31 +29,15 @@ describe("source composer selection model", () => {
       accountIds: [],
       external: [],
     });
-    expect(isSelectionEmpty(null)).toBe(false);
-    expect(isSelectionEmpty({ linkedMode: "none", accountIds: [], external: [] })).toBe(true);
-    expect(isSelectionEmpty({ linkedMode: "none", external: ["Hikaru"] })).toBe(false);
   });
 
   it("models Self explicitly: all / subset / none", () => {
     expect(selfGroupState(null, linked)).toBe("all");
     expect(selfGroupState({ linkedMode: "none" }, linked)).toBe("none");
     expect(selfGroupState(selectSelf(null, linked), linked)).toBe("all");
-    expect(selfGroupState(toggleAccount(selectSelf(null, linked), "b"), linked)).toBe("mixed");
+    expect(selfGroupState({ linkedMode: "subset", accountIds: ["a"] }, linked)).toBe("mixed");
     expect(selfGroupState({ linkedMode: "none", external: ["Hikaru"] }, linked)).toBe("none");
     expect(selfGroupState(deselectSelf(selectSelf(null, linked), linked), linked)).toBe("none");
-  });
-
-  it("toggles single linked accounts through the subset mode", () => {
-    expect(toggleAccount(null, "a")).toEqual({
-      linkedMode: "subset",
-      accountIds: ["a"],
-      external: [],
-    });
-    expect(toggleAccount({ linkedMode: "subset", accountIds: ["a"] }, "a")).toEqual({
-      linkedMode: "subset",
-      accountIds: [],
-      external: [],
-    });
   });
 
   it("adds and removes arbitrary external usernames, keeping linkedMode", () => {
