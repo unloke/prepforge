@@ -1,35 +1,46 @@
-// Static import-graph check for web-src: lists every strongly connected
-// component with more than one module (or a module importing itself) and exits
-// non-zero when there is one. Static imports, re-exports and dynamic import()
-// with a literal specifier all count as edges; a lazy import() that closes a
-// loop is still a loop in the dependency direction even though it is split into
-// its own chunk. Specifiers resolve the way Vite resolves them (see
-// resolveSpecifier), so an import that leaves off the extension or names a
-// directory is an edge too. Test files and test fixtures are not part of the graph.
+// Import-graph check for web-src: lists every strongly connected component with
+// more than one module (or a module importing itself) and exits non-zero when
+// there is one.
+//
+// The graph is the one Vite builds. The check runs Vite's build with every
+// web-src page and module as an entry, reads each module's importedIds and
+// dynamicallyImportedIds once the graph is complete, and stops before any chunk
+// is generated or written. So an edge is exactly what Vite resolves: extensions
+// it fills in, directory index files, template-literal import(), TypeScript,
+// and a ?raw or ?url import as its own leaf module, not as code. A lazy import()
+// that closes a loop is still a loop in the dependency direction even though it
+// is split into its own chunk. Test files and fixtures are not entries.
+//
+// It runs with Vite's own resolver and plugins and none of vite.config.js's
+// plugins: those serve dev-only files or trim the deploy output, and none of
+// them resolves a module. Nothing here touches the production build.
+//
+// The E2E build flags are on, so the graph also holds the imports that only the
+// E2E builds keep (Vite drops a branch behind a false import.meta.env flag
+// before the graph is complete). Each flag only adds code, so this graph is a
+// superset of the production one.
 //
 //   node scripts/import-cycles.mjs          # fail on any cycle
-//   node scripts/import-cycles.mjs --stats  # also print module / edge counts
-import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+//   node scripts/import-cycles.mjs --stats  # also print module / edge counts and time
+import { readdirSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import * as espree from "espree";
-import { KEYS } from "eslint-visitor-keys";
+import { build } from "vite";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = join(ROOT, "web-src");
 const SKIP_DIRS = new Set(["public", "node_modules"]);
-// Vite's default resolve.extensions, in its order (vite.config.js sets none).
-// .json resolves but imports nothing, so it is not a node of the graph.
-const EXTENSIONS = [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"];
-const MODULE_EXT = /\.(mjs|js|mts|ts|jsx|tsx)$/;
+const MODULE_EXT = /\.(mjs|js|mts|ts|jsx|tsx|html)$/;
 const isTest = (file) => /\.(test|spec|fixture)\.(mjs|js|mts|ts|jsx|tsx)$/.test(file);
-const isFile = (path) => existsSync(path) && statSync(path).isFile();
+const GRAPH_READ = "import-cycles: graph read";
+const E2E_FLAGS = ["VITE_ENABLE_SCOUT_E2E", "VITE_ENABLE_POLISH_E2E"];
 
-function listModules(dir, out = []) {
+function listEntries(dir, out = []) {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) {
-      if (!SKIP_DIRS.has(name)) listModules(path, out);
+      if (!SKIP_DIRS.has(name)) listEntries(path, out);
     } else if (MODULE_EXT.test(name) && !isTest(name)) {
       out.push(path);
     }
@@ -37,71 +48,56 @@ function listModules(dir, out = []) {
   return out;
 }
 
-function specifiers(source) {
-  const ast = espree.parse(source, { ecmaVersion: "latest", sourceType: "module", ecmaFeatures: { jsx: true } });
-  const found = [];
-  const visit = (node) => {
-    if (!node || typeof node.type !== "string") return;
-    if ((node.type === "ImportDeclaration" || node.type === "ExportAllDeclaration"
-      || node.type === "ExportNamedDeclaration") && node.source) {
-      found.push(node.source.value);
-    }
-    if (node.type === "ImportExpression" && node.source.type === "Literal") {
-      found.push(node.source.value);
-    }
-    for (const key of KEYS[node.type] || []) {
-      const child = node[key];
-      if (Array.isArray(child)) child.forEach(visit);
-      else visit(child);
-    }
+// Vite ids use "/" on every platform; the file system paths do not on Windows.
+const posix = (path) => path.split(sep).join("/").replaceAll("\\", "/");
+
+// A module's name for the report: its path under `root` with "/" separators,
+// query kept (a?raw is not a), on Windows as on POSIX.
+export function moduleName(root, id, pathApi = { relative, sep }) {
+  const [file, query] = id.split(/(?=\?)/);
+  const rel = pathApi.relative(root, file).split(pathApi.sep).join("/").replaceAll("\\", "/");
+  return query ? rel + query : rel;
+}
+
+// Map of module id -> Set of ids it imports, for modules under `root` only
+// (Vite's own helpers and packages are left out; they cannot import web-src back).
+export async function importGraph(root = SRC) {
+  // Windows paths are case-insensitive, and the drive letter's case can differ.
+  const fold = process.platform === "win32" ? (path) => posix(path).toLowerCase() : posix;
+  const inside = fold(root).replace(/\/?$/, "/");
+  const own = (id) => !id.startsWith("\0") && fold(id).startsWith(inside);
+  const input = Object.fromEntries(listEntries(root).map((file, i) => [`m${i}`, file]));
+  let graph = null;
+  const collect = {
+    name: "import-cycles-collect",
+    buildEnd(error) {
+      if (error) return;
+      graph = new Map();
+      for (const id of this.getModuleIds()) {
+        if (!own(id)) continue;
+        const info = this.getModuleInfo(id);
+        const deps = [...(info?.importedIds || []), ...(info?.dynamicallyImportedIds || [])];
+        graph.set(posix(id), new Set(deps.filter(own).map(posix)));
+      }
+      // Stop here: the graph is all this check needs, so nothing is rendered or written.
+      throw new Error(GRAPH_READ);
+    },
   };
-  visit(ast);
-  return found;
-}
-
-// Mirrors Vite's file resolution for relative and root-absolute ("/x", from
-// the Vite root) specifiers: the path itself, then each default extension, then
-// a directory's package.json entry or index file. Query strings and hashes
-// (?url, ?worker, #x) are dropped. Packages and URLs are not edges.
-function resolveFile(path) {
-  if (isFile(path)) return path;
-  for (const ext of EXTENSIONS) if (isFile(path + ext)) return path + ext;
-  if (!existsSync(path) || !statSync(path).isDirectory()) return null;
-  const pkgPath = join(path, "package.json");
-  if (isFile(pkgPath)) {
-    let pkg = {};
-    try { pkg = JSON.parse(readFileSync(pkgPath, "utf8")); } catch { /* not a package entry */ }
-    for (const entry of [pkg.module, pkg.main]) {
-      if (typeof entry !== "string") continue;
-      const found = resolveFile(resolve(path, entry));
-      if (found) return found;
-    }
+  try {
+    await build({
+      configFile: false, root, logLevel: "silent", clearScreen: false,
+      publicDir: false, plugins: [collect], worker: { format: "es", plugins: () => [] },
+      define: Object.fromEntries(E2E_FLAGS.map((flag) => [`import.meta.env.${flag}`, JSON.stringify("1")])),
+      build: {
+        write: false, emptyOutDir: false, minify: false, reportCompressedSize: false,
+        outDir: join(tmpdir(), "prepforge-import-cycles"),
+        rollupOptions: { input, onwarn: () => {} },
+      },
+    });
+  } catch (error) {
+    if (!graph) throw error;
   }
-  for (const ext of EXTENSIONS) if (isFile(join(path, "index" + ext))) return join(path, "index" + ext);
-  return null;
-}
-
-export function resolveSpecifier(from, spec, root = SRC) {
-  const bare = spec.split(/[?#]/)[0];
-  let path;
-  if (bare.startsWith("./") || bare.startsWith("../") || bare === "." || bare === "..") path = resolve(dirname(from), bare);
-  else if (bare.startsWith("/") && !bare.startsWith("//")) path = join(root, bare);
-  else return null; // packages, URLs, data: and the like
-  const found = resolveFile(path);
-  return found && MODULE_EXT.test(found) && !isTest(found) ? found : null;
-}
-
-export function importGraph(root = SRC) {
-  const modules = listModules(root);
-  const graph = new Map();
-  for (const file of modules) {
-    const deps = new Set();
-    for (const spec of specifiers(readFileSync(file, "utf8"))) {
-      const target = resolveSpecifier(file, spec, root);
-      if (target) deps.add(target);
-    }
-    graph.set(file, deps);
-  }
+  if (!graph) throw new Error("import-cycles: Vite finished without reporting its module graph");
   return graph;
 }
 
@@ -146,13 +142,14 @@ export function stronglyConnected(graph) {
   return out;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const graph = importGraph();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const started = performance.now();
+  const graph = await importGraph();
   const cycles = stronglyConnected(graph);
-  const name = (path) => relative(ROOT, path);
+  const name = (id) => moduleName(ROOT, id);
   if (process.argv.includes("--stats")) {
     const edges = [...graph.values()].reduce((sum, deps) => sum + deps.size, 0);
-    console.log(`${graph.size} modules, ${edges} internal import edges`);
+    console.log(`${graph.size} modules, ${edges} internal import edges, ${Math.round(performance.now() - started)} ms`);
   }
   if (!cycles.length) {
     console.log("import-cycles: no circular imports in web-src");
@@ -161,9 +158,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const component of cycles) {
       const members = new Set(component);
       console.error(`\n  ${component.length} modules:`);
-      for (const file of component.sort()) {
-        const inside = [...graph.get(file)].filter((dep) => members.has(dep)).map(name);
-        console.error(`    ${name(file)} -> ${inside.join(", ")}`);
+      for (const id of component.sort()) {
+        const inside = [...graph.get(id)].filter((dep) => members.has(dep)).map(name);
+        console.error(`    ${name(id)} -> ${inside.join(", ")}`);
       }
     }
     process.exitCode = 1;
