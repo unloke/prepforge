@@ -89,4 +89,18 @@ describe("one rejected move in a Build flush", () => {
     expect(rejected.map((entry) => entry.kind)).toEqual(["delete"]);
     expect(idMap).toEqual({ "tmp-a": "n-a", "tmp-b": "n-b" });
   });
+
+  // Review of #325: an account change mid-flush must not let the old queue go
+  // out under the new session, in the one-at-a-time fallback too.
+  it("stops sending once the queue is no longer this account's", async () => {
+    let mine = true;
+    const unnamed = Object.assign(new Error("bad"), { status: 400, detail: "bad" });
+    postJson.mockImplementation(async (_path, body) => {
+      mine = false;
+      return { id_map: { [body.moves[0].tempId]: "n-1" } };
+    });
+    const batch = [{ tempId: "tmp-a", parentRef: "root", uci: "g1f3" }, { tempId: "tmp-b", parentRef: "root", uci: "e2e4" }];
+    await isolateRejectedBuildOps(batch, [{ id: "n-0" }, { id: "n-9" }], "rep", unnamed, 7, () => mine);
+    expect(postJson).toHaveBeenCalledTimes(1);
+  });
 });

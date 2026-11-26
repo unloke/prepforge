@@ -176,3 +176,21 @@ def test_a_rejected_move_is_named_so_the_rest_can_be_resent(client):
     assert "illegal" in r.json()["detail"]["message"]
     # Nothing of the batch landed.
     assert all(node["uci"] != "d2d4" for node in _load(client, rep)["nodes"])
+
+
+def test_a_too_deep_batch_names_no_move(client):
+    """Review of #325: 65 legal half-moves in one batch hit the depth limit, and
+    the answer named the 65th as a rejected move, so the tab dropped a legal
+    move with its line. The limit is about the batch, not that move: the answer
+    names none, and the same move sent after the first 64 lands."""
+    _owner, rep, root, _ids = _setup(client)
+    shuffle = ["b1c3", "b8c6", "c3b1", "c6b8"]
+    moves = [{"tempId": f"tmp-d-{i}", "parentRef": f"tmp-d-{i - 1}" if i else root, "uci": shuffle[i % 4]}
+             for i in range(65)]
+    r = _post(client, "/api/build/add-moves", {"repertoire_id": rep, "moves": moves})
+    assert r.status_code == 400
+    assert isinstance(r.json()["detail"], str) and "depth" in r.json()["detail"]
+    first = _post(client, "/api/build/add-moves", {"repertoire_id": rep, "moves": moves[:64]})
+    assert first.status_code == 200, first.text
+    last = {**moves[64], "parentRef": first.json()["id_map"]["tmp-d-63"]}
+    assert _post(client, "/api/build/add-moves", {"repertoire_id": rep, "moves": [last]}).status_code == 200

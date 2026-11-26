@@ -43,6 +43,12 @@ class MoveRejected(ValueError):
         self.temp_id = temp_id
 
 
+class BatchTooDeep(ValueError):
+    """A batch's line runs past ``MAX_PLAN_DEPTH`` from an existing node. The
+    batch is at fault, not the move that crossed the limit, so no move is named:
+    the same move sent in a later batch lands."""
+
+
 @dataclass
 class PlanSummary:
     added_nodes: int = 0
@@ -431,7 +437,7 @@ class OpeningBuilderService:
 
                 child_depth = temp_depth.get(parent_ref, 0) + 1
                 if child_depth > MAX_PLAN_DEPTH:
-                    raise ValueError(
+                    raise BatchTooDeep(
                         "batch exceeds the max depth {0} from an existing node".format(
                             MAX_PLAN_DEPTH
                         )
@@ -466,7 +472,7 @@ class OpeningBuilderService:
         except ValueError as exc:
             # Name the move so the client drops it (and its line) and resends
             # the rest in one batch instead of one request per move.
-            if isinstance(current, str) and current:
+            if isinstance(current, str) and current and not isinstance(exc, BatchTooDeep):
                 raise MoveRejected(current, str(exc)) from exc
             raise
 

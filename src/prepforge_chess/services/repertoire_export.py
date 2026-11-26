@@ -55,26 +55,35 @@ def _extract_drawings(comment: Optional[str]) -> Tuple[Optional[str], List[str],
     return (cleaned or None), arrows, circles
 
 
+# What ``export_tree_pgn`` writes for a disabled branch and for tags. They use
+# the PGN comment-command form (``[%cmd ...]``, like Lichess's ``[%cal ...]``) so
+# that a note's own text, "[disabled]" or "[critical]" included, is never read
+# back as one.
+_DISABLED_MARKER = "[%pf-disabled]"
+_MARKER_PATTERN = re.compile(r"\s*\[%pf-(disabled|tags)(?: ([^\]]*))?\]")
+
+
+def _tags_marker(tags: List[str]) -> str:
+    return "[%pf-tags " + ",".join(tags) + "]"
+
+
 def _extract_markers(comment: Optional[str]) -> Tuple[Optional[str], bool, List[str]]:
-    """Read back what ``export_tree_pgn`` appends to a comment: ``[disabled]``
-    and ``[tag,tag]``. Returns the comment without them, whether the branch was
-    disabled, and its tags. Only trailing bracket groups count, and a group is
-    tags only when every item is a valid tag."""
-    disabled = False
-    tags: List[str] = []
-    text = (comment or "").rstrip()
-    while text.endswith("]") and "[" in text:
-        start = text.rindex("[")
-        token = text[start + 1:-1]
-        if token == "disabled":
-            disabled = True
+    """Read back the markers ``export_tree_pgn`` writes into a comment. Returns
+    the comment without them, whether the branch was disabled, and its tags (an
+    item that is not a valid tag is skipped). Any other text, brackets included,
+    stays as written."""
+    found = {"disabled": False, "tags": []}
+
+    def _take(match: "re.Match[str]") -> str:
+        if match.group(1) == "disabled":
+            found["disabled"] = True
         else:
-            items = [item.strip() for item in token.split(",")]
-            if tags or not items or not all(_TAG_PATTERN.match(item) for item in items):
-                break
-            tags = items
-        text = text[:start].rstrip()
-    return (text or None), disabled, tags
+            items = [item.strip() for item in (match.group(2) or "").split(",")]
+            found["tags"].extend(item for item in items if _TAG_PATTERN.match(item))
+        return ""
+
+    text = _MARKER_PATTERN.sub(_take, comment or "").strip()
+    return (text or None), found["disabled"], found["tags"]
 
 
 def _validate_id(value: Any, label: str) -> str:
@@ -233,9 +242,9 @@ class RepertoireExportService:
             if node.circles:
                 parts.append("[%csl " + ",".join("G" + s for s in node.circles) + "]")
             if not node.is_enabled:
-                parts.append("[disabled]")
+                parts.append(_DISABLED_MARKER)
             if node.tags:
-                parts.append("[" + ",".join(node.tags) + "]")
+                parts.append(_tags_marker(node.tags))
             return " ".join(parts)
 
         game.comment = annotation(repertoire.root_node)

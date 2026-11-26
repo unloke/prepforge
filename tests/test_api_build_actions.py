@@ -370,7 +370,7 @@ def test_export_line_of_an_unknown_node_is_400_not_500(client):
 
 def test_tree_pgn_round_trip_keeps_disabled_lines_and_tags(client):
     """Export PGN then Import PGN: a disabled branch stays disabled and tags stay
-    tags, instead of turning into "[disabled]" / "[critical]" comment text."""
+    tags, instead of turning into comment text."""
     _register(client, "a@example.com")
     rep_id, _root, node = _create_with_move(client, name="Round Trip")
     post = lambda path, body: client.post(path, json=body, headers=csrf_headers(client))  # noqa: E731
@@ -381,13 +381,31 @@ def test_tree_pgn_round_trip_keeps_disabled_lines_and_tags(client):
     assert post("/api/build/action", {"repertoire_id": rep_id, "node_id": node,
                                       "action": "disable_branch"}).status_code == 200
     exported = client.get("/api/repertoires/export-pgn", params={"repertoire_id": rep_id}).json()["content"]
-    assert "[disabled]" in exported and "critical" in exported
+    assert "[%pf-disabled]" in exported and "[%pf-tags " in exported and "critical" in exported
     back = post("/api/repertoires/import-pgn", {"pgn": exported, "name": "Back", "color": "white"})
     assert back.status_code == 200, back.text
     (first,) = [n for n in back.json()["nodes"] if n["depth"] == 1]
     assert first["comment"] == "Main idea"
     assert first["is_enabled"] is False
     assert "critical" in first["tags"]
+
+
+def test_tree_pgn_round_trip_keeps_a_comment_that_looks_like_a_marker(client):
+    """Review of #325: an enabled move whose own note ends in "[disabled]" (or in
+    a bracket that reads like a tag) came back disabled, with the end of the
+    note gone. The exported markers are now told apart from the note's text."""
+    _register(client, "a@example.com")
+    rep_id, _root, node = _create_with_move(client, name="Lookalike")
+    post = lambda path, body: client.post(path, json=body, headers=csrf_headers(client))  # noqa: E731
+    note = "Recall this line [disabled]"
+    assert post("/api/build/action", {"repertoire_id": rep_id, "node_id": node, "action": "add_comment",
+                                      "value": note}).status_code == 200
+    exported = client.get("/api/repertoires/export-pgn", params={"repertoire_id": rep_id}).json()["content"]
+    back = post("/api/repertoires/import-pgn", {"pgn": exported, "name": "Back", "color": "white"})
+    assert back.status_code == 200, back.text
+    (first,) = [n for n in back.json()["nodes"] if n["depth"] == 1]
+    assert first["comment"] == note
+    assert first["is_enabled"] is True
 
 
 def test_import_pgn_from_elsewhere_keeps_bracketed_comments(client):

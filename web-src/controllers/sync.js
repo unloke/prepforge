@@ -107,7 +107,10 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         deleteBatch.length = 0;
       }
       // The add answer supersedes the delete's: it reports both.
-      if (batch.length) payload = await postBuildAdds(repertoireId, batch, since);
+      if (batch.length) payload = await postBuildAdds(repertoireId, batch, since, { owns: ownsQueue });
+      // Another account took over mid-flush: what was not sent stays in this
+      // account's durable outbox.
+      if (!ownsQueue()) return false;
       // Both batches can drain to nothing (e.g. deletes of never-flushed tmp
       // nodes): nothing reached the server, so there's nothing to reconcile.
       if (!payload) {
@@ -184,8 +187,9 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       if (info.kind === "validation" || info.kind === "conflict" || info.kind === "forbidden") {
         // Drop what the server refused without rejecting a legal parent/child chain.
         const { rejected, settled, idMap, payload } = await isolateRejectedBuildOps(
-          batch, deleteBatch, repertoireId, error, since,
+          batch, deleteBatch, repertoireId, error, since, ownsQueue,
         );
+        if (!ownsQueue()) return false;
         if (idMap && Object.keys(idMap).length) {
           // Ops that landed mid-isolation have real ids now; the local tree and
           // any queued children must be reconciled against them (R-05).

@@ -21,8 +21,10 @@ const rejectedAdd = (m, error) => ({
 });
 
 // ``error`` is what the flush's own request got back: the delete request's
-// when deletes were still queued, else the add request's.
-export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, error, since) {
+// when deletes were still queued, else the add request's. ``owns`` is asked
+// before every request: once the queue is no longer this account's, nothing
+// more is sent under the new session.
+export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, error, since, owns = () => true) {
   const rejected = [];
   const settled = { build: [], deletes: [], train: [] };
   const idMap = {};
@@ -37,6 +39,7 @@ export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, 
       settled.deletes.push(buildDeleteId(entry)); // never reached the server
       continue;
     }
+    if (!owns()) return { rejected, settled, idMap, payload };
     try {
       if (lostAccess(error)) throw error;
       payload = await postJson("/api/build/delete-nodes", { repertoire_id: repertoireId, since, node_ids: [id] });
@@ -59,7 +62,8 @@ export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, 
   while (remaining.length) {
     if (!failure) {
       try {
-        payload = await postBuildAdds(repertoireId, remaining.map((m) => ({ ...m, parentRef: resolveBuildId(m.parentRef) })), since);
+        payload = await postBuildAdds(repertoireId, remaining.map((m) => ({ ...m, parentRef: resolveBuildId(m.parentRef) })), since, { owns });
+        if (payload?.unsent) return { rejected, settled, idMap: Object.assign(idMap, payload.id_map), payload };
         Object.assign(idMap, payload?.id_map || {});
         settle(remaining);
         break;
@@ -79,7 +83,7 @@ export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, 
     }
     const named = failure.detail?.temp_id;
     if (!remaining.some((m) => m.tempId === named)) {
-      ({ payload } = await isolateEachAdd(remaining, repertoireId, since, { rejected, settled, idMap, payload }));
+      ({ payload } = await isolateEachAdd(remaining, repertoireId, since, owns, { rejected, settled, idMap, payload }));
       break;
     }
     // Drop the named move and every move played after it on its line (parents
@@ -102,8 +106,9 @@ export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, 
 }
 
 // The old way, for a refusal that names no move: each move alone.
-async function isolateEachAdd(ordered, repertoireId, since, result) {
+async function isolateEachAdd(ordered, repertoireId, since, owns, result) {
   for (let i = 0; i < ordered.length; i += 1) {
+    if (!owns()) break;
     const m = ordered[i];
     // A parent from this same isolation round now has a real id.
     const parentRef = result.idMap[m.parentRef] || resolveBuildId(m.parentRef);
