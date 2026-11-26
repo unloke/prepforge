@@ -144,7 +144,7 @@ describe("reconciling an unconfirmed answer", () => {
     expect(h.deps.setTrainBanner).toHaveBeenCalledWith(
       "error", "Couldn't confirm that answer", "Retry sync to catch up with the server.",
     );
-    expect(h.appState.trainBusy).toBe(true);
+    expect(h.appState.trainBusy).toBeTruthy();
     const [, options] = h.notices.show.mock.calls[0];
     expect(options.tone).toBe("error");
     expect(options.actions[0].label).toBe("Retry sync");
@@ -198,7 +198,7 @@ describe("reconciling an unconfirmed answer", () => {
     await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
     h.pending.reject(new Error("Failed to fetch"));
     await vi.waitFor(() => expect(h.reads.length).toBe(1));
-    expect(h.appState.trainBusy).toBe(true);
+    expect(h.appState.trainBusy).toBeTruthy();
     // "New session" replaces the rehearsal before the late read comes back.
     h.appState.training = { prompt: CARD_NF3 };
     h.readDeferred.resolve({ prompt: CARD_NF3 });
@@ -303,7 +303,28 @@ describe("a failed rehearsal Skip", () => {
   it("keeps Skip locked behind Retry sync while the server can't be reached", async () => {
     const h = skipHarness(async () => { throw new Error("still offline"); });
     await h.recovery.recoverSkip(new Error("offline"), CARD_E4, notStale);
-    expect(h.appState.trainBusy).toBe(true);
+    expect(h.appState.trainBusy).toBeTruthy();
     expect(h.notices.show).toHaveBeenCalled();
   });
+});
+
+describe("a late recovery after the player started over", () => {
+  for (const [name, outcome] of [["answers", "resolve"], ["fails", "reject"]]) {
+    it(`leaves the new session's lock alone when the old read ${name}`, async () => {
+      const late = deferred();
+      const h = harness({ read: () => late.promise });
+      h.appState.trainBusy = true; // the lost Skip's lock
+      const recovery = createTrainRecovery(h.deps);
+      const pending = recovery.recoverSkip(new Error("offline"), CARD_E4, () => false);
+      await vi.waitFor(() => expect(h.reads).toHaveLength(1));
+      // ‹ Train, then a new rehearsal whose first answer is still on the wire.
+      h.appState.training = { prompt: CARD_NF3 };
+      h.appState.trainBusy = true;
+      if (outcome === "resolve") late.resolve({ prompt: CARD_NF3 });
+      else late.reject(new Error("still offline"));
+      await pending;
+      expect(h.appState.trainBusy).toBe(true);
+      expect(h.deps.renderTraining).not.toHaveBeenCalled();
+    });
+  }
 });
