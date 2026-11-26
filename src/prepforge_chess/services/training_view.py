@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Optional
 import chess
 
 from prepforge_chess.core.chess_core import ChessCore
+from prepforge_chess.core.models import OpeningNode
 from prepforge_chess.services.training import TrainingLine, TrainingPrompt
 
 if TYPE_CHECKING:  # avoid a runtime import cycle with training_smart
@@ -90,6 +91,11 @@ def smart_prompt_to_json(
         },
         "legal_moves": chess_core.legal_moves(prompt.fen_before),
     }
+
+
+def node_annotation(node: OpeningNode) -> str:
+    """The author's own strategy note for a move: its idea, plan or comment."""
+    return (node.strategic_idea or node.typical_plan or (node.comment or "")).strip()
 
 
 def heuristic_strategy(san: Optional[str], piece_name: Optional[str]) -> str:

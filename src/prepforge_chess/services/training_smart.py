@@ -61,7 +61,11 @@ from prepforge_chess.services.scheduler import (
     sibling_moves,
 )
 from prepforge_chess.services.training import grade_attempt
-from prepforge_chess.services.training_view import heuristic_strategy, piece_name_at
+from prepforge_chess.services.training_view import (
+    heuristic_strategy,
+    node_annotation,
+    piece_name_at,
+)
 from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.codec import hydrate_opening_paths
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
@@ -149,7 +153,7 @@ def _hint(node: OpeningNode) -> Tuple[str, str, bool]:
     """(strategy, piece hint, whether the strategy is the author's annotation)."""
     move = node.move
     piece = piece_name_at(move.fen_before, move.uci)
-    annotation = (node.strategic_idea or node.typical_plan or (node.comment or "")).strip()
+    annotation = node_annotation(node)
     return (
         annotation or heuristic_strategy(move.san, piece),
         "Move the {0}".format(piece) if piece else "Find the move",
