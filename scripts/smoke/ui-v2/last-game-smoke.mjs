@@ -150,10 +150,13 @@ async function openPage() {
     }
     if (path === "/api/analyze/prepare") {
       state.prepareCalls += 1;
-      // The analyzed game's own PGN: the client re-parses it for its variations
-      // and refuses a run without it.
+      // The analyzed game's own PGN, echoed back as the real server does: the
+      // client re-parses it for its variations and later rewrites #pgn-input
+      // from its headers. A fixed PGN here swapped the box to another game's
+      // tags once that sync ran, so checks on the box passed or failed on timing.
+      const posted = JSON.parse(req.postData() || "{}").pgn;
       return json({
-        game_id: "smoke-game", pgn: `[Event "Rated blitz"]\n[White "me_user"]\n[Black "opp_a"]\n[Result "1-0"]\n\n${MOVETEXT} 1-0`,
+        game_id: "smoke-game", pgn: posted || `[Event "Rated blitz"]\n[White "me_user"]\n[Black "opp_a"]\n[Result "1-0"]\n\n${MOVETEXT} 1-0`,
         depth: 4, engine: "stockfish (browser)",
         positions: [...new Set(MOVES.flatMap(m => [m.fen_before, m.fen_after]))],
         moves: MOVES,

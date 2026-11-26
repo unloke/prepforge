@@ -73,7 +73,7 @@ the total. Intentional systems are legitimate alternatives.
 The fits approximate one qualitative reviewer, not independent chess quality.
 Author intent and short instructional demonstrations remain ambiguous. Missing
 Ease comparisons display a dash; unrecorded opponent moves remain unknown.
-[Atlas research](../research/atlas-quality/facet-calibration-review.md) records
+[Atlas research](https://github.com/unloke/prepforge/blob/archive/pre-cleanup-pr-307/research/atlas-quality/facet-calibration-review.md) records
 per-facet rationales, frozen targets, fitted/held-out results, failed trials and
 remaining errors. No fitting, annotation processing, engine or LLM runs when
 opening Atlas.

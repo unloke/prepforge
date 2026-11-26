@@ -131,12 +131,6 @@ def test_position_identity_distinguishes_castling_ep_and_side():
     assert codec.position_key(both) != codec.position_key(no_white_castle)
     assert codec.position_key(both) != codec.position_key(black_to_move)
     assert codec.position_key(with_ep) != codec.position_key(no_ep)
-    assert codec.position_identity(both)[2] == "KQkq"
-    assert codec.position_identity(no_white_castle)[2] == "kq"
-    assert codec.position_identity(both)[1] == "w"
-    assert codec.position_identity(black_to_move)[1] == "b"
-    assert codec.position_identity(with_ep)[3] == "d6"
-    assert codec.position_identity(no_ep)[3] == "-"
 
 
 def test_search_limit_sentinel_round_trip_is_null_safe():
@@ -232,7 +226,7 @@ def test_transposition_keeps_clocks_in_identity():
     # are distinct 50-move states and must not collapse.
     a = codec.rebuild_moves(STARTING_FEN, ["e2e4", "e7e5", "g1f3", "b8c6"])
     b = codec.rebuild_moves(STARTING_FEN, ["g1f3", "b8c6", "e2e4", "e7e5"])
-    ia, ib = codec.position_identity(a[-1].fen_after), codec.position_identity(b[-1].fen_after)
+    ia, ib = a[-1].fen_after.split(" "), b[-1].fen_after.split(" ")
     assert ia[:4] == ib[:4]
     assert ia[4] != ib[4]
     assert codec.position_key(a[-1].fen_after) != codec.position_key(b[-1].fen_after)

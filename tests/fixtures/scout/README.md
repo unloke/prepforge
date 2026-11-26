@@ -23,15 +23,11 @@ Engine fixture SHA256 (repository LF bytes): `b7832e2ad53cbe12babd9b222c54268513
 Reproduce offline:
 
 ```sh
-node scripts/scout-selection-v2-study.mjs
 npx vitest run web-src/scout-selection-v2.test.js
 ```
 
-To regenerate engine reads using the installed package:
-
-```sh
-node scripts/scout-selection-v2-study.mjs --refresh-engine
-```
+The [archived study script](https://github.com/unloke/prepforge/blob/archive/pre-cleanup-pr-307/scripts/scout-selection-v2-study.mjs)
+can regenerate these engine reads with `--refresh-engine` in the archived checkout.
 
 Results are descriptive regression evidence, not held-out prediction accuracy or
 measured improvement in human preparation outcomes.

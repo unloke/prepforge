@@ -68,14 +68,13 @@ const OVER_CEILING = [
   ["web-src/scout-report.test.js", 1218],
   ["web-src/scout-stats.js", 905],
   ["web-src/scout-stats.test.js", 769],
-  ["web-src/scout.js", 1531],
-  ["web-src/scout.test.js", 1717],
-  ["web-src/train-lucky-db.js", 505],
-  ["web-src/train-lucky-db.test.js", 554],
+  ["web-src/scout.js", 1496],
+  ["web-src/scout.test.js", 1650],
+  ["web-src/train-lucky-db.test.js", 537],
   ["web-src/ui-layout.test.js", 682],
   ["web-src/views/analyze.js", 806],
   ["web-src/views/dashboard.js", 803],
-  ["web-src/views/scout.js", 1998],
+  ["web-src/views/scout.js", 1957],
   ["web-src/views/settings.js", 652],
   ["web-src/views/teams-controller.js", 609],
 ];
@@ -96,8 +95,9 @@ export default [
       "node_modules/**",
       "tmp/**",
       "out/**",
-      "src/prepforge_chess/web/static/**",
       "research/**",
+      "designs/**",
+      "src/prepforge_chess/web/static/**",
       // Vendored/generated engine runtimes are not authored product JavaScript;
       // lint their callers, not their bundled assets. Scout modules remain
       // authored source even when a URL or build flag gates their runtime path.

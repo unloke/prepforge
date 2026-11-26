@@ -1,6 +1,5 @@
 ﻿// Vitest config for PrepForge Chess.
-// Vite app root remains web-src (vite.config.js). This is the product gate; research/
-// is not discovered.
+// Vite app root remains web-src (vite.config.js). This is the product gate.
 import { defineConfig } from "vitest/config";
 import { stockfishIdentity } from "./scripts/sync-stockfish.mjs";
 

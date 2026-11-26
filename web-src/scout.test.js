@@ -1,4 +1,3 @@
-import { branchExploitabilityPrior, branchStruggle } from "../research/scout-legacy-prior.js";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -33,13 +32,11 @@ import {
   parseGameBlock,
   parseGameFromJson,
   parseMainlineMoves,
-  parseMultiPgn,
   parseNdjsonGames,
   parseTimeControlHeader,
   parseScoutDatestamp,
   parseSpeedBucket,
   mergeEngineIntoTargets,
-  nodeIdAfterFlush,
   rankGamePlan,
   rankedOpeningBranches,
   normalizeToOpponentTerminal,
@@ -170,7 +167,7 @@ describe("movetextSans + clock parsing", () => {
   });
 });
 
-describe("parseGameBlock / parseMultiPgn", () => {
+describe("parseGameBlock", () => {
   it("uses UTCTime so resume until is not midnight UTC", () => {
     const game = parseGameBlock(
       pgn({ moves: "1. e4 e5", utcDate: "2026.06.10", utcTime: "16:30:00" }),
@@ -295,12 +292,8 @@ describe("parseGameBlock / parseMultiPgn", () => {
   it("skips games the player is not in, unfinished games, and junk", () => {
     expect(parseGameBlock(pgn({ moves: "1. e4" }), "someoneelse")).toBeNull();
     expect(parseGameBlock(pgn({ result: "*", moves: "1. e4" }), "foe")).toBeNull();
-    const text = [
-      pgn({ moves: "1. e4 e5" }),
-      pgn({ white: "X", black: "Y", moves: "1. d4" }),
-      pgn({ moves: "1. d4 d5" }),
-    ].join("\n");
-    expect(parseMultiPgn(text, "Foe")).toHaveLength(2);
+    expect(parseGameBlock(pgn({ white: "X", black: "Y", moves: "1. d4" }), "Foe")).toBeNull();
+    expect(parseGameBlock(pgn({ moves: "1. d4 d5" }), "Foe")).not.toBeNull();
   });
 });
 
@@ -532,7 +525,7 @@ describe("weak-spot badges come from Maia's leaf read", () => {
   });
 });
 
-describe("triePrefixStats + branchStruggle + exploitability prior", () => {
+describe("triePrefixStats + route plausibility", () => {
   function strugglingFamily() {
     // Black reaches 1...e5 five times and loses every time (family underperforms), with one
     // of those games continuing into a rare deeper reply.
@@ -567,29 +560,6 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
     // All five reaching the e4 node chose 1...e5, so the move share is 1.
     expect(stats[1].moveShare).toBeCloseTo(1, 5);
     expect(stats[1].scorePct).toBe(0); // lost all five
-  });
-
-  it("branchStruggle resolves an n=1 deep leaf at its n>=3 family prefix", () => {
-    const trie = buildOpeningTrie(strugglingFamily(), "black", { recency: false });
-    const deep = branchStruggle(trie, ["e2e4", "e7e5", "g1f3", "g8e7"], 50);
-    expect(deep.prefixGames).toBe(5); // borrowed the family sample, not the n=1 leaf
-    expect(deep.prefixPly).toBe(1);
-    expect(deep.struggle).toBeGreaterThan(0); // family scores 0% vs a 50% baseline
-  });
-
-  it("branchStruggle reports no struggle when the family is at/above baseline", () => {
-    const winning = Array.from({ length: 5 }, (_, i) =>
-      scoutGame({
-        color: "black",
-        score: 1,
-        sans: ["e4", "e5"],
-        ucis: ["e2e4", "e7e5"],
-        gameId: `win-${i}`,
-        datestamp: 1000 + i,
-      }),
-    );
-    const trie = buildOpeningTrie(winning, "black", { recency: false });
-    expect(branchStruggle(trie, ["e2e4", "e7e5"], 50).struggle).toBe(0);
   });
 
   it("route plausibility uses the weakest opponent decision and ignores our chosen replies", () => {
@@ -689,13 +659,6 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
     expect(opponentRouteReach(trie, path, "black")).toBeCloseTo(1.5 / 3);
   });
 
-  it("rarity alone does not increase the engine-free prior", () => {
-    const common = { exploitabilityStruggle: 0.1, prefixGames: 8, offModal: 1 };
-    const rare = { ...common, offModal: 20 };
-    const trie = buildOpeningTrie(strugglingFamily(), "black", { recency: false });
-    expect(branchExploitabilityPrior(rare, { trie })).toBe(branchExploitabilityPrior(common, { trie }));
-  });
-
   it("removes a nearly unreachable route before the engine candidate pool", () => {
     const games = [
       ...Array.from({ length: 99 }, (_, i) => scoutGame({ color: "white", score: 0.5,
@@ -707,32 +670,6 @@ describe("triePrefixStats + branchStruggle + exploitability prior", () => {
     const { branches } = rankedOpeningBranches(games, "white", { trie, limit: 0 });
     expect(branches.some((branch) => branch.ucis[0] === "d2d4")).toBe(false);
     expect(branches.some((branch) => branch.ucis[0] === "e2e4")).toBe(true);
-  });
-
-  it("exploitability prior ranks a struggling line above a comfortable one", () => {
-    const games = [
-      ...strugglingFamily(),
-      ...Array.from({ length: 6 }, (_, i) =>
-        scoutGame({
-          color: "black",
-          score: 1, // comfortable: wins with the Caro
-          sans: ["e4", "c6"],
-          ucis: ["e2e4", "c7c6"],
-          gameId: `caro-${i}`,
-          datestamp: 1500 + i,
-        }),
-      ),
-    ];
-    const trie = buildOpeningTrie(games, "black", { recency: false });
-    const struggling = branchExploitabilityPrior(
-      { ucis: ["e2e4", "e7e5"], branchScore: 1 },
-      { trie, baselineScorePct: 50 },
-    );
-    const comfortable = branchExploitabilityPrior(
-      { ucis: ["e2e4", "c7c6"], branchScore: 1 },
-      { trie, baselineScorePct: 50 },
-    );
-    expect(struggling).toBeGreaterThan(comfortable);
   });
 
   it("rankedOpeningBranches annotates full-route evidence when a trie is supplied", () => {
@@ -1209,15 +1146,6 @@ describe("opponentProfile", () => {
     const older = [{ color: "white", ucis: ["e2e4"], rating: 0, speed: "blitz" }];
     const profile = opponentProfile([...recent, ...older]);
     expect(profile.recentlyChanged.white).toBe(false);
-  });
-});
-
-describe("nodeIdAfterFlush", () => {
-  it("maps provisional tmp ids to reconciled server ids after flush", () => {
-    const idMap = { "tmp-abc": "node-real-42" };
-    expect(nodeIdAfterFlush("tmp-abc", idMap)).toBe("node-real-42");
-    expect(nodeIdAfterFlush("node-existing", idMap)).toBe("node-existing");
-    expect(nodeIdAfterFlush(null, idMap)).toBeNull();
   });
 });
 

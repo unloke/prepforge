@@ -76,24 +76,9 @@ agent-tools/
 # Scout v12 harness working data (game dumps, bias fits, route audits) - local only
 tmp/
 
-# Registered Module B scientific data for the authoritative worktree.
-# Exact files and hashes are in research/module-b-non-git-data-registry.json.
-/research/lichess-db-2013-01-burned/projection/
-/research/lichess-db-2013-01-burned/plr-population-v1/
-/research/lichess-db-2013-01-burned/identifiability-run/
-/research/lichess-db-2014-01-power/projection/
-/research/lichess-db-2014-02-power/projection/
-/research/lichess-db-2014-03-power/projection/
-/research/lichess-db-2014-04-power/projection/
-/research/lichess-db-2014-05-power/projection/
-/research/lichess-db-2014-06-power/projection/
-/research/lichess-db-2014-07-power/projection/
-/research/lichess-db-2014-08-power/projection/
-/research/lichess-db-2014-09-power/projection/
-/research/module-b-outcome-eval-multimonth/merged-outcome-join-2014-3q.ndjson
-/research/tools/maia3/*.onnx
-/research/tools/stockfish/*.exe
-/research/tools/stockfish-17.1-official-windows-x86-64/
+# Local research and design work stays untracked.
+/research/
+/designs/
 
 # Local-only: run outputs, worktree checkouts, other agents' tool installs
 /artifacts/
@@ -104,12 +89,6 @@ tmp/
 /.commandcode/
 /skills-lock.json
 **/*.pid
-research/**/*.pt
-# Paused LLM coach line; still in use by a local review server, archive when it stops
-/research/sft/
 
 # taste-skill inspector working files
 .taste-skill/
-
-# Regenerated download archive; the review page and source images are tracked.
-/designs/loading-alignment/screenshots.zip

@@ -1,15 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  PRODUCTION_MODULE_B,
   PRODUCTION_MODULE_B_ID,
   PRODUCTION_ROUTE_BUDGET,
-  getProductionModuleB,
   selectProductionRoutes,
 } from "./scout-selector.js";
 import {
   SCOUT_GAME_PLAN_LIMIT,
-  SCOUT_SCORING_VERSION,
   opponentProfile,
   rankGamePlan,
   rankedOpeningBranches,
@@ -96,13 +93,9 @@ function makeCorpus() {
 
 describe("production Module B contract (Scout v2)", () => {
   it("names Scout v2 as the production selector with exact budget 12", () => {
-    expect(PRODUCTION_MODULE_B.id).toBe("scout-v2");
     expect(PRODUCTION_MODULE_B_ID).toBe("scout-v2");
-    expect(PRODUCTION_MODULE_B.researchOnly).toBe(false);
     expect(PRODUCTION_ROUTE_BUDGET).toBe(12);
     expect(PRODUCTION_ROUTE_BUDGET).toBe(SCOUT_GAME_PLAN_LIMIT);
-    expect(PRODUCTION_MODULE_B.scoringVersion).toBe(SCOUT_SCORING_VERSION);
-    expect(getProductionModuleB().select).toBe(selectProductionRoutes);
   });
 
   it("selects at most the exact route budget and is deterministic", () => {

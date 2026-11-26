@@ -1,6 +1,6 @@
 ﻿import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { IDBFactory, IDBObjectStore, IDBKeyRange, IDBDatabase } from "fake-indexeddb";
-import { clearCheckpoint, evalMapFrom, listCheckpointGames, loadCheckpoint, markCheckpointSaved, saveCheckpoint } from "./analyze-checkpoint.js";
+import { clearCheckpoint, evalMapFrom, loadCheckpoint, markCheckpointSaved, saveCheckpoint } from "./analyze-checkpoint.js";
 const sample = {requestId:"sample",gameId:"g",ownerId:"a",pgn:"1. e4",positions:["fen"],evals:[["fen",{score_cp:12}]],savedAt:1};
 beforeEach(()=>{vi.stubGlobal("indexedDB",new IDBFactory());vi.stubGlobal("IDBKeyRange",IDBKeyRange);});
 afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
@@ -12,22 +12,27 @@ it("round trips analysis and keeps accounts isolated",async()=>{
 it("finds the newest game using metadata",async()=>{
   await saveCheckpoint(sample);await saveCheckpoint({...sample,gameId:"h",requestId:"second",savedAt:2});
   expect((await loadCheckpoint(null,"a")).gameId).toBe("h");
-  expect(await listCheckpointGames("a")).toEqual([{gameId:"h",savedAt:2},{gameId:"g",savedAt:1}]);
 });
-it("metadata failure rolls back the payload too",async()=>{
-  const put=IDBObjectStore.prototype.put;
-  vi.spyOn(IDBObjectStore.prototype,"put").mockImplementation(function(...args){
-    if(this.name==="metadata") throw new DOMException("Quota exceeded","QuotaExceededError");
-    return put.apply(this,args);
+it("a failed save leaves neither a payload nor a newer metadata entry", async () => {
+  expect(await saveCheckpoint(sample)).toBe(true);
+  const put = IDBObjectStore.prototype.put;
+  vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (...args) {
+    const request = put.apply(this, args);
+    if (this.name === "metadata") throw new DOMException("Quota exceeded", "QuotaExceededError");
+    return request;
   });
-  expect(await saveCheckpoint(sample)).toBe(false);
-  expect(await loadCheckpoint("g","a")).toBeNull();
-  expect(await listCheckpointGames("a")).toEqual([]);
+  expect(await saveCheckpoint({ ...sample, gameId: "h", savedAt: 2 })).toBe(false);
+  expect(await loadCheckpoint("h", "a")).toBeNull();
+  expect(await loadCheckpoint(null, "a")).toEqual(sample);
 });
-it("never evicts unsaved games at the old count or size limits",async()=>{
-  for(let i=0;i<51;i++) expect(await saveCheckpoint({...sample,gameId:String(i)})).toBe(true);
-  expect(await listCheckpointGames("a")).toHaveLength(51);
-  expect(await saveCheckpoint({...sample,pgn:"x".repeat(4_000_001)})).toBe(true);
+it("retains every unsaved game after crossing the old count and size limits", async () => {
+  const ids = Array.from({ length: 51 }, (_, index) => String(index));
+  for (const gameId of ids) expect(await saveCheckpoint({ ...sample, gameId })).toBe(true);
+  const large = { ...sample, pgn: "x".repeat(4_000_001) };
+  expect(await saveCheckpoint(large)).toBe(true);
+  const loaded = await Promise.all(ids.map((gameId) => loadCheckpoint(gameId, "a")));
+  expect(loaded.map((checkpoint) => checkpoint?.gameId)).toEqual(ids);
+  expect(await loadCheckpoint(large.gameId, "a")).toEqual(large);
 });
 it("a delayed clear cannot delete a newer checkpoint for the same game",async()=>{
   await saveCheckpoint(sample);await saveCheckpoint({...sample,requestId:"second",savedAt:2});

@@ -18,7 +18,6 @@ export const WORKSPACE_VIEWS = [
 // section) but have distinct deep links: #/games and #/scout. They are URL
 // aliases, not separate views — the canonical location is always
 // { view: "replay", replaySection }.
-export const REPLAY_SECTIONS = ["games", "scout"];
 
 // Replay tabs must update the section before changing views. switchView owns
 // the single history push; the section setter only prepares the canonical URL.

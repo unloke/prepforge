@@ -59,7 +59,3 @@ export function mapTrainUiSession(payload, { fresh = false } = {}) {
     lineOrder: payload.line_order || null,
   };
 }
-
-export function shouldResetTrainStats(mapped) {
-  return !mapped || !mapped.resumed;
-}

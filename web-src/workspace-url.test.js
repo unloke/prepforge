@@ -3,7 +3,6 @@ import { appSource } from "./test-app-source.js";
 
 import {
   activateWorkspaceTab,
-  REPLAY_SECTIONS,
   WORKSPACE_VIEWS,
   formatWorkspaceHash,
   parseWorkspaceHash,
@@ -202,10 +201,6 @@ describe("workspace URL codec", () => {
 });
 
 describe("games/scout deep links", () => {
-  it("exposes exactly the two replay sections", () => {
-    expect(REPLAY_SECTIONS).toEqual(["games", "scout"]);
-  });
-
   it("serializes replay + section to the section alias", () => {
     expect(formatWorkspaceHash({ view: "replay", replaySection: "games" })).toBe("#/games");
     expect(formatWorkspaceHash({ view: "replay", replaySection: "scout" })).toBe("#/scout");
@@ -235,7 +230,7 @@ describe("games/scout deep links", () => {
   });
 
   it("round-trips each section through serialize + parse (refresh/back-forward)", () => {
-    for (const replaySection of REPLAY_SECTIONS) {
+    for (const replaySection of ["games", "scout"]) {
       const loc = { view: "replay", replaySection, repertoireId: null, ply: null, node: null };
       const href = serializeWorkspaceLocation(loc, "https://x.test/app");
       expect(parseWorkspaceLocation("https://x.test" + href)).toEqual(loc);

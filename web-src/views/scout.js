@@ -41,7 +41,6 @@ import {
   MAIA_ENRICH_LOADING,
   MAIA_ENRICH_OFF,
   SCOUT_MAIA_SUCCESS_TARGET,
-  SCOUT_MAIA_TARGET_COUNT,
   buildGamePlanDisplayLines,
   classifyMaiaEnrichState,
   computeMaiaScopeKey,
@@ -57,7 +56,6 @@ import {
   PREFILTER_IDLE,
   PREFILTER_LOADING,
   PREFILTER_READY,
-  SCOUT_PREFILTER_LIMIT,
   buildFallbackPrefilterData,
   computePrefilterScopeKey,
   mergeGlobalPrefilterRanked,
@@ -172,9 +170,6 @@ export function createScoutView(deps) {
   // colour card stay mounted while a dialog is up, so both clicks land.
   let actionBusy = false;
   const scoutBoundEventTargets = new WeakSet();
-  // Memo for maiaCandidateLines, keyed by trie identity (fresh per report rebuild).
-  const maiaCandidateCache = new WeakMap();
-  const prefilterCandidateCache = new WeakMap();
   const prefilterEnrich = createEnrichPipeline({ debounceMs: PREFILTER_ENRICH_DEBOUNCE_MS, run: enrichPrefilterReads });
   const maiaEnrich = createEnrichPipeline({ debounceMs: MAIA_ENRICH_DEBOUNCE_MS, run: enrichMaiaReads });
   const pathGuard = createEnrichPipeline({ debounceMs: PATH_GUARD_DEBOUNCE_MS, run: rerunPathGuard });
@@ -768,21 +763,6 @@ export function createScoutView(deps) {
     return branches;
   }
 
-  function prefilterPoolForColor(section, oppColor) {
-    if (!section?.trie) return [];
-    let byColor = prefilterCandidateCache.get(section.trie);
-    if (byColor) {
-      const hit = byColor.get(oppColor);
-      if (hit) return hit;
-    } else {
-      byColor = new Map();
-      prefilterCandidateCache.set(section.trie, byColor);
-    }
-    const pool = scoutState?.prefilterPools?.[oppColor] || [];
-    byColor.set(oppColor, pool);
-    return pool;
-  }
-
   function currentPrefilterScopeKey() {
     return computePrefilterScopeKey({
       username: scoutState.username,
@@ -820,30 +800,6 @@ export function createScoutView(deps) {
     }
   }
 
-  /** Stockfish-ranked pool for Maia enrichment (top 12 + backup headroom). */
-  function maiaCandidateLines(section, oppColor) {
-    if (!section?.trie) return [];
-    const pool = prefilterPoolForColor(section, oppColor);
-    if (pool.length) return pool;
-    let byColor = maiaCandidateCache.get(section.trie);
-    if (byColor) {
-      const hit = byColor.get(oppColor);
-      if (hit) return hit;
-    } else {
-      byColor = new Map();
-      maiaCandidateCache.set(section.trie, byColor);
-    }
-    const fallback = allOpeningLinesForColor(section, oppColor).slice(0, SCOUT_PREFILTER_LIMIT);
-    byColor.set(oppColor, fallback);
-    return fallback;
-  }
-
-  function displayLinesForColor(section, oppColor) {
-    const display = scoutState?.prefilteredLines?.[oppColor];
-    if (display?.length) return display;
-    return maiaCandidateLines(section, oppColor).slice(0, SCOUT_MAIA_TARGET_COUNT);
-  }
-
   function baselineScorePctForColor(oppColor) {
     return (
       scoutState.sections?.[oppColor]?.baselineScorePct ??
@@ -879,7 +835,6 @@ export function createScoutView(deps) {
     scoutState.prefilterRanked[oppColor] = fallback.ranked;
     scoutState.prefilteredLines[oppColor] = fallback.ranked.map(entry => entry.line);
     snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
-    if (section?.trie) prefilterCandidateCache.delete(section.trie);
   }
 
   function refreshGamePlanDisplayLines() {
@@ -981,7 +936,6 @@ export function createScoutView(deps) {
           scoutState.prefilterRanked[oppColor] = result.ranked;
           scoutState.prefilteredLines[oppColor] = rankedLines;
           snapshotStockfishDisplayLine(oppColor, scoutState.prefilteredLines[oppColor]);
-          if (section?.trie) prefilterCandidateCache.delete(section.trie);
         }
       }
       if (gen !== prefilterEnrich.generation) return;
@@ -2149,9 +2103,7 @@ export function createScoutView(deps) {
     // Single source of truth: the shared Source Composer selection (Self group
     // + linked picks + composer external usernames unioned). The standalone
     // username textbox is gone — no typed fallback.
-    const picked = typeof scoutPickedUsernames === "function" ? scoutPickedUsernames() : [];
-    const usernames = picked;
-    const scoutSelf = picked.length > 0;
+    const usernames = typeof scoutPickedUsernames === "function" ? scoutPickedUsernames() : [];
     if (!usernames.length) {
       initGuard.finish(initToken);
       updateScoutControls();

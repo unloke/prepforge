@@ -64,24 +64,15 @@ const CLK_ANNOTATION_RE = /\[%clk\s+(\d+:\d+:\d+(?:\.\d+)?)\]/;
 const SAN_TOKEN_RE =
   /^([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?[+#]?|O-O-O[+#]?|O-O[+#]?)/;
 
-export function wilsonInterval(w, d, l, tail, z = 1.96) {
+/** Wilson lower bound of score% (draw = 0.5). Used for display, not ranking. */
+export function wilsonScorePct(w, d, l, z = 1.96) {
   const n = (w || 0) + (d || 0) + (l || 0);
-  if (!n) return 0.5;
+  if (!n) return 50;
   const p = ((w || 0) + 0.5 * (d || 0)) / n;
   const denom = 1 + (z * z) / n;
   const center = p + (z * z) / (2 * n);
   const margin = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n);
-  return tail === "upper" ? (center + margin) / denom : (center - margin) / denom;
-}
-
-/** Wilson lower bound of score% (draw = 0.5). Used for display, not ranking. */
-export function wilsonScorePct(w, d, l) {
-  return Math.round(wilsonInterval(w, d, l, "lower") * 100);
-}
-
-/** Wilson upper bound; kept for the archived research prior (`research/scout-legacy-prior.js`). */
-export function wilsonScoreUpperPct(w, d, l) {
-  return Math.round(wilsonInterval(w, d, l, "upper") * 100);
+  return Math.round(((center - margin) / denom) * 100);
 }
 
 /** Convert one UCI move from a FEN; falls back to the UCI string on replay failure. */
@@ -140,11 +131,6 @@ export function scoutLineText(sans) {
     parts.push(san);
   });
   return parts.join(" ");
-}
-
-// After add-moves flush, map a provisional tmp-* id to its reconciled server id.
-export function nodeIdAfterFlush(nodeId, idMap) {
-  return (nodeId && idMap && idMap[nodeId]) || nodeId;
 }
 
 export function mergeEngineIntoTargets(targets, enginePatterns) {
@@ -434,10 +420,6 @@ export function hashGameIdsForScope(games) {
   return String(h >>> 0);
 }
 
-export function computeScoutBranchScopeKey({ username, activeSpeed, games } = {}) {
-  return `${String(username || "").toLowerCase()}|${activeSpeed || "all"}|${hashGameIdsForScope(games)}|${SCOUT_SCORING_VERSION}`;
-}
-
 // One exported game -> a scout record from the SCOUTED player's point of view.
 // Returns null when the player isn't in the game or the moves don't replay.
 export function parseGameBlock(block, username) {
@@ -552,16 +534,6 @@ export function parseGameBlock(block, username) {
     openingEndPly,
     nextOwnThinkSeconds,
   };
-}
-
-export function parseMultiPgn(text, username) {
-  const games = [];
-  // Lichess exports separate games by a blank line before the next [Event tag.
-  for (const block of String(text || "").split(/\n\s*\n(?=\[Event )/)) {
-    const game = parseGameBlock(block, username);
-    if (game) games.push(game);
-  }
-  return games;
 }
 
 /**
@@ -810,26 +782,6 @@ export function enrichPrepTarget(g, baselineScorePct, { maiaScorePct = null } = 
     opportunity: g.share * (isAttack ? below * 0.25 : 0),
     prepCategory: isAttack ? "attack" : isWeapon ? "weapon" : "neutral",
   };
-}
-
-const openingPhaseCache = new Map();
-
-/** Clear cached opening-phase lookups (tests or long sessions). */
-export function clearOpeningPhaseCache() {
-  openingPhaseCache.clear();
-}
-
-function openingPhaseAt(ucis, cache = openingPhaseCache) {
-  const key = triePathKey(ucis);
-  const hit = cache.get(key);
-  if (hit != null) return hit;
-  const phase = gamePhase(fenAfterLine(ucis));
-  cache.set(key, phase);
-  return phase;
-}
-
-function nextMoverAt(ucis) {
-  return ucis.length % 2 === 0 ? "white" : "black";
 }
 
 // Aggregate one real opening branch per game (no trie bridge / prefix collapse).

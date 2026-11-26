@@ -581,7 +581,7 @@ async function runViewport(vp) {
   sharedCheck(bannerCount === 1, `expected exactly 1 shared banner, got ${bannerCount}`);
 
   // Coverage is analysis, so a read-only repertoire can still be scanned; its
-  // gaps render without the edit controls (covered by coverage-workbench-smoke).
+  // gaps render without the edit controls.
   const scanEnabled = await sharedPage.locator("#coverage-run").isEnabled().catch(() => false);
   sharedCheck(scanEnabled, "Coverage Scan should be available for a read-only repertoire");
 

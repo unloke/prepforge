@@ -214,21 +214,6 @@ export function pickPhaseCandidate(candidates, phase, { rng = Math.random, exclu
  * verifyReplay below still holds as a hard gate: an illegal or truncated
  * walk is dropped like any bad game.
  */
-export function uciFen(fen, uci) {
-  try {
-    const chess = new Chess(fen);
-    const move = chess.move({
-      from: String(uci || "").slice(0, 2),
-      to: String(uci || "").slice(2, 4),
-      promotion: String(uci || "").length > 4 ? String(uci).slice(4) : undefined,
-    });
-    if (!move) return null;
-    return { san: move.san, fen: chess.fen(), over: chess.isGameOver() };
-  } catch (_) {
-    return null;
-  }
-}
-
 export async function buildMasterLine({
   startFen = START_FEN,
   firstUci = null,

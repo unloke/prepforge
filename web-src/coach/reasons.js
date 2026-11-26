@@ -3,7 +3,7 @@
 // Each detector states one board fact and only when a concrete check proves it: a legal
 // capture, a static exchange on one square, and the engine line keeping the pieces where
 // the claim puts them. When no check passes the detector returns null and the coach keeps
-// its plain verdict. Research and audit: research/coach-precision/REPORT.md, REPORT-r2.md.
+// its plain verdict. Research and audit: research/coach-precision on archive/pre-cleanup-pr-307.
 //
 // A reason is { kind, type, square, from? } and is worded by the caller, which knows
 // whose pieces they are:

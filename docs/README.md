@@ -28,7 +28,7 @@
 | [Backend consistency](backend-consistency.md) | Analysis snapshots, training transactions and sync versions |
 | [Training flow and I/O](training-flow.md) | Continuous practice, deletion feedback and measured SQL work |
 | [Repertoire collaboration](repertoire-collaboration.md) | Recent activity, inverse edits, position discussions and Atlas Preparation index |
-| [Atlas research](../research/atlas-quality/README.md) | 38-study move-graph audit, local Preparation diagnostics and rejected quality-grading methods |
+| [Atlas research](https://github.com/unloke/prepforge/tree/archive/pre-cleanup-pr-307/research/atlas-quality) | 38-study move-graph audit, local Preparation diagnostics and rejected quality-grading methods |
 
 ## Keeping documentation current
 
@@ -45,3 +45,5 @@ is evidence of that review's scope, not a permanent product requirement.
 Archived plans, audits and finished reports live on the [`history` branch](https://github.com/unloke/prepforge/tree/history/docs/archive)
 (for example the persistence reviews, operations walkthrough, playtests and issue-discovery
 benchmark under [`docs/archive/2026-10-31/`](https://github.com/unloke/prepforge/tree/history/docs/archive/2026-10-31)).
+The [snapshot before PR #307](https://github.com/unloke/prepforge/tree/archive/pre-cleanup-pr-307)
+preserves the research corpus, design reviews and manual audit scripts with the source they ran against.

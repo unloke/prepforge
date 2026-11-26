@@ -44,13 +44,6 @@ def canonicalize_fen(fen: str) -> str:
     return chess.Board(fen).fen()
 
 
-def position_identity(fen: str) -> Tuple[str, str, str, str, int, int]:
-    """Six-field identity: placement, side, castling, ep, halfmove, fullmove."""
-    board = chess.Board(fen)
-    placement, side, castling, ep, half, full = board.fen().split(" ")
-    return placement, side, castling, ep, int(half), int(full)
-
-
 def position_key(fen: str) -> str:
     """Stable textual key: the canonical full FEN. Not a truncated hash."""
     return canonicalize_fen(fen)

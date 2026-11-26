@@ -54,11 +54,6 @@ export function normalizeSelection(selection) {
   return { linkedMode, accountIds, external };
 }
 
-export function isSelectionEmpty(selection) {
-  const sel = normalizeSelection(selection);
-  return sel.linkedMode === "none" && sel.external.length === 0;
-}
-
 // Self-group state against the CURRENT linked accounts, derived from the
 // explicit linkedMode (no implicit empty-means-Self inference):
 //   "all"   — linkedMode "all" (Self = every linked account)
@@ -90,20 +85,6 @@ export function deselectSelf(selection, linkedAccounts) {
   const sel = normalizeSelection(selection);
   void linkedAccounts;
   return { linkedMode: "none", accountIds: [], external: sel.external };
-}
-
-export function toggleAccount(selection, accountId) {
-  const sel = normalizeSelection(selection);
-  const id = String(accountId);
-  if (sel.linkedMode !== "subset") {
-    return { linkedMode: "subset", accountIds: [id], external: sel.external };
-  }
-  const has = sel.accountIds.includes(id);
-  return {
-    linkedMode: "subset",
-    accountIds: has ? sel.accountIds.filter((x) => x !== id) : [...sel.accountIds, id],
-    external: sel.external,
-  };
 }
 
 // The Lichess account a typed name belongs to: its canonical spelling, or null
