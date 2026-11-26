@@ -1,5 +1,6 @@
 import { html } from "./html.js";
 import { moveTokenHtml, plyOfFen } from "./move-text.js";
+import { bookRepFromLoad } from "./analyze-book-tree.js";
 // Analyze's repertoire cache and departure actions load with the view.
 export function createBookActions({
   bookState, appState, analysisState, currentOwnerId, api, loadCoach, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire, analysisSelfSide,
@@ -18,28 +19,9 @@ async function ensureBookLoaded() {
       );
       reps = (
         await Promise.all(
-          active.map(async (meta) => {
-            const data = await api(
-              `/api/build/load?repertoire_id=${encodeURIComponent(meta.id)}`
-            );
-            const children = new Map();
-            const kids = new Map();
-            let rootId = null;
-            for (const node of data.nodes || []) {
-              if (!node.parent_id) {
-                rootId = node.id;
-                continue;
-              }
-              if (node.is_enabled === false || !node.uci) continue;
-              const move = { id: node.id, san: node.san, uci: node.uci, is_mainline: node.is_mainline };
-              children.set(`${node.parent_id}|${node.uci}`, move);
-              if (!kids.has(node.parent_id)) kids.set(node.parent_id, []);
-              kids.get(node.parent_id).push(move);
-            }
-            return rootId
-              ? { id: data.repertoire_id, name: data.name, color: data.color, rootId, children, kids }
-              : null;
-          })
+          active.map(async (meta) => bookRepFromLoad(await api(
+            `/api/build/load?repertoire_id=${encodeURIComponent(meta.id)}`
+          )))
         )
       ).filter(Boolean);
     } catch (_) {

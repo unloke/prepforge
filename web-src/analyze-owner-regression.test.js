@@ -112,7 +112,7 @@ it("switching accounts during classify-save releases the analysis job without re
     effectiveStockfishDepth: () => 12,
     createEngineAnalysisRun: () => ({ profile: () => ({ net: "big" }), done: vi.fn() }),
     readyIfCached: async () => {},
-    engineIdentity: () => "sf-test",
+    engineIdentity: () => "sf-test", seedSavedRun: async () => 0, api: vi.fn(),
     ensureAnalyzeView: async () => ({ liveEvalChart: () => () => {} }),
     engineModule: { analyzeGamePositions: async () => new Map([["fen", { score_cp: 0 }]]) },
     postJson: vi.fn(async (path) => {

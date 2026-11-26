@@ -1,6 +1,7 @@
 import { html } from "../html.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { reviewState } from "./analyze-report.js";
+import { onTriedGrade, triedGrade } from "../analyze-tried-grade.js";
 
 // The review bar under the coach (Chess.com's Next and Retry): step to the
 // previous or next key moment of the report, and at a mistake try to find the
@@ -12,6 +13,11 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
   let retry = null;
   const STEP_ICON = { prev: "M15 5l-7 7 7 7", next: "M9 5l7 7-7 7" };
   const GRADE_WORD = { brilliant: "Brilliant", great: "Great", mistake: "Mistake", blunder: "Blunder" };
+  // The coach's grades that mean a Retry move holds the engine's evaluation: "best"
+  // covers any move within the classifier's excellent loss of the top one.
+  const FOUND_GRADES = new Set(["best", "great", "brilliant", "forced"]);
+  // A tried move's grade lands after the coach reads it; repaint the Retry then.
+  onTriedGrade(() => { if (retry) paintReviewBar(); });
 
   // The game ply the review reads from: a branch counts as the move it
   // replaces, so a line played at a moment keeps that moment in focus.
@@ -24,8 +30,9 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
     return (Number(node.parent?.ply) || 0) + 1;
   }
 
-  // "try" at the Retry position, "right" on the engine's move played there,
-  // "wrong" on another move played during a Retry.
+  // "try" at the Retry position, "right" on the engine's move played there, and on
+  // another move played during a Retry: "also" when the coach grades it as good as
+  // the engine's move, "wrong" when it grades it worse, "checking" until it reads it.
   function triedState(moment) {
     const id = analysisState.analysisCurrentNodeId || "root";
     if (retry && id === retry.fromId) return "try";
@@ -33,7 +40,10 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
     const best = moment?.best?.uci;
     if (best && node?.isVariation && node.parent?.id === `m${moment.ply - 1}`.replace(/^m0$/, "root")) {
       if (node.uci === best) return "right";
-      if (retry) return "wrong";
+      if (retry) {
+        const grade = triedGrade(node.fenBefore, node.uci);
+        return !grade ? "checking" : FOUND_GRADES.has(grade) ? "also" : "wrong";
+      }
     }
     retry = null;
     return null;
@@ -62,10 +72,13 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
     const words = {
       try: `Find a better move than ${m.move.san}`,
       right: `${m.best?.san} is the best move`,
+      also: `As good as ${m.best?.san}`,
+      checking: "Checking that move…",
       wrong: "Not the best move",
     }[tried] || `${state.current ? "" : m.ply > ply ? "Next: " : "Back to "}${m.label} ${kind}`;
     const canFix = m.loss != null && m.best && (state.current || tried);
-    const actions = canFix && tried !== "try" && tried !== "right"
+    const found = tried === "right" || tried === "also";
+    const actions = canFix && tried !== "try" && !found
       ? html`<button type="button" class="btn sm" data-review="retry" title="Find the better move yourself">Retry</button>`
       : "";
     bar.hidden = false;
@@ -74,7 +87,7 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
     const label = tried ? html`<span class="cr-text">${words}</span>`
       : state.current ? html`<span class="cr-move">${m.label}<i aria-hidden="true">${glyph}</i></span><span class="cr-text">${kind}</span>`
         : html`<i class="rp-glyph" aria-hidden="true">${glyph}</i><span class="cr-text">${words}</span>`;
-    bar.innerHTML = html`${step("prev")}<button type="button" class="cr-label g-${m.grade || "none"}${tried === "right" ? " is-right" : tried === "wrong" ? " is-wrong" : ""}" data-review="go" title="${words}">${label}<span class="cr-count">${state.index + 1}/${state.count}</span></button>${step("next")}${actions}`;
+    bar.innerHTML = html`${step("prev")}<button type="button" class="cr-label g-${m.grade || "none"}${found ? " is-right" : tried === "wrong" ? " is-wrong" : ""}" data-review="go" title="${words}">${label}<span class="cr-count">${state.index + 1}/${state.count}</span></button>${step("next")}${actions}`;
     if (!bar.dataset.bound) {
       bar.dataset.bound = "1";
       bar.addEventListener("click", (event) => {

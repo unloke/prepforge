@@ -1,4 +1,4 @@
-import { ENGINE_ID } from "./stockfish-provider.js";
+import { savedEvalUsable } from "./stockfish-provider.js";
 import { pvSan } from "../chess-local.js";
 import { subscribeUsableEngineProfile } from "./engine-profile.js";
 import { stockfishBudget } from "./compute-budget.js";
@@ -364,7 +364,7 @@ export function createPositionAnalysisStore({
     if (entry.error && !lanes.some((l) => l.entry === entry)) entry.failures = Math.min(entry.failures, 1);
     // A saved analysis already holds this position's eval: seed the game channel.
     const saved = !entry.game && savedEval ? savedEval(fen) : null;
-    if (saved && (createProvider !== createEngineProvider || saved.engine === ENGINE_ID) && (saved.score_cp != null || saved.mate_in != null)) publishGame(fen, { ...saved, pv: saved.pv || [] }, saved.depth || 0);
+    if (saved && (createProvider !== createEngineProvider || savedEvalUsable(saved.engine)) && (saved.score_cp != null || saved.mate_in != null)) publishGame(fen, { ...saved, pv: saved.pv || [] }, saved.depth || 0);
     want(entry, depth, multipv);
     let released = false;
     return {

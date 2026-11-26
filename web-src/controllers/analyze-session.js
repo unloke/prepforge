@@ -16,7 +16,7 @@ import { isAuthError } from "../auth-gate.js";
 import { localBoardAfterMove, localGameOver, pvSan } from "../chess-local.js";
 import { buildGameSummary, hasClassifiedMoves } from "../coach/game-summary.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
-import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/stockfish-provider.js";
+import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity, savedEvalUsable } from "../engine/stockfish-provider.js";
 import { createEngineAnalysisRun, readyIfCached } from "../engine/engine-profile.js";
 import { isHandheld } from "../engine/engine-ladder.js";
 import { describeMove } from "../explain.js";
@@ -41,6 +41,8 @@ import { analyzeView, ensureAnalyzeView, renderAnalysisTreeEmptyState } from "..
 import { _coachReady, loadPhaseCoach, preloadCoach } from "../coach/coach-loader.js";
 import { showConfirmModal, showInputModal } from "../core/modals.js";
 import { updateBookline } from "../analyze-book-state.js";
+import { seedSavedRun } from "../analyze-saved-run.js";
+import { noteTriedGrade } from "../analyze-tried-grade.js";
 import { accountService, analysisSelfSide, defaultRepertoireNameFromPgn, hideAnalysisRetrySave,
   importRepertoireFromPgnText, invalidateAnalysisSource, refreshAnalysisHistoryIfOpen,
   refreshAnalyzeRecovery, requireSignIn, showAnalysisRetrySave, switchView, syncPgnFromTree,
@@ -131,7 +133,7 @@ function savedMainlineMove(ply, prevFen, uci, fen) {
 function savedPositionEvalRead(fen, depth) {
   const positionEvals = analysisState.analysis && analysisState.analysis.position_evals;
   const ev = positionEvals && positionEvals[fen];
-  if (!ev || analysisState.analysis.engine !== ENGINE_ID) return null;
+  if (!ev || !savedEvalUsable(analysisState.analysis.engine)) return null;
   const pvUci = Array.isArray(ev.pv) ? ev.pv.slice() : [];
   const firstUci = ev.best_move_uci || pvUci[0] || null;
   if (!firstUci && ev.score_cp == null && ev.mate_in == null) return null;
@@ -333,6 +335,7 @@ class PositionCoach {
       // show it, so the coach never words a different verdict off its shallower live read.
       if (saved && saved.classification === "great") c.markGreat(features);
       else if (saved) c.applySavedGrade(features, saved.classification);
+      else noteTriedGrade(prevFen, ctx.lastUci, features.classification?.code); // the review bar's Retry reads it
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       if (!opponentRead) offerLiveBetterArrow(features, saved, fen);
       // Read the position's "texture" from Maia's human-move distribution (one obvious
@@ -1003,6 +1006,8 @@ async function runAnalysis(options = {}) {
     // Dedicated full-speed workers; positions the store already answers at this depth
     // are reused, and each result is published for the Engine panel and the Coach.
     const store = await timed("load", analysisStore);
+    // A saved review of this game at this depth hands the pass its reads (analyze-saved-run.js).
+    await timed("saved-reads", () => seedSavedRun(store, prep, api));
     // Keep the card on the game's saved reads through Maia and save/render too.
     // Each search batch has its own pass, but ending one must not reboot the live
     // engine beside Maia or leave that heap resident while checkpointing.
@@ -1172,14 +1177,8 @@ async function runAnalysis(options = {}) {
         for (const [key, value] of Object.entries(server)) {
           timings[`server_${key}`] = value;
         }
-        if (server.save_game_ms != null || server.save_analysis_ms != null) {
-          notices.updateJob({
-            current: positions.length,
-            total: positions.length,
-            phase: "saving",
-            title: "Saving",
-            message: "Report",
-          });
+        if (server.save_game_ms != null) {
+          notices.updateJob({ current: positions.length, total: positions.length, phase: "saving", title: "Saving", message: "Report" });
         }
         return response;
       })

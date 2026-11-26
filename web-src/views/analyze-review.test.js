@@ -4,6 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createReviewBar } from "./analyze-review.js";
+import { noteTriedGrade } from "../analyze-tried-grade.js";
 import { asSlices } from "../state/as-slices.fixture.js";
 
 const blunder = {
@@ -85,12 +86,36 @@ describe("review bar", () => {
     expect(bar.innerHTML).toContain("Find a better move than Nf3");
     expect(bar.innerHTML).not.toContain('data-review="retry"');
     const m2 = appState.analysisTree.byId.get("m2");
-    appState.analysisTree.byId.set("v1", { id: "v1", isMainline: false, isVariation: true, parent: m2, uci: "g1h3" });
+    appState.analysisTree.byId.set("v1", { id: "v1", isMainline: false, isVariation: true, parent: m2, uci: "g1h3",
+      fenBefore: "fen-at-m2" });
     at("v1", -1);
+    expect(bar.innerHTML).toContain("Checking that move");
+    expect(bar.innerHTML).not.toContain("Not the best move");
+    // The coach grades it worse than the engine's move: the bar repaints on its own.
+    noteTriedGrade("fen-at-m2", "g1h3", "mistake");
     expect(bar.innerHTML).toContain("Not the best move");
+    expect(bar.innerHTML).toContain('data-review="retry"');
     appState.analysisTree.byId.set("v2", { id: "v2", isMainline: false, isVariation: true, parent: m2, uci: "d2d4" });
     at("v2", -1);
     expect(bar.innerHTML).toContain("d4 is the best move");
+  });
+
+  it("a Retry move the engine rates as good as its own counts as found, not as wrong", async () => {
+    const { bar, appState, at, click, review } = setup();
+    at("m3", 3);
+    await click("retry");
+    const m2 = appState.analysisTree.byId.get("m2");
+    const fenBefore = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+    appState.analysisTree.byId.set("v1", { id: "v1", isMainline: false, isVariation: true, parent: m2,
+      uci: "c2c4", san: "c4", fenBefore });
+    at("v1", -1);
+    // The coach's read of c4 lands: as good as the engine's d4.
+    noteTriedGrade(fenBefore, "c2c4", "best");
+    review.paint();
+    expect(bar.innerHTML).not.toContain("Not the best move");
+    expect(bar.innerHTML).toContain("is-right");
+    expect(bar.innerHTML).toContain("As good as d4");
+    expect(bar.innerHTML).not.toContain('data-review="retry"');
   });
 
   it("steps from a branch as from the move it replaces", async () => {
