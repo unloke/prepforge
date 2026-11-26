@@ -1,4 +1,4 @@
-import { ENGINE_ID } from "./stockfish-provider.js";
+import { savedEvalUsable } from "./stockfish-provider.js";
 import { pvSan } from "../chess-local.js";
 import { subscribeUsableEngineProfile } from "./engine-profile.js";
 import { stockfishBudget } from "./compute-budget.js";
@@ -364,7 +364,7 @@ export function createPositionAnalysisStore({
     if (entry.error && !lanes.some((l) => l.entry === entry)) entry.failures = Math.min(entry.failures, 1);
     // A saved analysis already holds this position's eval: seed the game channel.
     const saved = !entry.game && savedEval ? savedEval(fen) : null;
-    if (saved && (createProvider !== createEngineProvider || saved.engine === ENGINE_ID) && (saved.score_cp != null || saved.mate_in != null)) publishGame(fen, { ...saved, pv: saved.pv || [] }, saved.depth || 0);
+    if (saved && (createProvider !== createEngineProvider || savedEvalUsable(saved.engine)) && (saved.score_cp != null || saved.mate_in != null)) publishGame(fen, { ...saved, pv: saved.pv || [] }, saved.depth || 0);
     want(entry, depth, multipv);
     let released = false;
     return {
@@ -425,13 +425,15 @@ export function createPositionAnalysisStore({
     notifyPass();
   }
 
-  // A finished read (live or game) good enough for the whole-game pass at `depth`.
+  // A finished read (live or game) good enough for the whole-game pass at `depth`: it
+  // must itself have reached `depth`. A search asked for 16 that stopped at 10 (a node
+  // cap) is searched again, as a saved read is (analyze-saved-run.js).
   function reusableGameEval(fen, depth) {
     const entry = entries.get(positionKey(fen));
     if (!entry) return null;
-    if (entry.game && entry.game.target >= depth) return entry.game.eval;
+    if (entry.game && Number(entry.game.eval.depth) >= depth) return entry.game.eval;
     const live = entry.live;
-    if (live && live.complete && live.maxDepth >= depth) return gameEvalFromSnapshot(fen, live.snapshot);
+    if (live && live.complete && (live.snapshot.current_depth || 0) >= depth) return gameEvalFromSnapshot(fen, live.snapshot);
     return null;
   }
 
@@ -523,7 +525,9 @@ export function createPositionAnalysisStore({
     // dedicated pool but neither reuses nor publishes: the game channel is single-line.
     // Only a single-line pass holds the workers for the Engine card: a MultiPV check
     // sidesteps the budget (batch) and is not what leaves the card waiting.
-    analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult, engineRun, maxNodes: cap = maxNodes }) {
+    // `saved` (fen -> eval, analyze-saved-run.js) holds a saved review's reads outside the
+    // bounded cache; one searched at least `depth` deep stands in for a search.
+    analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult, engineRun, maxNodes: cap = maxNodes, saved = null }) {
       const single = multipv <= 1;
       const endPass = single ? store.passStart() : () => {};
       return Promise.resolve(analyzeFn({
@@ -535,7 +539,7 @@ export function createPositionAnalysisStore({
         onProgress,
         shouldCancel,
         engineRun,
-        reuse: single ? (fen) => reusableGameEval(fen, depth) : null,
+        reuse: single ? (fen) => reusableGameEval(fen, depth) || (Number(saved?.get(fen)?.depth) >= depth ? saved.get(fen) : null) : null,
         onResult: (fen, ev) => {
           if (single) publishGame(fen, ev, depth);
           if (typeof onResult === "function") onResult(fen, ev);

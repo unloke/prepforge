@@ -15,7 +15,7 @@ it("records when the rehearsal started", () => {
   vi.useFakeTimers();
   try {
     vi.setSystemTime(new Date("2026-11-26T05:00:00Z"));
-    const appState = { training: { session_id: "s", repertoire_name: "Italian", lines: [1, 2] }, trainAttempt: 1 };
+    const appState = { training: { session_id: "s", repertoire_name: "Italian", line_order: ["a", "b"] }, trainAttempt: 1 };
     compile("function trainStatsReset(", { ...asSlices(appState),  })();
     vi.setSystemTime(new Date("2026-11-26T05:12:00Z"));
     const saveRun = vi.fn();

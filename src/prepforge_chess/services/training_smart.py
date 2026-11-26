@@ -51,13 +51,16 @@ from prepforge_chess.services.scheduler import (
     card_counts,
     decode_card,
     encode_card,
+    flagged_miss_cards,
     index_nodes,
     mix_plans,
     own_move_nodes_on,
     path_to_node,
     preorder_index,
     sibling_moves,
+    target_run_in,
 )
+from prepforge_chess.services.srs import is_flagged_miss
 from prepforge_chess.services.training import grade_attempt
 from prepforge_chess.services.training_hints import (
     heuristic_strategy,
@@ -170,6 +173,7 @@ class SmartTrainingService:
         self.repository = repository
         self.owner_user_id = owner_user_id
         self.resumed = False
+        self.leading: List[str] = []  # cards a resume moved up for recorded misses
         self.shared_ids: set[str] = set()  # set by active_repertoires
         # Per-request caches. A service instance is created fresh per request
         # (see api/routers/train.py), so a repertoire and its node index are
@@ -225,13 +229,14 @@ class SmartTrainingService:
         build a new queue. Picked targets always build a fresh ``targets``
         session of their own; ``fresh`` forces a rebuild."""
         self.resumed = False
+        self.leading = []
         self._progress_cache.clear()
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         scope = SCOPE_TARGETS if target_node_ids else SCOPE_REPERTOIRE
         existing = self._latest(repertoire_id, scope)
         if existing is not None and not fresh and scope == SCOPE_REPERTOIRE and self._resumable(existing, [repertoire]):
             self.resumed = True
-            return existing
+            return self._lead_with_misses(existing, [repertoire])
         plan = self._plan_single(repertoire, session_size, new_cap, target_node_ids)
         if not plan.cards:
             raise ValueError("repertoire has no trainable moves yet")
@@ -280,6 +285,7 @@ class SmartTrainingService:
         active repertoire with the smallest id; its ``scope`` is ``all``, so it
         never resumes (or is resumed as) that repertoire's own session."""
         self.resumed = False
+        self.leading = []
         self._progress_cache.clear()
         reps = self.active_repertoires(owner_user_id)
         if not reps:
@@ -288,11 +294,48 @@ class SmartTrainingService:
         existing = self._latest(anchor.id, SCOPE_ALL)
         if existing is not None and not fresh and self._resumable(existing, reps):
             self.resumed = True
-            return existing
+            return self._lead_with_misses(existing, reps)
         plan = self._plan_mixed(reps, session_size, new_cap)
         if not plan.cards:
             raise ValueError("repertoires have no trainable moves yet")
         return self._install(existing, anchor.id, SCOPE_ALL, plan, seed)
+
+    def _with_misses(self, session: TrainingSession, reps: List[Repertoire]) -> Tuple[List[str], List[str]]:
+        """The queue with each miss recorded since it was planned (Analyze, a
+        game) as the next card: a card already queued further on moves up, a
+        missing move gets a card of its own. Also returns those leading cards,
+        also when an earlier Start already put them there."""
+        at = session.current_index + (1 if session.current_node_id else 0)
+        rest = session.line_order[at:]
+
+        def targets(raw: str) -> Tuple[str, ...]:
+            card = decode_card(raw)
+            return card.target_ids if card is not None else ()
+
+        flagged = {node_id for rep in reps for node_id, p in self.progress_by_id(rep.id).items()
+                   if is_flagged_miss(p)}
+        moved = [i for i, raw in enumerate(rest) if flagged.intersection(targets(raw))]
+        queued = {t for raw in session.line_order[session.current_index:] for t in targets(raw)}
+        added = [encode_card(card) for rep in reps for card in flagged_miss_cards(
+            rep.root_node, rep.color, self.progress_by_id(rep.id), queued)] if flagged - queued else []
+        leading = [rest[i] for i in moved] + added
+        if not added and moved == list(range(len(moved))):
+            return session.line_order, leading
+        kept = [raw for i, raw in enumerate(rest) if i not in moved]
+        return session.line_order[:at] + leading + kept, leading
+
+    def _lead_with_misses(self, session: TrainingSession, reps: List[Repertoire]) -> TrainingSession:
+        """Resume with recorded misses first; ``leading`` names those cards so
+        the client can place them in its own saved queue."""
+        line_order, self.leading = self._with_misses(session, reps)
+        if line_order == session.line_order:
+            return session
+        with self.repository.engine.begin() as conn:
+            locked = self.repository.lock_training_session(conn, session_id=session.id) or session
+            line_order, self.leading = self._with_misses(locked, reps)
+            session = replace(locked, line_order=line_order, updated_at=_utc_now())
+            self.repository.write_training_session(conn, session)
+        return session
 
     def _latest(self, repertoire_id: str, scope: str) -> Optional[TrainingSession]:
         return self.repository.load_latest_training_session(
@@ -377,27 +420,35 @@ class SmartTrainingService:
         # A repertoire that cannot fill its share leaves budget behind; a second
         # pass hands it to the ones that filled theirs, so the order of
         # repertoires never decides how long the session is.
+        # Recorded misses (Analyze, games) reserve their slots first, so a miss
+        # in the last repertoire is not crowded out by the earlier ones.
         self._load_progress([rep.id for rep in reps])
         remaining_size = max(0, session_size if session_size is not None else DEFAULT_SESSION_SIZE)
         remaining_new = max(0, new_cap if new_cap is not None else DEFAULT_NEW_CAP)
+        reserved: Dict[str, int] = {}
+        for rep in reps:
+            nodes = self._node_index(rep.id)
+            misses = sum(is_flagged_miss(p) and node_id in nodes for node_id, p in self.progress_by_id(rep.id).items())
+            reserved[rep.id] = min(misses, remaining_size)
+            remaining_size -= reserved[rep.id]
         plans: List[tuple[Repertoire, SessionPlan, int, int]] = []
         for index, rep in enumerate(reps):
             remaining_reps = len(reps) - index
-            size = -(-remaining_size // remaining_reps)
+            size = -(-remaining_size // remaining_reps) + reserved[rep.id]
             new = -(-remaining_new // remaining_reps)
             plan = self._plan_single(rep, size, new)
             plans.append((rep, plan, size, new))
-            remaining_size -= plan.counts.get("targets", 0)
-            remaining_new -= plan.counts.get("new", 0)
+            remaining_size -= plan.counts.get("targets", 0) - reserved[rep.id]
+            remaining_new -= plan.counts.get("new_targets", 0)
         for index, (rep, plan, size, new) in enumerate(plans):
             if remaining_size <= 0:
                 break
-            targets, fresh = plan.counts.get("targets", 0), plan.counts.get("new", 0)
+            targets, fresh = plan.counts.get("targets", 0), plan.counts.get("new_targets", 0)
             if targets < size and fresh < new:
                 continue  # already took everything it had
             more = self._plan_single(rep, targets + remaining_size, fresh + max(0, remaining_new))
             remaining_size -= more.counts.get("targets", 0) - targets
-            remaining_new -= more.counts.get("new", 0) - fresh
+            remaining_new -= more.counts.get("new_targets", 0) - fresh
             plans[index] = (rep, more, size, new)
         return mix_plans(
             [(rep.id, plan, preorder_index(rep.root_node, rep.color)) for rep, plan, _, _ in plans]
@@ -423,7 +474,8 @@ class SmartTrainingService:
             anchor = reps[0]
             existing = self._latest(repertoire_id, SCOPE_REPERTOIRE)
         if existing is not None and self._resumable(existing, reps):
-            cards = [card for card in (decode_card(raw) for raw in existing.line_order[existing.current_index:]) if card is not None]
+            line_order = self._with_misses(existing, reps)[0]
+            cards = [card for card in (decode_card(raw) for raw in line_order[existing.current_index:]) if card is not None]
             resumed = 1
         else:
             cards = list(self._plan_single(reps[0]).cards if repertoire_id else self._plan_mixed(reps).cards)
@@ -695,6 +747,7 @@ class SmartTrainingService:
                     {
                         "kind": card.kind,
                         "encoded": raw,
+                        "retry": card.retry,
                         "repertoire_id": card_rep.id,
                         "repertoire_name": card_rep.name,
                         "color": card_rep.color.value,
@@ -871,7 +924,7 @@ class SmartTrainingService:
                 )
 
             progress: Optional[TrainingProgress] = None
-            sr_written = attempt <= 1
+            sr_written = attempt <= 1 and not context.card.retry
             if sr_written:
                 session, progress = grade_attempt(
                     self.repository, conn, session, card_rep.id, expected.id,
@@ -997,19 +1050,6 @@ def line_targets(
         return None
     order = [next(i for i, node in enumerate(path) if node.id == t.id) for t in targets]
     return targets if order == sorted(order) else None
-
-
-def target_run_in(
-    path: List[OpeningNode], targets: List[OpeningNode], index: int
-) -> List[OpeningNode]:
-    """Moves auto-played before a target's prompt: from move 1 for the line's
-    first target, else from after the previous target's reply. Own moves that
-    are not due play themselves here instead of being asked."""
-    pos = next(i for i, node in enumerate(path) if node.id == targets[index].id)
-    start = 0
-    if index > 0:
-        start = next(i for i, node in enumerate(path) if node.id == targets[index - 1].id) + 2
-    return [node for node in path[start:pos] if node.move is not None]
 
 
 def _numbered_line(nodes: List[OpeningNode]) -> str:

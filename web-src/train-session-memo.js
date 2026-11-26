@@ -71,12 +71,23 @@ export function finishSmartSessionMemo(ownerId, smart, stats) {
 
 export function restoreSmartSession(ownerId, mapped, smart) {
   const memo = mapped.resumed ? loadSessionMemo(ownerId, mapped.sessionId, mapped.generation) : null;
+  const leading = new Set(mapped.leading || []);
   if (!memo || memo.generation !== mapped.generation || memo.seed !== mapped.seed || memo.cardIndex < mapped.cardIndex ||
-      !mapped.queue.every((card) => memo.queue.some((saved) => saved.encoded === card.encoded))) return null;
-  // Restore order/requeues, but use the server's current FENs, hints and replies.
+      !mapped.queue.every((card) => leading.has(card.encoded) || memo.queue.some((saved) => saved.encoded === card.encoded))) return null;
+  // Restore the cursor, but use the server's current FENs, hints and replies.
   const cards = new Map(mapped.queue.map((card) => [card.encoded, card]));
   if (memo.queue.some((card) => !cards.has(card.encoded))) return null;
-  const queue = memo.queue.map((card) => cards.get(card.encoded));
+  // Keep what this device already played (and a half-answered card); the rest
+  // follows the server's order, which puts recorded misses next.
+  const at = memo.cardIndex + (memo.targetIndex > 0 || memo.attempt > 1 ? 1 : 0);
+  const head = memo.queue.slice(0, at).map((card) => cards.get(card.encoded));
+  const rest = [...mapped.queue];
+  for (const done of head) {
+    const index = rest.findIndex((card) => card.encoded === done.encoded);
+    if (index < 0) return null;
+    rest.splice(index, 1);
+  }
+  const queue = [...head, ...rest];
   if (memo.cardIndex < queue.length && memo.targetIndex >= queue[memo.cardIndex].targets.length) return null;
   Object.assign(smart, {
     queue, cardIndex: memo.cardIndex, targetIndex: memo.targetIndex,
