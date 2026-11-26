@@ -51,7 +51,7 @@ import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { paintDashboardSkeleton } from "./views/library-skeleton.js";
 import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
-import { acceptRepertoireListing, refreshRepertoireListing } from "./repertoire-listing.js";
+import { acceptRepertoireListing, finishRepertoireDelete, refreshRepertoireListing } from "./repertoire-listing.js";
 import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
@@ -824,7 +824,9 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
             body: JSON.stringify({ repertoire_id: repertoireId }),
           })
             .then((response) => {
-              appState.pendingRepDeletes.delete(repKey);
+              // Gone on the server: the cached listing and the count drop it as
+              // the pending mark that hid it is lifted.
+              finishRepertoireDelete(appState, repKey, { committed: response.ok });
               if (!response.ok) {
                 setStatus("Delete failed — repertoire restored", { severity: "error" });
                 refreshDashboardRepertoires();
@@ -1212,8 +1214,10 @@ function bindEvents() {
   document.querySelectorAll(".tab[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       dismissTransientOverlays();
+      // Picking Analyze or Settings while it is shown only scrolls it back to the
+      // top; switchView would read the history list or the settings again.
+      if (button.classList.contains("is-active") && ["analyze", "settings"].includes(button.dataset.view)) return void resetViewScroll();
       activateWorkspaceTab(button.dataset, { setReplaySection, switchView });
-      if (button.dataset.view === "settings") loadSettings();
     });
   });
   bindPhoneChrome({ onAccountChipClick, toggleTheme, isAccountMenuOpen });
@@ -1292,11 +1296,12 @@ function bindEvents() {
     });
     accountEntry.syncFetchMyGameButton();
   }
-  // Lazy-load the analysis history list the first time its drawer is opened.
+  // Opening the history drawer reads the list only when it has none for this
+  // account yet, or a save has landed since (see loadAnalysisHistory).
   const historyDrawer = document.getElementById("history-drawer");
   if (historyDrawer) {
     historyDrawer.addEventListener("toggle", () => {
-      if (historyDrawer.open && appState.signedIn) loadAnalysisHistory();
+      if (historyDrawer.open && appState.signedIn) loadAnalysisHistory({ ifStale: true });
     });
   }
   // Coverage scan: explicit button — never runs implicitly (it's a Maia batch).

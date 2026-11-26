@@ -143,9 +143,15 @@ export function createEngineDownloads({
     }, 1500);
   }
 
-  async function download(id) {
+  // A second caller (Find great moves while Settings downloads Maia) waits for
+  // the download under way: its "still downloading" state is not a failure.
+  function download(id) {
     const f = facts[id];
-    if (f.busy) return state(id);
+    if (!f.busy) f.pending = run(id, f);
+    return f.pending;
+  }
+
+  async function run(id, f) {
     f.error = null;
     f.note = null;
     f.busy = true;

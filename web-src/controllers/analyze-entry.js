@@ -121,13 +121,21 @@ export async function importLatestGame(game, context = null) {
 export function refreshAnalysisHistoryIfOpen() {
   const drawer = document.getElementById("history-drawer");
   if (appState.signedIn && drawer && drawer.open) void loadAnalysisHistory();
+  // A save landed: the next open reads the list again, and a read still in
+  // flight (the drawer closed mid-load) began before it, so it cannot count.
+  else { historyFreshFor = null; historySaves += 1; }
 }
 
-let analysisHistorySeq = 0;
-export async function loadAnalysisHistory() {
-  const seq = ++analysisHistorySeq;
+// The account (owner and generation) whose list the drawer holds, read since the
+// last save. Reopening the drawer for it ({ ifStale }) keeps that list.
+let analysisHistorySeq = 0, historyFreshFor = null, historySaves = 0;
+export async function loadAnalysisHistory({ ifStale = false } = {}) {
   const owner = currentOwnerId();
   const generation = appState.ownerGeneration;
+  const freshKey = `${owner}:${generation}`;
+  if (ifStale && historyFreshFor === freshKey) return;
+  historyFreshFor = null;
+  const seq = ++analysisHistorySeq, saves = historySaves;
   const isCurrent = () => seq === analysisHistorySeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const host = document.getElementById("analysis-history");
   if (!host) return;
@@ -143,6 +151,7 @@ export async function loadAnalysisHistory() {
     try {
       const payload = await api(`/api/analyses${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`);
       if (!isCurrent()) return;
+      if (saves === historySaves) historyFreshFor = freshKey;
       for (const row of payload.analyses || []) rows.set(row.game_id, row);
       cursor = payload.next_cursor || null;
       const scroll = host.scrollTop;
