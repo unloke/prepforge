@@ -9,11 +9,9 @@ can still read. The owner's progress is never read or written for anyone else.
 """
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import datetime, time, timedelta, timezone
 from typing import Any, Literal
 
-from fsrs import Rating
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -26,9 +24,8 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
-from prepforge_chess.services import streak
+from prepforge_chess.services import streak, workflows
 from prepforge_chess.services.progress import compute_health, due_forecast, due_outlook
-from prepforge_chess.services.srs import review
 from prepforge_chess.services.training import TrainingService
 from prepforge_chess.services.scheduler import CARD_KINDS
 from prepforge_chess.services.training_smart import REQUEUE_GAP
@@ -39,7 +36,7 @@ from prepforge_chess.services.training_view import (
     smart_prompt_to_json,
     training_line_to_json,
 )
-from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from prepforge_chess.storage.ports import AccessStore, SettingsStore, SmartTrainerStore, TrainRoutes
 
 router = APIRouter(prefix="/api/train", tags=["train"])
 
@@ -48,7 +45,7 @@ router = APIRouter(prefix="/api/train", tags=["train"])
 _CHESS = ChessCore()
 
 
-def _trainable_repertoire(repo: WorkspaceRepository, repertoire_id: str, user: str) -> dict[str, Any]:
+def _trainable_repertoire(repo: AccessStore, repertoire_id: str, user: str) -> dict[str, Any]:
     """Train gate: any role that can read the repertoire may drill it (404 without
     access). Progress and sessions are the caller's own, so a grant's role only
     decides what they may do to the tree, never whether they may practise it."""
@@ -56,7 +53,7 @@ def _trainable_repertoire(repo: WorkspaceRepository, repertoire_id: str, user: s
 
 
 def _owned_session(
-    repo: WorkspaceRepository, session_id: str, owner: str
+    repo: SmartTrainerStore, session_id: str, owner: str
 ) -> TrainingSession:
     """Gate for session-keyed endpoints: the caller's own session, on a repertoire
     they can still read (a revoked share ends its sessions). 404 otherwise."""
@@ -83,7 +80,7 @@ class StartBody(BaseModel):
 def start(
     body: StartBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: SmartTrainerStore = Depends(get_repository),
 ) -> dict[str, Any]:
     """Begin (or resume) the caller's trainer session over a repertoire they can read
     and return the first prompt plus the shuffled line plan."""
@@ -132,7 +129,7 @@ class RecordMissBody(BaseModel):
 def record_miss(
     body: RecordMissBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: TrainRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Record a single recall miss on a repertoire node — the Analyze board's
     "you left your prep here" action: one spaced-repetition miss, due
@@ -149,18 +146,7 @@ def record_miss(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
     if repertoire.root_node.find(body.node_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="opening node not found")
-    with repo.engine.begin() as conn:
-        progress = repo.lock_training_progress(
-            conn, repertoire_id=body.repertoire_id, node_id=body.node_id, owner_user_id=owner
-        )
-        updated = review(progress, Rating.Again)
-        # A miss spotted in Analyze is due in the very next session.
-        updated = replace(updated, due_at=updated.last_reviewed_at)
-        repo.write_training_progress(
-            conn, repertoire_id=body.repertoire_id, progress=updated, owner_user_id=owner
-        )
-        repo.write_review(conn, owner_user_id=owner, node_id=body.node_id,
-                          rating=Rating.Again, reviewed_at=updated.last_reviewed_at)
+    workflows.record_forgotten_move_as_training_miss(repo, body.repertoire_id, body.node_id, owner)
     return {"recorded": True, "node_id": body.node_id}
 
 
@@ -208,7 +194,7 @@ def _clamp(value: int | None, low: int, high: int) -> int | None:
 
 
 def _touch_streak(
-    repo: WorkspaceRepository, owner: str, local_date: str | None
+    repo: SettingsStore, owner: str, local_date: str | None
 ) -> dict[str, Any]:
     """Mark "trained today" on the owner's daily streak and return the view the
     client renders. Called from the graded move endpoints — submitting any move
@@ -272,7 +258,7 @@ def _mixed_summary_payload(
 def smart_start(
     body: SmartStartBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: SmartTrainerStore = Depends(get_repository),
 ) -> dict[str, Any]:
     """Begin (or resume) a card-queue session and return the queue composition
     plus the first card prompt. ``mixed=True`` builds one interleaved queue
@@ -382,7 +368,7 @@ def smart_summary(
     local_date: str | None = None,
     utc_offset: int = 0,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: TrainRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Fresh health + tomorrow's due forecast for the end-of-session screen.
     ``mixed=true`` aggregates over all the caller's active repertoires.
@@ -428,7 +414,7 @@ def smart_summary(
 def smart_move(
     body: SmartMoveBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: TrainRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Grade the player's move against the current card. Only ``attempt`` 1
     writes spaced-repetition progress; a second wrong attempt re-queues the
@@ -491,7 +477,7 @@ class SmartSyncBody(BaseModel):
 def smart_sync(
     body: SmartSyncBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: TrainRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Persist a batch of locally graded attempts plus the session position —
     the local-first Train flush (replaces per-move ``/smart/move`` calls).
@@ -530,7 +516,7 @@ def smart_sync(
 def smart_skip(
     body: SessionBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: SmartTrainerStore = Depends(get_repository),
 ) -> dict[str, Any]:
     """Skip the current card; return the next prompt (or ``None`` at the end)."""
     _owned_session(repo, body.session_id, owner)
@@ -542,7 +528,7 @@ def smart_skip(
 def skip(
     body: SessionBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: SmartTrainerStore = Depends(get_repository),
 ) -> dict[str, Any]:
     """Skip the current line; return the next prompt (or ``None`` at the end)."""
     _owned_session(repo, body.session_id, owner)
@@ -554,7 +540,7 @@ def skip(
 def hint(
     body: SessionBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: SmartTrainerStore = Depends(get_repository),
 ) -> dict[str, Any]:
     """Reveal the expected move for the current prompt, plus a short strategic nudge
     (the node's stored idea/plan/comment, else a piece-type heuristic)."""
@@ -579,7 +565,7 @@ def hint(
 def session_state(
     session_id: str,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: SmartTrainerStore = Depends(get_repository),
 ) -> dict[str, Any]:
     """Read a rehearsal session's authoritative position and current prompt,
     grading and advancing nothing. This is the reconciliation read for an answer
@@ -615,7 +601,7 @@ class MoveBody(BaseModel):
 def move(
     body: MoveBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: TrainRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Submit the player's move; grade it against the repertoire, persist progress, and
     return the result with the opponent's reply so the UI can animate both plies."""

@@ -31,8 +31,6 @@ from types import SimpleNamespace
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
-from sqlalchemy import select
-
 from prepforge_chess.core.limits import (
     MAX_SYNC_ATTEMPTS,
     MAX_SYNC_QUEUE,
@@ -66,9 +64,8 @@ from prepforge_chess.services.training_hints import (
     node_annotation,
     piece_name_at,
 )
-from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.codec import hydrate_opening_paths
-from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from prepforge_chess.storage.ports import SmartTrainerStore
 
 # A re-queued card comes back after this many other cards — soon enough that
 # the position is still warm, far enough that it's recall rather than echo.
@@ -169,7 +166,7 @@ def _check_receipt(stored: Tuple[str, object], node_id: str, correct: bool, atte
 
 
 class SmartTrainingService:
-    def __init__(self, repository: WorkspaceRepository, owner_user_id: str | None = None):
+    def __init__(self, repository: SmartTrainerStore, owner_user_id: str | None = None):
         self.repository = repository
         self.owner_user_id = owner_user_id
         self.resumed = False
@@ -770,17 +767,12 @@ class SmartTrainingService:
             # replace the current queue/position, even with new attempt UUIDs.
             state_applied = state_version is not None and state_version == session.state_version
             # Sync needs live node identities, not hydrated chess trees/evaluations.
-            rep_of_node = dict(conn.execute(select(
-                t.opening_nodes.c.id, t.opening_nodes.c.repertoire_id,
-            ).where(t.opening_nodes.c.repertoire_id.in_(repertoire_ids),
-                    t.opening_nodes.c.id.in_([item.get("node_id") for item in attempts]))).all()) if attempts else {}
-            receipts = {row.attempt_uuid: (row.node_id, row.correct) for row in conn.execute(
-                select(t.train_attempt_receipts.c.attempt_uuid,
-                        t.train_attempt_receipts.c.node_id, t.train_attempt_receipts.c.correct)
-                .where(t.train_attempt_receipts.c.session_id == session_id,
-                       t.train_attempt_receipts.c.attempt_uuid.in_(
-                           [item["attempt_uuid"] for item in attempts]))
-            )} if attempts else {}
+            rep_of_node = self.repository.node_repertoire_ids(
+                conn, repertoire_ids, [item.get("node_id") for item in attempts],
+            ) if attempts else {}
+            receipts = self.repository.attempt_receipts(
+                conn, session_id, [item["attempt_uuid"] for item in attempts],
+            ) if attempts else {}
             written = 0
             for item in attempts:
                 node_id = item.get("node_id")
@@ -794,15 +786,7 @@ class SmartTrainingService:
                     conn, session_id=session_id, attempt_uuid=attempt_uuid,
                     node_id=node_id, correct=correct,
                 ):
-                    stored_row = conn.execute(
-                        select(
-                            t.train_attempt_receipts.c.node_id,
-                            t.train_attempt_receipts.c.correct,
-                        ).where(
-                            t.train_attempt_receipts.c.session_id == session_id,
-                            t.train_attempt_receipts.c.attempt_uuid == attempt_uuid,
-                        )
-                    ).one()
+                    stored_row = self.repository.claimed_attempt(conn, session_id, attempt_uuid)
                 if stored_row is not None:
                     _check_receipt(stored_row, node_id, correct, attempt_uuid)
                     continue

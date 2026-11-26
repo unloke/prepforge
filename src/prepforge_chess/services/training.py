@@ -16,7 +16,7 @@ from prepforge_chess.core.models import (
 )
 from prepforge_chess.services.scheduler import own_move_nodes_on, path_to_node, sibling_moves
 from prepforge_chess.services.srs import rating_for, review
-from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
+from prepforge_chess.storage.ports import TrainerStore, TrainingStore
 
 
 @dataclass(frozen=True)
@@ -94,7 +94,7 @@ def create_training_session(
 
 
 class TrainingService:
-    def __init__(self, repository: RepertoireRepository, owner_user_id: str | None = None):
+    def __init__(self, repository: TrainerStore, owner_user_id: str | None = None):
         self.repository = repository
         self.owner_user_id = owner_user_id
 
@@ -420,7 +420,7 @@ class TrainingService:
 
 
 def grade_attempt(
-    repository: RepertoireRepository,
+    repository: TrainingStore,
     conn,
     session: TrainingSession,
     repertoire_id: str,

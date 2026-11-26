@@ -1,4 +1,4 @@
-"""``record_departure_misses``: the play→train recall-miss recording is atomic.
+"""``record_game_departure_as_training_miss``: the play→train recall-miss recording is atomic.
 
 Regression coverage for the non-atomic progress-write + ingested-ledger pair: a
 failure between the two used to leave the miss committed while its ledger id was
@@ -12,10 +12,10 @@ import unittest.mock
 import pytest
 
 from prepforge_chess.core.models import Color
-from prepforge_chess.services.lichess_fetch import (
+from prepforge_chess.services.lichess_fetch import GameMatchSummary
+from prepforge_chess.services.workflows import (
     DEPARTURE_INGESTED_KEY,
-    GameMatchSummary,
-    record_departure_misses,
+    record_game_departure_as_training_miss,
 )
 from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
@@ -68,7 +68,7 @@ def _summary(lichess_id, repertoire_id, node_id, reason="user_left_preparation")
     )
 
 
-def test_record_departure_misses_counts_each_game_exactly_once():
+def test_record_game_departure_as_training_miss_counts_each_game_exactly_once():
     repository = _repository()
     repertoire, node_id = _repertoire_with_target(repository)
     owner = "miss-owner"
@@ -77,7 +77,7 @@ def test_record_departure_misses_counts_each_game_exactly_once():
         _summary("gameB", repertoire.id, node_id),
     ]
 
-    recorded = record_departure_misses(
+    recorded = record_game_departure_as_training_miss(
         repository, summaries, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
     )
 
@@ -99,7 +99,7 @@ def test_record_departure_misses_counts_each_game_exactly_once():
         _summary("gameA", repertoire.id, node_id),
         _summary("gameB", repertoire.id, node_id),
     ]
-    assert record_departure_misses(
+    assert record_game_departure_as_training_miss(
         repository, again, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
     ) == 0
     assert all(not s.training_recorded for s in again)
@@ -125,7 +125,7 @@ def test_batch_writes_each_target_once_and_deduplicates_games():
             writes.append(statement)
     event.listen(repository.engine, "before_cursor_execute", collect)
     try:
-        assert record_departure_misses(repository, summaries, owner_user_id="batch-owner",
+        assert record_game_departure_as_training_miss(repository, summaries, owner_user_id="batch-owner",
                                       verified_usernames=frozenset({"Alice"})) == 3
     finally:
         event.remove(repository.engine, "before_cursor_execute", collect)
@@ -134,7 +134,7 @@ def test_batch_writes_each_target_once_and_deduplicates_games():
     assert repository.load_training_progress(repertoire.id, second, owner_user_id="batch-owner").attempts == 1
 
 
-def test_record_departure_misses_failure_rolls_back_and_retry_counts_once():
+def test_record_game_departure_as_training_miss_failure_rolls_back_and_retry_counts_once():
     """The regression: a crash between the progress write and the ledger write
     must leave NOTHING committed. The retry then applies each game exactly once
     (the old write-then-ledger order deducted the same game twice)."""
@@ -147,7 +147,7 @@ def test_record_departure_misses_failure_rolls_back_and_retry_counts_once():
 
     with pytest.raises(RuntimeError, match="simulated crash"):
         with unittest.mock.patch.object(WorkspaceRepository, "write_user_setting", boom):
-            record_departure_misses(
+            record_game_departure_as_training_miss(
                 repository,
                 [_summary("gameC", repertoire.id, node_id)],
                 owner_user_id=owner,
@@ -161,7 +161,7 @@ def test_record_departure_misses_failure_rolls_back_and_retry_counts_once():
     assert repository.get_user_setting(owner, DEPARTURE_INGESTED_KEY) is None
 
     retried = [_summary("gameC", repertoire.id, node_id)]
-    assert record_departure_misses(
+    assert record_game_departure_as_training_miss(
         repository, retried, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
     ) == 1
     assert retried[0].training_recorded is True
@@ -169,7 +169,7 @@ def test_record_departure_misses_failure_rolls_back_and_retry_counts_once():
     assert progress is not None
     assert progress.attempts == 1  # deducted exactly once across the retry
 
-    assert record_departure_misses(
+    assert record_game_departure_as_training_miss(
         repository, retried, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
     ) == 0
     assert (
@@ -178,7 +178,7 @@ def test_record_departure_misses_failure_rolls_back_and_retry_counts_once():
     )
 
 
-def test_record_departure_misses_ignores_opponent_novelties_and_unmatched():
+def test_record_game_departure_as_training_miss_ignores_opponent_novelties_and_unmatched():
     repository = _repository()
     repertoire, node_id = _repertoire_with_target(repository)
     owner = "miss-skip-owner"
@@ -207,7 +207,7 @@ def test_record_departure_misses_ignores_opponent_novelties_and_unmatched():
         ),
     ]
 
-    assert record_departure_misses(
+    assert record_game_departure_as_training_miss(
         repository, summaries, owner_user_id=owner, verified_usernames=frozenset({"Alice"})
     ) == 0
     assert all(not s.training_recorded for s in summaries)
@@ -239,7 +239,7 @@ def test_interleaved_compare_batches_never_double_count(tmp_path):
 
     def racing_batch():
         raced["done"] = True
-        return record_departure_misses(
+        return record_game_departure_as_training_miss(
             WorkspaceRepository(engine),
             [
                 _summary("int1", repertoire.id, node_id),
@@ -271,7 +271,7 @@ def test_interleaved_compare_batches_never_double_count(tmp_path):
     ), unittest.mock.patch.object(
         WorkspaceRepository, "lock_user_setting", race_then_lock
     ):
-        main_recorded = record_departure_misses(
+        main_recorded = record_game_departure_as_training_miss(
             repository,
             [
                 _summary("int1", repertoire.id, node_id),
@@ -292,7 +292,7 @@ def test_interleaved_compare_batches_never_double_count(tmp_path):
     ]
 
 
-def test_postgres_concurrent_record_departure_misses_count_once():
+def test_postgres_concurrent_record_game_departure_as_training_miss_count_once():
     """Real PostgreSQL: racing compares must record each game exactly once — the
     locked ingested-ledger serialises the batches.
 
@@ -329,7 +329,7 @@ def test_postgres_concurrent_record_departure_misses_count_once():
 
         def run():
             barrier.wait(timeout=10)
-            return record_departure_misses(
+            return record_game_departure_as_training_miss(
                 WorkspaceRepository(engine),
                 [
                     _summary("pgA", repertoire.id, node_id),
@@ -370,7 +370,7 @@ def test_unverified_or_wrong_perspective_fails_before_any_db_write(source, verif
     summary.source_account = source
     summary.user_color = color
     repository = unittest.mock.Mock(spec=WorkspaceRepository)
-    assert record_departure_misses(
+    assert record_game_departure_as_training_miss(
         repository, [summary], owner_user_id="owner", verified_usernames=verified,
     ) == 0
     assert repository.mock_calls == []
@@ -389,11 +389,11 @@ def test_mixed_failure_retry_only_ingests_verified_game():
     with unittest.mock.patch.object(
         WorkspaceRepository, "write_user_setting", side_effect=RuntimeError("ledger failed")
     ), pytest.raises(RuntimeError, match="ledger failed"):
-        record_departure_misses(repository, [external, own], **kwargs)
+        record_game_departure_as_training_miss(repository, [external, own], **kwargs)
     assert repository.load_training_progress(repertoire.id, node_id, owner_user_id=owner) is None
     assert repository.get_user_setting(owner, DEPARTURE_INGESTED_KEY) is None
-    assert record_departure_misses(repository, [own, external], **kwargs) == 1
-    assert record_departure_misses(repository, [external, own], **kwargs) == 0
+    assert record_game_departure_as_training_miss(repository, [own, external], **kwargs) == 1
+    assert record_game_departure_as_training_miss(repository, [external, own], **kwargs) == 0
     assert repository.get_user_setting(owner, DEPARTURE_INGESTED_KEY) == ["self"]
     assert repository.load_training_progress(repertoire.id, node_id, owner_user_id=owner).attempts == 1
     assert external.training_recorded is False

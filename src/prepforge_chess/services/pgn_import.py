@@ -9,7 +9,7 @@ import chess.pgn
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import Game, MoveSource
 from prepforge_chess.storage import codec
-from prepforge_chess.storage.repositories.games import GameRepository
+from prepforge_chess.storage.ports import GameStore
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ class PgnImportService:
 
     def __init__(
         self,
-        repository: GameRepository,
+        repository: GameStore,
         chess_core: Optional[ChessCore] = None,
     ):
         self.repository = repository

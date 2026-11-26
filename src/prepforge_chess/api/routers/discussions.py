@@ -7,12 +7,10 @@ from datetime import datetime, timezone
 import chess
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select, update
 
 from prepforge_chess.api.deps import current_owner, get_repository, member_name
 from prepforge_chess.api.routers.workspace import _repertoire_access
-from prepforge_chess.storage import sa_tables as t
-from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from prepforge_chess.storage.ports import CollaborationStore, DiscussionRoutes, RepertoireReader
 
 router = APIRouter(prefix="/api/build/discussions", tags=["discussions"])
 
@@ -27,14 +25,13 @@ def position_key(fen: str) -> str:
         raise HTTPException(422, detail="Choose a valid board position.") from exc
 
 
-def _positions(repo, rid):
+def _positions(repo: RepertoireReader, rid):
     repertoire = repo.load_repertoire(rid)
     return {position_key(node.fen): node.id for node in repertoire.root_node.walk()}
 
 
-def _thread(conn, rid, thread_id):
-    row = conn.execute(select(t.position_threads).where(
-        t.position_threads.c.repertoire_id == rid, t.position_threads.c.id == thread_id)).mappings().first()
+def _thread(repo: CollaborationStore, conn, rid, thread_id):
+    row = repo.discussion_thread(conn, rid, thread_id)
     if not row:
         raise HTTPException(404, detail="Discussion not found.")
     return row
@@ -42,17 +39,10 @@ def _thread(conn, rid, thread_id):
 
 @router.get("")
 def discussions(repertoire_id: str, owner: str = Depends(current_owner),
-                repo: WorkspaceRepository = Depends(get_repository)):
+                repo: DiscussionRoutes = Depends(get_repository)):
     meta = _repertoire_access(repo, repertoire_id, owner)
     positions = _positions(repo, repertoire_id)
-    with repo.engine.connect() as conn:
-        threads = conn.execute(select(t.position_threads).where(
-            t.position_threads.c.repertoire_id == repertoire_id).order_by(t.position_threads.c.created_at)).mappings().all()
-        messages = conn.execute(select(t.position_messages, t.users.c.display_name, t.users.c.email).select_from(
-            t.position_messages.join(t.position_threads, t.position_threads.c.id == t.position_messages.c.thread_id)
-            .outerjoin(t.users, t.users.c.id == t.position_messages.c.author_id)
-        ).where(t.position_threads.c.repertoire_id == repertoire_id).order_by(
-            t.position_messages.c.created_at, t.position_messages.c.id)).mappings().all()
+    threads, messages = repo.discussions(repertoire_id)
     by_thread = {}
     for message in messages:
         by_thread.setdefault(message["thread_id"], []).append({
@@ -85,28 +75,26 @@ class MessageBody(BaseModel):
 
 @router.post("")
 def add_message(body: MessageBody, owner: str = Depends(current_owner),
-                repo: WorkspaceRepository = Depends(get_repository)):
+                repo: DiscussionRoutes = Depends(get_repository)):
     _repertoire_access(repo, body.repertoire_id, owner)
     repo.op_actor, repo.op_kind = owner, "discussion"
-    with repo.repertoire_edit(body.repertoire_id):
-        conn = repo._edit_connection
+    with repo.repertoire_edit(body.repertoire_id) as conn:
         now = datetime.now(timezone.utc)
         if body.thread_id:
-            thread_id = _thread(conn, body.repertoire_id, body.thread_id)["id"]
+            thread_id = _thread(repo, conn, body.repertoire_id, body.thread_id)["id"]
         else:
             key = position_key(body.fen or "")
             if key not in _positions(repo, body.repertoire_id):
                 raise HTTPException(409, detail="This position left the tree. Refresh before starting a discussion.")
-            thread_id = conn.scalar(select(t.position_threads.c.id).where(
-                t.position_threads.c.repertoire_id == body.repertoire_id, t.position_threads.c.position_key == key))
+            thread_id = repo.discussion_thread_at(conn, body.repertoire_id, key)
             if not thread_id:
                 thread_id = str(uuid.uuid4())
-                conn.execute(t.position_threads.insert().values(
-                    id=thread_id, repertoire_id=body.repertoire_id, fen=body.fen,
-                    position_key=key, created_by=owner, resolved=0, created_at=now))
-        conn.execute(t.position_messages.insert().values(
-            id=str(uuid.uuid4()), thread_id=thread_id, author_id=owner, body=body.body, created_at=now))
-        revision = repo._bump_revision(conn, body.repertoire_id, discussion_id=thread_id)
+                repo.start_discussion_thread(
+                    conn, id=thread_id, repertoire_id=body.repertoire_id, fen=body.fen,
+                    position_key=key, created_by=owner, resolved=0, created_at=now)
+        repo.add_discussion_message(
+            conn, id=str(uuid.uuid4()), thread_id=thread_id, author_id=owner, body=body.body, created_at=now)
+        revision = repo.bump_revision(conn, body.repertoire_id, discussion_id=thread_id)
     return {"thread_id": thread_id, "revision": revision}
 
 
@@ -119,12 +107,11 @@ class ThreadBody(BaseModel):
 
 @router.post("/update")
 def update_thread(body: ThreadBody, owner: str = Depends(current_owner),
-                  repo: WorkspaceRepository = Depends(get_repository)):
+                  repo: DiscussionRoutes = Depends(get_repository)):
     meta = _repertoire_access(repo, body.repertoire_id, owner)
     repo.op_actor, repo.op_kind = owner, "discussion_update"
-    with repo.repertoire_edit(body.repertoire_id):
-        conn = repo._edit_connection
-        row = _thread(conn, body.repertoire_id, body.thread_id)
+    with repo.repertoire_edit(body.repertoire_id) as conn:
+        row = _thread(repo, conn, body.repertoire_id, body.thread_id)
         values = {}
         if body.resolved is not None:
             if meta["role"] != "owner" and row["created_by"] != owner:
@@ -135,13 +122,12 @@ def update_thread(body: ThreadBody, owner: str = Depends(current_owner),
             key = position_key(body.fen)
             if key not in _positions(repo, body.repertoire_id):
                 raise HTTPException(409, detail="Choose a position in this repertoire.")
-            existing = conn.scalar(select(t.position_threads.c.id).where(
-                t.position_threads.c.repertoire_id == body.repertoire_id, t.position_threads.c.position_key == key))
+            existing = repo.discussion_thread_at(conn, body.repertoire_id, key)
             if existing and existing != body.thread_id:
                 raise HTTPException(409, detail="That position already has a discussion. Choose another move.")
             values.update(fen=body.fen, position_key=key)
         if not values:
             raise HTTPException(422, detail="Choose a change.")
-        conn.execute(update(t.position_threads).where(t.position_threads.c.id == body.thread_id).values(**values))
-        revision = repo._bump_revision(conn, body.repertoire_id, discussion_id=body.thread_id)
+        repo.update_discussion_thread(conn, body.thread_id, values)
+        revision = repo.bump_revision(conn, body.repertoire_id, discussion_id=body.thread_id)
     return {"thread_id": body.thread_id, "revision": revision}

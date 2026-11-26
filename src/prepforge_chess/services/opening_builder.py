@@ -26,7 +26,9 @@ from prepforge_chess.core.models import (
     Repertoire,
 )
 from prepforge_chess.services.browser_compute import validate_int
-from prepforge_chess.storage.repositories.repertoires import NodeGone, RepertoireRepository
+from prepforge_chess.services.workflows import delete_repertoire_subtree_and_archive_training
+from prepforge_chess.storage.ports import BuildStore
+from prepforge_chess.storage.repositories.repertoires import NodeGone
 
 
 MAINLINE_THRESHOLD = 0.10
@@ -161,7 +163,7 @@ _USER_SOURCES = frozenset({MoveSource.MANUAL, MoveSource.IMPORTED_PGN})
 
 
 class OpeningBuilderService:
-    def __init__(self, repository: RepertoireRepository):
+    def __init__(self, repository: BuildStore):
         self.repository = repository
         self.chess_core = ChessCore()
 
@@ -758,7 +760,7 @@ class OpeningBuilderService:
         parent = self._find_node_or_raise(repertoire.root_node, node.parent_id)
         removed_ids = [target.id for target in node.walk()]
         parent.children = [child for child in parent.children if child.id != node_id]
-        self.repository.delete_opening_nodes(repertoire_id, removed_ids)
+        delete_repertoire_subtree_and_archive_training(self.repository, repertoire_id, removed_ids)
         return parent.id
 
     def delete_nodes_batch(self, repertoire_id: str, node_ids: List[str], *, receipt_target: Optional[tuple] = None) -> List[str]:
@@ -795,7 +797,9 @@ class OpeningBuilderService:
             parent.children = [c for c in parent.children if c.id != node_id]
 
         receipt = (*receipt_target, {"removed_node_ids": removed_ids}) if receipt_target else None
-        self.repository.delete_opening_nodes(repertoire_id, removed_ids, receipt=receipt)
+        delete_repertoire_subtree_and_archive_training(
+            self.repository, repertoire_id, removed_ids, receipt=receipt
+        )
         return removed_ids
 
     def rename_repertoire(self, repertoire_id: str, new_name: str) -> Repertoire:
