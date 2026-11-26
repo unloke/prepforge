@@ -213,8 +213,8 @@
   #analysis-engine-slot .engine-pv,
   #analysis-engine-slot .engine-pv.is-top { height: 44px; min-height: 44px; font-size: 14px; }
   #analysis-engine-slot .engine-pv-line { line-height: 44px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* The line picker's cells grow to 32px in the 44px head row. */
-  #analysis-engine-slot .engine-lines > button { width: 32px; height: 32px; }
+  #analysis-engine-slot .engine-lines-more { position: relative; z-index: 1; grid-area: 1 / 1; justify-self: start; height: 34px; padding: 0 10px; font-size: 13px; background: var(--surface-3); color: var(--text); }
+  #analysis-engine-slot .engine-lines-more::before { content: ""; position: absolute; inset: -6px -4px -9px; }
   .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
   .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
   .moves-grid .mtree-line.is-main > .mtree-num { justify-content: flex-end; }
@@ -675,8 +675,7 @@
   #view-analyze .an-tab { height: var(--phone-tabs-h); border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
   #view-analyze .an-tab::before { content: none; }
   /* From the 34px padding box (the 2px underline is border): 2px up, 8px
-     down into the pane's top padding, the row above both: a 44px target
-     round a 36px tab. */
+     down, the tab row above the pane. A pane's top sits clear of those 6px. */
   #view-analyze .an-panes > .an-tabs { position: relative; z-index: 2; }
   #view-analyze .an-tab::after { content: ""; position: absolute; inset: -2px 0 -8px; }
   #view-analyze .an-tab[aria-selected="true"] { color: var(--text); }
@@ -717,28 +716,29 @@
   #analysis-explain .coach-review > .cr-step { width: 40px; border-radius: var(--radius) 2px 2px var(--radius); }
   #analysis-explain .coach-review > .cr-step ~ .cr-step { border-radius: 2px var(--radius) var(--radius) 2px; }
   #analysis-explain .cr-step::after { content: ""; position: absolute; inset: -8px 0; }
-  #analysis-explain .coach-prose { flex: none; padding: 0 0 0 10px; border-left-width: 2px; border-radius: 0; background: none; font-size: 14px; line-height: 20px; overflow: visible; }
+  #analysis-explain .coach-prose { flex: none; padding: 6px 10px 6px 12px; border-left-width: 3px; border-radius: 0 8px 8px 0; background: var(--panel); color: var(--text); font-size: 15px; line-height: 1.48; overflow: visible; }
+  #analysis-explain .coach-prose .move-ref { color: var(--text); font-weight: 600; }
   #analysis-explain .coach-maia { height: 28px; }
   #analysis-explain .hp { height: 26px; padding: 0 6px; border-radius: var(--radius-chip); font-size: 13px; }
   #analysis-explain .coach-unlock .unlock.is-inline { height: 32px; }
   #analysis-explain .coach-unlock .unlock.is-inline .btn { height: 28px; min-height: 0; padding: 0 10px; font-size: 13px; }
   #analysis-explain .coach-unlock .unlock.is-inline .unlock-x { width: 28px; height: 28px; }
 
-  /* Engine: a 32px head row, one 28px row per line at 14px, the grading switch
-     as a 36px settings row. */
-  #analysis-engine-pane { row-gap: 2px; }
-  #analysis-engine-pane .an-pane-head { min-height: 32px; }
-  #analysis-engine-pane .ev-engine { height: 28px; padding: 0 10px; font-size: 13px; }
+  /* Engine: a 36px head row clear of the tab hit band, >=44px thumb targets on
+     Live and line count, one 28px row per line at 14px, grading switch below. */
+  #analysis-engine-pane { padding-top: 14px; row-gap: 2px; }
+  #analysis-engine-pane .an-pane-head { min-height: 36px; }
+  #analysis-engine-pane .ev-engine { position: relative; z-index: 1; height: 34px; padding: 0 11px; font-size: 13px; }
+  #analysis-engine-pane .ev-engine::after { content: ""; position: absolute; inset: -6px -4px -9px; }
   #analysis-engine-slot .engine-pv,
   #analysis-engine-slot .engine-pv.is-top { height: 28px; min-height: 0; font-size: 14px; }
   #analysis-engine-slot .engine-pv-line { line-height: 28px; }
-  #analysis-engine-slot .engine-lines > button { width: 28px; height: 28px; }
   #analysis-engine-pane .cc-switch-label { font-size: 14px; line-height: 36px; }
   #analysis-engine-pane .pf-switch { height: 36px; }
   #analysis-engine-pane .pf-switch::before { top: 9px; }
   #analysis-engine-pane .pf-switch::after { top: 12px; }
   #analysis-engine-pane:not(:has(.engine-window:not([hidden]))) #analysis-saved-line:not([hidden]) { height: 28px; padding: 0; font-size: 14px; }
-  #view-analyze .engine-window-unlock .unlock:not(.is-inline) { min-height: 36px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) { min-height: 36px; padding-block: 4px; }
   #view-analyze .engine-window-unlock .unlock:not(.is-inline) > .btn { height: 28px; min-height: 0; padding: 0 10px; font-size: 13px; }
   #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-x { width: 28px; height: 28px; }
 
@@ -811,4 +811,11 @@
 
   /* Copy rows show with a game on the board. */
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open .sheet-copy { display: none; }
+
+  /* Short mobile browser chrome height (e.g. 390x664 Safari/Chrome): tighten
+     Coach spacing while keeping the board full edge-to-edge 100vw. */
+  @media (max-height: 720px) {
+    #view-analyze[data-pane="coach"] #analysis-explain { gap: 4px; padding: 4px var(--phone-gutter); }
+    #analysis-explain .coach-prose { padding: 5px 10px; font-size: 14.5px; line-height: 1.4; }
+  }
 }

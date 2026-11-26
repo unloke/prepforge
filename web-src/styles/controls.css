@@ -343,6 +343,7 @@
 .btn.primary:hover:not(:disabled, .is-coming-soon) {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
+  color: var(--accent-strong-ink);
 }
 
 

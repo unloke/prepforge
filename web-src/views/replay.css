@@ -177,7 +177,7 @@
   animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 /* D: an outcome is a coloured dot before plain text, not a filled pill. */
-#view-replay .lr .kind-badge { padding-inline: 0; background: none; color: var(--text); }
+#view-replay .lr .kind-badge { padding-inline: 0; background: none; color: var(--text); white-space: nowrap; }
 #view-replay .lr .kind-badge::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--dot); vertical-align: 1px; }
 .kind-badge.t-good { --dot: var(--good); background: var(--good-soft); color: var(--good-text); }
 .kind-badge.t-bad { --dot: var(--danger); background: var(--danger-soft); color: var(--danger-strong); }
@@ -214,13 +214,13 @@
 .move-no { color: var(--label); text-align: right; font-variant-numeric: tabular-nums; }
 .ply { min-width: 0; padding: 0 2px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ply.inprep { background: var(--good-soft); color: var(--good-text); }
-.ply.dep { padding: 0 3px; color: var(--accent-ink); font-weight: 600; }
+.ply.dep { padding: 1px 6px; border-radius: 4px; color: #ffffff; font-weight: 600; }
 .ply.dep.t-bad { background: var(--danger); }
-.ply.dep.t-warn { background: var(--warn); }
-.moveline[data-ui] .move-pair.is-departure { background: var(--danger-soft); box-shadow: inset 2px 0 0 var(--danger); }
-.moveline[data-ui] .move-pair.is-departure.t-warn { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
-.moveline[data-ui] .move-pair.is-departure.t-good { background: var(--good-soft); box-shadow: inset 2px 0 0 var(--good); }
-.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font-weight: 500; }
+.ply.dep.t-warn { background: var(--warn); color: var(--accent-ink); }
+.moveline[data-ui] .move-pair.is-departure,
+.moveline[data-ui] .move-pair.is-departure.t-warn,
+.moveline[data-ui] .move-pair.is-departure.t-good { background: transparent; box-shadow: none; }
+.dep-note { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   .move-pair.is-departure { animation: departure-mark var(--dur) var(--ease-out) both; }
   @keyframes departure-mark {

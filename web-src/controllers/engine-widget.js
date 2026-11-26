@@ -1,4 +1,6 @@
+import "./engine-widget.css";
 import { html } from "../html.js";
+import { createLinesPicker } from "./engine-lines-picker.js";
 import { hooks } from "../core/hooks.js";
 import { localGameOver, pvSan } from "../chess-local.js";
 import { clampPly, decodeLine, encodeLine, moveLineHtml } from "../move-text.js";
@@ -106,6 +108,13 @@ class EngineWidget {
     this.closeBtn = document.getElementById("engine-window-close");
     this._renderLinesReadout();
     this._bindControls();
+    const buildFlip = document.getElementById("build-flip");
+    if (buildFlip && !buildFlip.dataset.evalRailBound) {
+      buildFlip.dataset.evalRailBound = "1";
+      buildFlip.addEventListener("click", () => {
+        if (this.open && activeViewName() === "build") this._syncBuildEvalRail();
+      });
+    }
   }
 
   isOpen() {
@@ -143,6 +152,7 @@ class EngineWidget {
     this.open = true;
     this.el.hidden = false;
     this.el.classList.add("is-visible");
+    this._syncBuildEvalRail({ show: activeViewName() === "build", text: "0.0" });
     this._paintPvs(this._pendingRows(0)); // rows in the frame the card appears, not after
     this._paintUnlock();
     void this._passFeed().attach();
@@ -153,6 +163,7 @@ class EngineWidget {
   async close() {
     if (!this.open) return;
     this.open = false;
+    this.linesPicker?.close();
     this._unwatch();
     this.passFeed?.detach();
     if (this.unlockEl) {
@@ -163,6 +174,7 @@ class EngineWidget {
     setEngineBestArrow(null);
     this.el.classList.remove("is-visible");
     this.el.hidden = true;
+    this._syncBuildEvalRail({ show: false });
     try {
       if (this.engine) await this.engine.close();
     } catch (_) {
@@ -319,6 +331,11 @@ class EngineWidget {
       this.evalHead.dataset.side = over.winner || "even";
       delete this.evalHead.dataset.pending;
     }
+    this._syncBuildEvalRail({
+      show: activeViewName() === "build",
+      wc: over.winner === "white" ? 1 : over.winner === "black" ? 0 : 0.5,
+      text: over.result,
+    });
     return true;
   }
 
@@ -343,24 +360,12 @@ class EngineWidget {
     if (this.linesMoreBtn) this.linesMoreBtn.textContent = this.multipv === 1 ? "1 line" : `${this.multipv} lines`;
   }
 
-  // A phone Repertoire folds the picker behind a "N lines" button.
-  _showLinesPicker(open) {
-    if (!this.linesMoreBtn) return;
-    this.linesMoreBtn.setAttribute("aria-expanded", String(open));
-    this.linesEl.classList.toggle("is-open", open);
-  }
-
   _bindControls() {
     this.closeBtn.addEventListener("click", () => setEngineOn(activeViewName(), false));
-    this.linesEl.addEventListener("click", (event) => {
-      const btn = event.target.closest("[data-n]");
-      if (!btn) return;
-      this._setMultipv(Number(btn.dataset.n));
-      this._showLinesPicker(false);
-    });
-    this.linesMoreBtn?.addEventListener("click", () => this._showLinesPicker(!this.linesEl.classList.contains("is-open")));
-    globalThis.document?.addEventListener("pointerdown", (event) => {
-      if (this.linesEl.classList.contains("is-open") && !event.target.closest?.(".engine-head-tools")) this._showLinesPicker(false);
+    this.linesPicker = createLinesPicker({
+      trigger: this.linesMoreBtn,
+      menu: this.linesEl,
+      onPick: (n) => this._setMultipv(n),
     });
     // A line is for the move list: clicking one of its moves plays the line up to
     // that move into the analysis tree, as a variation from the position on the
@@ -539,6 +544,30 @@ class EngineWidget {
       this.evalHead.textContent = evalStr;
       this.evalHead.dataset.side = wc > 0.52 ? "white" : wc < 0.48 ? "black" : "even";
       delete this.evalHead.dataset.pending;
+    }
+    this._syncBuildEvalRail({ show: activeViewName() === "build", wc, text: evalStr });
+  }
+
+  _syncBuildEvalRail({ show = true, wc = null, text = null } = {}) {
+    const rail = typeof document !== "undefined" && document.getElementById("build-eval-rail");
+    const vBar = typeof document !== "undefined" && document.getElementById("build-eval-v");
+    if (!rail || !vBar) return;
+    if (!show || !this.open || activeViewName() !== "build") {
+      rail.hidden = true;
+      return;
+    }
+    rail.hidden = false;
+    const firstSq = document.querySelector("#build-board .square[data-square]")?.dataset?.square;
+    vBar.dataset.flipped = firstSq === "h1" ? "true" : "false";
+    const vFill = document.getElementById("build-eval-v-fill");
+    if (vFill && wc != null) {
+      const share = Math.max(0.04, Math.min(0.96, wc));
+      vFill.style.transform = `scaleY(${share.toFixed(4)})`;
+    }
+    const vVal = document.getElementById("build-eval-v-val");
+    if (vVal && text != null) {
+      const compact = String(text).replace(/(\.\d)\d$/, "$1");
+      if (vVal.textContent !== compact) vVal.textContent = compact;
     }
   }
 

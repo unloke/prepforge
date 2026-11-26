@@ -166,15 +166,13 @@ describe("library filter wiring", () => {
     expect(String(container.innerHTML)).toMatch(
       /class="lib-row[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-1"/,
     );
-    expect(String(container.innerHTML)).toContain('class="lib-opt" role="option"');
-    expect(String(container.innerHTML)).not.toMatch(
-      /role="option"[^>]*aria-haspopup/, // button must not live inside an option
-    );
+    expect(String(container.innerHTML)).toContain('role="listitem"');
+    expect(String(container.innerHTML)).not.toContain('role="option"');
     view.setLibraryFilter("white");
     expect(String(container.innerHTML)).toMatch(
       /class="lib-row[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-2"/,
     );
-    expect(container.innerHTML.match(/aria-selected="true"/g) || []).toHaveLength(2);
+    expect(container.innerHTML.match(/aria-current="true"/g) || []).toHaveLength(1);
   });
 
   it("shows a filter empty state and clears it when a filter matches again", async () => {
@@ -242,9 +240,9 @@ describe("library filter wiring", () => {
     expect(String(container.innerHTML)).toContain('data-repertoire-id="s2"');
   });
 
-  it("gives the role=option rows a real listbox container and drops it for empty states", async () => {
+  it("gives the repertoire rows a semantic list container and drops it for empty states", async () => {
     await view.loadDashboardRepertoires();
-    expect(container.setAttribute).toHaveBeenCalledWith("role", "listbox");
+    expect(container.setAttribute).toHaveBeenCalledWith("role", "list");
     expect(container.setAttribute).toHaveBeenCalledWith("aria-label", "Repertoires");
     expect(container.removeAttribute).not.toHaveBeenCalled();
 

@@ -168,8 +168,9 @@
     font-size: 13px;
     line-height: 1.35;
   }
-  #view-dashboard .today-streak[data-count="0"] { display: none; }
   #view-dashboard .today-streak::after { content: "\B7"; }
+  #view-dashboard .today-flame { width: 12px; height: 12px; }
+  #view-dashboard:has(.lib-list.is-empty:not(:has(.lib-no-match))) #library-search-toggle { display: none; }
   #view-dashboard .today-count { color: inherit; font: inherit; }
   #view-dashboard .today-unit { display: block; color: inherit; font-size: inherit; }
   #view-dashboard :is(.today-unit small, .today-aside) { display: none; }
@@ -265,7 +266,7 @@
   .lib-row { position: relative; display: block; min-height: 54px; margin: 0; padding: 8px 14px; border: 0; border-radius: 0; background: none; box-shadow: none; -webkit-touch-callout: none; user-select: none; }
   .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
   .lib-row.is-selected,
-  .lib-row.is-selected:hover { background: var(--surface-3); }
+  .lib-row.is-selected:hover { background: none; }
   .lib-row.is-selected::before { content: none; }
   .lib-row .lib-opt {
     display: grid;
@@ -483,6 +484,10 @@
      room under its last row for it. The 12px ground ring is a plate, not a
      shadow: rows scrolling under the pill would otherwise peek past its
      corners. */
+  #view-replay .games-panel > .page-head { gap: 4px; }
+  #view-replay .games-panel > .page-head h1 { flex: 1 1 auto; }
+  #view-replay .games-panel:not(:has(.lr:not(.head))) .games-refresh-btn { display: none; }
+  #view-replay.is-active .games-panel:has(.lr:not(.head)) > .toolbar > #lichess-compare-btn { display: none; }
   #view-replay.is-active :is(.games-panel, .scout-panel):not([hidden]) > .toolbar > :is(#lichess-compare-btn, #scout-btn) {
     position: fixed;
     z-index: 30;
@@ -733,7 +738,7 @@
     border-radius: 0;
     background: none;
     box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */
-    color: var(--accent-strong);
+    color: var(--text);
     font-size: 14px;
     font-weight: 500;
   }
@@ -769,8 +774,8 @@
      like the piece sets: "Board colors" broke over two lines beside a 2x2
      grid of names. Each board is a tile, the chosen one tinted. */
   #view-settings .pf-row:has(#settings-board-colors) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
-  #view-settings #settings-board-colors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-  #view-settings .board-color-swatch { flex-direction: column; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; border-radius: var(--radius); background: var(--surface-3); color: var(--text); font-size: 13px; }
+  #view-settings #settings-board-colors { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+  #view-settings .board-color-swatch { flex-direction: column; justify-content: center; gap: 4px; min-height: 60px; padding: 6px 2px; border-radius: var(--radius); background: var(--surface-3); color: var(--text); font-size: 12px; }
   #view-settings .board-color-swatch[aria-pressed="true"] { background: var(--accent-soft); font-weight: 500; }
   #view-settings .board-color-swatch[aria-pressed="true"]::after { content: none; }
   /* Engine: a long value takes its own line under a small label, its action

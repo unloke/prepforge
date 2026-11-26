@@ -57,32 +57,40 @@
 }
 
 /* ---- Profile card ---- */
-.scout-profile { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.scout-profile { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .scout-profile[hidden] { display: none; }
-.prof-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prof-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .prof-row .spacer { flex: 1; }
-.prof-id { display: flex; flex-direction: column; }
-.prof-name { font: 400 22px/1.2 var(--serif); color: var(--text); text-decoration: none; }
+.prof-id { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.prof-name { font: 400 28px/1.15 var(--serif); letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
 .prof-name:hover { text-decoration: underline; }
 .scout-profile-games { font-size: 13px; color: var(--muted); }
-.speed-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.speed-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--panel-soft);
+}
 .speed {
   height: 26px;
-  padding: 0 9px;
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  background: var(--panel);
-  color: var(--text);
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
   font: inherit;
   font-size: var(--fs-s);
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
-.speed:hover { border-color: var(--line-strong); }
+.speed:hover { color: var(--text); }
 .speed:active { transform: scale(0.96); }
-.speed.is-on { background: var(--text); border-color: var(--text); color: var(--panel); }
-.speed.is-on small { color: inherit; opacity: 0.7; }
+.speed.is-on { background: var(--surface-3); color: var(--text); font-weight: 600; }
+.speed.is-on small { color: var(--muted); opacity: 1; }
 .speed:focus-visible, .fm:focus-visible, .scout-add-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .scout-color-rec {
   display: flex;
@@ -167,11 +175,11 @@
 }
 .cs-head .spacer { flex: 1; }
 .wdl-compact { display: inline-flex; align-items: baseline; gap: 5px; }
-.scout-wdl { display: inline-flex; gap: 3px; }
+.scout-wdl { display: inline-flex; gap: 6px; }
 .scout-wdl-pill {
-  padding: 0 4px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.4;
@@ -191,19 +199,49 @@
 .scout-coverage-fill.warn { background: var(--warn); }
 .scout-coverage-fill.bad { background: var(--danger); }
 
-.intel { display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; }
-.headline { min-height: 2.8em; margin: 0; max-width: 62ch; font-size: 16px; font-weight: 500; line-height: 1.4; }
-/* D: the reads are plain labelled columns, not chips. */
-.scout-repertoire-reads { display: flex; flex-wrap: wrap; gap: 8px 32px; }
+.intel { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; }
+.headline { min-height: 0; margin: 0; max-width: 66ch; font-size: 16px; font-weight: 500; line-height: 1.42; }
+/* D: the reads are plain labelled columns in a compact 3-column strip. */
+.scout-repertoire-reads { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 24px; }
 .scout-read-chip {
   display: inline-flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 14px;
+  min-width: 0;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.35;
 }
-.scout-read-chip small { color: var(--muted); font-size: 13px; font-weight: 500; }
+.scout-read-chip small { color: var(--muted); font-size: 12px; font-weight: 500; }
+
+/* Once a report is on screen, Start and Add all gaps yield primary weight so
+   Add to prep stays the sole primary action. */
+.scout-panel:has(.scout-color-tabs) .scout-color-rec { display: none; }
+.scout-panel:has(#scout-results > .scout-section) #scout-btn.primary,
+.scout-section .scout-prepare-all.primary {
+  background: var(--surface-3);
+  border-color: transparent;
+  color: var(--text);
+}
+.scout-panel:has(#scout-results > .scout-section) #scout-btn.primary:hover:not(:disabled),
+.scout-section .scout-prepare-all.primary:hover:not(:disabled) {
+  background: var(--line);
+  color: var(--text);
+}
+/* Deep scan already lives in the profile bar; hide duplicate inline gap button
+   and redundant first-moves bar when the 3-column reads strip is present. */
+.plan > .scout-refutation-gap-actions { display: none; }
+.scout-section:has(.scout-repertoire-reads) .intel > .headline,
+.scout-section:has(.scout-repertoire-reads) .scout-first-moves { display: none; }
+/* Score by first move duplicates First move read directly above. */
+.scout-section:has(.scout-first-moves) .scout-intel-charts,
+.scout-section:has(.scout-repertoire-reads) .scout-intel-charts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.scout-section:has(.scout-first-moves) .scout-intel-charts > .scout-intel-panel:first-child,
+.scout-section:has(.scout-repertoire-reads) .scout-intel-charts > .scout-intel-panel:first-child {
+  display: none;
+}
 
 /* Group boundaries get more air than the rows inside them: head, then the
    readout band, then the plan. */
@@ -523,29 +561,29 @@
   .cs-head { order: 0; }
   .plan { order: 1; }
   .intel { order: 2; }
-  .intel .headline { min-height: 4.2em; }
-  /* The identity card repeats the player the section head names and the score
-     the colour tabs already show. On a phone it keeps the sample-size chips
-     and the two actions, and gives the rest of its height to the lines. */
+  .intel .headline { min-height: 0; }
   .scout-panel .prof-id,
   .scout-panel .scout-color-rec { display: none; }
-  .scout-panel .scout-profile { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; }
-  /* The speed chips on one row (they scroll sideways when a player has many
-     speeds), the two actions as equal halves under them: wrapping in one flex
-     row left Deep scan alone on a second line. */
-  .scout-panel .prof-row { display: grid; flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .scout-panel .prof-row > .speed-chips { grid-column: 1 / -1; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .scout-panel .scout-profile { flex-direction: column; align-items: stretch; text-align: left; gap: 10px; padding: 12px 14px; }
+  .scout-panel .prof-row { display: grid; flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 8px; }
+  .scout-panel .prof-row > .speed-chips { grid-column: 1 / -1; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
   .scout-panel .prof-row .spacer { display: none; }
-  .scout-color-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  /* Two half-width tabs: "With White 249 games" no longer fits on one line, and
-     letting each flex item wrap on its own split it into four ragged lines. The
-     dot and label stay together; the count takes the second line. */
-  .scout-color-tab { min-height: 36px; min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: 0; text-align: center; }
-  .scout-color-tab small { flex-basis: 100%; }
+  .scout-panel:has(.scout-color-tabs) .prof-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .scout-panel:has(.scout-color-tabs) .prof-id { display: flex; grid-column: 1; grid-row: 1; flex-direction: column; gap: 2px; }
+  .scout-panel:has(.scout-color-tabs) .prof-name { font-size: 24px; }
+  .scout-panel:has(.scout-color-tabs) .prof-row > .speed-chips { grid-row: 2; }
+  .scout-panel:has(.scout-color-tabs) .intel { order: 1; padding: 10px 14px; border-top: 1px solid var(--line); }
+  .scout-panel:has(.scout-color-tabs) .plan { order: 2; padding: 12px 14px; border-top: 1px solid var(--line); }
+  .scout-color-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border-bottom: 1px solid var(--line); }
+  /* Flush-left mobile tabs: dot + label left, count tucked beside/right. */
+  .scout-color-tab { min-height: 40px; min-width: 0; padding: 8px 2px; flex-wrap: nowrap; justify-content: flex-start; text-align: left; gap: 6px; }
+  .scout-color-tab small { flex-basis: auto; margin-left: auto; }
+  .scout-repertoire-reads { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; text-align: left; }
   /* Speed filter and the game-plan verbs were 26-36px targets; on a phone they
      are the only way to switch sample size or start the prep. */
-  .speed { min-height: 36px; padding: 0 12px; border-radius: 22px; }
-  .scout-intel-charts { grid-template-columns: 1fr; }
+  .speed { min-height: 34px; padding: 0 12px; border-radius: 7px; }
+  .scout-intel-charts,
+  .scout-section:has(.scout-first-moves) .scout-intel-charts { grid-template-columns: 1fr; }
   .first-moves { grid-template-columns: 1fr; }
   .line-row { grid-template-columns: 1fr auto; min-height: 36px; }
   .scout-lines-head { grid-template-columns: 1fr auto; }

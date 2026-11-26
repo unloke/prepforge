@@ -239,7 +239,7 @@
    figure on Home, its Start the one filled action, and the next cards sit
    under it as rows that narrow the queue to their repertoire. */
 .train-row[data-row="smart"] { grid-template-areas: "text go" "opts opts" "next next"; }
-.train-row[data-row="smart"] .train-outlook-lead b { font-size: 28px; line-height: 1; }
+.train-row[data-row="smart"] .train-outlook-lead b { font-family: var(--serif); font-size: 32px; font-weight: 400; line-height: 1; }
 .train-due-next { grid-area: next; display: flex; flex-direction: column; gap: 2px; margin: 4px -8px -4px; padding: 0; list-style: none; }
 .train-due-next[hidden] { display: none; }
 .train-due-line {
@@ -314,4 +314,66 @@
   #view-train .train-row[data-row="all_lines"] { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "text opts go"; padding: 6px 8px 6px 14px; }
   #view-train [data-row="all_lines"] .train-row-opts { justify-content: flex-start; }
   #view-train [data-row="all_lines"] .train-row-go { min-width: 0; height: 32px; padding: 0 14px; }
+  /* >= 44px touch targets via transparent pseudo-elements without altering layout. */
+  #view-train :is(#train-due-scope, #train-rehearse-scope) { position: relative; }
+  #view-train :is(#train-due-scope, #train-rehearse-scope)::before { content: ""; position: absolute; inset: -8px -4px; }
+}
+
+/* Desktop Practice: native SVG opponent tabs (zero subtitles) and primary Play CTA. */
+@media (min-width: 761px) {
+  #view-train .train-row[data-row="play"] {
+    grid-template-areas: "text lucky go" "bots bots bots" "opts opts opts";
+    gap: 10px 12px;
+  }
+  #view-train #train-play-book { display: none; }
+  #view-train #train-bots {
+    grid-area: bots;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 2px;
+  }
+  #view-train #train-bots .train-bot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 6px 8px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: var(--fs);
+    font-weight: 500;
+    cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  }
+  #view-train #train-bots .train-bot:hover:not(:disabled) { color: var(--text); }
+  #view-train #train-bots .train-bot.is-on { color: var(--text); border-bottom-color: var(--accent); }
+  #view-train #train-bots .train-bot:disabled { opacity: 0.45; cursor: default; }
+  #view-train #train-bots .train-bot-icon {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.65;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  #view-train #train-bots .train-bot-sub { display: none; }
+  #view-train[data-train-pane="play"] #start-play {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  #view-train[data-train-pane="play"] #start-play:hover:not(:disabled) {
+    border-color: var(--accent-strong);
+    background: var(--accent-strong);
+    color: var(--accent-strong-ink);
+  }
 }

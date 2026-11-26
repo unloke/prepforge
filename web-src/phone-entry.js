@@ -235,6 +235,12 @@ export function wirePhoneSheets() {
     open.classList.remove("is-open");
     document.querySelector(`[data-sheet-open="${open.id}"]`)?.setAttribute("aria-expanded", "false");
   };
+  const syncReveals = (sheet) => {
+    sheet?.querySelectorAll("[data-reveal]").forEach((btn) => {
+      const t = document.querySelector(btn.dataset.reveal);
+      btn.setAttribute("aria-expanded", String(Boolean(t?.open)));
+    });
+  };
   document.addEventListener("click", (event) => {
     const opener = event.target.closest?.("[data-sheet-open]");
     if (opener) {
@@ -244,6 +250,7 @@ export function wirePhoneSheets() {
       if (sheet && !wasOpen) {
         sheet.classList.add("is-open");
         opener.setAttribute("aria-expanded", "true");
+        syncReveals(sheet);
       }
       return;
     }
@@ -263,9 +270,16 @@ export function wirePhoneSheets() {
     if (reveal) {
       const target = document.querySelector(reveal.dataset.reveal);
       if (!target) return;
+      const sheet = reveal.closest(".phone-sheet");
       target.open = !target.open;
+      if (target.open && sheet) {
+        sheet.querySelectorAll("details.drawer").forEach((other) => {
+          if (other !== target) other.open = false;
+        });
+      }
+      syncReveals(sheet);
       reveal.setAttribute("aria-expanded", String(target.open));
-      target.scrollIntoView({ block: "nearest" });
+      if (target.open) target.scrollIntoView({ block: "nearest" });
       return;
     }
     // The dim backdrop is the sheet's ::before, so a tap on it lands above the sheet's top.
