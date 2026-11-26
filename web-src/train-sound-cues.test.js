@@ -81,7 +81,7 @@ function harness({ kind = "due", correct = true } = {}) {
     setTrainHintLine: noop,
     invalidateTrainSessionPreview: noop,
     markTrainPositionDirty: noop,
-    requeueSmartCard: () => false,
+    requeueMissedTarget: () => ({ added: false, pending: false }),
     renderSmartQueueStrip: noop,
     smartLocalPrompt: () => null,
     presentSmartPrompt: async () => {},
@@ -152,5 +152,26 @@ describe("Train answer sounds", () => {
       await playAnswer(h, "g1f3");
       expect([kind, attempt, h.trainState.smart.retriesFixed]).toEqual([kind, attempt, fixed]);
     }
+  });
+
+  it("re-tests a retry card without grading or scoring it again", async () => {
+    for (const uci of ["g1f3", "d2d4"]) {
+      const h = harness();
+      const queueTrainAttempt = vi.fn();
+      const tallyAnswer = vi.fn();
+      Object.assign(h.deps, { queueTrainAttempt, tallyAnswer });
+      h.trainState.smart.queue = [{ retry: true, targets: [h.prompt.target] }];
+      await playAnswer(h, uci);
+      expect([uci, queueTrainAttempt.mock.calls.length, tallyAnswer.mock.calls.length]).toEqual([uci, 0, 0]);
+    }
+  });
+
+  it("brings any first miss back once and says so", async () => {
+    const h = harness({ correct: false });
+    const requeueMissedTarget = vi.fn(() => ({ added: true, pending: true }));
+    Object.assign(h.deps, { requeueMissedTarget });
+    await playAnswer(h, "d2d4");
+    expect(requeueMissedTarget).toHaveBeenCalledWith(h.trainState.smart, h.prompt.target);
+    expect(h.deps.setTrainBanner.mock.calls.at(-1)[2]).toMatch(/It comes back soon\.$/);
   });
 });

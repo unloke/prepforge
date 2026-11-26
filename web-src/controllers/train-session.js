@@ -7,8 +7,8 @@ import { html } from "../html.js";
 // Per card: run-in animation (the approach plays itself, the opponent's last
 // move is the recall cue) → prompt. New cards are taught first; everything else
 // is tested cold. First miss auto-hints and allows a retry (attempt 2, ungraded
-// server-side); a second miss reveals the answer and the card returns a few
-// positions later. Only attempt 1 is graded.
+// server-side); a second miss reveals the answer. Any miss brings that one move
+// back alone a few cards later, ungraded. Only attempt 1 of a card is graded.
 
 import { isAuthError } from "../auth-gate.js";
 import { localBoardInfo, localPremoveMoves } from "../chess-local.js";
@@ -25,6 +25,7 @@ import { createPlayMoveHandler } from "../train-play-input.js";
 import { analysisRecallSeq, invalidateAnalysisSource } from "./analyze-entry.js";
 import { isNothingToTrainError } from "../train-start.js";
 import { planTrainRunIn, playTrainRunIn } from "../train-flow.js";
+import { requeueMissedTarget } from "../train-retry.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, showTrainResult, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
@@ -1441,19 +1442,6 @@ function prefetchTrainCoach(prompt) {
   }).catch((error) => { if (trainState.smart?.prompt === prompt) console.warn("Train coach unavailable", error); });
 }
 
-// After a second wrong attempt the card returns a few positions later — unless
-// an identical copy is already pending, so a stubborn miss queues one retry at
-// a time. Parity with SmartTrainingService._requeue_card.
-function requeueSmartCard(smart) {
-  const card = smart.queue[smart.cardIndex];
-  if (!card) return false;
-  const pendingAhead = smart.queue.slice(smart.cardIndex + 1);
-  if (pendingAhead.some((c) => c.encoded === card.encoded)) return false;
-  const insertAt = Math.min(smart.cardIndex + smart.requeueGap, smart.queue.length);
-  smart.queue.splice(insertAt, 0, card);
-  return true;
-}
-
 async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   const smart = trainState.smart;
   if (!smart || !smart.prompt || !playedUci || trainState.trainBusy) return;
@@ -1485,8 +1473,9 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // stays out of the first-try stats, and a new move's demonstration (the arrow
   // shows it) is not a recall at all. Its SR write still marks it learned.
   const hinted = trainState.trainHintLevel > 0;
-  const scored = prompt.kind !== "new";
-  if (attempt === 1) queueTrainAttempt(smart, prompt.expected_node_id, correct, hinted);
+  const graded = !smart.queue[smart.cardIndex]?.retry; // a retry card re-tests, never re-grades
+  const scored = prompt.kind !== "new" && graded;
+  if (attempt === 1 && graded) queueTrainAttempt(smart, prompt.expected_node_id, correct, hinted);
   if (correct) trackPreparationPractice({
     repertoireId: smart.queue[smart.cardIndex]?.repertoire_id || smart.repertoireId,
     nodeId: prompt.expected_node_id, fen: prompt.fen_before, completed: true,
@@ -1496,6 +1485,9 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   if (!correct) {
     // Only the first answer is graded (matches the synced SR write); the
     // accuracy chips therefore never count retries.
+    const retry = requeueMissedTarget(smart, prompt.target);
+    if (retry.added) markTrainPositionDirty();
+    const later = retry.pending ? " It comes back soon." : "";
     if (attempt === 1) {
       // A first-try miss ends the run, same as Line rehearsal.
       if (scored) tallyAnswer(stats, false);
@@ -1521,7 +1513,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       });
       const show = (tip) => {
         const banner = wrongMoveBanner({ attempt, playedSan, expectedSan: prompt.expected_san, tip, timedOut });
-        setTrainBanner(banner.state, banner.title, banner.sub);
+        setTrainBanner(banner.state, banner.title, `${banner.sub}${later}`);
       };
       show(missTip());
       maiaPhaseCoach({ fen: prompt.fen_before, expectedUci: prompt.expected_uci, expectedSan: prompt.expected_san, playedUci })
@@ -1535,19 +1527,12 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
         })
         .catch(() => {});
     } else {
-      // Second miss: reveal, let the answer be played, and the card returns
-      // a few positions later.
+      // Second miss: reveal and let the answer be played.
       stats.streak = 0;
       await renderTrainStats();
-      const requeued = requeueSmartCard(smart);
-      if (requeued) {
-        smart.totalCards = smart.queue.length;
-        smart.counts[prompt.kind] = (smart.counts[prompt.kind] || 0) + 1;
-        markTrainPositionDirty();
-      }
       rememberSmartSession({ attempt: attempt + 1 });
       const banner = wrongMoveBanner({ attempt, expectedSan: prompt.expected_san, tip: trainTeachLine(prompt, prompt.phaseCoach) });
-      setTrainBanner(banner.state, banner.title, requeued ? `${banner.sub} It comes back soon.` : banner.sub);
+      setTrainBanner(banner.state, banner.title, `${banner.sub}${later}`);
     }
     await sleep(950);
     if (trainState.smart !== smart || smart.prompt !== prompt) return;
