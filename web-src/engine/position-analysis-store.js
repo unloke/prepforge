@@ -523,7 +523,9 @@ export function createPositionAnalysisStore({
     // dedicated pool but neither reuses nor publishes: the game channel is single-line.
     // Only a single-line pass holds the workers for the Engine card: a MultiPV check
     // sidesteps the budget (batch) and is not what leaves the card waiting.
-    analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult, engineRun, maxNodes: cap = maxNodes }) {
+    // `saved` (fen -> eval, analyze-saved-run.js) holds a saved review's reads outside the
+    // bounded cache; one searched at least `depth` deep stands in for a search.
+    analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult, engineRun, maxNodes: cap = maxNodes, saved = null }) {
       const single = multipv <= 1;
       const endPass = single ? store.passStart() : () => {};
       return Promise.resolve(analyzeFn({
@@ -535,7 +537,7 @@ export function createPositionAnalysisStore({
         onProgress,
         shouldCancel,
         engineRun,
-        reuse: single ? (fen) => reusableGameEval(fen, depth) : null,
+        reuse: single ? (fen) => reusableGameEval(fen, depth) || (Number(saved?.get(fen)?.depth) >= depth ? saved.get(fen) : null) : null,
         onResult: (fen, ev) => {
           if (single) publishGame(fen, ev, depth);
           if (typeof onResult === "function") onResult(fen, ev);

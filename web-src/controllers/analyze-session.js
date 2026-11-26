@@ -41,8 +41,8 @@ import { analyzeView, ensureAnalyzeView, renderAnalysisTreeEmptyState } from "..
 import { _coachReady, loadPhaseCoach, preloadCoach } from "../coach/coach-loader.js";
 import { showConfirmModal, showInputModal } from "../core/modals.js";
 import { updateBookline } from "../analyze-book-state.js";
-import { seedSavedRun } from "../analyze-saved-run.js";
-import { noteTriedGrade } from "../analyze-tried-grade.js";
+import { savedRunReads } from "../analyze-saved-run.js";
+import { noteTriedGrade, noteUngraded } from "../analyze-tried-grade.js";
 import { accountService, analysisSelfSide, defaultRepertoireNameFromPgn, hideAnalysisRetrySave,
   importRepertoireFromPgnText, invalidateAnalysisSource, refreshAnalysisHistoryIfOpen,
   refreshAnalyzeRecovery, requireSignIn, showAnalysisRetrySave, switchView, syncPgnFromTree,
@@ -214,7 +214,7 @@ class PositionCoach {
       if (this.enabled) this.update(this.fen, this.ctx);
       else {
         this.cancel();
-        renderInstantCoach();
+        renderInstantCoach(); noteUngraded(this.ctx);
         setAnalysisBetterArrow(null);
       }
     });
@@ -247,11 +247,11 @@ class PositionCoach {
     // A saved grade draws its better move at once; the live read fills in the rest.
     setAnalysisBetterArrow(this.enabled && fen ? savedBetterMove(this.ctx) : null);
     if (!fen) return;
-    if (!this.enabled) return; // engine off → leave the instant read
+    if (!this.enabled) return noteUngraded(this.ctx); // grading off → leave the instant read; Retry says so
     if (activeViewName() !== "analyze") return;
     const hasMove = !!(this.ctx.prevFen && this.ctx.lastUci);
     if (!hasMove) return; // nothing played in → leave the instant read
-    if (!isBrowserEngineAvailable()) return; // no engine → leave the instant read
+    if (!isBrowserEngineAvailable()) return noteUngraded(this.ctx); // no engine → leave the instant read
     this._ensureEngine();
     // Holding → steps faster than the coach can read: each move keeps the instant
     // line, and the full read waits until the stepping pauses.
@@ -294,14 +294,14 @@ class PositionCoach {
         over ? null : this._eval(fen, token, 1),
       ]);
       if (token !== this.token || fen !== this.fen) return;
-      if (!before || !before.lines.length) return;
+      if (!before || !before.lines.length) return noteUngraded(ctx);
       let top;
       if (over?.kind === "checkmate") {
         top = { cp: null, mate: mover === "white" ? 1 : -1, pvUci: [], pvSan: [] };
       } else if (over) {
         top = { cp: 0, mate: null, pvUci: [], pvSan: [] };
       } else {
-        if (!after) return;
+        if (!after) return noteUngraded(ctx);
         top = after.lines[0] || {};
       }
       const prevMove = previousAnalysisMove();
@@ -361,7 +361,7 @@ class PositionCoach {
       }
     } catch (err) {
       console.warn("Coach: failed to build move commentary", err);
-      if (token === this.token && fen === this.fen && activeViewName() === "analyze") renderInstantCoach();
+      if (token === this.token && fen === this.fen && activeViewName() === "analyze") { renderInstantCoach(); noteUngraded(ctx); }
     }
   }
 
@@ -1006,8 +1006,8 @@ async function runAnalysis(options = {}) {
     // Dedicated full-speed workers; positions the store already answers at this depth
     // are reused, and each result is published for the Engine panel and the Coach.
     const store = await timed("load", analysisStore);
-    // A saved review of this game at this depth hands the pass its reads (analyze-saved-run.js).
-    await timed("saved-reads", () => seedSavedRun(store, prep, api));
+    // The saved review's reads the pass may take instead of searching (analyze-saved-run.js).
+    const savedReads = await timed("saved-reads", () => savedRunReads(prep, api));
     // Keep the card on the game's saved reads through Maia and save/render too.
     // Each search batch has its own pass, but ending one must not reboot the live
     // engine beside Maia or leave that heap resident while checkpointing.
@@ -1049,7 +1049,7 @@ async function runAnalysis(options = {}) {
       .catch(() => null);
     let assessorReady = overlapMaia ? startAssessor() : null;
     const evals = await timed("stockfish", () => store.analyzeGame({
-      engineRun,
+      engineRun, saved: savedReads,
       positions,
       depth: prep.depth,
       onResult: (fen, ev) => {
@@ -1297,8 +1297,9 @@ function classifyPositions(positions, evals) {
       mate_in: ev.mate_in ?? null,
       best_move_uci: ev.best_move_uci ?? null,
       pv: ev.pv || [],
-      depth: ev.depth ?? null,
-      nodes: ev.nodes ?? null,
+      depth: ev.depth ?? null, nodes: ev.nodes ?? null,
+      // A read taken from a saved review keeps the net that searched it (analyze-saved-run.js).
+      engine: ev.engine ?? null,
     };
   });
 }

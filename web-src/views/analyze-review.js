@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { reviewState } from "./analyze-report.js";
-import { onTriedGrade, triedGrade } from "../analyze-tried-grade.js";
+import { onTriedGrade, triedGrade, UNGRADED } from "../analyze-tried-grade.js";
 
 // The review bar under the coach (Chess.com's Next and Retry): step to the
 // previous or next key moment of the report, and at a mistake try to find the
@@ -32,7 +32,8 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
 
   // "try" at the Retry position, "right" on the engine's move played there, and on
   // another move played during a Retry: "also" when the coach grades it as good as
-  // the engine's move, "wrong" when it grades it worse, "checking" until it reads it.
+  // the engine's move, "wrong" when it grades it worse, "checking" until it reads it,
+  // and "unchecked" when the coach will not grade it (Grade moves off, no engine read).
   function triedState(moment) {
     const id = analysisState.analysisCurrentNodeId || "root";
     if (retry && id === retry.fromId) return "try";
@@ -42,7 +43,7 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
       if (node.uci === best) return "right";
       if (retry) {
         const grade = triedGrade(node.fenBefore, node.uci);
-        return !grade ? "checking" : FOUND_GRADES.has(grade) ? "also" : "wrong";
+        return !grade ? "checking" : grade === UNGRADED ? "unchecked" : FOUND_GRADES.has(grade) ? "also" : "wrong";
       }
     }
     retry = null;
@@ -74,6 +75,7 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
       right: `${m.best?.san} is the best move`,
       also: `As good as ${m.best?.san}`,
       checking: "Checking that move…",
+      unchecked: "Could not check that move",
       wrong: "Not the best move",
     }[tried] || `${state.current ? "" : m.ply > ply ? "Next: " : "Back to "}${m.label} ${kind}`;
     const canFix = m.loss != null && m.best && (state.current || tried);

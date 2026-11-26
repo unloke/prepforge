@@ -16,6 +16,14 @@ export function noteTriedGrade(fenBefore, uci, code) {
   for (const listener of listeners) listener();
 }
 
+// The coach will not grade this move (Grade moves is off, no engine, or its read came
+// back empty): Retry shows a clear end state instead of "Checking" forever. A grade
+// already known stays; a real grade later replaces this mark.
+export const UNGRADED = "ungraded";
+export function noteUngraded({ prevFen, lastUci } = {}) {
+  if (prevFen && lastUci && !grades.has(`${prevFen}|${lastUci}`)) noteTriedGrade(prevFen, lastUci, UNGRADED);
+}
+
 export function triedGrade(fenBefore, uci) {
   return (fenBefore && uci && grades.get(`${fenBefore}|${uci}`)) || null;
 }

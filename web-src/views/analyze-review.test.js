@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createReviewBar } from "./analyze-review.js";
-import { noteTriedGrade } from "../analyze-tried-grade.js";
+import { noteTriedGrade, noteUngraded, triedGrade } from "../analyze-tried-grade.js";
 import { asSlices } from "../state/as-slices.fixture.js";
 
 const blunder = {
@@ -116,6 +116,31 @@ describe("review bar", () => {
     expect(bar.innerHTML).toContain("is-right");
     expect(bar.innerHTML).toContain("As good as d4");
     expect(bar.innerHTML).not.toContain('data-review="retry"');
+  });
+
+  it("a Retry move the coach cannot grade ends on a clear state, not on Checking", async () => {
+    const { bar, appState, at, click } = setup();
+    at("m3", 3);
+    await click("retry");
+    const m2 = appState.analysisTree.byId.get("m2");
+    appState.analysisTree.byId.set("v1", { id: "v1", isMainline: false, isVariation: true, parent: m2,
+      uci: "b1c3", san: "Nc3", fenBefore: "fen-ungraded" });
+    at("v1", -1);
+    expect(bar.innerHTML).toContain("Checking that move");
+    // Grading is off or the engine could not read it: the coach says it will not grade.
+    noteUngraded({ prevFen: "fen-ungraded", lastUci: "b1c3" });
+    expect(bar.innerHTML).not.toContain("Checking that move");
+    expect(bar.innerHTML).toContain("Could not check that move");
+    expect(bar.innerHTML).toContain('data-review="retry"');
+    // Grading back on: the real grade replaces it.
+    noteTriedGrade("fen-ungraded", "b1c3", "best");
+    expect(bar.innerHTML).toContain("As good as d4");
+  });
+
+  it("a known grade is not overwritten by a later ungraded visit", () => {
+    noteTriedGrade("fen-known", "a2a3", "mistake");
+    noteUngraded({ prevFen: "fen-known", lastUci: "a2a3" });
+    expect(triedGrade("fen-known", "a2a3")).toBe("mistake");
   });
 
   it("steps from a branch as from the move it replaces", async () => {
