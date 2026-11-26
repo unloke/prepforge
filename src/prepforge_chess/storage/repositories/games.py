@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from hashlib import sha256
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 from sqlalchemy import or_, and_, delete, func, select, update
 from sqlalchemy.engine import Connection
 from prepforge_chess.core.models import AnalysisResult, Game, GameResult, MoveRecord, MoveSource
@@ -521,7 +521,7 @@ class GameRepository(EvaluationRepository):
         return "analysis-save:{0}".format(digest)
 
     def existing_move_signature_ids(
-        self, owner_user_id: Optional[str] = None
+        self, owner_user_id: Optional[str] = None, uci_blobs: Optional[Iterable[str]] = None
     ) -> Dict[str, str]:
         """Map each stored game's move-signature to its game id, so a re-imported
         game (no lichess id) is detected as a duplicate AND resolved back to the
@@ -533,10 +533,19 @@ class GameRepository(EvaluationRepository):
 
         Owner-scoped: when an owner is supplied only that owner's games are
         considered, so one user pasting a PGN another user already stored gets their
-        own owned copy rather than being bounced to the other user's game."""
+        own owned copy rather than being bounced to the other user's game.
+
+        ``uci_blobs`` limits the read to games with those exact move sequences
+        (``codec.game_uci_blob``), the only ones whose signature can match, so an
+        import never reads and decodes every game the owner has."""
         stmt = select(t.games.c.id, t.games.c.uci_blob, t.games.c.initial_fen)
         if owner_user_id is not None:
             stmt = stmt.where(t.games.c.owner_user_id == owner_user_id)
+        if uci_blobs is not None:
+            blobs = sorted({blob for blob in uci_blobs if blob})
+            if not blobs:
+                return {}
+            stmt = stmt.where(t.games.c.uci_blob.in_(blobs))
         with self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()
         signatures: Dict[str, str] = {}

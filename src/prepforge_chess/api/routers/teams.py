@@ -26,7 +26,8 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, aliased
 
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_user, get_repository
@@ -88,12 +89,14 @@ def _member_count(db: Session, team_id: str) -> int:
     )
 
 
-def _team_out(db: Session, team: Team, role: TeamRole) -> dict[str, object]:
+def _team_out(
+    db: Session, team: Team, role: TeamRole, member_count: int | None = None
+) -> dict[str, object]:
     return {
         "id": team.id,
         "name": team.name,
         "role": role.value,
-        "member_count": _member_count(db, team.id),
+        "member_count": _member_count(db, team.id) if member_count is None else member_count,
     }
 
 
@@ -157,13 +160,22 @@ def list_teams(
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
     """Teams the caller belongs to, each with the caller's role."""
+    # Member counts for every listed team in one grouped query, not one per team.
+    mine = aliased(TeamMember)
+    counts = (
+        select(TeamMember.team_id, func.count().label("members"))
+        .where(TeamMember.team_id.in_(select(mine.team_id).where(mine.user_id == user.id)))
+        .group_by(TeamMember.team_id)
+        .subquery()
+    )
     rows = db.execute(
-        select(Team, TeamMember.role)
-        .join(TeamMember, TeamMember.team_id == Team.id)
-        .where(TeamMember.user_id == user.id)
+        select(Team, mine.role, counts.c.members)
+        .join(mine, mine.team_id == Team.id)
+        .join(counts, counts.c.team_id == Team.id)
+        .where(mine.user_id == user.id)
         .order_by(Team.created_at.desc())
     ).all()
-    return {"teams": [_team_out(db, team, role) for team, role in rows]}
+    return {"teams": [_team_out(db, team, role, members) for team, role, members in rows]}
 
 
 # --- invite link: redeem (declared before ``/{team_id}`` so the literal "join"
@@ -220,7 +232,15 @@ def join_team(
             "team": _team_out(db, team, existing.role),
         }
     db.add(TeamMember(team_id=team.id, user_id=user.id, role=TeamRole.member))
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent redemption by the same user added the row first.
+        db.rollback()
+        existing = _membership(db, team.id, user.id)
+        if existing is None:
+            raise
+        return {"joined": False, "already_member": True, "team": _team_out(db, team, existing.role)}
     return {
         "joined": True,
         "already_member": False,
@@ -250,13 +270,15 @@ def team_detail(
         .where(TeamMember.team_id == team_id)
         .order_by(TeamMember.created_at)
     ).all()
+    # A member with several linked identities shows their primary one: it is
+    # ordered last, so it is the value the dict keeps.
     lichess_by_user = {
         link.user_id: link.provider_user_id
         for link in db.execute(
             select(LinkedAccount).where(
                 LinkedAccount.provider == _LICHESS_PROVIDER,
                 LinkedAccount.user_id.in_([u.id for _, u in members]),
-            )
+            ).order_by(LinkedAccount.is_primary, LinkedAccount.created_at.desc(), LinkedAccount.id.desc())
         ).scalars()
     }
     shared = repo.list_repertoires_shared_to_team(team_id)
@@ -265,7 +287,7 @@ def team_detail(
     if owner_ids:
         owners = db.execute(select(User).where(User.id.in_(owner_ids))).scalars().all()
         owners_by_id = {u.id: u for u in owners}
-    out = _team_out(db, team, me.role)
+    out = _team_out(db, team, me.role, len(members))
     out["members"] = [
         {
             "user_id": u.id,
@@ -344,7 +366,11 @@ def add_member(
             status_code=status.HTTP_409_CONFLICT, detail="already a member"
         )
     db.add(TeamMember(team_id=team_id, user_id=target_link.user_id, role=role))
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:  # a concurrent add or join of the same user
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="already a member") from exc
     target = db.get(User, target_link.user_id)
     return {
         "user_id": target_link.user_id,

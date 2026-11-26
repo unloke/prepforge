@@ -674,3 +674,29 @@ def test_team_delete_failure_rolls_back_sharing(client, monkeypatch):
     assert member.get(f"/api/build/load?repertoire_id={rep}").status_code == 200
     meta = next(r for r in client.get("/api/repertoires").json()["repertoires"] if r["id"] == rep)
     assert meta["shared"] is True
+
+
+def test_team_detail_shows_primary_lichess_handle_and_counts(client):
+    from sqlalchemy.orm import Session
+
+    from prepforge_chess.api import db
+    from prepforge_chess.api.models import LinkedAccount
+
+    _register(client, "owner@example.com")
+    team_id = _create_team(client)
+    member_client = _new_client()
+    member_id = _register(member_client, "member@example.com")
+    with Session(db.get_engine()) as s:
+        s.add(LinkedAccount(user_id=member_id, provider="lichess", provider_user_id="MainHandle", is_primary=True))
+        s.add(LinkedAccount(user_id=member_id, provider="lichess", provider_user_id="AltHandle", is_primary=False))
+        s.commit()
+    assert _add_member(client, team_id, "AltHandle").status_code == 200
+    _create_team(client, "Second")
+
+    detail = client.get(f"/api/teams/{team_id}").json()
+    assert detail["member_count"] == 2
+    assert next(m for m in detail["members"] if m["user_id"] == member_id)["lichess_username"] == "MainHandle"
+    listed = {team["name"]: team for team in client.get("/api/teams").json()["teams"]}
+    assert listed["Coaches"]["member_count"] == 2
+    assert listed["Second"]["member_count"] == 1
+    assert [t["name"] for t in member_client.get("/api/teams").json()["teams"]] == ["Coaches"]
