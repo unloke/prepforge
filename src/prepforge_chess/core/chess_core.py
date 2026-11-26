@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List, Optional
 import chess
 import chess.pgn
 
+from prepforge_chess.storage.codec import board_fen
 from prepforge_chess.core.models import (
     Color,
     Game,
@@ -145,7 +146,7 @@ class ChessCore:
                 raise ValueError(
                     "PGN game {0} has parse errors: {1}".format(index + 1, message)
                 )
-            games.append(self._game_from_python_chess(parsed, source=source))
+            games.append(self.game_from_python_chess(parsed, source=source))
             index += 1
 
         return games
@@ -161,7 +162,13 @@ class ChessCore:
             raise ValueError(f"expected exactly one PGN game, found {len(games)}")
         return games[0]
 
-    def _game_from_python_chess(self, parsed: chess.pgn.Game, *, source: MoveSource) -> Game:
+    def game_from_python_chess(
+        self, parsed: chess.pgn.Game, *, source: MoveSource, pgn: Optional[str] = None
+    ) -> Game:
+        """A ``Game`` from an already parsed, error-free python-chess game.
+
+        ``pgn`` is ``str(parsed)`` when the caller already exported it; the
+        export walks the whole game again, so it is not worth doing twice."""
         board = parsed.board()
         initial_fen = board.fen()
         moves: List[MoveRecord] = []
@@ -169,16 +176,18 @@ class ChessCore:
         # Walk the mainline nodes (not just the moves) so PGN comments survive
         # import into ``MoveRecord.comment`` — the original/user note that the
         # analysis's generated explanation must never overwrite (A-04).
+        fen = initial_fen
         for ply, node in enumerate(parsed.mainline(), start=1):
-            moves.append(
-                self._record_and_push(
-                    board=board,
-                    move=node.move,
-                    source=source,
-                    ply=ply,
-                    comment=node.comment or None,
-                )
+            record = self._record_and_push(
+                board=board,
+                move=node.move,
+                source=source,
+                ply=ply,
+                comment=node.comment or None,
+                fen_before=fen,
             )
+            moves.append(record)
+            fen = record.fen_after
 
         headers: Dict[str, str] = dict(parsed.headers)
         played_at = self._parse_pgn_date(headers.get("UTCDate") or headers.get("Date"))
@@ -194,7 +203,7 @@ class ChessCore:
             event=headers.get("Event"),
             site=headers.get("Site"),
             played_at=played_at,
-            pgn=str(parsed),
+            pgn=str(parsed) if pgn is None else pgn,
             lichess_id=self._lichess_id_from_site(headers.get("Site")),
             tags=headers,
         )
@@ -208,22 +217,28 @@ class ChessCore:
         ply: Optional[int],
         comment: Optional[str] = None,
         tags: Optional[List[str]] = None,
+        fen_before: Optional[str] = None,
     ) -> MoveRecord:
+        """Record ``move`` and leave it pushed. A caller that already holds the
+        current position's FEN (the previous move's ``fen_after``) passes it as
+        ``fen_before`` to skip serializing the same position twice."""
         if move not in board.legal_moves:
             raise ValueError(f"illegal move {move.uci()} for FEN {board.fen()}")
 
-        fen_before = board.fen()
-        san = board.san(move)
+        if fen_before is None:
+            fen_before = board_fen(board)
         side = color_from_python_chess(board.turn)
         move_number = board.fullmove_number
         record_ply = ply if ply is not None else self._ply_from_board(board)
-        board.push(move)
+        # SAN generation pushes the move to detect check and mate; keep that
+        # push rather than popping it and pushing the same move again.
+        san = board.san_and_push(move)
 
         return MoveRecord(
             uci=move.uci(),
             san=san,
             fen_before=fen_before,
-            fen_after=board.fen(),
+            fen_after=board_fen(board),
             move_number=move_number,
             ply=record_ply,
             side_to_move=side,
