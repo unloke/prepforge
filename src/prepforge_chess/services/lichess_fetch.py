@@ -195,32 +195,38 @@ def fetch_recent_pgns(
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     include_moves: bool = True,
 ) -> List[FetchedGame]:
-    if not username or not username.strip():
-        raise ValueError("lichess username is empty")
-    safe_count = max(1, min(int(count), MAX_FETCH))
-    safe_user = urllib.parse.quote(username.strip(), safe="")
     # When the caller only needs to know *whether* a new game exists (the
     # background "you just finished a game" watcher), skip the move text so
     # Lichess returns just the tag pairs — a much smaller, faster response.
-    url = LICHESS_USER_PGN_URL.format(username=safe_user) + "?" + urllib.parse.urlencode({
-        "max": safe_count,
-        "moves": "true" if include_moves else "false",
+    return _split_multi_pgn(_export_games(
+        username, count, "application/x-chess-pgn", timeout,
+        moves="true" if include_moves else "false", pgnInJson="false",
+    ))
+
+
+def _export_games(username: str, count: int, accept: str, timeout: float, *,
+                  moves: str, **extra: str) -> str:
+    """One call to the user's game export, capped at MAX_FETCH games, with
+    clocks, evals, openings and annotations left out."""
+    if not username or not username.strip():
+        raise ValueError("lichess username is empty")
+    params = {
+        "max": max(1, min(int(count), MAX_FETCH)),
+        "moves": moves,
         "clocks": "false",
         "evals": "false",
         "opening": "false",
         "literate": "false",
-        "pgnInJson": "false",
-    })
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/x-chess-pgn",
-            "User-Agent": "PrepForge/0.1 (local-tool)",
-        },
+        **extra,
+    }
+    url = "{0}?{1}".format(
+        LICHESS_USER_PGN_URL.format(username=urllib.parse.quote(username.strip(), safe="")),
+        urllib.parse.urlencode(params),
     )
-    raw = _read_game_export(request, timeout=timeout)
-
-    return _split_multi_pgn(raw)
+    request = urllib.request.Request(
+        url, headers={"Accept": accept, "User-Agent": "PrepForge/0.1 (local-tool)"}
+    )
+    return _read_game_export(request, timeout=timeout)
 
 
 def _split_multi_pgn(text: str) -> List[FetchedGame]:
@@ -270,28 +276,9 @@ def fetch_latest_games_meta(
     Lichess for NDJSON so we get `lastMoveAt` — the game's true *finish* time — which
     the recency gate needs. Move text is skipped; `pgn` is left empty and the full
     PGN is fetched separately only if the user acts on the nudge."""
-    if not username or not username.strip():
-        raise ValueError("lichess username is empty")
-    safe_count = max(1, min(int(count), MAX_FETCH))
-    safe_user = urllib.parse.quote(username.strip(), safe="")
-    url = LICHESS_USER_PGN_URL.format(username=safe_user) + "?" + urllib.parse.urlencode({
-        "max": safe_count,
-        "moves": "false",
-        "clocks": "false",
-        "evals": "false",
-        "opening": "false",
-        "literate": "false",
-    })
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/x-ndjson",
-            "User-Agent": "PrepForge/0.1 (local-tool)",
-        },
+    return _parse_ndjson_games(
+        _export_games(username, count, "application/x-ndjson", timeout, moves="false")
     )
-    raw = _read_game_export(request, timeout=timeout)
-
-    return _parse_ndjson_games(raw)
 
 
 def _parse_ndjson_games(text: str) -> List[FetchedGame]:
@@ -344,12 +331,10 @@ def newest_game_across(
     if not names:
         return None, None
 
+    fetch = fetch_recent_pgns if with_moves else fetch_latest_games_meta
+
     def _one(username: str) -> tuple:
-        if with_moves:
-            games = fetch_recent_pgns(username, per_account, timeout=timeout)
-        else:
-            games = fetch_latest_games_meta(username, per_account, timeout=timeout)
-        return username, games
+        return username, fetch(username, per_account, timeout=timeout)
 
     per_account = max(1, min(int(per_account or 1), MAX_FETCH))
     validate_fetch_budget(names, per_account)
@@ -366,20 +351,14 @@ def newest_game_across(
                 continue
             for game in games or []:
                 results.append((game, username))
-    seen_ids: set = set()
+    # Strictly-newer wins, so the first occurrence of a duplicated game id
+    # (and of an exact tie) keeps its source.
     best = None
-    best_source = None
     for game, username in results:
-        gid = game.lichess_id
-        if gid and gid in seen_ids:
-            continue
-        if gid:
-            seen_ids.add(gid)
-        if best is None or _newest_key(game) > _newest_key(best):
-            best = game
-            best_source = username
+        if best is None or _newest_key(game) > _newest_key(best[0]):
+            best = (game, username)
     if best is not None:
-        return best, best_source
+        return best
     if errors:
         raise errors[0]
     return None, None

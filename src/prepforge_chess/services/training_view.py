@@ -7,7 +7,6 @@ the whole Train surface already fits the "server never computes chess" model.
 """
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, Optional
 
 import chess
@@ -94,10 +93,9 @@ def smart_prompt_to_json(
     }
 
 
-def walk_opening_nodes(root: OpeningNode) -> Iterator[OpeningNode]:
-    yield root
-    for child in root.children:
-        yield from walk_opening_nodes(child)
+def node_annotation(node: OpeningNode) -> str:
+    """The author's own strategy note for a move: its idea, plan or comment."""
+    return (node.strategic_idea or node.typical_plan or (node.comment or "")).strip()
 
 
 def heuristic_strategy(san: Optional[str], piece_name: Optional[str]) -> str:

@@ -14,7 +14,7 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
-from prepforge_chess.services.scheduler import sibling_moves
+from prepforge_chess.services.scheduler import own_move_nodes_on, path_to_node, sibling_moves
 from prepforge_chess.services.srs import rating_for, review
 from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
@@ -110,7 +110,7 @@ class TrainingService:
         if existing is not None:
             repertoire = self._load_repertoire_or_raise(repertoire_id)
             intact = bool(existing.line_order) and all(
-                self._find_node(repertoire.root_node, node_id) is not None
+                repertoire.root_node.find(node_id) is not None
                 for node_id in existing.line_order
             )
             complete = existing.current_index >= len(existing.line_order)
@@ -151,31 +151,28 @@ class TrainingService:
         repertoire: Repertoire,
         mode: TrainingMode = TrainingMode.ALL_LINES,
     ) -> List[TrainingLine]:
-        all_lines = [
+        return [
             self._line_from_path(path)
             for path in self._leaf_paths(repertoire.root_node)
-            if self._own_move_nodes(path, repertoire)
+            if own_move_nodes_on(path, repertoire.color)
         ]
-        return all_lines
 
-    def current_prompt(self, session_id: str) -> Optional[TrainingPrompt]:
+    def current_prompt(self, session_id: str, *, skip: bool = False) -> Optional[TrainingPrompt]:
+        """The session's current prompt; ``skip`` first moves past the current line."""
         session = self._load_session_or_raise(session_id)
         repertoire = self._load_repertoire_or_raise(session.repertoire_id)
+        if skip:
+            if session.current_index >= len(session.line_order):
+                return None
+            session = replace(
+                session, current_index=session.current_index + 1, current_node_id=None,
+                updated_at=_utc_now(),
+            )
+            self.repository.save_training_session(session)
         return self._prompt_for_session(repertoire, session)
 
     def skip_current_line(self, session_id: str) -> Optional[TrainingPrompt]:
-        session = self._load_session_or_raise(session_id)
-        repertoire = self._load_repertoire_or_raise(session.repertoire_id)
-        if session.current_index >= len(session.line_order):
-            return None
-        updated = replace(
-            session,
-            current_index=session.current_index + 1,
-            current_node_id=None,
-            updated_at=_utc_now(),
-        )
-        self.repository.save_training_session(updated)
-        return self._prompt_for_session(repertoire, updated)
+        return self.current_prompt(session_id, skip=True)
 
     def submit_move(
         self, session_id: str, played_uci: str, *, hinted: bool = False, attempt: int = 1
@@ -211,20 +208,11 @@ class TrainingService:
                         fen_after_player=alternative.move.fen_after,
                         alternative=True,
                     )
-            graded = attempt <= 1
             updated_session, updated_progress = session, None
-            if graded:
-                progress = self.repository.lock_training_progress(
-                    conn, repertoire_id=repertoire.id,
-                    node_id=prompt.expected_node_id,
-                    owner_user_id=self._owner_or_raise(),
-                )
-                updated_session, updated_progress = record_attempt(
-                    session=session,
-                    progress=progress,
-                    node_id=prompt.expected_node_id,
-                    correct=correct,
-                    hinted=hinted,
+            if attempt <= 1:
+                updated_session, updated_progress = grade_attempt(
+                    self.repository, conn, session, repertoire.id, prompt.expected_node_id,
+                    correct=correct, hinted=hinted, owner_user_id=self._owner_or_raise(),
                 )
 
             completed_line = False
@@ -259,15 +247,6 @@ class TrainingService:
                 )
 
             self.repository.write_training_session(conn, updated_session)
-            if updated_progress is not None:
-                self.repository.write_training_progress(
-                    conn, repertoire_id=repertoire.id, progress=updated_progress,
-                    owner_user_id=self._owner_or_raise(),
-                )
-                self.repository.write_review(
-                    conn, owner_user_id=self._owner_or_raise(), node_id=prompt.expected_node_id,
-                    rating=rating_for(correct, hinted=hinted), reviewed_at=updated_progress.last_reviewed_at,
-                )
 
         # Surface the player's move result and the opponent's single reply so
         # the UI can animate them as two separate steps instead of jumping the
@@ -276,7 +255,7 @@ class TrainingService:
         fen_after_player = None
         reply_uci = reply_san = fen_after_reply = None
         if correct:
-            played_node = self._find_node(repertoire.root_node, prompt.expected_node_id)
+            played_node = repertoire.root_node.find(prompt.expected_node_id)
             if played_node is not None and played_node.move is not None:
                 played_san = played_node.move.san
                 fen_after_player = played_node.move.fen_after
@@ -309,7 +288,7 @@ class TrainingService:
         prompt: TrainingPrompt,
         played_uci: str,
     ) -> Optional[OpeningNode]:
-        path = self._path_to_node(repertoire.root_node, session.line_order[session.current_index])
+        path = path_to_node(repertoire.root_node, session.line_order[session.current_index])
         expected = next((node for node in path if node.id == prompt.expected_node_id), None)
         if expected is None:
             return None
@@ -329,7 +308,7 @@ class TrainingService:
         if session.current_index >= len(session.line_order):
             return None
         try:
-            path = self._path_to_node(
+            path = path_to_node(
                 repertoire.root_node, session.line_order[session.current_index]
             )
         except ValueError:
@@ -348,8 +327,8 @@ class TrainingService:
             return None
 
         line_node_id = session.line_order[session.current_index]
-        path = self._path_to_node(repertoire.root_node, line_node_id)
-        expected_nodes = self._own_move_nodes(path, repertoire)
+        path = path_to_node(repertoire.root_node, line_node_id)
+        expected_nodes = own_move_nodes_on(path, repertoire.color)
         if not expected_nodes:
             return None
 
@@ -379,8 +358,8 @@ class TrainingService:
     ) -> Optional[OpeningNode]:
         if session.current_index >= len(session.line_order):
             return None
-        path = self._path_to_node(repertoire.root_node, session.line_order[session.current_index])
-        expected_nodes = self._own_move_nodes(path, repertoire)
+        path = path_to_node(repertoire.root_node, session.line_order[session.current_index])
+        expected_nodes = own_move_nodes_on(path, repertoire.color)
         for index, node in enumerate(expected_nodes):
             if node.id == node_id:
                 if index + 1 < len(expected_nodes):
@@ -417,43 +396,6 @@ class TrainingService:
             uci=" ".join(move.uci for move in moves),
         )
 
-    def _own_move_nodes(self, path: List[OpeningNode], repertoire: Repertoire) -> List[OpeningNode]:
-        return [
-            node
-            for node in path
-            if node.move is not None
-            and node.move.side_to_move is repertoire.color
-            and node.is_enabled
-        ]
-
-
-    def _path_to_node(self, root: OpeningNode, node_id: str) -> List[OpeningNode]:
-        path: List[OpeningNode] = []
-
-        def visit(node: OpeningNode, current: List[OpeningNode]) -> bool:
-            if node.id == node_id:
-                path.extend(current)
-                return True
-            for child in node.children:
-                if visit(child, current + [child]):
-                    return True
-            return False
-
-        if root.id == node_id:
-            return []
-        if not visit(root, []):
-            raise ValueError("opening node not found: {0}".format(node_id))
-        return path
-
-    def _find_node(self, root: OpeningNode, node_id: str) -> Optional[OpeningNode]:
-        if root.id == node_id:
-            return root
-        for child in root.children:
-            found = self._find_node(child, node_id)
-            if found is not None:
-                return found
-        return None
-
     def _move_or_raise(self, node: OpeningNode) -> MoveRecord:
         if node.move is None:
             raise ValueError("opening node has no move: {0}".format(node.id))
@@ -475,6 +417,36 @@ class TrainingService:
         if not self.owner_user_id:
             raise ValueError("training service requires an owner")
         return self.owner_user_id
+
+
+def grade_attempt(
+    repository: RepertoireRepository,
+    conn,
+    session: TrainingSession,
+    repertoire_id: str,
+    node_id: str,
+    *,
+    correct: bool,
+    hinted: bool,
+    owner_user_id: Optional[str],
+) -> Tuple[TrainingSession, TrainingProgress]:
+    """Grade a first attempt inside ``conn``'s transaction: read-modify-write the
+    progress row under its lock (so a concurrent attempt on the same node is
+    never lost to a stale snapshot) and log the review."""
+    stored = repository.lock_training_progress(
+        conn, repertoire_id=repertoire_id, node_id=node_id, owner_user_id=owner_user_id
+    )
+    session, progress = record_attempt(
+        session=session, progress=stored, node_id=node_id, correct=correct, hinted=hinted
+    )
+    repository.write_training_progress(
+        conn, repertoire_id=repertoire_id, progress=progress, owner_user_id=owner_user_id
+    )
+    repository.write_review(
+        conn, owner_user_id=owner_user_id, node_id=node_id,
+        rating=rating_for(correct, hinted=hinted), reviewed_at=progress.last_reviewed_at,
+    )
+    return session, progress
 
 
 def record_attempt(

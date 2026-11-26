@@ -13,7 +13,6 @@ from dataclasses import replace
 from datetime import datetime, time, timedelta, timezone
 from typing import Any, Literal
 
-import chess
 from fsrs import Rating
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -24,6 +23,7 @@ from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import (
     Repertoire,
     TrainingMode,
+    TrainingProgress,
     TrainingSession,
 )
 from prepforge_chess.services import streak
@@ -35,10 +35,11 @@ from prepforge_chess.services.training_smart import REQUEUE_GAP
 from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.services.training_view import (
     heuristic_strategy,
+    node_annotation,
+    piece_name_at,
     prompt_to_json,
     smart_prompt_to_json,
     training_line_to_json,
-    walk_opening_nodes,
 )
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
@@ -47,15 +48,6 @@ router = APIRouter(prefix="/api/train", tags=["train"])
 # ChessCore wraps python-chess and holds no per-request state, so one shared instance
 # serves the prompts' legal-move lists.
 _CHESS = ChessCore()
-
-
-def _mode_or_400(raw: str | None) -> TrainingMode:
-    try:
-        return TrainingMode(raw) if raw is not None else TrainingMode.ALL_LINES
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="invalid training mode"
-        ) from exc
 
 
 def _trainable_repertoire(repo: WorkspaceRepository, repertoire_id: str, user: str) -> dict[str, Any]:
@@ -71,12 +63,11 @@ def _owned_session(
     """Gate for session-keyed endpoints: the caller's own session, on a repertoire
     they can still read (a revoked share ends its sessions). 404 otherwise."""
     session = repo.load_training_session(session_id)
-    if session is None or session.owner_user_id != owner:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="training session not found"
-        )
-    _, role = repo.access_role(session.repertoire_id, owner)
-    if role is None:
+    if (
+        session is None
+        or session.owner_user_id != owner
+        or repo.access_role(session.repertoire_id, owner)[1] is None
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="training session not found"
         )
@@ -99,7 +90,7 @@ def start(
     """Begin (or resume) the caller's trainer session over a repertoire they can read
     and return the first prompt plus the shuffled line plan."""
     _trainable_repertoire(repo, body.repertoire_id, owner)
-    mode = _mode_or_400(body.mode)
+    mode = TrainingMode(body.mode or TrainingMode.ALL_LINES)
     # The access gate above permits loading the repertoire by id here.
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
@@ -158,11 +149,7 @@ def record_miss(
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    node = next(
-        (n for n in walk_opening_nodes(repertoire.root_node) if n.id == body.node_id),
-        None,
-    )
-    if node is None:
+    if repertoire.root_node.find(body.node_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="opening node not found")
     with repo.engine.begin() as conn:
         progress = repo.lock_training_progress(
@@ -206,6 +193,18 @@ class SmartMoveBody(BaseModel):
     local_date: str | None = None
 
 
+def _progress_json(progress: TrainingProgress | None) -> dict[str, Any] | None:
+    if progress is None:
+        return None
+    return {
+        "node_id": progress.node_id,
+        "attempts": progress.attempts,
+        "correct_attempts": progress.correct_attempts,
+        "stability": progress.stability,
+        "due_at": progress.due_at,
+    }
+
+
 def _clamp(value: int | None, low: int, high: int) -> int | None:
     return None if value is None else max(low, min(high, value))
 
@@ -229,7 +228,7 @@ def _touch_streak(
 
 
 def _smart_summary_payload(
-    service: SmartTrainingService, repertoire: Repertoire, owner: str, *,
+    service: SmartTrainingService, repertoire: Repertoire, *,
     owned: bool = True, persist_health: bool = False,
 ) -> dict[str, Any]:
     """Repertoire health + tomorrow's due forecast — the smart session's
@@ -252,15 +251,14 @@ def _smart_summary_payload(
 
 
 def _mixed_summary_payload(
-    service: SmartTrainingService, reps: list[Repertoire], owner: str, shared_ids: set[str],
-    *, persist_health: bool = False,
+    service: SmartTrainingService, reps: list[Repertoire], *, persist_health: bool = False,
 ) -> dict[str, Any]:
     """The mixed-session bookend: per-repertoire health summed into one view
     (mastery_pct recomputed over the combined trainable count)."""
     health: dict[str, int] = {}
     due_tomorrow = 0
     for rep in reps:
-        part = _smart_summary_payload(service, rep, owner, owned=rep.id not in shared_ids,
+        part = _smart_summary_payload(service, rep, owned=rep.id not in service.shared_ids,
                                       persist_health=persist_health)
         for key, value in part["health"].items():
             health[key] = health.get(key, 0) + value
@@ -324,11 +322,9 @@ def smart_start(
             detail="repertoire has no trainable moves yet",
         )
     summary = (
-        _mixed_summary_payload(
-            service, service.active_repertoires(owner), owner, service.shared_ids
-        )
+        _mixed_summary_payload(service, service.active_repertoires(owner))
         if body.mixed
-        else _smart_summary_payload(service, repertoire, owner, owned=owned)
+        else _smart_summary_payload(service, repertoire, owned=owned)
     )
     return {
         "repertoire_id": repertoire.id,
@@ -360,9 +356,7 @@ def smart_start(
     }
 
 
-def _outlook(
-    service: SmartTrainingService, reps: list[Repertoire], owner: str, utc_offset: int
-) -> dict[str, Any]:
+def _outlook(service: SmartTrainingService, reps: list[Repertoire], utc_offset: int) -> dict[str, Any]:
     """Due now / by the end of the player's local day / this week, over the
     scope, and ``next``: when the soonest later review falls due (ISO, or None)."""
     now = datetime.now(timezone.utc)
@@ -406,8 +400,7 @@ def smart_summary(
     service = SmartTrainingService(repo, owner)
     if mixed:
         reps = service.active_repertoires(owner)
-        payload = _mixed_summary_payload(service, reps, owner, service.shared_ids,
-                                         persist_health=not preview)
+        payload = _mixed_summary_payload(service, reps, persist_health=not preview)
         scope_id = None
     elif not repertoire_id:
         raise HTTPException(
@@ -420,12 +413,12 @@ def smart_summary(
         if repertoire is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
         reps = [repertoire]
-        payload = _smart_summary_payload(service, repertoire, owner, owned=owned,
+        payload = _smart_summary_payload(service, repertoire, owned=owned,
                                          persist_health=not preview)
         scope_id = repertoire_id
     if preview:
         payload["next_session"] = service.preview(owner, scope_id, upcoming=5)
-        payload["outlook"] = _outlook(service, reps, owner, utc_offset)
+        payload["outlook"] = _outlook(service, reps, utc_offset)
     day = streak.resolve_day(local_date)
     payload["day_streak"] = streak.as_view(
         repo.get_user_setting(owner, streak.STREAK_KEY), day
@@ -463,15 +456,7 @@ def smart_move(
         "total_cards": len(result.session.line_order),
         "card_index": result.session.current_index,
         "mistakes": result.session.mistakes,
-        "progress": None
-        if result.progress is None
-        else {
-            "node_id": result.progress.node_id,
-            "attempts": result.progress.attempts,
-            "correct_attempts": result.progress.correct_attempts,
-            "stability": result.progress.stability,
-            "due_at": result.progress.due_at,
-        },
+        "progress": _progress_json(result.progress),
         "prompt": smart_prompt_to_json(result.next_prompt, _CHESS),
         "played_san": result.played_san,
         "fen_after_player": result.fen_after_player,
@@ -580,40 +565,15 @@ def hint(
     if prompt is None:
         return {"expected_uci": None, "expected_san": None}
 
-    uci = prompt.expected_move_uci
-    san = prompt.expected_move_san
-    piece_name: str | None = None
-    try:
-        board = _CHESS.board(prompt.fen_before)
-        piece = board.piece_at(chess.parse_square(uci[:2]))
-        if piece is not None:
-            piece_name = chess.piece_name(piece.piece_type)
-    except Exception:  # noqa: BLE001 - a malformed FEN just means no piece hint
-        pass
-
-    strategy: str | None = None
+    uci, san = prompt.expected_move_uci, prompt.expected_move_san
+    piece = piece_name_at(prompt.fen_before, uci)
     repertoire = repo.load_repertoire(prompt.repertoire_id)
-    if repertoire is not None:
-        node = next(
-            (
-                n
-                for n in walk_opening_nodes(repertoire.root_node)
-                if n.id == prompt.expected_node_id
-            ),
-            None,
-        )
-        if node is not None:
-            strategy = (
-                node.strategic_idea or node.typical_plan or (node.comment or "")
-            ).strip() or None
-    if not strategy:
-        strategy = heuristic_strategy(san, piece_name)
-
+    node = repertoire.root_node.find(prompt.expected_node_id) if repertoire else None
     return {
         "expected_uci": uci,
         "expected_san": san,
-        "piece": "Move the {0}".format(piece_name) if piece_name else "Find the move",
-        "strategy": strategy,
+        "piece": "Move the {0}".format(piece) if piece else "Find the move",
+        "strategy": (node_annotation(node) if node else "") or heuristic_strategy(san, piece),
     }
 
 
@@ -677,15 +637,7 @@ def move(
         "day_streak": _touch_streak(repo, owner, body.local_date),
         "mistakes": result.session.mistakes,
         "current_index": result.session.current_index,
-        "progress": None
-        if result.progress is None
-        else {
-            "node_id": result.progress.node_id,
-            "attempts": result.progress.attempts,
-            "correct_attempts": result.progress.correct_attempts,
-            "stability": result.progress.stability,
-            "due_at": result.progress.due_at,
-        },
+        "progress": _progress_json(result.progress),
         "prompt": prompt_to_json(result.next_prompt, _CHESS),
         "played_san": result.played_san,
         "fen_after_player": result.fen_after_player,

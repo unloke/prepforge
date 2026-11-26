@@ -15,6 +15,7 @@ import json
 import time
 import urllib.parse
 from collections import OrderedDict
+from contextlib import contextmanager
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
@@ -67,10 +68,15 @@ def _redirect_uri(request: Request) -> str:
     return f"{base}/api/lichess/callback"
 
 
-def _oauth_failure(error: str) -> RedirectResponse:
-    response = RedirectResponse(f"/?oauth_error={error}", status_code=status.HTTP_303_SEE_OTHER)
+def _end_flow(url: str) -> RedirectResponse:
+    """Redirect back to the app and drop the one-shot PKCE flow cookie."""
+    response = RedirectResponse(url, status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(_FLOW_COOKIE, path="/")
     return response
+
+
+def _oauth_failure(error: str) -> RedirectResponse:
+    return _end_flow(f"/?oauth_error={error}")
 
 
 def _links_for(db: Session, user_id: str) -> list[LinkedAccount]:
@@ -83,21 +89,54 @@ def _links_for(db: Session, user_id: str) -> list[LinkedAccount]:
     )
 
 
+def _self_links(db: Session, user_id: str) -> list[LinkedAccount]:
+    """Every linked identity, primary first ("self")."""
+    return sorted(_links_for(db, user_id), key=lambda link: not link.is_primary)
+
+
 def _link_for(db: Session, user_id: str) -> LinkedAccount | None:
-    links = _links_for(db, user_id)
-    for link in links:
-        if link.is_primary:
-            return link
-    return links[0] if links else None
+    return next(iter(_self_links(db, user_id)), None)
 
 
-def _accounts_out(links: list[LinkedAccount]) -> list[LinkedAccountOut]:
-    return [
-        LinkedAccountOut(
-            id=link.id, username=link.provider_user_id, is_primary=bool(link.is_primary)
+def _owned_link(db: Session, user_id: str, account_id: str) -> LinkedAccount:
+    link = db.scalar(
+        select(LinkedAccount).where(
+            LinkedAccount.id == account_id,
+            LinkedAccount.user_id == user_id,
+            LinkedAccount.provider == PROVIDER,
         )
-        for link in links
-    ]
+    )
+    if link is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown linked account")
+    return link
+
+
+def _link_status(db: Session, user_id: str) -> LinkStatus:
+    links = _links_for(db, user_id)
+    if not links:
+        return LinkStatus(linked=False, username=None, accounts=[])
+    primary = next((link for link in links if link.is_primary), links[0])
+    return LinkStatus(
+        linked=True,
+        username=primary.provider_user_id,
+        accounts=[
+            LinkedAccountOut(id=a.id, username=a.provider_user_id, is_primary=bool(a.is_primary))
+            for a in links
+        ],
+    )
+
+
+@contextmanager
+def _lichess_errors():
+    """Map upstream Lichess failures: rate limit -> 429, anything else -> 502
+    (this server proxied the fetch)."""
+    try:
+        yield
+    except lichess_fetch.GamesRateLimitedError as exc:
+        raise HTTPException(status_code=429, detail=str(exc),
+                            headers={"Retry-After": str(exc.retry_after)}) from exc
+    except lichess_fetch.LichessFetchError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
 
 def _lock_linked_accounts(db: Session, user_id: str) -> None:
@@ -118,13 +157,7 @@ def _demote_others(db: Session, user_id: str, keep_id: str) -> None:
 
 @router.get("")
 def status_(user: User = Depends(current_user), db: Session = Depends(get_db)) -> LinkStatus:
-    links = _links_for(db, user.id)
-    link = _link_for(db, user.id)
-    if link is None:
-        return LinkStatus(linked=False, username=None, accounts=[])
-    return LinkStatus(
-        linked=True, username=link.provider_user_id, accounts=_accounts_out(links)
-    )
+    return _link_status(db, user.id)
 
 
 class SetPrimaryBody(BaseModel):
@@ -138,25 +171,19 @@ def set_primary(
     db: Session = Depends(get_db),
 ) -> LinkStatus:
     _lock_linked_accounts(db, user.id)
-    link = db.scalar(
-        select(LinkedAccount).where(
-            LinkedAccount.id == body.account_id,
-            LinkedAccount.user_id == user.id,
-            LinkedAccount.provider == PROVIDER,
-        )
-    )
-    if link is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown linked account")
+    link = _owned_link(db, user.id, body.account_id)
     link.is_primary = True
     _demote_others(db, user.id, link.id)
     db.commit()
-    links = _links_for(db, user.id)
-    return LinkStatus(
-        linked=True, username=link.provider_user_id, accounts=_accounts_out(links)
-    )
+    return _link_status(db, user.id)
 
 
-def _start_login_flow(request: Request, user: User, settings: Settings) -> Response:
+@router.get("/login")
+def login(
+    request: Request,
+    user: User = Depends(current_user),
+    settings: Settings = Depends(get_settings),
+) -> Response:
     verifier = generate_code_verifier()
     state = generate_state()
     url = build_authorize_url(
@@ -176,15 +203,6 @@ def _start_login_flow(request: Request, user: User, settings: Settings) -> Respo
         path="/",
     )
     return response
-
-
-@router.get("/login")
-def login(
-    request: Request,
-    user: User = Depends(current_user),
-    settings: Settings = Depends(get_settings),
-) -> Response:
-    return _start_login_flow(request, user, settings)
 
 
 @router.get("/callback")
@@ -237,10 +255,10 @@ def callback(
         )
     )
     if same_identity is not None:
-        same_identity.encrypted_token = encrypted
-        same_identity.is_primary = True
-        _demote_others(db, user.id, same_identity.id)
-        db.commit()
+        # Relinking an identity refreshes its token and makes it primary.
+        link = same_identity
+        link.encrypted_token = encrypted
+        link.is_primary = True
     else:
         link = LinkedAccount(
             user_id=user.id,
@@ -251,13 +269,10 @@ def callback(
         )
         db.add(link)
         db.flush()
-        if link.is_primary:
-            _demote_others(db, user.id, link.id)
-        db.commit()
-
-    response = RedirectResponse("/?lichess=linked", status_code=status.HTTP_303_SEE_OTHER)
-    response.delete_cookie(_FLOW_COOKIE, path="/")
-    return response
+    if link.is_primary:
+        _demote_others(db, user.id, link.id)
+    db.commit()
+    return _end_flow("/?lichess=linked")
 
 
 @router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -265,15 +280,7 @@ def unlink_one(
     account_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)
 ) -> Response:
     _lock_linked_accounts(db, user.id)
-    link = db.scalar(
-        select(LinkedAccount).where(
-            LinkedAccount.id == account_id,
-            LinkedAccount.user_id == user.id,
-            LinkedAccount.provider == PROVIDER,
-        )
-    )
-    if link is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown linked account")
+    link = _owned_link(db, user.id, account_id)
     was_primary = bool(link.is_primary)
     db.delete(link)
     db.flush()
@@ -314,34 +321,13 @@ _EXPLORER_CACHE_CAP = 500
 _explorer_cache: OrderedDict[str, tuple[float, dict]] = OrderedDict()
 
 
-def _link_for_account(db: Session, user_id: str, account_id: str | None) -> LinkedAccount | None:
-    if account_id:
-        link = db.scalar(
-            select(LinkedAccount).where(
-                LinkedAccount.id == account_id,
-                LinkedAccount.user_id == user_id,
-                LinkedAccount.provider == PROVIDER,
-            )
-        )
-        if link is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="unknown linked account"
-            )
-        return link
-    return _link_for(db, user_id)
-
-
 def _any_linked_token(db: Session, user_id: str) -> str | None:
     """The first usable OAuth token across ALL linked identities, primary first.
 
     The explorer only needs *a* token, so one account whose token can no longer
     be decrypted (key rotation) must not disable the explorer while
     another linked account still has a working one."""
-    links = _links_for(db, user_id)
-    links = [link for link in links if link.is_primary] + [
-        link for link in links if not link.is_primary
-    ]
-    for link in links:
+    for link in _self_links(db, user_id):
         if not link.encrypted_token:
             continue
         try:
@@ -453,13 +439,12 @@ def _run_compare(
         # Composer resolved the selection client-side, so an external-only
         # selection (every linked account unpicked) must not fall back to all
         # linked identities. Only an absent list means "self default".
-        links = [_link_for_account(db, user.id, aid) for aid in account_ids]
+        links = [_owned_link(db, user.id, aid) if aid else _link_for(db, user.id)
+                 for aid in account_ids]
     elif account_id:
-        links = [_link_for_account(db, user.id, account_id)]
+        links = [_owned_link(db, user.id, account_id)]
     else:
-        links = _links_for(db, user.id)
-        primaries = [link for link in links if link.is_primary]
-        links = primaries + [link for link in links if not link.is_primary]
+        links = _self_links(db, user.id)
     verified_usernames = frozenset(
         link.provider_user_id for link in _links_for(db, owner) if link.provider_user_id
     )
@@ -481,7 +466,7 @@ def _run_compare(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     source_errors: list[dict] = []
-    try:
+    with _lichess_errors():
         if len(usernames) == 1:
             summaries = lichess_fetch.compare_recent_games(
                 repo, usernames[0], count, owner_user_id=owner
@@ -492,12 +477,6 @@ def _run_compare(
                 repo, usernames, count, owner_user_id=owner,
                 verified_usernames=verified_usernames, source_errors=source_errors
             )
-    except lichess_fetch.GamesRateLimitedError as exc:
-        raise HTTPException(status_code=429, detail=str(exc),
-                            headers={"Retry-After": str(exc.retry_after)}) from exc
-    except lichess_fetch.LichessFetchError as exc:
-        # Upstream Lichess failed -- this server proxied the fetch, so 502.
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     summaries = [s for s, _ in pairs]
     # Close the play→train loop: a game where the user left their own prep becomes a
     # recall miss on the forgotten node, so it surfaces in the next smart session.
@@ -603,14 +582,7 @@ def latest(
     """
     if light:
         include_moves = False
-    if account_id:
-        links = [_link_for_account(db, user.id, account_id)]
-    else:
-        # "Self": every linked identity, primary first.
-        links = _links_for(db, user.id)
-        primaries = [link for link in links if link.is_primary]
-        others = [link for link in links if not link.is_primary]
-        links = primaries + others
+    links = [_owned_link(db, user.id, account_id)] if account_id else _self_links(db, user.id)
     if not links or not any(link.provider_user_id for link in links):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -620,24 +592,10 @@ def latest(
         lichess_fetch.validate_fetch_budget(links, 1)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    try:
-        if include_moves:
-            game, source = lichess_fetch.newest_game_across(
-                [link.provider_user_id for link in links],
-                per_account=1,
-                with_moves=True,
-            )
-        else:
-            game, source = lichess_fetch.newest_game_across(
-                [link.provider_user_id for link in links],
-                per_account=1,
-                with_moves=False,
-            )
-    except lichess_fetch.GamesRateLimitedError as exc:
-        raise HTTPException(status_code=429, detail=str(exc),
-                            headers={"Retry-After": str(exc.retry_after)}) from exc
-    except lichess_fetch.LichessFetchError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    with _lichess_errors():
+        game, source = lichess_fetch.newest_game_across(
+            [link.provider_user_id for link in links], per_account=1, with_moves=include_moves
+        )
     if game is None:
         return {"has_game": False}
     last_seen = repo.get_user_setting(user.id, _LAST_SEEN_KEY)

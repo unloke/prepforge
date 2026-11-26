@@ -177,10 +177,8 @@ def encode_wdl(wdl: Optional[Mapping[str, float]]) -> Optional[Tuple[int, int, i
     """Store WDL as permille integers so keys are not repeated as JSON."""
     if not wdl:
         return None
-    def _milli(name: str) -> int:
-        raw = wdl.get(name, 0.0)
-        return int(round(float(raw) * 1000.0))
-    return _milli("win"), _milli("draw"), _milli("loss")
+    win, draw, loss = (int(round(float(wdl.get(name, 0.0)) * 1000.0)) for name in ("win", "draw", "loss"))
+    return win, draw, loss
 
 
 def decode_wdl(
@@ -523,21 +521,17 @@ def move_signature(initial_fen: Optional[str], moves: Iterable[str]) -> str:
 
 def move_needs_row(move: MoveRecord) -> bool:
     """True when a ply carries anything that cannot be rebuilt from UCI + FEN."""
-    if move.classification is not MoveClassification.UNKNOWN:
-        return True
-    if move.comment:
-        return True
-    if move.generated_comment:
-        return True
-    if move.tags:
-        return True
-    if move.engine_eval_before is not None or move.engine_eval_after is not None:
-        return True
-    if move.best_move_eval is not None or move.best_move_uci:
-        return True
-    if move.source not in (MoveSource.IMPORTED_PGN, MoveSource.LICHESS_GAME, MoveSource.HUMAN_GAME):
-        return True
-    return False
+    return bool(
+        move.classification is not MoveClassification.UNKNOWN
+        or move.comment
+        or move.generated_comment
+        or move.tags
+        or move.engine_eval_before is not None
+        or move.engine_eval_after is not None
+        or move.best_move_eval is not None
+        or move.best_move_uci
+        or move.source not in (MoveSource.IMPORTED_PGN, MoveSource.LICHESS_GAME, MoveSource.HUMAN_GAME)
+    )
 
 
 def export_pgn(game: Game) -> str:
@@ -567,7 +561,6 @@ def export_pgn(game: Game) -> str:
             continue
         pgn_game.headers[str(key)] = str(value)
     node: chess.pgn.GameNode = pgn_game
-    replay = chess.Board(game.initial_fen)
     for record in game.moves:
         move = chess.Move.from_uci(record.uci)
         node = node.variations[0] if node.variations else node.add_variation(move)
@@ -577,9 +570,58 @@ def export_pgn(game: Game) -> str:
             part for part in (record.comment, record.generated_comment) if part
         )
         node.comment = display
-        replay.push(move)
     return pgn_game.accept(chess.pgn.StringExporter(headers=True, variations=True, comments=True))
 
+
+def _link_root(
+    root_fen: str,
+    nodes: Dict[str, OpeningNode],
+    arriving_uci: Mapping[str, Optional[str]],
+) -> Tuple[Optional[OpeningNode], Dict[Optional[str], List[OpeningNode]], Optional[chess.Board]]:
+    """The root (with its position, side and synthetic arriving move), the
+    parent -> children index, and a board parked at the root position.
+
+    The root row can carry its own arriving move (a repertoire rooted at its first
+    move). Only that UCI is stored, not the position before it, so the record is
+    minimal. SYNTHETIC-METADATA CONTRACT (do not widen): only ``uci``, ``ply``
+    (half-moves elapsed at the root) and ``side_to_move`` (the opposite of the
+    root's own) are trustworthy, and every path-based consumer (training,
+    scheduler, matching, progress) reads exactly these. ``move_number`` is the
+    root FEN's fullmove field (one high for black roots), ``san`` mirrors the UCI
+    and both FENs echo the root's own: display filler that must never feed board
+    or PGN reconstruction. Dropping the move would make the repertoire appear to
+    start one ply later than it does.
+    """
+    children: Dict[Optional[str], List[OpeningNode]] = {}
+    for node in nodes.values():
+        children.setdefault(node.parent_id, []).append(node)
+    root = next((n for n in nodes.values() if n.parent_id is None), None)
+    if root is None:
+        return None, children, None
+    board = chess.Board(canonicalize_fen(root_fen))
+    root.fen = board.fen()
+    root.side_to_move = _color_from_board(board)
+    root_uci = arriving_uci.get(root.id)
+    if root_uci:
+        root.move = MoveRecord(
+            uci=root_uci,
+            san=root_uci,
+            fen_before=root.fen,
+            fen_after=root.fen,
+            move_number=board.fullmove_number,
+            ply=board.ply(),
+            side_to_move=root.side_to_move.opponent,
+            source=root.source,
+        )
+    root.children = []
+    return root, children, board
+
+
+def _arriving(arriving_uci: Mapping[str, Optional[str]], node: OpeningNode) -> str:
+    uci = arriving_uci.get(node.id)
+    if not uci:
+        raise ValueError("opening node {0} is missing arriving UCI".format(node.id))
+    return uci
 
 
 def shape_opening_tree(
@@ -596,37 +638,15 @@ def shape_opening_tree(
     empty and ``san`` is the UCI placeholder (the same synthetic-record contract
     as a root that carries its own arriving move).
     """
-    children: Dict[Optional[str], List[OpeningNode]] = {}
-    for node in nodes.values():
-        children.setdefault(node.parent_id, []).append(node)
-
-    root = next((n for n in nodes.values() if n.parent_id is None), None)
+    root, children, board = _link_root(root_fen, nodes, arriving_uci)
     if root is None:
         return None
-    root.fen = canonicalize_fen(root_fen)
-    board = chess.Board(root.fen)
-    root.side_to_move = _color_from_board(board)
     root_turn = root.side_to_move
     root_ply = board.ply()
 
-    root_uci = arriving_uci.get(root.id)
-    if root_uci:
-        root.move = MoveRecord(
-            uci=root_uci,
-            san=root_uci,
-            fen_before=root.fen,
-            fen_after=root.fen,
-            move_number=board.fullmove_number,
-            ply=root_ply,
-            side_to_move=root_turn.opponent,
-            source=root.source,
-        )
-
     def walk(node: OpeningNode, depth: int) -> None:
         for child in children.get(node.id, []):
-            uci = arriving_uci.get(child.id)
-            if not uci:
-                raise ValueError("opening node {0} is missing arriving UCI".format(child.id))
+            uci = _arriving(arriving_uci, child)
             ply = root_ply + depth + 1
             mover = root_turn if (depth + 1) % 2 == 1 else root_turn.opponent
             record = MoveRecord(
@@ -647,9 +667,8 @@ def shape_opening_tree(
             node.children.append(child)
             walk(child, depth + 1)
 
-    root.children = []
     walk(root, 0)
-    walk = None
+    walk = None  # break the closure's self-reference (see hydrate_opening_tree)
     return root
 
 
@@ -713,70 +732,19 @@ def hydrate_opening_tree(
     arriving_uci: Mapping[str, Optional[str]],
 ) -> Optional[OpeningNode]:
     """Fill fen / side / move on opening nodes by walking parent → arriving UCI."""
-    children: Dict[Optional[str], List[OpeningNode]] = {}
-    for node in nodes.values():
-        children.setdefault(node.parent_id, []).append(node)
-
-    root = next((n for n in nodes.values() if n.parent_id is None), None)
+    root, children, board = _link_root(root_fen, nodes, arriving_uci)
     if root is None:
         return None
-    root.fen = canonicalize_fen(root_fen)
-    # One board is created for the whole walk: replay_uci-style records are
-    # produced with push/pop on the way down, instead of re-parsing a full FEN
-    # per child (FEN parse/serialize dominated the old per-node replay).
-    board = chess.Board(root.fen)
-    root.side_to_move = _color_from_board(board)
-
-    root_uci = arriving_uci.get(root.id)
-    if root_uci:
-        # The root row can carry its own arriving move (a repertoire rooted at
-        # its first move). The stored rows keep only the UCI — the position that
-        # precedes the root is not persisted — so rehydrate a minimal record:
-        # the mover is the side to move AT the root's parent position (the
-        # opposite of the root's own side to move), and the move's ply is the
-        # number of half-moves already elapsed at the root. Dropping this move
-        # would make the repertoire appear to start one ply later than it does.
-        #
-        # SYNTHETIC-METADATA CONTRACT (matches its consumers; do not widen):
-        # only `uci`, `ply` (half-moves elapsed at the root) and `side_to_move`
-        # are fully trustworthy — every path-based consumer (training,
-        # scheduler, matching, progress) reads exactly these. `move_number` is
-        # the root FEN's fullmove field: right for white roots, one high for
-        # black roots — nothing consumes it (workspace filler + a FEN-first
-        # fallback in the client only). `san` mirrors the UCI and
-        # `fen_before`/`fen_after` both echo the root's own FEN because the
-        # pre-root position is not persisted; these are display-only filler
-        # (e.g. OpeningTreeItem/"root" rows) and must never feed board or PGN
-        # reconstruction. Correct san/fens would need the parent position,
-        # which the schema does not store. Known paths that receive the root
-        # node and only touch these fields: match_game_to_repertoire
-        # (uci/ply), opening_item_to_json (filler, depth-0-guarded in UI),
-        # _move_to_dict/export helpers (filler), and mastery/health counting
-        # (side_to_move via _is_trainable).
-        root.move = MoveRecord(
-            uci=root_uci,
-            san=root_uci,
-            fen_before=root.fen,
-            fen_after=root.fen,
-            move_number=board.fullmove_number,
-            ply=board.ply(),
-            side_to_move=_color_from_board(board).opponent,
-            source=root.source,
-        )
 
     def walk(node: OpeningNode, fen: str) -> None:
-        # Child nodes replay from the parent's real FEN, so their MoveRecord is
-        # fully hydrated — unlike the root's synthetic record above. ``board``
-        # is parked at ``fen`` on entry: each child is reached by one push and
-        # left by one pop, so no position is ever re-parsed from a FEN string.
-        # ``fen`` is the already-serialized current position (the parent's
-        # ``fen_after``), so ``fen_before`` needs no second serialization.
+        # Children replay from the parent's real FEN, so their records are fully
+        # hydrated. ``board`` is parked at ``fen`` (the parent's serialized
+        # ``fen_after``) on entry: each child is one push and one pop, so no
+        # position is re-parsed or serialized twice.
         for child in children.get(node.id, []):
-            uci = arriving_uci.get(child.id)
-            if not uci:
-                raise ValueError("opening node {0} is missing arriving UCI".format(child.id))
-            source = child.source
-            record = _replay_on_board(board, uci, source=source, fen_before=fen)
+            record = _replay_on_board(
+                board, _arriving(arriving_uci, child), source=child.source, fen_before=fen
+            )
             if child.engine_evaluation is not None:
                 record.engine_eval_after = child.engine_evaluation
             child.move = record
@@ -786,7 +754,6 @@ def hydrate_opening_tree(
             walk(child, record.fen_after)
             board.pop()
 
-    root.children = []
     walk(root, root.fen)
     # The recursive closure captures every node via ``children``. Break its
     # self-reference so released trees do not wait for cyclic GC to be freed.

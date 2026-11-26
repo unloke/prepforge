@@ -120,21 +120,14 @@ def card_counts(cards: Iterable[Optional[TrainingCard]]) -> Dict[str, int]:
 
 
 # --------------------------------------------------------------------------
-# Tree helpers (shared with SmartTrainingService; root-exclusive paths, same
-# semantics as TrainingService._path_to_node).
+# Tree helpers shared by both trainers and the exporter (root-exclusive paths).
 
 
 def index_nodes(root: OpeningNode) -> Dict[str, OpeningNode]:
     """Map every node id in the tree to its node, in one pass. Built once per
     repertoire load and reused for O(1) lookups and parent-walk paths, so the
     hot read paths (resume checks, per-card bundle) never re-DFS the whole tree."""
-    out: Dict[str, OpeningNode] = {}
-    stack = [root]
-    while stack:
-        node = stack.pop()
-        out[node.id] = node
-        stack.extend(node.children)
-    return out
+    return {node.id: node for node in root.walk()}
 
 
 def sibling_moves(
@@ -158,39 +151,38 @@ def path_to_node(
     """Nodes from the first move down to ``node_id`` inclusive (root excluded).
     Raises ``ValueError`` when the node is not in the tree.
 
-    When ``index`` (an ``index_nodes`` map for the same tree) is supplied the
-    path is rebuilt by walking ``parent_id`` pointers up to the root — O(depth)
-    and no per-call tree DFS. The fallback DFS keeps the helper usable without a
-    prebuilt index (and preserves the exact not-found semantics: a node that is
-    not a descendant of ``root`` raises)."""
+    With a prebuilt ``index``, follow parent pointers in O(depth). A one-off
+    lookup stops at the first match without indexing the whole tree."""
     if root.id == node_id:
         return []
-
-    if index is not None:
-        chain: List[OpeningNode] = []
-        cur: Optional[OpeningNode] = index.get(node_id)
-        while cur is not None and cur.id != root.id:
-            chain.append(cur)
-            cur = index.get(cur.parent_id) if cur.parent_id else None
-        if cur is None or cur.id != root.id:
-            raise ValueError("opening node not found: {0}".format(node_id))
-        chain.reverse()
-        return chain
-
-    path: List[OpeningNode] = []
-
-    def visit(node: OpeningNode, current: List[OpeningNode]) -> bool:
-        if node.id == node_id:
-            path.extend(current)
-            return True
-        for child in node.children:
-            if visit(child, current + [child]):
-                return True
-        return False
-
-    if not visit(root, []):
+    if index is None:
+        return _find_path(root, node_id)
+    chain: List[OpeningNode] = []
+    cur: Optional[OpeningNode] = index.get(node_id)
+    while cur is not None and cur.id != root.id:
+        chain.append(cur)
+        cur = index.get(cur.parent_id) if cur.parent_id else None
+    if cur is None:
         raise ValueError("opening node not found: {0}".format(node_id))
-    return path
+    chain.reverse()
+    return chain
+
+
+def _find_path(root: OpeningNode, node_id: str) -> List[OpeningNode]:
+    chain: List[OpeningNode] = []
+    branches = [iter(root.children)]
+    while branches:
+        node = next(branches[-1], None)
+        if node is None:
+            branches.pop()
+            if chain:
+                chain.pop()
+        elif node.id == node_id:
+            return [*chain, node]
+        elif node.children:
+            chain.append(node)
+            branches.append(iter(node.children))
+    raise ValueError("opening node not found: {0}".format(node_id))
 
 
 def own_move_nodes_on(path: Sequence[OpeningNode], color: Color) -> List[OpeningNode]:

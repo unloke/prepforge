@@ -84,10 +84,6 @@ def walk_effective(root: OpeningNode) -> Iterable[OpeningNode]:
         stack.extend(reversed(effective_children(node)))
 
 
-def _walk(root: OpeningNode) -> Iterable[OpeningNode]:
-    return walk_effective(root)
-
-
 def _is_trainable(node: OpeningNode, color: Color) -> bool:
     """A node the user actually drills: an own-side move on the effective
     (reachable) tree."""
@@ -108,7 +104,7 @@ def mastery_map(
     """Mastery state for every trainable (own-side) node, keyed by node id."""
     now = now or _now()
     out: Dict[str, str] = {}
-    for node in _walk(root):
+    for node in walk_effective(root):
         if _is_trainable(node, color):
             out[node.id] = node_mastery(progress_by_id.get(node.id), now=now)
     return out
@@ -126,7 +122,7 @@ def due_forecast(
     ``horizon_hours`` — the session-summary "X reviews land tomorrow" line."""
     now = now or _now()
     count = 0
-    for node in _walk(root):
+    for node in walk_effective(root):
         if not _is_trainable(node, color):
             continue
         progress = progress_by_id.get(node.id)
@@ -151,7 +147,7 @@ def due_outlook(
     review still ahead (None when none is scheduled)."""
     week_end = now + timedelta(days=7)
     out: Dict[str, Any] = {"now": 0, "today": 0, "week": 0, "next": None}
-    for node in _walk(root):
+    for node in walk_effective(root):
         if not _is_trainable(node, color):
             continue
         progress = progress_by_id.get(node.id)

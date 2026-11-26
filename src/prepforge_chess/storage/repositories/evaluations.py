@@ -66,24 +66,6 @@ class EvaluationRepository(Repository):
             result = conn.execute(delete(t.positions).where(t.positions.c.id.in_(self._orphan_position_select())))
             return int(result.rowcount or 0)
 
-    def _ensure_position(self, conn: Connection, fen: str, pos_cache: Dict[str, int]) -> int:
-        key = codec.position_key(fen)
-        cached = pos_cache.get(key)
-        if cached is not None:
-            return cached
-        packed = codec.pack_position(key)
-        stmt = (
-            _insert(conn, t.positions)
-            .values(key=packed)
-            .on_conflict_do_nothing(index_elements=["key"])
-        )
-        conn.execute(stmt)
-        pos_id = conn.execute(
-            select(t.positions.c.id).where(t.positions.c.key == packed)
-        ).scalar_one()
-        pos_cache[key] = int(pos_id)
-        return int(pos_id)
-
     @staticmethod
     def _evaluation_values(
         position_id: int, pos_key: str, evaluation: EngineEvaluation
@@ -120,40 +102,6 @@ class EvaluationRepository(Repository):
             )
         )
         return values
-
-    def _save_engine_evaluation(
-        self,
-        conn: Connection,
-        evaluation: Optional[EngineEvaluation],
-        fen: str,
-        pos_cache: Optional[Dict[str, int]] = None,
-    ) -> Optional[int]:
-        if evaluation is None:
-            return None
-        if pos_cache is None:
-            pos_cache = {}
-        pos_key = codec.position_key(fen)
-        position_id = self._ensure_position(conn, pos_key, pos_cache)
-        values = self._evaluation_values(position_id, pos_key, evaluation)
-        # Evaluations are immutable snapshots: identical content dedupes onto
-        # one row (cache hit below), while a DIFFERENT result carries a
-        # different fingerprint and therefore gets its own row. Nothing is ever
-        # rewritten, so rows referenced by earlier analyses/classifications can
-        # never change (improvement review D-01). The fingerprint already
-        # commits to position, engine and search limits, so it alone decides.
-        stmt = _insert(conn, t.engine_evaluations).values(**values)
-        stmt = stmt.on_conflict_do_nothing(
-            index_elements=["fingerprint"],
-        ).returning(t.engine_evaluations.c.id)
-        ev_id = conn.execute(stmt).scalar_one_or_none()
-        if ev_id is None:
-            # Identical snapshot already stored — reuse its id.
-            ev_id = conn.execute(
-                select(t.engine_evaluations.c.id).where(
-                    t.engine_evaluations.c.fingerprint == values["fingerprint"],
-                )
-            ).scalar_one()
-        return int(ev_id)
 
     def save_engine_evaluations_batched(
         self,

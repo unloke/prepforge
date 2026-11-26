@@ -22,150 +22,34 @@ class GameRepository(EvaluationRepository):
             move for move in game.moves if codec.move_needs_row(move)
         ]
 
-        # 1. Collect the unique position key of every evaluation once (chunked
-        # for the SQLite 999-variable cap and the Postgres 65535-parameter cap).
-        fen_keys: List[str] = []
-        seen_fens: set = set()
-        for move in annotated:
-            for evaluation, fen in (
-                (move.engine_eval_before, move.fen_before),
-                (move.engine_eval_after, move.fen_after),
-                (move.best_move_eval, move.fen_before),
-            ):
-                if evaluation is None:
-                    continue
-                key = codec.position_key(fen)
-                if key not in seen_fens:
-                    seen_fens.add(key)
-                    fen_keys.append(key)
-        pos_ids: Dict[str, int] = {}
-        FEN_CHUNK = 400
-        if fen_keys:
-            # Chunked multi-row VALUES (1 column per row; 400 is safely
-            # under both backends' parameter caps). One round-trip per
-            # chunk, not per position.
-            for chunk_start in range(0, len(fen_keys), FEN_CHUNK):
-                packed = {codec.pack_position(key): key for key in fen_keys[chunk_start : chunk_start + FEN_CHUNK]}
-                conn.execute(
-                    _insert(conn, t.positions)
-                    .values([{"key": key} for key in packed])
-                    .on_conflict_do_nothing(index_elements=["key"])
+        # 1. Positions and evaluations in bounded chunks. Evaluations are
+        # immutable snapshots deduped by their content fingerprint, so a
+        # re-analysis never rewrites a row another game references (D-01).
+        eval_ids = self.save_engine_evaluations_batched(
+            conn,
+            (
+                ((move.ply, slot), evaluation, fen)
+                for move in annotated
+                for slot, evaluation, fen in (
+                    ("before", move.engine_eval_before, move.fen_before),
+                    ("after", move.engine_eval_after, move.fen_after),
+                    ("best", move.best_move_eval, move.fen_before),
                 )
-                for row in conn.execute(
-                    select(t.positions.c.id, t.positions.c.key).where(
-                        t.positions.c.key.in_(list(packed))
-                    )
-                ).all():
-                    pos_ids[packed[bytes(row.key)]] = int(row.id)
+            ),
+        )
 
-        # 2. Deduplicate engine evaluations by their content fingerprint and
-        # insert them in chunks with RETURNING ids. The fingerprint commits to
-        # position, engine, search limits and result, so it is the whole key:
-        # identical content dedupes onto one row, a different result gets its
-        # own row, and nothing is ever rewritten (improvement review D-01).
-
-        def _eval_payload(evaluation, fen) -> Dict[str, Any]:
-            wdl = codec.encode_wdl(evaluation.wdl)
-            payload = {
-                "position_id": pos_ids[codec.position_key(fen)],
-                "engine": evaluation.engine,
-                "depth": codec.encode_search_limit(evaluation.depth),
-                "nodes": codec.encode_search_limit(evaluation.nodes),
-                "time_ms": codec.encode_search_limit(evaluation.time_ms),
-                "score_cp": evaluation.score_cp,
-                "mate_in": evaluation.mate_in,
-                "best_move_uci": evaluation.best_move_uci,
-                "pv": codec.pack_pv(evaluation.pv),
-                "wdl_win": None if wdl is None else wdl[0],
-                "wdl_draw": None if wdl is None else wdl[1],
-                "wdl_loss": None if wdl is None else wdl[2],
-            }
-            payload["fingerprint"] = codec.fingerprint_bytes(codec.evaluation_fingerprint(
-                engine=payload["engine"],
-                position_fen=codec.position_key(fen),
-                depth=payload["depth"],
-                nodes=payload["nodes"],
-                time_ms=payload["time_ms"],
-                score_cp=payload["score_cp"],
-                mate_in=payload["mate_in"],
-                best_move_uci=payload["best_move_uci"],
-                pv=codec.encode_pv(evaluation.pv),
-                wdl_win=payload["wdl_win"],
-                wdl_draw=payload["wdl_draw"],
-                wdl_loss=payload["wdl_loss"],
-            ))
-            return payload
-
-        eval_keys: List[bytes] = []
-        seen_evals: set = set()
-        eval_payloads: Dict[bytes, Dict[str, Any]] = {}
-        for move in annotated:
-            for evaluation, fen in (
-                (move.engine_eval_before, move.fen_before),
-                (move.engine_eval_after, move.fen_after),
-                (move.best_move_eval, move.fen_before),
-            ):
-                if evaluation is None:
-                    continue
-                payload = _eval_payload(evaluation, fen)
-                key = payload["fingerprint"]
-                if key in seen_evals:
-                    continue
-                seen_evals.add(key)
-                eval_keys.append(key)
-                eval_payloads[key] = payload
-        eval_ids: Dict[bytes, int] = {}
-        if eval_payloads:
-            # Same SQLite executemany-upsert limitation as move rows: use
-            # chunked multi-row VALUES (13 columns per eval row → a 40-row
-            # chunk is 520 variables). One round-trip per chunk.
-            CHUNK = 40
-            for chunk_start in range(0, len(eval_keys), CHUNK):
-                chunk = eval_keys[chunk_start : chunk_start + CHUNK]
-                stmt = _insert(conn, t.engine_evaluations).values(
-                    [eval_payloads[key] for key in chunk]
-                )
-                stmt = stmt.on_conflict_do_nothing(index_elements=["fingerprint"]).returning(
-                    t.engine_evaluations.c.id,
-                    t.engine_evaluations.c.fingerprint,
-                )
-                for row in conn.execute(stmt).all():
-                    eval_ids[row.fingerprint] = int(row.id)
-            # RETURNING only yields the rows this call INSERTED — snapshots
-            # already stored (cache hits) come back via these selects (same
-            # variable-cap reason as above).
-            missing = [key for key in eval_keys if key not in eval_ids]
-            for start in range(0, len(missing), FEN_CHUNK):
-                chunk = missing[start : start + FEN_CHUNK]
-                rows = conn.execute(
-                    select(
-                        t.engine_evaluations.c.id,
-                        t.engine_evaluations.c.fingerprint,
-                    ).where(t.engine_evaluations.c.fingerprint.in_(chunk))
-                ).all()
-                for row in rows:
-                    eval_ids[row.fingerprint] = int(row.id)
-
-        def _eval_id(evaluation, fen) -> Optional[int]:
-            if evaluation is None:
-                return None
-            return eval_ids.get(_eval_payload(evaluation, fen)["fingerprint"])
-
-        # 3. Deterministic upsert of move rows by (game_id, ply) in one
+        # 2. Deterministic upsert of move rows by (game_id, ply) in one
         # bulk statement. It replaces annotations on re-analysis; plies
         # that no longer need a row (unclassified, uncommented) are
         # deleted so the game never keeps stale annotations.
-        # NOTE: one multi-row VALUES would trip the SQLite 999-variable
-        # cap (12 columns × 80 rows), so rows go in parametrized
-        # executemany chunks — one round-trip per chunk, same row count.
         move_rows = [
             {
                 "game_id": game.id,
                 "ply": move.ply,
-                "engine_eval_before_id": _eval_id(move.engine_eval_before, move.fen_before),
-                "engine_eval_after_id": _eval_id(move.engine_eval_after, move.fen_after),
+                "engine_eval_before_id": eval_ids.get((move.ply, "before")),
+                "engine_eval_after_id": eval_ids.get((move.ply, "after")),
                 "best_move_uci": move.best_move_uci,
-                "best_move_eval_id": _eval_id(move.best_move_eval, move.fen_before),
+                "best_move_eval_id": eval_ids.get((move.ply, "best")),
                 "classification": move.classification.value,
                 "comment": move.comment,
                 "generated_comment": move.generated_comment,
@@ -186,28 +70,15 @@ class GameRepository(EvaluationRepository):
                 stmt = _insert(conn, t.moves).values(chunk)
                 stmt = stmt.on_conflict_do_update(
                     index_elements=["game_id", "ply"],
-                    set_={
-                        "engine_eval_before_id": stmt.excluded.engine_eval_before_id,
-                        "engine_eval_after_id": stmt.excluded.engine_eval_after_id,
-                        "best_move_uci": stmt.excluded.best_move_uci,
-                        "best_move_eval_id": stmt.excluded.best_move_eval_id,
-                        "classification": stmt.excluded.classification,
-                        "comment": stmt.excluded.comment,
-                        "generated_comment": stmt.excluded.generated_comment,
-                        "tags_json": stmt.excluded.tags_json,
-                        "source": stmt.excluded.source,
-                    },
+                    set_={col: stmt.excluded[col] for col in chunk[0] if col not in ("game_id", "ply")},
                 )
                 conn.execute(stmt)
-        kept = {move.ply for move in annotated}
-        if kept:
-            conn.execute(
-                delete(t.moves).where(
-                    t.moves.c.game_id == game.id, ~t.moves.c.ply.in_(sorted(kept))
-                )
+        conn.execute(
+            delete(t.moves).where(
+                t.moves.c.game_id == game.id,
+                t.moves.c.ply.not_in(sorted({move.ply for move in annotated})),
             )
-        else:
-            conn.execute(delete(t.moves).where(t.moves.c.game_id == game.id))
+        )
 
         if result is not None:
             analysis_id = self._analysis_result_id(result)

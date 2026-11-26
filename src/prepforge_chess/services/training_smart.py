@@ -29,7 +29,9 @@ import uuid
 from dataclasses import dataclass, replace
 from types import SimpleNamespace
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
+
+from sqlalchemy import select
 
 from prepforge_chess.core.limits import (
     MAX_SYNC_ATTEMPTS,
@@ -58,9 +60,13 @@ from prepforge_chess.services.scheduler import (
     preorder_index,
     sibling_moves,
 )
-from prepforge_chess.services.srs import rating_for
-from prepforge_chess.services.training import record_attempt
-from prepforge_chess.services.training_view import heuristic_strategy, piece_name_at
+from prepforge_chess.services.training import grade_attempt
+from prepforge_chess.services.training_view import (
+    heuristic_strategy,
+    node_annotation,
+    piece_name_at,
+)
+from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.codec import hydrate_opening_paths
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
@@ -137,6 +143,31 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _next_card(session: TrainingSession) -> TrainingSession:
+    return replace(
+        session, current_index=session.current_index + 1, current_node_id=None, updated_at=_utc_now()
+    )
+
+
+def _hint(node: OpeningNode) -> Tuple[str, str, bool]:
+    """(strategy, piece hint, whether the strategy is the author's annotation)."""
+    move = node.move
+    piece = piece_name_at(move.fen_before, move.uci)
+    annotation = node_annotation(node)
+    return (
+        annotation or heuristic_strategy(move.san, piece),
+        "Move the {0}".format(piece) if piece else "Find the move",
+        bool(annotation),
+    )
+
+
+def _check_receipt(stored: Tuple[str, object], node_id: str, correct: bool, attempt_uuid: str) -> None:
+    if stored[0] != node_id or bool(stored[1]) != correct:
+        raise ValueError(
+            "attempt_uuid {0} already recorded with different payload".format(attempt_uuid)
+        )
+
+
 class SmartTrainingService:
     def __init__(self, repository: WorkspaceRepository, owner_user_id: str | None = None):
         self.repository = repository
@@ -171,11 +202,8 @@ class SmartTrainingService:
         return rep
 
     def _node_index(self, repertoire_id: str) -> Dict[str, OpeningNode]:
-        index = self._index_cache.get(repertoire_id)
-        if index is None:
-            rep = self.repertoire(repertoire_id)
-            index = self._index_cache.get(repertoire_id, {}) if rep is not None else {}
-        return index
+        self.repertoire(repertoire_id)
+        return self._index_cache.get(repertoire_id, {})
 
     def _index_for(self, repertoire: Repertoire) -> Dict[str, OpeningNode]:
         """The node index of THIS object — the service cache's when canonical,
@@ -484,26 +512,20 @@ class SmartTrainingService:
 
     # ----------------------------------------------------------------- prompt
 
-    def current_prompt(self, session_id: str) -> Optional[SmartPrompt]:
+    def current_prompt(self, session_id: str, *, skip: bool = False) -> Optional[SmartPrompt]:
+        """The session's current prompt; ``skip`` first moves past the current card."""
         session = self._load_session_or_raise(session_id)
         repertoire = self._load_repertoire_or_raise(session.repertoire_id)
+        if skip:
+            if session.current_index >= len(session.line_order):
+                return None
+            session = _next_card(session)
+            self.repository.save_training_session(session)
         context = self._context(session, repertoire)
         return self._prompt_from_context(context) if context is not None else None
 
     def skip_card(self, session_id: str) -> Optional[SmartPrompt]:
-        session = self._load_session_or_raise(session_id)
-        repertoire = self._load_repertoire_or_raise(session.repertoire_id)
-        if session.current_index >= len(session.line_order):
-            return None
-        session = replace(
-            session,
-            current_index=session.current_index + 1,
-            current_node_id=None,
-            updated_at=_utc_now(),
-        )
-        self.repository.save_training_session(session)
-        context = self._context(session, repertoire)
-        return self._prompt_from_context(context) if context is not None else None
+        return self.current_prompt(session_id, skip=True)
 
     def _context(
         self, session: TrainingSession, repertoire: Repertoire, *, conn=None
@@ -522,12 +544,7 @@ class SmartTrainingService:
                     context = self._card_context(session, card_rep, card)
             if context is not None:
                 return context
-            session = replace(
-                session,
-                current_index=session.current_index + 1,
-                current_node_id=None,
-                updated_at=_utc_now(),
-            )
+            session = _next_card(session)
             if conn is None:
                 self.repository.save_training_session(session)
             else:
@@ -549,17 +566,14 @@ class SmartTrainingService:
             )
         hydrate_opening_paths(repertoire.root_node, ids)
 
-    def _card_context(
-        self,
-        session: TrainingSession,
-        repertoire: Repertoire,
-        card: TrainingCard,
-    ) -> Optional[_CardContext]:
+    def _card_line(
+        self, repertoire: Repertoire, card: TrainingCard
+    ) -> Optional[Tuple[List[OpeningNode], List[OpeningNode]]]:
+        """The card's path and live targets, hydrated for its payload; None when
+        an edit in Build took its targets off the line."""
         try:
             path = path_to_node(
-                repertoire.root_node,
-                card.last_target_id,
-                index=self._index_for(repertoire),
+                repertoire.root_node, card.last_target_id, index=self._index_for(repertoire)
             )
         except ValueError:
             return None
@@ -567,6 +581,18 @@ class SmartTrainingService:
         if targets is None:
             return None
         self._hydrate_card_line(repertoire, path, targets)
+        return path, targets
+
+    def _card_context(
+        self,
+        session: TrainingSession,
+        repertoire: Repertoire,
+        card: TrainingCard,
+    ) -> Optional[_CardContext]:
+        line = self._card_line(repertoire, card)
+        if line is None:
+            return None
+        path, targets = line
         expected_target_index = next(
             (i for i, node in enumerate(targets) if node.id == session.current_node_id),
             0,
@@ -588,12 +614,7 @@ class SmartTrainingService:
         expected = context.expected
         move = expected.move
         run_in = target_run_in(context.path, context.targets, context.expected_target_index)
-        start_fen = run_in[0].move.fen_before if run_in else move.fen_before
-        piece = piece_name_at(move.fen_before, move.uci)
-        annotation = (
-            expected.strategic_idea or expected.typical_plan or (expected.comment or "")
-        ).strip()
-        strategy = annotation or heuristic_strategy(move.san, piece)
+        strategy, piece_hint, annotated = _hint(expected)
         return SmartPrompt(
             session_id=context.session.id,
             repertoire_id=context.repertoire.id,
@@ -606,11 +627,11 @@ class SmartTrainingService:
             expected_move_uci=move.uci,
             expected_move_san=move.san,
             fen_before=move.fen_before,
-            start_fen=start_fen,
+            start_fen=run_in[0].move.fen_before if run_in else move.fen_before,
             run_in=run_in,
             hint_strategy=strategy,
-            hint_piece="Move the {0}".format(piece) if piece else "Find the move",
-            hint_is_annotation=bool(annotation),
+            hint_piece=piece_hint,
+            hint_is_annotation=annotated,
         )
 
     # ----------------------------------------------------------------- bundle
@@ -632,29 +653,16 @@ class SmartTrainingService:
             if card is None:
                 continue
             card_rep = self._card_repertoire(session, card, cache)
-            if card_rep is None:
+            resolved = self._card_line(card_rep, card) if card_rep is not None else None
+            if resolved is None:
                 continue
-            try:
-                path = path_to_node(
-                    card_rep.root_node,
-                    card.last_target_id,
-                    index=self._index_for(card_rep),
-                )
-            except ValueError:
-                continue
-            line = line_targets(path, card_rep.color, card)
-            if line is None:
-                continue
-            self._hydrate_card_line(card_rep, path, line)
+            path, line = resolved
             targets = []
             for target_index, node in enumerate(line):
                 move = node.move
                 path_pos = next(i for i, p in enumerate(path) if p.id == node.id)
                 run_in = target_run_in(path, line, target_index)
-                piece = piece_name_at(move.fen_before, move.uci)
-                annotation = (
-                    node.strategic_idea or node.typical_plan or (node.comment or "")
-                ).strip()
+                strategy, piece_hint, annotated = _hint(node)
                 reply = self._reply_after(path, node)
                 others = sibling_moves(card_rep.root_node, path, node)
                 targets.append(
@@ -675,14 +683,7 @@ class SmartTrainingService:
                         "alternatives": [
                             {"uci": o.move.uci, "san": o.move.san} for o in others
                         ],
-                        "hint": {
-                            "strategy": annotation
-                            or heuristic_strategy(move.san, piece),
-                            "piece": "Move the {0}".format(piece)
-                            if piece
-                            else "Find the move",
-                            "annotated": bool(annotation),
-                        },
+                        "hint": {"strategy": strategy, "piece": piece_hint, "annotated": annotated},
                         "reply": None
                         if reply is None or reply.move is None
                         else {
@@ -761,9 +762,6 @@ class SmartTrainingService:
             if self.repository.access_role(card.repertoire_id, session.owner_user_id)[1] is not None:
                 repertoire_ids.add(card.repertoire_id)
 
-        from prepforge_chess.storage import sa_tables as _t
-        from sqlalchemy import select as _select
-
         with self.repository.engine.begin() as conn:
             session = self.repository.lock_training_session(conn, session_id=session_id) or session
             if session_generation is not None and session_generation != session.created_at.isoformat():
@@ -772,98 +770,63 @@ class SmartTrainingService:
             # replace the current queue/position, even with new attempt UUIDs.
             state_applied = state_version is not None and state_version == session.state_version
             # Sync needs live node identities, not hydrated chess trees/evaluations.
-            rep_of_node = dict(conn.execute(_select(
-                _t.opening_nodes.c.id, _t.opening_nodes.c.repertoire_id,
-            ).where(_t.opening_nodes.c.repertoire_id.in_(repertoire_ids),
-                    _t.opening_nodes.c.id.in_([item.get("node_id") for item in attempts]))).all()) if attempts else {}
+            rep_of_node = dict(conn.execute(select(
+                t.opening_nodes.c.id, t.opening_nodes.c.repertoire_id,
+            ).where(t.opening_nodes.c.repertoire_id.in_(repertoire_ids),
+                    t.opening_nodes.c.id.in_([item.get("node_id") for item in attempts]))).all()) if attempts else {}
             receipts = {row.attempt_uuid: (row.node_id, row.correct) for row in conn.execute(
-                _select(_t.train_attempt_receipts.c.attempt_uuid,
-                        _t.train_attempt_receipts.c.node_id, _t.train_attempt_receipts.c.correct)
-                .where(_t.train_attempt_receipts.c.session_id == session_id,
-                       _t.train_attempt_receipts.c.attempt_uuid.in_(
+                select(t.train_attempt_receipts.c.attempt_uuid,
+                        t.train_attempt_receipts.c.node_id, t.train_attempt_receipts.c.correct)
+                .where(t.train_attempt_receipts.c.session_id == session_id,
+                       t.train_attempt_receipts.c.attempt_uuid.in_(
                            [item["attempt_uuid"] for item in attempts]))
             )} if attempts else {}
             written = 0
             for item in attempts:
                 node_id = item.get("node_id")
                 correct = bool(item.get("correct"))
-                hinted = bool(item.get("hinted"))
                 attempt_uuid = item.get("attempt_uuid")
                 rep_id = rep_of_node.get(node_id)
                 if rep_id is None:
                     continue
                 stored_row = receipts.get(attempt_uuid)
-                if stored_row is not None:
-                    if stored_row[0] != node_id or bool(stored_row[1]) != correct:
-                        raise ValueError(
-                            "attempt_uuid {0} already recorded with different payload".format(
-                                attempt_uuid
-                            )
-                        )
-                    continue
-                if not self.repository.record_attempt_receipt(
+                if stored_row is None and not self.repository.record_attempt_receipt(
                     conn, session_id=session_id, attempt_uuid=attempt_uuid,
                     node_id=node_id, correct=correct,
                 ):
                     stored_row = conn.execute(
-                        _select(
-                            _t.train_attempt_receipts.c.node_id,
-                            _t.train_attempt_receipts.c.correct,
+                        select(
+                            t.train_attempt_receipts.c.node_id,
+                            t.train_attempt_receipts.c.correct,
                         ).where(
-                            _t.train_attempt_receipts.c.session_id == session_id,
-                            _t.train_attempt_receipts.c.attempt_uuid == attempt_uuid,
+                            t.train_attempt_receipts.c.session_id == session_id,
+                            t.train_attempt_receipts.c.attempt_uuid == attempt_uuid,
                         )
                     ).one()
-                    if stored_row[0] != node_id or bool(stored_row[1]) != correct:
-                        raise ValueError(
-                            "attempt_uuid {0} already recorded with different payload".format(
-                                attempt_uuid
-                            )
-                        )
+                if stored_row is not None:
+                    _check_receipt(stored_row, node_id, correct, attempt_uuid)
                     continue
                 receipts[attempt_uuid] = (node_id, correct)
-                # Read-modify-write the progress row INSIDE the claimed
-                # transaction: lock it and compute from committed state, so a
-                # concurrent attempt on the same node cannot be lost. (Reading it
-                # before the transaction let a racing writer's committed update
-                # be overwritten by values computed from a stale snapshot.)
-                stored = self.repository.lock_training_progress(
-                    conn,
-                    repertoire_id=rep_id,
-                    node_id=node_id,
-                    owner_user_id=session_owner,
-                )
                 # The session lock is held for this entire batch. Fold every
                 # attempt into that locked snapshot, then write it once.
-                next_session, progress = record_attempt(
-                    session=session,
-                    progress=stored,
-                    node_id=node_id,
-                    correct=correct,
-                    hinted=hinted,
+                session, _ = grade_attempt(
+                    self.repository, conn, session, rep_id, node_id,
+                    correct=correct, hinted=bool(item.get("hinted")), owner_user_id=session_owner,
                 )
-                self.repository.write_training_progress(
-                    conn, repertoire_id=rep_id, progress=progress, owner_user_id=session_owner,
-                )
-                self.repository.write_review(
-                    conn, owner_user_id=session_owner, node_id=node_id,
-                    rating=rating_for(correct, hinted=hinted), reviewed_at=progress.last_reviewed_at,
-                )
-                session = next_session
                 written += 1
 
-            if state_applied and (queue is not None or card_index is not None):
-                if queue is not None:
-                    # Only well-formed encoded cards land; a malformed entry is dropped
-                    # rather than poisoning the stored session.
-                    cleaned = [raw for raw in queue if decode_card(raw) is not None]
-                if queue is not None:
+            # Only well-formed encoded cards land; a malformed entry is dropped
+            # rather than poisoning the stored session.
+            cleaned = None if queue is None else [raw for raw in queue if decode_card(raw) is not None]
+            moves_position = queue is not None or card_index is not None
+            if state_applied and moves_position:
+                if cleaned is not None:
                     session = replace(session, line_order=cleaned)
                 if card_index is not None:
                     clamped = max(0, min(int(card_index), len(session.line_order)))
                     session = replace(session, current_index=clamped, current_node_id=None)
                 session = replace(session, updated_at=_utc_now())
-            if written or state_applied and (queue is not None or card_index is not None):
+            if written or state_applied and moves_position:
                 self.repository.write_training_session(conn, session)
             self.sync_state_version = session.state_version
             # A lost response may retry an already committed state. Acknowledge
@@ -871,10 +834,9 @@ class SmartTrainingService:
             # view with different queue/position still cannot acquire a new token.
             state_matches = (
                 state_version is not None and state_version <= session.state_version
-                and (queue is not None or card_index is not None)
+                and moves_position
                 and session.current_node_id is None
-                and (queue is None or [raw for raw in queue if decode_card(raw) is not None]
-                     == session.line_order)
+                and (cleaned is None or cleaned == session.line_order)
                 and (card_index is None or int(card_index) == session.current_index)
             )
             self.sync_state_applied = state_applied or state_matches
@@ -927,22 +889,9 @@ class SmartTrainingService:
             progress: Optional[TrainingProgress] = None
             sr_written = attempt <= 1
             if sr_written:
-                stored = self.repository.lock_training_progress(
-                    conn, repertoire_id=card_rep.id, node_id=expected.id, owner_user_id=self._owner_or_raise()
-                )
-                session, progress = record_attempt(
-                    session=session,
-                    progress=stored,
-                    node_id=expected.id,
-                    correct=correct,
-                    hinted=hinted,
-                )
-                self.repository.write_training_progress(
-                    conn, repertoire_id=card_rep.id, progress=progress, owner_user_id=self._owner_or_raise()
-                )
-                self.repository.write_review(
-                    conn, owner_user_id=self._owner_or_raise(), node_id=expected.id,
-                    rating=rating_for(correct, hinted=hinted), reviewed_at=progress.last_reviewed_at,
+                session, progress = grade_attempt(
+                    self.repository, conn, session, card_rep.id, expected.id,
+                    correct=correct, hinted=hinted, owner_user_id=self._owner_or_raise(),
                 )
 
             card_completed = False
@@ -956,12 +905,7 @@ class SmartTrainingService:
                     )
                 else:
                     card_completed = True
-                    session = replace(
-                        session,
-                        current_index=session.current_index + 1,
-                        current_node_id=None,
-                        updated_at=_utc_now(),
-                    )
+                    session = _next_card(session)
             else:
                 session = replace(
                     session, current_node_id=expected.id, updated_at=_utc_now()

@@ -7,26 +7,13 @@ layers mastery/health on top for FastAPI ``/api/build/load``.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from prepforge_chess.core.models import EngineEvaluation, OpeningNode, Repertoire
 from prepforge_chess.services.progress import compute_health, mastery_map
 from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 _EMPTY_SUMMARY = {"added_nodes": 0, "updated_nodes": 0, "high_probability_unprepared": 0}
-
-
-def _walk_with_depth(root: OpeningNode) -> List[Tuple[OpeningNode, int]]:
-    """Iterative pre-order DFS producing (node, depth) pairs without intermediate items."""
-    out: List[Tuple[OpeningNode, int]] = []
-    stack: List[Tuple[OpeningNode, int]] = [(root, 0)]
-    while stack:
-        node, depth = stack.pop()
-        out.append((node, depth))
-        next_depth = depth + 1
-        for child in reversed(node.children):
-            stack.append((child, next_depth))
-    return out
 
 
 def engine_eval_to_json(ev: Optional[EngineEvaluation]) -> Optional[Dict[str, Any]]:
@@ -94,7 +81,7 @@ def build_workspace_payload(
     repertoire = repertoire or repository.load_repertoire(repertoire_id)
     if repertoire is None:
         raise ValueError("repertoire not found: {0}".format(repertoire_id))
-    walked = _walk_with_depth(repertoire.root_node)
+    walked = list(repertoire.root_node.walk_with_depth())
     if selected_node_id:
         selected = next((node for node, _ in walked if node.id == selected_node_id), None)
         if selected is None:
