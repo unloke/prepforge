@@ -248,4 +248,32 @@ describe("scout explorer enrichment generation", () => {
 
     expect(String(results.innerHTML)).toContain("FRESH_G2");
   });
+
+  it("drops the previous report's explorer read when a new scout starts", async () => {
+    await startScoutAndBeginExplorerFetch();
+
+    // The next Start streams one game and then holds the stream open.
+    let releaseStream;
+    streamGames.mockImplementation(async (_username, opts = {}) => {
+      opts.onGame?.({
+        gameId: "n1", color: "white", score: 0, ucis: ["d2d4"], sans: ["d4"],
+        datestamp: 3000, speed: "blitz", rating: 1500,
+      });
+      await new Promise((resolve) => { releaseStream = resolve; });
+      return { accepted: 1, lastDatestamp: 3000 };
+    });
+    const nextRun = view.runScout();
+    await vi.waitFor(() => expect(releaseStream).toBeDefined());
+
+    // The old report's read lands under the new scout.
+    resolveNextExplorerFetch("STALE_PREVIOUS");
+    await vi.advanceTimersByTimeAsync(0);
+    const results = elements.get("scout-results");
+    expect(String(results.innerHTML)).not.toContain("STALE_PREVIOUS");
+
+    releaseStream();
+    await vi.runOnlyPendingTimersAsync();
+    await nextRun;
+    expect(String(results.innerHTML)).not.toContain("STALE_PREVIOUS");
+  });
 });

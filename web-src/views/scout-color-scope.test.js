@@ -123,4 +123,23 @@ describe("Scout colour scope control", () => {
     release();
     await running;
   });
+
+  it("takes a new scope once the scout has finished", async () => {
+    // The next Start reads the select; locking it after a finished run left
+    // Reset as the only way to scout the other colour.
+    await view.runScout();
+    expect(elements.get("scout-btn").dataset.scoutAction).toBe("start");
+    expect(elements.get("scout-color").disabled).toBe(false);
+  });
+
+  it("keeps the scope locked while a full batch waits for Load older", async () => {
+    streamGames.mockImplementation(async (username, opts = {}) => {
+      opts.onGame?.({ gameId: "live1", color: "white", score: 1, ucis: ["e2e4"], sans: ["e4"], datestamp: 1000, speed: "blitz", rating: 1500 });
+      return { accepted: 1, received: 500, lastDatestamp: 1000 };
+    });
+    await view.runScout();
+    // Load older resumes the same run, with the scope it started with.
+    expect(elements.get("scout-btn").dataset.scoutAction).toBe("resume");
+    expect(elements.get("scout-color").disabled).toBe(true);
+  });
 });
