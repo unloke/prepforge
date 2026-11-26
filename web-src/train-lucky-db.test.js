@@ -1,4 +1,4 @@
-﻿import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { Chess } from "chess.js";
 
@@ -15,7 +15,6 @@ import {
   rememberLuckyPhase,
   sansFromPgn,
   scoreGamePositions,
-  swingFromSnapshot,
   verifyReplay,
   walkSans,
 } from "./train-lucky-db.js";
@@ -185,27 +184,6 @@ describe("nextLuckyPhase / rememberLuckyPhase", () => {
     const storage = memoryStorage();
     storage.setItem(LUCKY_PHASE_KEY, "junk");
     expect(nextLuckyPhase({ storage, rng: () => 0 })).toBe("opening");
-  });
-});
-
-describe("swingFromSnapshot", () => {
-  it("reads best move and eval swing in pawns", () => {
-    expect(
-      swingFromSnapshot({
-        pvs: [
-          { pv_uci: ["e2e4"], score_cp: 60 },
-          { pv_uci: ["d2d4"], score_cp: -40 },
-        ],
-      }),
-    ).toEqual({ engineBest: "e2e4", swingPawns: 1 });
-  });
-
-  it("handles mates and single-line snapshots", () => {
-    expect(
-      swingFromSnapshot({ pvs: [{ pv_uci: ["e2e4"], mate_in: 3 }] }),
-    ).toEqual({ engineBest: "e2e4" });
-    expect(swingFromSnapshot({ pvs: [] })).toBeNull();
-    expect(swingFromSnapshot(null)).toBeNull();
   });
 });
 
@@ -567,35 +545,7 @@ describe("luckyDbStart", () => {
     expect(fetchStats).toHaveBeenCalledTimes(1);
   });
 
-  it("confirms the winner with engine swing + Maia when provided", async () => {
-    const engine = {
-      open: vi.fn(async () => {}),
-      snapshot: vi.fn(() => ({
-        running: false,
-        pvs: [
-          { pv_uci: ["e2e4"], score_cp: 120 },
-          { pv_uci: ["d2d4"], score_cp: 20 },
-        ],
-      })),
-      close: vi.fn(async () => {}),
-    };
-    const maia = { predictions: vi.fn(async () => [{ move_uci: "d2d4" }]) };
-    const picked = await luckyDbStart({
-      phase: "middlegame",
-      storage: memoryStorage(),
-      rng: () => 0,
-      fetchStats: walkStats(),
-      engine,
-      maia,
-      rating: 1500,
-    });
-    expect(engine.open).toHaveBeenCalled();
-    expect(maia.predictions).toHaveBeenCalled();
-    expect(picked.evidence.maiaTop).toBe("d2d4");
-    expect(picked.evidence.swingPawns).toBeCloseTo(1, 5);
-  });
-
-  it("works with no engine and no Maia", async () => {
+  it("picks a position from the local and explorer score alone", async () => {
     const picked = await luckyDbStart({
       phase: "opening",
       storage: memoryStorage(),

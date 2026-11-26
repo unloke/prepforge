@@ -136,7 +136,7 @@ class ExplorerEvalEngine {
       if (this.engine) {
         try {
           this.engine.stopSearch();
-        } catch (_) {
+        } catch {
           /* best-effort */
         }
       }
@@ -394,7 +394,7 @@ export async function reloadOpenBuildTree() {
     // A reload after a role change: the banner and Copy follow the new role.
     hooks.build.updateBuildReadOnlyUi?.(payload);
     return true;
-  } catch (_) {
+  } catch {
     return false;
   }
 }

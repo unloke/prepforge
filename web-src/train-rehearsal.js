@@ -4,7 +4,7 @@ export function loadRehearsal(owner, rep) {
   try {
     const memo = JSON.parse(localStorage.getItem(key(owner, rep)) || "null");
     return memo?.training?.prompt && Array.isArray(memo.stats?.history) ? memo : null;
-  } catch (_) { return null; }
+  } catch { return null; }
 }
 
 export function saveRehearsal(owner, training, stats, attempt) {
@@ -13,7 +13,7 @@ export function saveRehearsal(owner, training, stats, attempt) {
     const name = key(owner, training.repertoire_id);
     if (training.prompt) localStorage.setItem(name, JSON.stringify({ training, stats, attempt }));
     else localStorage.removeItem(name);
-  } catch (_) { /* best effort */ }
+  } catch { /* best effort */ }
 }
 
 export function restoreRehearsal(owner, training) {
