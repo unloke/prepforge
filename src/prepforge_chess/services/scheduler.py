@@ -151,13 +151,12 @@ def path_to_node(
     """Nodes from the first move down to ``node_id`` inclusive (root excluded).
     Raises ``ValueError`` when the node is not in the tree.
 
-    The path is rebuilt by walking ``parent_id`` pointers up to the root, so a
-    caller holding an ``index`` (an ``index_nodes`` map for the same tree) pays
-    O(depth) per path instead of a tree walk."""
+    With a prebuilt ``index``, follow parent pointers in O(depth). A one-off
+    lookup stops at the first match without indexing the whole tree."""
     if root.id == node_id:
         return []
     if index is None:
-        index = index_nodes(root)
+        return _find_path(root, node_id)
     chain: List[OpeningNode] = []
     cur: Optional[OpeningNode] = index.get(node_id)
     while cur is not None and cur.id != root.id:
@@ -167,6 +166,23 @@ def path_to_node(
         raise ValueError("opening node not found: {0}".format(node_id))
     chain.reverse()
     return chain
+
+
+def _find_path(root: OpeningNode, node_id: str) -> List[OpeningNode]:
+    chain: List[OpeningNode] = []
+    branches = [iter(root.children)]
+    while branches:
+        node = next(branches[-1], None)
+        if node is None:
+            branches.pop()
+            if chain:
+                chain.pop()
+        elif node.id == node_id:
+            return [*chain, node]
+        elif node.children:
+            chain.append(node)
+            branches.append(iter(node.children))
+    raise ValueError("opening node not found: {0}".format(node_id))
 
 
 def own_move_nodes_on(path: Sequence[OpeningNode], color: Color) -> List[OpeningNode]:
