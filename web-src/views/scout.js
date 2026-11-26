@@ -1288,7 +1288,8 @@ export function createScoutView(deps) {
     }
 
     if (flush) {
-      try { await hardFlushBuild(); } catch (error) { setStatus(error.message); return null; }
+      // The line is queued on this device; the caller reports it as not synced.
+      try { await hardFlushBuild(); } catch (error) { setStatus(error.message, { severity: "error" }); return { syncError: error.message }; }
     }
     if (!complete || getBuildState()?.repertoire_id !== repId) {
       setStatus("Couldn't add the whole line to prep.", { severity: "error" });
@@ -1319,7 +1320,7 @@ export function createScoutView(deps) {
       const side = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
       const res = await scoutWriteLineToRep(line, repId, { side });
       const at = line.suggestedReply?.san || line.sans?.at(-1) || "position";
-      if (res) setStatus(res.alreadyPresent ? `Already in prep. Opened at ${at}.` : `Added line to prep. Opened at ${at}.`);
+      if (res && !res.syncError) setStatus(res.alreadyPresent ? `Already in prep. Opened at ${at}.` : `Added line to prep. Opened at ${at}.`);
     } finally {
       actionBusy = false;
     }
@@ -1352,7 +1353,7 @@ export function createScoutView(deps) {
       total: unique.length,
       onCancel: () => ctrl.abort(),
     });
-    let done = 0, written = 0, alreadyPresent = 0, failed = 0;
+    let done = 0, written = 0, alreadyPresent = 0, failed = 0, syncError = "";
     for (const line of unique) {
       if (ctrl.signal.aborted) break;
       notices.updateJob({ current: done, total: unique.length, message: `Adding ${done + 1}/${unique.length}` });
@@ -1362,7 +1363,8 @@ export function createScoutView(deps) {
           flush: done === unique.length - 1,
           side: oppColor === "white" ? "black" : "white",
         });
-        if (res && typeof res === "object" && res.alreadyPresent) alreadyPresent++;
+        if (res?.syncError) { syncError = res.syncError; written++; }
+        else if (res && typeof res === "object" && res.alreadyPresent) alreadyPresent++;
         else if (res) written++;
         else failed++;
       } catch { failed++; }
@@ -1371,14 +1373,15 @@ export function createScoutView(deps) {
     // Only the last line flushes. Stopped earlier, the lines already queued would
     // stay unsaved on this device until some later Build save.
     if (done > 0 && done < unique.length) {
-      try { await hardFlushBuild(); } catch (error) { setStatus(error.message); }
+      try { await hardFlushBuild(); } catch (error) { syncError = error.message; }
     }
-    const message = `Added ${countOf(written, "line")} to prep${alreadyPresent ? ` (${alreadyPresent} already present)` : ""}${failed ? ` · ${failed} failed` : ""}`;
+    // A failed sync stays in the result: the lines are still only on this device.
+    const message = `Added ${countOf(written, "line")} to prep${alreadyPresent ? ` (${alreadyPresent} already present)` : ""}${failed ? ` · ${failed} failed` : ""}${syncError ? ` · not synced yet: ${syncError}` : ""}`;
     notices.completeJob({
-      title: ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
+      title: syncError ? "Not synced" : ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
       message,
     });
-    setStatus(message);
+    setStatus(message, ...(syncError ? [{ severity: "error" }] : []));
   }
 
   async function copyScoutReport() {

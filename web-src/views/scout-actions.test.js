@@ -165,6 +165,30 @@ describe("Scout row actions", () => {
     expect(notices.completeJob).toHaveBeenCalledWith(expect.objectContaining({ title: "Stopped" }));
   });
 
+  it("keeps a failed sync in the result when Add all gaps is stopped", async () => {
+    let cancel;
+    const notices = { isBusy: () => false, startJob: vi.fn((job) => { cancel = job.onCancel; }), updateJob: vi.fn(), completeJob: vi.fn() };
+    const view = makeView({ notices, queueBuildAdd: vi.fn(() => cancel()), hardFlushBuild: vi.fn(async () => { throw new Error("Offline"); }) });
+    await view.__testHandlePrepareAll([{ ucis: ["d2d4"], sans: ["d4"] }, { ucis: ["c2c4"], sans: ["c4"] }], "black");
+    expect(notices.completeJob).toHaveBeenCalledWith({ title: "Not synced", message: "Added 1 line to prep · not synced yet: Offline" });
+    expect(deps.setStatus).toHaveBeenLastCalledWith("Added 1 line to prep · not synced yet: Offline", { severity: "error" });
+  });
+
+  it("keeps a failed sync of the last line in the result", async () => {
+    const view = makeView({ hardFlushBuild: vi.fn(async () => { throw new Error("Offline"); }) });
+    await view.__testHandlePrepareAll([{ ucis: ["d2d4"], sans: ["d4"] }, { ucis: ["c2c4"], sans: ["c4"] }], "black");
+    // The last line is queued on this device, not failed.
+    expect(deps.notices.completeJob).toHaveBeenCalledWith({ title: "Not synced", message: "Added 2 lines to prep · not synced yet: Offline" });
+    expect(deps.setStatus).toHaveBeenLastCalledWith("Added 2 lines to prep · not synced yet: Offline", { severity: "error" });
+    expect(deps.switchView).not.toHaveBeenCalled();
+  });
+
+  it("keeps a failed sync visible after a single Add to prep", async () => {
+    const view = makeView({ hardFlushBuild: vi.fn(async () => { throw new Error("Offline"); }) });
+    await view.__testHandleAddToPrep({ ucis: ["e2e4", "e7e5"], sans: ["e4", "e5"] }, "black");
+    expect(deps.setStatus).toHaveBeenLastCalledWith("Offline", { severity: "error" });
+  });
+
   it("reports a line Analyze could not open instead of saying it loaded", async () => {
     const view = makeView({
       loadPgnIntoAnalyze: vi.fn(async (_pgn, { onInvalid }) => { onInvalid("bad"); return false; }),
