@@ -637,3 +637,30 @@
 }
 
 .scout-engine-progress.is-idle:empty { display: none; }
+
+/* ---- History (toolbar): the runs this browser keeps ---- */
+.scout-history { position: relative; }
+.scout-history > summary { list-style: none; cursor: pointer; }
+.scout-history > summary::-webkit-details-marker { display: none; }
+.scout-history[open] > summary { background: var(--surface-3); }
+.scout-history-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  box-shadow: var(--shadow-2); /* taste-skill-ignore: the History list is a real overlay */
+}
+.scout-history-note { margin: 0; font-size: var(--fs-xs); }
+.scout-history-list { display: flex; flex-direction: column; align-self: stretch; margin: 0; padding: 0; list-style: none; }
+.scout-history-row { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.scout-history-name { flex: 1; min-width: 0; font-size: var(--fs-s); overflow-wrap: anywhere; }
+.scout-history-name .muted { display: block; font-size: var(--fs-xs); }

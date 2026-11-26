@@ -71,8 +71,9 @@ import { createPathGuardEngine } from "../scout-path-guard-engine.js";
 
 import {
   SCOUT_STREAM_BATCH, failedSources, recordStreamResults, renderSourceWarnings, scoutErrorHtml,
-  scoutLabel, scoutSourceFailureMessage, scoutStreamCapNoteHtml, sourcesToStream,
+  scoutLabel, scoutSourceFailureMessage, scoutStreamCapNoteHtml, sourcesToStream, streamWindow,
 } from "./scout-sources.js";
+import { createScoutSession, createScoutState, restoreScoutRun, scoutRunSnapshot, settleRefresh } from "./scout-session.js";
 import { captureScoutViewState, restoreScoutViewState, scoutPrefilterFailedNoteHtml } from "./scout-render-state.js";
 
 const RENDER_DEBOUNCE_MS = 400;
@@ -126,6 +127,9 @@ export function createScoutView(deps) {
     // Unified sign-in gate (app.js): false + sign-in modal for a guest.
     requireSignIn = () => true,
   } = deps;
+  // Scout history (scout-history.js): this account's saved runs, and a hook for the
+  // History list. From deps or, in the app, useHistory() once the controller binds it.
+  let { scoutHistory = null, currentOwnerId = () => null, onScoutHistorySaved = () => {} } = deps;
 
   let scoutModule = null;
   let scoutClient = null;
@@ -1483,56 +1487,8 @@ export function createScoutView(deps) {
     const lookups = { white: [], black: [] };
     for (const entry of loaded) if (entry) lookups[entry.rep.color].push(entry);
     const carry = scoutStateCarryover(scoutState, scoutLabel(usernames));
-    scoutState = {
-      usernames: usernames.slice(),
-      username: scoutLabel(usernames),
-      color,
-      games: [],
-      profile: { total: 0, speedCounts: {}, recentlyChanged: { white: false, black: false } },
-      lookups,
-      activeSpeed: carry.activeSpeed,
-      engineByColor: carry.engineByColor,
-      engineAggByColor: {},
-      explorerByColor: carry.explorerByColor,
-      sections: {},
-      ecoCache: carry.ecoCache,
-      maiaResults: carry.maiaResults,
-      maiaCache: carry.maiaCache,
-      maiaEnrichState: carry.maiaEnrichState,
-      prefilterEnrichState: PREFILTER_IDLE,
-      prefilterScopeKey: null,
-      prefilterPools: { white: [], black: [] },
-      prefilterRanked: { white: [], black: [] },
-      prefilteredLines: { white: [], black: [] },
-      stockfishDisplayLines: { white: [], black: [] },
-      prefilterCache: carry.prefilterCache,
-      maiaAttemptsUsed: 0,
-      // Persistent per-colour opening tries, grown one game at a time as the stream
-      // arrives (see insertIntoLiveTries) instead of rebuilt from every game each batch.
-      // Anchored to session start (later than any past game) so incremental insertion
-      // matches a one-shot build on every displayed stat — see insertGameIntoTrie.
-      liveTries: null,
-      liveTrieAnchor: Date.now(),
-      liveTrieSpeed: null,
-      liveTrieCount: 0,
-    };
-    scoutSession = {
-      usernames: usernames.slice(),
-      username: scoutLabel(usernames),
-      color,
-      controller: null,
-      state: "idle",
-      seenIds: new Set(),
-      // R-05: per-source cursor, progress and outcome (see scout-sources.js), so
-      // a partial fetch is visible and each source pages and retries on its own.
-      oldestDatestampByUser: {},
-      sourceProgress: {},
-      acceptedByUser: {},
-      sourceStatus: {},
-      gamesSinceRender: 0,
-      userStopped: false,
-      acceptedThisBatch: 0,
-    };
+    scoutState = createScoutState({ usernames, color, lookups, carry });
+    scoutSession = createScoutSession({ usernames, color });
     return true;
   }
 
@@ -1578,12 +1534,23 @@ export function createScoutView(deps) {
       invalidatePrefilterState();
     }
     flushRender();
+    saveToHistory(session);
     updateScoutControls();
     updateLiveCounter();
 
     if (!scoutState?.games?.length && session.state === "done") {
       showScoutEmptyState(session, scoutSourceFailureMessage(session) || SCOUT_ERR_NO_GAMES);
     }
+  }
+
+  // A run that ends with games goes to the History list. A browser cache: a save
+  // that fails changes nothing, and the next Start simply streams everything.
+  function saveToHistory(session) {
+    const owner = currentOwnerId();
+    if (!scoutHistory || !owner || !scoutState?.games?.length || !isActiveSession(session)) return;
+    const snapshot = scoutRunSnapshot(scoutState, session);
+    Promise.resolve().then(() => scoutHistory.save(owner, snapshot))
+      .then((ok) => { if (ok) onScoutHistorySaved(); }).catch(() => {});
   }
 
   function showScoutEmptyState(session, message) {
@@ -1640,10 +1607,9 @@ export function createScoutView(deps) {
         usernames.map((username, i) =>
           scoutClient.streamGames(username, {
             color: session.color,
-            // R-05: each source's own cursor only. A source with none yet (it
-            // failed before its first game) starts from its newest game: another
-            // source's cursor would silently skip its recent history.
-            until: session.oldestDatestampByUser[username] ?? undefined,
+            // R-05: each source's own cursor only (another source's would skip
+            // its history); a restored source first reads the games since its save.
+            ...streamWindow(session, username),
             // Big accounts (thousands of games) arrive in batches instead of one
             // unbounded stream that locks the page.
             max: SCOUT_STREAM_BATCH,
@@ -1661,6 +1627,7 @@ export function createScoutView(deps) {
         aborted: controllers.map((c) => c.signal.aborted),
         errorMessage: (reason) => scoutFetchErrorMessage(reason) || reason?.message || "failed",
       });
+      settleRefresh(scoutState, session);
       // R-05: partial failure with results — the report stands, but the gap is
       // visible (persistent warning above the report, not just a toast).
       renderSourceWarnings(session, { results: getResultsEl(), hasGames: Boolean(scoutState?.games?.length),
@@ -1691,6 +1658,7 @@ export function createScoutView(deps) {
           invalidatePrefilterState();
         }
         flushRender();
+        saveToHistory(session);
       } else {
         showScoutEmptyState(session, scoutSourceFailureMessage(session) || message);
       }
@@ -1762,6 +1730,10 @@ export function createScoutView(deps) {
     scoutSourceNames = usernames.slice();
     const results = getResultsEl();
     const profile = getProfileEl();
+    // A saved run of these sources and colour opens at once (read beside the repertoires).
+    const owner = currentOwnerId();
+    const savedRun = scoutHistory && owner
+      ? Promise.resolve().then(() => scoutHistory.load(owner, scoutHistory.key(usernames, color))).catch(() => null) : null;
 
     stopStream(scoutSession);
     // Every stage of the previous report: an explorer read or engine
@@ -1787,6 +1759,9 @@ export function createScoutView(deps) {
       }
       clearScoutSide();
       if (profile) profile.hidden = true;
+      const saved = await savedRun;
+      if (!isActiveSession(session)) return;
+      if (restoreScoutRun(scoutState, session, saved)) flushRender();
       updateLiveCounter();
       await runStream({ session });
       if (isActiveSession(session)) results?.classList.remove("is-streaming");
@@ -1839,6 +1814,9 @@ export function createScoutView(deps) {
 
   return {
     runScout: handleScoutAction, handleScoutAction, bindControls,
+    // History → Open: a new Start of the sources and colour the controller just set.
+    startScout,
+    useHistory(next) { ({ scoutHistory, currentOwnerId, onScoutHistorySaved = () => {} } = next); },
     __testHandleAddToPrep: scoutAddToPrep,
     __testHandlePrepareAll: scoutPrepareAll,
     onShow: syncVisibleState,

@@ -47,21 +47,48 @@ export function scoutSourceFailureMessage(session) {
 export function sourcesToStream(session, only = null) {
   if (only?.length) return only;
   const all = session.usernames?.length ? session.usernames : [session.username].filter(Boolean);
-  return all.filter((user) => !session.sourceProgress?.[user]?.exhausted);
+  return all.filter((user) => session.refreshPending?.has(user) || !session.sourceProgress?.[user]?.exhausted);
+}
+
+/**
+ * Where one source's next stream starts. A restored source still owed its newer
+ * games reads from just after its newest saved game; any other source reads on
+ * from its own oldest game (none yet: from its newest game).
+ */
+export function streamWindow(session, username) {
+  const newest = session.newestDatestampByUser?.[username];
+  if (session.refreshPending?.has(username) && newest != null) return { since: newest + 1 };
+  return { until: session.oldestDatestampByUser[username] ?? undefined };
 }
 
 /**
  * Folds one stream's settled results into the session. `aborted[i]` says the
  * source was stopped before its end. Sets each source's cursor, outcome and
  * progress, then the session-wide `batchFull` (some source has older games left)
- * and `hasMore` (some source can still be read on).
+ * and `hasMore` (some source can still be read on). A refresh (newer games after a
+ * restored run) keeps the source's older-games cursor and progress; only a full
+ * refresh, a gap behind the new games, restarts that source (see settleRefresh).
  */
 export function recordStreamResults(session, usernames, settled, { aborted = [], errorMessage }) {
   session.sourceProgress ||= {};
   usernames.forEach((username, i) => {
     const result = settled[i];
     const accepted = session.acceptedByUser?.[username] || 0;
-    if (result.status === "fulfilled") {
+    const refresh = session.refreshPending?.has(username) && "since" in streamWindow(session, username);
+    if (refresh) session.refreshedThisStream = true;
+    if (result.status === "fulfilled" && refresh && !aborted[i]) {
+      session.refreshPending.delete(username);
+      session.sourceStatus[username] = { status: accepted ? "ok" : "empty", accepted };
+      if ((result.value?.received || 0) < SCOUT_STREAM_BATCH) return;
+      (session.refreshGapped ||= []).push(username);
+      session.oldestDatestampByUser[username] = result.value.lastDatestamp ?? undefined;
+      session.sourceProgress[username] = { full: true, stopped: false, exhausted: false };
+    } else if (refresh) {
+      // Stopped or failed: the newer games are still owed, from the same point.
+      if (result.status === "rejected" && result.reason?.name !== "AbortError" && !session.userStopped) {
+        session.sourceStatus[username] = { status: "failed", accepted, error: errorMessage(result.reason) };
+      }
+    } else if (result.status === "fulfilled") {
       const { lastDatestamp = null, received = 0 } = result.value || {};
       if (lastDatestamp != null) session.oldestDatestampByUser[username] = lastDatestamp;
       const full = received >= SCOUT_STREAM_BATCH;
@@ -78,7 +105,7 @@ export function recordStreamResults(session, usernames, settled, { aborted = [],
   });
   const progress = Object.values(session.sourceProgress);
   session.batchFull = progress.some((p) => p.full);
-  session.hasMore = progress.some((p) => p.full || p.stopped);
+  session.hasMore = progress.some((p) => p.full || p.stopped) || Boolean(session.refreshPending?.size);
 }
 
 // The batch cap is a choice the report has to state: a paused report of the
