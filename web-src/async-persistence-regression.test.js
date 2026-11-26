@@ -233,7 +233,7 @@ it("Scout bulk counts only confirmed complete lines and continues after failures
     scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices, countOf, otherColor: () => "black",
     // Bulk add already holds the Scout busy flag, so it picks without the
     // guarded entry point (which would refuse and do nothing). No line branches, so none is skipped.
-    pickRepertoire: async () => "r", writeLineToRep: write, hardFlushBuild: vi.fn(), knownLookup: () => null, resolveDivergences: async () => ({ skip: new Set() }),
+    pickRepertoire: async () => "r", writeLineToRep: write, hardFlushBuild: vi.fn(), latestLookup: async () => ({ rootId: null, childUci: new Map() }), resolveDivergences: async () => ({ skip: new Set() }),
   }, "", code);
   await run(["a", "b", "c"].map((uci) => ({ ucis: [uci], sans: [uci] })), "white");
   expect(write).toHaveBeenCalledTimes(3);

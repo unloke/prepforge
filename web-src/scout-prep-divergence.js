@@ -41,6 +41,26 @@ export function ownMoveDivergence(lookup, lineUcis, myColor) {
   return gap?.yourUci ? gap : null;
 }
 
+/** A copy of `lookup` that the batch check can grow without touching the original. */
+export function copyLookup(lookup) {
+  return { rootId: lookup.rootId, childUci: new Map([...lookup.childUci].map(([id, kids]) => [id, new Map(kids)])) };
+}
+
+/**
+ * Adds a line to `lookup` in place, as if written: each move the tree lacks becomes a
+ * child of the one before it. A batch checks each line against the lines before it.
+ */
+export function addLineToLookup(lookup, lineUcis) {
+  let nodeId = lookup.rootId;
+  (lineUcis || []).forEach((uci, i) => {
+    if (!lookup.childUci.has(nodeId)) lookup.childUci.set(nodeId, new Map());
+    const kids = lookup.childUci.get(nodeId);
+    if (!kids.has(uci)) kids.set(uci, { id: `queued:${nodeId}:${i}:${uci}`, is_mainline: kids.size === 0, is_enabled: true });
+    nodeId = kids.get(uci).id;
+  });
+  return lookup;
+}
+
 /** One preview line for a divergence: "branches from your 1…c5 (adds 1…e5)". */
 export function divergenceNote(divergence) {
   return `branches from your ${divergence.yourLabel} (adds ${divergence.lineLabel})`;

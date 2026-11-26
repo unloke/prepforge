@@ -8,7 +8,9 @@
 import { countOf } from "../plural.js";
 import { scoutLineText } from "../scout.js";
 import { scoutLineKey } from "../scout-report.js";
-import { bestCoveringRepertoireId, divergenceNote, ownMoveDivergence } from "../scout-prep-divergence.js";
+import {
+  addLineToLookup, bestCoveringRepertoireId, copyLookup, divergenceNote, ownMoveDivergence,
+} from "../scout-prep-divergence.js";
 
 const PREVIEW_MAX = 10;
 const otherColor = (color) => (color === "white" ? "black" : "white");
@@ -83,19 +85,35 @@ export function createScoutPrepWriter(deps) {
     return result.repertoire === "__new__" ? createNew() : result.repertoire;
   }
 
-  // The tree Scout loaded for coverage at start-up; a repertoire made since has none,
-  // so nothing it holds can branch.
-  function knownLookup(repId, color) {
-    return getScoutState()?.lookups?.[color]?.find((entry) => entry.rep?.id === repId)?.lookup || null;
+  // The target's tree as it is now, for the "second move of yours" check. Scout's own
+  // copy is from its Start, so a move added in Build since would be missed. The open
+  // repertoire is read from Build (its unsynced moves included); any other from the
+  // server. Undefined when it can't be read: the caller then writes nothing.
+  async function latestLookup(repId) {
+    const scoutModule = await loadScoutModule();
+    const build = getBuildState();
+    if (build?.repertoire_id === repId && Array.isArray(build.nodes)) return scoutModule.repertoireChildLookup(build.nodes);
+    try {
+      const payload = await api(`/api/build/load?repertoire_id=${encodeURIComponent(repId)}`, { responseType: "large-json" });
+      return scoutModule.repertoireChildLookup(payload?.nodes || []);
+    } catch (error) {
+      setStatus(`Couldn't read the repertoire, so nothing was added: ${error.message}`, { severity: "error" });
+      return undefined;
+    }
   }
 
   // Lines that would add a second move of yours, and whether to write them anyway.
   // Resolves { skip: Set<line> } or null when the dialog was cancelled.
+  // Each line is checked against the tree plus the lines before it in the batch, so two
+  // lines that put different moves of yours at one position are caught too.
   async function resolveDivergences(lines, lookup, side) {
     const divergent = [];
+    const queued = copyLookup(lookup);
     for (const line of lines) {
-      const divergence = lookup ? ownMoveDivergence(lookup, lineUcisToWrite(line), side) : null;
+      const ucis = lineUcisToWrite(line);
+      const divergence = ownMoveDivergence(queued, ucis, side);
       if (divergence) divergent.push({ line, divergence });
+      else addLineToLookup(queued, ucis);
     }
     if (!divergent.length) return { skip: new Set() };
     const single = lines.length === 1;
@@ -191,7 +209,9 @@ export function createScoutPrepWriter(deps) {
       const repId = await pickRepertoire(oppColor, ownColor, null, { coverLines: [line] });
       if (!repId) return;
       const side = ownColor ? oppColor : otherColor(oppColor);
-      const decision = await resolveDivergences([line], knownLookup(repId, side), side);
+      const lookup = await latestLookup(repId);
+      if (!lookup) return;
+      const decision = await resolveDivergences([line], lookup, side);
       if (!decision) { setStatus("Nothing added to prep."); return; }
       const res = await writeLineToRep(line, repId, { side });
       const at = line.suggestedReply?.san || line.sans?.at(-1) || "position";
@@ -213,7 +233,9 @@ export function createScoutPrepWriter(deps) {
     const repId = await pickRepertoire(oppColor, false, unique);
     if (!repId) return;
     const side = otherColor(oppColor);
-    const decision = await resolveDivergences(unique, knownLookup(repId, side), side);
+    const lookup = await latestLookup(repId);
+    if (!lookup) return;
+    const decision = await resolveDivergences(unique, lookup, side);
     if (!decision) { setStatus("Nothing added to prep."); return; }
     const toWrite = unique.filter((line) => !decision.skip.has(line));
     const skipped = unique.length - toWrite.length;
