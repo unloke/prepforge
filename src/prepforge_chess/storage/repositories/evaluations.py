@@ -110,8 +110,11 @@ class EvaluationRepository(Repository):
         pos_cache: Optional[Dict[str, int]] = None,
     ) -> Dict[Any, int]:
         """Batch-upsert unique positions and evaluations in bounded SQL chunks."""
+        # A game's moves share positions (each fen_after is the next fen_before),
+        # so canonicalize each distinct FEN once rather than once per item.
+        keys: Dict[str, str] = {}
         pending = [
-            (item_key, evaluation, codec.position_key(fen))
+            (item_key, evaluation, keys.get(fen) or keys.setdefault(fen, codec.position_key(fen)))
             for item_key, evaluation, fen in items
             if evaluation is not None
         ]
