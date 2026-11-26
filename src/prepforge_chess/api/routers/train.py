@@ -38,7 +38,6 @@ from prepforge_chess.services.training_view import (
     prompt_to_json,
     smart_prompt_to_json,
     training_line_to_json,
-    walk_opening_nodes,
 )
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
@@ -159,7 +158,7 @@ def record_miss(
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
     node = next(
-        (n for n in walk_opening_nodes(repertoire.root_node) if n.id == body.node_id),
+        (n for n in repertoire.root_node.walk() if n.id == body.node_id),
         None,
     )
     if node is None:
@@ -597,7 +596,7 @@ def hint(
         node = next(
             (
                 n
-                for n in walk_opening_nodes(repertoire.root_node)
+                for n in repertoire.root_node.walk()
                 if n.id == prompt.expected_node_id
             ),
             None,

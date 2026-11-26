@@ -110,7 +110,7 @@ class TrainingService:
         if existing is not None:
             repertoire = self._load_repertoire_or_raise(repertoire_id)
             intact = bool(existing.line_order) and all(
-                self._find_node(repertoire.root_node, node_id) is not None
+                repertoire.root_node.find(node_id) is not None
                 for node_id in existing.line_order
             )
             complete = existing.current_index >= len(existing.line_order)
@@ -276,7 +276,7 @@ class TrainingService:
         fen_after_player = None
         reply_uci = reply_san = fen_after_reply = None
         if correct:
-            played_node = self._find_node(repertoire.root_node, prompt.expected_node_id)
+            played_node = repertoire.root_node.find(prompt.expected_node_id)
             if played_node is not None and played_node.move is not None:
                 played_san = played_node.move.san
                 fen_after_player = played_node.move.fen_after
@@ -444,15 +444,6 @@ class TrainingService:
         if not visit(root, []):
             raise ValueError("opening node not found: {0}".format(node_id))
         return path
-
-    def _find_node(self, root: OpeningNode, node_id: str) -> Optional[OpeningNode]:
-        if root.id == node_id:
-            return root
-        for child in root.children:
-            found = self._find_node(child, node_id)
-            if found is not None:
-                return found
-        return None
 
     def _move_or_raise(self, node: OpeningNode) -> MoveRecord:
         if node.move is None:

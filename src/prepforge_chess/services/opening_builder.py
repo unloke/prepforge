@@ -756,7 +756,7 @@ class OpeningBuilderService:
         self._set_branch_enabled(node, False)
         self.repository.update_opening_nodes(repertoire_id, [
             {"id": child.id, "is_enabled": False}
-            for child in self.repository._walk_nodes(node)
+            for child in node.walk()
         ])
         return node
 
@@ -783,7 +783,7 @@ class OpeningBuilderService:
             repertoire_id,
             [
                 {"id": child.id, "is_enabled": True}
-                for child in self.repository._walk_nodes(node)
+                for child in node.walk()
             ]
             + [{"id": parent.id, "is_enabled": True} for parent in ancestors],
         )
@@ -862,12 +862,12 @@ class OpeningBuilderService:
         for node_id in node_ids:
             if not node_id or not isinstance(node_id, str):
                 raise ValueError("each node id must be a non-empty string")
-            node = self._find_node(repertoire.root_node, node_id)
+            node = repertoire.root_node.find(node_id)
             if node is None:
                 continue  # already gone — idempotent skip
             if node.parent_id is None:
                 raise ValueError("cannot delete the root position")
-            parent = self._find_node(repertoire.root_node, node.parent_id)
+            parent = repertoire.root_node.find(node.parent_id)
             if parent is None:
                 continue
             collect(node)
@@ -994,16 +994,7 @@ class OpeningBuilderService:
         return repertoire
 
     def _find_node_or_raise(self, root: OpeningNode, node_id: str) -> OpeningNode:
-        found = self._find_node(root, node_id)
+        found = root.find(node_id)
         if found is None:
             raise NodeGone(node_id)
         return found
-
-    def _find_node(self, root: OpeningNode, node_id: str) -> Optional[OpeningNode]:
-        if root.id == node_id:
-            return root
-        for child in root.children:
-            found = self._find_node(child, node_id)
-            if found is not None:
-                return found
-        return None

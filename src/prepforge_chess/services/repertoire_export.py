@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from prepforge_chess.core.chess_core import STARTING_FEN
 from prepforge_chess.core.models import (
@@ -87,7 +87,7 @@ class RepertoireExportService:
     def export_package(self, repertoire: Repertoire) -> Dict[str, Any]:
         nodes = [
             self._node_to_dict(node, depth)
-            for node, depth in self._walk_nodes(repertoire.root_node)
+            for node, depth in repertoire.root_node.walk_with_depth()
         ]
         return {
             "kind": PACKAGE_KIND,
@@ -482,12 +482,6 @@ class RepertoireExportService:
             wdl=payload.get("wdl"),
         )
 
-    def _walk_nodes(self, root: OpeningNode) -> Iterable[Tuple[OpeningNode, int]]:
-        yield root, 0
-        for child in root.children:
-            for node, depth in self._walk_nodes(child):
-                yield node, depth + 1
-
     def _mainline_nodes(
         self,
         root: OpeningNode,
@@ -511,7 +505,7 @@ class RepertoireExportService:
         return path
 
     def _path_to_node(self, root: OpeningNode, node_id: str) -> List[OpeningNode]:
-        by_id = {node.id: node for node, _ in self._walk_nodes(root)}
+        by_id = {node.id: node for node in root.walk()}
         if node_id not in by_id:
             raise ValueError("opening node not found: {0}".format(node_id))
 

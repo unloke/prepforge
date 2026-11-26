@@ -7,13 +7,11 @@ the whole Train surface already fits the "server never computes chess" model.
 """
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, Optional
 
 import chess
 
 from prepforge_chess.core.chess_core import ChessCore
-from prepforge_chess.core.models import OpeningNode
 from prepforge_chess.services.training import TrainingLine, TrainingPrompt
 
 if TYPE_CHECKING:  # avoid a runtime import cycle with training_smart
@@ -92,12 +90,6 @@ def smart_prompt_to_json(
         },
         "legal_moves": chess_core.legal_moves(prompt.fen_before),
     }
-
-
-def walk_opening_nodes(root: OpeningNode) -> Iterator[OpeningNode]:
-    yield root
-    for child in root.children:
-        yield from walk_opening_nodes(child)
 
 
 def heuristic_strategy(san: Optional[str], piece_name: Optional[str]) -> str:

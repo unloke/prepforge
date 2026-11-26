@@ -29,7 +29,7 @@ def position_key(fen: str) -> str:
 
 def _positions(repo, rid):
     repertoire = repo.load_repertoire(rid)
-    return {position_key(node.fen): node.id for node in repo._walk_nodes(repertoire.root_node)}
+    return {position_key(node.fen): node.id for node in repertoire.root_node.walk()}
 
 
 def _thread(conn, rid, thread_id):

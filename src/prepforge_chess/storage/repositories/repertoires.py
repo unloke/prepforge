@@ -281,7 +281,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 raise RepertoireQuotaExceeded(max_owned)  # rolls the insert back
             pos_cache: Dict[str, int] = {}
             rows = self._build_opening_node_rows(
-                conn, self._walk_nodes(repertoire.root_node), pos_cache
+                conn, repertoire.root_node.walk(), pos_cache
             )
             self._upsert_opening_node_rows(conn, rows)
             self._bump_revision(conn, repertoire.id, reset=True)
@@ -1011,9 +1011,3 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             conn, node.engine_evaluation, node.fen, pos_cache
         )
         return self._opening_node_row(node, engine_evaluation_id)
-
-    def _walk_nodes(self, root: OpeningNode) -> Iterable[OpeningNode]:
-        yield root
-        for child in root.children:
-            for node in self._walk_nodes(child):
-                yield node

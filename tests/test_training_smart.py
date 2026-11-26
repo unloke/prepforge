@@ -161,7 +161,7 @@ def test_deleted_review_archive_and_nodes_commit_together(monkeypatch):
     monkeypatch.setattr(repository, "mutate_user_setting", fail)
     with pytest.raises(RuntimeError, match="archive write failed"):
         repository.delete_opening_nodes(repertoire.id, [ids["bb5"]])
-    assert ids["bb5"] in {n.id for n in repository._walk_nodes(repository.load_repertoire(repertoire.id).root_node)}
+    assert ids["bb5"] in {n.id for n in repository.load_repertoire(repertoire.id).root_node.walk()}
 
 
 @pytest.mark.parametrize("excluded", ["disabled", "weak", "other-owner", "inactive"])

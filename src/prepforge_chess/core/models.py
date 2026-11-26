@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 
 class Color(str, Enum):
@@ -174,6 +174,25 @@ class OpeningNode:
     strategic_idea: Optional[str] = None
     typical_plan: Optional[str] = None
     source: MoveSource = MoveSource.MANUAL
+
+    def walk_with_depth(self) -> Iterator[Tuple["OpeningNode", int]]:
+        """Preorder (node, depth) pairs; iterative, so deep lines never recurse."""
+        stack = [(self, 0)]
+        while stack:
+            node, depth = stack.pop()
+            yield node, depth
+            stack.extend((child, depth + 1) for child in reversed(node.children))
+
+    def walk(self) -> Iterator["OpeningNode"]:
+        """Preorder: this node, then each child's subtree in order."""
+        stack = [self]
+        while stack:
+            node = stack.pop()
+            yield node
+            stack.extend(reversed(node.children))
+
+    def find(self, node_id: str) -> Optional["OpeningNode"]:
+        return next((node for node in self.walk() if node.id == node_id), None)
 
 
 @dataclass

@@ -39,7 +39,7 @@ def test_mixed_budget_caps_targets_and_new_moves_globally():
     assert service.counts(session)["new"] <= 12
     for rep in reps:
         _seed_progress(repository, rep.id,
-                       [_due(n.id) for n in repository._walk_nodes(rep.root_node)
+                       [_due(n.id) for n in rep.root_node.walk()
                         if n.is_user_prepared_move], owner="budget-owner")
     session = service.start_or_resume_mixed(
         "budget-owner", fresh=True, session_size=3, new_cap=0, seed=5

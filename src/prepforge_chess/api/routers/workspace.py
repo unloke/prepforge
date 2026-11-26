@@ -1,13 +1,13 @@
 """Workspace endpoints: owner-scoped data reads and repertoire mutations."""
 from __future__ import annotations
 
+import base64
 import hashlib
+import hmac
 import json
 import re
-
-import base64
-import hmac
 import uuid
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Literal, TypeVar
 
@@ -31,10 +31,11 @@ from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.routers.teams import user_team_ids
 from prepforge_chess.storage.repositories.repertoires import ROLE_RANK
-from prepforge_chess.core.models import Color, MoveSource, OpeningNode
+from prepforge_chess.core.models import Color, MoveSource, Repertoire
 from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
     OpeningBuilderService,
+    PlanSummary,
 )
 from prepforge_chess.services import streak
 from prepforge_chess.services.repertoire_export import RepertoireExportService
@@ -46,7 +47,6 @@ from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 router = APIRouter(prefix="/api", tags=["workspace"])
 T = TypeVar("T")
-
 
 
 def _repertoire_cap(user: User, settings: Settings) -> int | None:
@@ -97,9 +97,28 @@ def _editable_repertoire(
 
 
 def _rebased(repo: WorkspaceRepository, meta: dict[str, Any], apply: Callable[[], T]) -> T:
-    """Apply against the current tree while holding its database write lock."""
-    with repo.repertoire_edit(meta["id"]):
-        return apply()
+    """Apply against the current tree while holding its database write lock.
+    A rejected edit (``ValueError``) is a 400."""
+    try:
+        with repo.repertoire_edit(meta["id"]):
+            return apply()
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+def _load(repo: WorkspaceRepository, repertoire_id: str) -> Repertoire:
+    """The repertoire's tree; 404 when the row vanished after the access gate."""
+    repertoire = repo.load_repertoire(repertoire_id)
+    if repertoire is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    return repertoire
+
+
+def _save_new(
+    repo: WorkspaceRepository, repertoire: Repertoire, owner: str, user: User, settings: Settings
+) -> None:
+    """Store a freshly made repertoire as the caller's, under their plan's cap."""
+    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
 
 
 def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:
@@ -501,23 +520,7 @@ def set_repertoire_active(
 # the caller; rename/add-move pass through the `_owned_repertoire` IDOR gate first.
 
 
-def _find_node(root: OpeningNode, node_id: str) -> OpeningNode | None:
-    if root.id == node_id:
-        return root
-    for child in root.children:
-        found = _find_node(child, node_id)
-        if found is not None:
-            return found
-    return None
-
-
-def _walk_nodes(root: OpeningNode):
-    yield root
-    for child in root.children:
-        yield from _walk_nodes(child)
-
-
-def _reassign_ids(repertoire) -> None:
+def _reassign_ids(repertoire: Repertoire) -> None:
     """Mint fresh ids for an imported repertoire and all its nodes (in place).
 
     A package carries the *original* repertoire/node ids. Without re-iding, a second
@@ -525,8 +528,8 @@ def _reassign_ids(repertoire) -> None:
     cross-tenant overwrite). Re-iding makes every import an independent repertoire the
     importer owns. Parent links are remapped through the old→new id table."""
     new_rep_id = uuid.uuid4().hex
-    id_map = {node.id: uuid.uuid4().hex for node in _walk_nodes(repertoire.root_node)}
-    for node in _walk_nodes(repertoire.root_node):
+    id_map = {node.id: uuid.uuid4().hex for node in repertoire.root_node.walk()}
+    for node in repertoire.root_node.walk():
         node.id = id_map[node.id]
         node.repertoire_id = new_rep_id
         if node.parent_id is not None:
@@ -626,13 +629,12 @@ def _share_state(meta: dict[str, Any]) -> dict[str, Any]:
 
 def _share_link_live(meta: dict[str, Any], token_rev: int, now: datetime) -> bool:
     """Does this token still grant read under the repertoire's share state?"""
-    if not meta.get("share_enabled"):
-        return False
     expires_at = meta.get("share_expires_at")
-    if expires_at is not None and expires_at <= now:
-        return False
-    current_rev = int(meta.get("share_rev") or 0)
-    return token_rev == current_rev
+    return (
+        bool(meta.get("share_enabled"))
+        and (expires_at is None or expires_at > now)
+        and token_rev == int(meta.get("share_rev") or 0)
+    )
 
 
 def _resolve_share_link(
@@ -655,12 +657,19 @@ class ShareLinkBody(BaseModel):
     role: Literal["view", "copy"] | None = None
 
 
-def _share_expiry(expires_in_days: int | None) -> datetime | None:
-    if expires_in_days is None:
-        return None
-    return (
-        datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+def _set_link(
+    repo: WorkspaceRepository, body: ShareLinkBody, settings: Settings, *, rotate: bool
+) -> dict[str, Any]:
+    """Update the link (rotating mints a fresh token and turns it on) and return
+    its state with the current token and URL."""
+    expires_at = (
+        None if body.expires_in_days is None
+        else datetime.now(timezone.utc) + timedelta(days=body.expires_in_days)
     )
+    flags = {"enabled": True, "rotate": True} if rotate else {}
+    state = repo.set_share_state(body.repertoire_id, expires_at=expires_at, role=body.role, **flags)
+    token = mint_share_token(body.repertoire_id, settings.secret_key, state["share_rev"])
+    return {"token": token, "url": "/?shared={0}".format(token), **state}
 
 
 @router.post("/repertoires/share-link")
@@ -676,19 +685,7 @@ def create_share_link(
     the link was off, enabling mints a FRESH link (rotation) — a revoked link
     never comes back to life (F-01). ``role`` sets what the link allows."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
-    expires_at = _share_expiry(body.expires_in_days)
-    if not meta["share_enabled"]:
-        state = repo.set_share_state(
-            body.repertoire_id, enabled=True, rotate=True, expires_at=expires_at, role=body.role
-        )
-    else:
-        state = repo.set_share_state(body.repertoire_id, expires_at=expires_at, role=body.role)
-    token = mint_share_token(body.repertoire_id, settings.secret_key, state["share_rev"])
-    return {
-        "token": token,
-        "url": "/?shared={0}".format(token),
-        **state,
-    }
+    return _set_link(repo, body, settings, rotate=not meta["share_enabled"])
 
 
 @router.post("/repertoires/share-link/rotate")
@@ -701,12 +698,7 @@ def rotate_share_link(
     """Regenerate the public link: bumps the share revision so every previously
     minted link stops working immediately."""
     _owned_repertoire(repo, body.repertoire_id, owner)
-    expires_at = _share_expiry(body.expires_in_days)
-    state = repo.set_share_state(
-        body.repertoire_id, enabled=True, rotate=True, expires_at=expires_at, role=body.role
-    )
-    token = mint_share_token(body.repertoire_id, settings.secret_key, state["share_rev"])
-    return {"token": token, "url": "/?shared={0}".format(token), **state}
+    return _set_link(repo, body, settings, rotate=True)
 
 
 @router.post("/repertoires/share-link/revoke")
@@ -718,8 +710,7 @@ def revoke_share_link(
     """Turn the public link OFF. Grants are untouched — the two are
     independent controls (F-01)."""
     _owned_repertoire(repo, body.repertoire_id, owner)
-    state = repo.set_share_state(body.repertoire_id, enabled=False)
-    return state
+    return repo.set_share_state(body.repertoire_id, enabled=False)
 
 
 @router.get("/shared/{token}")
@@ -740,11 +731,9 @@ def shared_repertoire(
 
 
 def _fork(repo: WorkspaceRepository, repertoire_id: str, owner: str, user: User, settings: Settings) -> dict[str, Any]:
-    repertoire = repo.load_repertoire(repertoire_id)
-    if repertoire is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    repertoire = _load(repo, repertoire_id)
     _reassign_ids(repertoire)  # fresh ids -> caller's own copy, no cross-tenant clobber
-    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
+    _save_new(repo, repertoire, owner, user, settings)
     return {"repertoire_id": repertoire.id, "name": repertoire.name}
 
 
@@ -803,12 +792,9 @@ def build_rename(
     """Rename one of the caller's repertoires and return its refreshed Build payload."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
     repo.op_kind = "rename"
-    try:
-        # Last writer wins: a concurrent rename on another device is replaced.
-        _rebased(repo, meta, lambda: OpeningBuilderService(repo).rename_repertoire(
-            body.repertoire_id, body.name))
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    # Last writer wins: a concurrent rename on another device is replaced.
+    _rebased(repo, meta, lambda: OpeningBuilderService(repo).rename_repertoire(
+        body.repertoire_id, body.name))
     return _payload(repo, meta)
 
 
@@ -830,10 +816,8 @@ def build_add_move(
     meta = _editable_repertoire(repo, body.repertoire_id, owner, "add_moves")
 
     def apply():
-        repertoire = repo.load_repertoire(body.repertoire_id)
-        if repertoire is None:  # gate passed but row vanished — treat as not found
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-        parent = _find_node(repertoire.root_node, body.parent_node_id)
+        repertoire = _load(repo, body.repertoire_id)
+        parent = repertoire.root_node.find(body.parent_node_id)
         if parent is None:
             raise NodeGone(body.parent_node_id)
         is_prepared = parent.side_to_move is repertoire.color
@@ -849,13 +833,10 @@ def build_add_move(
         )
         return repertoire, node
 
-    try:
-        repertoire, node = _rebased(repo, meta, apply)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    repertoire, node = _rebased(repo, meta, apply)
     return _payload(
         repo, meta, selected_node_id=node.id, repertoire=repertoire,
-        summary={"added_nodes": 1, "updated_nodes": 0, "high_probability_unprepared": 0},
+        summary=asdict(PlanSummary(added_nodes=1)),
     )
 
 
@@ -874,11 +855,15 @@ class AddMovesItem(BaseModel):
     uci: str
 
 
-def _build_batch_receipt(repo, owner, kind, body):
-    # The complete request (including base revision) is the stable retry identity.
+def _batch_receipt(
+    repo: WorkspaceRepository, owner: str, kind: str, body: BaseModel, meta: dict[str, Any]
+) -> tuple[str, dict[str, Any] | None]:
+    """The batch's receipt key, and the payload to answer a retry with when this
+    exact request (its complete body is the retry identity) already landed."""
     digest = hashlib.sha256(json.dumps(body.model_dump(), sort_keys=True).encode()).hexdigest()
     key = "build-receipt:" + kind + ":" + digest
-    return key, repo.get_user_setting(owner, key)
+    receipt = repo.get_user_setting(owner, key)
+    return key, None if receipt is None else {**_payload(repo, meta), **receipt}
 
 
 class AddMovesBody(BaseModel):
@@ -901,28 +886,16 @@ def build_add_moves(
     persisted flags itself, so a malformed batch raises ``ValueError`` → 400
     before anything lands. Owner-gated so a user can't flush onto another's tree."""
     meta = _editable_repertoire(repo, body.repertoire_id, owner, "add_moves")
-    key, receipt = _build_batch_receipt(repo, owner, "adds", body)
-    if receipt is not None:
-        payload = _payload(repo, meta)
-        payload.update(receipt)
-        return payload
+    key, replay = _batch_receipt(repo, owner, "adds", body, meta)
+    if replay is not None:
+        return replay
     service = OpeningBuilderService(repo)
-    try:
-        repertoire, summary, id_map = _rebased(repo, meta, lambda: service.add_moves_batch(
-            body.repertoire_id,
-            [item.model_dump() for item in body.moves],
-            receipt_target=(owner, key),
-        ))
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    payload = _payload(
-        repo, meta, repertoire=repertoire,
-        summary={
-            "added_nodes": summary.added_nodes,
-            "updated_nodes": summary.updated_nodes,
-            "high_probability_unprepared": summary.high_probability_unprepared,
-        },
-    )
+    repertoire, summary, id_map = _rebased(repo, meta, lambda: service.add_moves_batch(
+        body.repertoire_id,
+        [item.model_dump() for item in body.moves],
+        receipt_target=(owner, key),
+    ))
+    payload = _payload(repo, meta, repertoire=repertoire, summary=asdict(summary))
     payload["id_map"] = id_map
     payload["dropped"] = service.dropped_temp_ids
     return payload
@@ -950,18 +923,13 @@ def build_delete_nodes(
     an earlier subtree in the batch, or by a previous flush, is skipped) so an
     optimistic over-delete can't fail the whole flush. Owner-gated."""
     meta = _editable_repertoire(repo, body.repertoire_id, owner, "delete_nodes")
-    key, receipt = _build_batch_receipt(repo, owner, "deletes", body)
-    if receipt is not None:
-        payload = _payload(repo, meta)
-        payload.update(receipt)
-        return payload
+    key, replay = _batch_receipt(repo, owner, "deletes", body, meta)
+    if replay is not None:
+        return replay
     service = OpeningBuilderService(repo)
-    try:
-        removed = _rebased(repo, meta, lambda: service.delete_nodes_batch(
-            body.repertoire_id, list(body.node_ids), receipt_target=(owner, key)
-        ))
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    removed = _rebased(repo, meta, lambda: service.delete_nodes_batch(
+        body.repertoire_id, list(body.node_ids), receipt_target=(owner, key)
+    ))
     payload = _payload(repo, meta, repertoire=service.loaded_repertoire)
     payload["removed_node_ids"] = removed
     return payload
@@ -1013,19 +981,12 @@ def build_apply_plan(
             return payload
         receipt_target = (owner, key, digest)
     builder = OpeningBuilderService(repo)
-    try:
-        repertoire, summary = _rebased(repo, meta, lambda: builder.apply_generation_plan(
-            body.repertoire_id, body.root_node_id, body.plan, receipt_target=receipt_target
-        ))
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    repertoire, summary = _rebased(repo, meta, lambda: builder.apply_generation_plan(
+        body.repertoire_id, body.root_node_id, body.plan, receipt_target=receipt_target
+    ))
     payload = _payload(
         repo, meta, selected_node_id=body.root_node_id, repertoire=repertoire,
-        summary={
-            "added_nodes": summary.added_nodes,
-            "updated_nodes": summary.updated_nodes,
-            "high_probability_unprepared": summary.high_probability_unprepared,
-        },
+        summary=asdict(summary),
     )
     payload["id_map"] = builder.applied_plan_id_map
     return payload
@@ -1093,12 +1054,8 @@ def build_action(
             builder.add_tag(rid, node_id, "critical")
         return node_id
 
-    try:
-        selected_node_id = _rebased(repo, meta, apply)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _payload(
-        repo, meta, selected_node_id=selected_node_id, repertoire=builder.loaded_repertoire
+        repo, meta, selected_node_id=_rebased(repo, meta, apply), repertoire=builder.loaded_repertoire
     )
 
 
@@ -1120,12 +1077,9 @@ def build_annotations(
     """Persist a node's arrows/circles and echo them back (the SPA ignores the rest of
     a Build payload here, so no full reserialization)."""
     meta = _editable_repertoire(repo, body.repertoire_id, owner, "annotate")
-    try:
-        _rebased(repo, meta, lambda: OpeningBuilderService(repo).set_annotations(
-            body.repertoire_id, body.node_id, body.arrows, body.circles
-        ))
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    _rebased(repo, meta, lambda: OpeningBuilderService(repo).set_annotations(
+        body.repertoire_id, body.node_id, body.arrows, body.circles
+    ))
     return {
         "node_id": body.node_id,
         "arrows": list(body.arrows),
@@ -1149,9 +1103,7 @@ def build_export(
     """Serialize a repertoire to a downloadable blob: ``json`` (full package) or
     ``pgn`` (mainline, or the path to ``node_id`` when given). Pure serialization."""
     _repertoire_access(repo, body.repertoire_id, owner, "copy")
-    repertoire = repo.load_repertoire(body.repertoire_id)
-    if repertoire is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    repertoire = _load(repo, body.repertoire_id)
     exporter = RepertoireExportService()
     safe_name = _safe_filename(repertoire.name)
     if body.format == "json":
@@ -1178,14 +1130,11 @@ def export_tree_pgn(
     """Full tree-with-variations PGN for the top-level "Export PGN" action (the SPA's
     per-line export goes through ``/build/export``). Pure serialization, owner-gated."""
     _repertoire_access(repo, repertoire_id, owner, "copy")
-    repertoire = repo.load_repertoire(repertoire_id)
-    if repertoire is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    content = RepertoireExportService().export_tree_pgn(repertoire)
+    repertoire = _load(repo, repertoire_id)
     return {
         "filename": "{0}.pgn".format(_safe_filename(repertoire.name)),
         "mime": "application/x-chess-pgn",
-        "content": content,
+        "content": RepertoireExportService().export_tree_pgn(repertoire),
     }
 
 
@@ -1216,17 +1165,13 @@ def import_repertoire(
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     _reassign_ids(repertoire)  # fresh ids → importer's own copy, no cross-tenant clobber
-    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
+    _save_new(repo, repertoire, owner, user, settings)
     return build_workspace_payload(
         repo,
         repertoire.id,
         selected_node_id=repertoire.root_node.id,
         owner_user_id=owner,
-        summary={
-            "added_nodes": sum(1 for _ in _walk_nodes(repertoire.root_node)),
-            "updated_nodes": 0,
-            "high_probability_unprepared": 0,
-        },
+        summary=asdict(PlanSummary(added_nodes=sum(1 for _ in repertoire.root_node.walk()))),
     )
 
 
@@ -1253,7 +1198,7 @@ def import_repertoire_pgn(
         )
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
+    _save_new(repo, repertoire, owner, user, settings)
     return build_workspace_payload(
         repo, repertoire.id, selected_node_id=repertoire.root_node.id, owner_user_id=owner
     )
