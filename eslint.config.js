@@ -72,7 +72,7 @@ const OVER_CEILING = [
   ["web-src/ui-layout.test.js", 682],
   ["web-src/views/analyze.js", 746],
   ["web-src/views/dashboard.js", 803],
-  ["web-src/views/scout.js", 1565],
+  ["web-src/views/scout.js", 1557],
   ["web-src/views/settings.js", 652],
   ["web-src/views/teams-controller.js", 609],
 ];

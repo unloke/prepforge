@@ -65,12 +65,17 @@ export function openModal(dialog, { initialFocus = null, onDismiss = null, keep 
     dialog.removeEventListener("click", onClick);
     dialog.removeEventListener("close", onNativeClose);
     if (restoreFocus) restore(opener);
-    if (!keep) afterExit(dialog, () => { if (!dialog.open) dialog.remove(); });
     return true;
   };
+  // Looked for once the dialog has closed: its exit transition starts with the close.
+  const leave = () => { if (!keep) afterExit(dialog, () => { if (!dialog.open) dialog.remove(); }); };
   // Escape closes a modal natively (the browser may refuse a cancelled
   // `cancel`), so the native close is the dismissal.
-  const onNativeClose = () => { if (finish({ restoreFocus: true })) onDismiss?.(); };
+  const onNativeClose = () => {
+    if (!finish({ restoreFocus: true })) return;
+    leave();
+    onDismiss?.();
+  };
   dialog.addEventListener("pointerdown", onPointerDown);
   dialog.addEventListener("click", onClick);
   dialog.addEventListener("close", onNativeClose);
@@ -80,6 +85,7 @@ export function openModal(dialog, { initialFocus = null, onDismiss = null, keep 
   function close({ restoreFocus = true } = {}) {
     if (!finish({ restoreFocus: false })) return;
     if (dialog.open) dialog.close();
+    leave();
     if (restoreFocus) restore(opener);
   }
   close.dialog = dialog;

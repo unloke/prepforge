@@ -1,9 +1,14 @@
 export async function checkGenerateValidation(page, check) {
+  const name = "Generate moves from this position";
   const open = async () => {
+    // A Generate dialog closed by Cancel stays on screen while it fades out;
+    // open the next one once it has left the page, so only one carries the name.
+    await page.waitForFunction((title) => ![...document.querySelectorAll("dialog:not([open])")]
+      .some((el) => el.querySelector(".modal-title, h1, h2, h3")?.textContent.trim() === title), name, { timeout: 5000 });
     await page.locator("#build-menu").click();
     await page.locator('#repertoire-context-menu [data-action="explore"]').click();
     await page.locator('#repertoire-context-menu [data-action="build-generate"]').click();
-    const dialog = page.getByRole("dialog", { name: "Generate moves from this position", exact: true });
+    const dialog = page.getByRole("dialog", { name, exact: true });
     await dialog.waitFor();
     await page.waitForTimeout(200);
     return dialog;

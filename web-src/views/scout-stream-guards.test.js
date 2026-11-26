@@ -84,7 +84,7 @@ describe("scout enrichment waits for the stream", () => {
     notices = { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn(), cancelJob: vi.fn(), failJob: vi.fn() };
     view = createScoutView({
       setStatus: vi.fn(), switchView: vi.fn(),
-      api: vi.fn(async (url) => (url === "/api/repertoires" ? { repertoires: [] } : { nodes: [] })),
+      api: vi.fn(async (url) => (url === "/api/repertoires" || url === "/api/scout/trees" ? { repertoires: [] } : { nodes: [] })),
       notices, parseFenBoard: vi.fn(() => ({})), pieceSvg: vi.fn(() => ""), getBuildState: vi.fn(),
       scoutPickedUsernames: () => ["rival"],
     });

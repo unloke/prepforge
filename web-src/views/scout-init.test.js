@@ -70,7 +70,7 @@ describe("scout view initialization reentrancy", () => {
     elements.set("scout-profile", makeEl("scout-profile", { hidden: true }));
 
     api = vi.fn(async (url) => {
-      if (url === "/api/repertoires") return { repertoires: [] };
+      if (url === "/api/repertoires" || url === "/api/scout/trees") return { repertoires: [] };
       return { nodes: [{ id: "root", depth: 0, parent_id: null, uci: null }] };
     });
 
@@ -117,7 +117,7 @@ describe("scout view initialization reentrancy", () => {
       repsResolve = resolve;
     });
     api.mockImplementation(async (url) => {
-      if (url === "/api/repertoires") return repsGate;
+      if (url === "/api/scout/trees") return repsGate; // the one start-up read of your trees
       return { nodes: [{ id: "root", depth: 0, parent_id: null, uci: null }] };
     });
 
@@ -242,7 +242,7 @@ describe("scout view initialization reentrancy", () => {
 
   it("shows an error and re-enables Start when repertoire load fails", async () => {
     api.mockImplementation(async (url) => {
-      if (url === "/api/repertoires") throw new Error("repertoire service down");
+      if (url === "/api/repertoires" || url === "/api/scout/trees") throw new Error("repertoire service down");
       return { nodes: [] };
     });
 

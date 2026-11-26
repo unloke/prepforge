@@ -153,7 +153,7 @@ describe("scout explorer enrichment generation", () => {
       setStatus: vi.fn(),
       switchView: vi.fn(),
       api: vi.fn(async (url) => {
-        if (url === "/api/repertoires") return { repertoires: [] };
+        if (url === "/api/repertoires" || url === "/api/scout/trees") return { repertoires: [] };
         return { nodes: [{ id: "root", depth: 0, parent_id: null, uci: null }] };
       }),
       showInputModal: vi.fn(),
