@@ -74,6 +74,8 @@ class TrainingCard:
     kind: str
     repertoire_id: str
     target_ids: Tuple[str, ...]
+    # A missed move brought back in the same session: it re-tests, never grades.
+    retry: bool = False
 
     @property
     def first_target_id(self) -> str:
@@ -94,21 +96,26 @@ class SessionPlan:
     leading: FrozenSet[str] = frozenset()
 
 
+_RETRY = "retry"
+
+
 def encode_card(card: TrainingCard) -> str:
-    return "{0}:{1}:{2}".format(card.kind, card.repertoire_id, ",".join(card.target_ids))
+    raw = "{0}:{1}:{2}".format(card.kind, card.repertoire_id, ",".join(card.target_ids))
+    return raw + ":" + _RETRY if card.retry else raw
 
 
 def decode_card(raw: object) -> Optional[TrainingCard]:
-    """Parse ``kind:repertoire:t1,t2,…``; return None for malformed values."""
+    """Parse ``kind:repertoire:t1,t2,…[:retry]``; return None for malformed values."""
     if not isinstance(raw, str):
         return None
     parts = raw.split(":")
-    if len(parts) != 3 or parts[0] not in _KIND_PRIORITY or not parts[1]:
+    retry = len(parts) == 4 and parts[3] == _RETRY
+    if len(parts) != 3 + retry or parts[0] not in _KIND_PRIORITY or not parts[1]:
         return None
     targets = tuple(parts[2].split(","))
     if not all(targets):
         return None
-    return TrainingCard(parts[0], parts[1], targets)
+    return TrainingCard(parts[0], parts[1], targets, retry)
 
 
 def card_counts(cards: Iterable[Optional[TrainingCard]]) -> Dict[str, int]:
@@ -366,6 +373,31 @@ def build_session_plan(
 def _lead_rank(card: TrainingCard, requested: Set[str], leading: FrozenSet[str]) -> int:
     first = card.first_target_id
     return 0 if first in requested else 1 if first in leading else 2
+
+
+def flagged_miss_cards(
+    root: OpeningNode,
+    color: Color,
+    progress_by_id: Dict[str, TrainingProgress],
+    queued: Set[str],
+    *,
+    now: Optional[datetime] = None,
+) -> List[TrainingCard]:
+    """One card per recorded miss that ``queued`` lacks, in tree order: what a
+    resumed session adds so a miss flagged after it was planned still comes next."""
+    flagged = {node_id for node_id, p in progress_by_id.items() if is_flagged_miss(p)} - queued
+    if not flagged:
+        return []
+    eval_now = now or datetime.now(timezone.utc)
+    return [
+        TrainingCard(
+            CARD_WEAK if node_mastery(progress_by_id[cand.node.id], now=eval_now) == MASTERY_WEAK else CARD_DUE,
+            root.repertoire_id,
+            (cand.node.id,),
+        )
+        for cand in _collect_candidates(root, color)
+        if cand.node.id in flagged
+    ]
 
 
 @dataclass

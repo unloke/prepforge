@@ -6,10 +6,13 @@ export function requeueMissedTarget(smart, target) {
   if (!card || !target) return { added: false, pending: false };
   const ahead = smart.queue.slice(smart.cardIndex + 1);
   if (ahead.some((c) => c.targets?.some((t) => t.node_id === target.node_id))) return { added: false, pending: true };
-  const [kind, repertoire] = String(card.encoded).split(":");
-  const retry = { ...card, targets: [target], retry: true, encoded: `${kind}:${repertoire}:${target.node_id}` };
+  // A new move comes back as recall: no second demonstration, no second "learned".
+  const kind = card.kind === "new" ? "due" : card.kind;
+  const repertoire = String(card.encoded).split(":")[1];
+  // The ":retry" mark is synced with the queue, so a reload still re-tests it ungraded.
+  const retry = { ...card, kind, targets: [target], retry: true, encoded: `${kind}:${repertoire}:${target.node_id}:retry` };
   smart.queue.splice(Math.min(smart.cardIndex + smart.requeueGap, smart.queue.length), 0, retry);
   smart.totalCards = smart.queue.length;
-  smart.counts[card.kind] = (smart.counts[card.kind] || 0) + 1;
+  smart.counts[kind] = (smart.counts[kind] || 0) + 1;
   return { added: true, pending: true };
 }

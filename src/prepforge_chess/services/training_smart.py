@@ -51,6 +51,7 @@ from prepforge_chess.services.scheduler import (
     card_counts,
     decode_card,
     encode_card,
+    flagged_miss_cards,
     index_nodes,
     mix_plans,
     own_move_nodes_on,
@@ -59,6 +60,7 @@ from prepforge_chess.services.scheduler import (
     sibling_moves,
     target_run_in,
 )
+from prepforge_chess.services.srs import is_flagged_miss
 from prepforge_chess.services.training import grade_attempt
 from prepforge_chess.services.training_hints import (
     heuristic_strategy,
@@ -232,7 +234,7 @@ class SmartTrainingService:
         existing = self._latest(repertoire_id, scope)
         if existing is not None and not fresh and scope == SCOPE_REPERTOIRE and self._resumable(existing, [repertoire]):
             self.resumed = True
-            return existing
+            return self._lead_with_misses(existing, [repertoire])
         plan = self._plan_single(repertoire, session_size, new_cap, target_node_ids)
         if not plan.cards:
             raise ValueError("repertoire has no trainable moves yet")
@@ -289,11 +291,32 @@ class SmartTrainingService:
         existing = self._latest(anchor.id, SCOPE_ALL)
         if existing is not None and not fresh and self._resumable(existing, reps):
             self.resumed = True
-            return existing
+            return self._lead_with_misses(existing, reps)
         plan = self._plan_mixed(reps, session_size, new_cap)
         if not plan.cards:
             raise ValueError("repertoires have no trainable moves yet")
         return self._install(existing, anchor.id, SCOPE_ALL, plan, seed)
+
+    def _with_misses(self, session: TrainingSession, reps: List[Repertoire]) -> List[str]:
+        """The queue with any miss recorded since it was planned (Analyze, a
+        game) inserted as the next card, so resuming still leads with it."""
+        queued = {target for raw in session.line_order[session.current_index:]
+                  for target in (decode_card(raw) or SimpleNamespace(target_ids=())).target_ids}
+        cards = [card for rep in reps for card in flagged_miss_cards(
+            rep.root_node, rep.color, self.progress_by_id(rep.id), queued)]
+        if not cards:
+            return session.line_order
+        at = session.current_index + (1 if session.current_node_id else 0)
+        return session.line_order[:at] + [encode_card(card) for card in cards] + session.line_order[at:]
+
+    def _lead_with_misses(self, session: TrainingSession, reps: List[Repertoire]) -> TrainingSession:
+        if self._with_misses(session, reps) == session.line_order:
+            return session
+        with self.repository.engine.begin() as conn:
+            locked = self.repository.lock_training_session(conn, session_id=session.id) or session
+            session = replace(locked, line_order=self._with_misses(locked, reps), updated_at=_utc_now())
+            self.repository.write_training_session(conn, session)
+        return session
 
     def _latest(self, repertoire_id: str, scope: str) -> Optional[TrainingSession]:
         return self.repository.load_latest_training_session(
@@ -378,17 +401,25 @@ class SmartTrainingService:
         # A repertoire that cannot fill its share leaves budget behind; a second
         # pass hands it to the ones that filled theirs, so the order of
         # repertoires never decides how long the session is.
+        # Recorded misses (Analyze, games) reserve their slots first, so a miss
+        # in the last repertoire is not crowded out by the earlier ones.
         self._load_progress([rep.id for rep in reps])
         remaining_size = max(0, session_size if session_size is not None else DEFAULT_SESSION_SIZE)
         remaining_new = max(0, new_cap if new_cap is not None else DEFAULT_NEW_CAP)
+        reserved: Dict[str, int] = {}
+        for rep in reps:
+            nodes = self._node_index(rep.id)
+            misses = sum(is_flagged_miss(p) and node_id in nodes for node_id, p in self.progress_by_id(rep.id).items())
+            reserved[rep.id] = min(misses, remaining_size)
+            remaining_size -= reserved[rep.id]
         plans: List[tuple[Repertoire, SessionPlan, int, int]] = []
         for index, rep in enumerate(reps):
             remaining_reps = len(reps) - index
-            size = -(-remaining_size // remaining_reps)
+            size = -(-remaining_size // remaining_reps) + reserved[rep.id]
             new = -(-remaining_new // remaining_reps)
             plan = self._plan_single(rep, size, new)
             plans.append((rep, plan, size, new))
-            remaining_size -= plan.counts.get("targets", 0)
+            remaining_size -= plan.counts.get("targets", 0) - reserved[rep.id]
             remaining_new -= plan.counts.get("new_targets", 0)
         for index, (rep, plan, size, new) in enumerate(plans):
             if remaining_size <= 0:
@@ -424,7 +455,8 @@ class SmartTrainingService:
             anchor = reps[0]
             existing = self._latest(repertoire_id, SCOPE_REPERTOIRE)
         if existing is not None and self._resumable(existing, reps):
-            cards = [card for card in (decode_card(raw) for raw in existing.line_order[existing.current_index:]) if card is not None]
+            line_order = self._with_misses(existing, reps)
+            cards = [card for card in (decode_card(raw) for raw in line_order[existing.current_index:]) if card is not None]
             resumed = 1
         else:
             cards = list(self._plan_single(reps[0]).cards if repertoire_id else self._plan_mixed(reps).cards)
@@ -696,6 +728,7 @@ class SmartTrainingService:
                     {
                         "kind": card.kind,
                         "encoded": raw,
+                        "retry": card.retry,
                         "repertoire_id": card_rep.id,
                         "repertoire_name": card_rep.name,
                         "color": card_rep.color.value,
@@ -872,7 +905,7 @@ class SmartTrainingService:
                 )
 
             progress: Optional[TrainingProgress] = None
-            sr_written = attempt <= 1
+            sr_written = attempt <= 1 and not context.card.retry
             if sr_written:
                 session, progress = grade_attempt(
                     self.repository, conn, session, card_rep.id, expected.id,

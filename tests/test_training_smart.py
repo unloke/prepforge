@@ -1371,3 +1371,55 @@ def test_smart_queue_hydrates_only_the_paths_it_serves(monkeypatch):
     assert service.current_prompt(session.id) is not None
     assert service.session_card_bundle(session, service.repertoire(repertoire.id))
     assert calls < total_moves // 2
+
+
+# ---- review of PR 323: retries and recorded misses across resume ------------
+
+
+def test_a_synced_retry_card_stays_an_ungraded_retry_after_resume():
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    service = SmartTrainingService(repository, "t-owner")
+    session = service.start_or_resume(repertoire.id, seed=5)
+    retry = f"due:{repertoire.id}:{ids['e4']}:retry"
+    service.sync_progress(session.id, [], card_index=0, queue=[retry, *session.line_order],
+                          state_version=session.state_version)
+    resumed = SmartTrainingService(repository, "t-owner")
+    again = resumed.start_or_resume(repertoire.id)
+    assert resumed.resumed and again.line_order[0] == retry
+    assert resumed.session_card_bundle(again, repertoire)[0]["retry"] is True
+    # Answered on the server too, a retry re-tests without an FSRS write.
+    result = resumed.submit_move(again.id, "e2e4", attempt=1)
+    assert result.correct and not result.sr_written
+    assert repository.load_training_progress(repertoire.id, ids["e4"], owner_user_id="t-owner") is None
+
+
+def test_a_miss_recorded_mid_session_comes_next_on_resume():
+    from prepforge_chess.services.workflows import record_forgotten_move_as_training_miss
+
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    session = SmartTrainingService(repository, "t-owner").start_or_resume(
+        repertoire.id, seed=5, session_size=2, new_cap=2)
+    queued = {t for raw in session.line_order for t in decode_card(raw).target_ids}
+    assert ids["c4"] not in queued
+    record_forgotten_move_as_training_miss(repository, repertoire.id, ids["c4"], "t-owner")
+    service = SmartTrainingService(repository, "t-owner")
+    resumed = service.start_or_resume(repertoire.id)
+    assert service.resumed and resumed.id == session.id
+    assert decode_card(resumed.line_order[resumed.current_index]).target_ids == (ids["c4"],)
+    assert service.preview("t-owner", repertoire.id)["left"] == len(resumed.line_order)
+
+
+def test_a_recorded_miss_in_the_last_repertoire_still_leads_a_mixed_session():
+    from prepforge_chess.services.workflows import record_forgotten_move_as_training_miss
+
+    repository = _repository()
+    owner = "owner-reserve"
+    reps = [_build_black(repository) for _ in range(5)]
+    _claim(repository, owner, *reps)
+    last = SmartTrainingService(repository, owner).active_repertoires(owner)[-1]
+    missed = next(n.id for n in last.root_node.walk() if n.move is not None and n.move.uci == "b8c6")
+    record_forgotten_move_as_training_miss(repository, last.id, missed, owner)
+    session = SmartTrainingService(repository, owner).start_or_resume_mixed(owner, seed=5, session_size=4)
+    assert decode_card(session.line_order[0]).first_target_id == missed
