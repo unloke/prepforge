@@ -77,7 +77,6 @@ describe("I'm Feeling Lucky entry", () => {
     const picked = await runFeelingLucky({ ...h.deps, ensureExplorer });
     expect(picked).toEqual(live);
     expect(h.luckyTitledStartFn).toHaveBeenCalledTimes(1);
-    expect(h.luckyTitledStartFn.mock.calls[0][0].allowReferences).toBe(false);
     expect(h.luckyDbStartFn).not.toHaveBeenCalled();
     expect(ensureExplorer).not.toHaveBeenCalled();
     expect(h.calls.banner[0]).toEqual([

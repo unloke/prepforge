@@ -1,6 +1,6 @@
-﻿// Critical-position scorer for I'm Feeling Lucky. Pure: chess.js features in,
+// Critical-position scorer for I'm Feeling Lucky. Pure: chess.js features in,
 // one number out. No DOM, no network, no engine — the async picker
-// (train-lucky-db.js) adds explorer/Maia/Stockfish evidence on top.
+// (train-lucky-db.js) adds explorer evidence on top.
 
 import { Chess } from "chess.js";
 
@@ -48,7 +48,7 @@ export function extractLocalFeatures(fen, ply = 0) {
       const defended = chess.attackers(move.to, own).some((sq) => sq !== move.from);
       if (hitByEnemy && !defended) hanging += 1;
     }
-  } catch (_) {
+  } catch {
     hanging = 0;
   }
   return {
@@ -229,7 +229,7 @@ export function divideGame(boards) {
 export function boardSnapshot(fen) {
   try {
     return new Chess(fen).board().flat().filter(Boolean);
-  } catch (_) {
+  } catch {
     return [];
   }
 }
@@ -275,14 +275,6 @@ export function scorePosition(features = {}, evidence = {}) {
   score += Math.min(2, (Number(f.nHanging) || 0) * 0.5);
   if (f.inCheck) score += 0.5;
   score += explorerBonus(evidence.explorer);
-  const maiaTop = evidence.maiaTop ? String(evidence.maiaTop).toLowerCase() : null;
-  const engineBest = evidence.engineBest ? String(evidence.engineBest).toLowerCase() : null;
-  const explorerTop = evidence.explorerTop ? String(evidence.explorerTop).toLowerCase() : null;
-  if (maiaTop && engineBest && maiaTop !== engineBest) score += 2.5;
-  else if (!engineBest && maiaTop && explorerTop && maiaTop !== explorerTop) score += 1.5;
-  else if (!maiaTop && engineBest && explorerTop && engineBest !== explorerTop) score += 1.5;
-  const swing = Number(evidence.swingPawns);
-  if (Number.isFinite(swing) && swing > 0) score += Math.min(3, swing * 1.2);
   return score;
 }
 
@@ -299,5 +291,5 @@ export function pickKeyIndex(scores, { rng = Math.random, exclude = new Set() } 
   const elites = pool.filter((row) => row.score >= best.score - 0.75);
   const roll = typeof rng === "function" ? rng() : Math.random();
   const safe = Number.isFinite(roll) ? Math.min(0.999999, Math.max(0, roll)) : 0;
-  return elites[Math.min(elites.length - 1, Math.floor(safe * elites.length))].index;
+  return elites[Math.floor(safe * elites.length)].index;
 }
