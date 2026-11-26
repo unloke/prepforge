@@ -245,6 +245,42 @@ describe("a Start over a saved run", () => {
     expect(streamGames.mock.calls[1][1].until).toBe(99_950);
   });
 
+  // Review of #328: a stopped refresh saves the newest new games it got, under the old
+  // newest. On reopen those come back from the save, and a full refresh that repeats
+  // them has not reached the saved newest game: the oldest new game is still unread.
+  it("a reopened refresh that only repeats games from a stopped refresh is still a gap", async () => {
+    store.set(savedRun().key, savedRun());
+    const fresh = Array.from({ length: 501 }, (_, i) => ({ ...games("n", 105_010, 1)[0], gameId: `n-${i}`, datestamp: 105_010 - i * 10 }));
+    mount();
+    streamGames.mockImplementationOnce((_user, opts) => new Promise((_resolve, reject) => {
+      for (const g of fresh.slice(0, 100)) opts.onGame(g);
+      opts.signal.addEventListener("abort", () => reject(Object.assign(new Error("stop"), { name: "AbortError" })));
+    }));
+    const started = view.runScout();
+    await vi.advanceTimersByTimeAsync(0);
+    await view.runScout(); // Stop
+    await started;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(lastSave().sources.rival.newest).toBe(100_000);
+    view.discardReport();
+
+    mount(); // reopen: the 100 new games come back from the save
+    streamGames.mockImplementationOnce(async (_user, opts) => {
+      for (const g of fresh.slice(0, 500)) opts.onGame(g);
+      return { accepted: 400, received: 500, lastDatestamp: fresh[499].datestamp };
+    });
+    await view.runScout();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(streamGames.mock.calls[1][1].since).toBe(100_001);
+    // The saved games behind the gap leave; the 500 new ones stay, the repeated 100 too.
+    expect(elements.get("scout-live-count").textContent).toBe("500");
+    expect(lastSave().games.map((g) => g.gameId)).toEqual(fresh.slice(0, 500).map((g) => g.gameId));
+    streamGames.mockResolvedValueOnce({ accepted: 0, received: 0, lastDatestamp: null });
+    await view.runScout(); // Load older: the 501st new game comes next
+    await vi.advanceTimersByTimeAsync(0);
+    expect(streamGames.mock.calls[2][1].until).toBe(fresh[499].datestamp);
+  });
+
   // Review of #328: a source that had no games when saved was stored as read to its
   // end with no newest game, so a reopen never asked it again.
   it("a source that had no games when saved is read again on reopen", async () => {

@@ -139,14 +139,18 @@ export function restoreScoutRun(state, session, run) {
 }
 
 /**
- * A game the stream sent again. During a refresh, one that came from the save means
- * the refresh reached the saved games: the new games join them with no gap between.
+ * A game the stream sent again. During a refresh, the saved newest game (or an
+ * older saved one) means the refresh reached the saved games: the new games join
+ * them with no gap between. A saved game newer than that came from a refresh that
+ * was stopped, and the games between it and the saved newest may still be unread:
+ * it now counts as one of this refresh's games, so a gap does not drop it.
  */
 export function noteRepeatedGame(session, game) {
   const user = game.scoutUsername;
-  if (game.gameId && user && session.refreshPending?.has(user) && session.restoredIds?.has(game.gameId)) {
-    (session.refreshReached ||= new Set()).add(user);
-  }
+  if (!game.gameId || !user || !session.refreshPending?.has(user) || !session.restoredIds?.has(game.gameId)) return;
+  const boundary = session.newestDatestampByUser?.[user];
+  if (boundary != null && game.datestamp <= boundary) (session.refreshReached ||= new Set()).add(user);
+  else session.restoredIds.delete(game.gameId);
 }
 
 /**
