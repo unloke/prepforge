@@ -37,7 +37,7 @@ import { getBuildTree, summarizeBuild } from "./build-tree.js";
 import { bindUnlocks } from "./engine-unlock.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { createBoardController } from "./board/board-controller.js";
-import { buildAddId, buildDeleteId } from "./sync-queue.js";
+import { buildAddId, buildDeleteId } from "./outbox-state.js";
 import { clearCheckpoint, loadCheckpoint } from "./analyze-checkpoint.js";
 import { loadReturnState, setHandoffOwner } from "./handoff-context.js";
 import { activateWorkspaceTab, parseWorkspaceLocation, serializeWorkspaceLocation, trainQueueRepertoireId, workspaceLocationFromState } from "./workspace-url.js";
@@ -45,8 +45,8 @@ import { createAnalyzeRestore } from "./controllers/analyze-restore.js";
 import { bindCommandPalette, closePalette, createPalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
 import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
   isBuildReadOnly, explorerDrawerOpen, explorerEvalEngine, undoLastBuildAdd, queueBuildAdd,
-  reloadOpenBuildTree, renderBuilderTree, resolveBuildId, setBuildInspector, setExplorerDb,
-  startBuildLive } from "./build-entry.js";
+  reloadOpenBuildTree, renderBuilderTree, resolveBuildId, setBuildInspector, setBuildView, setExplorerDb,
+  startBuildLive, buildView } from "./build-entry.js";
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { paintDashboardSkeleton } from "./views/library-skeleton.js";
@@ -69,8 +69,8 @@ import { PIECE_SETS, PIECE_STYLE_KEY, boardInfo, isPromotionMove, legalMoveFor, 
   resolveBoardMove } from "./board/ui.js";
 import { installSoundUnlock, moveCue, playSound } from "./core/sound.js";
 import { engineWidget, setEngineOn, syncEngineForView, engineWantedIn, applyServerEngineGating,
-  paintEngineBanners } from "./core/engine.js";
-import { _coachReady, preloadCoach } from "./coach/coach-loader.js";
+  paintEngineBanners, setEngineWidgetImport } from "./core/engine.js";
+import { preloadCoach } from "./coach/coach-loader.js";
 import { createAccountEntry } from "./account-entry.js";
 import { bindEvalChart, createAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer, preloadAnalyzeView,
   renderAnalysisTree } from "./views/analyze-loader.js";
@@ -208,6 +208,9 @@ const BoardController = createBoardController({
   pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom,
 });
 
+
+// The engine widget loads on first open (core/engine.js keeps the facade).
+setEngineWidgetImport(() => import("./controllers/engine-widget.js"));
 
 // The repertoire editor lives in controllers/build-session.js, loaded with the Build view.
 // Its wrappers resolve the lazy module on call, so they can exist before it loads
@@ -967,7 +970,6 @@ let analyzeLoader = null;
 
 
 let buildModule = null;
-let buildView = null;
 
 function preloadBuildView() {
   if (!buildModule) {
@@ -984,7 +986,7 @@ async function ensureBuildView() {
   // The editor module comes with the view, so its handlers call straight through.
   const [mod] = await Promise.all([preloadBuildView(), loadBuildSession()]);
   if (!buildView) {
-    buildView = mod.createBuildView({
+    setBuildView(mod.createBuildView({
       appState,
       boards,
       getMoveTreeRenderer: () => analyzeLoader.moveTreeRenderer,
@@ -996,7 +998,7 @@ async function ensureBuildView() {
       onTreeRendered: syncViewHeads,
       boardRenderers: { parseFenBoard, pieceSvg },
       collaborationApi: { api, postJson, hydrateBuild, showInputModal },
-    });
+    }));
   }
   return buildView;
 }
@@ -1966,19 +1968,3 @@ appReadyPromise = init()
     releaseBootView();
     return setStatusError(error.message);
   });
-
-// Lets that app.js reassigns, read live by the lazily loaded controllers/*-session.js.
-export { _coachReady, buildView };
-// The Coverage panel is created by coverage-entry.js; re-exported so the Build
-// editor keeps its one import from the shell.
-export { coverageView } from "./coverage-entry.js";
-// The Analyze view is created by views/analyze-loader.js; re-exported so the
-// analysis session keeps its one import from the shell.
-export { analyzeView } from "./views/analyze-loader.js";
-// The Build state the lazy editor reads (the open inspector tab, the Explorer
-// client) lives in build-entry.js; re-exported so that module keeps its one
-// import from the shell.
-export { buildDockTab, explorerClient, explorerDb, explorerModule } from "./build-entry.js";
-// The Analyze source counter is read live by the lazily loaded analysis
-// session; re-exported so that module keeps its one import from the shell.
-export { analysisRecallSeq };

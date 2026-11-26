@@ -16,14 +16,16 @@ import { acceptRepertoireListing, fetchRepertoireListing } from "../repertoire-l
 import { flushTrainSync, lichessAccounts, requireSignIn, setTrainBanner, switchView, syncWorkspaceUrl } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
 import { cancelLuckyDiscovery, cancelLuckyPractice } from "../train-lucky-control.js";
-import { blitzEnabled, clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setBlitzEnabled,
-  skipTrainingLine, startPlaySessionTracked, startTraining, takebackPlaySession, trainHint } from "./train-session.js";
 // Train is one loop, Home → Session → Result, shared by the Due queue, line
 // rehearsal and practice games. This module owns the loop's chrome: which
 // screen is up (data-train-screen on #view-train), the Home rows and their
 // pickers, the session header with its scope chip, the shared Result card, the
 // board bar's action slot, and the in-Train view transitions. The sessions
 // themselves run in train-session.js.
+
+// The session's entry points (train-session.js), handed in by the session when it
+// creates Home: the session owns this module, so Home never imports it back.
+let session = null;
 
 export const PLAY_COLOR_KEY = "prepforge.play_color";
 
@@ -59,7 +61,8 @@ function paintRowErrors() {
   const retry = document.getElementById("train-due-retry"); if (retry) retry.hidden = !(isSignedIn() && !repertoireListingKnown() && appState.trainRepertoireOptionsError);
 }
 
-export function createTrainHome() {
+export function createTrainHome(sessionEntries) {
+  session = sessionEntries;
   preview = createTrainPreview(api);
   bind();
   return { openTrain, paintTrainHome, syncTrainScreen, showTrainResult, leaveToHome };
@@ -165,7 +168,7 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
   enter();
   syncWorkspaceUrl();
   if (!autostart) return true;
-  if (mode === "play") await startPlaySessionTracked(); else await startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
+  if (mode === "play") await session.startPlaySessionTracked(); else await session.startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
   return true;
 }
 
@@ -181,8 +184,8 @@ function resetSessions() {
   state.trainResult = null;
   state.trainBusy = false;
   state.trainStarting = false; state.trainStartToken = null;
-  clearBlitzTimer();
-  setBlitzBarVisible(false);
+  session.clearBlitzTimer();
+  session.setBlitzBarVisible(false);
 }
 
 // "‹ Train": drills keep their progress (Home then offers "Resume"), a live
@@ -198,7 +201,7 @@ export async function leaveToHome() {
   state.trainEntryVersion = entrySeq + 1; delete state.trainPendingRoute;
   resetSessions(); setTrainBanner("move", "", "");
   syncWorkspaceUrl(); invalidateTrainPreview();
-  syncTrainScreen(); void resetTrainBoardIdle("");
+  syncTrainScreen(); void session.resetTrainBoardIdle("");
 }
 
 // ---------------------------------------------------------------- Home
@@ -514,7 +517,7 @@ function bind() {
     void paintTrainHome();
   });
   $("feeling-lucky").addEventListener("click", async () => {
-    if (await openTrain({ mode: "play", autostart: false })) void onFeelingLucky();
+    if (await openTrain({ mode: "play", autostart: false })) void session.onFeelingLucky();
   });
   $("train-back").addEventListener("click", () => void leaveToHome());
   $("train-summary-home").addEventListener("click", () => void leaveToHome());
@@ -566,27 +569,27 @@ function bind() {
     if (localStorage.getItem(PLAY_COLOR_KEY) === "black") setPlayPickerColor("black", { persist: false });
   } catch { /* private mode */ }
   $("train-blitz-toggle").addEventListener("click", (e) => {
-    const next = !blitzEnabled();
-    setBlitzEnabled(next);
+    const next = !session.blitzEnabled();
+    session.setBlitzEnabled(next);
     e.currentTarget.classList.toggle("is-on", next);
     e.currentTarget.setAttribute("aria-checked", String(next));
   });
-  $("train-blitz-toggle").classList.toggle("is-on", blitzEnabled());
-  $("train-blitz-toggle").setAttribute("aria-checked", String(blitzEnabled()));
+  $("train-blitz-toggle").classList.toggle("is-on", session.blitzEnabled());
+  $("train-blitz-toggle").setAttribute("aria-checked", String(session.blitzEnabled()));
   $("train-history-open").addEventListener("click", async () => {
     if (!requireSignIn("Sign in to view your training history", "train-history")) return;
     const owner = currentOwnerId();
     try {
       const { openTrainingHistory } = await import("../views/train-history.js");
-      if (currentOwnerId() === owner) openTrainingHistory(owner, run => currentOwnerId() === owner && openPlayInAnalyze(run));
+      if (currentOwnerId() === owner) openTrainingHistory(owner, run => currentOwnerId() === owner && session.openPlayInAnalyze(run));
     } catch { setStatusError("Could not open History. Reload and try again."); }
   });
-  $("train-hint").addEventListener("click", () => trainHint());
-  $("train-skip").addEventListener("click", () => skipTrainingLine());
-  $("play-takeback").addEventListener("click", () => takebackPlaySession());
+  $("train-hint").addEventListener("click", () => session.trainHint());
+  $("train-skip").addEventListener("click", () => session.skipTrainingLine());
+  $("play-takeback").addEventListener("click", () => session.takebackPlaySession());
   $("play-resign").addEventListener("click", async () => {
     const ok = await showConfirmModal({ title: "Resign this game?", okLabel: "Resign", cancelLabel: "Keep playing", tone: "danger" });
-    if (ok) resignPlaySession();
+    if (ok) session.resignPlaySession();
   });
-  $("play-analyze").addEventListener("click", () => openPlayInAnalyze());
+  $("play-analyze").addEventListener("click", () => session.openPlayInAnalyze());
 }

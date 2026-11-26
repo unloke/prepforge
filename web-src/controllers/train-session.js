@@ -76,12 +76,12 @@ export function setBlitzEnabled(on) {
 // Binds Train's Home screen (once, when app.js first loads Train) and returns
 // the entry points the shell calls.
 export function createTrainSession() {
-  const home = createTrainHome();
+  const entries = { clearBlitzTimer, onFeelingLucky, openPlayInAnalyze, resetTrainBoardIdle, resignPlaySession,
+    setBlitzBarVisible, skipTrainingLine, startPlaySessionTracked, startTraining, takebackPlaySession, trainHint };
+  const home = createTrainHome({ ...entries, blitzEnabled, setBlitzEnabled });
   return {
-    clearBlitzTimer, loadTrainRepertoireOptions, onFeelingLucky, openPlayInAnalyze, openTrain: home.openTrain,
-    resetTrainBoardIdle, resignPlaySession, setBlitzBarVisible, setPlayPickerColor,
-    skipTrainingLine, startPlaySessionTracked, startTraining, submitTrainingMove,
-    syncTrainControls: syncTrainSessionControls, takebackPlaySession, trainHint,
+    ...entries, loadTrainRepertoireOptions, openTrain: home.openTrain, setPlayPickerColor, submitTrainingMove,
+    syncTrainControls: syncTrainSessionControls,
   };
 }
 

@@ -120,6 +120,16 @@ function harnessInputs() {
 // That dir is build output: git ignores it. Docker runs this build in a Node
 // stage, CI runs it before the tests and smokes, and a developer runs it before
 // starting the local server.
+// The modules every page loads at boot that lazy chunks also use go to one shared
+// chunk. Rolldown only folds such modules into the entry chunk when that creates no
+// chunk cycle; while the feature controllers imported app.js back that held for
+// free, and without it each shared boot module would become its own small chunk.
+// A module that imports its own stylesheet stays out, so index.css keeps every
+// boot rule in the same file and order.
+const importsCss = (id) => /^import\s+["'][^"']+\.css["']/m.test(readFileSync(id, "utf8"));
+const bootShared = { name: "shared", tags: ["$initial"], minShareCount: 2,
+  test: (id) => id.endsWith(".js") && !id.startsWith("\0") && !importsCss(id) };
+
 const OUT_DIR = fileURLToPath(new URL("./src/prepforge_chess/web/static", import.meta.url));
 
 export default defineConfig({
@@ -143,6 +153,7 @@ export default defineConfig({
     // they would be blocked by the CSP's connect-src, so they always ship as files.
     assetsInlineLimit: (file) => (file.endsWith(".mp3") ? false : undefined),
     rollupOptions: {
+      output: { codeSplitting: { groups: [bootShared] } },
       input: {
         index: fileURLToPath(new URL("./web-src/index.html", import.meta.url)),
         // Diagnostic pages are DEV/CI-only and MUST NOT ship in the deploy image: each

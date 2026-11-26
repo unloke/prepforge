@@ -12,13 +12,15 @@ import { createPassFeed } from "./engine-pass-feed.js";
 import { START_FEN, appState, boards } from "../core/state.js";
 import { activeViewName, setStatusError } from "../core/api.js";
 import { effectiveStockfishDepth } from "../core/prefs.js";
-import { analysisStore, createSharedEvaluationProvider, explorerEvalEngine, setEngineBestArrow,
-  setEngineOn } from "../core/engine.js";
 
 // Analyze's session, read live: it loads (and can reload) after the widget.
 const getAnalyzeSession = () => hooks.analyzeSession?.() || null;
 
-export function createEngineWidget() {
+// The engine facade's own parts. core/engine.js loads this module and hands them in.
+let analysisStore, createSharedEvaluationProvider, explorerEvalEngine, setEngineBestArrow, setEngineOn;
+
+export function createEngineWidget(engine) {
+  ({ analysisStore, createSharedEvaluationProvider, explorerEvalEngine, setEngineBestArrow, setEngineOn } = engine);
   const widget = new EngineWidget();
   widget.bind();
   return widget;
