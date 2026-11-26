@@ -113,12 +113,12 @@ def _owned_link(db: Session, user_id: str, account_id: str) -> LinkedAccount:
 
 def _link_status(db: Session, user_id: str) -> LinkStatus:
     links = _links_for(db, user_id)
-    link = _link_for(db, user_id)
-    if link is None:
+    if not links:
         return LinkStatus(linked=False, username=None, accounts=[])
+    primary = next((link for link in links if link.is_primary), links[0])
     return LinkStatus(
         linked=True,
-        username=link.provider_user_id,
+        username=primary.provider_user_id,
         accounts=[
             LinkedAccountOut(id=a.id, username=a.provider_user_id, is_primary=bool(a.is_primary))
             for a in links
