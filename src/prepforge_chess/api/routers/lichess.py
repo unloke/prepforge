@@ -343,6 +343,8 @@ def _explorer_token(db: Session, user_id: str) -> tuple[str | None, bool]:
     be decrypted (key rotation) must not disable the explorer while
     another linked account still has a working one."""
     links = _self_links(db, user_id)
+    # End the read transaction so no pooled connection waits on the explorer.
+    db.commit()
     for link in links:
         if not link.encrypted_token:
             continue
@@ -492,6 +494,8 @@ def _run_compare(
         lichess_fetch.validate_fetch_budget(usernames, count)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    # End the link reads' transaction so no pooled connection waits on Lichess.
+    db.commit()
     source_errors: list[dict] = []
     with _lichess_errors():
         if len(usernames) == 1:
@@ -619,9 +623,12 @@ def latest(
         lichess_fetch.validate_fetch_budget(links, 1)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    usernames = [link.provider_user_id for link in links]
+    # End the link reads' transaction so no pooled connection waits on Lichess.
+    db.commit()
     with _lichess_errors():
         game, source = lichess_fetch.newest_game_across(
-            [link.provider_user_id for link in links], per_account=1, with_moves=include_moves
+            usernames, per_account=1, with_moves=include_moves
         )
     if game is None:
         return {"has_game": False}
