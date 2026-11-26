@@ -5,7 +5,6 @@ import {
   luckyTitledStart,
   playerTopUrl,
   pgnEvalCpByFen,
-  singleGameUrl,
   splitPgnBlocks,
   titledGamesUrl,
 } from "./train-lucky-titled.js";
@@ -95,7 +94,6 @@ describe("live Lichess endpoint URLs", () => {
   it("exposes the dynamic leaderboard and current-game fallback paths", () => {
     expect(playerTopUrl(20, "blitz")).toBe("https://lichess.org/api/player/top/20/blitz");
     expect(currentGameUrl("AlphaGM")).toContain("https://lichess.org/api/user/AlphaGM/current-game");
-    expect(singleGameUrl("kAdOQKeh")).toBe("https://lichess.org/game/export/kAdOQKeh");
   });
 });
 
@@ -269,40 +267,6 @@ describe("luckyTitledStart live selection", () => {
         maxRequests: 2,
       }),
     ).rejects.toThrow(/offline|503/);
-  });
-
-  it("does not consult fixed references unless explicitly enabled", async () => {
-    const fetchSinglePgn = vi.fn(async () => GAME_A);
-    await expect(
-      luckyTitledStart({
-        storage: memoryStorage(),
-        players: [],
-        discoverPlayers: false,
-        fetchPgn: vi.fn(async () => ""),
-        fetchSinglePgn,
-        curatedGames: [{ id: "rrdtEiYG" }],
-        allowCurrentGame: false,
-        maxRequests: 1,
-      }),
-    ).rejects.toThrow(/No sharp titled game/);
-    expect(fetchSinglePgn).not.toHaveBeenCalled();
-  });
-
-  it("keeps references available only for explicit emergency/test verification", async () => {
-    const fetchSinglePgn = vi.fn(async () => GAME_A);
-    const picked = await luckyTitledStart({
-      storage: memoryStorage(),
-      players: [],
-      discoverPlayers: false,
-      fetchPgn: vi.fn(async () => ""),
-      fetchSinglePgn,
-      curatedGames: [{ id: "rrdtEiYG" }],
-      allowReferences: true,
-      allowCurrentGame: false,
-      maxRequests: 1,
-    });
-    expect(picked?.source).toBe("lichess-reference");
-    expect(fetchSinglePgn).toHaveBeenCalledTimes(1);
   });
 
   it("skips variant games that cannot replay from START_FEN", async () => {

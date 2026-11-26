@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
 
 import {
@@ -148,20 +148,6 @@ describe("scorePosition", () => {
       ),
     );
     expect(sharp).toBeGreaterThan(quiet);
-  });
-
-  it("adds the human-engine disagreement bonus", () => {
-    const f = extractLocalFeatures(SICILIAN, 3);
-    const agree = scorePosition(f, { maiaTop: "e2e4", engineBest: "e2e4" });
-    const disagree = scorePosition(f, { maiaTop: "g1f3", engineBest: "e2e4" });
-    expect(disagree - agree).toBeCloseTo(2.5, 5);
-  });
-
-  it("adds eval-swing evidence up to a cap", () => {
-    const f = extractLocalFeatures(SICILIAN, 3);
-    const base = scorePosition(f);
-    expect(scorePosition(f, { swingPawns: 1 })).toBeCloseTo(base + 1.2, 5);
-    expect(scorePosition(f, { swingPawns: 99 })).toBeCloseTo(base + 3, 5);
   });
 
   it("scores the endgame fixture below the critical threshold", () => {
