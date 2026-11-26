@@ -190,6 +190,7 @@
 #train-banner .train-coach-sub.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
 
 #train-banner:has(.train-coach-sub:not(:empty)) { cursor: pointer; }
+#train-banner:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 #train-banner[data-state="correct"] .train-coach-title { color: var(--good-text); }
 

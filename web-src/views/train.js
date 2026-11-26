@@ -34,10 +34,17 @@ export function createTrainView({
   updateTrainTurnBadge,
   onStreakRendered,
 }) {
-  // The coach sub line is clamped to two lines; a tap on the banner shows the
-  // rest. The full text also sits in the element title for hover.
-  document.getElementById("train-banner")?.addEventListener("click", () => {
-    document.getElementById("train-banner-sub")?.classList.toggle("expanded");
+  // The coach sub line is clamped to two lines; a tap on the banner, or Enter
+  // or Space once it has keyboard focus, shows the rest. The full text also
+  // sits in the element title for hover.
+  const banner = document.getElementById("train-banner");
+  const toggleBannerSub = () => document.getElementById("train-banner-sub")?.classList.toggle("expanded");
+  if (banner) banner.tabIndex = 0;
+  banner?.addEventListener("click", toggleBannerSub);
+  banner?.addEventListener("keydown", (event) => {
+    if (event.target !== banner || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    toggleBannerSub();
   });
   document.getElementById("train-line-path")?.addEventListener("click", (event) => {
     const el = event.currentTarget;

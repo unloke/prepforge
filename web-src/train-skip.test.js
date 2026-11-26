@@ -8,7 +8,7 @@ function harness(postJson = vi.fn(async () => ({ prompt: { session_id: "s", curr
   const appState = { trainMode: "all_lines", training: { prompt: { session_id: "s" } }, trainStats: { skipped: 0, mistakes: 1 }, trainAttempt: 3 };
   const deps = { appState, postJson, currentOwnerId: () => "u", currentTrainingPrompt: () => appState.training.prompt,
     setStatus: vi.fn(), setStatusError: vi.fn(), skipSmartCard: vi.fn(), syncTrainSessionControls: vi.fn(),
-    renderTraining: vi.fn(), finishTrainingSession: vi.fn() };
+    renderTraining: vi.fn(), finishTrainingSession: vi.fn(), trainRecovery: { recoverSkip: vi.fn(async () => {}) } };
   const skip = new Function(...Object.keys(deps), `${body}; return skipTrainingLine;`)(...Object.values(deps));
   return { ...deps, skip };
 }
@@ -30,9 +30,11 @@ it("ignores repeated skips while the first request is pending", async () => {
   expect(h.postJson).toHaveBeenCalledOnce(); resolve({ prompt: null }); await pending;
   expect(h.appState.trainStats.skipped).toBe(1);
 });
-it("does not count a rejected request or a skip from an abandoned session", async () => {
-  const h = harness(vi.fn(async () => { throw new Error("Offline"); })); await h.skip();
-  expect(h.appState.trainStats.skipped).toBe(0); expect(h.appState.trainBusy).toBe(false);
+it("does not count a failed request, and hands it to recovery, or a skip from an abandoned session", async () => {
+  const error = new Error("Offline");
+  const h = harness(vi.fn(async () => { throw error; })); await h.skip();
+  expect(h.appState.trainStats.skipped).toBe(0);
+  expect(h.trainRecovery.recoverSkip).toHaveBeenCalledWith(error, { session_id: "s" }, expect.any(Function));
   let resolve; const other = harness(vi.fn(() => new Promise(r => { resolve = r; })));
   const pending = other.skip(); other.appState.training = { prompt: { session_id: "new" } };
   resolve({ prompt: null }); await pending;

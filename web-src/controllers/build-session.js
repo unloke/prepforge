@@ -660,7 +660,8 @@ async function refreshExplorerPanel() {
     const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
-      showExplorerHint(rows, `Lichess asks for a short pause - try again in ~${secs}s.`);
+      showExplorerHint(rows, `Lichess asks for a short pause - retrying in ~${secs}s.`);
+      setTimeout(() => { if (seq === explorerSeq) void refreshExplorerPanel(); }, error.retryInMs + 250);
     } else if (/link your lichess account/i.test(error.message || "")) {
       // Retrying cannot help until an account is linked: offer the link.
       showExplorerHint(rows, html`${label} needs your Lichess account. <button type="button" class="btn sm" data-explorer-link>Link Lichess</button>`);
@@ -1186,7 +1187,7 @@ function rollbackOptimisticRepertoire({ previous, previousView, previousNodeId, 
     appState.buildCurrentNodeId = [previousNodeId, previous.selected_node_id].find((id) => appState.buildNodeById.has(id))
       || previous.nodes[0]?.id || null;
   }
-  if (!previous && previousView && previousView !== "build") {
+  if (previousView && previousView !== "build") {
     switchView(previousView);
   }
   if (boards.build && appState.build) {

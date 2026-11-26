@@ -262,3 +262,48 @@ describe("the recovery fences", () => {
     for (const change of cases) expect(trainRecoveryIsCurrent(base, { ...state(), ...change })).toBe(false);
   });
 });
+
+describe("a failed rehearsal Skip", () => {
+  function skipHarness(read) {
+    const h = harness({ read });
+    h.appState.trainBusy = true; // skipTrainingLine took the lock before posting
+    return { ...h, recovery: createTrainRecovery(h.deps) };
+  }
+  const notStale = () => false;
+
+  it("a rejection the server answered keeps the card and reopens Skip", async () => {
+    const h = skipHarness();
+    const error = Object.assign(new Error("Session expired"), { status: 409 });
+    await h.recovery.recoverSkip(error, CARD_E4, notStale);
+    expect(h.reads).toEqual([]);
+    expect(h.appState.trainBusy).toBe(false);
+    expect(h.deps.setStatusError).toHaveBeenCalledWith("Session expired");
+  });
+
+  it("a lost response that skipped already counts it and shows the server's card", async () => {
+    const h = skipHarness(async () => ({ prompt: CARD_NF3 }));
+    const card = { ...CARD_E4, current_index: -1 };
+    h.appState.training.prompt = card;
+    h.appState.trainAttempt = 2;
+    await h.recovery.recoverSkip(new Error("offline"), card, notStale);
+    expect(h.reads).toHaveLength(1);
+    expect(h.appState.trainStats.skipped).toBe(1);
+    expect(h.appState.trainAttempt).toBe(1);
+    expect(h.deps.renderTraining).toHaveBeenCalledWith(CARD_NF3);
+  });
+
+  it("a lost response that never applied leaves the count and the card alone", async () => {
+    const h = skipHarness(async () => ({ prompt: CARD_NF3 }));
+    h.appState.training.prompt = CARD_NF3;
+    await h.recovery.recoverSkip(new Error("offline"), CARD_NF3, notStale);
+    expect(h.appState.trainStats.skipped).toBe(0);
+    expect(h.appState.trainBusy).toBe(false);
+  });
+
+  it("keeps Skip locked behind Retry sync while the server can't be reached", async () => {
+    const h = skipHarness(async () => { throw new Error("still offline"); });
+    await h.recovery.recoverSkip(new Error("offline"), CARD_E4, notStale);
+    expect(h.appState.trainBusy).toBe(true);
+    expect(h.notices.show).toHaveBeenCalled();
+  });
+});

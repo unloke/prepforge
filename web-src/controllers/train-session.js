@@ -107,26 +107,25 @@ export async function skipTrainingLine() {
     && currentOwnerId() === owner && appState.trainMode === mode;
   appState.trainBusy = true;
   syncTrainSessionControls();
+  let result;
   try {
-    const result = await postJson("/api/train/skip", { session_id: prompt.session_id });
-    if (!stillCurrent()) return;
-    appState.trainStats.skipped += 1;
-    appState.trainAttempt = 1;
-    appState.trainBusy = false;
-    if (result.prompt) {
-      appState.training.prompt = result.prompt;
-      await renderTraining(result.prompt);
-    } else {
-      finishTrainingSession();
-    }
+    result = await postJson("/api/train/skip", { session_id: prompt.session_id });
   } catch (error) {
-    if (stillCurrent()) setStatusError(error.message);
-  } finally {
-    if (stillCurrent()) {
-      appState.trainBusy = false;
-      syncTrainSessionControls();
-    }
+    // A lost answer may have skipped already: the server's prompt decides, as for a lost move.
+    if (stillCurrent()) await trainRecovery.recoverSkip(error, prompt, () => !stillCurrent());
+    return;
   }
+  if (!stillCurrent()) return;
+  appState.trainStats.skipped += 1;
+  appState.trainAttempt = 1;
+  appState.trainBusy = false;
+  if (result.prompt) {
+    appState.training.prompt = result.prompt;
+    await renderTraining(result.prompt);
+  } else {
+    finishTrainingSession();
+  }
+  if (stillCurrent()) syncTrainSessionControls();
 }
 
 function applyTrainingPromptState(prompt) {
@@ -197,7 +196,7 @@ function tallyAnswer(stats, recalled) {
 }
 
 function trainStatsReset() {
-  appState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0, learned: 0, learnedRetry: 0 };
+  appState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0, learned: 0, learnedRetry: 0, startedAt: Date.now() };
 }
 
 function cancelStaleTrainStart(options) { if (!appState.trainStarting || appState.trainStartToken !== options.entryToken) return; appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", ""); syncTrainSessionControls(); }
@@ -1062,7 +1061,7 @@ function finishTrainingSession() {
   const runId = `${training?.session_id}:${training?.session_generation || Date.now()}`;
   saveRun(currentOwnerId(), {
     id: runId, mode: "all_lines", blitz: false,
-    repertoires: [training?.repertoire_name].filter(Boolean), startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
+    repertoires: [training?.repertoire_name].filter(Boolean), startedAt: new Date(stats.startedAt || Date.now()).toISOString(), finishedAt: new Date().toISOString(),
     cards: Number(training?.lines?.length) || 0, correct: stats.correct, mistakes: stats.mistakes, skipped: stats.skipped || 0, learned: 0,
   });
   showTrainResult({ ...drillResult(training, stats), runId });
@@ -1731,12 +1730,12 @@ async function finishSmartSession() {
     // The summary is a bonus — never block the finish on it.
   }
   if (after?.day_streak) appState.dayStreak = after.day_streak;
+  // Every cached count of what is left to train is now stale, even if the user has left.
+  refreshRepertoireHead();
+  void refreshDashboardRepertoires().catch(() => {});
+  invalidateTrainPreview();
   // The user may have moved on while the summary loaded.
   if (appState.smart !== smart || appState.trainResult?.mode !== "smart") return;
   appState.smart = null;
   showTrainResult({ ...smartResult(smart, stats, after), runId: `${smart.sessionId}:${smart.generation}` });
-  // Every cached count of what is left to train is now stale.
-  refreshRepertoireHead();
-  void refreshDashboardRepertoires().catch(() => {});
-  invalidateTrainPreview();
 }

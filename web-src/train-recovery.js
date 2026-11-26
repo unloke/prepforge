@@ -73,6 +73,8 @@ export function createTrainRecovery(deps) {
     if (!stillCurrent(ctx)) return release(ctx);
     ctx.card?.dismiss();
     appState.trainBusy = false;
+    // The server moved past the card, so the lost request did apply.
+    if (state.prompt?.current_index !== ctx.prompt.current_index) ctx.onApplied?.();
     setStatus("Caught up with the server.");
     if (state.prompt) await renderTraining(state.prompt);
     else finishTrainingSession();
@@ -116,5 +118,33 @@ export function createTrainRecovery(deps) {
     syncTrainSessionControls();
   }
 
-  return { recoverAnswer };
+  // A failed Skip. A rejection the server answered skipped nothing, so the card
+  // stays and Skip works again. A lost response may have skipped already, so the
+  // server's current prompt decides, as for a lost answer: reopening Skip there
+  // would skip a second card.
+  async function recoverSkip(error, prompt, superseded) {
+    if (superseded()) return;
+    if (!trainMoveResultUnconfirmed(error)) {
+      appState.trainBusy = false;
+      setStatusError(error.message);
+      syncTrainSessionControls();
+      return;
+    }
+    setTrainBanner("move", "Checking your skip", "");
+    await sync({
+      prompt,
+      training: appState.training,
+      owner: currentOwnerId(),
+      generation: appState.ownerGeneration,
+      mode: appState.trainMode,
+      superseded,
+      locked: true,
+      onApplied: () => {
+        appState.trainStats.skipped += 1;
+        appState.trainAttempt = 1;
+      },
+    });
+  }
+
+  return { recoverAnswer, recoverSkip };
 }

@@ -390,6 +390,20 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
     expect(last.legalMoves.length).toBeGreaterThan(0);
   });
 
+  it("a failed create started from the Library goes back to the Library", async () => {
+    const previous = {
+      repertoire_id: "rep-0", name: "Italian", color: "white", revision: 4,
+      selected_node_id: "root-0", nodes: [{ id: "root-0", fen: START_FEN, uci: null }],
+    };
+    const h = repHarness(async () => { throw new Error("offline"); });
+    h.appState.build = previous;
+    h.appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
+    h.appState.currentView = "library";
+    await h.prompt({});
+    expect(h.views).toEqual(["build", "library"]);
+    expect(h.appState.build).toBe(previous);
+  });
+
   it("resolves with the created repertoire, so a first Build move can play onto it", async () => {
     const payload = { repertoire_id: "rep-1", selected_node_id: "root-1", revision: 1, nodes: [] };
     const h = repHarness(async () => payload);
