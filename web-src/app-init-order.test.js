@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createTeamsView } from "./views/teams.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 // Top-level `createX({ ... })` calls in app.js run while the module evaluates. Passing a
 // `const` declared further down throws in dev (TDZ) and hands the controller `undefined`
@@ -95,7 +96,7 @@ describe("teams paints nothing owner-scoped until auth is known (C2)", () => {
       querySelector: () => null,
     };
     const view = createTeamsView({
-      appState, settingsState: appState, teamsState: appState, trainState: appState,
+      ...asSlices(appState), 
       api: async () => ({ teams: [] }),
       hideTeamDetail: () => {},
       openTeamDetail: async () => {},

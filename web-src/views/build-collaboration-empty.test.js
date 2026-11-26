@@ -16,6 +16,7 @@ vi.mock("../core/dialog.js", () => ({
 }));
 
 import { createBuildCollaboration } from "./build-collaboration.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -29,7 +30,7 @@ function collaboration({ entries = [], threads = [] } = {}) {
   const api = vi.fn(async (url) => (url.includes("/activity")
     ? { entries, unread_nodes: [], revision: 3, truncated: false }
     : { threads }));
-  return createBuildCollaboration({ appState, buildState: appState, api, postJson: vi.fn(), hydrateBuild: vi.fn(), selectBuildNode: vi.fn(), showInputModal: vi.fn(), miniBoard: () => "" });
+  return createBuildCollaboration({ ...asSlices(appState), api, postJson: vi.fn(), hydrateBuild: vi.fn(), selectBuildNode: vi.fn(), showInputModal: vi.fn(), miniBoard: () => "" });
 }
 
 beforeEach(() => { dialogs.length = 0; vi.stubGlobal("document", { getElementById: () => null, querySelectorAll: () => [] }); });

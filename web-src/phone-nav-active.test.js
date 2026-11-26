@@ -74,7 +74,7 @@ function nav(view, section, { buttons, currentView, more = null } = {}) {
 it("lights More, not the Games tab, on Scout", () => {
   const review = REVIEW(), railGames = RAIL_GAMES(), railScout = RAIL_SCOUT(), more = tab({});
   const ctx = nav("replay", "scout", { buttons: [review, railGames, railScout], more });
-  expect(ctx.appState.replaySection).toBe("scout");
+  expect(ctx.replayState.replaySection).toBe("scout");
   expect(review.classList.contains("is-active")).toBe(false);
   expect(more.classList.contains("is-active")).toBe(true);
   expect(more.getAttribute("aria-current")).toBe("page");

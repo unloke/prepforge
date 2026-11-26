@@ -42,7 +42,7 @@ describe("Recall from Recent analyses", () => {
     const appState = { analysis: null };
     const pgn = { setAttribute() {}, value: "x" };
     const deps = {
-      appState, analysisState: appState, teamsState: appState, api, document: { getElementById: () => pgn },
+      ...asSlices(appState), api, document: { getElementById: () => pgn },
       analysisStudy: { flush: async () => {} },
       currentOwnerId: () => "owner",
       hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(),
@@ -55,7 +55,7 @@ describe("Recall from Recent analyses", () => {
     const helper = source.slice(start, source.indexOf("\n}\n", start) + 2);
     const recall = compile("async function recallAnalysis(", deps,
       `let analysisRecallSeq = 0, analyzePgnInputTimer = null, lastOrientedPgnPlayers = "";\n${helper}`);
-    return { appState, analysisState: appState, teamsState: appState, deps, pgn, recall };
+    return { ...asSlices(appState), appState, deps, pgn, recall };
   }
 
   it("keeps the history row's player names, so the head is not 'Analysis board'", async () => {
@@ -142,7 +142,7 @@ describe("Navigation during boot", () => {
   it("restoreWorkspaceLocation keeps a page picked mid-boot instead of the load URL", async () => {
     const appState = { currentView: "replay", signedIn: true };
     const deps = {
-      appState, analysisState: appState, teamsState: appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
+      ...asSlices(appState), switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
       parseWorkspaceLocation: vi.fn(() => ({ view: "dashboard" })), loadReturnState: vi.fn(),
       window: { location: { href: "http://x/#/dashboard" } },
     };
@@ -157,7 +157,7 @@ describe("Navigation during boot", () => {
   it("without a boot-time click the URL route is restored as before", async () => {
     const appState = { currentView: "dashboard", signedIn: false };
     const deps = {
-      appState, analysisState: appState, teamsState: appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
+      ...asSlices(appState), switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
       parseWorkspaceLocation: vi.fn(() => ({ view: "teams" })), loadReturnState: vi.fn(),
       window: { location: { href: "http://x/#/teams" } },
     };

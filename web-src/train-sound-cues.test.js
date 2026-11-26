@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { wrongMoveBanner } from "./train-hint.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 // The sounds a Train answer makes, run from the real source: the board's landing
 // must stay quiet when the graded cue follows it, and a New move's demonstration
@@ -46,7 +47,7 @@ function harness({ kind = "due", correct = true } = {}) {
   const sleepGate = deferred();
   const noop = () => {};
   const deps = {
-    appState, trainState: appState,
+    ...asSlices(appState), 
     boards: { train: { setPosition, setEngineArrow: vi.fn() } },
     document: { getElementById: () => ({ textContent: "", dataset: {}, style: {}, hidden: false }) },
     setTrainBanner: vi.fn(),
@@ -101,7 +102,7 @@ function harness({ kind = "due", correct = true } = {}) {
     currentOwnerId: () => "u1",
     trainSessionMemo: null,
   };
-  return { deps, prompt, setPosition, playSound, optimisticBoardMove, sleepGate, appState, trainState: appState, correct };
+  return { deps, prompt, setPosition, playSound, optimisticBoardMove, sleepGate, ...asSlices(appState), appState, correct };
 }
 
 async function playAnswer(h, uci) {
@@ -147,9 +148,9 @@ describe("Train answer sounds", () => {
   it("counts only a scored miss answered on the free retry as fixed on retry", async () => {
     for (const [kind, attempt, fixed] of [["due", 2, 1], ["due", 3, 0], ["new", 2, 0]]) {
       const h = harness({ kind });
-      h.appState.smart.attempt = attempt;
+      h.trainState.smart.attempt = attempt;
       await playAnswer(h, "g1f3");
-      expect([kind, attempt, h.appState.smart.retriesFixed]).toEqual([kind, attempt, fixed]);
+      expect([kind, attempt, h.trainState.smart.retriesFixed]).toEqual([kind, attempt, fixed]);
     }
   });
 });

@@ -49,7 +49,7 @@ function harness({ move, read } = {}) {
   const reads = [];
   const notices = { show: vi.fn(() => ({ dismiss: vi.fn() })) };
   const deps = {
-    appState, trainState: appState,
+    ...asSlices(appState), 
     currentOwnerId: () => appState.accountUserId,
     boards: { train: board },
     notices,
@@ -78,7 +78,7 @@ function harness({ move, read } = {}) {
   };
   deps.trainRecovery = createTrainRecovery(deps);
   const submit = compile("async function submitTrainingMove(", deps);
-  return { appState, trainState: appState, board, notices, pending, readDeferred, reads, deps, submit };
+  return { ...asSlices(appState), appState, board, notices, pending, readDeferred, reads, deps, submit };
 }
 
 describe("classifying a failed rehearsal answer", () => {
@@ -106,7 +106,7 @@ describe("reconciling an unconfirmed answer", () => {
     expect(h.deps.setTrainBanner).toHaveBeenCalledWith("move", "Your move", "That answer didn't save. Play it again.");
     expect(h.deps.setStatusError).toHaveBeenCalledWith("Couldn't save");
     expect(h.reads).toEqual([]); // nothing to reconcile: the server refused it
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainBusy).toBe(false);
   });
 
   it("a lost response adopts the server's current prompt instead of the old card", async () => {
@@ -121,7 +121,7 @@ describe("reconciling an unconfirmed answer", () => {
     expect(h.deps.setTrainBanner).toHaveBeenCalledWith("move", "Checking your answer", "");
     // The advanced card is what the player answers next.
     expect(h.deps.renderTraining).toHaveBeenCalledWith(CARD_NF3);
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainBusy).toBe(false);
   });
 
   it("a finished session is ended, not repainted as a waiting card", async () => {
@@ -132,7 +132,7 @@ describe("reconciling an unconfirmed answer", () => {
     await attempt;
     expect(h.deps.finishTrainingSession).toHaveBeenCalled();
     expect(h.deps.renderTraining).not.toHaveBeenCalled();
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainBusy).toBe(false);
   });
 
   it("keeps the board locked behind a Retry sync action while the read fails", async () => {
@@ -145,7 +145,7 @@ describe("reconciling an unconfirmed answer", () => {
     expect(h.deps.setTrainBanner).toHaveBeenCalledWith(
       "error", "Couldn't confirm that answer", "Retry sync to catch up with the server.",
     );
-    expect(h.appState.trainBusy).toBeTruthy();
+    expect(h.trainState.trainBusy).toBeTruthy();
     const [, options] = h.notices.show.mock.calls[0];
     expect(options.tone).toBe("error");
     expect(options.actions[0].label).toBe("Retry sync");
@@ -169,7 +169,7 @@ describe("reconciling an unconfirmed answer", () => {
     options.actions[0].onClick();
     await vi.waitFor(() => expect(h.deps.renderTraining).toHaveBeenCalledWith(CARD_NF3));
     expect(calls).toBe(2);
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainBusy).toBe(false);
   });
 
   it("a newer card, another account, or a mode switch wins over a late read", async () => {
@@ -179,17 +179,17 @@ describe("reconciling an unconfirmed answer", () => {
       await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
       h.pending.reject(new Error("Failed to fetch"));
       await vi.waitFor(() => expect(h.reads.length).toBe(1));
-      if (change === "prompt") h.appState.training.prompt = CARD_NF3;
+      if (change === "prompt") h.trainState.training.prompt = CARD_NF3;
       else if (change === "owner") h.appState.accountUserId = "bob";
       else if (change === "generation") h.appState.ownerGeneration += 1;
-      else h.appState.trainMode = "play";
+      else h.trainState.trainMode = "play";
       h.readDeferred.resolve({ prompt: CARD_NF3 });
       await attempt;
       expect(h.deps.renderTraining, change).not.toHaveBeenCalled();
       expect(h.deps.finishTrainingSession, change).not.toHaveBeenCalled();
       expect(h.board.setPosition, change).not.toHaveBeenCalled();
       // The abandoned reconciliation owns no lock: the new card stays playable.
-      expect(h.appState.trainBusy, change).toBe(false);
+      expect(h.trainState.trainBusy, change).toBe(false);
     }
   });
 
@@ -199,13 +199,13 @@ describe("reconciling an unconfirmed answer", () => {
     await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
     h.pending.reject(new Error("Failed to fetch"));
     await vi.waitFor(() => expect(h.reads.length).toBe(1));
-    expect(h.appState.trainBusy).toBeTruthy();
+    expect(h.trainState.trainBusy).toBeTruthy();
     // "New session" replaces the rehearsal before the late read comes back.
-    h.appState.training = { prompt: CARD_NF3 };
+    h.trainState.training = { prompt: CARD_NF3 };
     h.readDeferred.resolve({ prompt: CARD_NF3 });
     await attempt;
     expect(h.deps.renderTraining).not.toHaveBeenCalled();
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainBusy).toBe(false);
   });
 
   it("a failed read that a newer card superseded does not strand the retry notice", async () => {
@@ -215,11 +215,11 @@ describe("reconciling an unconfirmed answer", () => {
     await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
     h.pending.reject(new Error("Failed to fetch"));
     await vi.waitFor(() => expect(h.reads.length).toBe(1));
-    h.appState.training = { prompt: CARD_NF3 };
+    h.trainState.training = { prompt: CARD_NF3 };
     fail(new Error("Failed to fetch"));
     await attempt;
     expect(h.notices.show).not.toHaveBeenCalled();
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainBusy).toBe(false);
   });
 
   it("a normal correct answer still advances without a reconciliation read", async () => {
@@ -237,8 +237,8 @@ describe("reconciling an unconfirmed answer", () => {
     await attempt;
     expect(h.reads).toEqual([]);
     expect(h.deps.renderTraining).toHaveBeenCalledWith(CARD_NF3);
-    expect(h.appState.trainStats.correct).toBe(1);
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainStats.correct).toBe(1);
+    expect(h.trainState.trainBusy).toBe(false);
   });
 });
 
@@ -267,7 +267,7 @@ describe("the recovery fences", () => {
 describe("a failed rehearsal Skip", () => {
   function skipHarness(read) {
     const h = harness({ read });
-    h.appState.trainBusy = true; // skipTrainingLine took the lock before posting
+    h.trainState.trainBusy = true; // skipTrainingLine took the lock before posting
     return { ...h, recovery: createTrainRecovery(h.deps) };
   }
   const notStale = () => false;
@@ -277,34 +277,34 @@ describe("a failed rehearsal Skip", () => {
     const error = Object.assign(new Error("Session expired"), { status: 409 });
     await h.recovery.recoverSkip(error, CARD_E4, notStale);
     expect(h.reads).toEqual([]);
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainBusy).toBe(false);
     expect(h.deps.setStatusError).toHaveBeenCalledWith("Session expired");
   });
 
   it("a lost response that skipped already counts it and shows the server's card", async () => {
     const h = skipHarness(async () => ({ prompt: CARD_NF3 }));
     const card = { ...CARD_E4, current_index: -1 };
-    h.appState.training.prompt = card;
-    h.appState.trainAttempt = 2;
+    h.trainState.training.prompt = card;
+    h.trainState.trainAttempt = 2;
     await h.recovery.recoverSkip(new Error("offline"), card, notStale);
     expect(h.reads).toHaveLength(1);
-    expect(h.appState.trainStats.skipped).toBe(1);
-    expect(h.appState.trainAttempt).toBe(1);
+    expect(h.trainState.trainStats.skipped).toBe(1);
+    expect(h.trainState.trainAttempt).toBe(1);
     expect(h.deps.renderTraining).toHaveBeenCalledWith(CARD_NF3);
   });
 
   it("a lost response that never applied leaves the count and the card alone", async () => {
     const h = skipHarness(async () => ({ prompt: CARD_NF3 }));
-    h.appState.training.prompt = CARD_NF3;
+    h.trainState.training.prompt = CARD_NF3;
     await h.recovery.recoverSkip(new Error("offline"), CARD_NF3, notStale);
-    expect(h.appState.trainStats.skipped).toBe(0);
-    expect(h.appState.trainBusy).toBe(false);
+    expect(h.trainState.trainStats.skipped).toBe(0);
+    expect(h.trainState.trainBusy).toBe(false);
   });
 
   it("keeps Skip locked behind Retry sync while the server can't be reached", async () => {
     const h = skipHarness(async () => { throw new Error("still offline"); });
     await h.recovery.recoverSkip(new Error("offline"), CARD_E4, notStale);
-    expect(h.appState.trainBusy).toBeTruthy();
+    expect(h.trainState.trainBusy).toBeTruthy();
     expect(h.notices.show).toHaveBeenCalled();
   });
 });
@@ -314,17 +314,17 @@ describe("a late recovery after the player started over", () => {
     it(`leaves the new session's lock alone when the old read ${name}`, async () => {
       const late = deferred();
       const h = harness({ read: () => late.promise });
-      h.appState.trainBusy = true; // the lost Skip's lock
+      h.trainState.trainBusy = true; // the lost Skip's lock
       const recovery = createTrainRecovery(h.deps);
       const pending = recovery.recoverSkip(new Error("offline"), CARD_E4, () => false);
       await vi.waitFor(() => expect(h.reads).toHaveLength(1));
       // ‹ Train, then a new rehearsal whose first answer is still on the wire.
-      h.appState.training = { prompt: CARD_NF3 };
-      h.appState.trainBusy = true;
+      h.trainState.training = { prompt: CARD_NF3 };
+      h.trainState.trainBusy = true;
       if (outcome === "resolve") late.resolve({ prompt: CARD_NF3 });
       else late.reject(new Error("still offline"));
       await pending;
-      expect(h.appState.trainBusy).toBe(true);
+      expect(h.trainState.trainBusy).toBe(true);
       expect(h.deps.renderTraining).not.toHaveBeenCalled();
     });
   }

@@ -5,6 +5,7 @@ import * as trainSessionMemo from "./train-session-memo.js";
 import { readTrainingHistory } from './train-history.js';
 import { smartResult } from "./train-result.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function cancelStaleTrainStartSource() {
@@ -39,7 +40,7 @@ function harness(overrides = {}) {
   const present = vi.fn(async () => {});
   const deps = {
     countOf: (n, one) => `${n} ${n === 1 ? one : `${one}s`}`,
-    appState, buildState: appState, trainState: appState, mapTrainUiSession, saveSessionMemo, loadSessionMemo, clearSessionMemo, trainSessionMemo,
+    ...asSlices(appState), mapTrainUiSession, saveSessionMemo, loadSessionMemo, clearSessionMemo, trainSessionMemo,
     loadTrainResume: async () => ({ mapTrainUiSession }),
     currentOwnerId: () => appState.accountUserId,
     trainStatsReset: () => { appState.trainStats = mapTrainUiSession(payload).stats; },
@@ -62,7 +63,7 @@ function harness(overrides = {}) {
   deps.syncTrainSessionControls = vi.fn();
   deps.celebrate = compile("function celebrate(", deps);
   deps.rememberSmartSession = compile("function rememberSmartSession(", deps);
-  return { appState, buildState: appState, trainState: appState, deps, start: compile("async function startSmartTraining(", deps), present, payload };
+  return { ...asSlices(appState), appState, deps, start: compile("async function startSmartTraining(", deps), present, payload };
 }
 afterEach(() => { delete globalThis.localStorage; });
 
@@ -70,19 +71,19 @@ describe("Smart memo integration at Start", () => {
   it("a resumed session without a memo cannot inherit another session's counters", async () => {
     const h = harness();
     await h.start();
-    expect(h.appState.trainStats.correct).toBe(0);
-    expect(h.appState.trainStats.history).toEqual([]);
-    expect(h.appState.smart.requeueGap).toBe(4);
-    expect(h.appState.smart.cardKinds.due).toEqual(h.payload.card_kinds[0]);
+    expect(h.trainState.trainStats.correct).toBe(0);
+    expect(h.trainState.trainStats.history).toEqual([]);
+    expect(h.trainState.smart.requeueGap).toBe(4);
+    expect(h.trainState.smart.cardKinds.due).toEqual(h.payload.card_kinds[0]);
   });
   it("restores the current target and retry with the saved counts and starting health", async () => {
     const h = harness();
     saveSessionMemo("alice", "session", memo);
     await h.start();
-    expect(h.appState.trainStats).toEqual(stats);
-    expect(h.appState.smart.healthBefore).toEqual({ new: 20 });
+    expect(h.trainState.trainStats).toEqual(stats);
+    expect(h.trainState.smart.healthBefore).toEqual({ new: 20 });
     expect(h.present).toHaveBeenCalledWith({ cardIndex: 1, targetIndex: 1 }, { attempt: 2 });
-    expect(h.appState.smart.timeouts).toBe(1);
+    expect(h.trainState.smart.timeouts).toBe(1);
   });
   it("prepares independent saves together and starts only after both finish", async () => {
     const h = harness();
@@ -106,55 +107,55 @@ describe("Smart memo integration at Start", () => {
     expect(h.deps.postJson).toHaveBeenCalledWith("/api/train/smart/start", {
       mixed: false, fresh: false, repertoire_id: "r2",
     });
-    expect(h.appState.trainingRepertoireId).toBe("r2");
+    expect(h.trainState.trainingRepertoireId).toBe("r2");
   });
   it("a mixed queue drills every active repertoire, so the Train link names none", async () => {
     const h = harness({ mixed: true, repertoire_id: "r1" });
-    h.appState.trainingRepertoireId = "r1"; // left by a previous single-repertoire start
+    h.trainState.trainingRepertoireId = "r1"; // left by a previous single-repertoire start
     await h.start();
     expect(h.deps.postJson).toHaveBeenCalledWith("/api/train/smart/start", { mixed: true, fresh: false });
-    expect(h.appState.trainingRepertoireId).toBeNull();
+    expect(h.trainState.trainingRepertoireId).toBeNull();
   });
   it.each([{ resumed: false, card_index: 0 }, { resumed: true, fresh: true }])
   ("never restores for a non-resumed/fresh start ($resumed/$fresh)", async ({ fresh, ...payload }) => {
     const h = harness(payload);
     saveSessionMemo("alice", "session", memo);
     await h.start({ fresh });
-    expect(h.appState.trainStats.correct).toBe(0);
-    expect(h.appState.smart.targetIndex).toBe(0);
+    expect(h.trainState.trainStats.correct).toBe(0);
+    expect(h.trainState.smart.targetIndex).toBe(0);
   });
   it("does not restore another account's memo even for the same session id", async () => {
     const h = harness();
     saveSessionMemo("bob", "session", memo);
     await h.start();
-    expect(h.appState.trainStats.correct).toBe(0);
+    expect(h.trainState.trainStats.correct).toBe(0);
   });
   it("rejects a memo behind the server cursor (another tab advanced)", async () => {
     const h = harness({ card_index: 2 });
     saveSessionMemo("alice", "session", memo);
     await h.start();
-    expect(h.appState.trainStats.correct).toBe(0);
-    expect(h.appState.smart.cardIndex).toBe(2);
+    expect(h.trainState.trainStats.correct).toBe(0);
+    expect(h.trainState.smart.cardIndex).toBe(2);
   });
   it("rejects an old queue generation even when the backend reused its id and cards", async () => {
     const h = harness({ session_generation: "start-2" });
     saveSessionMemo("alice", "session", memo);
     await h.start();
-    expect(h.appState.trainStats.correct).toBe(0);
+    expect(h.trainState.trainStats.correct).toBe(0);
   });
   it("restores a genuine resume still inside the first card", async () => {
     const h = harness({ card_index: 0 });
     saveSessionMemo("alice", "session", { ...memo, cardIndex: 0 });
     await h.start();
     expect(h.present).toHaveBeenCalledWith({ cardIndex: 0, targetIndex: 1 }, { attempt: 2 });
-    expect(h.appState.trainStats).toEqual(stats);
+    expect(h.trainState.trainStats).toEqual(stats);
   });
   it("uses the fresh server target data while restoring the memo's cursor", async () => {
     const updated = queue.map((card) => ({ ...card, targets: [{ uci: "g1f3" }, { uci: "f1c4" }] }));
     const h = harness({ cards: updated });
     saveSessionMemo("alice", "session", memo);
     await h.start();
-    expect(h.appState.smart.queue[1].targets[1].uci).toBe("f1c4");
+    expect(h.trainState.smart.queue[1].targets[1].uci).toBe("f1c4");
   });
   it("an older Start response cannot replace a newer queue or its memo", async () => {
     const h = harness();
@@ -169,7 +170,7 @@ describe("Smart memo integration at Start", () => {
     await second;
     old.resolve(h.payload);
     await first;
-    expect(h.appState.smart.generation).toBe("start-2");
+    expect(h.trainState.smart.generation).toBe("start-2");
     expect(loadSessionMemo("alice", "session", "start-2").generation).toBe("start-2");
   });
   it.each(["owner", "mode"])("ignores Start if the %s changed while the request was pending", async (change) => {
@@ -179,7 +180,7 @@ describe("Smart memo integration at Start", () => {
     const start = h.start();
     await vi.waitFor(() => expect(h.deps.postJson).toHaveBeenCalled());
     if (change === "owner") h.appState.accountUserId = "bob";
-    else h.appState.trainMode = "all_lines";
+    else h.trainState.trainMode = "all_lines";
     pending.resolve(h.payload);
     await start;
     expect(h.present).not.toHaveBeenCalled();
@@ -187,9 +188,9 @@ describe("Smart memo integration at Start", () => {
   });
   it("a new queue drops the last run's Result", async () => {
     const h = harness();
-    h.appState.trainResult = { mode: "smart", title: "Queue complete" };
+    h.trainState.trainResult = { mode: "smart", title: "Queue complete" };
     await h.start();
-    expect(h.appState.trainResult).toBeNull();
+    expect(h.trainState.trainResult).toBeNull();
     expect(h.deps.invalidateTrainPreview).toHaveBeenCalled();
   });
 
@@ -205,7 +206,7 @@ describe("Smart memo integration at Start", () => {
       updateTrainTurnBadge: vi.fn(), localDateString: () => "2026-10-01", api: async () => after,
     });
     await h.start();
-    h.appState.smart.blitz = false;
+    h.trainState.smart.blitz = false;
     await finish();
     const shown = h.deps.showTrainResult.mock.calls.map((call) => call[0]);
     expect(shown).toHaveLength(2);
@@ -215,7 +216,7 @@ describe("Smart memo integration at Start", () => {
     for (const result of shown) expect(JSON.stringify(result)).not.toContain("!");
     // The live session is released once the report owns the screen, and every
     // cached count of what is left to train is refreshed.
-    expect(h.appState.smart).toBeNull();
+    expect(h.trainState.smart).toBeNull();
     expect(h.deps.refreshRepertoireHead).toHaveBeenCalled();
     expect(h.deps.refreshDashboardRepertoires).toHaveBeenCalled();
   });
@@ -231,7 +232,7 @@ describe("Smart memo integration at Start", () => {
     await h.start();
     const done = finish();
     await vi.waitFor(() => expect(h.deps.showTrainResult).toHaveBeenCalledTimes(1));
-    h.appState.trainResult = null; // ‹ Train
+    h.trainState.trainResult = null; // ‹ Train
     late.resolve({ due_tomorrow: 1 });
     await done;
     expect(h.deps.showTrainResult).toHaveBeenCalledTimes(1);
@@ -249,8 +250,8 @@ describe("Smart memo integration at Start", () => {
       boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
       celebrate: vi.fn(), updateTrainTurnBadge: vi.fn(), localDateString: () => "2026-10-01", api: async () => null,
     });
-    h.appState.smart.cardIndex = h.appState.smart.queue.length;
-    h.appState.smart.cardsDone = 3;
+    h.trainState.smart.cardIndex = h.trainState.smart.queue.length;
+    h.trainState.smart.cardsDone = 3;
     await finish();
     expect(readTrainingHistory('alice')).toHaveLength(1);
     expect(readTrainingHistory('bob')).toHaveLength(0);

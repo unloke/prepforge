@@ -5,6 +5,7 @@ import { parseWorkspaceLocation } from "./workspace-url.js";
 import { paintBuildSkeleton } from "./views/build-skeleton.js";
 import { appSource } from "./test-app-source.js";
 import { createAnalysisSelection } from "./controllers/analyze-selection.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -24,12 +25,12 @@ function harness(realBoard = false) {
     renderReport: vi.fn(), buildAnalysisTree: () => ({ root: parsePgn("1. e4").root }) };
   const input = { setAttribute() {}, value: "1. d4", addEventListener: vi.fn() };
   const appState = { analysis: null, analysisVarNodes: new Map() };
-  const realView = createAnalyzeView({ appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, START_FEN });
+  const realView = createAnalyzeView({ ...asSlices(appState), START_FEN });
   view.serializeAnalysisPgn = realView.serializeAnalysisPgn;
   view.adaptParsedTree = realView.adaptParsedTree;
   const doc = { getElementById: () => input, querySelector: () => null, activeElement: null };
   const deps = {
-    appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, document: doc, START_FEN, parsePgn,
+    ...asSlices(appState), document: doc, START_FEN, parsePgn,
     analysisStudy: { flush: async () => {} },
     api: () => pending.promise, ensureAnalyzeView: vi.fn(async () => view),
     hideAnalysisHandoff: vi.fn(), showAnalysisPly: vi.fn(async () => {}),
@@ -67,7 +68,7 @@ function harness(realBoard = false) {
     ${helper}\n${functions}\n${inputBinding}
     return { recallAnalysis, loadPgnIntoAnalyze, runAnalysis, renderAnalysis, syncPgnFromTree, retryAnalyzeSave };
   `)(...Object.values(deps), input);
-  return { ...actions, pending, chunk, view, input, appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, deps, doc,
+  return { ...actions, pending, chunk, view, input, ...asSlices(appState), appState, deps, doc,
     edit: () => input.addEventListener.mock.calls[0][1]() };
 }
 const saved = (id) => ({ game_id: id, moves: [{ ply: 1, san: "e4", uci: "e2e4", move_number: 1, side: "white", fen_before: START_FEN }], eval_graph: [] });
@@ -81,10 +82,10 @@ describe("Recall source ownership", () => {
     h.input.value = "1. e4";
     if (action === "paste") h.edit();
     else await h.runAnalysis();
-    const current = h.appState.analysis;
+    const current = h.analysisState.analysis;
     h.pending.resolve(saved("old"));
     await recall;
-    expect(h.appState.analysis).toBe(current);
+    expect(h.analysisState.analysis).toBe(current);
     expect(h.input.value).toBe("1. e4");
   });
 
@@ -96,7 +97,7 @@ describe("Recall source ownership", () => {
     h.pending.resolve(payload);
     await h.recallAnalysis("recalled");
     await vi.advanceTimersByTimeAsync(300);
-    expect(h.appState.analysis).toBe(payload);
+    expect(h.analysisState.analysis).toBe(payload);
   });
 
   it("does not commit a recall after a new paste while its view chunk loads", async () => {
@@ -109,7 +110,7 @@ describe("Recall source ownership", () => {
     const pasted = h.loadPgnIntoAnalyze(h.input.value);
     h.chunk.resolve(h.view);
     await Promise.all([recall, pasted]);
-    expect(h.appState.analysis.game_id).toBeUndefined();
+    expect(h.analysisState.analysis.game_id).toBeUndefined();
     expect(h.view.renderAnalysis).not.toHaveBeenCalled();
     expect(h.deps.setStatus).not.toHaveBeenCalledWith(expect.stringContaining("Recalled"));
     expect(h.input.value).toBe("1. d4");
@@ -126,7 +127,7 @@ describe("Recall source ownership", () => {
     info.resolve({ legal_moves: [] });
     await loaded;
     expect(h.deps.boards.analysis.setPosition).toHaveBeenCalledTimes(1);
-    expect(h.appState.analysisBoardFen).toBe(START_FEN);
+    expect(h.analysisState.analysisBoardFen).toBe(START_FEN);
   });
 
   it("orients a recalled game using the history row's players", async () => {
@@ -140,7 +141,7 @@ describe("Recall source ownership", () => {
     const h = harness();
     const save = deferred();
     h.deps.postJson.mockReturnValue(save.promise);
-    h.appState.analysisUnsavedCheckpoint = { ownerId: "owner", gameId: "retry", pgn: "1. e4", positions: [] };
+    h.analysisState.analysisUnsavedCheckpoint = { ownerId: "owner", gameId: "retry", pgn: "1. e4", positions: [] };
     const recall = order === "recall-before-retry" ? h.recallAnalysis("old") : null;
     const retry = h.retryAnalyzeSave();
     if (order === "paste-during-retry") {
@@ -152,10 +153,10 @@ describe("Recall source ownership", () => {
     if (recall) {
       h.pending.resolve(saved("old"));
       await recall;
-      expect(h.appState.analysis.game_id).toBe("retry");
+      expect(h.analysisState.analysis.game_id).toBe("retry");
       expect(h.input.value).toBe("1. e4");
     } else {
-      expect(h.appState.analysis.game_id).toBeUndefined();
+      expect(h.analysisState.analysis.game_id).toBeUndefined();
       expect(h.input.value).toBe("1. d4");
     }
     expect(h.deps.clearCheckpoint).toHaveBeenCalledWith("retry", "owner", undefined);
@@ -180,7 +181,7 @@ describe("Recall source ownership", () => {
 describe("Boot route lifecycle", () => {
   it("a repertoire command picked during boot counts as navigation despite deferred URL sync", async () => {
     const appState = { currentView: "dashboard", signedIn: true };
-    const deps = { appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), paintBuildSkeleton, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
+    const deps = { ...asSlices(appState), invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), paintBuildSkeleton, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
       hardFlushBuild: async () => {}, api: async () => ({ repertoire_id: "picked", nodes: [] }), hydrateBuild: vi.fn(),
       ensureMoveTreeRenderer: async () => {},
       loadReturnState: () => null, syncWorkspaceUrl: vi.fn(), updateBuildReadOnlyUi: vi.fn(), setStatusError: vi.fn(),
@@ -204,7 +205,7 @@ describe("Boot route lifecycle", () => {
   it("a page picked while the URL repertoire loads supersedes that restore", async () => {
     const rep = deferred();
     const appState = { currentView: "dashboard", signedIn: true };
-    const deps = { appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), api: () => rep.promise, hydrateBuild: vi.fn(), loadReturnState: () => null,
+    const deps = { ...asSlices(appState), invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), api: () => rep.promise, hydrateBuild: vi.fn(), loadReturnState: () => null,
       syncWorkspaceUrl: vi.fn(), window: { location: { href: "http://x/#/build?rep=old" } }, parseWorkspaceLocation };
     const start = source.indexOf("function switchView(");
     const navigation = source.slice(start, source.indexOf("  if (appState.currentView", start));
@@ -224,7 +225,7 @@ describe("Boot route lifecycle", () => {
 
   it.each([true, false])("Train picked during boot lands on Train Home and starts nothing (%s)", async (signedIn) => {
     const appState = { currentView: "train", signedIn, trainMode: "smart" };
-    const deps = { appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(),
+    const deps = { ...asSlices(appState), switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(),
       window: { location: { href: "http://x/#/dashboard" } }, parseWorkspaceLocation };
     const restore = new Function(...Object.keys(deps), `let navigatedDuringBoot = true;
       return (${body("async function restoreWorkspaceLocation(")});`)(...Object.values(deps));

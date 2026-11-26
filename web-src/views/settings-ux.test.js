@@ -58,7 +58,7 @@ function setup({ appState = {}, api, pref = () => false, effective = 2377 } = {}
   const state = { lichessUsername: "me", maiaAutoRating: 2377, maiaRatingPinned: null, ...appState };
   const saveSettings = vi.fn(async () => {});
   const view = createSettingsView({
-    appState: state, analysisState: state, settingsState: state,
+    ...asSlices(state), 
     setStatus: vi.fn(),
     saveSettings,
     loadSettings: vi.fn(),

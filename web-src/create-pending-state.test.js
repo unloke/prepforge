@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import { html } from "./html.js";
 import { localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -308,7 +309,7 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
       optimisticEmptyRepertoire: undefined, // compiled in from the same range below
       postJson,
       hydrateBuild: vi.fn(async (payload) => { appState.build = payload; }),
-      appState, buildState: appState, teamsState: appState, trainState: appState, OUTBOX_TAB_ID: "tab",
+      ...asSlices(appState), OUTBOX_TAB_ID: "tab",
       START_FEN, localBoardInfo, boards: { build: board },
       switchView: (name) => views.push(name),
       setStatus: vi.fn(),
@@ -319,7 +320,7 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
       renderBuilderTree: () => rendered.push("tree"),
       syncWorkspaceUrl: () => rendered.push("url"),
     });
-    return { appState, buildState: appState, teamsState: appState, trainState: appState, board, views, rendered, postJson, prompt };
+    return { ...asSlices(appState), appState, board, views, rendered, postJson, prompt };
   }
 
   it("puts the empty board and tree on screen before the server answers", async () => {
@@ -329,9 +330,9 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
     const run = h.prompt({ defaultName: "Najdorf", defaultColor: "black" });
     await vi.waitFor(() => expect(h.postJson).toHaveBeenCalled());
     // Local-first: the tree exists while the request is still in flight.
-    expect(h.appState.build).toMatchObject({ name: "Najdorf", color: "black", writable: true, revision: 0 });
-    expect(h.appState.buildCurrentNodeId).toMatch(/^tmp-rep-tab-/);
-    expect(h.appState.buildSyncState).toBe("saved");
+    expect(h.buildState.build).toMatchObject({ name: "Najdorf", color: "black", writable: true, revision: 0 });
+    expect(h.buildState.buildCurrentNodeId).toMatch(/^tmp-rep-tab-/);
+    expect(h.buildState.buildSyncState).toBe("saved");
     expect(h.board.setOrientation).toHaveBeenCalledWith("black");
     expect(h.board.setPosition).toHaveBeenCalledWith(
       expect.objectContaining({ fen: START_FEN }),
@@ -340,7 +341,7 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
     expect(h.rendered).toEqual(expect.arrayContaining(["header", "tree", "sync", "url"]));
     release({ repertoire_id: "rep-1", selected_node_id: "root-1", revision: 1, nodes: [] });
     await run;
-    expect(h.appState.build.repertoire_id).toBe("rep-1");
+    expect(h.buildState.build.repertoire_id).toBe("rep-1");
   });
 
   it("a failed create drops the empty tree and restores the previous one", async () => {
@@ -349,13 +350,13 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
       selected_node_id: "root-0", nodes: [{ id: "root-0", fen: START_FEN, uci: null }],
     };
     const h = repHarness(async () => { throw new Error("Free plan: 3 repertoires max"); });
-    h.appState.build = previous;
-    h.appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
-    h.appState.buildCurrentNodeId = "root-0";
+    h.buildState.build = previous;
+    h.buildState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
+    h.buildState.buildCurrentNodeId = "root-0";
     await expect(h.prompt({})).resolves.toBeNull();
-    expect(h.appState.build).toBe(previous);
-    expect(h.appState.buildNodeById.get("root-0")).toBe(previous.nodes[0]);
-    expect(h.appState.buildCurrentNodeId).toBe("root-0");
+    expect(h.buildState.build).toBe(previous);
+    expect(h.buildState.buildNodeById.get("root-0")).toBe(previous.nodes[0]);
+    expect(h.buildState.buildCurrentNodeId).toBe("root-0");
     expect(h.board.setPosition).toHaveBeenLastCalledWith(
       expect.objectContaining({ fen: START_FEN }),
     );
@@ -366,11 +367,11 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
     const h = repHarness(async () => ({ repertoire_id: "rep-1", selected_node_id: "root-1", revision: 1, nodes: [] }));
     const queued = { repertoire_id: "rep-0", node_id: "n1", uci: "e2e4" };
     const deleted = { repertoire_id: "rep-0", node_id: "n2" };
-    h.appState.buildPending = [queued];
-    h.appState.buildPendingDeletes = [deleted];
+    h.buildState.buildPending = [queued];
+    h.buildState.buildPendingDeletes = [deleted];
     await h.prompt({});
-    expect(h.appState.buildPending).toEqual([queued]);
-    expect(h.appState.buildPendingDeletes).toEqual([deleted]);
+    expect(h.buildState.buildPending).toEqual([queued]);
+    expect(h.buildState.buildPendingDeletes).toEqual([deleted]);
   });
 
   it("a failed create returns to the move that was selected, on a playable board", async () => {
@@ -380,11 +381,11 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
       nodes: [{ id: "root-0", fen: START_FEN, uci: null }, { id: "n1", fen: after, uci: "e2e4" }],
     };
     const h = repHarness(async () => { throw new Error("offline"); });
-    h.appState.build = previous;
-    h.appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
-    h.appState.buildCurrentNodeId = "n1";
+    h.buildState.build = previous;
+    h.buildState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
+    h.buildState.buildCurrentNodeId = "n1";
     await h.prompt({});
-    expect(h.appState.buildCurrentNodeId).toBe("n1");
+    expect(h.buildState.buildCurrentNodeId).toBe("n1");
     const last = h.board.setPosition.mock.calls.at(-1)[0];
     expect(last).toMatchObject({ fen: after, lastMove: "e2e4" });
     expect(last.legalMoves.length).toBeGreaterThan(0);
@@ -396,12 +397,12 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
       selected_node_id: "root-0", nodes: [{ id: "root-0", fen: START_FEN, uci: null }],
     };
     const h = repHarness(async () => { throw new Error("offline"); });
-    h.appState.build = previous;
-    h.appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
+    h.buildState.build = previous;
+    h.buildState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
     h.appState.currentView = "library";
     await h.prompt({});
     expect(h.views).toEqual(["build", "library"]);
-    expect(h.appState.build).toBe(previous);
+    expect(h.buildState.build).toBe(previous);
   });
 
   it("resolves with the created repertoire, so a first Build move can play onto it", async () => {
@@ -449,8 +450,8 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
   it("rolls all the way back when there was no repertoire to restore", async () => {
     const h = repHarness(async () => { throw new Error("offline"); });
     await expect(h.prompt({})).resolves.toBeNull();
-    expect(h.appState.build).toBeNull();
-    expect(h.appState.buildNodeById.size).toBe(0);
+    expect(h.buildState.build).toBeNull();
+    expect(h.buildState.buildNodeById.size).toBe(0);
   });
 });
 

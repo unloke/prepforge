@@ -5,7 +5,7 @@ import { pvSan } from "./chess-local.js";
 import { readFileSync } from "node:fs";
 import { appSource } from "./test-app-source.js";
 import { createPassFeed } from "./controllers/engine-pass-feed.js";
-import { asSlices } from "./state/as-slices.fixture.js";
+import { asSlices, sliceArgs } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const selectionSource = readFileSync(new URL("./controllers/analyze-selection.js", import.meta.url), "utf8");
@@ -142,7 +142,7 @@ describe("Analyze engine stepping", () => {
     // The source epoch: unchanged here, so the step is never fenced out.
     const captureSource = () => ({ isCurrent: () => true });
     const nav = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "ensureAnalyzeView", "selectAnalysisNode", "captureSource",
-      `${code}; return analysisTreeNav;`)(appState, appState, appState, appState, appState, appState, appState, async () => ({}), select, captureSource);
+      `${code}; return analysisTreeNav;`)(...sliceArgs(appState), async () => ({}), select, captureSource);
     await nav(kind);
     await nav(kind);
     expect(select).not.toHaveBeenCalled();

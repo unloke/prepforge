@@ -16,6 +16,7 @@ import { createAnalysisSelection } from "./controllers/analyze-selection.js";
 import { parsePgn } from "./analyze-pgn.js";
 import { createAnalyzeView } from "./views/analyze.js";
 import { formatWorkspaceHash, parseWorkspaceHash, workspaceLocationFromState } from "./workspace-url.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const PGN = "1. e4 e5 2. Nf3 Nc6 3. Bb5 (3. Bc4 Bc5 (3... Nf6 4. d3) 4. c3) 3... a6 4. Ba4 Nf6";
@@ -32,12 +33,12 @@ function fixtureTree() {
   const parsed = parsePgn(PGN);
   expect(parsed.ok).toBe(true);
   const appState = { analysisVarNodes: new Map(), analysis: null };
-  const view = createAnalyzeView({ appState, analysisState: appState, START_FEN });
+  const view = createAnalyzeView({ ...asSlices(appState), START_FEN });
   const { moves, varNodes } = view.adaptParsedTree(parsed.root);
   appState.analysisVarNodes = varNodes;
   appState.analysis = { moves };
   const tree = view.buildAnalysisTree(moves);
-  return { moves, varNodes, tree, appState, analysisState: appState };
+  return { moves, varNodes, tree, ...asSlices(appState), appState,  };
 }
 
 // Drives the real selection module with recording seams, so a test asserts on the
@@ -45,7 +46,7 @@ function fixtureTree() {
 function harness({ boardInfo = async () => ({ legal_moves: [] }) } = {}) {
   const fixture = fixtureTree();
   const appState = {
-    analysis: fixture.appState.analysis,
+    analysis: fixture.analysisState.analysis,
     analysisVarNodes: fixture.varNodes,
     analysisVarCounter: fixture.varNodes.size,
     analysisTree: fixture.tree,
@@ -62,7 +63,7 @@ function harness({ boardInfo = async () => ({ legal_moves: [] }) } = {}) {
     setBetterArrow: vi.fn(),
   };
   const deps = {
-    appState, analysisState: appState, START_FEN,
+    ...asSlices(appState), START_FEN,
     boardInfo: vi.fn(boardInfo),
     boards: { analysis: board },
     boardAfterMove: vi.fn(async (fen, uci) => ({
@@ -84,7 +85,7 @@ function harness({ boardInfo = async () => ({ legal_moves: [] }) } = {}) {
     ensureAnalyzeView: vi.fn(async () => ({ buildAnalysisTree: () => appState.analysisTree })),
   };
   const api = createAnalysisSelection(deps);
-  return { ...api, appState, analysisState: appState, board, deps, fixture };
+  return { ...api, ...asSlices(appState), appState, board, deps, fixture };
 }
 
 const NODE_FEN = {
@@ -103,7 +104,7 @@ describe("Analyze selection follows the selected tree node", () => {
     const h = harness();
     await h.selectAnalysisNode("m5");
     expect(h.board.fen).toBe(NODE_FEN.m5);
-    expect(h.appState.analysisPly).toBe(5);
+    expect(h.analysisState.analysisPly).toBe(5);
 
     // 3. Bc4 shares move 3 with 3. Bb5 and is a different position.
     await h.selectAnalysisNode("v1");
@@ -124,7 +125,7 @@ describe("Analyze selection follows the selected tree node", () => {
     );
     expect(h.deps.setPositionCaption).toHaveBeenLastCalledWith("3. Bc4 · variation");
     // The engine card reads appState.analysisBoardFen, so it follows the node.
-    expect(h.appState.analysisBoardFen).toBe(NODE_FEN.v1);
+    expect(h.analysisState.analysisBoardFen).toBe(NODE_FEN.v1);
     expect(h.deps.engineWidget.onBoardChanged).toHaveBeenCalledTimes(2);
   });
 
@@ -156,12 +157,12 @@ describe("Analyze selection follows the selected tree node", () => {
   it("keeps the -1 off-mainline sentinel and the mainline ply contract intact", async () => {
     const h = harness();
     await h.selectAnalysisNode("m3");
-    expect(h.appState.analysisPly).toBe(3);
+    expect(h.analysisState.analysisPly).toBe(3);
     await h.selectAnalysisNode("v1");
-    expect(h.appState.analysisPly).toBe(-1);
+    expect(h.analysisState.analysisPly).toBe(-1);
     await h.showAnalysisPly(1);
-    expect(h.appState.analysisPly).toBe(1);
-    expect(h.appState.analysisCurrentNodeId).toBe("m1");
+    expect(h.analysisState.analysisPly).toBe(1);
+    expect(h.analysisState.analysisCurrentNodeId).toBe("m1");
   });
 
   it("ignores a board read that resolves after the user selected another node", async () => {
@@ -181,8 +182,8 @@ describe("Analyze selection follows the selected tree node", () => {
     slow.resolve({ legal_moves: [] });
     await pendingVariation;
     expect(h.board.fen).toBe(NODE_FEN.m3);
-    expect(h.appState.analysisBoardFen).toBe(NODE_FEN.m3);
-    expect(h.appState.analysisCurrentNodeId).toBe("m3");
+    expect(h.analysisState.analysisBoardFen).toBe(NODE_FEN.m3);
+    expect(h.analysisState.analysisCurrentNodeId).toBe("m3");
     expect(h.deps.setPositionCaption).toHaveBeenLastCalledWith("2. Nf3");
   });
 
@@ -191,9 +192,9 @@ describe("Analyze selection follows the selected tree node", () => {
     const burst = ["v1", "m3", "v2", "m4", "v5"];
     await Promise.all(burst.map((id) => h.selectAnalysisNode(id)));
     // Every call bumps the token synchronously, so only the last may paint.
-    expect(h.appState.analysisCurrentNodeId).toBe("v5");
+    expect(h.analysisState.analysisCurrentNodeId).toBe("v5");
     expect(h.board.fen).toBe(NODE_FEN.v5);
-    expect(h.appState.analysisBoardFen).toBe(NODE_FEN.v5);
+    expect(h.analysisState.analysisBoardFen).toBe(NODE_FEN.v5);
     expect(h.deps.refreshAnalysisExplain).toHaveBeenCalledTimes(1);
     expect(h.deps.refreshAnalysisExplain).toHaveBeenLastCalledWith(expect.objectContaining({ fen: NODE_FEN.v5 }));
   });
@@ -213,7 +214,7 @@ describe("Analyze selection follows the selected tree node", () => {
     gate.resolve({ buildAnalysisTree: () => h.fixture.tree });
     await pending;
     // The arrow was pressed on m4, but the later click wins: the selection is v1.
-    expect(h.appState.analysisCurrentNodeId).toBe("v1");
+    expect(h.analysisState.analysisCurrentNodeId).toBe("v1");
     expect(h.board.fen).toBe(NODE_FEN.v1);
   });
 
@@ -226,7 +227,7 @@ describe("Analyze selection follows the selected tree node", () => {
     const pending = nav.analysisTreeNav("prev");
     gate.resolve({ buildAnalysisTree: () => h.fixture.tree });
     await pending;
-    expect(h.appState.analysisCurrentNodeId).toBe("m3");
+    expect(h.analysisState.analysisCurrentNodeId).toBe("m3");
     expect(h.board.fen).toBe(NODE_FEN.m3);
   });
 
@@ -238,13 +239,13 @@ describe("Analyze selection follows the selected tree node", () => {
       board: { fen: `${fen.split(" ")[0]} b`, legal_moves: [] },
       move: { san: "d5", uci: "d7d5" },
     }));
-    const before = h.appState.analysisVarNodes.size;
+    const before = h.analysisState.analysisVarNodes.size;
     await h.onAnalysisBoardMove("d7d5", NODE_FEN.v1);
-    expect(h.appState.analysisVarNodes.size).toBe(before + 1);
+    expect(h.analysisState.analysisVarNodes.size).toBe(before + 1);
     const created = [...h.appState.analysisVarNodes.values()].at(-1);
     expect(created.parentId).toBe("v1");
-    expect(h.appState.analysisCurrentNodeId).toBe(created.id);
-    expect(h.appState.analysisPly).toBe(-1);
+    expect(h.analysisState.analysisCurrentNodeId).toBe(created.id);
+    expect(h.analysisState.analysisPly).toBe(-1);
     expect(h.deps.refreshAnalysisExplain).toHaveBeenLastCalledWith(
       expect.objectContaining({ fen: created.fenAfter, prevFen: NODE_FEN.v1, ply: null }),
     );
@@ -255,13 +256,13 @@ describe("Analyze selection follows the selected tree node", () => {
     const h = harness();
     h.deps.boardAfterMove = vi.fn(() => slow.promise);
     await h.selectAnalysisNode("v1");
-    const before = h.appState.analysisVarNodes.size;
+    const before = h.analysisState.analysisVarNodes.size;
     const pending = h.onAnalysisBoardMove("d7d5", NODE_FEN.v1);
     await h.selectAnalysisNode("m5");
     slow.resolve({ board: { fen: "somewhere-else", legal_moves: [] }, move: { san: "d5" } });
     await pending;
-    expect(h.appState.analysisVarNodes.size).toBe(before);
-    expect(h.appState.analysisCurrentNodeId).toBe("m5");
+    expect(h.analysisState.analysisVarNodes.size).toBe(before);
+    expect(h.analysisState.analysisCurrentNodeId).toBe("m5");
   });
 });
 

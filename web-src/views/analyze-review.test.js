@@ -36,14 +36,14 @@ function setup() {
   const appState = { analysisTree: makeTree(), analysisCurrentNodeId: "root", analysisPly: 0 };
   const calls = { show: [], select: [] };
   const review = createReviewBar({
-    appState, analysisState: appState,
+    ...asSlices(appState), 
     getReport: () => ({ moments: [blunder, great] }),
     showAnalysisPly: async (ply) => calls.show.push(ply),
     selectAnalysisNode: async (id) => { calls.select.push(id); appState.analysisCurrentNodeId = id; },
   });
   const at = (id, ply) => { appState.analysisCurrentNodeId = id; appState.analysisPly = ply; review.paint(); };
   const click = (kind) => bar.addEventListener.mock.calls[0][1]({ target: { closest: () => ({ dataset: { review: kind }, disabled: false }) } });
-  return { bar, appState, analysisState: appState, calls, review, at, click };
+  return { bar, ...asSlices(appState), appState, calls, review, at, click };
 }
 
 afterEach(() => { delete globalThis.document; });

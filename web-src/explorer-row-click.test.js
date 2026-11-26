@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import { localBoardAfterMove, localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
@@ -214,7 +215,7 @@ describe("Explorer add / mutation integration", () => {
     const status = vi.fn();
     const normalizeUci = (u) => ({ e1h1: "e1g1", e1a1: "e1c1", e8h8: "e8g8", e8a8: "e8c8" })[u] || u;
     const deps = {
-      appState, buildState: appState, boards: { build: board }, boardAfterMove: async (f, u) => localBoardAfterMove(f, u),
+      ...asSlices(appState), boards: { build: board }, boardAfterMove: async (f, u) => localBoardAfterMove(f, u),
       normalizeUci, localBoardInfo, setStatus: status,
       isBuildReadOnly: () => false, optimisticBoardMove: async () => false, selectBuildNode,
       setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
@@ -226,7 +227,7 @@ describe("Explorer add / mutation integration", () => {
       ${extractByMarker("async function onBuildBoardMove(moveUci) {")}
       return { add: () => onBuildBoardMove(${JSON.stringify(uci)}) };
     `);
-    return { ...make(...Object.values(deps)), appState, buildState: appState, board, status, selectBuildNode };
+    return { ...make(...Object.values(deps)), ...asSlices(appState), appState, board, status, selectBuildNode };
   }
 
   for (const [side, raw, canonical] of [
@@ -239,9 +240,9 @@ describe("Explorer add / mutation integration", () => {
       const expected = localBoardAfterMove(fen, canonical).board.fen;
       await h.add();
       expect(h.status).not.toHaveBeenCalledWith("Illegal move");
-      expect(h.appState.buildPending).toHaveLength(1);
-      expect(h.appState.buildPending[0]).toMatchObject({ repertoire_id: "rep", uci: canonical });
-      expect(h.appState.buildPending[0].node.fen).toBe(expected);
+      expect(h.buildState.buildPending).toHaveLength(1);
+      expect(h.buildState.buildPending[0]).toMatchObject({ repertoire_id: "rep", uci: canonical });
+      expect(h.buildState.buildPending[0].node.fen).toBe(expected);
       expect(h.selectBuildNode).toHaveBeenCalledWith("new");
     });
   }
@@ -249,7 +250,7 @@ describe("Explorer add / mutation integration", () => {
     const fen = "k7/8/8/8/8/8/8/K3R3 w - - 0 1";
     const h = makeAddHarness(fen, "e1h1");
     await h.add();
-    expect(h.appState.buildPending[0].uci).toBe("e1h1");
-    expect(h.appState.buildPending[0].node.fen).toBe(localBoardAfterMove(fen, "e1h1").board.fen);
+    expect(h.buildState.buildPending[0].uci).toBe("e1h1");
+    expect(h.buildState.buildPending[0].node.fen).toBe(localBoardAfterMove(fen, "e1h1").board.fen);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { sliceArgs } from "./state/as-slices.fixture.js";
 
 import {
   beginLuckyDiscovery,
@@ -28,7 +29,7 @@ function luckyEntry(appState, refreshAuthStatus, openAuthModal) {
     "finishLuckyDiscovery",
     "luckyDiscoveryCurrent",
     `${body}; return { onFeelingLucky };`,
-  )(appState, appState, appState, appState, appState, appState, appState, refreshAuthStatus, openAuthModal, beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent);
+  )(...sliceArgs(appState), refreshAuthStatus, openAuthModal, beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent);
 }
 
 describe("Random discovery auth ownership", () => {

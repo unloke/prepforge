@@ -20,8 +20,8 @@ it('production annotation wrapper advances the open revision only past its own w
     expect(JSON.parse(options.body)).not.toHaveProperty('base_revision');
     return replies.shift();
   });
-  const postJson = compile('async function postJson(', {appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,api,BUILD_MUTATIONS,announceBuildWrite:noop,currentOwnerId:()=> "owner"});
-  const save = compile('async function saveBuildAnnotations(', {appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,postJson,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
+  const postJson = compile('async function postJson(', {...asSlices(appState), api,BUILD_MUTATIONS,announceBuildWrite:noop,currentOwnerId:()=> "owner"});
+  const save = compile('async function saveBuildAnnotations(', {...asSlices(appState), postJson,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
     hardFlushBuild:async()=>{},resolveBuildId:id=>id,boards:{build:{setAnnotations:noop}},setStatusError:vi.fn(),pokeBuildLive:noop});
   await save(['Ga1a2'],[]);
   expect(appState.build.revision).toBe(5);
@@ -33,7 +33,7 @@ it.each([false,true])('Settings reads wait for pending write (failure=%s)', asyn
   const depthChanged = vi.fn(async()=>{});
   const api = vi.fn((_url, options)=> options?.method==='POST' ? post.promise : Promise.resolve({stockfish_depth:failure?12:20}));
   const renderSettings = vi.fn();
-  const actions = createSettingsActions({appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',api,ensureSettingsView:async()=>({renderSettings}),
+  const actions = createSettingsActions({...asSlices(appState), currentOwnerId:()=> 'owner',api,ensureSettingsView:async()=>({renderSettings}),
     applySettingsPayload:p=>{appState.settings=p;},applyServerEngineGating:noop,setStatusError:noop,
     getPositionCoach:()=>({cancel:noop}),engineWidget:{onDepthSettingChanged:depthChanged},activeViewName:()=> 'settings',
     explorerEvalEngine:{sync:async()=>{}},explorerDrawerOpen:()=>false});
@@ -50,7 +50,7 @@ it.each([false,true])('Settings reads wait for pending write (failure=%s)', asyn
 it.each(['success','failure'])('History ignores old owner %s responses',async(outcome)=>{
   const response=deferred(),appState={ownerGeneration:1,pendingAnalysisDeletes:new Set()};let owner='A';
   const host={setAttribute() {}, get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelector:()=>null,querySelectorAll:()=>[]};
-  const load=compile('async function loadAnalysisHistory(',{appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=>owner,document:{getElementById:()=>host},api:()=>response.promise,localDayOf:String},'let analysisHistorySeq=0,historyFreshFor=null,historySaves=0;');
+  const load=compile('async function loadAnalysisHistory(',{...asSlices(appState), currentOwnerId:()=>owner,document:{getElementById:()=>host},api:()=>response.promise,localDayOf:String},'let analysisHistorySeq=0,historyFreshFor=null,historySaves=0;');
   const pending=load();owner='B';appState.ownerGeneration++;host.innerHTML='';
   if(outcome==='success') response.resolve({analyses:[{game_id:'A',white:'Private'}]});else response.reject(Error('A error'));
   await pending;expect(String(host.innerHTML)).toBe('');
@@ -81,41 +81,41 @@ import { appSource } from "./test-app-source.js";
 import { asSlices } from "./state/as-slices.fixture.js";
 it('team directory caches empty results and rejects old refreshes and owners',async()=>{
   const first=deferred(),second=deferred();
-  const appState={accountUserId:'A',ownerGeneration:1,teams:[]};
+  const appState={accountUserId:'A',ownerGeneration:1,teams:[]},s=asSlices(appState);
   const api=vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise).mockResolvedValue({teams:[]});
-  const old=loadTeamDirectory(appState,appState,api);const fresh=loadTeamDirectory(appState,appState,api,{refresh:true});
+  const old=loadTeamDirectory(s.appState,s.teamsState,api);const fresh=loadTeamDirectory(s.appState,s.teamsState,api,{refresh:true});
   second.resolve({teams:[]});await fresh;first.resolve({teams:[{id:'stale'}]});expect(await old).toBeNull();
-  await loadTeamDirectory(appState,appState,api);expect(api).toHaveBeenCalledTimes(2);expect(appState.teams).toEqual([]);
-  appState.accountUserId='B';appState.ownerGeneration++;await loadTeamDirectory(appState,appState,api);expect(api).toHaveBeenCalledTimes(3);
+  await loadTeamDirectory(s.appState,s.teamsState,api);expect(api).toHaveBeenCalledTimes(2);expect(appState.teams).toEqual([]);
+  appState.accountUserId='B';appState.ownerGeneration++;await loadTeamDirectory(s.appState,s.teamsState,api);expect(api).toHaveBeenCalledTimes(3);
 });
 it('shared repertoire refresh ignores an older response',async()=>{
   const first=deferred(),second=deferred();const host={children:[],setAttribute() {}, get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelectorAll:()=>[]};
-  const appState={};const load=compile('async function loadSharedRepertoires(',{appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>host},api:vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),teamById:()=>null,sharedRepRowsSkeleton,enterRows:()=>{}},'let sharedRepertoiresSeq=0;');
+  const appState={};const load=compile('async function loadSharedRepertoires(',{...asSlices(appState), currentOwnerId:()=> 'owner',document:{getElementById:()=>host},api:vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),teamById:()=>null,sharedRepRowsSkeleton,enterRows:()=>{}},'let sharedRepertoiresSeq=0;');
   const a=load(),b=load();second.resolve({shared:[]});await b;first.resolve({shared:[{id:'stale'}]});await a;expect(String(host.innerHTML)).not.toContain('stale');
 });
 it('discarding one recovery refreshes the remaining work',async()=>{
   const checkpoint={ownerId:'owner',gameId:'new',requestId:'r'};
   const appState={analysisRetryCheckpoint:checkpoint};const refreshAnalyzeRecovery=vi.fn();
-  await compile('async function discardAnalyzeCheckpoint(',{appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',clearCheckpoint:async()=>true,refreshAnalyzeRecovery,setStatus:noop,setStatusError:noop})();
+  await compile('async function discardAnalyzeCheckpoint(',{...asSlices(appState), currentOwnerId:()=> 'owner',clearCheckpoint:async()=>true,refreshAnalyzeRecovery,setStatus:noop,setStatusError:noop})();
   expect(refreshAnalyzeRecovery).toHaveBeenCalledOnce();expect(appState.analysisRetryCheckpoint).toBeNull();
 });
 it('confirmed save with failed cleanup offers cleanup without classify-save',async()=>{
   const checkpoint={ownerId:'owner',gameId:'g',requestId:'r'};const appState={analysisRetryCheckpoint:checkpoint};
   const showAnalysisRetrySave=vi.fn();
-  const finish=compile('async function finishAnalyzeCheckpoint(',{appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',markCheckpointSaved:async()=>true,clearCheckpoint:async()=>false,showAnalysisRetrySave,refreshAnalyzeRecovery:vi.fn()});
+  const finish=compile('async function finishAnalyzeCheckpoint(',{...asSlices(appState), currentOwnerId:()=> 'owner',markCheckpointSaved:async()=>true,clearCheckpoint:async()=>false,showAnalysisRetrySave,refreshAnalyzeRecovery:vi.fn()});
   await finish(checkpoint);expect(checkpoint.serverSaved).toBe(true);expect(showAnalysisRetrySave).toHaveBeenCalledWith(checkpoint);
-  const postJson=vi.fn();const retry=compile('async function retryAnalyzeSave(',{appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>null},invalidateAnalysisSource:()=>1,finishAnalyzeCheckpoint:finish,postJson});
+  const postJson=vi.fn();const retry=compile('async function retryAnalyzeSave(',{...asSlices(appState), currentOwnerId:()=> 'owner',document:{getElementById:()=>null},invalidateAnalysisSource:()=>1,finishAnalyzeCheckpoint:finish,postJson});
   await retry();expect(postJson).not.toHaveBeenCalled();
 });
 it('recovery rechecks server confirmation after reload when local cleanup failed',async()=>{
   const checkpoint={ownerId:'owner',gameId:'g',requestId:'r'};const appState={};const showAnalysisRetrySave=vi.fn();
-  const refresh=compile('async function refreshAnalyzeRecovery(',{appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',loadCheckpoint:async()=>checkpoint,api:async()=>({saved:true}),clearCheckpoint:async()=>false,showAnalysisRetrySave});
+  const refresh=compile('async function refreshAnalyzeRecovery(',{...asSlices(appState), currentOwnerId:()=> 'owner',loadCheckpoint:async()=>checkpoint,api:async()=>({saved:true}),clearCheckpoint:async()=>false,showAnalysisRetrySave});
   await refresh();expect(showAnalysisRetrySave).toHaveBeenCalledWith(expect.objectContaining({serverSaved:true}));
 });
 it('workspace restores local work before remote settings or dashboard resolve',async()=>{
   const settings=deferred(),dashboard=deferred();const appState={buildPending:[],buildPendingDeletes:[]};
   const restoreOutbox=vi.fn();const recovery=vi.fn(async()=>{});
-  const run=compile('async function loadSignedInWorkspace(',{appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',settingsLazy:{load:async()=>({loadSettingsOnce:()=>settings.promise})},loadDashboard:()=>dashboard.promise,
+  const run=compile('async function loadSignedInWorkspace(',{...asSlices(appState), currentOwnerId:()=> 'owner',settingsLazy:{load:async()=>({loadSettingsOnce:()=>settings.promise})},loadDashboard:()=>dashboard.promise,
     getStoredLichessUsername:()=>null,refreshLichessStatus:async()=>{},syncTrainPickerVisibility:noop,syncReplayControls:noop,syncAnalysisHistoryDrawer:noop,renderBuilderTree:noop,restoreOutbox,refreshAnalyzeRecovery:recovery});
   const pending=run();expect(restoreOutbox).toHaveBeenCalledOnce();await Promise.resolve();expect(recovery).toHaveBeenCalledOnce();
   settings.resolve();dashboard.resolve();await pending;
@@ -124,7 +124,7 @@ it('annotations send in-flight plus latest snapshot and never replay earlier dra
   const first=deferred(),last=deferred(),node={arrows:[],circles:[]},board={setAnnotations:vi.fn()};
   const appState={build:{repertoire_id:'r',revision:1},buildCurrentNodeId:'n',buildNodeById:new Map([['n',node]])};
   const postJson=vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(last.promise);
-  const save=compile('async function saveBuildAnnotations(',{appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,hardFlushBuild:async()=>{},resolveBuildId:id=>id,postJson,boards:{build:board},setStatusError:noop,pokeBuildLive:noop});
+  const save=compile('async function saveBuildAnnotations(',{...asSlices(appState), currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,hardFlushBuild:async()=>{},resolveBuildId:id=>id,postJson,boards:{build:board},setStatusError:noop,pokeBuildLive:noop});
   const a=save(['Ga1a2'],[]);await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(1));
   const b=save(['Ga1a3'],[]),c=save(['Ga1a4'],[]);expect(node.arrows).toEqual(['Ga1a4']);
   first.resolve({revision:2});await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(2));
@@ -137,7 +137,7 @@ it('Build writes serialize, carry no base revision and tell other tabs',async()=
   const first=deferred(),appState={build:{repertoire_id:'r',revision:4},buildPending:[],buildPendingDeletes:[]};
   const announce=vi.fn();
   const api=vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce({revision:6}).mockResolvedValueOnce({});
-  const post=compile('async function postJson(',{appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',api,BUILD_MUTATIONS,announceBuildWrite:announce});
+  const post=compile('async function postJson(',{...asSlices(appState), currentOwnerId:()=> 'owner',api,BUILD_MUTATIONS,announceBuildWrite:announce});
   const a=post('/api/build/annotations',{repertoire_id:'r'}),b=post('/api/build/add-moves',{repertoire_id:'r'});
   expect(api).toHaveBeenCalledTimes(1);first.resolve({revision:5});await Promise.all([a,b]);
   expect(api).toHaveBeenCalledTimes(2);
@@ -154,7 +154,7 @@ it('download responses become Blob directly without text parsing',async()=>{
 it('a Settings read still runs after a write during lazy view loading',async()=>{
   const view=deferred(),appState={signedIn:true};
   const renderSettings=vi.fn();const api=vi.fn(async(_url,options)=>options?.method==='POST'?{maia_rating:2000}:{maia_rating:2000});
-  const actions=createSettingsActions({appState, analysisState: appState, buildState: appState, settingsState: appState, teamsState: appState,currentOwnerId:()=> 'owner',api,ensureSettingsView:()=>view.promise,applySettingsPayload:p=>{appState.settings=p;},applyServerEngineGating:noop,setStatusError:noop,explorerDrawerOpen:()=>false});
+  const actions=createSettingsActions({...asSlices(appState), currentOwnerId:()=> 'owner',api,ensureSettingsView:()=>view.promise,applySettingsPayload:p=>{appState.settings=p;},applyServerEngineGating:noop,setStatusError:noop,explorerDrawerOpen:()=>false});
   const load=actions.loadSettingsOnce();await actions.saveSettings({maia_rating:2000});
   view.resolve({renderSettings});await load;
   expect(api).toHaveBeenCalledTimes(2);expect(renderSettings).toHaveBeenCalledWith({maia_rating:2000});

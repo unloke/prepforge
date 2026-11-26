@@ -5,6 +5,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -27,7 +28,7 @@ describe("closing the open repertoire", () => {
     const board = { setPosition: vi.fn(), setAnnotations: vi.fn() };
     const label = { textContent: "1... c5" };
     const deps = {
-      appState, buildState: appState, trainState: appState, boards: { build: board }, START_FEN, localBoardInfo,
+      ...asSlices(appState), boards: { build: board }, START_FEN, localBoardInfo,
       document: { getElementById: () => label },
       renderBuildRepHeader: vi.fn(), renderBuilderTree: vi.fn(), renderBuildSync: vi.fn(),
       syncViewHeads: vi.fn(), syncWorkspaceUrl: vi.fn(), scheduleExplorerRefresh: vi.fn(),
@@ -59,7 +60,7 @@ describe("closing the open repertoire", () => {
 
 describe("Recent analyses follow the signed-in owner", () => {
   const drawerFn = (appState, drawer, load) =>
-    compile("function syncAnalysisHistoryDrawer(", { appState, buildState: appState, trainState: appState, document: { getElementById: () => drawer }, loadAnalysisHistory: load });
+    compile("function syncAnalysisHistoryDrawer(", { ...asSlices(appState), document: { getElementById: () => drawer }, loadAnalysisHistory: load });
 
   it("shows and loads the open drawer once signed in on Analyze", () => {
     const drawer = { hidden: true, open: true }, load = vi.fn();

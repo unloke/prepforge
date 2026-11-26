@@ -210,7 +210,7 @@ function watchHarness({ latestSequence = [], accounts = [{ id: "a1", username: "
     owner: () => owner,
   };
   const deps = {
-    appState, settingsState: appState, notices,
+    ...asSlices(appState), notices,
     window: win, document: doc,
     api: (...args) => slots.api(...args),
     postJson: vi.fn(async () => ({ ok: true })),
@@ -250,7 +250,7 @@ function watchHarness({ latestSequence = [], accounts = [{ id: "a1", username: "
   const api2 = new Function(...Object.keys(deps), `${snippets}
     return { startLichessGameWatch, resetLichessGameWatch, checkLatestLichessGame, markLichessSeen,
       dismissNewGameNudge, holdNewGameNudge, finishedRecently };`)(...Object.values(deps));
-  return { ...api2, appState, settingsState: appState, shown, deps, slots, listeners, seen, get probeCount() { return probe; } };
+  return { ...api2, ...asSlices(appState), appState, shown, deps, slots, listeners, seen, get probeCount() { return probe; } };
 }
 
 const gamePayload = (id, { white = "me", black = "them", minutesAgo = 1, isNew = true } = {}) => ({

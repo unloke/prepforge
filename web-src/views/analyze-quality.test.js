@@ -5,13 +5,14 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
 import { cssSource } from "../test-styles-source.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 function render(quality) {
   const host = { dataset: { open: "true" }, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [] };
   globalThis.document = { getElementById: (id) => (id === "analysis-summary" ? host : null) };
   const appState = { analysis: { quality }, analysisVarNodes: new Map() };
   const view = createAnalyzeView({
-    appState, analysisState: appState,
+    ...asSlices(appState), 
     START_FEN: "",
     showAnalysisPly: () => {},
     selectAnalysisNode: () => {},

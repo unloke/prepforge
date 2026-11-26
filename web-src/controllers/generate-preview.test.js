@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createGeneratePreview } from "./generate-preview.js";
 import { createMoveTreeRenderer } from "../views/shared/movetree.js";
 import { createBuildView } from "../views/build.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const add = (tempId, parentRef, moveUci) => ({ action: "planned_add", tempId, parentRef, moveUci });
@@ -124,7 +125,7 @@ describe("preview rendering with the shared Build index", () => {
     vi.stubGlobal("document", { getElementById: (id) => id === "builder-tree" ? container : null });
     vi.stubGlobal("CSS", { escape: (id) => id });
     const renderer = { ...createMoveTreeRenderer(), bindMoveTreeClicks: vi.fn() };
-    const view = createBuildView({ appState, buildState: appState, boards: {}, getMoveTreeRenderer: () => renderer,
+    const view = createBuildView({ ...asSlices(appState), boards: {}, getMoveTreeRenderer: () => renderer,
       ensureMoveTreeRenderer: async () => renderer, selectBuildNode: vi.fn(),
       openNodeContextMenu: vi.fn(), buildBranchContext: () => null });
     view.renderBuilderTree();

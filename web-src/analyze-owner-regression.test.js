@@ -81,12 +81,12 @@ it("a save response after switching accounts cannot paint or clear the new owner
   const pending = run();
   owner = "bob";
   const bobCheckpoint = { ownerId: "bob", gameId: "bob-game" };
-  deps.appState.analysisUnsavedCheckpoint = bobCheckpoint;
+  deps.analysisState.analysisUnsavedCheckpoint = bobCheckpoint;
   resolve({ game_id: "alice-game" });
   await pending;
   expect(deps.clearCheckpoint).toHaveBeenCalledWith("alice-game", "alice", undefined);
-  expect(deps.appState.analysisUnsavedCheckpoint).toBe(bobCheckpoint);
-  expect(deps.appState.analysis).toBeUndefined();
+  expect(deps.analysisState.analysisUnsavedCheckpoint).toBe(bobCheckpoint);
+  expect(deps.analysisState.analysis).toBeUndefined();
   expect(deps.hideAnalysisRetrySave).not.toHaveBeenCalled();
 });
 
@@ -102,7 +102,7 @@ it("switching accounts during classify-save releases the analysis job without re
     cancelJob: vi.fn(() => { busy = false; }), failJob: vi.fn(), completeJob: vi.fn(),
   };
   const deps = {
-    appState, analysisState: appState, notices, currentOwnerId: () => owner,
+    ...asSlices(appState), notices, currentOwnerId: () => owner,
     isBrowserEngineAvailable: () => true, ENGINE_ID: "sf-test", requireSignIn: () => true,
     document: { getElementById: (id) => id === "pgn-input" ? { value: "1. e4" } : runButton },
     invalidateAnalysisSource: () => 1, analysisRecallSeq: 1,

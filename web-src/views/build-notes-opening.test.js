@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 import { createBuildView } from "./build.js";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // A repertoire's notes read in the tree, under their moves; the line's named
 // opening sits at the end of the position trail; and every move has a pointer
@@ -32,7 +33,7 @@ function harness({ readOnly = false } = {}) {
   globalThis.document = { getElementById: (id) => elements[id] || null, querySelector: () => null };
   const renderer = createMoveTreeRenderer();
   const view = createBuildView({
-    appState, buildState: appState,
+    ...asSlices(appState), 
     boards: { build: { setBranchArrows: vi.fn() } },
     getMoveTreeRenderer: () => ({ ...renderer, bindMoveTreeClicks: vi.fn(), scrollIntoViewWithin: vi.fn() }),
     ensureMoveTreeRenderer: () => Promise.resolve(),
@@ -41,7 +42,7 @@ function harness({ readOnly = false } = {}) {
     buildBranchContext: () => null,
     isReadOnly: () => readOnly,
   });
-  return { view, elements, appState, buildState: appState };
+  return { view, elements, ...asSlices(appState), appState,  };
 }
 
 describe("Build tree notes, opening and move menu", () => {

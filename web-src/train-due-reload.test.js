@@ -50,7 +50,7 @@ describe("all-repertoire Due reload", () => {
     const h = runtime("#/train?mode=smart");
     await h.popstate();
     expect(h.openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: null }));
-    h.appState.smart = { mixed: true };
+    h.trainState.smart = { mixed: true };
     h.openTrain.mockClear();
     await h.popstate();
     expect(h.openTrain).not.toHaveBeenCalled();
@@ -69,8 +69,8 @@ describe("all-repertoire Due reload", () => {
     expect(rehearsal.openTrain).toHaveBeenLastCalledWith(expect.objectContaining({ mode: "all_lines", repertoireId: "r" }));
 
     const due = runtime("#/train?mode=smart");
-    due.appState.training = { repertoire_id: "r", prompt: {} };
-    due.appState.trainMode = "all_lines";
+    due.trainState.training = { repertoire_id: "r", prompt: {} };
+    due.trainState.trainMode = "all_lines";
     await due.popstate();
     expect(due.openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: null }));
   });

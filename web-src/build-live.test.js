@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   LIVE_IDLE_POLL_MS, LIVE_POLL_MS, announceBuildWrite, applyBuildChanges, createBuildLive, remoteChangeNotice,
 } from "./build-live.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const node = (id, parent_id, extra = {}) => ({ id, parent_id, uci: id, is_mainline: false, comment: "", ...extra });
 
@@ -71,7 +72,7 @@ function harness({ changes = { revision: 5 }, open = true, defaultOpen = false }
   };
   const appState = { build: tree(), buildCurrentNodeId: "nf3", buildNodeById: new Map(), accountUserId: "u1" };
   const deps = {
-    appState, buildState: appState, timers, doc: { hidden: false, addEventListener() {}, removeEventListener() {} },
+    ...asSlices(appState), timers, doc: { hidden: false, addEventListener() {}, removeEventListener() {} },
     api: vi.fn(async () => (typeof changes === "function" ? changes() : changes)),
     hydrate: vi.fn(async (payload) => {
       appState.build = payload;
@@ -90,14 +91,14 @@ function harness({ changes = { revision: 5 }, open = true, defaultOpen = false }
     appState.signedIn = true;
   }
   const live = createBuildLive(deps);
-  return { live, deps, appState, buildState: appState, pending };
+  return { live, deps, ...asSlices(appState), appState, pending };
 }
 
 describe("createBuildLive", () => {
   it("follows a repertoire shared to this account at any role, but not a public link", async () => {
     for (const shared of [{ role: "edit", writable: true }, { role: "view", writable: false }]) {
       const h = harness({ defaultOpen: true });
-      Object.assign(h.appState.build, shared, { shared: true });
+      Object.assign(h.buildState.build, shared, { shared: true });
       await h.live.tick();
       expect(h.deps.api).toHaveBeenCalledWith("/api/build/changes?repertoire_id=r&since=5");
     }
@@ -128,11 +129,11 @@ describe("createBuildLive", () => {
 
   it("lets hydration keep an unsynced selection without a second board navigation", async () => {
     const h = harness({ changes: { revision: 6, nodes: [], removed: [], ops: [] } });
-    h.appState.build.nodes.push(node("tmp-me-1", "d4"));
-    h.appState.buildCurrentNodeId = "tmp-me-1";
+    h.buildState.build.nodes.push(node("tmp-me-1", "d4"));
+    h.buildState.buildCurrentNodeId = "tmp-me-1";
     h.deps.hydrate.mockImplementation(async (payload) => {
-      h.appState.build = payload;
-      h.appState.buildNodeById = new Map([...payload.nodes, node("tmp-me-1", "d4")].map((n) => [n.id, n]));
+      h.buildState.build = payload;
+      h.buildState.buildNodeById = new Map([...payload.nodes, node("tmp-me-1", "d4")].map((n) => [n.id, n]));
     });
     await h.live.tick();
     expect(h.deps.hydrate.mock.calls[0][1]).toBe("tmp-me-1");
@@ -143,7 +144,7 @@ describe("createBuildLive", () => {
   it("drops a delta when this tab wrote or switched trees while it was in flight", async () => {
     const h = harness();
     h.deps.api.mockImplementation(async () => {
-      h.appState.build.revision = 6; // our own write landed meanwhile
+      h.buildState.build.revision = 6; // our own write landed meanwhile
       return { revision: 7, nodes: [], removed: [], ops: [] };
     });
     await h.live.tick();
@@ -152,7 +153,7 @@ describe("createBuildLive", () => {
 
   it("waits while a save is in flight instead of racing it", async () => {
     const h = harness();
-    h.appState.buildFlushing = Promise.resolve();
+    h.buildState.buildFlushing = Promise.resolve();
     await h.live.tick();
     expect(h.deps.api).not.toHaveBeenCalled();
     expect(h.pending.at(-1).ms).toBeLessThan(LIVE_POLL_MS);
@@ -167,13 +168,13 @@ describe("createBuildLive", () => {
 
   it("reloads when the caller's role changed, even with no new writes", async () => {
     const h = harness({ changes: { revision: 0, role: "edit" } });
-    h.appState.build.role = "view";
-    h.appState.build.revision = 0;
+    h.buildState.build.role = "view";
+    h.buildState.build.revision = 0;
     await h.live.tick();
     expect(h.deps.reload).toHaveBeenCalledTimes(1);
     const same = harness({ changes: { revision: 0, role: "view" } });
-    same.appState.build.role = "view";
-    same.appState.build.revision = 0;
+    same.buildState.build.role = "view";
+    same.buildState.build.revision = 0;
     await same.live.tick();
     expect(same.deps.reload).not.toHaveBeenCalled();
   });

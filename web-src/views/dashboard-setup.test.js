@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDashboardView } from "./dashboard.js";
 import { acceptRepertoireListing, fetchRepertoireListing } from "../repertoire-listing.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // Library "Get started" setup checklist (signed in):
 //  - three steps — build a repertoire / link Lichess / finish a training
@@ -92,7 +93,7 @@ describe("dashboard setup checklist", () => {
     goToView = vi.fn();
     appState = { signedIn: true, teams: [], pendingRepDeletes: new Set(), lichessAccounts: [] };
     view = createDashboardView({
-      appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState,
+      ...asSlices(appState), 
       api,
       postJson: noop,
       setStatus: noop,

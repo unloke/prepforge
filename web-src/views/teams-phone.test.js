@@ -8,7 +8,7 @@ import { inviteDialogBodyHtml, inviteDialogModel } from "./team-invite.js";
 // dialog keeps one row of link actions with Done in its title bar.
 
 vi.mock("../core/api.js", () => ({ api: vi.fn(), currentOwnerId: () => "u1", postJson: vi.fn(), setStatus: vi.fn(), setStatusError: vi.fn() }));
-vi.mock("../core/state.js", () => ({ appState: { teams: [], selectedTeamId: "t1", accountUserId: "u1" } }));
+vi.mock("../core/state.js", () => ({ appState: { accountUserId: "u1" }, teamsState: { teams: [], selectedTeamId: "t1" } }));
 vi.mock("../core/modals.js", () => ({ showConfirmModal: vi.fn(), showInputModal: vi.fn() }));
 const { createTeamsController } = await import("./teams-controller.js");
 

@@ -9,11 +9,10 @@ import { classifySyncError } from "./sync-errors.js";
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 const source = appSource();
-function cancelStaleTrainStartSource() {
-  const start = source.indexOf("function cancelStaleTrainStart(");
-  return source.slice(start, source.indexOf("\n", start) + 1);
-}
+// cancelStaleTrainStart is one line of app.js.
+const cancelStaleTrainStartSource = () => source.slice(source.indexOf("function cancelStaleTrainStart("), source.indexOf("\n", source.indexOf("function cancelStaleTrainStart(")) + 1);
 function compile(marker, deps, prelude = "", code = source) {
   deps = { html, ...deps };
   const start = code.indexOf(marker);
@@ -21,17 +20,17 @@ function compile(marker, deps, prelude = "", code = source) {
   return new Function(...Object.keys(deps), `${prelude}; return (${code.slice(start, end)});`)(...Object.values(deps));
 }
 function queueFlush(marker, deps) {
-  const train = marker.includes("Train"), app = deps.appState;
-  const buildState = {
-    get timer() { return app.buildFlushTimer; }, set timer(v) { app.buildFlushTimer = v; },
-    get flushing() { return app.buildFlushing; }, set flushing(v) { app.buildFlushing = v; },
-    get retry() { return app.buildSyncRetry; }, set retry(v) { app.buildSyncRetry = v; },
+  const train = marker.includes("Train"), build = deps.buildState, trainState = deps.trainState;
+  const buildQueueState = {
+    get timer() { return build.buildFlushTimer; }, set timer(v) { build.buildFlushTimer = v; },
+    get flushing() { return build.buildFlushing; }, set flushing(v) { build.buildFlushing = v; },
+    get retry() { return build.buildSyncRetry; }, set retry(v) { build.buildSyncRetry = v; },
   };
   const queue = createSyncQueue({ key: train ? "train" : "build", tabId: "test",
-    state: () => train ? app.trainSync : buildState, owner: deps.currentOwnerId,
-    generation: () => app.ownerGeneration, idleMs: train ? 4000 : 2000,
-    hasWork: () => train ? app.trainSync.pending.length || app.trainSync.dirty
-      : app.buildPending.length || app.buildPendingDeletes.length,
+    state: () => train ? trainState.trainSync : buildQueueState, owner: deps.currentOwnerId,
+    generation: () => deps.appState.ownerGeneration, idleMs: train ? 4000 : 2000,
+    hasWork: () => train ? trainState.trainSync.pending.length || trainState.trainSync.dirty
+      : build.buildPending.length || build.buildPendingDeletes.length,
     persist: () => deps.persistOutbox(), flush: (checkpoint, isCurrent) => compile(marker, deps)(checkpoint, isCurrent),
   });
   deps[train ? "trainQueue" : "buildQueue"] = queue;
@@ -51,7 +50,7 @@ it("opening a repertoire retains and reapplies its durable pending deletes", asy
     expect(appState.buildPendingDeletes).toEqual([deletion]);
   });
   const run = compile("async function hydrateBuild(", {
-    appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, coverageView: { sync: vi.fn() }, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
+    ...asSlices(appState), coverageView: { sync: vi.fn() }, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
     selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes, indexBuildNodes,
     resolveBuildId: id => id,
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
@@ -90,7 +89,7 @@ it("team detail B stays visible after slow A responds", async () => {
     return elements.get(id);
   } };
   const appState = { accountUserId: "owner" };
-  const deps = { appState, teamsState: appState, document, currentOwnerId: () => "owner", renderTeamsList: vi.fn(),
+  const deps = { ...asSlices(appState), document, currentOwnerId: () => "owner", renderTeamsList: vi.fn(),
     api: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     teamRoleLabel: (r) => r, teamsView: null,
     renderTeamSharedRepertoires: vi.fn(), memberRowsSkeleton, sharedRepRowsSkeleton,
@@ -108,7 +107,7 @@ it("settings saves serialize patches and only publish the latest state", async (
   const appState = {};
   const applySettingsPayload = vi.fn((p) => { appState.settings = p; });
   const api = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", api,
+  const deps = { ...asSlices(appState), currentOwnerId: () => "owner", api,
     applySettingsPayload, setStatusError: vi.fn(), explorerDrawerOpen: () => false };
   const actions = createSettingsActions(deps);
   const save = compile("async function saveSettings(", { ...deps, loadSettingsActions: async () => actions });
@@ -125,7 +124,7 @@ it("settings saves serialize patches and only publish the latest state", async (
 it("a legacy Train start cannot overwrite a newer session", async () => {
   const first = deferred(), second = deferred();
   const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r" };
-  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
+  const deps = { ...asSlices(appState), currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
     setTrainBanner: vi.fn(), trainStatsReset: vi.fn(), isNothingToTrainError: () => false,
     clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setSmartPanelsHidden: vi.fn(),
     setStatus: vi.fn(), hardFlushBuild: async () => {}, setStatusError: vi.fn(),
@@ -144,7 +143,7 @@ it("a legacy Train start cannot overwrite a newer session", async () => {
 
 function rehearsalHarness(flush) {
   const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r", trainStarting: true };
-  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
+  const deps = { ...asSlices(appState), currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
     setTrainBanner: vi.fn(), trainStatsReset: vi.fn(), isNothingToTrainError: () => false,
     clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setSmartPanelsHidden: vi.fn(),
     setStatus: vi.fn(), hardFlushBuild: vi.fn(() => flush.promise), setStatusError: vi.fn(),
@@ -152,7 +151,7 @@ function rehearsalHarness(flush) {
     boards: {}, document: { getElementById: () => ({}) }, renderTrainStats: vi.fn(),
     renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn(), reveal: (el) => { el.hidden = false; } };
   const run = compile("async function startTraining(", deps, "let smartStartSeq = 0; " + cancelStaleTrainStartSource());
-  return { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, deps, run };
+  return { ...asSlices(appState), appState, deps, run };
 }
 
 it("an invalidated rehearsal start cleans up when its Build flush resolves", async () => {
@@ -191,12 +190,12 @@ it("an invalidated rehearsal start cleans up when its Build flush rejects", asyn
 
 function practiceHarness(loads, flush = async () => {}) {
   const appState = { trainMode: "play", playStartToken: 0 };
-  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, START_FEN: "start", playBook: () => "repertoire", selectedTrainRepertoireIds: () => ["r"], trainRowError: vi.fn(), hardFlushBuild: vi.fn(flush),
+  const deps = { ...asSlices(appState), START_FEN: "start", playBook: () => "repertoire", selectedTrainRepertoireIds: () => ["r"], trainRowError: vi.fn(), hardFlushBuild: vi.fn(flush),
     playRepertoireMeta: () => [{ id: "r", color: "white" }], loadPlayRepertoirePayload: loads, normalizePlayRepertoire: (payload) => ({ id: payload.repertoire_id, rootId: "root" }),
     playCursorsAtFen: () => ({ r: ["root"] }), resolvePlayColor: () => "white", playPickerColor: () => "white", boardInfo: vi.fn(async () => ({ fen: "start", legal_moves: [] })), effectiveMaiaRating: () => 1500,
     boards: { train: { setOrientation: vi.fn() } }, paintPlayPosition: vi.fn(), sideToMoveFromFen: () => "white", localPremoveMoves: () => [], playBookLabel: () => "Repertoire",
     renderPlayTrail: vi.fn(), syncTrainSessionControls: vi.fn(), getSharedMaia3Provider: () => ({ warmup: async () => {} }), playOpponentReply: vi.fn(async () => {}) };
-  return { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, deps, run: compile("async function startPlaySession(", deps) };
+  return { ...asSlices(appState), appState, deps, run: compile("async function startPlaySession(", deps) };
 }
 
 it("a canceled Practice start cannot adopt its tree over a replacement start", async () => {
@@ -262,7 +261,7 @@ function buildFlushHarness() {
   const op = { tempId: "tmp-a", parentRef: "root", uci: "e2e4", repertoire_id: "r" };
   const appState = { build: { repertoire_id: "r", revision: 1 }, buildPending: [op], buildPendingDeletes: [],
     buildSyncRetry: 0, buildIdMap: {}, buildNodeById: new Map([["tmp-a", {}]]), buildCurrentNodeId: "tmp-a" };
-  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", captureBuildContext: () => () => true,
+  const deps = { ...asSlices(appState), currentOwnerId: () => "owner", captureBuildContext: () => () => true,
     resolveBuildId: (id) => id, acquireFlushLock: () => true, OUTBOX_TAB_ID: "tab", clearTimeout: vi.fn(), setBuildSync: vi.fn(),
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id, setStatus: vi.fn(),
     postJson: vi.fn(async () => ({ repertoire_id: "r", revision: 2, id_map: { "tmp-a": "real" }, nodes: [{ id: "real" }] })),
@@ -274,7 +273,7 @@ function buildFlushHarness() {
     reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
     selectBuildNode: vi.fn(),
   };
-  return { op, appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
+  return { op, ...asSlices(appState), appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
 }
 
 it("deleting a saved analysis hides the row and only calls the server after the undo window", async () => {
@@ -284,7 +283,7 @@ it("deleting a saved analysis hides the row and only calls the server after the 
   const row = { remove: vi.fn(), closest: () => row };
   const button = { dataset: { historyDelete: "g1", historyLabel: "me_user vs opp_one" }, closest: () => row };
   const deps = {
-    appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, html,
+    ...asSlices(appState), html,
     showUndoToast: vi.fn(),
     setStatus: (message, options) => statuses.push([message, options]),
     loadAnalysisHistory: vi.fn(),
@@ -325,7 +324,7 @@ it("a failed analysis delete restores the row and says why", async () => {
   const row = { remove: vi.fn(), closest: () => row };
   const button = { dataset: { historyDelete: "g9", historyLabel: "a vs b" }, closest: () => row };
   const deps = {
-    appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, html,
+    ...asSlices(appState), html,
     showUndoToast: vi.fn(),
     setStatus: (message, options) => statuses.push([message, options]),
     loadAnalysisHistory: vi.fn(),
@@ -352,7 +351,7 @@ it("a queued Build edit carries no base revision and lands after edits made else
   expect(await h.run()).toBe(true);
   expect(h.deps.postJson).toHaveBeenCalledWith("/api/build/add-moves", {
     repertoire_id: "r", moves: [{ tempId: "tmp-a", parentRef: "root", uci: "e2e4" }] });
-  expect(h.appState.buildPending).toEqual([]);
+  expect(h.buildState.buildPending).toEqual([]);
 });
 
 it("moves whose line was deleted elsewhere are settled with one notice", async () => {
@@ -360,7 +359,7 @@ it("moves whose line was deleted elsewhere are settled with one notice", async (
   h.deps.hydrateBuild.mockResolvedValue(undefined);
   h.deps.postJson.mockResolvedValueOnce({ repertoire_id: "r", revision: 3, id_map: {}, dropped: ["tmp-a"], nodes: [{ id: "root" }] });
   expect(await h.run()).toBe(true);
-  expect(h.appState.buildPending).toEqual([]);
+  expect(h.buildState.buildPending).toEqual([]);
   expect(h.deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ build: ["tmp-a"] }));
   expect(h.deps.setStatus).toHaveBeenCalledWith("1 move not saved: line deleted elsewhere", { severity: "warning" });
 });
@@ -368,7 +367,7 @@ it("moves whose line was deleted elsewhere are settled with one notice", async (
 it("passes the selected line to hydration to resolve against surviving and pending nodes", async () => {
   const h = buildFlushHarness();
   h.deps.hydrateBuild.mockResolvedValue(undefined);
-  h.appState.buildNodeById = new Map([["tmp-a", { parent_id: "c5" }], ["c5", { parent_id: "e4" }], ["e4", { parent_id: "root" }]]);
+  h.buildState.buildNodeById = new Map([["tmp-a", { parent_id: "c5" }], ["c5", { parent_id: "e4" }], ["e4", { parent_id: "root" }]]);
   h.deps.postJson.mockResolvedValueOnce({ repertoire_id: "r", revision: 3, id_map: {}, dropped: ["tmp-a"],
     nodes: [{ id: "root" }, { id: "e4" }] });
   expect(await h.run()).toBe(true);
@@ -377,12 +376,12 @@ it("passes the selected line to hydration to resolve against surviving and pendi
 
 it("queued edits for a repertoire that is not open still save", async () => {
   const h = buildFlushHarness();
-  h.appState.build = null;
+  h.buildState.build = null;
   h.deps.captureBuildContext = () => () => false;
   expect(await h.run()).toBe(true);
   expect(h.deps.postJson.mock.calls[0][1].repertoire_id).toBe("r");
   expect(h.deps.hydrateBuild).not.toHaveBeenCalled();
-  expect(h.appState.buildPending).toEqual([]);
+  expect(h.buildState.buildPending).toEqual([]);
   expect(h.deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ build: ["tmp-a"] }));
 });
 
@@ -401,12 +400,12 @@ function trainFlushHarness() {
   const response = deferred();
   const sync = { pending: [{ session_id: "s", session_generation: "old", node_id: "n", correct: true, attempt_uuid: "u" }], dirty: true, retry: 0 };
   const appState = { trainSync: sync, smart: { sessionId: "s", generation: "old", stateVersion: 3, cardIndex: 1, queue: [{ encoded: "old-card" }] } };
-  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => owner, flushGroups, groupAttempts, ungroupAttempts,
+  const deps = { ...asSlices(appState), currentOwnerId: () => owner, flushGroups, groupAttempts, ungroupAttempts,
     setTrainSyncState: vi.fn(), clearTimeout: vi.fn(), postJson: vi.fn(() => response.promise),
     localDateString: () => "2026-10-02", persistOutbox: vi.fn(), trainAttemptId: (a) => a.attempt_uuid,
     classifySyncError, setStatus: vi.fn(), setTimeout: vi.fn(), TRAIN_SYNC_MAX_BACKOFF_MS: 30000,
     clearOutboxWhenQuiescent: vi.fn(), scheduleTrainSync: vi.fn() };
-  return { run: queueFlush("function flushTrainSync(", deps), appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, deps, response, setOwner: (next) => { owner = next; } };
+  return { run: queueFlush("function flushTrainSync(", deps), ...asSlices(appState), appState, deps, response, setOwner: (next) => { owner = next; } };
 }
 
 it("a late Smart sync failure keeps the old generation and cannot dirty its rebuilt session", async () => {
@@ -414,11 +413,11 @@ it("a late Smart sync failure keeps the old generation and cannot dirty its rebu
   const pending = h.run();
   await Promise.resolve();
   expect(h.deps.postJson.mock.calls[0][1]).toMatchObject({ session_generation: "old", card_index: 1, queue: ["old-card"] });
-  h.appState.smart = { sessionId: "s", generation: "new", queue: [], cardIndex: 0 };
+  h.trainState.smart = { sessionId: "s", generation: "new", queue: [], cardIndex: 0 };
   h.response.reject(Object.assign(new Error("offline"), { status: 503 }));
   expect(await pending).toBe(false);
-  expect(h.appState.trainSync.pending[0].session_generation).toBe("old");
-  expect(h.appState.trainSync.dirty).toBe(false);
+  expect(h.trainState.trainSync.pending[0].session_generation).toBe("old");
+  expect(h.trainState.trainSync.dirty).toBe(false);
 });
 
 it("Smart sync sends the captured version and advances it only after accepting state", async () => {
@@ -428,7 +427,7 @@ it("Smart sync sends the captured version and advances it only after accepting s
   expect(h.deps.postJson.mock.calls[0][1].state_version).toBe(3);
   h.response.resolve({ state_applied: true, state_version: 5 });
   await pending;
-  expect(h.appState.smart.stateVersion).toBe(5);
+  expect(h.trainState.smart.stateVersion).toBe(5);
 });
 
 it("Smart sync settles attempts but does not adopt a conflicting state's version", async () => {
@@ -436,8 +435,8 @@ it("Smart sync settles attempts but does not adopt a conflicting state's version
   const pending = h.run();
   h.response.resolve({ synced: 1, state_applied: false, state_version: 7 });
   await pending;
-  expect(h.appState.smart.stateVersion).toBe(3);
-  expect(h.appState.trainSync.pending).toEqual([]);
+  expect(h.trainState.smart.stateVersion).toBe(3);
+  expect(h.trainState.trainSync.pending).toEqual([]);
   expect(h.deps.setStatus).toHaveBeenCalledWith(expect.stringContaining("Resume"), { severity: "error" });
 });
 
@@ -446,9 +445,9 @@ it("changing owners during the durable checkpoint releases the old flush without
   const checkpoint = deferred();
   h.deps.persistOutbox.mockImplementationOnce(() => checkpoint.promise);
   const pending = h.run();
-  const old = h.appState.trainSync;
+  const old = h.trainState.trainSync;
   h.setOwner("bob");
-  h.appState.trainSync = { pending: [], dirty: false };
+  h.trainState.trainSync = { pending: [], dirty: false };
   checkpoint.resolve(true);
   expect(await pending).toBe(false);
   expect(old.flushing).toBeNull();
@@ -463,10 +462,10 @@ it("a Train sync response after changing owners cannot settle the new owner's ou
   h.deps.persistOutbox.mockClear();
   h.setOwner("bob");
   const bob = { pending: [{ attempt_uuid: "bob" }], dirty: true };
-  h.appState.trainSync = bob;
+  h.trainState.trainSync = bob;
   h.response.resolve({ day_streak: 99 });
   expect(await pending).toBe(false);
-  expect(h.appState.trainSync).toBe(bob);
+  expect(h.trainState.trainSync).toBe(bob);
   expect(h.appState.dayStreak).toBeUndefined();
   expect(h.deps.persistOutbox).not.toHaveBeenCalled();
 });
@@ -494,25 +493,25 @@ it("a lost Build response retains deleted in-flight adds until their IDs can be 
   const response = deferred();
   h.deps.postJson.mockImplementationOnce(() => response.promise);
   const pending = h.run();
-  h.appState.buildNodeById.delete("tmp-a");
-  h.appState.buildPendingDeletes.push({ id: "tmp-a", repertoire_id: "r" });
+  h.buildState.buildNodeById.delete("tmp-a");
+  h.buildState.buildPendingDeletes.push({ id: "tmp-a", repertoire_id: "r" });
   response.reject(new Error("response lost"));
   expect(await pending).toBe(false);
-  expect(h.appState.buildPending).toEqual([h.op]);
-  expect(h.appState.buildPendingDeletes).toHaveLength(1);
+  expect(h.buildState.buildPending).toEqual([h.op]);
+  expect(h.buildState.buildPendingDeletes).toHaveLength(1);
   h.deps.hydrateBuild.mockResolvedValue(undefined);
   h.deps.hasPendingBuildOpsFor = () => true;
   // Use the real ID lookup; queued deletion must wait while the add retries.
   h.deps.resolveBuildId = (entry) => {
     const id = entry?.id || entry;
-    return h.appState.buildIdMap[id] || id;
+    return h.buildState.buildIdMap[id] || id;
   };
   const retry = queueFlush("function flushBuildMoves(", h.deps);
   expect(await retry()).toBe(true);
   expect(h.deps.postJson.mock.calls[1][0]).toBe("/api/build/add-moves");
   expect(h.deps.postJson.mock.calls[1][1].moves[0].tempId).toBe("tmp-a");
-  expect(h.appState.buildPendingDeletes).toHaveLength(1);
-  expect(h.deps.resolveBuildId(h.appState.buildPendingDeletes[0])).toBe("real");
+  expect(h.buildState.buildPendingDeletes).toHaveLength(1);
+  expect(h.deps.resolveBuildId(h.buildState.buildPendingDeletes[0])).toBe("real");
 });
 
 
@@ -520,7 +519,7 @@ it("an older Settings GET cannot repaint state after a newer save", async () => 
   const get = deferred(), post = deferred();
   const appState = { signedIn: true };
   const view = { renderSettings: vi.fn() };
-  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", ensureSettingsView: async () => view,
+  const deps = { ...asSlices(appState), currentOwnerId: () => "owner", ensureSettingsView: async () => view,
     api: vi.fn().mockReturnValueOnce(get.promise).mockReturnValueOnce(post.promise),
     applySettingsPayload: (p) => { appState.settings = p; },
     applyServerEngineGating: vi.fn(), setStatusError: vi.fn(), explorerDrawerOpen: () => false };
@@ -548,7 +547,7 @@ it("a Scout line queued into the open repertoire is flushed by that repertoire",
   // 2026-10-08 audit: Scout pushed untagged ops, so every flush deferred them as
   // "edits for another repertoire" and Add to prep never saved.
   const appState = { build: { repertoire_id: "rep", revision: 3, nodes: [] }, buildNodeById: new Map(), buildPending: [] };
-  const queueBuildAdd = compile("function queueBuildAdd(", { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, resolveBuildId: id => id });
+  const queueBuildAdd = compile("function queueBuildAdd(", { ...asSlices(appState), resolveBuildId: id => id });
   const matches = compile("function buildOpMatchesRepertoire(", {});
   queueBuildAdd({ id: "tmp-1", parent_id: "root", uci: "e2e4" });
   expect(appState.buildPending[0]).toMatchObject({ tempId: "tmp-1", parentRef: "root", uci: "e2e4" });

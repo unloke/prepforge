@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createTrainView, lineTail } from "./train.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // Characterization for the ui-prototype-v2 "Up next" preview on Train:
 //  - the rows come from the live smart queue only (appState.smart.queue);
@@ -32,7 +33,7 @@ function makeView(appState, elements) {
       .map(([key, label]) => [key, { key, label, title: "" }]),
   );
   return createTrainView({
-    appState, trainState: appState,
+    ...asSlices(appState), 
     boards: {},
     renderSyncChip: () => {},
     setTrainBanner: () => {},

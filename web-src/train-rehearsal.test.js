@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { loadRehearsal, restoreRehearsal, saveRehearsal } from "./train-rehearsal.js";
 import { formatWorkspaceHash, parseWorkspaceHash, workspaceLocationFromState } from "./workspace-url.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const training = { repertoire_id: "r", session_id: "s", line_order: ["line-a", "line-b"], prompt: { current_index: 1, total_lines: 2 } };
 const stats = { correct: 0, mistakes: 0, skipped: 1, history: [] };
@@ -43,7 +44,7 @@ it("reload after a miss sends attempt 2 and a correct retry does not earn first-
   saveRehearsal("u", payload, missed, 2);
   const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r" };
   const deps = {
-    appState, trainState: appState, currentOwnerId: () => "u", restoreRehearsal,
+    ...asSlices(appState), currentOwnerId: () => "u", restoreRehearsal,
     postJson: vi.fn(async () => payload), hardFlushBuild: async () => {},
     trainStatsReset: () => { appState.trainStats = { ...stats }; },
     clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setTrainBanner: vi.fn(),

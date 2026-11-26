@@ -247,7 +247,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
   });
   it("search visibility follows the team collection, including an unmatched typed filter", () => {
     const appState = { signedIn: true, authKnown: true, teams: [], selectedTeamId: null };
-    const { view, byId } = makeHarness({ appState, teamsState: appState });
+    const { view, byId } = makeHarness({ ...asSlices(appState),  });
     const field = { hidden: false };
     const search = byId("teams-search");
     search.closest = () => field;

@@ -5,6 +5,7 @@ import { pickOpponentReply, playPositionAfterReply, replyReasonNote } from "./tr
 import { appSource } from "./test-app-source.js";
 import { maiaErrorText } from "./maia-init-notice.js";
 import { takebackToUserMove } from "./train-play.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -27,7 +28,7 @@ function harness() {
   const banner = { title: "Opponent thinking…" };
   const explorer = deferred();
   const deps = {
-    appState, trainState: appState, boards: { train: board }, boardInfo: async (fen) => localBoardInfo(fen),
+    ...asSlices(appState), boards: { train: board }, boardInfo: async (fen) => localBoardInfo(fen),
     boardAfterMove: async (fen, uci) => localBoardAfterMove(fen, uci),
     fetchPlayExplorer: vi.fn(() => explorer.promise), fetchPlayMaia: vi.fn(async () => []),
     pickOpponentReply, playPositionAfterReply, replyReasonNote,
@@ -43,7 +44,7 @@ function harness() {
     submitPlayMove: vi.fn(),
   };
   const reply = compile("async function playOpponentReply(", deps);
-  return { play, appState, trainState: appState, board, banner, explorer, deps, reply };
+  return { play, ...asSlices(appState), appState, board, banner, explorer, deps, reply };
 }
 
 describe("Play opponent response ownership", () => {
@@ -103,7 +104,7 @@ describe("Play opponent response ownership", () => {
     const appState = { trainMode: "play" };
     const paint = vi.fn();
     const deps = {
-      appState, trainState: appState, START_FEN: FEN, playBook: () => "maia", playPickerColor: () => "white",
+      ...asSlices(appState), START_FEN: FEN, playBook: () => "maia", playPickerColor: () => "white",
       resolvePlayColor: () => "white", effectiveMaiaRating: () => 1500, boardInfo: () => info.promise,
       document: { getElementById: () => ({ hidden: false }) }, boards: { train: { setOrientation: vi.fn() } },
       paintPlayPosition: paint, playBookLabel: () => "Maia", isStartFen: () => true,
@@ -112,7 +113,7 @@ describe("Play opponent response ownership", () => {
       updateTrainTurnBadge: vi.fn(), playOpponentReply: vi.fn(), renderPlayTrail: vi.fn(),
       getSharedMaia3Provider: vi.fn(() => ({ warmup: vi.fn(() => new Promise(() => {})) })),
     };
-    return { appState, trainState: appState, info, paint, deps, start: compile("async function startPlaySession(", deps) };
+    return { ...asSlices(appState), appState, info, paint, deps, start: compile("async function startPlaySession(", deps) };
   }
 
   it("starts loading Maia while the player considers their first move without blocking the board", async () => {
@@ -138,10 +139,10 @@ describe("Play opponent response ownership", () => {
   it("does not install a practice session after switching modes during Start", async () => {
     const h = startHarness();
     const pending = h.start();
-    h.appState.trainMode = "smart";
+    h.trainState.trainMode = "smart";
     h.info.resolve(localBoardInfo(FEN));
     await pending;
-    expect(h.appState.play).toBeUndefined();
+    expect(h.trainState.play).toBeUndefined();
     expect(h.paint).not.toHaveBeenCalled();
   });
 
@@ -156,7 +157,7 @@ describe("Play opponent response ownership", () => {
   it("does not report a stale Start failure over the newly selected mode", async () => {
     const h = startHarness();
     const pending = h.start();
-    h.appState.trainMode = "smart";
+    h.trainState.trainMode = "smart";
     h.info.reject(new Error("old board load failed"));
     await pending;
     expect(h.deps.setStatusError).not.toHaveBeenCalled();
@@ -164,10 +165,10 @@ describe("Play opponent response ownership", () => {
   it("ignores a delayed start confirmation after leaving Practice game", async () => {
     const h = startHarness();
     const smart = { cardIndex: 2 };
-    h.appState.trainMode = "smart";
-    h.appState.smart = smart;
+    h.trainState.trainMode = "smart";
+    h.trainState.smart = smart;
     expect(await h.start()).toBe(false);
-    expect(h.appState.smart).toBe(smart);
+    expect(h.trainState.smart).toBe(smart);
     expect(h.paint).not.toHaveBeenCalled();
   });
   it("only applies the latest of overlapping replies for the same position", async () => {
@@ -206,7 +207,7 @@ describe("Play opponent response ownership", () => {
     const h = harness();
     const pending = h.reply();
     await vi.waitFor(() => expect(h.deps.fetchPlayExplorer).toHaveBeenCalled());
-    if (action === "restart") h.appState.play = { ...h.play, history: [] };
+    if (action === "restart") h.trainState.play = { ...h.play, history: [] };
     else if (action === "resign") h.play.active = false;
     else h.play.fen = localBoardAfterMove(FEN, "d7d5").board.fen;
     h.board.fen = "Current board";
@@ -215,7 +216,7 @@ describe("Play opponent response ownership", () => {
     await pending;
     expect(h.board.fen).toBe("Current board");
     expect(h.banner.title).toBe("Current banner");
-    expect(h.appState.play.history).toEqual([]);
+    expect(h.trainState.play.history).toEqual([]);
     expect(h.play.ply).toBe(0);
   });
 
