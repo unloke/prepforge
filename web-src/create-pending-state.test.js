@@ -362,6 +362,34 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
     expect(h.postJson.mock.results).toBeTruthy();
   });
 
+  it("keeps other repertoires' queued edits while the new one is created", async () => {
+    const h = repHarness(async () => ({ repertoire_id: "rep-1", selected_node_id: "root-1", revision: 1, nodes: [] }));
+    const queued = { repertoire_id: "rep-0", node_id: "n1", uci: "e2e4" };
+    const deleted = { repertoire_id: "rep-0", node_id: "n2" };
+    h.appState.buildPending = [queued];
+    h.appState.buildPendingDeletes = [deleted];
+    await h.prompt({});
+    expect(h.appState.buildPending).toEqual([queued]);
+    expect(h.appState.buildPendingDeletes).toEqual([deleted]);
+  });
+
+  it("a failed create returns to the move that was selected, on a playable board", async () => {
+    const after = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    const previous = {
+      repertoire_id: "rep-0", name: "Italian", color: "white", revision: 4, selected_node_id: "root-0",
+      nodes: [{ id: "root-0", fen: START_FEN, uci: null }, { id: "n1", fen: after, uci: "e2e4" }],
+    };
+    const h = repHarness(async () => { throw new Error("offline"); });
+    h.appState.build = previous;
+    h.appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
+    h.appState.buildCurrentNodeId = "n1";
+    await h.prompt({});
+    expect(h.appState.buildCurrentNodeId).toBe("n1");
+    const last = h.board.setPosition.mock.calls.at(-1)[0];
+    expect(last).toMatchObject({ fen: after, lastMove: "e2e4" });
+    expect(last.legalMoves.length).toBeGreaterThan(0);
+  });
+
   it("resolves with the created repertoire, so a first Build move can play onto it", async () => {
     const payload = { repertoire_id: "rep-1", selected_node_id: "root-1", revision: 1, nodes: [] };
     const h = repHarness(async () => payload);

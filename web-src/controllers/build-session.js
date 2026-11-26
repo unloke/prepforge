@@ -169,18 +169,23 @@ function openBuildMenu(event) {
     item("build-new-rep", "New repertoire…", { group: 2 }),
   ];
   const anchor = event.currentTarget.getBoundingClientRect();
+  // A failed Export, Rename or panel load says why, like the Library's menu does.
   openOverflowMenu(menu, { event, title: rep?.name || "Repertoire", items, onPick: async (action) => {
-    closeRepertoireContextMenu();
-    if (action === "build-node-menu") {
-      openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
-    } else if (action === "build-atlas") buildView.openAtlas();
-    else if (action === "build-activity") await buildView.openActivity();
-    else if (action === "build-discuss") await buildView.openDiscussion();
-    else if (action === "build-generate") await generateFromCurrentNode();
-    else if (action === "build-rename") await renameRepertoire();
-    else if (action === "build-export-pgn") await exportBuild();
-    else if (action === "build-new-rep") await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
-    else if (repId) await handleRepertoireContextAction(action, repId, isActive);
+    try {
+      closeRepertoireContextMenu();
+      if (action === "build-node-menu") {
+        openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
+      } else if (action === "build-atlas") buildView.openAtlas();
+      else if (action === "build-activity") await buildView.openActivity();
+      else if (action === "build-discuss") await buildView.openDiscussion();
+      else if (action === "build-generate") await generateFromCurrentNode();
+      else if (action === "build-rename") await renameRepertoire();
+      else if (action === "build-export-pgn") await exportBuild();
+      else if (action === "build-new-rep") await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
+      else if (repId) await handleRepertoireContextAction(action, repId, isActive);
+    } catch (error) {
+      setStatusError(error.message);
+    }
   } });
 }
 
@@ -1150,9 +1155,10 @@ function optimisticEmptyRepertoire(name, color) {
     }],
   };
   appState.buildNodeById = new Map(appState.build.nodes.map((node) => [node.id, node]));
+  const previousNodeId = appState.buildCurrentNodeId;
   appState.buildCurrentNodeId = rootId;
-  appState.buildPending = [];
-  appState.buildPendingDeletes = [];
+  // Queued edits for other repertoires stay queued (R-02, as in hydrateBuild):
+  // this empty tree has none of its own, and dropping them lost unsynced moves.
   appState.buildSyncState = "saved";
   if (boards.build) {
     boards.build.setOrientation(color);
@@ -1163,11 +1169,11 @@ function optimisticEmptyRepertoire(name, color) {
   renderBuildSync();
   renderBuilderTree();
   syncWorkspaceUrl();
-  return { previous, previousView, rootId };
+  return { previous, previousView, previousNodeId, rootId };
 }
 
 // Discard an unconfirmed optimistic repertoire and put the previous tree back.
-function rollbackOptimisticRepertoire({ previous, previousView, rootId }) {
+function rollbackOptimisticRepertoire({ previous, previousView, previousNodeId, rootId }) {
   if (!previous) {
     appState.build = null;
     appState.buildNodeById = new Map();
@@ -1175,9 +1181,10 @@ function rollbackOptimisticRepertoire({ previous, previousView, rootId }) {
   } else {
     appState.build = previous;
     appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
-    // The open tree had selected the optimistic root: the previous repertoire's
-    // own node goes back under the cursor, exactly like hydrateBuild does.
-    appState.buildCurrentNodeId = previous.selected_node_id || previous.nodes[0]?.id || null;
+    // The open tree had selected the optimistic root: the move the user was on
+    // goes back under the cursor, else the repertoire's own opening node.
+    appState.buildCurrentNodeId = [previousNodeId, previous.selected_node_id].find((id) => appState.buildNodeById.has(id))
+      || previous.nodes[0]?.id || null;
   }
   if (!previous && previousView && previousView !== "build") {
     switchView(previousView);
@@ -1186,7 +1193,8 @@ function rollbackOptimisticRepertoire({ previous, previousView, rootId }) {
     const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
     if (node) {
       boards.build.setOrientation(appState.build.color === "black" ? "black" : "white");
-      boards.build.setPosition({ fen: node.fen, legalMoves: [], lastMove: node.uci });
+      // The restored tree stays playable: no legal moves left the board frozen.
+      boards.build.setPosition({ fen: node.fen, legalMoves: localBoardInfo(node.fen).legal_moves, lastMove: node.uci });
     }
   }
   renderBuildRepHeader();
@@ -1688,12 +1696,10 @@ async function handleNodeContextAction(action, nodeId) {
       });
       return;
     }
-    const payload = await postJson("/api/build/action", {
-      repertoire_id: appState.build.repertoire_id,
-      node_id: nodeId,
-      action,
-      value: null,
-    });
+    const repertoireId = appState.build.repertoire_id;
+    const payload = await postJson("/api/build/action", { repertoire_id: repertoireId, node_id: nodeId, action, value: null });
+    // Another repertoire opened meanwhile: this answer must not reopen the old one.
+    if (appState.build?.repertoire_id !== repertoireId) return;
     await hydrateBuild(payload, nodeId);
     setStatus("Node updated");
   } catch (error) {
