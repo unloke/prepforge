@@ -425,13 +425,15 @@ export function createPositionAnalysisStore({
     notifyPass();
   }
 
-  // A finished read (live or game) good enough for the whole-game pass at `depth`.
+  // A finished read (live or game) good enough for the whole-game pass at `depth`: it
+  // must itself have reached `depth`. A search asked for 16 that stopped at 10 (a node
+  // cap) is searched again, as a saved read is (analyze-saved-run.js).
   function reusableGameEval(fen, depth) {
     const entry = entries.get(positionKey(fen));
     if (!entry) return null;
-    if (entry.game && entry.game.target >= depth) return entry.game.eval;
+    if (entry.game && Number(entry.game.eval.depth) >= depth) return entry.game.eval;
     const live = entry.live;
-    if (live && live.complete && live.maxDepth >= depth) return gameEvalFromSnapshot(fen, live.snapshot);
+    if (live && live.complete && (live.snapshot.current_depth || 0) >= depth) return gameEvalFromSnapshot(fen, live.snapshot);
     return null;
   }
 

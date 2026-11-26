@@ -125,6 +125,28 @@ describe("review findings: what a re-run may take from the saved review", () => 
     expect(searches).toEqual([A, B, C]);
   });
 
+  it("searches again on a same-tab re-run whose last pass stopped short of its depth", async () => {
+    const searches = [];
+    // The engine stops at depth 10 (a node cap, say) on a pass that asked for 16.
+    const store = searchingStore(searches, 10);
+    await store.analyzeGame({ positions: [A, B], depth: 16 });
+    await store.analyzeGame({ positions: [A, B], depth: 16 });
+    expect(searches).toEqual([A, B, A, B]);
+    // A pass at a depth the first one did reach still takes its reads.
+    await store.analyzeGame({ positions: [A, B], depth: 10 });
+    expect(searches).toHaveLength(4);
+  });
+
+  it("searches a position whose finished live read stopped short of the pass's depth", async () => {
+    const searches = [];
+    const store = searchingStore(searches, 10);
+    const lease = store.acquire(A, { depth: 16 });
+    await lease.until();
+    lease.release();
+    await store.analyzeGame({ positions: [A], depth: 16 });
+    expect(searches).toEqual([A, A]);
+  });
+
   it("keeps every saved read of a game longer than the store's cache", async () => {
     const positions = Array.from({ length: 700 }, (_, i) => `8/8/8/8/8/8/P7/K6k w - - ${i} 1`);
     const position_evals = Object.fromEntries(positions.map((fen) => [fen, read(14, 0)]));
