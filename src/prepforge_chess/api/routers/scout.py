@@ -14,7 +14,7 @@ from sqlalchemy import select
 
 from prepforge_chess.api.deps import current_owner, get_repository
 from prepforge_chess.storage import sa_tables as t
-from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from prepforge_chess.storage.ports import UnitOfWork
 
 router = APIRouter(prefix="/api/scout", tags=["scout"])
 
@@ -43,7 +43,7 @@ def _slim_nodes(rows: list[Any]) -> list[dict[str, Any]]:
 @router.get("/trees")
 def scout_trees(
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: UnitOfWork = Depends(get_repository),
 ) -> dict[str, Any]:
     """Every active repertoire the caller owns, with its tree as
     ``{id, parent_id, uci, depth, is_enabled, is_mainline}`` nodes."""
