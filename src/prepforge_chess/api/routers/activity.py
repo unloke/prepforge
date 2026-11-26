@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 
 from prepforge_chess.api.deps import current_owner, get_repository, member_name
 from prepforge_chess.api.routers.workspace import _repertoire_access
-from prepforge_chess.services.workflows import compose_build_payload_with_training_state, revert_repertoire_edit
+from prepforge_chess.services.workflows import (
+    build_payload_for_viewer, refresh_health_badge_after_tree_edit, revert_repertoire_edit,
+)
 from prepforge_chess.storage.repositories.collaboration import EditNotFound, RevertConflict
 from prepforge_chess.storage.ports import ActivityRoutes
 
@@ -77,4 +79,5 @@ def activity_revert(body: RevertBody, owner: str = Depends(current_owner),
         raise HTTPException(404, detail=str(exc)) from exc
     except RevertConflict as exc:
         raise HTTPException(409, detail=str(exc)) from exc
-    return compose_build_payload_with_training_state(repo, meta)
+    refresh_health_badge_after_tree_edit(repo, meta)
+    return build_payload_for_viewer(repo, meta)

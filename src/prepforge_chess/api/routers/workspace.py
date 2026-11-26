@@ -40,14 +40,15 @@ from prepforge_chess.services.opening_builder import (
 )
 from prepforge_chess.services import streak
 from prepforge_chess.services.workflows import (
-    compose_build_payload_with_training_state,
+    build_payload_for_viewer,
     delete_repertoire_and_archive_training,
+    refresh_health_badge_after_tree_edit,
 )
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_changes, build_workspace_payload
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
 from prepforge_chess.storage.repositories.repertoires import NodeGone
-from prepforge_chess.storage.ports import AccessStore, BuildPayloadStore, EditGate, RepertoireReader, RepertoireWriter, SettingsStore, SharingStore, WorkspaceRoutes
+from prepforge_chess.storage.ports import AccessStore, EditGate, RepertoireReader, RepertoireWriter, SettingsStore, SharingStore, WorkspaceRoutes
 
 router = APIRouter(prefix="/api", tags=["workspace"])
 T = TypeVar("T")
@@ -282,9 +283,10 @@ def build_load(
     repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """The Build-view payload for a repertoire the caller can read, with their
-    ``role``; ``writable`` for the owner and editors. Computes no chess — pure
-    serialization of the stored tree + training progress."""
-    return compose_build_payload_with_training_state(repo, _repertoire_access(repo, repertoire_id, owner))
+    ``role``; ``writable`` for the owner and editors. Computes no chess and reads
+    no training state — pure serialization of the stored tree. The owner's
+    per-node mastery is Train's read, ``/api/train/mastery``."""
+    return build_payload_for_viewer(repo, _repertoire_access(repo, repertoire_id, owner))
 
 
 @router.get("/build/changes")
@@ -300,8 +302,8 @@ def build_changes(
     happened, plus the caller's ``role`` so an open view follows a role change.
     Polled by every open Build view; an unchanged repertoire costs one
     indexed read. ``reset`` means the log no longer reaches back to ``since``
-    (or the tree was replaced): reload it with ``/build/load``. Anyone but the
-    owner gets no training colour (health/mastery), as in ``_payload``."""
+    (or the tree was replaced): reload it with ``/build/load``. Like the tree
+    payload, it carries no training state."""
     return _changes_reply(repo, _repertoire_access(repo, repertoire_id, owner), since)
 
 
@@ -333,17 +335,13 @@ def _changes_reply(
     if not written and not removed:
         # Discussion and metadata writes touch no node: the tree is unchanged.
         return {**reply, "nodes": [], "removed": []}
-    view = build_workspace_changes(repo, repertoire_id, written, owner_user_id=meta["owner_user_id"])
+    view = build_workspace_changes(repo, repertoire_id, written)
     nodes = view["nodes"]
     # A written node that is gone now went with a deleted ancestor.
     removed |= written - {node["id"] for node in nodes}
-    if role != "owner":
-        for node in nodes:
-            node.pop("mastery", None)
     return {
         **reply,
         "nodes_total": view["nodes_total"],
-        "health": view["health"] if role == "owner" else None,
         "nodes": nodes,
         "removed": sorted(removed),
     }
@@ -545,9 +543,15 @@ def create_repertoire(
         CreateRepertoireRequest(name=name, color=Color(body.color)),
         owner, max_owned=_repertoire_cap(user, settings),
     )
-    return build_workspace_payload(
-        repo, repertoire.id, selected_node_id=repertoire.root_node.id, owner_user_id=owner
-    )
+    return _new_repertoire_payload(repo, repertoire, owner)
+
+
+def _new_repertoire_payload(
+    repo: WorkspaceRoutes, repertoire: Repertoire, owner: str, **kwargs: Any
+) -> dict[str, Any]:
+    """A just-saved repertoire's Build payload, its Library badge computed once."""
+    refresh_health_badge_after_tree_edit(repo, {"id": repertoire.id, "owner_user_id": owner})
+    return build_workspace_payload(repo, repertoire.id, selected_node_id=repertoire.root_node.id, **kwargs)
 
 
 # ---- Public share links -------------------------------------------------------
@@ -692,16 +696,16 @@ def revoke_share_link(
 @router.get("/shared/{token}")
 def shared_repertoire(
     token: str,
-    repo: BuildPayloadStore = Depends(get_repository),
+    repo: RepertoireReader = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Public (unauthenticated) read of a shared repertoire's tree.
 
     Reuses the Build payload shape so the SPA's viewer is the Build view in
-    read-only mode — minus the owner's training colour (health/mastery). ``role``
-    is the link's (view / copy). Revoked / rotated / expired links are 404 (F-01)."""
+    read-only mode. ``role`` is the link's (view / copy). Revoked / rotated /
+    expired links are 404 (F-01)."""
     meta = _resolve_share_link(repo, token, settings.secret_key)
-    payload = compose_build_payload_with_training_state(repo, meta)
+    payload = build_payload_for_viewer(repo, meta)
     payload["writable"] = False
     return payload
 
@@ -771,7 +775,7 @@ def build_rename(
     # Last writer wins: a concurrent rename on another device is replaced.
     _rebased(repo, meta, lambda: OpeningBuilderService(repo).rename_repertoire(
         body.repertoire_id, body.name))
-    return compose_build_payload_with_training_state(repo, meta)
+    return build_payload_for_viewer(repo, meta)
 
 
 class AddMoveBody(BaseModel):
@@ -810,7 +814,8 @@ def build_add_move(
         return repertoire, node
 
     repertoire, node = _rebased(repo, meta, apply)
-    return compose_build_payload_with_training_state(
+    refresh_health_badge_after_tree_edit(repo, meta, repertoire)
+    return build_payload_for_viewer(
         repo, meta, selected_node_id=node.id, repertoire=repertoire,
         summary=asdict(PlanSummary(added_nodes=1)),
     )
@@ -850,7 +855,7 @@ def _edit_reply(
     """What a local-first flush gets back: the change feed after ``since`` when the
     client sent it (its tree already shows its own edit), else the whole payload."""
     if since is None:
-        return compose_build_payload_with_training_state(repo, meta, **kwargs)
+        return build_payload_for_viewer(repo, meta, **kwargs)
     return _changes_reply(repo, meta, since, revision=repo.repertoire_reply_revision(meta["id"]))
 
 
@@ -885,6 +890,7 @@ def build_add_moves(
         [item.model_dump() for item in body.moves],
         receipt_target=(owner, key),
     ))
+    refresh_health_badge_after_tree_edit(repo, meta, repertoire)
     payload = _edit_reply(repo, meta, body.since, repertoire=repertoire, summary=asdict(summary))
     payload["id_map"] = id_map
     payload["dropped"] = service.dropped_temp_ids
@@ -921,6 +927,7 @@ def build_delete_nodes(
     removed = _rebased(repo, meta, lambda: service.delete_nodes_batch(
         body.repertoire_id, list(body.node_ids), receipt_target=(owner, key)
     ))
+    refresh_health_badge_after_tree_edit(repo, meta, service.loaded_repertoire)
     payload = _edit_reply(repo, meta, body.since, repertoire=service.loaded_repertoire)
     payload["removed_node_ids"] = removed
     return payload
@@ -967,7 +974,7 @@ def build_apply_plan(
         if receipt is not None:
             if receipt.get("digest") != digest:
                 raise HTTPException(status_code=409, detail="operation_id reused with a different plan")
-            payload = compose_build_payload_with_training_state(repo, meta, summary=receipt["summary"])
+            payload = build_payload_for_viewer(repo, meta, summary=receipt["summary"])
             payload["id_map"] = receipt.get("id_map", {})
             return payload
         receipt_target = (owner, key, digest)
@@ -975,7 +982,8 @@ def build_apply_plan(
     repertoire, summary = _rebased(repo, meta, lambda: builder.apply_generation_plan(
         body.repertoire_id, body.root_node_id, body.plan, receipt_target=receipt_target
     ))
-    payload = compose_build_payload_with_training_state(
+    refresh_health_badge_after_tree_edit(repo, meta, repertoire)
+    payload = build_payload_for_viewer(
         repo, meta, selected_node_id=body.root_node_id, repertoire=repertoire,
         summary=asdict(summary),
     )
@@ -1045,8 +1053,10 @@ def build_action(
             builder.add_tag(rid, node_id, "critical")
         return node_id
 
-    return compose_build_payload_with_training_state(
-        repo, meta, selected_node_id=_rebased(repo, meta, apply), repertoire=builder.loaded_repertoire
+    selected = _rebased(repo, meta, apply)
+    refresh_health_badge_after_tree_edit(repo, meta, builder.loaded_repertoire)
+    return build_payload_for_viewer(
+        repo, meta, selected_node_id=selected, repertoire=builder.loaded_repertoire
     )
 
 
@@ -1160,11 +1170,8 @@ def import_repertoire(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     _reassign_ids(repertoire)  # fresh ids → importer's own copy, no cross-tenant clobber
     _save_new(repo, repertoire, owner, user, settings)
-    return build_workspace_payload(
-        repo,
-        repertoire.id,
-        selected_node_id=repertoire.root_node.id,
-        owner_user_id=owner,
+    return _new_repertoire_payload(
+        repo, repertoire, owner,
         summary=asdict(PlanSummary(added_nodes=sum(1 for _ in repertoire.root_node.walk()))),
     )
 
@@ -1193,6 +1200,4 @@ def import_repertoire_pgn(
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     _save_new(repo, repertoire, owner, user, settings)
-    return build_workspace_payload(
-        repo, repertoire.id, selected_node_id=repertoire.root_node.id, owner_user_id=owner
-    )
+    return _new_repertoire_payload(repo, repertoire, owner)

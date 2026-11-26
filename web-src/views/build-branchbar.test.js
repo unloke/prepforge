@@ -24,7 +24,6 @@ function makeNode(overrides) {
     is_mainline: false,
     is_enabled: true,
     is_prepared: false,
-    mastery: null,
     maia_probability: null,
     ...overrides,
   };
@@ -184,27 +183,41 @@ describe("build tree — mastery legend", () => {
     globalThis.document = undefined;
   });
 
-  it("draws no standing legend when nodes carry mastery", () => {
+  it("colours moves from the owner's mastery beside the tree, with no standing legend", () => {
     const e5 = makeNode({
       id: "e5", depth: 1, parent_id: "root", san: "e5", uci: "e7e5",
-      move_side: "black", is_mainline: true, mastery: "mastered",
+      move_side: "black", is_mainline: true,
     });
     const c6 = makeNode({
       id: "c6", depth: 2, parent_id: "e5", san: "c6", uci: "c7c6",
-      move_side: "black", mastery: "weak",
+      move_side: "black",
     });
-    const { view, meta } = makeHarness({
+    const decorated = new Map();
+    const renderer = {
+      renderMoveTree: (root, options) => {
+        for (const node of [e5, c6]) decorated.set(node.id, options.decorate(node));
+        return '<div class="mtree"></div>';
+      },
+      bindMoveTreeClicks: () => {},
+      scrollIntoViewWithin: () => {},
+    };
+    const { view, meta, appState } = makeHarness({
       nodes: [makeNode({ id: "root" }), e5, c6],
       currentNodeId: "e5",
+      renderer,
     });
+    appState.buildMastery = { repertoireId: "rep-1", revision: 1, byNode: new Map([["e5", "mastered"], ["c6", "weak"]]) };
     view.renderBuilderTree();
+    expect(decorated.get("e5").classes).toContain("m-mastered");
+    expect(decorated.get("c6").classes).toContain("m-weak");
+    expect(decorated.get("c6").title).toMatch(/^Weak/);
     expect(String(meta.innerHTML)).not.toContain("legend");
   });
 
   it("omits the legend when nothing is trained yet", () => {
     const e5 = makeNode({
       id: "e5", depth: 1, parent_id: "root", san: "e5", uci: "e7e5",
-      move_side: "black", is_mainline: true, mastery: null,
+      move_side: "black", is_mainline: true,
     });
     const { view, meta } = makeHarness({
       nodes: [makeNode({ id: "root" }), e5],

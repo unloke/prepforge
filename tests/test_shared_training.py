@@ -12,7 +12,7 @@ import uuid
 import pytest
 
 import test_repertoire_access as access
-from test_repertoire_access import _load, _post
+from test_repertoire_access import _post
 
 world = access.world  # the sharing fixture: an owner and one account per role
 
@@ -52,7 +52,7 @@ def test_outsiders_cannot_train_it(world):
 
 def test_a_trainees_progress_is_their_own(world):
     rep, c = world["rep"], world["c"]
-    owner_before = _load(c["owner"], rep).json()["health"]
+    owner_before = c["owner"].get(f"/api/train/mastery?repertoire_id={rep}").json()["mastery"]
     owner_badge = next(r for r in c["owner"].get("/api/repertoires").json()["repertoires"] if r["id"] == rep)["health"]
 
     trainee = _smart_start(c["view"], rep).json()
@@ -62,13 +62,13 @@ def test_a_trainees_progress_is_their_own(world):
 
     mine = c["view"].get(f"/api/train/smart/summary?repertoire_id={rep}").json()
     assert mine["health"]["untrained"] == 0
-    # The owner's tree payload, Library badge and summary are untouched.
-    assert _load(c["owner"], rep).json()["health"] == owner_before
+    # The owner's mastery, Library badge and summary are untouched.
+    assert c["owner"].get(f"/api/train/mastery?repertoire_id={rep}").json()["mastery"] == owner_before
     badge = next(r for r in c["owner"].get("/api/repertoires").json()["repertoires"] if r["id"] == rep)["health"]
     assert badge == owner_badge
     assert c["owner"].get(f"/api/train/smart/summary?repertoire_id={rep}").json()["health"]["untrained"] == 1
-    # And the trainee still never sees the owner's training state in Build.
-    assert "health" not in _load(c["view"], rep).json()
+    # And the trainee never reads the owner's training state.
+    assert c["view"].get(f"/api/train/mastery?repertoire_id={rep}").status_code == 403
 
 
 def test_owner_progress_never_reaches_the_trainee(world):

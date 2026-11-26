@@ -2,6 +2,7 @@ import { html } from "../html.js";
 import { modalDialog, openModal } from "../core/dialog.js";
 import { startAtlasPreparation } from "../atlas-preparation-client.js";
 import { indexTree } from "../build-tree.js";
+import { masteryOf } from "../build-mastery.js";
 
 export function subtreeNodes(root, children) {
   const result = [], stack = [root];
@@ -86,7 +87,8 @@ export function positionThumbnail(fen, orientation, renderers) {
 }
 
 // Own-side training only; disabled ancestors exclude their entire subtree.
-export function atlasAnalysis(nodes, color) {
+// `stateOf(id)` is the owner's mastery of a node (build-mastery.js); none is untrained.
+export function atlasAnalysis(nodes, color, stateOf) {
   const children = indexTree(nodes), ids = new Set(nodes.map((n) => n.id));
   const counts = { mastered: 0, learning: 0, due: 0, weak: 0, untrained: 0 }, enabled = [], leaves = [];
   const stack = nodes.filter((n) => !ids.has(n.parent_id));
@@ -97,7 +99,7 @@ export function atlasAnalysis(nodes, color) {
     const kids = (children.get(node.id) || []).filter((n) => n.is_enabled !== false);
     if (node.parent_id && !kids.length) leaves.push(node);
     stack.push(...kids);
-    if (node.parent_id && node.move_side === color) counts[Object.hasOwn(counts, node.mastery) ? node.mastery : "untrained"]++;
+    if (node.parent_id && node.move_side === color) { const state = stateOf(node.id); counts[Object.hasOwn(counts, state) ? state : "untrained"]++; }
   }
   const trainable = Object.values(counts).reduce((a, b) => a + b, 0), trained = trainable - counts.untrained;
   const depths = new Map();
@@ -146,7 +148,7 @@ export function openBuildAtlas({ appState, buildState }) {
     const scope = root.id;
     const start = root;
     const scoped = subtreeNodes(start, children);
-    const data = atlasAnalysis(scoped, build.color);
+    const data = atlasAnalysis(scoped, build.color, (id) => masteryOf(buildState, id));
     const moveCount = data.nodes.filter((node) => node.id !== scope).length;
     const content = body.querySelector("[data-atlas-content]");
     const render = (result, error = null) => {

@@ -4,6 +4,7 @@ import { countOf } from "../plural.js";
 import { encodeLine, moveTextHtml, plyOfFen } from "../move-text.js";
 import { getBuildTree } from "../build-tree.js";
 import { openBuildAtlas, positionThumbnail, routeGlyph } from "./build-atlas.js";
+import { masteryOf } from "../build-mastery.js";
 import { createBuildCollaboration } from "./build-collaboration.js";
 import "./build-lineage.css";
 // Build tab tree/header rendering (lazy-loaded from app.js).
@@ -274,7 +275,8 @@ export function createBuildView({
           title: "Pending save",
         };
         const classes = [];
-        if (b.mastery) classes.push(`m-${b.mastery}`);
+        const mastery = masteryOf(buildState, b.id);
+        if (mastery) classes.push(`m-${mastery}`);
         if (!b.is_enabled) classes.push("is-disabled");
         const opp = b.move_side !== buildState.build.color;
         if (opp) classes.push("is-opp");
@@ -292,7 +294,7 @@ export function createBuildView({
         // now paints only the two states that ask for something (due, weak);
         // every own move names its real status in the tooltip, which is where
         // detail belongs, and the path is read from the trail above.
-        const status = MASTERY_WORDS[b.mastery] || "";
+        const status = MASTERY_WORDS[mastery] || "";
         // A note reads under its move, one line until it is opened.
         const open = openNotes.has(String(b.id)) ? " is-open" : "";
         return {

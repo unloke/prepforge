@@ -510,7 +510,7 @@ def test_build_load_writable_false_for_member(client):
     assert payload["writable"] is False
 
 
-def test_build_load_strips_training_state_for_member(client):
+def test_build_load_carries_no_training_state_for_member(client):
     member_client = _new_client()
     _team_id, rep_id = _setup_shared(client, member_client)
     payload = member_client.get(f"/api/build/load?repertoire_id={rep_id}").json()
@@ -521,13 +521,14 @@ def test_build_load_strips_training_state_for_member(client):
     assert all("mastery" not in node for node in payload["nodes"])
 
 
-def test_build_load_keeps_training_state_for_owner(client):
+def test_only_the_owner_reads_the_training_colour(client):
     member_client = _new_client()
     _team_id, rep_id = _setup_shared(client, member_client)
     payload = client.get(f"/api/build/load?repertoire_id={rep_id}").json()
     assert payload["writable"] is True
-    assert "health" in payload
     assert "summary" in payload
+    assert client.get(f"/api/train/mastery?repertoire_id={rep_id}").status_code == 200
+    assert member_client.get(f"/api/train/mastery?repertoire_id={rep_id}").status_code == 403
 
 
 def test_team_member_can_fork_shared_repertoire(client):

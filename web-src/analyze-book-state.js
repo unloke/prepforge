@@ -2,7 +2,7 @@ import { analysisState, appState } from "./core/state.js";
 import { api, currentOwnerId, postJson, setStatus, setStatusError } from "./core/api.js";
 import { rememberHandoff } from "./handoff-context.js";
 import { preloadCoach, _coachReady } from "./coach/coach-loader.js";
-import { bookRepFromLoad } from "./analyze-book-tree.js";
+import { bookRepFromTree } from "./analyze-book-tree.js";
 
 // Analyze ↔ repertoire sync ("the book"). The module is lazy; this is the one
 // cached copy of the active repertoire trees the Analyze coach walks.
@@ -46,7 +46,9 @@ const bookState = {
 export function invalidateBook(hydrated = null) {
   const at = hydrated && bookState.loaded
     ? bookState.reps.findIndex((rep) => String(rep.id) === String(hydrated.repertoire_id)) : -1;
-  const fresh = at >= 0 ? bookRepFromLoad(hydrated) : null;
+  const fresh = at >= 0
+    ? bookRepFromTree({ id: hydrated.repertoire_id, name: hydrated.name, color: hydrated.color, nodes: hydrated.nodes })
+    : null;
   if (fresh) {
     bookState.reps = bookState.reps.map((rep, index) => (index === at ? fresh : rep));
     return;

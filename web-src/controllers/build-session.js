@@ -27,6 +27,7 @@ import { buildRole } from "../share-roles.js";
 import { countOf } from "../plural.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
 import { getBuildTree, indexBuildNodes } from "../build-tree.js";
+import { createBuildMastery } from "../build-mastery.js";
 
 import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, downloadText,
   engineLifecycleMark, OUTBOX_TAB_ID, postJson, setStatus, setStatusError } from "../core/api.js";
@@ -64,6 +65,7 @@ export function createBuildSession() {
 // modal enforces these; MAX_PLAN_CHANGES comes from the server limits
 // so we fail with an actionable message instead of a raw 400 after the work is done.
 const GEN_MAX_PLY_DEPTH = 20;
+const buildMastery = createBuildMastery({ api, appState, buildState, repaint: () => renderBuilderTree() });
 
 async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = false } = {}) {
   // This takes a /api/build/load PAYLOAD. Writing anything else into
@@ -98,6 +100,7 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
   }
   buildState.build = payload;
   buildState.buildNodeById = indexBuildNodes(payload.nodes);
+  void buildMastery.refresh();
   invalidateBook(payload);
   // Orient only when a repertoire opens — a reconcile re-hydrate after an
   // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
@@ -1131,9 +1134,7 @@ function optimisticEmptyRepertoire(name, color) {
     selected_node_id: rootId,
     writable: true,
     optimistic: true,
-    nodes_total: 0,
-    summary: {},
-    health: {},
+    nodes_total: 0, summary: {},
     nodes: [{
       id: rootId,
       parent_id: null,
@@ -1157,7 +1158,6 @@ function optimisticEmptyRepertoire(name, color) {
       comment: "",
       arrows: [],
       circles: [],
-      mastery: null,
     }],
   };
   buildState.buildNodeById = new Map(buildState.build.nodes.map((node) => [node.id, node]));

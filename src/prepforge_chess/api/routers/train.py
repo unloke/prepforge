@@ -27,6 +27,7 @@ from prepforge_chess.core.models import (
 from prepforge_chess.services import streak, workflows
 from prepforge_chess.services.progress import compute_health, due_forecast, due_outlook
 from prepforge_chess.services.training import TrainingService
+from prepforge_chess.services.training_colour import repertoire_mastery
 from prepforge_chess.services.scheduler import CARD_KINDS
 from prepforge_chess.services.training_smart import REQUEUE_GAP
 from prepforge_chess.services.training_smart import SmartTrainingService
@@ -407,6 +408,23 @@ def smart_summary(
         repo.get_user_setting(owner, streak.STREAK_KEY), day
     )
     return payload
+
+
+@router.get("/mastery")
+def training_mastery(
+    repertoire_id: str,
+    owner: str = Depends(current_owner),
+    repo: TrainRoutes = Depends(get_repository),
+) -> dict[str, Any]:
+    """The owner's per-node mastery over one repertoire, for the Build view's
+    tree colouring: ``{repertoire_id, revision, mastery: {node_id: state}}``.
+    Owner-only (403 for anyone a repertoire is shared with, 404 without access):
+    the colour is the owner's own training progress."""
+    _repertoire_access(repo, repertoire_id, owner, "owner")
+    try:
+        return repertoire_mastery(repo, repertoire_id, owner)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found") from exc
 
 
 @router.post("/smart/move")

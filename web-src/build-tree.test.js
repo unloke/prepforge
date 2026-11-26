@@ -24,14 +24,14 @@ it("keeps move metadata, optional fields, and annotations intact while indexing 
   const original = [
     { id: "root", depth: 0, san: null, uci: null },
     { id: "a", parent_id: "root", san: "e4", uci: "e2e4", source: "manual",
-      move_side: "white", side_to_move: "black", mastery: "untrained", comment: "註解" },
+      move_side: "white", side_to_move: "black", comment: "註解" },
     { id: "b", parent_id: "a", san: "e5", uci: "e7e5", source: "imported_pgn",
-      move_side: "black", side_to_move: "white", mastery: null, circles: ["e5"] },
+      move_side: "black", side_to_move: "white", circles: ["e5"] },
     { id: "c", parent_id: "b", san: "e4", uci: "e2e4", source: "manual",
-      move_side: "white", side_to_move: "black", mastery: "untrained" },
+      move_side: "white", side_to_move: "black", comment: "" },
     ...Array.from({ length: 1024 }, (_, i) => ({
       id: `extra-${i}`, parent_id: "c", san: "c6", uci: "c7c6", source: "manual",
-      move_side: "black", side_to_move: "white", mastery: null,
+      move_side: "black", side_to_move: "white",
     })),
   ].map((node) => ({
     ...node,
@@ -44,8 +44,8 @@ it("keeps move metadata, optional fields, and annotations intact while indexing 
   expect(nodes).toStrictEqual(original);
   expect(indexed.size).toBe(nodes.length);
   expect(indexed.get("c")).toBe(nodes[3]);
-  nodes[1].mastery = "learning";
-  expect(nodes[3].mastery).toBe("untrained");
+  nodes[1].source = "imported_pgn";
+  expect(nodes[3].source).toBe("manual");
 });
 
 it("reuses the ordered child index until the loaded tree changes", () => {
