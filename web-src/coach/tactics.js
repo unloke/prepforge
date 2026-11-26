@@ -14,7 +14,7 @@
 //   { kind: "fork",   targets: "the rook and the queen" | "both knights" }
 //   { kind: "pin",    front: "knight", back: "queen" | "king", absolute: bool }
 //   { kind: "skewer", front: "queen",  back: "rook" }
-import { Chess } from "chess.js";
+import { safeChess } from "../chess-local.js";
 import { PIECE_VALUE, PIECE_NAME } from "./material.js";
 import { forkWinsMaterial } from "./fork-check.js";
 
@@ -34,14 +34,6 @@ function fileRank(sq) {
 }
 function square(file, rank) {
   return String.fromCharCode(97 + file) + String.fromCharCode(49 + rank);
-}
-
-function safeChess(fen) {
-  try {
-    return new Chess(fen);
-  } catch (_) {
-    return null;
-  }
 }
 
 // First piece met walking from `fromSq` along (df,dr), skipping empty squares.

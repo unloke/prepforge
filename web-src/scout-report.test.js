@@ -11,7 +11,6 @@ import {
   handleScoutProfileClick,
   handleScoutResultsClick,
   renderScoutEnginePanel,
-  renderScoutRefutationPanel,
   renderInlineRefutationCard,
   handleScoutRefutationGapClick,
   legalScoutLineSans,
@@ -1088,61 +1087,6 @@ describe("scout intelligence panel", () => {
     expect(String(html)).toContain("has-n");
     expect(String(html)).toContain(">5</span>");
     expect(String(html)).toContain(">12</span>");
-  });
-
-  it("renderScoutRefutationPanel shows only confirmed refutations", () => {
-    const html = renderScoutRefutationPanel(
-      [
-        {
-          refutation: { suggestedUci: "b1c3" },
-          candidate: { pathSans: ["e4", "c5"] },
-          evidence: [
-            { layer: "engine", acpl: 42, analyzedGames: 5, scopeLimited: true, maxGames: 60 },
-            { layer: "explorer", mastersSharePct: 12 },
-          ],
-        },
-        {
-          refutation: null,
-          blockedBy: [{ layer: "engine", code: "no-scan" }],
-        },
-      ],
-    );
-    expect(String(html)).toContain("scout-refutation-hit");
-    expect(String(html)).toContain("1.e4 c5");
-    expect(String(html)).toContain("b1c3");
-    expect(String(html)).toContain("42 cp ACPL");
-    expect(String(html)).toContain("12% masters");
-    expect(String(html)).toContain("latest 60 games");
-    expect(String(html)).not.toContain("no-scan");
-  });
-
-  it("renderScoutRefutationPanel shows actionable gaps instead of blocked refutations", () => {
-    const html = renderScoutRefutationPanel(
-      [
-        {
-          refutation: null,
-          blockedBy: [{ layer: "engine", code: "no-scan" }],
-        },
-      ],
-    );
-    expect(String(html)).toContain("Run Deep scan");
-    expect(String(html)).toContain('data-testid="scout-refutation-gap-deep-scan"');
-    expect(String(html)).toContain('data-refutation-gap="deep-scan"');
-    expect(String(html)).toContain('aria-label="Run deep engine scan to generate refutations"');
-    expect(String(html)).not.toContain("scout-refutation-hit");
-  });
-
-  it("renderScoutRefutationPanel omits obsolete pool connection CTA", () => {
-    const html = renderScoutRefutationPanel(
-      [
-        {
-          refutation: null,
-          blockedBy: [{ layer: "explorer", code: "auth" }],
-        },
-      ],
-    );
-    expect(String(html)).not.toContain("connect-lichess");
-    expect(String(html)).toContain("No refutation lines yet");
   });
 
   it("handleScoutRefutationGapClick delegates deep scan only", () => {

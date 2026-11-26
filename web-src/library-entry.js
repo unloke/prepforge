@@ -1,11 +1,10 @@
 import { html } from "./html.js";
 import { appState } from "./core/state.js";
-import { api, currentOwnerId, postJson, setStatus, setStatusError } from "./core/api.js";
+import { api, postJson, setStatus, setStatusError } from "./core/api.js";
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
 import { repertoireLimitMessage } from "./repertoire-limit.js";
 import { showInputModal } from "./core/modals.js";
 import { localDateString } from "./core/api.js";
-import { pgnHeaderTags } from "./analyze-pgn.js";
 
 // The Library (dashboard) page: its lazy chunk, the listing load, and importing
 // a PGN as a repertoire. The view itself is views/dashboard.js.

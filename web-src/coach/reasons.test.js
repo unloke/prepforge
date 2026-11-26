@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import MOVES from "./fixtures/reason-moves.json";
-import RATED from "./fixtures/rated-moves.json";
 import { soundReason, reasonPhrase } from "./reasons.js";
-import { buildMoveFeatures } from "./features.js";
 import { buildCommentary } from "./commentary.js";
 
 // Real positions and Stockfish 19 lines (depth 14), as sampled in research/coach-precision.

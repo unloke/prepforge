@@ -1,4 +1,5 @@
 import { Chess } from "chess.js";
+import { uciOf } from "./chess-local.js";
 
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -18,10 +19,6 @@ function isFenLegal(fen) {
   } catch {
     return false;
   }
-}
-
-function uciOf(move) {
-  return move.lan || move.from + move.to + (move.promotion || "");
 }
 
 function sideOf(color) {

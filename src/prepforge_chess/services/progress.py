@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional
 
 from prepforge_chess.core.models import Color, OpeningNode, TrainingProgress
 from prepforge_chess.services.srs import is_mastered, is_weak
@@ -38,7 +38,6 @@ MASTERY_STATES = (
 # scheduling (session plan), read from the FSRS memory state (services/srs.py):
 # weak = tried twice and stability still under a day, or lapsed and relearning;
 # mastered = in review with stability of three weeks or more.
-MASTERY_ALGORITHM_VERSION = "mastery-fsrs"
 
 
 def _now() -> datetime:
@@ -113,20 +112,6 @@ def mastery_map(
         if _is_trainable(node, color):
             out[node.id] = node_mastery(progress_by_id.get(node.id), now=now)
     return out
-
-
-def due_node_ids(
-    progress: Iterable[TrainingProgress],
-    *,
-    now: Optional[datetime] = None,
-) -> Set[str]:
-    """Node ids whose spaced-repetition review is due (or overdue)."""
-    now = now or _now()
-    due: Set[str] = set()
-    for entry in progress:
-        if entry.due_at is not None and entry.due_at <= now:
-            due.add(entry.node_id)
-    return due
 
 
 def due_forecast(

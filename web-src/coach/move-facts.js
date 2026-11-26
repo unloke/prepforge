@@ -8,7 +8,7 @@
 //     fully open file. No space or "opens the diagonal" guesses: those were the reads
 //     that kept being wrong. Pins and skewers (motifs.js) are named only when the
 //     engine line confirms they win material.
-import { Chess } from "chess.js";
+import { safeChess } from "../chess-local.js";
 import { PIECE_VALUE, PIECE_NAME, seeCapture } from "./material.js";
 import { forkWinsMaterial } from "./fork-check.js";
 
@@ -16,14 +16,6 @@ const TYPES = ["q", "r", "b", "n", "p"];
 const PLURAL = { p: "pawns", n: "knights", b: "bishops", r: "rooks", q: "queens" };
 const COUNT_WORD = ["", "a", "two", "three", "four", "five", "six", "seven", "eight"];
 const CENTER = new Set(["d4", "e4", "d5", "e5"]);
-
-function safeChess(fen) {
-  try {
-    return new Chess(fen);
-  } catch (_) {
-    return null;
-  }
-}
 
 export function playUci(chess, uci) {
   try {

@@ -513,53 +513,6 @@ export function renderInlineRefutationCard(line, oppColor, { renderBoard } = {})
   </div>`;
 }
 
-export function renderScoutRefutationPanel(refutations) {
-  const hits = (refutations || []).filter((r) => r.refutation).slice(0, 3);
-  if (!hits.length) {
-    const actions = collectActionableRefutationGapActions(refutations);
-    if (!actions.length) {
-      return html`<div class="scout-refutation-panel muted hint">No refutation lines yet.</div>`;
-    }
-    const gapActions = renderScoutRefutationGapActions(actions);
-    const labels = collectActionableRefutationGaps(refutations)
-      .map((gap) => gap)
-      .join(" · ");
-    return html`<div class="scout-refutation-panel scout-refutation-gaps" role="region" aria-label="Refutation preparation gaps">
-      <p class="scout-refutation-gaps-copy muted hint">${labels}</p>
-      ${gapActions}
-    </div>`;
-  }
-  const rows = hits
-    .map((item) => {
-      const line = formatRefutationLine(item.candidate?.pathSans);
-      const reply = item.refutation.suggestedUci || "?";
-      const engineEv = item.evidence?.find((e) => e.layer === "engine");
-      const explorerEv = item.evidence?.find((e) => e.layer === "explorer");
-      const acpl =
-        engineEv?.acpl != null
-          ? html`<span class="scout-refutation-stat">${engineEv.acpl} cp ACPL</span>`
-          : "";
-      const sample =
-        engineEv?.analyzedGames != null
-          ? html`<span class="scout-refutation-stat">n=${engineEv.analyzedGames}</span>`
-          : "";
-      const masters =
-        explorerEv?.mastersSharePct != null
-          ? html`<span class="scout-refutation-stat">${explorerEv.mastersSharePct}% masters</span>`
-          : "";
-      const scopeNote =
-        engineEv?.scopeLimited && engineEv?.maxGames
-          ? html`<span class="scout-refutation-stat">latest ${engineEv.maxGames} games</span>`
-          : "";
-      return html`<div class="scout-refutation-hit" data-testid="scout-refutation-hit">
-        <div class="scout-refutation-line">${line}</div>
-        <div class="scout-refutation-reply muted hint">Play <code class="scout-refutation-uci">${reply}</code></div>
-        <div class="scout-refutation-meta">${[acpl, sample, masters, scopeNote].filter(Boolean)}</div>
-      </div>`;
-    });
-  return html`<div class="scout-refutation-panel">${rows}</div>`;
-}
-
 function engineA11ySummary(engineAgg) {
   if (!engineAgg) return "";
   if (!engineAgg.sufficient) {

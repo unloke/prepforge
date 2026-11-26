@@ -223,34 +223,6 @@ def decode_search_limit(value: Optional[int]) -> Optional[int]:
     return int(value)
 
 
-def analysis_identity(
-    fen: str,
-    engine: str,
-    depth: Optional[int],
-    nodes: Optional[int],
-    time_ms: Optional[int],
-) -> Tuple[str, str, Optional[int], Optional[int], Optional[int]]:
-    """Identity for a cached analysis: position + config that changes the result."""
-    return (position_key(fen), engine, depth, nodes, time_ms)
-
-
-def analysis_identity_digest(
-    fen: str,
-    engine: str,
-    depth: Optional[int],
-    nodes: Optional[int],
-    time_ms: Optional[int],
-) -> str:
-    payload = "{0}|{1}|{2}|{3}|{4}".format(
-        position_key(fen),
-        engine,
-        "" if depth is None else depth,
-        "" if nodes is None else nodes,
-        "" if time_ms is None else time_ms,
-    )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
 def evaluation_fingerprint(
     *,
     engine: str,

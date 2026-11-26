@@ -14,19 +14,13 @@ import { createEngineProvider, isBrowserEngineAvailable } from "./stockfish-prov
 import { createMaia3Provider } from "./maia3-provider.js";
 import { isTerminalPosition } from "./game-analyzer.js";
 import { waitForEngineSearch } from "./engine-search-wait.js";
-import { generateBuildPlan, buildExistingSubtreeFromFlatNodes, SOURCE } from "./build-generator.js";
+import { abortError, generateBuildPlan, buildExistingSubtreeFromFlatNodes, SOURCE } from "./build-generator.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
 
 const DEFAULT_GEN_DEPTH = 8; // match the server's GenerateConfig / EngineAnalysisConfig(depth=8)
 const DEFAULT_MAX_MULTIPV = 5; // standalone adapter default; the orchestrator sizes it precisely
 const MULTIPV_CEILING = 256; // Stockfish's hard MultiPV maximum
 const PER_POSITION_TIMEOUT_MS = 30000; // a stuck search must fail, not silently under-generate
-
-function abortError() {
-  const err = new Error("Build generation aborted");
-  err.name = "AbortError";
-  return err;
-}
 
 function throwIfAborted(signal) {
   if (signal && signal.aborted) throw abortError();

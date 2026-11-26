@@ -39,7 +39,7 @@ const BRANCH_THRESHOLD = 0.3;
 // _upsert_child's `existing.source not in {MANUAL, IMPORTED_PGN}` guard.
 const PROTECTED_SOURCES = new Set([SOURCE.MANUAL, SOURCE.IMPORTED_PGN]);
 
-function abortError() {
+export function abortError() {
   const err = new Error("Build generation aborted");
   err.name = "AbortError";
   return err;

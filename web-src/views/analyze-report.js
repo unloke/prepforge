@@ -7,6 +7,7 @@
 // moves with (explain.js), aggregated by volatility and harmonic mean.
 // buildGameReport is pure; the rendered report links its error chart to the board.
 import { Chess } from "chess.js";
+import { sanOf } from "../chess-local.js";
 import { html } from "../html.js";
 import { evaluationToWin } from "../explain.js";
 import { averageAccuracy } from "./analyze-accuracy.js";
@@ -70,15 +71,6 @@ export function formatEval(point) {
   if (Math.abs(cp) >= 10000) return cp > 0 ? "1-0" : "0-1";
   const pawns = cp / 100;
   return `${pawns > 0 ? "+" : pawns < 0 ? "−" : ""}${Math.abs(pawns).toFixed(1)}`;
-}
-
-function sanOf(fen, uci) {
-  if (!fen || !uci) return null;
-  try {
-    return new Chess(fen).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || undefined })?.san || null;
-  } catch (_) {
-    return null;
-  }
 }
 
 // One row per graded ply: who moved, the win chance before and after (mover's

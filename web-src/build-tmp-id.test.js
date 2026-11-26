@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { appSource } from "./test-app-source.js";
 
 const root = dirname(fileURLToPath(import.meta.url));

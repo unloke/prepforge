@@ -1583,7 +1583,6 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       // retry is untimed — the clock tests recall, the retry rebuilds it.
       const missTip = () => wrongMoveTip({
         hintLevel: appState.trainHintLevel, hint: prompt.hint, expectedSan: prompt.expected_san,
-        coachTip: prompt.phaseCoach && prompt.phaseCoach.promptTip,
       });
       const show = (tip) => {
         const banner = wrongMoveBanner({ attempt, playedSan, expectedSan: prompt.expected_san, tip, timedOut });

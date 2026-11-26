@@ -3,7 +3,6 @@ import { analysisHistoryResult } from "./analyze-orient.js";
 import { describe, expect, it, vi } from "vitest";
 import { normalizeSelection, selectionChips } from "./views/shared/source-composer.js";
 import { appSource } from "./test-app-source.js";
-import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
 
 const source = appSource();
 function compile(marker, deps, prelude = "") {

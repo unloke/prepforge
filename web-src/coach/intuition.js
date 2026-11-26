@@ -18,7 +18,7 @@
 //
 // PURE: distribution + WDL + phase in, facts out. No engine/worker/DOM — unit-tests
 // headlessly; the orchestration owns the Maia worker.
-import { Chess } from "chess.js";
+import { sanOf } from "../chess-local.js";
 
 // --- policy (obviousness) ----------------------------------------------------
 export const OBVIOUS_TOP_PROB = 0.55; // one move holds this much -> "obvious" position
@@ -34,17 +34,6 @@ export const SHARPNESS_BANDS = {
   middlegame: { calm: 145, lively: 370, sharp: 460 },
   endgame: { calm: 8, lively: 50, sharp: 85 },
 };
-
-function sanOf(fen, uci) {
-  if (!fen || !uci) return null;
-  try {
-    const c = new Chess(fen);
-    const mv = c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4) || undefined });
-    return mv ? mv.san : null;
-  } catch (_) {
-    return null;
-  }
-}
 
 // LC0 WDL sharpness: (2 / (ln(1/W - 1) + ln(1/L - 1)))^2. `win`/`loss` are permille
 // (0..1000) or fractions — both work, we normalise. Clamps W,L off 0/1 so the logs stay

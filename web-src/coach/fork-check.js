@@ -1,16 +1,8 @@
 // Does a fork actually win material? A one-ply defensive check, split out of
 // tactics.js so the eager move descriptions (explain.js -> move-facts.js) can use it
 // without bundling the pin/skewer detector.
-import { Chess } from "chess.js";
+import { safeChess } from "../chess-local.js";
 import { PIECE_VALUE } from "./material.js";
-
-function safeChess(fen) {
-  try {
-    return new Chess(fen);
-  } catch (_) {
-    return null;
-  }
-}
 
 // The material the forking piece on `attackerSq` can still win against the BEST defence the
 // opponent (to move in `fen`) has. A genuine fork wins because the opponent can't save both

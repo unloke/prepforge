@@ -19,11 +19,4 @@ export {
 } from "../generated/shared-constants.js";
 export { attachIntuition } from "./intuition.js";
 export { buildCommentary } from "./commentary.js";
-export {
-  PHASE_LABELS,
-  phaseOfFen,
-  isStartFen,
-  promptTipFor,
-  buildPhaseCoach,
-  clusterQueueByPhase,
-} from "./phase-coach.js";
+export { buildPhaseCoach } from "./phase-coach.js";
