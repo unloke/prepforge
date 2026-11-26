@@ -201,6 +201,19 @@ export async function resetTrainBoardIdle(label) {
 }
 
 
+// Score a first-try answer in the session's accuracy chips; a miss ends the run.
+function tallyAnswer(stats, recalled) {
+  if (recalled) {
+    stats.correct += 1;
+    stats.streak += 1;
+    stats.best = Math.max(stats.best, stats.streak);
+  } else {
+    stats.mistakes += 1;
+    stats.streak = 0;
+  }
+  stats.history.push(recalled);
+}
+
 function trainStatsReset() {
   appState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0, learned: 0, learnedRetry: 0 };
 }
@@ -503,11 +516,9 @@ async function startPlaySession({
   fen,
   reason,
   phase,
-  nodeId: luckyNodeId,
   gameId: luckyGameId,
   white: luckyWhite,
   black: luckyBlack,
-  source: luckySource,
   sourceUrl: luckySourceUrl,
 } = {}) {
   if (appState.trainMode !== "play") return false;
@@ -563,7 +574,6 @@ async function startPlaySession({
     repertoireColors: selectedMeta.map((rep) => rep.color),
     luckyFen: reason ? startFen : null,
   });
-  if (luckyNodeId) nodeId = luckyNodeId;
   if (book === "repertoire") {
     // A Lucky FEN may not be a node in the selected trees. Keep cursors empty
     // for those books so the normal Explorer → Maia fallback still works.
@@ -598,24 +608,17 @@ async function startPlaySession({
     luckyGameId: luckyGameId || null,
     luckyWhite: luckyWhite || null,
     luckyBlack: luckyBlack || null,
-    luckySource: luckySource || null,
     luckySourceUrl: luckySourceUrl || null,
   };
   if (boards.train) {
     boards.train.setOrientation(userColor);
   }
   const why =
-    reason === "miss"
-      ? "Engine miss: your move"
-      : reason === "departure"
-        ? "You left prep here: your move"
-        : reason === "fork"
-          ? "A real fork: more than one human reply"
-              : reason === "db-critical"
-                ? `Master game, critical ${phase || "moment"}: your move`
-              : reason === "titled-game"
-                  ? `${String(luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"}, critical ${phase || "moment"}: your move`
-              : "";
+    reason === "db-critical"
+      ? `Master game, critical ${phase || "moment"}: your move`
+      : reason === "titled-game"
+        ? `Live Lichess game, critical ${phase || "moment"}: your move`
+        : "";
   const luckyMeta =
     reason === "titled-game" && luckyGameId
       ? ` · ${[luckyWhite, luckyBlack].filter(Boolean).join(" vs ") || "Lichess game"} (${luckyGameId})`
@@ -1031,9 +1034,7 @@ async function submitTrainingMove(playedUci) {
 
   if (!result.correct) {
     if (attempt === 1) {
-      stats.mistakes += 1;
-      stats.streak = 0;
-      stats.history.push(false);
+      tallyAnswer(stats, false);
       await renderTrainStats();
     }
     appState.trainBusy = true;
@@ -1058,18 +1059,8 @@ async function submitTrainingMove(playedUci) {
     return;
   }
   appState.trainAttempt = 1;
-  if (attempt > 1) {
-    // played after a miss or the reveal: moves on, scores nothing
-  } else if (hinted) {
-    stats.mistakes += 1;
-    stats.streak = 0;
-    stats.history.push(false);
-  } else {
-    stats.correct += 1;
-    stats.streak += 1;
-    stats.best = Math.max(stats.best, stats.streak);
-    stats.history.push(true);
-  }
+  // An answer played after a miss or the reveal moves on and scores nothing.
+  if (attempt === 1) tallyAnswer(stats, !hinted);
   await renderTrainStats();
   if (appState.training) appState.training.prompt = result.prompt;
   appState.trainBusy = true;
@@ -1181,20 +1172,20 @@ export async function trainHint() {
     setStatusError(error.message);
     return;
   }
-  if (appState.trainHintInfo !== pending) return;
-  appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
-  const level = appState.trainHintLevel;
-  if (level === 1) {
-    boards.train.setEngineArrow(null);
-    setTrainBanner("move", "Hint 1 · Idea", info.strategy || "Follow your preparation");
-  } else if (level === 2) {
-    boards.train.setEngineArrow(null);
-    setTrainBanner("move", "Hint 2 · Piece", info.piece || "Find the move");
-    if (info.expected_uci) boards.train.selectSquare(info.expected_uci.slice(0, 2));
-  } else {
-    setTrainBanner("move", "Hint 3 · Answer", info.expected_san ? `Play ${info.expected_san}` : "Here it is");
-    if (info.expected_uci) boards.train.setEngineArrow(info.expected_uci);
-  }
+  if (appState.trainHintInfo === pending) showHint(info);
+}
+
+// Reveal the next hint level on the board and banner; returns its line.
+function showHint({ strategy, piece, expected_uci: uci, expected_san: san }) {
+  const level = appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
+  const text = level === 1 ? strategy || "Follow your preparation"
+    : level === 2 ? piece || "Find the move"
+      : san ? `Play ${san}` : "Here it is";
+  if (level < 3) boards.train.setEngineArrow(null);
+  setTrainBanner("move", `Hint ${level} · ${["Idea", "Piece", "Answer"][level - 1]}`, text);
+  if (uci && level === 2) boards.train.selectSquare(uci.slice(0, 2));
+  if (uci && level === 3) boards.train.setEngineArrow(uci);
+  return `Hint ${level} · ${text}`;
 }
 
 function currentTrainingPrompt() {
@@ -1558,12 +1549,8 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     // Only the first answer is graded (matches the synced SR write); the
     // accuracy chips therefore never count retries.
     if (attempt === 1) {
-      if (scored) {
-        stats.mistakes += 1;
-        // A first-try miss ends the run, same as Line rehearsal.
-        stats.streak = 0;
-        stats.history.push(false);
-      }
+      // A first-try miss ends the run, same as Line rehearsal.
+      if (scored) tallyAnswer(stats, false);
       rememberSmartSession({ attempt: attempt + 1 });
       await renderTrainStats();
     }
@@ -1635,15 +1622,8 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     // "Fixed on retry" is a scored miss recovered on the free retry; a revealed
     // answer was not recalled and a New move's demonstration was never scored.
     if (scored && attempt === 2) smart.retriesFixed += 1;
-  } else if (scored && hinted) {
-    stats.mistakes += 1;
-    stats.streak = 0;
-    stats.history.push(false);
   } else if (scored) {
-    stats.correct += 1;
-    stats.streak += 1;
-    stats.best = Math.max(stats.best, stats.streak);
-    stats.history.push(true);
+    tallyAnswer(stats, !hinted);
   }
   // Store the next cursor before animating an already-counted answer.
   rememberSmartSession({ advance: true });
@@ -1741,27 +1721,13 @@ function setTrainHintLine(text) {
 // Progressive hint, fully local — the prompt already carries the idea, the
 // piece, and the answer (it's the player's own repertoire, not a quiz).
 function smartHint() {
-  const smart = appState.smart;
-  const prompt = smart && smart.prompt;
+  const prompt = appState.smart && appState.smart.prompt;
   if (!prompt) {
     setStatus("Start a session first");
     return;
   }
   if (appState.trainBusy) return;
-  appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
-  const level = appState.trainHintLevel;
-  if (level === 1) {
-    boards.train.setEngineArrow(null);
-    setTrainBanner("move", "Hint 1 · Idea", prompt.hint.strategy || "Follow your preparation");
-  } else if (level === 2) {
-    boards.train.setEngineArrow(null);
-    setTrainBanner("move", "Hint 2 · Piece", prompt.hint.piece || "Find the move");
-    boards.train.selectSquare(prompt.expected_uci.slice(0, 2));
-  } else {
-    setTrainBanner("move", "Hint 3 · Answer", `Play ${prompt.expected_san}`);
-    boards.train.setEngineArrow(prompt.expected_uci);
-  }
-  setTrainHintLine(`Hint ${level} · ${level === 1 ? prompt.hint.strategy || "Follow your preparation" : level === 2 ? prompt.hint.piece || "Find the move" : `Play ${prompt.expected_san}`}`);
+  setTrainHintLine(showHint({ ...prompt.hint, expected_uci: prompt.expected_uci, expected_san: prompt.expected_san }));
 }
 
 let trainSessionMemo = null;

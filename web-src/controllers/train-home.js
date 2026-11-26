@@ -121,11 +121,8 @@ export function trainScopeLabel(state = appState) {
 
 function luckyLabel(play) {
   const phase = play.luckyPhase || "critical";
-  if (play.luckyReason === "miss") return "Engine miss";
-  if (play.luckyReason === "departure") return "Left prep";
-  if (play.luckyReason === "fork") return "Repertoire fork";
   if (play.luckyReason === "db-critical") return `Master game · ${phase}`;
-  if (play.luckyReason === "titled-game") return `${String(play.luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"} · ${phase}`;
+  if (play.luckyReason === "titled-game") return `Live Lichess game · ${phase}`;
   return play.luckyReason;
 }
 

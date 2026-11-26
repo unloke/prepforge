@@ -6,7 +6,6 @@ const PICKED = {
   fen: "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 1",
   reason: "db-critical",
   phase: "middlegame",
-  nodeId: null,
 };
 
 function harness({
@@ -107,7 +106,6 @@ describe("I'm Feeling Lucky entry", () => {
       gameId: "live1",
       white: "AlphaGM",
       black: "BetaIM",
-      source: "lichess-user-feed",
     });
   });
 

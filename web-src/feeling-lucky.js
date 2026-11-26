@@ -85,8 +85,8 @@ async function runFeelingLuckySelection({
     // Play-session start failures are product failures, not sampler failures:
     // surface the real message rather than "Database unavailable".
     try {
-      const { fen, reason, phase, nodeId, gameId, white, black, source, sourceUrl } = picked;
-      const started = await startSession({ fen, reason, phase, nodeId, gameId, white, black, source, sourceUrl });
+      const { fen, reason, phase, gameId, white, black, sourceUrl } = picked;
+      const started = await startSession({ fen, reason, phase, gameId, white, black, sourceUrl });
       throwIfCancelled(signal);
       if (started === false) throw new Error("Could not start that position");
     } catch (error) {
