@@ -159,27 +159,15 @@ def delete_account(
         # Identity rows: explicit deletes (FK cascades are not relied on — SQLite
         # in tests does not enforce them, and a dangling session would be a
         # credential outliving the account).
-        counts["sessions"] = len(
-            db.scalars(select(AuthSession).where(AuthSession.user_id == user.id)).all()
-        )
-        for row in db.scalars(select(AuthSession).where(AuthSession.user_id == user.id)).all():
-            db.delete(row)
-        counts["password_reset_tokens"] = len(
-            db.scalars(
-                select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
-            ).all()
-        )
-        for row in db.scalars(
-            select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
-        ).all():
-            db.delete(row)
-        counts["linked_accounts"] = len(
-            db.scalars(select(LinkedAccount).where(LinkedAccount.user_id == user.id)).all()
-        )
-        for row in db.scalars(
-            select(LinkedAccount).where(LinkedAccount.user_id == user.id)
-        ).all():
-            db.delete(row)
+        for key, model in (
+            ("sessions", AuthSession),
+            ("password_reset_tokens", PasswordResetToken),
+            ("linked_accounts", LinkedAccount),
+        ):
+            rows = db.scalars(select(model).where(model.user_id == user.id)).all()
+            counts[key] = len(rows)
+            for row in rows:
+                db.delete(row)
         # Teams this user owns die with the account; memberships elsewhere end too
         # (a removed member can no longer read anything shared to that team).
         owned_teams = db.scalars(select(Team).where(Team.owner_user_id == user.id)).all()
@@ -193,12 +181,9 @@ def delete_account(
             if invite is not None:
                 db.delete(invite)
             db.delete(team)
-        counts["team_memberships"] = len(
-            db.scalars(select(TeamMember).where(TeamMember.user_id == user.id)).all()
-        )
-        for row in db.scalars(
-            select(TeamMember).where(TeamMember.user_id == user.id)
-        ).all():
+        memberships = db.scalars(select(TeamMember).where(TeamMember.user_id == user.id)).all()
+        counts["team_memberships"] = len(memberships)
+        for row in memberships:
             db.delete(row)
 
         db.delete(user)

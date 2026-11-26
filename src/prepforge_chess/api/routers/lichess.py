@@ -16,11 +16,13 @@ import time
 import urllib.parse
 from collections import OrderedDict
 from contextlib import contextmanager
+from threading import Lock
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from prepforge_chess.core.limits import MAX_FETCH, MAX_IDENTITIES
@@ -268,10 +270,16 @@ def callback(
             is_primary=not _links_for(db, user.id),
         )
         db.add(link)
+    try:
         db.flush()
-    if link.is_primary:
-        _demote_others(db, user.id, link.id)
-    db.commit()
+        if link.is_primary:
+            _demote_others(db, user.id, link.id)
+        db.commit()
+    except IntegrityError:
+        # Another user linked this identity between our check and the commit
+        # (the lock above is per user, the identity index is global).
+        db.rollback()
+        return _oauth_failure("lichess_account_taken")
     return _end_flow("/?lichess=linked")
 
 
@@ -319,6 +327,11 @@ _EXPLORER_RATINGS = {"600", "1000", "1200", "1400", "1600", "1800", "2000", "220
 _EXPLORER_CACHE_TTL_SECONDS = 24 * 3600
 _EXPLORER_CACHE_CAP = 500
 _explorer_cache: OrderedDict[str, tuple[float, dict]] = OrderedDict()
+# Sync routes run on a thread pool: an unguarded move_to_end could race a
+# concurrent eviction of the same key and raise KeyError (a 500).
+_explorer_cache_lock = Lock()
+# The longest legal FEN is under 100 characters.
+_EXPLORER_FEN_MAX = 120
 
 
 def _any_linked_token(db: Session, user_id: str) -> str | None:
@@ -344,7 +357,7 @@ def _any_linked_token(db: Session, user_id: str) -> str | None:
 def explorer_proxy(
     request: Request,
     db_name: str,
-    fen: str,
+    fen: str = Query(max_length=_EXPLORER_FEN_MAX),
     ratings: str | None = None,
     top_games: int = 0,
     user: User = Depends(current_user),
@@ -372,10 +385,11 @@ def explorer_proxy(
     )
 
     now = time.time()
-    hit = _explorer_cache.get(url)
-    if hit and now - hit[0] < _EXPLORER_CACHE_TTL_SECONDS:
-        _explorer_cache.move_to_end(url)
-        return hit[1]
+    with _explorer_cache_lock:
+        hit = _explorer_cache.get(url)
+        if hit and now - hit[0] < _EXPLORER_CACHE_TTL_SECONDS:
+            _explorer_cache.move_to_end(url)
+            return hit[1]
 
     token = _any_linked_token(db, user.id)
     if not token:
@@ -398,10 +412,11 @@ def explorer_proxy(
     except lichess_fetch.LichessFetchError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
-    _explorer_cache[url] = (now, data)
-    _explorer_cache.move_to_end(url)
-    while len(_explorer_cache) > _EXPLORER_CACHE_CAP:
-        _explorer_cache.popitem(last=False)
+    with _explorer_cache_lock:
+        _explorer_cache[url] = (now, data)
+        _explorer_cache.move_to_end(url)
+        while len(_explorer_cache) > _EXPLORER_CACHE_CAP:
+            _explorer_cache.popitem(last=False)
     return data
 
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import http.client
 import json
 import secrets
 import urllib.error
@@ -75,8 +76,11 @@ def _post_form(url: str, data: dict, *, timeout: float) -> dict:
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "replace")
         raise GoogleOAuthError("google token endpoint error {0}: {1}".format(exc.code, body)) from exc
-    except urllib.error.URLError as exc:
+    except (OSError, http.client.HTTPException) as exc:
+        # URLError, a read timeout or a connection dropped mid-body.
         raise GoogleOAuthError("google token endpoint unreachable: {0}".format(exc)) from exc
+    except ValueError as exc:  # a non-JSON body
+        raise GoogleOAuthError("google token endpoint returned malformed JSON") from exc
 
 
 def exchange_code(
@@ -117,8 +121,10 @@ def fetch_userinfo(access_token: str, *, timeout: float = DEFAULT_TIMEOUT) -> di
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", "replace")
         raise GoogleOAuthError("google userinfo error {0}: {1}".format(exc.code, body)) from exc
-    except urllib.error.URLError as exc:
+    except (OSError, http.client.HTTPException) as exc:
         raise GoogleOAuthError("google userinfo unreachable: {0}".format(exc)) from exc
+    except ValueError as exc:  # a non-JSON body
+        raise GoogleOAuthError("google userinfo returned malformed JSON") from exc
     if not info.get("email"):
         raise GoogleOAuthError("google userinfo missing email")
     return info

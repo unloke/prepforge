@@ -191,9 +191,23 @@ def test_batch_import_loads_existing_signatures_once():
     service = _service()
     calls = []
     load = service.repository.existing_move_signature_ids
-    service.repository.existing_move_signature_ids = lambda owner=None: calls.append(owner) or load(owner)
+    service.repository.existing_move_signature_ids = lambda owner=None, **kw: calls.append(owner) or load(owner, **kw)
     pgn = '[Event "x"]\n\n1. e4 e5 2. Nf3 *\n\n' * 20
     statuses = service.import_parsed(service.parse_text(pgn), owner_user_id="batch-owner")
     assert [s.status for s in statuses].count("imported") == 1
     assert len(statuses) == 20
     assert calls == ["batch-owner"]
+
+
+def test_signature_read_covers_only_matching_move_sequences():
+    service = _service()
+    service.import_text('[Event "a"]\n\n1. e4 e5 *\n', owner_user_id="sig-owner")
+    service.import_text('[Event "b"]\n\n1. d4 d5 *\n', owner_user_id="sig-owner")
+    repo = service.repository
+    assert len(repo.existing_move_signature_ids("sig-owner")) == 2
+    only = repo.existing_move_signature_ids("sig-owner", uci_blobs=["e2e4 e7e5"])
+    assert list(only) == [next(k for k in repo.existing_move_signature_ids("sig-owner") if k.endswith("|e2e4 e7e5"))]
+    assert repo.existing_move_signature_ids("sig-owner", uci_blobs=[]) == {}
+    # Re-pasting a stored game still resolves to the stored id.
+    again = service.import_text('[Event "a"]\n\n1. e4 e5 *\n', owner_user_id="sig-owner")
+    assert again.imported_count == 0 and again.skipped_count == 1

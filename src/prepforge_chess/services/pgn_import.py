@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 import chess.pgn
 
 from prepforge_chess.core.chess_core import ChessCore
-from prepforge_chess.core.models import MoveSource
+from prepforge_chess.core.models import Game, MoveSource
 from prepforge_chess.storage import codec
 from prepforge_chess.storage.repositories.games import GameRepository
 
@@ -94,14 +94,20 @@ class PgnImportService:
 
         ``signature_to_id`` lets a batch share one loaded signature map (kept
         current as games are saved) instead of rescanning per game."""
-        result = PgnImportResult()
-
         try:
             games = self.chess_core.import_pgn_games(pgn_text, source=options.source)
         except Exception as exc:  # python-chess raises several parse/illegal move exceptions.
-            result.errors.append(str(exc))
-            return result
+            return PgnImportResult(errors=[str(exc)])
+        return self._import_games(games, options, owner_user_id, signature_to_id)
 
+    def _import_games(
+        self,
+        games: List[Game],
+        options: PgnImportOptions,
+        owner_user_id: Optional[str],
+        signature_to_id: Optional[Dict[str, str]],
+    ) -> PgnImportResult:
+        result = PgnImportResult()
         result.total_games = len(games)
         if not games:
             result.errors.append("No PGN games found.")
@@ -113,7 +119,7 @@ class PgnImportService:
         # initial position + UCI sequence (``codec.move_signature``), so the same
         # moves from a different starting position are different games.
         if signature_to_id is None:
-            signature_to_id = self.repository.existing_move_signature_ids(owner_user_id)
+            signature_to_id = self._stored_signatures(games, owner_user_id)
 
         for index, game in enumerate(games):
             # python-chess happily returns a Game for non-PGN junk or a header
@@ -156,6 +162,13 @@ class PgnImportService:
             result.imported_game_ids.append(game.id)
 
         return result
+
+    def _stored_signatures(self, games: List[Game], owner_user_id: Optional[str]) -> Dict[str, str]:
+        """Signatures of the owner's stored games that share a move sequence
+        with ``games``: the only stored games an import can collide with."""
+        return self.repository.existing_move_signature_ids(
+            owner_user_id, uci_blobs=[codec.game_uci_blob(game) for game in games]
+        )
 
     # ---- F-04: multi-game semantics -------------------------------------
 
@@ -205,9 +218,21 @@ class PgnImportService:
         """Import each parsed game independently (F-04): per-game
         imported/existing/failed status, never a fake all-or-nothing result."""
         out: List[GameImportStatus] = []
-        signature_to_id = self.repository.existing_move_signature_ids(owner_user_id)
+        # Parse every game first so one signature read covers the whole batch.
+        batch: List[tuple[ParsedGame, Optional[List[Game]], Optional[str]]] = []
         for parsed in parsed_games:
             if parsed.error is not None or not parsed.text:
+                batch.append((parsed, None, None))
+                continue
+            try:
+                batch.append((parsed, self.chess_core.import_pgn_games(parsed.text, source=options.source), None))
+            except Exception as exc:  # python-chess raises several parse/illegal move exceptions.
+                batch.append((parsed, None, str(exc)))
+        signature_to_id = self._stored_signatures(
+            [game for _, games, _ in batch for game in games or ()], owner_user_id
+        )
+        for parsed, games, parse_error in batch:
+            if games is None and parse_error is None:
                 out.append(
                     GameImportStatus(
                         index=parsed.index,
@@ -218,8 +243,9 @@ class PgnImportService:
                     )
                 )
                 continue
-            result = self.import_text(
-                parsed.text, options, owner_user_id=owner_user_id, signature_to_id=signature_to_id
+            result = (
+                PgnImportResult(errors=[parse_error]) if games is None
+                else self._import_games(games, options, owner_user_id, signature_to_id)
             )
             if result.imported_game_ids:
                 out.append(

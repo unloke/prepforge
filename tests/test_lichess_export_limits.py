@@ -97,3 +97,50 @@ def test_service_budget_rejects_before_repository_or_upstream():
         fetch.compare_many_identities(None, [f"user{i}" for i in range(9)], 10)
     with pytest.raises(ValueError, match="fewer accounts"):
         fetch.compare_many_identities(None, [f"user{i}" for i in range(5)], 50)
+
+
+class _FailingRead:
+    """A response whose body read fails the way a dropped connection does."""
+
+    def __init__(self, error):
+        self.error = error
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def read(self, *args):
+        raise self.error
+
+
+@pytest.mark.parametrize("error", [TimeoutError("timed out"), ConnectionResetError("reset")])
+def test_mid_body_failures_are_fetch_errors(monkeypatch, error):
+    monkeypatch.setattr(fetch.urllib.request, "urlopen", lambda *a, **k: _FailingRead(error))
+    with pytest.raises(fetch.LichessFetchError, match="Could not reach Lichess"):
+        fetch.fetch_recent_pgns("alpha", 10)
+    with pytest.raises(fetch.LichessFetchError, match="explorer"):
+        fetch.fetch_explorer_json("https://explorer.lichess.ovh/masters", "tok")
+
+
+def test_explorer_non_json_body_is_a_fetch_error(monkeypatch):
+    monkeypatch.setattr(fetch.urllib.request, "urlopen", lambda *a, **k: BytesIO(b"<html>busy</html>"))
+    with pytest.raises(fetch.LichessFetchError, match="malformed"):
+        fetch.fetch_explorer_json("https://explorer.lichess.ovh/masters", "tok")
+
+
+def test_cache_hit_does_not_wait_for_an_upstream_slot(monkeypatch):
+    monkeypatch.setattr(fetch.urllib.request, "urlopen", lambda *a, **k: BytesIO(b"cached games"))
+    request = Request("https://lichess.org/hit")
+    fetch._read_game_export(request, timeout=1)
+
+    class _BusySlots:  # every slot is held by a slow export
+        def __enter__(self):
+            raise AssertionError("a cache hit waited for an upstream slot")
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(fetch, "_export_slots", _BusySlots())
+    assert fetch._read_game_export(request, timeout=1) == "cached games"

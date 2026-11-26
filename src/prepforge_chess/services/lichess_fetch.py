@@ -1,6 +1,7 @@
 """Fetch games from Lichess and feed them through the repertoire matcher."""
 from __future__ import annotations
 
+import http.client
 import json
 import math
 import time
@@ -63,18 +64,32 @@ _EXPORT_CACHE_BYTES = 16 * 1024 * 1024
 _EXPORT_RESPONSE_BYTES = 2 * 1024 * 1024
 
 
+def _cached_export(key) -> str | None:
+    """A fresh cached export for ``key``, or None. Raises during a cooldown."""
+    with _export_lock:
+        now = time.monotonic()
+        cached = _export_cache.get(key)
+        if cached and now - cached[0] < _EXPORT_CACHE_TTL:
+            _export_cache.move_to_end(key)
+            return cached[1].decode("utf-8", errors="replace")
+        if now < _export_cooldown_until:
+            raise GamesRateLimitedError(math.ceil(_export_cooldown_until - now))
+    return None
+
+
 def _read_game_export(request, *, timeout: float) -> str:
     global _export_cooldown_until
     key = (request.full_url, request.get_header("Accept"))
+    # A cache hit or a cooldown answers at once instead of queueing behind
+    # four slow exports; checked again once a slot frees, since another
+    # request may have filled the cache or hit a 429 meanwhile.
+    cached = _cached_export(key)
+    if cached is not None:
+        return cached
     with _export_slots:
-        with _export_lock:
-            now = time.monotonic()
-            cached = _export_cache.get(key)
-            if cached and now - cached[0] < _EXPORT_CACHE_TTL:
-                _export_cache.move_to_end(key)
-                return cached[1].decode("utf-8", errors="replace")
-            if now < _export_cooldown_until:
-                raise GamesRateLimitedError(math.ceil(_export_cooldown_until - now))
+        cached = _cached_export(key)
+        if cached is not None:
+            return cached
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 raw = response.read(_EXPORT_RESPONSE_BYTES + 1)
@@ -88,7 +103,8 @@ def _read_game_export(request, *, timeout: float) -> str:
                     _export_cooldown_until = max(_export_cooldown_until, time.monotonic() + delay)
                 raise GamesRateLimitedError(delay) from exc
             raise LichessFetchError(f"Lichess responded with HTTP {exc.code}") from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
+        except (OSError, http.client.HTTPException) as exc:
+            # URLError, a read timeout or a connection dropped mid-body.
             raise LichessFetchError("Could not reach Lichess") from exc
         if len(raw) > _EXPORT_RESPONSE_BYTES:
             raise LichessFetchError("Lichess game export exceeds the response size limit")
@@ -130,11 +146,12 @@ def fetch_explorer_json(
         raise LichessFetchError(
             "Lichess explorer responded with HTTP {0}".format(exc.code)
         ) from exc
-    except urllib.error.URLError as exc:
+    except (OSError, http.client.HTTPException) as exc:
+        # URLError, a read timeout or a connection dropped mid-body.
         raise LichessFetchError(
-            "Could not reach the Lichess explorer: {0}".format(exc.reason)
+            "Could not reach the Lichess explorer: {0}".format(getattr(exc, "reason", exc))
         ) from exc
-    except json.JSONDecodeError as exc:
+    except ValueError as exc:  # malformed JSON or text
         raise LichessFetchError("Lichess explorer returned malformed JSON") from exc
 
 

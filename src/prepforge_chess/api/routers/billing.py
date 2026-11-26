@@ -20,6 +20,7 @@ import logging
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
@@ -183,6 +184,12 @@ async def stripe_webhook(
         )
     payload = await request.body()
     sig = request.headers.get("Stripe-Signature", "")
+    # The raw body needs an async read; the verification and database work are
+    # blocking, so they run on the thread pool instead of stalling the event loop.
+    return await run_in_threadpool(_receive_event, payload, sig, db, settings)
+
+
+def _receive_event(payload: bytes, sig: str, db: Session, settings: Settings) -> dict[str, bool]:
     try:
         event = stripe.Webhook.construct_event(payload, sig, settings.stripe_webhook_secret)
     except ValueError as exc:  # malformed JSON body

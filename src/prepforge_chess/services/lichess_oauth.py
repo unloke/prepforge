@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import http.client
 import json
 import secrets
 import urllib.error
@@ -63,8 +64,11 @@ def _post_json(url: str, data: dict, *, timeout: float) -> dict:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise LichessOAuthError("Lichess token endpoint returned HTTP {0}".format(exc.code)) from exc
-    except urllib.error.URLError as exc:
-        raise LichessOAuthError("Could not reach Lichess: {0}".format(exc.reason)) from exc
+    except (OSError, http.client.HTTPException) as exc:
+        # URLError, a read timeout or a connection dropped mid-body.
+        raise LichessOAuthError("Could not reach Lichess: {0}".format(getattr(exc, "reason", exc))) from exc
+    except ValueError as exc:  # a non-JSON body
+        raise LichessOAuthError("Lichess returned malformed JSON") from exc
 
 
 def exchange_code(*, code: str, code_verifier: str, redirect_uri: str, timeout: float = DEFAULT_TIMEOUT) -> dict:
@@ -95,8 +99,11 @@ def fetch_account(access_token: str, *, timeout: float = DEFAULT_TIMEOUT) -> dic
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise LichessOAuthError("Lichess account endpoint returned HTTP {0}".format(exc.code)) from exc
-    except urllib.error.URLError as exc:
-        raise LichessOAuthError("Could not reach Lichess: {0}".format(exc.reason)) from exc
+    except (OSError, http.client.HTTPException) as exc:
+        # URLError, a read timeout or a connection dropped mid-body.
+        raise LichessOAuthError("Could not reach Lichess: {0}".format(getattr(exc, "reason", exc))) from exc
+    except ValueError as exc:  # a non-JSON body
+        raise LichessOAuthError("Lichess returned malformed JSON") from exc
 
 
 def fetch_username(access_token: str, *, timeout: float = DEFAULT_TIMEOUT) -> str:

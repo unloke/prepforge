@@ -17,6 +17,7 @@ import smtplib
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
@@ -165,7 +166,12 @@ def register(
         plan=Plan.free,
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        # A concurrent registration of the same email won the unique index.
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="email already registered") from exc
     db.refresh(user)
     _open_session(db, request, response, settings, user)
     return user
