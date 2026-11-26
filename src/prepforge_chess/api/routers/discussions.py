@@ -25,9 +25,17 @@ def position_key(fen: str) -> str:
         raise HTTPException(422, detail="Choose a valid board position.") from exc
 
 
-def _positions(repo: RepertoireReader, rid):
-    repertoire = repo.load_repertoire(rid)
-    return {position_key(node.fen): node.id for node in repertoire.root_node.walk()}
+def _stored_key(fen: str) -> str:
+    # A tree FEN comes from python-chess, which names an en-passant square only
+    # when a capture is legal, so its first four fields already are its key. Only
+    # the few with an en-passant square are parsed again.
+    parts = fen.split()
+    return " ".join(parts[:4]) if parts[3:4] == ["-"] else position_key(fen)
+
+
+def _positions(repo: RepertoireReader, rid, conn=None):
+    repertoire = repo.load_repertoire(rid, conn=conn)
+    return {_stored_key(node.fen): node.id for node in repertoire.root_node.walk()}
 
 
 def _thread(repo: CollaborationStore, conn, rid, thread_id):
@@ -84,7 +92,7 @@ def add_message(body: MessageBody, owner: str = Depends(current_owner),
             thread_id = _thread(repo, conn, body.repertoire_id, body.thread_id)["id"]
         else:
             key = position_key(body.fen or "")
-            if key not in _positions(repo, body.repertoire_id):
+            if key not in _positions(repo, body.repertoire_id, conn):
                 raise HTTPException(409, detail="This position left the tree. Refresh before starting a discussion.")
             thread_id = repo.discussion_thread_at(conn, body.repertoire_id, key)
             if not thread_id:
@@ -120,7 +128,7 @@ def update_thread(body: ThreadBody, owner: str = Depends(current_owner),
         if body.fen is not None:
             _repertoire_access(repo, body.repertoire_id, owner, "edit")
             key = position_key(body.fen)
-            if key not in _positions(repo, body.repertoire_id):
+            if key not in _positions(repo, body.repertoire_id, conn):
                 raise HTTPException(409, detail="Choose a position in this repertoire.")
             existing = repo.discussion_thread_at(conn, body.repertoire_id, key)
             if existing and existing != body.thread_id:

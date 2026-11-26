@@ -170,4 +170,21 @@ describe("repertoire durable save", () => {
     expect(h.deps.setStatusError).not.toHaveBeenCalled();
     expect(h.deps.engineWidget.onBoardChanged).toHaveBeenCalledOnce();
   });
+
+  // Review of #325: an autosave that failed after the account changed put the
+  // old account's moves back on the queue, which now belonged to the new
+  // account. They stay in the old account's durable outbox instead.
+  it("does not requeue a failed save into another account's queue", async () => {
+    const h = syncHarness();
+    let fail;
+    h.deps.postJson.mockImplementation(() => new Promise((_resolve, reject) => { fail = reject; }));
+    h.queue(node("tmp-old", "root", 1));
+    const saving = h.controller.flushBuildMoves();
+    await vi.waitFor(() => expect(fail).toBeTypeOf("function"));
+    h.appState.ownerGeneration += 1; // someone else signed in while the save was in flight
+    h.appState.buildPending = [];
+    fail(Object.assign(new Error("Service unavailable"), { status: 503 }));
+    expect(await saving).toBe(false);
+    expect(h.appState.buildPending).toEqual([]);
+  });
 });
