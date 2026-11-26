@@ -22,8 +22,9 @@ const rejectedAdd = (m, error) => ({
 
 // ``error`` is what the flush's own request got back: the delete request's
 // when deletes were still queued, else the add request's. ``owns`` is asked
-// before every request: once the queue is no longer this account's, nothing
-// more is sent under the new session.
+// before every request and before anything goes back on the queue: once the
+// queue is no longer this account's, nothing more is sent under the new session
+// and nothing is put on the new account's queue.
 export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, error, since, owns = () => true) {
   const rejected = [];
   const settled = { build: [], deletes: [], train: [] };
@@ -48,7 +49,9 @@ export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, 
       if (classifySyncError(err).retriable) {
         // Sign-out/network blip mid-isolation: stop here and keep this delete
         // plus every later one queued for the next flush.
-        buildState.buildPendingDeletes = deleteBatch.slice(i).concat(buildState.buildPendingDeletes);
+        // Another account's queue keeps none of these: they stay in this
+        // account's durable outbox.
+        if (owns()) buildState.buildPendingDeletes = deleteBatch.slice(i).concat(buildState.buildPendingDeletes);
         return { rejected, settled, idMap, payload };
       }
       settled.deletes.push(buildDeleteId(entry));
@@ -73,7 +76,7 @@ export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, 
     }
     const info = classifySyncError(failure);
     if (info.retriable) {
-      buildState.buildPending = remaining.concat(buildState.buildPending);
+      if (owns()) buildState.buildPending = remaining.concat(buildState.buildPending);
       break;
     }
     if (info.kind === "forbidden") {
@@ -121,7 +124,7 @@ async function isolateEachAdd(ordered, repertoireId, since, owns, result) {
       result.settled.build.push(buildAddId(m));
     } catch (err) {
       if (classifySyncError(err).retriable) {
-        buildState.buildPending = ordered.slice(i).concat(buildState.buildPending);
+        if (owns()) buildState.buildPending = ordered.slice(i).concat(buildState.buildPending);
         break;
       }
       result.settled.build.push(buildAddId(m));

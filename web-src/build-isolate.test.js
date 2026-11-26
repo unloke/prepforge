@@ -13,6 +13,7 @@ vi.mock("./build-entry.js", () => ({
 }));
 
 import { postJson } from "./core/api.js";
+import { buildState } from "./core/state.js";
 import { isolateRejectedBuildOps } from "./build-isolate.js";
 
 beforeEach(() => {
@@ -102,5 +103,35 @@ describe("one rejected move in a Build flush", () => {
     const batch = [{ tempId: "tmp-a", parentRef: "root", uci: "g1f3" }, { tempId: "tmp-b", parentRef: "root", uci: "e2e4" }];
     await isolateRejectedBuildOps(batch, [{ id: "n-0" }, { id: "n-9" }], "rep", unnamed, 7, () => mine);
     expect(postJson).toHaveBeenCalledTimes(1);
+  });
+
+  // Review of #325: a resend that failed after the account changed put the old
+  // account's edits back on the queue, which now belonged to the new account.
+  it.each([
+    ["one at a time", Object.assign(new Error("bad"), { status: 400, detail: "bad" }), []],
+    ["as one batch", Object.assign(new Error("bad"), { status: 400, detail: "bad" }), [{ id: "n-0" }]],
+  ])("does not requeue a failed resend (%s) into another account's queue", async (_label, refused, deletes) => {
+    let mine = true;
+    postJson.mockImplementation(async (path) => {
+      if (path === "/api/build/delete-nodes") throw refused;
+      mine = false; // someone else signed in while this request was in flight
+      buildState.buildPending = [];
+      throw Object.assign(new Error("Service unavailable"), { status: 503 });
+    });
+    const batch = [{ tempId: "tmp-a", parentRef: "root", uci: "g1f3" }, { tempId: "tmp-b", parentRef: "root", uci: "e2e4" }];
+    await isolateRejectedBuildOps(batch, deletes, "rep", refused, 7, () => mine);
+    expect(buildState.buildPending).toEqual([]);
+  });
+
+  it("does not requeue a failed delete into another account's queue", async () => {
+    let mine = true;
+    const refused = Object.assign(new Error("bad"), { status: 400, detail: "bad" });
+    postJson.mockImplementation(async () => {
+      mine = false;
+      buildState.buildPendingDeletes = [];
+      throw Object.assign(new Error("Service unavailable"), { status: 503 });
+    });
+    await isolateRejectedBuildOps([], [{ id: "n-1" }, { id: "n-2" }], "rep", refused, 7, () => mine);
+    expect(buildState.buildPendingDeletes).toEqual([]);
   });
 });
