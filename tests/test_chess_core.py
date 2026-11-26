@@ -1,3 +1,6 @@
+import io
+
+import chess.pgn
 import pytest
 
 from prepforge_chess.core.chess_core import STARTING_FEN, ChessCore
@@ -82,3 +85,22 @@ def test_import_single_pgn_normalizes_moves():
     ]
     assert game.moves[0].fen_before == STARTING_FEN
     assert game.moves[-1].source is MoveSource.IMPORTED_PGN
+
+
+@pytest.mark.parametrize(
+    ("variant", "moves"),
+    [
+        # Three-check: the FEN carries the remaining checks ("2+3").
+        ("Three-check", "1. e4 e5 2. Bc4 Nc6 3. Bxf7+"),
+        # Crazyhouse: the FEN carries the pockets ("[Pp]").
+        ("Crazyhouse", "1. e4 d5 2. exd5 Qxd5"),
+    ],
+)
+def test_pgn_import_keeps_variant_fen_fields(variant, moves):
+    pgn = f'[Variant "{variant}"]\n\n{moves} *\n'
+    game = ChessCore().import_pgn_games(pgn)[0]
+    board = chess.pgn.read_game(io.StringIO(pgn)).board()
+    for move in game.moves:
+        assert move.fen_before == board.fen()
+        board.push_uci(move.uci)
+        assert move.fen_after == board.fen()
