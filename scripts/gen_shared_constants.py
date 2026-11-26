@@ -6,7 +6,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from prepforge_chess.core.limits import MAX_ADD_MOVES_BATCH, MAX_FETCH, MAX_PLAN_CHANGES
+from prepforge_chess.core.limits import MAX_ADD_MOVES_BATCH, MAX_FETCH, MAX_PLAN_CHANGES, MAX_PLAN_DEPTH
 from prepforge_chess.services.classification import CP_CLAMP, WC_SIGMOID_SCALE, ClassificationConfig
 from prepforge_chess.services.brilliant import BrilliantConfig
 from prepforge_chess.services.opening_builder import MAINLINE_THRESHOLD
@@ -37,6 +37,7 @@ def render() -> str:
         "GREAT_MIN_WIN": brilliant.great_min_win * 100,
         "GREAT_MAX_WIN_BEFORE": brilliant.great_max_win_before * 100,
         "MAX_PLAN_CHANGES": MAX_PLAN_CHANGES,
+        "MAX_PLAN_DEPTH": MAX_PLAN_DEPTH,
         "MAX_ADD_MOVES_BATCH": MAX_ADD_MOVES_BATCH,
         "MAX_FETCH": MAX_FETCH,
         "MAINLINE_THRESHOLD": MAINLINE_THRESHOLD,

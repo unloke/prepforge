@@ -17,6 +17,7 @@ export const GREAT_MIN_TWO_MOVE_GAP = 10.0;
 export const GREAT_MIN_WIN = 25.0;
 export const GREAT_MAX_WIN_BEFORE = 97.0;
 export const MAX_PLAN_CHANGES = 2000;
+export const MAX_PLAN_DEPTH = 64;
 export const MAX_ADD_MOVES_BATCH = 500;
 export const MAX_FETCH = 50;
 export const MAINLINE_THRESHOLD = 0.1;

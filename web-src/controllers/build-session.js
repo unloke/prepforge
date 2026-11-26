@@ -4,6 +4,7 @@ import { readGenerateInt, showBuildGenerateDialog } from "./build-generate-dialo
 import { estimateBuildGenerateTotal, generateExistingPlies, generateEstimateText,
   GEN_DEFAULT_MAIN_PCT, GEN_DEFAULT_BRANCH_PCT } from "./build-generate-estimate.js";
 import { openBuildOverflowMenu as openOverflowMenu } from "./build-overflow-menu.js";
+import { promptBuildPgnMerge } from "./build-pgn-merge-dialog.js";
 import { promptRenameRepertoire } from "../repertoire-rename.js";
 import { enterRows } from "../list-enter.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
@@ -136,12 +137,10 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
 }
 
 function openBuildMenu(event) {
-  event.preventDefault();
-  event.stopPropagation();
+  event.preventDefault(); event.stopPropagation();
   const menu = document.getElementById("repertoire-context-menu");
   if (!menu) return;
-  const rep = buildState.build;
-  const repId = rep?.repertoire_id;
+  const rep = buildState.build, repId = rep?.repertoire_id;
   const editable = !!rep && !isBuildReadOnly();
   const owner = !!rep && !appState.sharedToken && buildRole(rep) === "owner";
   const collaborative = !!rep && !appState.sharedToken && appState.signedIn;
@@ -163,6 +162,7 @@ function openBuildMenu(event) {
     ...(rep ? [item("manage", "Manage", { group: 1, children: [
       ...(owner ? [item("build-rename", "Rename…")] : []),
       item("build-export-pgn", "Export PGN"),
+      ...(editable ? [item("build-add-pgn", "Add lines from PGN…")] : []),
       ...(owner ? [item("toggle-active", isActive ? "Disable" : "Enable"), item("delete", "Delete…", { group: 1, danger: true })] : []),
     ] })] : []),
     item("build-new-rep", "New repertoire…", { group: 2 }),
@@ -172,14 +172,14 @@ function openBuildMenu(event) {
   openOverflowMenu(menu, { event, title: rep?.name || "Repertoire", items, onPick: async (action) => {
     try {
       closeRepertoireContextMenu();
-      if (action === "build-node-menu") {
-        openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
-      } else if (action === "build-atlas") buildView.openAtlas();
+      if (action === "build-node-menu") openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
+      else if (action === "build-atlas") buildView.openAtlas();
       else if (action === "build-activity") await buildView.openActivity();
       else if (action === "build-discuss") await buildView.openDiscussion();
       else if (action === "build-generate") await generateFromCurrentNode();
       else if (action === "build-rename") await renameRepertoire();
       else if (action === "build-export-pgn") await exportBuild();
+      else if (action === "build-add-pgn") await promptBuildPgnMerge();
       else if (action === "build-new-rep") await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
       else if (repId) await handleRepertoireContextAction(action, repId, isActive);
     } catch (error) {

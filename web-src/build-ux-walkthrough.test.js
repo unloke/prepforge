@@ -262,6 +262,26 @@ describe("Repertoire ⋯ menu", () => {
     expect(allowed).not.toContain("delete");
     expect(allowed).not.toContain("share");
   });
+  it("offers Add lines from PGN… right after Export PGN, only while the tree is editable", () => {
+    for (const role of ["owner", "edit"]) {
+      const manage = menuFor(role).find((item) => item.action === "manage").children;
+      const at = manage.findIndex((item) => item.action === "build-export-pgn");
+      expect(manage[at + 1]).toEqual({ action: "build-add-pgn", label: "Add lines from PGN…" });
+    }
+    expect(actions(menuFor("read", true))).not.toContain("build-add-pgn");
+    expect(actions(menuFor("owner", true))).not.toContain("build-add-pgn");
+    expect(actions(menuFor(null))).not.toContain("build-add-pgn");
+  });
+  it("opens the PGN merge dialog from that entry", () => {
+    const menu = extractByMarker("function openBuildMenu(event) {");
+    expect(menu).toContain('else if (action === "build-add-pgn") await promptBuildPgnMerge();');
+    const dialog = readFileSync(join(root, "controllers", "build-pgn-merge-dialog.js"), "utf8");
+    // Merged moves ride the Build outbox like played moves: no request of its own.
+    expect(dialog).toContain("queueBuildAdd(node)");
+    expect(dialog).toContain("scheduleBuildFlush()");
+    expect(dialog).not.toMatch(/postJson|api\(/);
+    expect(dialog).toContain("if (isBuildReadOnly())");
+  });
 });
 
 describe("Coverage uses explicit operation consent", () => {
