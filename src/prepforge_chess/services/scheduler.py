@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple
 
 from prepforge_chess.core.models import Color, OpeningNode, TrainingProgress
 from prepforge_chess.services.progress import (
@@ -36,7 +36,7 @@ from prepforge_chess.services.progress import (
     effective_children,
     node_mastery,
 )
-from prepforge_chess.services.srs import retrievability
+from prepforge_chess.services.srs import is_flagged_miss, retrievability
 
 CARD_WEAK = "weak"
 CARD_DUE = "due"
@@ -74,6 +74,8 @@ class TrainingCard:
     kind: str
     repertoire_id: str
     target_ids: Tuple[str, ...]
+    # A missed move brought back in the same session: it re-tests, never grades.
+    retry: bool = False
 
     @property
     def first_target_id(self) -> str:
@@ -87,26 +89,33 @@ class TrainingCard:
 @dataclass(frozen=True)
 class SessionPlan:
     cards: List[TrainingCard]
-    # kind -> card count, plus "cards" and "targets" totals (for the queue
-    # composition strip: "3 weak · 4 due · 3 new").
+    # kind -> card count, plus "cards", "targets" and "new_targets" totals (for
+    # the queue composition strip: "3 weak · 4 due · 3 new").
     counts: Dict[str, int]
+    # Targets that open the session: explicit practice, then flagged misses.
+    leading: FrozenSet[str] = frozenset()
+
+
+_RETRY = "retry"
 
 
 def encode_card(card: TrainingCard) -> str:
-    return "{0}:{1}:{2}".format(card.kind, card.repertoire_id, ",".join(card.target_ids))
+    raw = "{0}:{1}:{2}".format(card.kind, card.repertoire_id, ",".join(card.target_ids))
+    return raw + ":" + _RETRY if card.retry else raw
 
 
 def decode_card(raw: object) -> Optional[TrainingCard]:
-    """Parse ``kind:repertoire:t1,t2,…``; return None for malformed values."""
+    """Parse ``kind:repertoire:t1,t2,…[:retry]``; return None for malformed values."""
     if not isinstance(raw, str):
         return None
     parts = raw.split(":")
-    if len(parts) != 3 or parts[0] not in _KIND_PRIORITY or not parts[1]:
+    retry = len(parts) == 4 and parts[3] == _RETRY
+    if len(parts) != 3 + retry or parts[0] not in _KIND_PRIORITY or not parts[1]:
         return None
     targets = tuple(parts[2].split(","))
     if not all(targets):
         return None
-    return TrainingCard(parts[0], parts[1], targets)
+    return TrainingCard(parts[0], parts[1], targets, retry)
 
 
 def card_counts(cards: Iterable[Optional[TrainingCard]]) -> Dict[str, int]:
@@ -183,6 +192,19 @@ def _find_path(root: OpeningNode, node_id: str) -> List[OpeningNode]:
             chain.append(node)
             branches.append(iter(node.children))
     raise ValueError("opening node not found: {0}".format(node_id))
+
+
+def target_run_in(
+    path: List[OpeningNode], targets: List[OpeningNode], index: int
+) -> List[OpeningNode]:
+    """Moves auto-played before a target's prompt: from move 1 for the line's
+    first target, else from after the previous target's reply. Own moves that
+    are not due play themselves here instead of being asked."""
+    pos = next(i for i, node in enumerate(path) if node.id == targets[index].id)
+    start = 0
+    if index > 0:
+        start = next(i for i, node in enumerate(path) if node.id == targets[index - 1].id) + 2
+    return [node for node in path[start:pos] if node.move is not None]
 
 
 def own_move_nodes_on(path: Sequence[OpeningNode], color: Color) -> List[OpeningNode]:
@@ -321,10 +343,15 @@ def build_session_plan(
     # to drill, it just doesn't get to monopolise the queue.
     # Explicit practice reserves at most half the queue, keeping room for
     # ordinary weak/due review. Reuse mastery kinds so grading stays unchanged.
+    # Misses recorded outside a session (games, Analyze) come right after, inside
+    # the same budget, so "this move leads your next session" stays true.
     target_budget = max(1, session_size // 2)
-    for pool, kind in ((weak, CARD_WEAK), (due, CARD_DUE), (new, CARD_NEW), (polish, CARD_POLISH)):
-        take([c for c in pool if c.node.id in requested], kind,
-             limit=max(0, target_budget - len(selected_kind)))
+    flagged = {c.node.id for c in candidates if is_flagged_miss(progress_by_id.get(c.node.id))} - requested
+    for lead in (requested, flagged):
+        for pool, kind in ((weak, CARD_WEAK), (due, CARD_DUE), (new, CARD_NEW), (polish, CARD_POLISH)):
+            take([c for c in pool if c.node.id in lead], kind,
+                 limit=max(0, target_budget - len(selected_kind)))
+    leading = frozenset(node_id for node_id in requested | flagged if node_id in selected_kind)
     targeted_new = sum(kind == CARD_NEW for kind in selected_kind.values())
     weak_share = max(1, int((session_size - len(selected_kind)) * WEAK_SHARE))
     take(weak, CARD_WEAK, limit=weak_share)
@@ -333,13 +360,44 @@ def build_session_plan(
     take(polish, CARD_POLISH)
     take(weak, CARD_WEAK)  # top off with leftover weak when nothing else remains
 
-    cards = _group_into_lines(candidates, selected_kind, max_targets_per_card, root.repertoire_id, requested)
+    cards = _group_into_lines(candidates, selected_kind, max_targets_per_card, root.repertoire_id, leading)
     ordered = order_lines(cards, {c.node.id: c.order for c in candidates})
     # Explicit practice opens the session: the move the user asked for is card 1.
-    ordered.sort(key=lambda card: card.first_target_id not in requested)
+    ordered.sort(key=lambda card: _lead_rank(card, requested, leading))
     counts = card_counts(ordered)
     counts["targets"] = len(selected_kind)
-    return SessionPlan(cards=ordered, counts=counts)
+    counts["new_targets"] = sum(kind == CARD_NEW for kind in selected_kind.values())
+    return SessionPlan(cards=ordered, counts=counts, leading=leading)
+
+
+def _lead_rank(card: TrainingCard, requested: Set[str], leading: FrozenSet[str]) -> int:
+    first = card.first_target_id
+    return 0 if first in requested else 1 if first in leading else 2
+
+
+def flagged_miss_cards(
+    root: OpeningNode,
+    color: Color,
+    progress_by_id: Dict[str, TrainingProgress],
+    queued: Set[str],
+    *,
+    now: Optional[datetime] = None,
+) -> List[TrainingCard]:
+    """One card per recorded miss that ``queued`` lacks, in tree order: what a
+    resumed session adds so a miss flagged after it was planned still comes next."""
+    flagged = {node_id for node_id, p in progress_by_id.items() if is_flagged_miss(p)} - queued
+    if not flagged:
+        return []
+    eval_now = now or datetime.now(timezone.utc)
+    return [
+        TrainingCard(
+            CARD_WEAK if node_mastery(progress_by_id[cand.node.id], now=eval_now) == MASTERY_WEAK else CARD_DUE,
+            root.repertoire_id,
+            (cand.node.id,),
+        )
+        for cand in _collect_candidates(root, color)
+        if cand.node.id in flagged
+    ]
 
 
 @dataclass
@@ -363,7 +421,7 @@ def _group_into_lines(
     Candidates arrive in preorder, so the first branch under an ancestor
     extends its line and each sibling branch starts its own (it replays the
     shared prefix). New moves group only with new moves (a new line is taught
-    in one pass), reviews with reviews; a requested target opens its own card.
+    in one pass), reviews with reviews; a leading target opens its own card.
     """
     by_id = {cand.node.id: cand for cand in candidates}
     drafts: List[_LineDraft] = []
@@ -440,10 +498,13 @@ def mix_plans(
         preorder.update(order)
         heads.append((min(_BAND[card.kind] for card in plan.cards), len(heads), repertoire_id))
     rank = {repertoire_id: index for index, (_, _, repertoire_id) in enumerate(sorted(heads))}
+    leading = frozenset().union(*(plan.leading for _, plan, _ in plans))
     ordered = order_lines(cards, preorder, rank)
+    ordered.sort(key=lambda card: card.first_target_id not in leading)
     counts = card_counts(ordered)
-    counts["targets"] = sum(plan.counts.get("targets", 0) for _, plan, _ in plans)
-    return SessionPlan(cards=ordered, counts=counts)
+    for total in ("targets", "new_targets"):
+        counts[total] = sum(plan.counts.get(total, 0) for _, plan, _ in plans)
+    return SessionPlan(cards=ordered, counts=counts, leading=leading)
 
 
 def preorder_index(root: OpeningNode, color: Color) -> Dict[str, int]:

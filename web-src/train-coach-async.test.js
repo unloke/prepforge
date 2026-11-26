@@ -21,7 +21,7 @@ function harness() {
     expected_node_id: "node", hint: { strategy: "Take space", piece: "Move the pawn" },
     target: { fen_after: "after", san: "e4" }, legal_moves: ["e2e4", "d2d4"],
   };
-  const smart = { prompt, attempt: 1, retriesFixed: 0 };
+  const smart = { prompt, attempt: 1, retriesFixed: 0, queue: [], cardIndex: 0 };
   const appState = { smart, trainHintLevel: 0, trainBusy: false,
     trainStats: { mistakes: 0, correct: 0, history: [], streak: 0, best: 0 } };
   const banner = { dataset: { state: "move" }, title: "Your move", sub: "Review" };
@@ -36,6 +36,7 @@ function harness() {
     clearBlitzTimer: vi.fn(), optimisticBoardMove: async () => {}, queueTrainAttempt: vi.fn(),
     renderTrainStats: async () => {}, boardAfterMove: async () => ({ board: { fen: "preview" } }),
     playSound: vi.fn(), sleep: () => sleepGate.promise, rememberSmartSession: vi.fn(),
+    requeueMissedTarget: () => ({ added: false, pending: false }), markTrainPositionDirty: vi.fn(),
   };
   return { ...asSlices(appState), appState, banner, coach, sleepGate, deps, prompt };
 }

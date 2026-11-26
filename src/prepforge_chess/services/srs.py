@@ -14,7 +14,13 @@ from typing import Optional
 from fsrs import Card, Rating, Scheduler, State
 
 from prepforge_chess.core.models import TrainingProgress
-from prepforge_chess.core.sr_config import SR_CONFIG, STATE_NEW, STATE_RELEARNING, STATE_REVIEW
+from prepforge_chess.core.sr_config import (
+    SR_CONFIG,
+    STATE_LEARNING,
+    STATE_NEW,
+    STATE_RELEARNING,
+    STATE_REVIEW,
+)
 
 _STEP = (timedelta(minutes=SR_CONFIG.learning_step_minutes),)
 SCHEDULER = Scheduler(
@@ -78,6 +84,19 @@ def is_weak(progress: TrainingProgress) -> bool:
     return progress.attempts >= 2 and (
         progress.state == STATE_RELEARNING
         or (progress.stability or 0.0) < SR_CONFIG.weak_stability_days
+    )
+
+
+def is_flagged_miss(progress: Optional[TrainingProgress]) -> bool:
+    """A miss recorded outside a session (a game departure, Analyze's "train
+    this"): FSRS always schedules after the review, so only those land due at
+    their own review time. The next graded answer clears the flag."""
+    return (
+        progress is not None
+        and progress.state in (STATE_LEARNING, STATE_RELEARNING)
+        and progress.due_at is not None
+        and progress.last_reviewed_at is not None
+        and progress.due_at <= progress.last_reviewed_at
     )
 
 

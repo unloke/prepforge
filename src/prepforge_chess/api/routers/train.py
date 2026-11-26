@@ -30,11 +30,10 @@ from prepforge_chess.services.training import TrainingService
 from prepforge_chess.services.scheduler import CARD_KINDS
 from prepforge_chess.services.training_smart import REQUEUE_GAP
 from prepforge_chess.services.training_smart import SmartTrainingService
-from prepforge_chess.services.training_hints import heuristic_strategy, node_annotation, piece_name_at
+from prepforge_chess.services.training_hints import heuristic_strategy, piece_name_at
 from prepforge_chess.services.training_view import (
     prompt_to_json,
     smart_prompt_to_json,
-    training_line_to_json,
 )
 from prepforge_chess.storage.ports import AccessStore, SettingsStore, SmartTrainerStore, TrainRoutes
 
@@ -87,7 +86,7 @@ def start(
     _trainable_repertoire(repo, body.repertoire_id, owner)
     mode = TrainingMode(body.mode or TrainingMode.ALL_LINES)
     # The access gate above permits loading the repertoire by id here.
-    repertoire = repo.load_repertoire(body.repertoire_id)
+    repertoire = repo.load_repertoire(body.repertoire_id, hydrate=False)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
     service = TrainingService(repo, owner)
@@ -108,9 +107,6 @@ def start(
         "seed": session.seed,
         "mode": mode.value,
         "line_order": session.line_order,
-        "lines": [
-            training_line_to_json(line) for line in service.training_lines(repertoire, mode)
-        ],
         "prompt": prompt_to_json(prompt, _CHESS),
         "resumed": (not body.fresh) and session.current_index > 0,
     }
@@ -326,6 +322,9 @@ def smart_start(
         "total_cards": len(session.line_order),
         "card_index": session.current_index,
         "resumed": service.resumed,
+        # Cards this resume moved up for recorded misses (the client's saved
+        # queue puts them next too).
+        "leading": service.leading,
         "counts": service.counts(session),
         "requeue_gap": REQUEUE_GAP,
         "card_kinds": CARD_KINDS,
@@ -551,13 +550,11 @@ def hint(
 
     uci, san = prompt.expected_move_uci, prompt.expected_move_san
     piece = piece_name_at(prompt.fen_before, uci)
-    repertoire = repo.load_repertoire(prompt.repertoire_id)
-    node = repertoire.root_node.find(prompt.expected_node_id) if repertoire else None
     return {
         "expected_uci": uci,
         "expected_san": san,
         "piece": "Move the {0}".format(piece) if piece else "Find the move",
-        "strategy": (node_annotation(node) if node else "") or heuristic_strategy(san, piece),
+        "strategy": prompt.annotation or heuristic_strategy(san, piece),
     }
 
 
