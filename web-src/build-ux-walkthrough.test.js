@@ -12,6 +12,7 @@ import { buildSkeleton } from "./views/build-skeleton.js";
 import { summarizeBuild } from "./build-tree.js";
 import { readGenerateInt } from "./controllers/build-generate-dialog.js";
 import { generateEstimateRange, generateEstimateText } from "./controllers/build-generate-estimate.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const app = appSource();
@@ -41,11 +42,11 @@ describe("Coverage gap board preview", () => {
     const appState = { build: {}, buildCurrentNodeId: "e4", buildNodeById: new Map([["e4", node]]) };
     const board = { setPosition() {}, setAnnotations() {}, setBranchArrows: vi.fn() };
     const { selectBuildNode } = compile(["async function selectBuildNode("], {
-      appState, boards: { build: board }, boardInfo: async () => ({ legal_moves: [] }),
+      ...asSlices(appState), boards: { build: board }, boardInfo: async () => ({ legal_moves: [] }),
       document: { getElementById: () => ({}) }, engineWidget: null, scheduleExplorerRefresh() {},
       buildView: { updateBuildTreeSelection: () => board.setBranchArrows(["e7e5", "c7c5"], "e7e5") },
     });
-    return { selectBuildNode, board, appState, node };
+    return { selectBuildNode, board, ...asSlices(appState), appState, node };
   }
 
   it("shows only the gap's temporary arrow, then restores saved branches on navigation", async () => {
@@ -62,7 +63,7 @@ describe("Coverage gap board preview", () => {
     await h.selectBuildNode("missing", { previewUci: "d7d5" });
     expect(h.board.setBranchArrows).not.toHaveBeenCalled();
     const pending = h.selectBuildNode("e4", { previewUci: "d7d5" });
-    h.appState.build = {};
+    h.buildState.build = {};
     await pending;
     expect(h.board.setBranchArrows).not.toHaveBeenCalled();
   });
@@ -230,7 +231,7 @@ describe("Repertoire ⋯ menu", () => {
     const appState = { build: role ? { repertoire_id: "r", name: "Open games" } : null,
       signedIn: true, repertoireList: [{ id: "r", is_active: false }], buildNodeById: new Map() };
     const { openBuildMenu } = compile(["function openBuildMenu(event) {"], {
-      appState, document: { getElementById: () => ({}) }, isBuildReadOnly: () => readOnly,
+      ...asSlices(appState), document: { getElementById: () => ({}) }, isBuildReadOnly: () => readOnly,
       buildRole: () => role, buildView: { activityLabel: () => "Activity", discussionLabel: () => "Discuss position" },
       openOverflowMenu: (_menu, options) => { shown = options.items; },
     });

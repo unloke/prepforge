@@ -2,12 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { createPlayMoveHandler } from "./train-play-input.js";
 import { localBoardAfterMove } from "./chess-local.js";
 import { START_FEN } from "./train-play.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 function harness(fen = START_FEN, userColor = "white") {
   const play = { fen, active: true, userColor, history: [], ply: 0 };
   const board = { setPremove: vi.fn(), setPosition: vi.fn() };
   const deps = {
-    appState: { play }, boards: { train: board }, advanceNode: () => ({}),
+    ...asSlices({ play }), boards: { train: board }, advanceNode: () => ({}),
     recordPly: (ply) => play.history.push(ply), cursorSnapshot: () => ({}),
     endGame: vi.fn(), opponentReply: vi.fn(async () => {}),
   };

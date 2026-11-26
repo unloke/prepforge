@@ -1,4 +1,4 @@
-import { appState, boards } from "./state.js";
+import { analysisState, boards } from "./state.js";
 import { hooks } from "./hooks.js";
 import { maiaAnalysisEnabled, pref, setPref } from "./prefs.js";
 import { BROWSER_ENGINE_UNAVAILABLE, activeBoardController, activeViewName, setStatusError } from "./api.js";
@@ -15,7 +15,7 @@ export function analysisStore() {
     .then(({ createPositionAnalysisStore }) => createPositionAnalysisStore({
       getMaia: () => (maiaAnalysisEnabled() ? getSharedMaia3Provider() : null),
       sanLine: sanLineFromUci,
-      savedEval: (fen) => appState.analysis?.position_evals?.[fen],
+      savedEval: (fen) => analysisState.analysis?.position_evals?.[fen],
     }));
 }
 
@@ -172,7 +172,7 @@ export function syncAnalysisEvalCard() {
   const card = document.getElementById("analysis-eval-card");
   const graph = document.getElementById("analysis-eval-graph");
   const results = document.getElementById("analysis-results");
-  const points = Array.isArray(appState.evalChartPoints) ? appState.evalChartPoints : [];
+  const points = Array.isArray(analysisState.evalChartPoints) ? analysisState.evalChartPoints : [];
   const hasGraph = !!results && !results.hidden && points.length > 0;
   if (graph) graph.hidden = !hasGraph;
   card?.classList.toggle("is-engine", engineWantedIn("analyze"));

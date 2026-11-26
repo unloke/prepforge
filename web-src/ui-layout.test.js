@@ -328,7 +328,7 @@ describe("workspace chrome layout", () => {
     // The panel head already names the repertoire and its side; the board
     // caption under it repeats only the move you are standing on.
     expect(session).toMatch(/node\.depth === 0\s*\?\s*"Start"/);
-    expect(session).not.toMatch(/\$\{appState\.build\.name\} · \$\{appState\.build\.color\}/);
+    expect(session).not.toMatch(/\$\{buildState\.build\.name\} · \$\{buildState\.build\.color\}/);
   });
 
   it("gives each Explorer move its share of the games, in ink before the muted count", () => {

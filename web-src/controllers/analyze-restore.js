@@ -18,7 +18,7 @@ import { parsePgn } from "../analyze-pgn.js";
 
 export function createAnalyzeRestore(deps) {
   const {
-    appState, loadReturnState, loadPgnIntoAnalyze, showAnalysisPly,
+    analysisState, loadReturnState, loadPgnIntoAnalyze, showAnalysisPly,
     selectAnalysisNodePath, setStatus, recallAnalysis, rebuildAnalysisVariations,
   } = deps;
 
@@ -43,7 +43,7 @@ export function createAnalyzeRestore(deps) {
   }
 
   async function restoreAnalyzeSession(urlPly, urlNode = null) {
-    if (appState.analysis) {
+    if (analysisState.analysis) {
       if (urlNode) await restoreAnalysisNodePath(urlNode);
       else if (urlPly) await showAnalysisPly(urlPly);
       return;

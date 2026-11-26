@@ -34,7 +34,7 @@ from prepforge_chess.api.deps import current_owner, current_user, get_repository
 from prepforge_chess.api.models import LinkedAccount, User
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.security import decrypt_token, encrypt_token
-from prepforge_chess.services import lichess_fetch
+from prepforge_chess.services import lichess_fetch, workflows
 from prepforge_chess.services.lichess_oauth import (
     LichessOAuthError,
     build_authorize_url,
@@ -44,7 +44,7 @@ from prepforge_chess.services.lichess_oauth import (
     generate_code_verifier,
     generate_state,
 )
-from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from prepforge_chess.storage.ports import CompareRoutes, SettingsStore
 
 # Per-owner key for the "you just finished a game" watcher's de-dup marker.
 _LAST_SEEN_KEY = "lichess.last_seen_game_id"
@@ -487,7 +487,7 @@ def _run_compare(
     count: int,
     user: User,
     db: Session,
-    repo: WorkspaceRepository,
+    repo: CompareRoutes,
     account_id: str | None = None,
     account_ids: list[str] | None = None,
     usernames: list[str] | None = None,
@@ -551,7 +551,7 @@ def _run_compare(
     summaries = [s for s, _ in pairs]
     # Close the play→train loop: a game where the user left their own prep becomes a
     # recall miss on the forgotten node, so it surfaces in the next smart session.
-    misses_recorded = lichess_fetch.record_departure_misses(
+    misses_recorded = workflows.record_game_departure_as_training_miss(
         repo, summaries, owner_user_id=owner, verified_usernames=verified_usernames
     )
     sources = sorted({source for _, source in pairs})
@@ -601,7 +601,7 @@ def compare(
     usernames: str | None = None,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: CompareRoutes = Depends(get_repository),
 ) -> dict:
     ids = [a for a in (account_ids or "").split(",") if a] or None
     names = [u for u in (usernames or "").split(",") if u.strip()] or None
@@ -622,7 +622,7 @@ def compare_post(
     body: CompareBody,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: CompareRoutes = Depends(get_repository),
 ) -> dict:
     """Shared Source Composer fetch: resolved linked ids + arbitrary external
     Lichess usernames, compared owner-scoped against the caller's repertoires."""
@@ -640,7 +640,7 @@ def latest(
     account_id: str | None = None,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: SettingsStore = Depends(get_repository),
 ) -> dict:
     """The newest game across the caller's linked Lichess identities.
 
@@ -693,7 +693,7 @@ class MarkSeenBody(BaseModel):
 def mark_seen(
     body: MarkSeenBody,
     owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
+    repo: SettingsStore = Depends(get_repository),
 ) -> dict:
     """Record the latest game this owner has acknowledged, so the watcher stops
     re-surfacing it as new."""

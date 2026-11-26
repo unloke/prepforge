@@ -2,12 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { formatWorkspaceHash, parseWorkspaceLocation, trainQueueRepertoireId, workspaceLocationFromState } from "./workspace-url.js";
 import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function runtime(hash, { signedIn = true, smart = null } = {}) {
   const deps = {
     window: { location: { href: `http://local/${hash}` } },
-    appState: { signedIn, currentView: "train", smart },
+    ...asSlices({ signedIn, currentView: "train", smart }), 
     parseWorkspaceLocation, trainQueueRepertoireId, loadReturnState: () => null,
     switchView: vi.fn(), openTrain: vi.fn(async () => {}),
     loadTrainSession: vi.fn(async () => ({ syncTrainControls: vi.fn() })), loadTrainRepertoireOptions: vi.fn(async () => {}), retryTrainEntry, trainRouteMatches: null, invalidateTrainEntries: vi.fn(),
@@ -49,7 +50,7 @@ describe("all-repertoire Due reload", () => {
     const h = runtime("#/train?mode=smart");
     await h.popstate();
     expect(h.openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: null }));
-    h.appState.smart = { mixed: true };
+    h.trainState.smart = { mixed: true };
     h.openTrain.mockClear();
     await h.popstate();
     expect(h.openTrain).not.toHaveBeenCalled();
@@ -68,8 +69,8 @@ describe("all-repertoire Due reload", () => {
     expect(rehearsal.openTrain).toHaveBeenLastCalledWith(expect.objectContaining({ mode: "all_lines", repertoireId: "r" }));
 
     const due = runtime("#/train?mode=smart");
-    due.appState.training = { repertoire_id: "r", prompt: {} };
-    due.appState.trainMode = "all_lines";
+    due.trainState.training = { repertoire_id: "r", prompt: {} };
+    due.trainState.trainMode = "all_lines";
     await due.popstate();
     expect(due.openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: null }));
   });

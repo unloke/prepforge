@@ -110,7 +110,7 @@ export function createAnalyzePlates({ getReport, onFlip }) {
     botRightEl.innerHTML = plateStatHtml(botData, report.graded);
   }
 
-  function paintMoveHead(appState) {
+  function paintMoveHead(analysisState) {
     if (typeof document === "undefined") return;
     const card = document.getElementById("analysis-explain");
     const prose = document.getElementById("coach-prose");
@@ -123,7 +123,7 @@ export function createAnalyzePlates({ getReport, onFlip }) {
       host.hidden = true;
       prose.before(host);
     }
-    const node = appState?.analysisTree?.byId?.get?.(appState.analysisCurrentNodeId || "root");
+    const node = analysisState?.analysisTree?.byId?.get?.(analysisState.analysisCurrentNodeId || "root");
     if (!node || !node.san) {
       host.hidden = true;
       host.innerHTML = "";

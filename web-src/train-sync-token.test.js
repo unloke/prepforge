@@ -11,7 +11,7 @@ const source = readFileSync(new URL("./controllers/train-session.js", import.met
 describe("smart session sync token", () => {
   it("carries the start payload's state_version into the live session", () => {
     const start = source.slice(source.indexOf("async function startSmartTraining("));
-    const literal = start.slice(start.indexOf("appState.smart = {"), start.indexOf("\n  };", start.indexOf("appState.smart = {")));
+    const literal = start.slice(start.indexOf("trainState.smart = {"), start.indexOf("\n  };", start.indexOf("trainState.smart = {")));
     expect(literal).toMatch(/stateVersion: mapped\.stateVersion,/);
     const mapped = mapTrainUiSession({ mode: "smart", session_id: "s", session_generation: "g", state_version: 7, cards: [], total_cards: 0 }, {});
     expect(mapped.stateVersion).toBe(7);

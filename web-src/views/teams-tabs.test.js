@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createTeamsView } from "./teams.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // Characterization for the ui-prototype-v2 Teams detail sheet:
 //  - Members / Shared repertoires are two tabs over ONE panel (only the active
@@ -78,7 +79,7 @@ function makeHarness(overrides = {}) {
     querySelector: () => null,
   };
   const view = createTeamsView({
-    appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
+    ...asSlices({ signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" }), 
     api: async () => ({ teams: [] }),
     hideTeamDetail: () => {},
     openTeamDetail: async () => {},
@@ -164,7 +165,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
 
   it("your own team share has a role control and Stop sharing; someone else's is a badge", () => {
     const { view, byId } = makeHarness({
-      appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: "t1", accountUserId: "u1" },
+      ...asSlices({ signedIn: true, authKnown: true, teams: [], selectedTeamId: "t1", accountUserId: "u1" }), 
     });
     view.renderTeamSharedRepertoires("t1", [
       { id: "r1", name: "KP", color: "white", owner_user_id: "u1", owner_display_name: "Me", role: "copy" },
@@ -186,7 +187,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
   it("opens the first team beside the directory", async () => {
     const opened = [];
     const { view } = makeHarness({
-      appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
+      ...asSlices({ signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" }), 
       api: async () => ({
         teams: [
           { id: "a", name: "A", role: "owner", member_count: 1 },
@@ -219,24 +220,24 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
 
   it("signed out: the empty card says how to start", async () => {
     const { view, byId } = makeHarness({
-      appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null },
+      ...asSlices({ signedIn: false, authKnown: true, teams: [], selectedTeamId: null }), 
     });
     await view.loadTeams();
     expect(byId("team-empty-body").textContent).toMatch(/Sign in to create or join a team/);
     expect(String(byId("teams-shared").innerHTML)).toBe("");
   });
   it("New team is offered only when signed in (guests get the card's Sign in)", async () => {
-    const guest = makeHarness({ appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null } });
+    const guest = makeHarness({ ...asSlices({ signedIn: false, authKnown: true, teams: [], selectedTeamId: null }),  });
     await guest.view.loadTeams();
     guest.view.renderTeamsList();
     expect(guest.byId("teams-new").hidden).toBe(true);
-    const member = makeHarness({ appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null } });
+    const member = makeHarness({ ...asSlices({ signedIn: true, authKnown: true, teams: [], selectedTeamId: null }),  });
     member.view.renderTeamsList();
     expect(member.byId("teams-new").hidden).toBe(false);
   });
   it("signed out: a list re-render (hideTeamDetail) stays empty, not 'No teams yet'", async () => {
     const { view, byId } = makeHarness({
-      appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null },
+      ...asSlices({ signedIn: false, authKnown: true, teams: [], selectedTeamId: null }), 
     });
     await view.loadTeams();
     // app.js hideTeamDetail() calls renderTeamsList() after the signed-out paint.
@@ -246,7 +247,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
   });
   it("search visibility follows the team collection, including an unmatched typed filter", () => {
     const appState = { signedIn: true, authKnown: true, teams: [], selectedTeamId: null };
-    const { view, byId } = makeHarness({ appState });
+    const { view, byId } = makeHarness({ ...asSlices(appState),  });
     const field = { hidden: false };
     const search = byId("teams-search");
     search.closest = () => field;
@@ -310,7 +311,7 @@ describe("teams directory: opening a team", () => {
     vi.stubGlobal("matchMedia", () => ({ matches: true }));
     const calls = [];
     const { view, byId } = makeHarness({
-      appState: { signedIn: true, authKnown: true, teams: [team("t1", "Taipei Knights")], selectedTeamId: null, accountUserId: "u1" },
+      ...asSlices({ signedIn: true, authKnown: true, teams: [team("t1", "Taipei Knights")], selectedTeamId: null, accountUserId: "u1" }), 
       api: async () => ({ teams: [team("t1", "Taipei Knights")] }),
       openTeamDetail: async (id) => calls.push(["open", id]),
       hideTeamDetail: () => calls.push(["hide"]),
@@ -324,7 +325,7 @@ describe("teams directory: opening a team", () => {
   it("a team the user picked re-opens after the list reloads", async () => {
     const calls = [];
     const { view } = makeHarness({
-      appState: { signedIn: true, authKnown: true, teams: [team("t1", "A"), team("t2", "B")], selectedTeamId: "t2", accountUserId: "u1" },
+      ...asSlices({ signedIn: true, authKnown: true, teams: [team("t1", "A"), team("t2", "B")], selectedTeamId: "t2", accountUserId: "u1" }), 
       api: async () => ({ teams: [team("t1", "A"), team("t2", "B")] }),
       openTeamDetail: async (id) => calls.push(["open", id]),
       hideTeamDetail: () => calls.push(["hide"]),
@@ -335,7 +336,7 @@ describe("teams directory: opening a team", () => {
 
   it("no teams: the empty card says how to start", async () => {
     const { view, byId } = makeHarness({
-      appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
+      ...asSlices({ signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" }), 
       api: async () => ({ teams: [] }),
     });
     await view.loadTeams();
@@ -348,7 +349,7 @@ describe("teams directory: opening a team", () => {
 
   it("a search with no hit is still named in the directory", async () => {
     const { view, byId } = makeHarness({
-      appState: { signedIn: true, authKnown: true, teams: [team("t1", "Taipei Knights")], selectedTeamId: null, accountUserId: "u1" },
+      ...asSlices({ signedIn: true, authKnown: true, teams: [team("t1", "Taipei Knights")], selectedTeamId: null, accountUserId: "u1" }), 
       api: async () => ({ teams: [team("t1", "Taipei Knights")] }),
     });
     await view.loadTeams();

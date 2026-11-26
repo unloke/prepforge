@@ -118,6 +118,6 @@ describe("Games outcome filter", () => {
     expect(toggle).not.toContain("replayOpen.clear()");
     expect(toggle).toContain("openIndex:");
     const compare = source.slice(source.indexOf("async function runLichessCompare("), source.indexOf("\n}\n", source.indexOf("async function runLichessCompare(")));
-    expect(compare).not.toContain("appState.replayFilter = null;");
+    expect(compare).not.toContain("replayState.replayFilter = null;");
   });
 });

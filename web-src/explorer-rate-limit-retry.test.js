@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { html } from "./html.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function compilePanel(deps) {
@@ -27,7 +28,7 @@ function harness(fetchStats) {
     html,
     document: { getElementById: () => rows },
     explorerDrawerOpen: () => true,
-    appState: { buildCurrentNodeId: "n", buildNodeById: new Map([["n", { fen: "fen-1" }]]) },
+    ...asSlices({ buildCurrentNodeId: "n", buildNodeById: new Map([["n", { fen: "fen-1" }]]) }), 
     paintInspectorScope: () => {},
     explorerEvalEngine: { sync: async () => {} },
     explorerModule: { ExplorerRateLimited },

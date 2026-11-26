@@ -54,7 +54,7 @@ import { clearTeamDetail, loadTeamsWithShell } from "./views/teams-loading.js";
 import { acceptRepertoireListing, finishRepertoireDelete, refreshRepertoireListing } from "./repertoire-listing.js";
 import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
 
-import { START_FEN, files, appState, boards, notices } from "./core/state.js";
+import { START_FEN, files, appState, analysisState, buildState, replayState, teamsState, trainState, boards, notices } from "./core/state.js";
 import { provideApp } from "./core/app-context.js";
 import { activeBoardController, activeViewName, api, currentOwnerId, postJson, setStatus, setStatusError } from "./core/api.js";
 import { applyPref, loadPrefs, pref, syncThemeToggle, toggleTheme } from "./core/prefs.js";
@@ -248,7 +248,7 @@ const {
 
 let workspaceUrlReady = false;
 let workspaceNavigationSeq = 0;
-let deferTrainEntry = false; function invalidateTrainEntries() { appState.trainEntryVersion = (appState.trainEntryVersion || 0) + 1; }
+let deferTrainEntry = false; function invalidateTrainEntries() { trainState.trainEntryVersion = (trainState.trainEntryVersion || 0) + 1; }
 // Set when the user picks a page while boot is still awaiting auth / the
 // workspace: restoreWorkspaceLocation must not then snap them back to the URL
 // the page loaded with (a Scout click during boot landed on the dashboard).
@@ -257,7 +257,8 @@ let navigatedDuringBoot = false;
 
 function syncWorkspaceUrl({ push = false } = {}) {
   if (!workspaceUrlReady || typeof window === "undefined") return;
-  const loc = workspaceLocationFromState(appState);
+  // The location reads the shell's view and the train, replay, build and analysis slices.
+  const { training, smart, trainResult, trainPendingRoute, trainingRepertoireId } = trainState, { buildLoading, buildLoadTarget, build } = buildState, loc = workspaceLocationFromState({ currentView: appState.currentView, training, smart, trainResult, trainPendingRoute, trainingRepertoireId, replaySection: replayState.replaySection, buildLoading, buildLoadTarget, build, analysisPly: analysisState.analysisPly, analysisNodePath: analysisState.analysisNodePath });
   const href = serializeWorkspaceLocation(loc, window.location.href);
   const current = window.location.pathname + window.location.search + window.location.hash;
   if (current === href) return;
@@ -310,10 +311,10 @@ async function restoreWorkspaceLocation() {
   const replayReturn = loadReturnState("replay");
   if (replayReturn) {
     if (typeof replayReturn.filter === "string" && replayReturn.filter) {
-      appState.replayFilter = replayReturn.filter;
+      replayState.replayFilter = replayReturn.filter;
     }
     if (Number.isFinite(replayReturn.openIndex)) {
-      appState.replayOpen = new Set([replayReturn.openIndex]);
+      replayState.replayOpen = new Set([replayReturn.openIndex]);
     }
   }
   // Only Build's link names the repertoire its editor shows; Train's names the
@@ -326,7 +327,7 @@ async function restoreWorkspaceLocation() {
       );
       if (seq === workspaceNavigationSeq) {
         await hydrateBuild(payload, payload.selected_node_id);
-        if (seq === workspaceNavigationSeq) appState.trainingRepertoireId = payload.repertoire_id;
+        if (seq === workspaceNavigationSeq) trainState.trainingRepertoireId = payload.repertoire_id;
       }
     } catch (_) {
       /* stale id — still restore the view */
@@ -337,20 +338,20 @@ async function restoreWorkspaceLocation() {
     return;
   }
   if (loc.view === "replay" && loc.replaySection) {
-    appState.replaySection = loc.replaySection;
+    replayState.replaySection = loc.replaySection;
   }
   deferTrainEntry = loc.view === "train"; switchView(loc.view, { fromUrl: true }); deferTrainEntry = false;
   if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply, loc.node);
   // #/train is Train Home; a link that names a repertoire opens its Due queue,
   // with that scope on the session's chip. A failed chunk leaves a retry instead of an inert skeleton.
-  if (loc.view === "train" && (loc.repertoireId || loc.trainMode === "smart")) appState.trainPendingRoute = { repertoireId: loc.repertoireId || null, trainMode: loc.trainMode || "smart" }; const enterTrain = async (stillActive) => { if (!stillActive()) return; (await loadTrainSession()).syncTrainControls(); if (!stillActive()) return; void loadTrainRepertoireOptions().catch(() => {}); if (appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId, isCurrent: stillActive }); };
+  if (loc.view === "train" && (loc.repertoireId || loc.trainMode === "smart")) trainState.trainPendingRoute = { repertoireId: loc.repertoireId || null, trainMode: loc.trainMode || "smart" }; const enterTrain = async (stillActive) => { if (!stillActive()) return; (await loadTrainSession()).syncTrainControls(); if (!stillActive()) return; void loadTrainRepertoireOptions().catch(() => {}); if (appState.signedIn && (loc.repertoireId || loc.trainMode === "smart")) await openTrain({ mode: loc.trainMode || "smart", repertoireId: loc.repertoireId, isCurrent: stillActive }); };
   if (loc.view === "train") await retryTrainEntry(() => appState.currentView === "train" && trainRouteMatches(loc), enterTrain);
 }
 
 // The repertoire Build shows, or the one it is loading (A → B → A while B is
 // still loading must open A again, not let B land).
 function shownOrLoadingRepertoireId() {
-  return appState.buildLoading ? appState.buildLoadTarget : appState.build?.repertoire_id;
+  return buildState.buildLoading ? buildState.buildLoadTarget : buildState.build?.repertoire_id;
 }
 
 // Recent analyses are the owner's: shown and (when open) loaded only while
@@ -374,7 +375,7 @@ function syncAnalysisHistoryDrawer({ entering = false } = {}) {
 async function handleWorkspacePopstate() {
   const loc = parseWorkspaceLocation(window.location.href);
   if (loc.view === "replay" && loc.replaySection) {
-    appState.replaySection = loc.replaySection;
+    replayState.replaySection = loc.replaySection;
   }
   // Back/forward (or an edited hash) naming another repertoire opens it: the
   // editor showing a different tree than its URL survived only until a reload.
@@ -383,7 +384,7 @@ async function handleWorkspacePopstate() {
     await editRepertoire(loc.repertoireId, null, { fromUrl: true });
     return;
   }
-  const trainMode = loc.trainMode || "smart", trainNeedsQueue = loc.view === "train" && appState.signedIn && (loc.repertoireId ? loc.repertoireId !== trainQueueRepertoireId(appState) || trainMode !== appState.trainMode : loc.trainMode === "smart" && (!appState.smart?.mixed || appState.trainResult)); deferTrainEntry = trainNeedsQueue; switchView(loc.view, { fromUrl: true }); deferTrainEntry = false;
+  const trainMode = loc.trainMode || "smart", trainNeedsQueue = loc.view === "train" && appState.signedIn && (loc.repertoireId ? loc.repertoireId !== trainQueueRepertoireId(trainState) || trainMode !== trainState.trainMode : loc.trainMode === "smart" && (!trainState.smart?.mixed || trainState.trainResult)); deferTrainEntry = trainNeedsQueue; switchView(loc.view, { fromUrl: true }); deferTrainEntry = false;
   // An unknown route lands on the Library: the address says so too.
   if (loc.view === "dashboard") syncWorkspaceUrl();
   // Back/forward to an Analyze position puts the board there, the same way boot does.
@@ -393,18 +394,18 @@ async function handleWorkspacePopstate() {
   if (loc.view === "analyze") {
     const current = selectedNodePath();
     if (loc.node && loc.node !== current) await restoreAnalysisNodePath(loc.node);
-    else if (!loc.node && loc.ply && loc.ply !== appState.analysisPly) await showAnalysisPly(loc.ply);
+    else if (!loc.node && loc.ply && loc.ply !== analysisState.analysisPly) await showAnalysisPly(loc.ply);
   }
-  if (loc.view === "train" && !loc.repertoireId && !loc.trainMode) { invalidateTrainEntries(); delete appState.trainPendingRoute; }
-  if (trainNeedsQueue) await retryTrainEntry(() => appState.currentView === "train" && trainRouteMatches(loc), async (stillActive) => { void loadTrainRepertoireOptions().catch(() => {}); const opening = openTrain({ mode: trainMode, repertoireId: loc.repertoireId, isCurrent: stillActive }), entryVersion = appState.trainEntryVersion; if ((await opening) === false && entryVersion === appState.trainEntryVersion && stillActive()) syncWorkspaceUrl(); });
+  if (loc.view === "train" && !loc.repertoireId && !loc.trainMode) { invalidateTrainEntries(); delete trainState.trainPendingRoute; }
+  if (trainNeedsQueue) await retryTrainEntry(() => appState.currentView === "train" && trainRouteMatches(loc), async (stillActive) => { void loadTrainRepertoireOptions().catch(() => {}); const opening = openTrain({ mode: trainMode, repertoireId: loc.repertoireId, isCurrent: stillActive }), entryVersion = trainState.trainEntryVersion; if ((await opening) === false && entryVersion === trainState.trainEntryVersion && stillActive()) syncWorkspaceUrl(); });
 }
 
 function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   const next = section === "scout" ? "scout" : "games";
   // Games ↔ Scout is a page change for the user even though both live in the
   // replay view: an error from one must not follow them to the other.
-  if (appState.replaySection && appState.replaySection !== next) notices.clearStatusOnNavigate();
-  appState.replaySection = next;
+  if (replayState.replaySection && replayState.replaySection !== next) notices.clearStatusOnNavigate();
+  replayState.replaySection = next;
   resetViewScroll();
   document.querySelectorAll("[data-replay-panel]").forEach((panel) => {
     const active = panel.dataset.replayPanel === next;
@@ -450,7 +451,7 @@ const VIEW_TITLES = {
 // title carries it for tabs, history and screen readers.
 function syncPageTitle() {
   const page = appState.currentView === "replay"
-    ? (appState.replaySection === "scout" ? "Scout" : "Games")
+    ? (replayState.replaySection === "scout" ? "Scout" : "Games")
     : VIEW_TITLES[appState.currentView] || "";
   document.title = page ? `${page} · PrepForge Chess` : "PrepForge Chess";
   syncViewHeads();
@@ -461,7 +462,7 @@ function syncPageTitle() {
 // Empty while no game is loaded, so nothing stands in the bar.
 
 function syncAnalysisGameName() {
-  setBoardCaption(analysisGameName(appState, document.getElementById("pgn-input")?.value || ""));
+  setBoardCaption(analysisGameName(analysisState, document.getElementById("pgn-input")?.value || ""));
 }
 
 // Per-view chrome that lives inside the pages: Analyze's game on the board, the
@@ -473,7 +474,7 @@ function syncViewHeads() {
   if (appState.currentView === "analyze") syncAnalysisGameName();
   const nameEl = document.getElementById("build-rep-name");
   if (!nameEl) return;
-  const build = appState.build;
+  const build = buildState.build;
   if (!build || isBuildReadOnly()) { nameEl.title = ""; return; }
   const tree = getBuildTree(build);
   let title = buildHeadTitles.get(tree);
@@ -490,9 +491,9 @@ function switchView(name, { fromUrl = false } = {}) {
   workspaceNavigationSeq += 1;
   const previousView = appState.currentView;
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
-  if (name !== "train" || name === "train" && !appState.trainEntering) {
+  if (name !== "train" || name === "train" && !trainState.trainEntering) {
     invalidateTrainEntries();
-    delete appState.trainPendingRoute;
+    delete trainState.trainPendingRoute;
     cancelActiveTrainStart();
   }
   if (appState.currentView === "teams" && name !== "teams") teamsLazy.current?.invalidateRequests();
@@ -505,17 +506,17 @@ function switchView(name, { fromUrl = false } = {}) {
   noteLichessActivity();
   document.querySelectorAll(".tab").forEach((button) => {
     const replayMatch = name === "replay"
-      ? button.dataset.replaySection === (appState.replaySection || "games")
+      ? button.dataset.replaySection === (replayState.replaySection || "games")
       : !button.dataset.replaySection;
     const active = button.dataset.view === name && replayMatch;
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-current", active ? "page" : "false");
   });
-  paintPhoneTabs(name, appState.replaySection);
+  paintPhoneTabs(name, replayState.replaySection);
   syncPageTitle();
   swapView(document.querySelectorAll(".view"), `view-${name}`, { animate: !bootHeld, onSwap: resetViewScroll });
   if (!fromUrl) syncWorkspaceUrl({ push: true });
-  if (name === "replay") setReplaySection(appState.replaySection, { syncUrl: false });
+  if (name === "replay") setReplaySection(replayState.replaySection, { syncUrl: false });
   if (name === "analyze") {
     preloadCoach().catch(() => {});
     preloadAnalyzeView().catch(() => {});
@@ -525,7 +526,7 @@ function switchView(name, { fromUrl = false } = {}) {
   }
   if (name === "train") {
     preloadTrainView().catch(() => {});
-    if (!deferTrainEntry && !appState.trainEntering) void retryTrainEntry(() => appState.currentView === "train", async () => { await loadTrainRepertoireOptions(); const loc = parseWorkspaceLocation(window.location.href), mode = loc.trainMode || "smart", needsQueue = loc.repertoireId ? loc.repertoireId !== trainQueueRepertoireId(appState) || mode !== appState.trainMode : loc.trainMode === "smart" && (!appState.smart?.mixed || appState.trainResult); if (appState.currentView === "train" && appState.signedIn && needsQueue) await openTrain({ mode, repertoireId: loc.repertoireId }); });
+    if (!deferTrainEntry && !trainState.trainEntering) void retryTrainEntry(() => appState.currentView === "train", async () => { await loadTrainRepertoireOptions(); const loc = parseWorkspaceLocation(window.location.href), mode = loc.trainMode || "smart", needsQueue = loc.repertoireId ? loc.repertoireId !== trainQueueRepertoireId(trainState) || mode !== trainState.trainMode : loc.trainMode === "smart" && (!trainState.smart?.mixed || trainState.trainResult); if (appState.currentView === "train" && appState.signedIn && needsQueue) await openTrain({ mode, repertoireId: loc.repertoireId }); });
   }
   if (name === "replay") {
     preloadReplayView().catch(() => {});
@@ -588,10 +589,10 @@ async function editRepertoire(repertoireId, nodeId = null, { fromUrl = false } =
   // The Repertoire view opens NOW with a skeleton; the tree fills in when the
   // load lands (it used to sit on the previous page for seconds).
   const loadSeq = ++buildLoadSeq;
-  appState.buildLoadRequest?.abort();
+  buildState.buildLoadRequest?.abort();
   // The repertoire this load opens. Until it lands appState.build is still the
   // previous tree, so a route back to that tree must not read as "already open".
-  appState.buildLoadTarget = repertoireId;
+  buildState.buildLoadTarget = repertoireId;
   setBuildLoading(true);
   if (!fromUrl) syncWorkspaceUrl({ push: true });
   let request = null;
@@ -600,7 +601,7 @@ async function editRepertoire(repertoireId, nodeId = null, { fromUrl = false } =
     if (loadSeq !== buildLoadSeq) return;
     appState.sharedToken = null;
     request = new AbortController();
-    appState.buildLoadRequest = request;
+    buildState.buildLoadRequest = request;
     // Fetch the tree renderer alongside the repertoire, not after it arrives.
     ensureMoveTreeRenderer().catch(() => {});
     const payload = await api(
@@ -612,7 +613,7 @@ async function editRepertoire(repertoireId, nodeId = null, { fromUrl = false } =
     await hydrateBuild(payload, target || payload.selected_node_id, { revealSelection: !!target });
     if (loadSeq !== buildLoadSeq) return;
     setBuildLoading(false, { restore: false });
-    appState.trainingRepertoireId = payload.repertoire_id;
+    trainState.trainingRepertoireId = payload.repertoire_id;
     // The rail remains usable during loading; the opening navigation already
     // owns the URL, so a late response must not rewrite it.
     updateBuildReadOnlyUi(payload);
@@ -621,13 +622,13 @@ async function editRepertoire(repertoireId, nodeId = null, { fromUrl = false } =
     setBuildLoading(false);
     const loc = typeof window === "undefined"
       ? {} : parseWorkspaceLocation(window.location.href);
-    if (appState.build?.repertoire_id && appState.currentView === "build" && loc.view === "build"
+    if (buildState.build?.repertoire_id && appState.currentView === "build" && loc.view === "build"
       && String(loc.repertoireId) === String(repertoireId)) {
       syncWorkspaceUrl();
     }
     setStatusError(error.message);
   } finally {
-    if (appState.buildLoadRequest === request) appState.buildLoadRequest = null;
+    if (buildState.buildLoadRequest === request) buildState.buildLoadRequest = null;
   }
 }
 
@@ -635,7 +636,7 @@ async function editRepertoire(repertoireId, nodeId = null, { fromUrl = false } =
 // the opening navigation owns any history write) and show a skeleton in place
 // of the previous tree. Turning it off restores whatever is actually loaded.
 function setBuildLoading(on, { restore = true } = {}) {
-  appState.buildLoading = on;
+  buildState.buildLoading = on;
   const view = document.getElementById("view-build");
   if (view) {
     view.inert = on;
@@ -644,7 +645,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   }
   if (!on) {
     if (!restore) return;
-    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
     if (node && boards.build) {
       const info = localBoardInfo(node.fen);
       boards.build.setPosition({ fen: node.fen, legalMoves: info.legal_moves, lastMove: node.uci });
@@ -730,7 +731,7 @@ async function openShareDialog(repertoireId) {
   const { createShareDialogUi, runShareDialog } = await import("./views/share-dialog.js");
   const meta = (appState.repertoireList || []).find((r) => String(r.id) === String(repertoireId));
   const changed = await runShareDialog(repertoireId, {
-    name: meta?.name || appState.build?.name || "Repertoire",
+    name: meta?.name || buildState.build?.name || "Repertoire",
     api,
     postJson,
     origin: window.location.origin,
@@ -739,8 +740,8 @@ async function openShareDialog(repertoireId) {
     setStatus,
     setStatusError,
     loadTeams: async () => {
-      if (!appState.teams.length) appState.teams = (await api("/api/teams")).teams || [];
-      return appState.teams;
+      if (!teamsState.teams.length) teamsState.teams = (await api("/api/teams")).teams || [];
+      return teamsState.teams;
     },
     ui: createShareDialogUi(),
   });
@@ -792,15 +793,15 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       // Its queued edits go too, tombstoned so the durable outbox can't bring
       // them back. This happens at delete time (not commit time) so the doomed
       // tree can't keep taking edits.
-      const doomedAdds = appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repKey));
-      const doomedDeletes = appState.buildPendingDeletes.filter((entry) => buildOpMatchesRepertoire(entry, repKey));
-      appState.buildPending = appState.buildPending.filter((m) => !doomedAdds.includes(m));
-      appState.buildPendingDeletes = appState.buildPendingDeletes.filter((entry) => !doomedDeletes.includes(entry));
+      const doomedAdds = buildState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repKey));
+      const doomedDeletes = buildState.buildPendingDeletes.filter((entry) => buildOpMatchesRepertoire(entry, repKey));
+      buildState.buildPending = buildState.buildPending.filter((m) => !doomedAdds.includes(m));
+      buildState.buildPendingDeletes = buildState.buildPendingDeletes.filter((entry) => !doomedDeletes.includes(entry));
       void persistOutbox({ build: doomedAdds.map(buildAddId), deletes: doomedDeletes.map(buildDeleteId) });
-      if (String(appState.trainingRepertoireId) === repKey) {
-        appState.trainingRepertoireId = null;
+      if (String(trainState.trainingRepertoireId) === repKey) {
+        trainState.trainingRepertoireId = null;
       }
-      const wasOpen = !!appState.build && String(appState.build.repertoire_id) === repKey;
+      const wasOpen = !!buildState.build && String(buildState.build.repertoire_id) === repKey;
       if (wasOpen) closeOpenBuild();
       await refreshDashboardRepertoires();
       showUndoToast({
@@ -811,7 +812,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
           setStatus("Delete undone");
           refreshDashboardRepertoires();
           // Put it back where it was: the Repertoire page still has nothing open.
-          if (wasOpen && !appState.build && appState.currentView === "build") void editRepertoire(repertoireId);
+          if (wasOpen && !buildState.build && appState.currentView === "build") void editRepertoire(repertoireId);
         },
         onCommit: () => {
           // keepalive so a commit forced by beforeunload still reaches the server.
@@ -851,12 +852,12 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
 // The open repertoire went away (deleted): Build shows the empty start position,
 // not the deleted tree's name, board and legal moves under "No repertoire".
 function closeOpenBuild() {
-  appState.buildUndoDeletes = new Set();
-  appState.buildUndoCommitByMove = new Map();
-  appState.buildSyncState = "saved";
-  appState.build = null;
-  appState.buildNodeById = new Map();
-  appState.buildCurrentNodeId = null;
+  buildState.buildUndoDeletes = new Set();
+  buildState.buildUndoCommitByMove = new Map();
+  buildState.buildSyncState = "saved";
+  buildState.build = null;
+  buildState.buildNodeById = new Map();
+  buildState.buildCurrentNodeId = null;
   if (boards.build) {
     boards.build.setPosition({ fen: START_FEN, legalMoves: localBoardInfo(START_FEN).legal_moves, lastMove: null });
     boards.build.setAnnotations([], []);
@@ -874,7 +875,7 @@ function closeOpenBuild() {
 
 // F-03: "Retry save" affordance for a finished-but-unsaved analysis.
 function showAnalysisRetrySave(checkpoint, message) {
-  appState.analysisRetryCheckpoint = checkpoint;
+  analysisState.analysisRetryCheckpoint = checkpoint;
   const bar = document.getElementById("analysis-retry-save");
   if (!bar) return;
   const text = document.getElementById("analysis-retry-save-text");
@@ -899,9 +900,9 @@ function hideAnalysisRetrySave() {
 async function refreshAnalyzeRecovery() {
   const owner = currentOwnerId();
   const generation = appState.ownerGeneration;
-  const seq = appState.analysisRecoverySeq = (appState.analysisRecoverySeq || 0) + 1;
-  const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration && seq === appState.analysisRecoverySeq;
-  let checkpoint = appState.analysisUnsavedCheckpoint?.ownerId === owner ? appState.analysisUnsavedCheckpoint : await loadCheckpoint(null, owner);
+  const seq = analysisState.analysisRecoverySeq = (analysisState.analysisRecoverySeq || 0) + 1;
+  const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration && seq === analysisState.analysisRecoverySeq;
+  let checkpoint = analysisState.analysisUnsavedCheckpoint?.ownerId === owner ? analysisState.analysisUnsavedCheckpoint : await loadCheckpoint(null, owner);
   while (checkpoint && isCurrent()) {
     if (!checkpoint.serverSaved && !checkpoint.inMemoryOnly) {
       try {
@@ -926,7 +927,7 @@ async function refreshAnalyzeRecovery() {
     }
   }
   if (isCurrent()) {
-    appState.analysisRetryCheckpoint = null;
+    analysisState.analysisRetryCheckpoint = null;
     hideAnalysisRetrySave();
   }
 }
@@ -958,7 +959,7 @@ const showAnalysisPly = viaAnalyzeSession("showAnalysisPly");
 // Restoring the Analyze position a link or session names lives in its own module
 // (controllers/analyze-restore.js); this binds it to the session's entry points.
 const { restoreAnalyzeSession, restoreAnalysisNodePath } = createAnalyzeRestore({
-  appState, loadReturnState, loadPgnIntoAnalyze, showAnalysisPly,
+  analysisState, loadReturnState, loadPgnIntoAnalyze, showAnalysisPly,
   selectAnalysisNodePath, setStatus, recallAnalysis: viaAnalyzeEntry("recallAnalysis"),
   rebuildAnalysisVariations: viaAnalyzeSession("rebuildAnalysisVariations"),
 });
@@ -987,7 +988,7 @@ async function ensureBuildView() {
   const [mod] = await Promise.all([preloadBuildView(), loadBuildSession()]);
   if (!buildView) {
     setBuildView(mod.createBuildView({
-      appState,
+      appState, buildState,
       boards,
       getMoveTreeRenderer: () => analyzeLoader.moveTreeRenderer,
       ensureMoveTreeRenderer,
@@ -1022,8 +1023,8 @@ function renderBuildRepHeader() {
 function paintBuildEmpty() {
   const empty = document.getElementById("build-empty");
   const sidebar = document.getElementById("build-sidebar");
-  if (empty) empty.hidden = !!appState.build || appState.buildLoading;
-  if (sidebar) sidebar.classList.toggle("is-empty", !appState.build && !appState.buildLoading);
+  if (empty) empty.hidden = !!buildState.build || buildState.buildLoading;
+  if (sidebar) sidebar.classList.toggle("is-empty", !buildState.build && !buildState.buildLoading);
 }
 
 // The shell's own entry points the lazy controllers call (core/app-context.js).
@@ -1052,15 +1053,15 @@ function loadTrainSession() {
   return trainSessionLoading;
 }
 function cancelActiveTrainStart() {
-  const canceledLucky = cancelLuckyDiscovery(appState); if (appState.play?.active) return;
-  appState.playStartToken = (appState.playStartToken || 0) + 1; if (!canceledLucky && !appState.trainStarting && !appState.playStarting) return;
-  if (appState.playStarting) { appState.playStarting = null; boards.train?.setPremove(null); } appState.trainStarting = false; appState.trainStartToken = null; setTrainBanner("move", "", "");
+  const canceledLucky = cancelLuckyDiscovery(trainState); if (trainState.play?.active) return;
+  trainState.playStartToken = (trainState.playStartToken || 0) + 1; if (!canceledLucky && !trainState.trainStarting && !trainState.playStarting) return;
+  if (trainState.playStarting) { trainState.playStarting = null; boards.train?.setPremove(null); } trainState.trainStarting = false; trainState.trainStartToken = null; setTrainBanner("move", "", "");
   void trainSessionLoading?.then((train) => train.syncTrainControls()).catch(() => {});
 }
 const viaTrainSession = (name) => (...args) => loadTrainSession().then((train) => train[name](...args));
 const loadTrainRepertoireOptions = viaTrainSession("loadTrainRepertoireOptions");
 const onFeelingLucky = viaTrainSession("onFeelingLucky");
-const openTrain = (options = {}) => { invalidateTrainEntries(); const seq = appState.trainEntryVersion, mode = options.mode || "smart", intent = mode === "smart" || mode === "all_lines" ? { repertoireId: options.repertoireId || null, trainMode: mode } : null; if (intent) appState.trainPendingRoute = intent; const args = { ...options, isCurrent: options.isCurrent ? () => options.isCurrent() && appState.trainEntryVersion === seq : () => appState.trainEntryVersion === seq }; return loadTrainSession().then((train) => (args.isCurrent() ? train.openTrain(args) : Promise.resolve(false)).finally(() => { if (intent && appState.trainPendingRoute === intent) delete appState.trainPendingRoute; })); };
+const openTrain = (options = {}) => { invalidateTrainEntries(); const seq = trainState.trainEntryVersion, mode = options.mode || "smart", intent = mode === "smart" || mode === "all_lines" ? { repertoireId: options.repertoireId || null, trainMode: mode } : null; if (intent) trainState.trainPendingRoute = intent; const args = { ...options, isCurrent: options.isCurrent ? () => options.isCurrent() && trainState.trainEntryVersion === seq : () => trainState.trainEntryVersion === seq }; return loadTrainSession().then((train) => (args.isCurrent() ? train.openTrain(args) : Promise.resolve(false)).finally(() => { if (intent && trainState.trainPendingRoute === intent) delete trainState.trainPendingRoute; })); };
 const submitTrainingMove = viaTrainSession("submitTrainingMove");
 
 // ----- Sync indicator (Google-Docs style chip by the Build board label) -------
@@ -1127,8 +1128,8 @@ function bindDropZone(element, onFile) {
 async function fillPgnInputFromFile(file) {
   const sourceSeq = invalidateAnalysisSource();
   const ownerId = currentOwnerId();
-  appState.analysisFileSeq = sourceSeq;
-  const isCurrent = () => appState.analysisFileSeq === sourceSeq && ownerId === currentOwnerId();
+  analysisState.analysisFileSeq = sourceSeq;
+  const isCurrent = () => analysisState.analysisFileSeq === sourceSeq && ownerId === currentOwnerId();
   try {
     const text = await file.text();
     if (!isCurrent()) return;
@@ -1145,10 +1146,10 @@ async function fillPgnInputFromFile(file) {
 }
 
 function captureBuildContext() {
-  const repertoireId = appState.build?.repertoire_id;
+  const repertoireId = buildState.build?.repertoire_id;
   const seq = buildLoadSeq;
   const owner = currentOwnerId();
-  return () => repertoireId === appState.build?.repertoire_id && seq === buildLoadSeq && owner === currentOwnerId();
+  return () => repertoireId === buildState.build?.repertoire_id && seq === buildLoadSeq && owner === currentOwnerId();
 }
 
 // Right pops its tick, wrong nudges, a hint only brings its line in.
@@ -1160,8 +1161,8 @@ function setTrainBanner(state, title, sub) {
   const titleEl = document.getElementById("train-banner-title");
   const subEl = document.getElementById("train-banner-sub");
   // The coach's moves peek (Train never plays them); "1...c6" reads along the card's line.
-  const path = walkPathText(appState.smart?.prompt?.target?.line);
-  const ctx = { fen: appState.smart?.prompt?.fen_before, at: (ply) => (ply ? path?.plies[ply - 1]?.fen : START_FEN) };
+  const path = walkPathText(trainState.smart?.prompt?.target?.line);
+  const ctx = { fen: trainState.smart?.prompt?.fen_before, at: (ply) => (ply ? path?.plies[ply - 1]?.fen : START_FEN) };
   titleEl.innerHTML = moveTextHtml(title || "", { ...ctx, pawns: true });
   titleEl.title = title || "";
   subEl.innerHTML = moveTextHtml(sub || "", ctx);
@@ -1264,7 +1265,7 @@ function bindEvents() {
   // Static host in the Build panel, so one binding at init covers both states.
   document.getElementById("shared-fork-btn")?.addEventListener("click", forkReadableRepertoire);
   document.getElementById("shared-train-btn")?.addEventListener("click",
-    () => { if (appState.build?.repertoire_id) void trainRepertoire(appState.build.repertoire_id); });
+    () => { if (buildState.build?.repertoire_id) void trainRepertoire(buildState.build.repertoire_id); });
   // Start is data-only. The view and its stylesheet are already loading because
   // the Scout section is on screen; this guard covers the click that lands in the
   // few ms before bindControls() attaches the real handler, so Start is never
@@ -1628,7 +1629,7 @@ async function init() {
     boardId: "train-board",
     overlayId: "train-annotations",
     onMove: (moveUci) => submitTrainingMove(moveUci),
-    onCancel: () => { if (appState.play) appState.play.premove = null; },
+    onCancel: () => { if (trainState.play) trainState.play.premove = null; },
   });
   notices.bind();
   document.getElementById("coach-maia")?.addEventListener("click", (event) => {
@@ -1793,7 +1794,7 @@ const PENDING_ACTION_HANDLERS = {
       parseWorkspaceLocation(window.location.href).ply ||
       (pending.route ? parseWorkspaceLocation(`/${pending.route}`).ply : null);
     return runAnalysis({ mode: pending.data.mode, selectIndex: pending.data.selectIndex }).then(async (result) => {
-      if (wantPly && appState.analysis && !(appState.analysisPly > 0)) await showAnalysisPly(wantPly);
+      if (wantPly && analysisState.analysis && !(analysisState.analysisPly > 0)) await showAnalysisPly(wantPly);
       return result;
     });
   },
@@ -1920,7 +1921,7 @@ async function loadSignedInWorkspace() {
   appState.syncPausedForAuth = false;
   const restored = await restoreOutbox();
   if (!isCurrent()) return;
-  if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+  if (buildState.buildPending.length || buildState.buildPendingDeletes.length) {
     setBuildSync("dirty");
     scheduleBuildFlush();
   }

@@ -1,4 +1,4 @@
-import { appState } from "./core/state.js";
+import { appState, buildState, teamsState } from "./core/state.js";
 import { api, postJson, setStatus, setStatusError } from "./core/api.js";
 import { showConfirmModal } from "./core/modals.js";
 import { repertoireLimitMessage } from "./repertoire-limit.js";
@@ -87,7 +87,7 @@ export async function maybeHandleJoinLink() {
   }
   const team = result.team;
   setStatus(result.joined ? `Joined ${team.name}` : `You're already in ${team.name}`);
-  appState.selectedTeamId = team.id;
+  teamsState.selectedTeamId = team.id;
   switchView("teams");
   await loadTeams();
   return true;
@@ -128,8 +128,8 @@ export function renderReadOnlyBanner(payload) {
 
 export async function forkReadableRepertoire() {
   const viaToken = !!appState.sharedToken;
-  const viaGrant = !!appState.build && buildRole(appState.build) !== "owner";
-  if ((!viaToken && !viaGrant) || !canCopy(buildRole(appState.build))) return;
+  const viaGrant = !!buildState.build && buildRole(buildState.build) !== "owner";
+  if ((!viaToken && !viaGrant) || !canCopy(buildRole(buildState.build))) return;
   if (!requireSignIn("Sign in (or create an account) to copy this repertoire")) return;
   const full = repertoireLimitMessage();
   if (full) {
@@ -143,7 +143,7 @@ export async function forkReadableRepertoire() {
           {},
         )
       : await postJson("/api/repertoires/fork", {
-          repertoire_id: appState.build.repertoire_id,
+          repertoire_id: buildState.build.repertoire_id,
         });
     appState.sharedToken = null;
     removeReadOnlyBanner();

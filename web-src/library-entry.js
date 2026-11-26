@@ -1,5 +1,5 @@
 import { html } from "./html.js";
-import { appState } from "./core/state.js";
+import { appState, buildState, teamsState, trainState } from "./core/state.js";
 import { api, postJson, setStatus, setStatusError } from "./core/api.js";
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
 import { repertoireLimitMessage } from "./repertoire-limit.js";
@@ -41,7 +41,7 @@ export async function ensureDashboardView() {
   const mod = await preloadDashboardView();
   if (!dashboardView) {
     dashboardView = mod.createDashboardView({
-      appState,
+      appState, buildState, teamsState, trainState,
       api,
       postJson,
       setStatus,
@@ -115,7 +115,7 @@ export async function importRepertoireFromPgnText(pgnText, { name, color }) {
     color,
   });
   await hydrateBuild(payload, payload.selected_node_id);
-  appState.trainingRepertoireId = payload.repertoire_id;
+  trainState.trainingRepertoireId = payload.repertoire_id;
   await refreshDashboardRepertoires();
   return payload;
 }

@@ -1,4 +1,4 @@
-import { appState } from "./core/state.js";
+import { appState, buildState } from "./core/state.js";
 import { activeViewName, api, currentOwnerId } from "./core/api.js";
 import { acceptRepertoireListing, fetchRepertoireListing } from "./repertoire-listing.js";
 import { isBuildReadOnly } from "./build-entry.js";
@@ -26,7 +26,7 @@ export function createPalette(deps) {
 // "Add note" acts on the shown move of a repertoire open for editing in Repertoire.
 function noteTarget() {
   if (activeViewName() !== "build" || isBuildReadOnly()) return null;
-  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
   return node?.parent_id ? node : null;
 }
 

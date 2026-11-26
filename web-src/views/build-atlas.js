@@ -125,8 +125,8 @@ export function atlasScoreText(result) {
   return result?.score == null ? "—" : percent(result.score);
 }
 
-export function openBuildAtlas({ appState }) {
-  const build = appState.build;
+export function openBuildAtlas({ appState, buildState }) {
+  const build = buildState.build;
   if (!build) return;
   const root = build.nodes.find((node) => !node.parent_id);
   if (!root) return;
@@ -156,7 +156,7 @@ export function openBuildAtlas({ appState }) {
       content.innerHTML = html`<div class="atlas-portrait"><section class="atlas-index" aria-label="Atlas preparation index" title="${error || "Calibrated estimate of supported opponent plans and opening handover, based on move-content review of 38 studies. Consistency and Ease describe learning load. Unrecorded moves and author intent remain unknown; this is not engine strength."}"><span class="atlas-kicker" role="status">${pending ? "Calculating…" : error ? "Unavailable" : "Preparation"}</span><div class="atlas-index-number"><strong>${atlasScoreText(profile)}</strong><span>/ 100</span></div><div class="atlas-index-rule"><i style="--value:${profile.score ?? 0}%"></i></div></section>
       <div class="atlas-seal">${profileGlyph(profile.facets.map((facet) => facet.value))}</div>
       <section class="atlas-facets" aria-label="Preparation profile">${profile.facets.map((facet, i) => html`<div class="atlas-facet" title="${facet.definition}"><span class="atlas-facet-id">${numerals[i]}</span><span>${facet.label}</span><b>${percent(facet.value)}</b><div class="atlas-facet-track"><i style="--value:${facet.value ?? 0}%;--delay:${i * 70}ms"></i></div></div>`)}</section></div>
-      <section class="atlas-map" aria-label="Repertoire routes"><div class="atlas-section-head"><h4>Lineage</h4><span>${String(data.leaves.length).padStart(2, "0")} ${data.leaves.length === 1 ? "route" : "routes"}</span></div>${routeGlyph(data.nodes, scope, appState.buildCurrentNodeId)}</section>
+      <section class="atlas-map" aria-label="Repertoire routes"><div class="atlas-section-head"><h4>Lineage</h4><span>${String(data.leaves.length).padStart(2, "0")} ${data.leaves.length === 1 ? "route" : "routes"}</span></div>${routeGlyph(data.nodes, scope, buildState.buildCurrentNodeId)}</section>
       <footer class="atlas-foot"><span><b>${moveCount}</b> moves</span><span><b>${data.forks}</b> forks</span><span><b>${data.deepest}</b> depth</span>${personal ? html`<span class="atlas-imprint" title="Personal training imprint"><span>Imprint</span><b>${data.score ?? "—"}</b></span>` : ""}</footer>`;
     };
     render(null);

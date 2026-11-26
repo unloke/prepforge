@@ -5,8 +5,8 @@
 import { pgnHeaderTags } from "./analyze-pgn.js";
 import { countOf } from "./plural.js";
 
-export function analysisGameName(appState, pgnText) {
-  const analysis = appState?.analysis;
+export function analysisGameName(analysisState, pgnText) {
+  const analysis = analysisState?.analysis;
   // Only name a game the board actually shows: the prefilled demo PGN sitting
   // unloaded in the source box must not title an empty board.
   const loaded = !!(analysis && ((analysis.moves && analysis.moves.length) || analysis.initialFen));

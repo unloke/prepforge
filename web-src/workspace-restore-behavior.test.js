@@ -4,6 +4,7 @@ import { formatWorkspaceHash, parseWorkspaceLocation, trainQueueRepertoireId, wo
 import { appSource } from "./test-app-source.js";
 import { parsePgn } from "./analyze-pgn.js";
 import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const restore = source.slice(source.indexOf("async function restoreWorkspaceLocation()"), source.indexOf("\nfunction setReplaySection("));
@@ -16,16 +17,15 @@ const restoreFactory = source
   .replace("export ", "");
 
 function runtime(extra = {}) {
-  const state = extra.appState || { signedIn: true, currentView: "dashboard" };
+  const state = extra.appState || { signedIn: true, currentView: "dashboard" }, slices = asSlices(state);
   const context = {
     navigatedDuringBoot: false, workspaceNavigationSeq: 0, trainRouteSeq: 0, deferTrainEntry: false,
-    appState: state,
     window: { location: { href: "http://local/#/analyze" } },
     parseWorkspaceLocation, loadReturnState: () => null,
     switchView: vi.fn((view) => { state.currentView = view; }), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(async () => {}),
     loadTrainSession: vi.fn(async () => ({ syncTrainControls: vi.fn() })),
     loadTrainRepertoireOptions: vi.fn(async () => {}), retryTrainEntry, trainRouteMatches: null, invalidateTrainEntries: vi.fn(),
-    api: vi.fn(), hydrateBuild: vi.fn(), showAnalysisPly: vi.fn(), ...extra,
+    api: vi.fn(), hydrateBuild: vi.fn(), showAnalysisPly: vi.fn(), ...extra, ...slices,
   };
   context.trainRouteMatches = (loc) => trainRouteMatches(loc, context.window.location.href);
   context.ANALYSIS_ROOT_PATH = "root";
@@ -33,7 +33,7 @@ function runtime(extra = {}) {
   runInNewContext(`${restore}\n${restoreFactory}\n`
     + "globalThis.__makeRestore = createAnalyzeRestore;\nglobalThis.run = restoreWorkspaceLocation;", context);
   Object.assign(context, context.__makeRestore({
-    appState: context.appState, loadReturnState: context.loadReturnState,
+    ...asSlices(context.appState), loadReturnState: context.loadReturnState,
     loadPgnIntoAnalyze: context.loadPgnIntoAnalyze, showAnalysisPly: context.showAnalysisPly,
     selectAnalysisNodePath: context.selectAnalysisNodePath || (async () => false),
     setStatus: context.setStatus || vi.fn(),
@@ -49,8 +49,16 @@ it("restores the requested URL view", async () => {
   expect(ctx.switchView).toHaveBeenCalledWith("analyze", { fromUrl: true });
 });
 
+it("restores the replay section a Scout link names", async () => {
+  const state = { signedIn: true, currentView: "dashboard", replaySection: "games" };
+  const ctx = runtime({ appState: state, window: { location: { href: "http://local/#/scout" } } });
+  await ctx.run();
+  expect(ctx.replayState.replaySection).toBe("scout");
+  expect(ctx.switchView).toHaveBeenCalledWith("replay", { fromUrl: true });
+});
+
 it("keeps a user's navigation during boot and re-enters that page without starting anything", async () => {
-  const ctx = runtime({ navigatedDuringBoot: true, appState: { signedIn: true, currentView: "train", trainMode: "smart" } });
+  const ctx = runtime({ navigatedDuringBoot: true, ...asSlices({ signedIn: true, currentView: "train", trainMode: "smart" }),  });
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("train");
   expect(ctx.openTrain).not.toHaveBeenCalled();
@@ -59,7 +67,7 @@ it("keeps a user's navigation during boot and re-enters that page without starti
 it("opens the Due queue of the repertoire the URL names", async () => {
   const ctx = runtime({
     window: { location: { href: "http://local/#/train?rep=r2" } },
-    appState: { signedIn: true, currentView: "dashboard", trainMode: "smart" },
+    ...asSlices({ signedIn: true, currentView: "dashboard", trainMode: "smart" }), 
   });
   await ctx.run();
   expect(ctx.openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: "r2" }));
@@ -68,7 +76,7 @@ it("opens the Due queue of the repertoire the URL names", async () => {
 it("#/train is Train Home: nothing starts by itself", async () => {
   const ctx = runtime({
     window: { location: { href: "http://local/#/train" } },
-    appState: { signedIn: true, currentView: "dashboard", trainMode: "smart" },
+    ...asSlices({ signedIn: true, currentView: "dashboard", trainMode: "smart" }), 
   });
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
@@ -78,7 +86,7 @@ it("#/train is Train Home: nothing starts by itself", async () => {
 it("a guest's Train link only opens Train", async () => {
   const ctx = runtime({
     window: { location: { href: "http://local/#/train?rep=r2" } },
-    appState: { signedIn: false, currentView: "dashboard" },
+    ...asSlices({ signedIn: false, currentView: "dashboard" }), 
   });
   await ctx.run();
   expect(ctx.openTrain).not.toHaveBeenCalled();
@@ -92,8 +100,8 @@ it("does not navigate after a newer navigation supersedes a pending load", async
 });
 
 function popstateRuntime(extra = {}) {
+  const slices = asSlices(extra.appState || { signedIn: true, currentView: "train", trainMode: "smart" });
   const context = {
-    appState: { signedIn: true, currentView: "train", trainMode: "smart" },
     window: { location: { href: "http://local/#/train?rep=r2" } },
     parseWorkspaceLocation,
     trainQueueRepertoireId,
@@ -103,7 +111,7 @@ function popstateRuntime(extra = {}) {
     selectedNodePath: () => null,
     showAnalysisPly: vi.fn(),
     restoreAnalysisNodePath: vi.fn(async () => {}),
-    ...extra,
+    ...extra, ...slices,
   };
   context.trainRouteMatches = (loc) => trainRouteMatches(loc, context.window.location.href);
   runInNewContext(`${popstate}\nglobalThis.run = handleWorkspacePopstate;`, context);
@@ -113,7 +121,7 @@ function popstateRuntime(extra = {}) {
 it("restores a Build popstate without pushing another history entry", async () => {
   const editRepertoire = vi.fn(async () => {});
   const ctx = popstateRuntime({
-    appState: { signedIn: true, currentView: "dashboard" },
+    ...asSlices({ signedIn: true, currentView: "dashboard" }), 
     window: { location: { href: "http://local/#/build?rep=r2" } },
     editRepertoire,
     shownOrLoadingRepertoireId: () => null,
@@ -147,7 +155,7 @@ it("replaces a declined scoped Train link with the live session's canonical URL"
     return Promise.resolve(false).finally(() => { delete appState.trainPendingRoute; });
   });
   const syncWorkspaceUrl = vi.fn(() => { canonical = formatWorkspaceHash(workspaceLocationFromState(appState)); });
-  const ctx = popstateRuntime({ appState, openTrain, syncWorkspaceUrl });
+  const ctx = popstateRuntime({ ...asSlices(appState), openTrain, syncWorkspaceUrl });
   await ctx.run();
   expect(openTrain).toHaveBeenCalledWith(expect.objectContaining({ mode: "smart", repertoireId: "r2", isCurrent: expect.any(Function) }));
   expect(syncWorkspaceUrl.mock.calls).toEqual([[]]);
@@ -162,7 +170,7 @@ it("keeps an accepted scoped start on its route", async () => {
   const appState = { signedIn: true, currentView: "train", trainMode: "play", trainEntryVersion: 1 };
   const openTrain = vi.fn(() => { appState.trainEntryVersion = 2; return Promise.resolve(true); });
   const syncWorkspaceUrl = vi.fn();
-  const ctx = popstateRuntime({ appState, openTrain, syncWorkspaceUrl });
+  const ctx = popstateRuntime({ ...asSlices(appState), openTrain, syncWorkspaceUrl });
   await ctx.run();
   expect(syncWorkspaceUrl).not.toHaveBeenCalled();
 });
@@ -175,7 +183,7 @@ it("does not treat a superseded pending entry as a decline", async () => {
     return new Promise((done) => { finish = done; });
   });
   const syncWorkspaceUrl = vi.fn();
-  const ctx = popstateRuntime({ appState, openTrain, syncWorkspaceUrl });
+  const ctx = popstateRuntime({ ...asSlices(appState), openTrain, syncWorkspaceUrl });
   const running = ctx.run();
   await vi.waitFor(() => expect(openTrain).toHaveBeenCalled());
   expect(syncWorkspaceUrl).not.toHaveBeenCalled();
@@ -191,7 +199,7 @@ it("does not reconcile a retryable scoped entry failure", async () => {
   const openTrain = vi.fn(() => { appState.trainEntryVersion = 2; return Promise.reject(new Error("chunk failed")); });
   const syncWorkspaceUrl = vi.fn();
   const retry = vi.fn(async (isActive, enter) => { try { await enter(isActive); } catch {} });
-  const ctx = popstateRuntime({ appState, openTrain, syncWorkspaceUrl, retryTrainEntry: retry });
+  const ctx = popstateRuntime({ ...asSlices(appState), openTrain, syncWorkspaceUrl, retryTrainEntry: retry });
   await ctx.run();
   expect(retry).toHaveBeenCalledTimes(1);
   expect(syncWorkspaceUrl).not.toHaveBeenCalled();
@@ -199,7 +207,7 @@ it("does not reconcile a retryable scoped entry failure", async () => {
 
 it("keeps the live queue when the popstate names the repertoire it drills", async () => {
   const ctx = popstateRuntime({
-    appState: { signedIn: true, currentView: "analyze", trainMode: "smart", smart: { mixed: false, repertoireId: "r2" } },
+    ...asSlices({ signedIn: true, currentView: "analyze", trainMode: "smart", smart: { mixed: false, repertoireId: "r2" } }), 
   });
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
@@ -217,7 +225,7 @@ it("does not start a session on a non-Train popstate", async () => {
 
 it("does not start Train from a popstate while signed out", async () => {
   const ctx = popstateRuntime({
-    appState: { signedIn: false, currentView: "train", trainMode: "smart" },
+    ...asSlices({ signedIn: false, currentView: "train", trainMode: "smart" }), 
   });
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
@@ -226,11 +234,11 @@ it("does not start Train from a popstate while signed out", async () => {
 
 it("keeps replay section restoration on popstate", async () => {
   const ctx = popstateRuntime({
-    appState: { signedIn: true, currentView: "replay", replaySection: "games" },
+    ...asSlices({ signedIn: true, currentView: "replay", replaySection: "games" }), 
     window: { location: { href: "http://local/#/scout" } },
   });
   await ctx.run();
-  expect(ctx.appState.replaySection).toBe("scout");
+  expect(ctx.replayState.replaySection).toBe("scout");
   expect(ctx.switchView).toHaveBeenCalledWith("replay", { fromUrl: true });
   expect(ctx.openTrain).not.toHaveBeenCalled();
 });
