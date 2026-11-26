@@ -23,10 +23,10 @@ import { createLibrary } from "./library-entry.js";
 import { installE2eHooks } from "./e2e-hooks.js";
 import { bindPhoneChrome, clearMaiaIdleTeardown, scheduleMaiaIdleTeardown } from "./phone-entry.js";
 import { installMoveLinks } from "./move-links.js";
-import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { buildRole } from "./share-roles.js";
-import { createTrainEntry, preloadTrainView, renderBuildSync, setBuildSync } from "./train-entry.js";
+import { preloadTrainView } from "./train-entry.js";
+import { setTrainBanner } from "./train-banner.js";
 import { cancelLuckyDiscovery } from "./train-lucky-control.js";
 import { showUndoToast } from "./undo.js";
 import { analysisGameName } from "./analyze-name.js";
@@ -38,15 +38,15 @@ import { bindUnlocks } from "./engine-unlock.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { createBoardController } from "./board/board-controller.js";
 import { buildAddId, buildDeleteId } from "./outbox-state.js";
-import { clearCheckpoint, loadCheckpoint } from "./analyze-checkpoint.js";
+import { hideAnalysisRetrySave, refreshAnalyzeRecovery } from "./analyze-recovery.js";
 import { loadReturnState, setHandoffOwner } from "./handoff-context.js";
 import { activateWorkspaceTab, parseWorkspaceLocation, serializeWorkspaceLocation, trainQueueRepertoireId, workspaceLocationFromState } from "./workspace-url.js";
 import { createAnalyzeRestore } from "./controllers/analyze-restore.js";
 import { bindCommandPalette, closePalette, createPalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
 import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
   isBuildReadOnly, explorerDrawerOpen, explorerEvalEngine, undoLastBuildAdd, queueBuildAdd,
-  reloadOpenBuildTree, renderBuilderTree, resolveBuildId, setBuildInspector, setBuildView, setExplorerDb,
-  startBuildLive, buildView } from "./build-entry.js";
+  reloadOpenBuildTree, renderBuilderTree, renderBuildSync, resolveBuildId, setBuildInspector, setBuildSync,
+  setBuildView, setExplorerDb, startBuildLive, buildView } from "./build-entry.js";
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { paintDashboardSkeleton } from "./views/library-skeleton.js";
@@ -144,11 +144,10 @@ const orientAnalysisFromPgn = viaAccount("orientAnalysisFromPgn");
 
 let analyzeEntry = null;
 const viaAnalyzeEntry = (name) => (...args) => analyzeEntry[name](...args);
-const syncPgnFromTree = viaAnalyzeEntry("syncPgnFromTree");
 const fetchMyLichessGame = viaAnalyzeEntry("fetchMyLichessGame");
 const loadAnalysisHistory = viaAnalyzeEntry("loadAnalysisHistory");
-const refreshAnalysisHistoryIfOpen = viaAnalyzeEntry("refreshAnalysisHistoryIfOpen");
 const invalidateAnalysisSource = viaAnalyzeEntry("invalidateAnalysisSource");
+const openAnalyzeGame = viaAnalyzeEntry("openAnalyzeGame");
 
 // Settings: the view chunk, its readiness gate and the /api/settings actions.
 const settingsLazy = lazyModule(() => import("./views/settings-controller.js").then((mod) => mod.createSettingsController({
@@ -215,7 +214,10 @@ setEngineWidgetImport(() => import("./controllers/engine-widget.js"));
 // The repertoire editor lives in controllers/build-session.js, loaded with the Build view.
 // Its wrappers resolve the lazy module on call, so they can exist before it loads
 // (the sync controller below takes some of them).
-const buildLazy = lazyModule(() => import("./controllers/build-session.js").then((mod) => mod.createBuildSession()));
+const buildLazy = lazyModule(() => import("./controllers/build-session.js").then((mod) => mod.createBuildSession({
+  captureBuildContext, closeRepertoireContextMenu, ensureBuildView, handleRepertoireContextAction, preloadBuildGen,
+  renderBuildRepHeader,
+})));
 const loadBuildSession = buildLazy.load;
 const viaBuildSession = buildLazy.via;
 const buildBranchContext = viaBuildSession("buildBranchContext");
@@ -238,7 +240,7 @@ const scheduleExplorerRefresh = viaBuildSession("scheduleExplorerRefresh");
 const selectBuildNode = viaBuildSession("selectBuildNode");
 const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
 
-const syncController = createSyncController();
+const syncController = createSyncController({ captureBuildContext, hydrateBuild });
 const {
   scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt,
   markTrainPositionDirty, beaconFlushTrain, flushTrainSync,
@@ -873,66 +875,6 @@ function closeOpenBuild() {
   scheduleExplorerRefresh();
 }
 
-// F-03: "Retry save" affordance for a finished-but-unsaved analysis.
-function showAnalysisRetrySave(checkpoint, message) {
-  analysisState.analysisRetryCheckpoint = checkpoint;
-  const bar = document.getElementById("analysis-retry-save");
-  if (!bar) return;
-  const text = document.getElementById("analysis-retry-save-text");
-  if (text) {
-    const white = checkpoint.pgn?.match(/\[White "([^"\n]*)"\]/)?.[1];
-    const black = checkpoint.pgn?.match(/\[Black "([^"\n]*)"\]/)?.[1];
-    const game = white || black ? `${white || "?"} vs ${black || "?"}` : checkpoint.gameId;
-    text.textContent = checkpoint.serverSaved
-      ? `${game} · Analysis saved. Device cleanup failed, retry cleanup.`
-      : `${game} · ${message || "Unsaved analysis"} · ${checkpoint.inMemoryOnly ? "Kept in this page only" : "Kept on this device"}`;
-  }
-  const button = document.getElementById("analysis-retry-save-btn");
-  if (button) button.textContent = checkpoint.serverSaved ? "Retry cleanup" : "Retry save";
-  bar.hidden = false;
-}
-
-function hideAnalysisRetrySave() {
-  const bar = document.getElementById("analysis-retry-save");
-  if (bar) bar.hidden = true;
-}
-
-async function refreshAnalyzeRecovery() {
-  const owner = currentOwnerId();
-  const generation = appState.ownerGeneration;
-  const seq = analysisState.analysisRecoverySeq = (analysisState.analysisRecoverySeq || 0) + 1;
-  const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration && seq === analysisState.analysisRecoverySeq;
-  let checkpoint = analysisState.analysisUnsavedCheckpoint?.ownerId === owner ? analysisState.analysisUnsavedCheckpoint : await loadCheckpoint(null, owner);
-  while (checkpoint && isCurrent()) {
-    if (!checkpoint.serverSaved && !checkpoint.inMemoryOnly) {
-      try {
-        const status = await api(`/api/analyses/${encodeURIComponent(checkpoint.gameId)}/saves/${encodeURIComponent(checkpoint.requestId)}/status`);
-        if (!isCurrent()) return;
-        checkpoint.serverSaved = status.saved;
-      } catch (error) {
-        if (isCurrent()) showAnalysisRetrySave(checkpoint, `Save status unconfirmed: ${error.message}`);
-        return;
-      }
-    }
-    if (checkpoint.serverSaved) {
-      if (!await clearCheckpoint(checkpoint.gameId, owner, checkpoint.requestId)) {
-        if (isCurrent()) showAnalysisRetrySave(checkpoint);
-        return;
-      }
-      if (!isCurrent()) return;
-      checkpoint = await loadCheckpoint(null, owner);
-    } else {
-      showAnalysisRetrySave(checkpoint);
-      return;
-    }
-  }
-  if (isCurrent()) {
-    analysisState.analysisRetryCheckpoint = null;
-    hideAnalysisRetrySave();
-  }
-}
-
-
 // Analyze (runs, move list, position coach) lives in controllers/analyze-session.js,
 // loaded with the Analyze view. Once loaded the wrappers below call straight through;
 // before that they wait for it.
@@ -1027,19 +969,13 @@ function paintBuildEmpty() {
   if (sidebar) sidebar.classList.toggle("is-empty", !buildState.build && !buildState.buildLoading);
 }
 
-// The shell's own entry points the lazy controllers call (core/app-context.js).
+// What the lazy controllers ask of the shell and of each other (core/app-context.js).
 provideApp({
-  accountService, analysisSelfSide, captureBuildContext, closeRepertoireContextMenu,
-  defaultRepertoireNameFromPgn, ensureBuildView, flushTrainSync, handleRepertoireContextAction,
-  hardFlushBuild, hideAnalysisHandoff, hideAnalysisRetrySave, hydrateBuild,
-  importRepertoireFromPgnText, invalidateAnalysisSource, lichessAccounts, loadPgnIntoAnalyze,
-  markTrainPositionDirty, openAuthModal, openSettingsSection, orientAnalysisFromPgn, preloadBuildGen,
-  queueTrainAttempt, refreshAnalysisHistoryIfOpen, refreshAnalyzeRecovery, refreshAuthStatus,
-  refreshDashboardRepertoires, refreshRepertoireHead, renderBuildRepHeader, requireSignIn,
-  resetAnalysisVariations, revealAnalysisResults, runAnalysis, scheduleBuildFlush,
-  setTrainBanner, showAnalysisPly, showAnalysisRetrySave, startLichessOAuth, switchView,
-  syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
+  shell: { switchView, syncWorkspaceUrl, syncViewHeads, openSettingsSection },
+  persistence: { scheduleBuildFlush, hardFlushBuild, flushTrainSync, queueTrainAttempt, markTrainPositionDirty },
+  handoffs: { openAnalyzeGame, repertoiresChanged, defaultRepertoireNameFromPgn, importRepertoireFromPgnText },
 });
+
 
 // Train sessions (smart queue, rehearsal, practice games, Feeling Lucky) live in
 // controllers/train-session.js, loaded the first time Train is used. The wrappers
@@ -1089,6 +1025,13 @@ async function refreshRepertoireHead() {
   }
   renderBuildRepHeader();
   syncViewHeads();
+}
+
+// The handoff a feature sends after it changed what the repertoire listing shows
+// (a new repertoire, trained moves): every reader repaints from a fresh list.
+function repertoiresChanged({ trained = false } = {}) {
+  if (trained) void refreshRepertoireHead().catch(() => {});
+  return refreshDashboardRepertoires();
 }
 
 // Soft drain for read-only refreshes (Library counts): sends whatever is queued
@@ -1150,47 +1093,6 @@ function captureBuildContext() {
   const seq = buildLoadSeq;
   const owner = currentOwnerId();
   return () => repertoireId === buildState.build?.repertoire_id && seq === buildLoadSeq && owner === currentOwnerId();
-}
-
-// Right pops its tick, wrong nudges, a hint only brings its line in.
-const BANNER_MOTION = new Set(["correct", "wrong", "move"]);
-function setTrainBanner(state, title, sub) {
-  const banner = document.getElementById("train-banner");
-  if (!banner) return;
-  banner.dataset.state = state;
-  const titleEl = document.getElementById("train-banner-title");
-  const subEl = document.getElementById("train-banner-sub");
-  // The coach's moves peek (Train never plays them); "1...c6" reads along the card's line.
-  const path = walkPathText(trainState.smart?.prompt?.target?.line);
-  const ctx = { fen: trainState.smart?.prompt?.fen_before, at: (ply) => (ply ? path?.plies[ply - 1]?.fen : START_FEN) };
-  titleEl.innerHTML = moveTextHtml(title || "", { ...ctx, pawns: true });
-  titleEl.title = title || "";
-  subEl.innerHTML = moveTextHtml(sub || "", ctx);
-  subEl.title = sub || "";
-  banner.classList.remove("flash");
-  if (!BANNER_MOTION.has(state)) return;
-  banner.querySelector(".train-coach-text").addEventListener("animationend", () => banner.classList.remove("flash"), { once: true });
-  requestAnimationFrame(() => banner.classList.add("flash"));
-}
-
-function updateTrainTurnBadge(side) {
-  const badge = document.getElementById("train-turn-badge");
-  if (!badge) return;
-  if (!side) {
-    badge.hidden = true;
-    badge.innerHTML = "";
-    badge.title = "";
-    delete badge.dataset.side;
-    return;
-  }
-  badge.hidden = false;
-  badge.dataset.side = side;
-  badge.title = side === "white" ? "White to move" : "Black to move";
-  badge.setAttribute("role", "img");
-  badge.setAttribute("aria-label", badge.title);
-  // Show the side-to-move as a real piece (king of that colour), not a bare
-  // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
-  badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
 }
 
 // Apply one button's gated state: disable + greyed style + explanatory title,
@@ -1556,10 +1458,11 @@ async function init() {
     hideAnalysisRetrySave, showUndoToast,
   });
   accountEntry.initAccountController();
-  analyzeEntry = createAnalyzeEntry();
+  analyzeEntry = createAnalyzeEntry({
+    hideAnalysisHandoff, loadPgnIntoAnalyze, resetAnalysisVariations, revealAnalysisResults, runAnalysis, showAnalysisPly,
+  });
 
   accountEntry.bindAnalyzeEntry(analyzeEntry);
-  createTrainEntry({ setTrainBanner, updateTrainTurnBadge });
   createBook({ editRepertoire, analysisSelfSide });
   analyzeLoader = createAnalyzeView({
     loadSession: loadAnalyzeSession, showPly: showAnalysisPly,

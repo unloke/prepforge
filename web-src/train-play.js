@@ -1,4 +1,5 @@
 // Practice game session helpers. Pure: history + color + PGN, no DOM.
+import { formatMoveTrail } from "./move-text.js";
 
 export const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -26,24 +27,6 @@ export function resolvePlayColor({
     return pickerColor === "black" ? "black" : "white";
   }
   return pickerColor === "black" ? "black" : "white";
-}
-
-export function formatPlayTrail(history, startFen = START_FEN) {
-  const moves = Array.isArray(history) ? history : [];
-  if (!moves.length) return "";
-  const parts = String(startFen || START_FEN).trim().split(/\s+/);
-  let full = Number(parts[5]) || 1;
-  let side = parts[1] === "b" ? "b" : "w";
-  const out = [];
-  for (const ply of moves) {
-    const san = ply && ply.san;
-    if (!san) continue;
-    if (side === "w") out.push(`${full}. ${san}`);
-    else out.push(san);
-    if (side === "b") full += 1;
-    side = side === "w" ? "b" : "w";
-  }
-  return out.join(" ");
 }
 
 // The same moves as score-sheet rows, [number, white, black], for the
@@ -90,7 +73,7 @@ export function playBookName(book) {
 export function playSessionPgn(play, playerName) {
   const session = play || {};
   const startFen = session.startFen || START_FEN;
-  const trail = formatPlayTrail(session.history, startFen);
+  const trail = formatMoveTrail(session.history, startFen);
   const youWhite = session.userColor !== "black";
   const book = playBookName(session.book);
   const opponent = session.rating ? `${book} ${session.rating}` : book;

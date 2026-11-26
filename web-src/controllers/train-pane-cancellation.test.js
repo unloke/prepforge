@@ -6,10 +6,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDocument, setup } from "./train-home.fixture.js";
 import { beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent } from "../train-lucky-control.js";
-import { provideApp } from "../core/app-context.js";
+import { setTrainBanner } from "../train-banner.js";
 vi.mock("../core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 vi.mock("../train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 vi.mock("./train-session.js", () => import("./train-session.fixture.js"));
+vi.mock("../account-entry.js", async (orig) => ({ ...await orig(), requireSignIn: vi.fn() }));
+vi.mock("../train-banner.js", () => ({ setTrainBanner: vi.fn(), updateTrainTurnBadge: vi.fn() }));
 
 let doc;
 beforeEach(() => {
@@ -25,9 +27,7 @@ const tapTab = (pane) => doc.getElementById("train-tabs").listeners.click({
 
 describe("leaving the Practice pane", () => {
   it("cancels the in-flight Random discovery: busy released, run aborted, session gate closed, banner cleared", () => {
-    const setTrainBanner = vi.fn();
     const { appState } = setup({ currentView: "train", trainMode: "play", playStartToken: 1 });
-    provideApp({ setTrainBanner });
     tapTab("play");
     const run = beginLuckyDiscovery(appState);
     expect(luckyDiscoveryCurrent(appState, run)).toBe(true);
@@ -52,9 +52,7 @@ describe("leaving the Practice pane", () => {
       removeItem: () => {},
       clear: () => {},
     });
-    const setTrainBanner = vi.fn();
     const { appState } = setup({ currentView: "train", trainMode: "play", playStartToken: 1 });
-    provideApp({ setTrainBanner });
     tapTab("play");
     const run = beginLuckyDiscovery(appState);
 
@@ -67,9 +65,7 @@ describe("leaving the Practice pane", () => {
   });
 
   it("retapping the Practice tab keeps the discovery running", () => {
-    const setTrainBanner = vi.fn();
     const { appState } = setup({ currentView: "train", trainMode: "play", playStartToken: 1 });
-    provideApp({ setTrainBanner });
     tapTab("play");
     const run = beginLuckyDiscovery(appState);
 
@@ -83,10 +79,8 @@ describe("leaving the Practice pane", () => {
   });
 
   it("a pane switch with no discovery running leaves the banner and a live game alone", () => {
-    const setTrainBanner = vi.fn();
     const play = { active: true, history: ["e2e4"] };
     const { appState } = setup({ currentView: "train", trainMode: "play", play, playStartToken: 1 });
-    provideApp({ setTrainBanner });
 
     tapTab("play");
     tapTab("drill");

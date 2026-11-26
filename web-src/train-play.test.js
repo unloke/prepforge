@@ -3,7 +3,6 @@ import { describe, it, expect } from "vitest";
 import {
   START_FEN,
   resolvePlayColor,
-  formatPlayTrail,
   takebackToUserMove,
   playSessionPgn,
 } from "./train-play.js";
@@ -62,25 +61,6 @@ describe("resolvePlayColor", () => {
         luckyFen: AFTER_E4,
       }),
     ).toBe("black");
-  });
-});
-
-describe("formatPlayTrail", () => {
-  it("numbers from the starting FEN", () => {
-    const trail = formatPlayTrail(
-      [
-        { san: "e4", by: "user" },
-        { san: "e5", by: "opp" },
-        { san: "Nf3", by: "user" },
-      ],
-      START_FEN,
-    );
-    expect(trail).toBe("1. e4 e5 2. Nf3");
-  });
-
-  it("starts mid-game from a Lucky FEN (Black to move)", () => {
-    const trail = formatPlayTrail([{ san: "e5", by: "user" }], AFTER_E4);
-    expect(trail).toBe("e5");
   });
 });
 

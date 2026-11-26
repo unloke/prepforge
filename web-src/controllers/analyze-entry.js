@@ -1,15 +1,16 @@
 import { html } from "../html.js";
-import { appState, analysisState } from "../core/state.js";
+import { appState, analysisState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDayOf, setStatus, setStatusError } from "../core/api.js";
-import { holdNewGameNudge, markLichessSeen, orientAnalysisForSelf, syncFetchMyGameButton } from "../account-entry.js";
+import { holdNewGameNudge, lichessAccounts, markLichessSeen, orientAnalysisForSelf, orientAnalysisFromPgn,
+  requireSignIn, startLichessOAuth, syncFetchMyGameButton } from "../account-entry.js";
 import { analysisHistoryResult } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
 import { createAnalysisStudySaver } from "../analyze-study.js";
 import { showUndoToast } from "../undo.js";
 import { ensureAnalyzeView } from "../views/analyze-loader.js";
-import { hideAnalysisHandoff, lichessAccounts, loadPgnIntoAnalyze, orientAnalysisFromPgn, requireSignIn,
-  resetAnalysisVariations, revealAnalysisResults, runAnalysis, showAnalysisPly, startLichessOAuth,
-  syncViewHeads } from "../core/app-context.js";
+import { shell } from "../core/app-context.js";
+
+const { switchView, syncViewHeads } = shell;
 
 // The Analyze entry points that are not the analysis run itself: "My last
 // game", the saved-list "Recent analyses", recalling one, and deleting one with
@@ -17,11 +18,16 @@ import { hideAnalysisHandoff, lichessAccounts, loadPgnIntoAnalyze, orientAnalysi
 // this module is what the shell's Analyze buttons and drawer call.
 
 // The analysis session is lazy (it pulls chess.js, the coach and the engine), so
-// its entry points come through the shell's wrappers in core/app-context.js.
-export function createAnalyzeEntry() {
+// the shell hands its entry points in as wrappers that wait for it to load.
+let hideAnalysisHandoff, loadPgnIntoAnalyze, resetAnalysisVariations, revealAnalysisResults, runAnalysis,
+  showAnalysisPly;
+
+export function createAnalyzeEntry(session) {
+  ({ hideAnalysisHandoff, loadPgnIntoAnalyze, resetAnalysisVariations, revealAnalysisResults, runAnalysis,
+    showAnalysisPly } = session);
   return {
     fetchMyLichessGame, importLatestGame, loadAnalysisHistory, refreshAnalysisHistoryIfOpen,
-    invalidateAnalysisSource, recallAnalysis, deleteSavedAnalysis, syncPgnFromTree,
+    invalidateAnalysisSource, recallAnalysis, deleteSavedAnalysis, syncPgnFromTree, openAnalyzeGame,
     bindAnalyzePgnInput, invalidateHistory: () => { analysisHistorySeq++; },
   };
 }
@@ -113,6 +119,32 @@ export async function importLatestGame(game, context = null) {
   }
 }
 
+
+// The handoff another feature uses to review a game it holds (a finished
+// Practice game): Analyze takes the PGN as its new source, shows it from the
+// player's side and runs the review. `failure` is the line shown when the PGN
+// does not load; `loading` the status while the review runs.
+export async function openAnalyzeGame({ pgn, orientation = "white", failure, loading }) {
+  const owner = currentOwnerId(), generation = appState.ownerGeneration;
+  const sourceSeq = invalidateAnalysisSource();
+  const isCurrent = () => sourceSeq === analysisRecallSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
+  const input = document.getElementById("pgn-input");
+  if (input) input.value = pgn;
+  const drawer = document.getElementById("pgn-drawer");
+  if (drawer) drawer.open = false;
+  switchView("analyze");
+  if (boards.analysis) boards.analysis.setOrientation(orientation === "black" ? "black" : "white");
+  if (!input) return;
+  try {
+    const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq });
+    if (!isCurrent()) return;
+    if (!loaded) { setStatusError(failure); return; }
+    setStatus(loading);
+    await runAnalysis();
+  } catch (error) {
+    if (isCurrent()) setStatusError(error.message);
+  }
+}
 
 // Analyze "History": list previously analyzed games; click to recall a saved
 // report without re-running the engine.

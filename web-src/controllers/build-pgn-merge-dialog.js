@@ -4,11 +4,12 @@
 import { showInputModal } from "../core/modals.js";
 import { buildState } from "../core/state.js";
 import { setStatus } from "../core/api.js";
-import { buildProvisionalNode, isBuildReadOnly, queueBuildAdd, renderBuilderTree } from "../build-entry.js";
+import { buildProvisionalNode, isBuildReadOnly, queueBuildAdd, renderBuilderTree, setBuildSync } from "../build-entry.js";
 import { commitPendingUndos } from "../undo.js";
-import { scheduleBuildFlush } from "../core/app-context.js";
-import { setBuildSync } from "../train-entry.js";
+import { persistence } from "../core/app-context.js";
 import { planPgnMerge, pgnMergeSummary } from "../build-pgn-merge.js";
+
+const { scheduleBuildFlush } = persistence;
 
 // Queue a plan's moves in order; a move whose parent is planned too takes that
 // parent's fresh provisional node.

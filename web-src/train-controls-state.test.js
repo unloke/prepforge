@@ -10,6 +10,8 @@ import { provideApp } from "./core/app-context.js";
 vi.mock("./core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 vi.mock("./train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 vi.mock("./controllers/train-session.js", () => import("./controllers/train-session.fixture.js"));
+vi.mock("./account-entry.js", async (orig) => ({ ...await orig(), requireSignIn: vi.fn() }));
+vi.mock("./train-banner.js", () => ({ setTrainBanner: vi.fn(), updateTrainTurnBadge: vi.fn() }));
 
 let doc;
 beforeEach(() => {
@@ -87,7 +89,7 @@ describe("Home rows", () => {
     const { appState, deps } = setup({ currentView: "train", trainMode: "smart", smart: { cardIndex: 2, queue: [1, 2, 3, 4, 5] } });
     let release;
     const flush = vi.fn(() => new Promise(resolve => { release = resolve; }));
-    provideApp({ flushTrainSync: flush, syncWorkspaceUrl: vi.fn() });
+    provideApp({ shell: { syncWorkspaceUrl: vi.fn() }, persistence: { flushTrainSync: flush } });
     const home = createTrainHome(deps);
     const leaving = home.leaveToHome();
     await vi.waitFor(() => expect(flush).toHaveBeenCalledOnce());

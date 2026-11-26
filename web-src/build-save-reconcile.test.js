@@ -7,12 +7,11 @@ import { appSource } from "./test-app-source.js";
 import { appState as sharedState, buildState, trainState } from "./core/state.js";
 import { resetState } from "./state/state-view.fixture.js";
 import { postJson, setStatus, setStatusError } from "./core/api.js";
-import { setBuildSync } from "./train-entry.js";
-import { provideApp } from "./core/app-context.js";
+import { setBuildSync } from "./build-entry.js";
 
 vi.mock("./core/api.js", async (orig) => ({ ...await orig(), currentOwnerId: () => "owner", OUTBOX_TAB_ID: "save-test",
   postJson: vi.fn(), setStatus: vi.fn(), setStatusError: vi.fn() }));
-vi.mock("./train-entry.js", async (orig) => ({ ...await orig(), setBuildSync: vi.fn() }));
+vi.mock("./build-entry.js", async (orig) => ({ ...await orig(), setBuildSync: vi.fn() }));
 
 const source = appSource();
 function compile(name, deps) {
@@ -122,10 +121,9 @@ function syncHarness() {
   setStatus.mockReset();
   setStatusError.mockReset();
   setBuildSync.mockImplementation(state => { h.appState.buildSyncState = state; });
-  provideApp({ captureBuildContext: () => () => true, hydrateBuild: h.hydrate });
   const deps = { ...h.deps, currentOwnerId: () => "owner", OUTBOX_TAB_ID: "save-test",
     hydrateBuild: h.hydrate, setStatus, setStatusError, postJson, setBuildSync };
-  const controller = createSyncController();
+  const controller = createSyncController({ captureBuildContext: () => () => true, hydrateBuild: h.hydrate });
   const queue = compile("queueBuildAdd", deps);
   return { ...h, deps, controller, queue };
 }

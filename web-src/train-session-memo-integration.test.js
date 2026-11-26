@@ -55,7 +55,7 @@ function harness(overrides = {}) {
     smartLocalPrompt: (smart) => smart.cardIndex < smart.queue.length
       ? { cardIndex: smart.cardIndex, targetIndex: smart.targetIndex } : null,
     presentSmartPrompt: present, finishSmartSession: vi.fn(async () => {}),
-    refreshRepertoireHead: vi.fn(async () => {}), refreshDashboardRepertoires: vi.fn(async () => {}),
+    repertoiresChanged: vi.fn(async () => {}),
     refreshTrainSessionPreview: vi.fn(async () => {}),
     playSound: vi.fn(),
     reveal: (el) => { el.hidden = false; },
@@ -243,8 +243,7 @@ describe("Smart memo integration at Start", () => {
     // The live session is released once the report owns the screen, and every
     // cached count of what is left to train is refreshed.
     expect(h.trainState.smart).toBeNull();
-    expect(h.deps.refreshRepertoireHead).toHaveBeenCalled();
-    expect(h.deps.refreshDashboardRepertoires).toHaveBeenCalled();
+    expect(h.deps.repertoiresChanged).toHaveBeenCalledWith({ trained: true });
   });
 
   it("a Result the player already left is not repainted when the summary lands", async () => {
@@ -263,8 +262,7 @@ describe("Smart memo integration at Start", () => {
     await done;
     expect(h.deps.showTrainResult).toHaveBeenCalledTimes(1);
     // The counts this session changed still refresh after the player has left.
-    expect(h.deps.refreshRepertoireHead).toHaveBeenCalled();
-    expect(h.deps.refreshDashboardRepertoires).toHaveBeenCalled();
+    expect(h.deps.repertoiresChanged).toHaveBeenCalledWith({ trained: true });
   });
 
   it("Finish clears only this owner/session's memo", async () => {
