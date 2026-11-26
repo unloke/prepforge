@@ -2,6 +2,8 @@
 // Games are newest-first from Lichess export; chronological helpers reverse for trends.
 
 import { SLIP_MIN_GAMES, analyzedGames, scoutLineText, wilsonScorePct } from "./scout.js";
+import { bonferroniZ } from "./scout-probability.js";
+import { decisionGroups, decisionPly, decisionSpread, prefixCounts } from "./scout-decisions.js";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -76,10 +78,6 @@ function trendDirection(points) {
   if (delta <= -5) return "down";
   if (delta >= 5) return "up";
   return "flat";
-}
-
-function shannonEntropy(shares) {
-  return -shares.reduce((h, p) => (p > 0 ? h + p * Math.log2(p) : h), 0);
 }
 
 function predictabilityLabel(normalized, topShare = 0) {
@@ -468,7 +466,8 @@ export function firstChoices(games, color, { speedFilter = "all", minFacedShare 
 //   strong — they score clearly above it (have an answer ready)
 //   mainPath — the most-travelled path, followed while it still holds a real
 //              share of their games (how far ahead you can predict them)
-// "Clearly" = the gap is at least BRANCH_MIN_GAP_PCT points AND z ≥ BRANCH_Z,
+// "Clearly" = the gap is at least BRANCH_MIN_GAP_PCT points AND |z| clears the
+// Bonferroni threshold over all prefixes tested (never below BRANCH_Z),
 // with a finite-population correction (a branch holding most of their games
 // can't differ much from their average, and shouldn't be reported as if it did).
 export function openingBranches(
@@ -542,12 +541,11 @@ export function openingBranches(
     }
     return out;
   };
-  const weak = pickDistinct(
-    sampled.filter((b) => b.gapPct <= -BRANCH_MIN_GAP_PCT && b.z <= -BRANCH_Z),
-  );
-  const strong = pickDistinct(
-    sampled.filter((b) => b.gapPct >= BRANCH_MIN_GAP_PCT && b.z >= BRANCH_Z),
-  );
+  // Every sampled prefix is a test: at 1.96 each, half of all no-effect samples
+  // reported a "clear" branch. Bonferroni over the prefixes tested keeps it at ~5%.
+  const zCrit = bonferroniZ(sampled.length, { floor: BRANCH_Z });
+  const weak = pickDistinct(sampled.filter((b) => b.gapPct <= -BRANCH_MIN_GAP_PCT && b.z <= -zCrit));
+  const strong = pickDistinct(sampled.filter((b) => b.gapPct >= BRANCH_MIN_GAP_PCT && b.z >= zCrit));
 
   const children = new Map();
   for (const node of nodes.values()) {
@@ -577,22 +575,37 @@ export function openingBranches(
   };
 }
 
-// Each distinct first move with its game count and share, most played first.
-function firstMoveShares(games) {
+// Each distinct first decision (see decisionOf) with its game count and share, most
+// played first. With Black an entry is a reply: `san` is the reply, `faced` the first
+// move it answers and `label` both ("1. e4 c5").
+function decisionMoves(games, color) {
   const counts = new Map();
   for (const game of games) {
-    const uci = game.ucis[0];
-    if (!counts.has(uci)) counts.set(uci, { uci, san: game.sans[0], games: 0 });
-    counts.get(uci).games += 1;
+    const decision = decisionOf(game, color);
+    if (!decision) continue;
+    const at = decision.ucis.length - 1;
+    if (!counts.has(decision.key)) {
+      counts.set(decision.key, {
+        uci: decision.ucis[at],
+        san: decision.sans[at],
+        ...(at ? { faced: { uci: decision.ucis[0], san: decision.sans[0] }, label: decision.label } : {}),
+        games: 0,
+      });
+    }
+    counts.get(decision.key).games += 1;
   }
   return [...counts.values()]
     .map((entry) => ({ ...entry, share: entry.games / games.length }))
     .sort((a, b) => b.games - a.games);
 }
 
-// First-move entropy: low = guessable, high = varied.
+const withDecision = (games, color) =>
+  games.filter((g) => (g.ucis?.length || 0) > decisionPly(color));
+
+// First-decision entropy: low = guessable, high = varied. With Black it is the entropy
+// of their reply given the first move they face, averaged over the first moves.
 export function predictability(games, color, { speedFilter = "all" } = {}) {
-  const filtered = filterGames(games, { color, speedFilter }).filter((g) => g.ucis?.length);
+  const filtered = withDecision(filterGames(games, { color, speedFilter }), color);
   if (!filtered.length) {
     return {
       entropy: 0,
@@ -606,24 +619,18 @@ export function predictability(games, color, { speedFilter = "all" } = {}) {
   }
 
   const total = filtered.length;
-  const moves = firstMoveShares(filtered);
-
-  // Mouse-slip / one-off first moves (e.g. a single 1.d3 meant for 1.d4) would
-  // otherwise inflate the entropy and mislabel a predictable player as "mixed".
-  const significant = moves.filter((m) => m.games >= SLIP_MIN_GAMES);
-  const entropyMoves = significant.length > 1 ? significant : moves;
-  const sigTotal = entropyMoves.reduce((s, m) => s + m.games, 0) || 1;
-  const shares = entropyMoves.map((m) => m.games / sigTotal);
-  const entropy = shannonEntropy(shares);
-  const maxEntropy = entropyMoves.length > 1 ? Math.log2(entropyMoves.length) : 1;
-  const normalized = entropyMoves.length > 1 ? entropy / maxEntropy : 0;
-  const topShare = moves[0]?.share || 0;
+  const moves = decisionMoves(filtered, color);
+  // Mouse-slip / one-off choices (e.g. a single 1.d3 meant for 1.d4) would otherwise
+  // inflate the entropy and mislabel a predictable player as "mixed".
+  const spread = decisionSpread(decisionGroups(filtered, color), { minGames: SLIP_MIN_GAMES });
 
   return {
-    entropy: Math.round(entropy * 100) / 100,
-    normalized: Math.round(normalized * 100) / 100,
-    label: entropyMoves.length > 1 ? predictabilityLabel(normalized, topShare) : "predictable",
+    entropy: Math.round(spread.entropy * 100) / 100,
+    normalized: Math.round(spread.normalized * 100) / 100,
+    label: predictabilityLabel(spread.normalized, spread.topShare),
     topMove: moves[0] || null,
+    // The chance their most common choice is the one you meet (Black: per first move).
+    topShare: spread.topShare,
     moves,
     games: total,
     confidence: confidence(total),
@@ -673,9 +680,9 @@ export function petLineConcentration(games, color, { speedFilter = "all", depth 
   };
 }
 
-// Distinct first moves with at least minGames samples.
+// Distinct first decisions (Black: replies to a first move) with at least minGames samples.
 export function repertoireBreadth(games, color, { speedFilter = "all", minGames = BREADTH_MIN_GAMES } = {}) {
-  const filtered = filterGames(games, { color, speedFilter }).filter((g) => g.ucis?.length);
+  const filtered = withDecision(filterGames(games, { color, speedFilter }), color);
   if (!filtered.length) {
     return {
       breadth: 0,
@@ -687,7 +694,7 @@ export function repertoireBreadth(games, color, { speedFilter = "all", minGames 
   }
 
   const total = filtered.length;
-  const moves = firstMoveShares(filtered).filter((entry) => entry.games >= minGames);
+  const moves = decisionMoves(filtered, color).filter((entry) => entry.games >= minGames);
 
   return {
     breadth: moves.length,
@@ -738,8 +745,15 @@ export function repertoireFreshness(
     minRecent ?? Math.max(FRESHNESS_MIN_RECENT, Math.ceil(recent.length * FRESHNESS_MIN_RECENT_SHARE));
   const lineFloor =
     minRecent ?? Math.max(FRESHNESS_MIN_RECENT, Math.ceil(recent.length * FRESHNESS_LINE_MIN_RECENT_SHARE));
-  const wasAbsent = (previousGames) =>
-    previousGames <= Math.floor(previous.length * maxPreviousShare);
+  // With Black, "new" is measured against the older games that reached the same
+  // position before their move: a reply to a first move they never faced is untested,
+  // not new, and facing 1.e4 more often is their opponents' change, not theirs.
+  const previousPrefix = color === "black" ? prefixCounts(previous, PET_LINE_DEPTH) : null;
+  const isNew = (key, previousGames, floor) => {
+    if (color !== "black") return previousGames <= Math.floor(previous.length * maxPreviousShare);
+    const faced = previousPrefix.get(key.slice(0, key.lastIndexOf(">"))) || 0;
+    return faced >= floor && previousGames <= Math.floor(faced * maxPreviousShare);
+  };
 
   if (!recent.length || !previous.length) {
     return {
@@ -769,7 +783,7 @@ export function repertoireFreshness(
 
   for (const [key, entry] of recentCounts) {
     const previousGames = previousCounts.get(key)?.games || 0;
-    if (entry.games >= familyFloor && wasAbsent(previousGames)) {
+    if (entry.games >= familyFloor && isNew(key, previousGames, familyFloor)) {
       freshFamilies.push({
         uci: entry.ucis[entry.ucis.length - 1],
         san: entry.sans[entry.sans.length - 1],
@@ -814,7 +828,7 @@ export function repertoireFreshness(
     const previousGames = previousLineCounts.get(key) || 0;
     // A fresh line inside an already-fresh family repeats the family's story.
     const insideFreshFamily = freshFamilies.some((f) => key.startsWith(`${f.ucis.join(">")}>`));
-    if (entry.games >= lineFloor && wasAbsent(previousGames) && !insideFreshFamily) {
+    if (entry.games >= lineFloor && isNew(key, previousGames, lineFloor) && !insideFreshFamily) {
       freshLines.push({
         ...entry,
         previousGames,
@@ -862,7 +876,7 @@ export function formatLastSeenLabel(lastSeen) {
   return `not since ${date.toLocaleString("en", { month: "long", year })}`;
 }
 
-// How concentrated vs experimental their first-move mix is over chronological chunks.
+// How concentrated vs experimental their first-decision mix is over chronological chunks.
 export function repertoireChangeTrend(
   games,
   color,
@@ -880,15 +894,8 @@ export function repertoireChangeTrend(
   for (let i = 0; i < buckets; i += 1) {
     const slice = ordered.slice(i * chunkSize, (i + 1) * chunkSize);
     if (!slice.length) continue;
-    const counts = new Map();
-    for (const game of slice) {
-      const key = decisionOf(game, color).key;
-      counts.set(key, (counts.get(key) || 0) + 1);
-    }
-    const shares = [...counts.values()].map((c) => c / slice.length);
-    const entropy = shannonEntropy(shares);
-    const maxEntropy = shares.length > 1 ? Math.log2(shares.length) : 1;
-    const concentration = shares.length > 1 ? 1 - entropy / maxEntropy : 1;
+    // Black: concentration of their reply given the first move they faced.
+    const concentration = 1 - decisionSpread(decisionGroups(slice, color)).normalized;
     points.push(Math.round(concentration * 100));
   }
   return {

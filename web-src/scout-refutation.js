@@ -14,7 +14,7 @@ import {
 import {
   fenAfterLine,
   terminalMoveIsOpponent,
-  triePathKey,
+  branchPathKey,
   uciToSan,
   WEAKNESS_MIN_GAMES,
 } from "./scout.js";
@@ -34,7 +34,7 @@ export const REFUTATION_MIN_EXPLORER_GAMES = 3;
 export const REFUTATION_MIN_ENGINE_PATH_GAMES = SCOUT_ENGINE_MIN_RECURRENCE;
 
 export function refutationIdentity({ color, speed, pathUcis, fen }) {
-  const pathKey = triePathKey(pathUcis || []);
+  const pathKey = branchPathKey(pathUcis || []);
   return `${color}|${speed}|${pathKey}|${fen || ""}`;
 }
 
@@ -54,7 +54,7 @@ export function collectRefutationCandidates(weaknessTargets, { color, speed = "a
       speed,
       pathUcis,
       pathSans: target.sans || [],
-      pathKey: triePathKey(pathUcis),
+      pathKey: branchPathKey(pathUcis),
       fen,
       games: target.games ?? 0,
       scorePct: target.scorePct ?? 0,
@@ -69,7 +69,7 @@ export function collectRefutationCandidates(weaknessTargets, { color, speed = "a
 export function scanRecordsForPath(scanRecords, pathUcis) {
   if (!scanRecords?.length || !pathUcis?.length) return [];
   const lastUci = pathUcis[pathUcis.length - 1];
-  const parentKey = pathUcis.length > 1 ? triePathKey(pathUcis.slice(0, -1)) : "";
+  const parentKey = pathUcis.length > 1 ? branchPathKey(pathUcis.slice(0, -1)) : "";
 
   return scanRecords.filter((record) => {
     if (record.firstUci !== pathUcis[0]) return false;
@@ -82,7 +82,7 @@ export function scanRecordsForPath(scanRecords, pathUcis) {
 
 export function pathEngineMoves(scanRecords, pathUcis) {
   const records = scanRecordsForPath(scanRecords, pathUcis);
-  const parentKey = pathUcis.length > 1 ? triePathKey(pathUcis.slice(0, -1)) : "";
+  const parentKey = pathUcis.length > 1 ? branchPathKey(pathUcis.slice(0, -1)) : "";
   const moves = [];
   for (const record of records) {
     for (const move of record.moves || []) {

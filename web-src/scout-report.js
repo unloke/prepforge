@@ -15,10 +15,12 @@ import {
   rankGamePlan,
   scoutLineText,
 } from "./scout.js";
-import { buildScoutStats, formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
+import { formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
+import { memoRankedOpeningBranches, memoScoutStats } from "./scout-section-memo.js";
 import { START_FEN, moveLineHtml, moveTextHtml, moveTokenHtml } from "./move-text.js";
 import { applyMaiaToLines, medianOpponentRating, scoutLineWdlCounts, scoutMaiaRankedNote } from "./scout-maia.js";
 import { buildScoutSectionSummary, expectationText } from "./scout-summary.js";
+import { lineGap, prepGapText } from "./scout-prep-divergence.js";
 
 export function scoutLineKey(ucis) {
   return (ucis || []).join(">");
@@ -96,7 +98,9 @@ export function applyScoutColorTabs(resultsEl) {
   const tabs = resultsEl.querySelectorAll(".scout-color-tab");
   if (!tabs.length) return;
   const sections = resultsEl.querySelectorAll(".scout-section[data-scout-color]");
-  const active = resultsEl.dataset.scoutTab || tabs[0]?.dataset.scoutTab || "white";
+  // A stored colour this report has no tab for (another speed, a one-colour scout)
+  // falls back to the first tab: matching nothing hid every section.
+  const active = [...tabs].find((tab) => tab.dataset.scoutTab === resultsEl.dataset.scoutTab)?.dataset.scoutTab || tabs[0]?.dataset.scoutTab || "white";
   tabs.forEach((tab) => {
     const on = tab.dataset.scoutTab === active;
     tab.classList.toggle("is-active", on);
@@ -554,7 +558,7 @@ export function buildScoutIntelligenceA11ySummary(stats) {
   const predict = stats.predictability;
   if (predict?.topMove) {
     parts.push(
-      `First-move predictability: ${predict.label}, top move 1.${predict.topMove.san} ${Math.round((predict.topMove.share || 0) * 100)}%.`,
+      `First-move predictability: ${predict.label}, top move ${predict.topMove.label || `1.${predict.topMove.san}`} ${Math.round((predict.topMove.share || 0) * 100)}%.`,
     );
   }
 
@@ -614,7 +618,7 @@ function explorerA11ySummary(explorerReads) {
 
 // A masters comparison that failed says so; one with nothing to compare stays quiet.
 const LOAD_FAILED = "Couldn't load the masters comparison.";
-const EXPLORER_FAILED = { auth: "Masters comparison needs your Lichess account linked.", "masters-unavailable": LOAD_FAILED, error: LOAD_FAILED };
+const EXPLORER_FAILED = { auth: "Masters comparison needs your Lichess account linked.", "masters-unavailable": LOAD_FAILED, error: LOAD_FAILED, "rate-limited": "Lichess is limiting requests; the masters comparison will load on the next Scout run." };
 
 function renderScoutExplorerReads(explorerReads) {
   const failed = !explorerReads?.available && EXPLORER_FAILED[explorerReads?.reason];
@@ -894,7 +898,7 @@ export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtm
       </div>
       <span class="spacer"></span>
       <button type="button" class="btn sm" id="scout-share-btn" title="Copy scout summary">Copy report</button>
-      <button type="button" class="btn sm" id="scout-deep-scan-btn" title="Stockfish scan of their opening mistakes · last ${SCOUT_ENGINE_DEFAULT_GAMES} games per color">Deep scan</button>
+      <button type="button" class="btn sm" id="scout-deep-scan-btn" title="${streaming ? "Deep scan starts once the games have loaded" : `Stockfish scan of their opening mistakes · last ${SCOUT_ENGINE_DEFAULT_GAMES} games per color`}"${streaming ? html` disabled` : ""}>Deep scan</button>
     </div>
     ${colorRecHtml}`;
 }
@@ -908,14 +912,16 @@ function scoutPrepStatus(line) {
     return {
       cls: "is-gap",
       tone: "warn",
-      text: `Gap in ${line.repName || "your prep"} after ${line.covered} plies`,
+      text: prepGapText(line),
     };
   }
   return { cls: "is-new", tone: "bad", text: "Not in your prep" };
 }
 
 /** Short why-this-route copy from fields the selector already computed. */
-export function scoutRouteReasonText(line, baseline) {
+export function scoutRouteReasonText(line, baselineArg) {
+  // The weak-spot gap was decided against this route's own baseline; quote that one.
+  const baseline = line?.weakSpotBaselinePct ?? baselineArg;
   const parts = [];
   if (line?.maiaScorePct != null) {
     parts.push(`Maia estimates they score ${line.maiaScorePct}% here`);
@@ -1142,7 +1148,7 @@ function scoutLineRowHtml(
     const oneGame = !maiaEstimate && rawCount === 1;
     const scoreHtml = oneGame
       ? html`<span class="scout-score-cell scout-one-game" title="Their result in the only game">${wdl.w ? "Won" : wdl.l ? "Lost" : "Drew"}</span>`
-      : scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 });
+      : scoutScoreCell(displayScore, rawCount, { baseline: line.weakSpotBaselinePct ?? baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 });
     const wdlHtml = oneGame ? "" : scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate, counts: false });
     return html`
       <div class="scout-line scout-line-row line-row ${status.cls} scout-weakness-row scout-ranked-row" data-line-key="${lineKey}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}"${pathAttr}${rowTitle}>
@@ -1228,7 +1234,7 @@ export function buildScoutSectionReport(
   const trie = prebuiltTrie || scoutModule.buildOpeningTrie(games, oppColor, { speedFilter, maxPlies: Infinity });
   if (!trie.gameCount) return { html: "", sectionData: null };
 
-  const stats = buildScoutStats(games, { color: oppColor, speedFilter });
+  const stats = memoScoutStats(games, { color: oppColor, speedFilter });
   const colorWdl = opponentColorStats(games, oppColor, { speedFilter });
   // Speed-filtered WDL/score must match the filtered trie. When the filter is
   // "all", an explicit profile.colorStats override is kept (tests + header).
@@ -1244,15 +1250,15 @@ export function buildScoutSectionReport(
     for (const { rep, lookup } of myLookups) {
       const g = scoutModule.gradeLines(lookup, [line])[0];
       if (!best || g.covered > best.covered) {
-        best = { ...g, repId: rep.id, repName: rep.name };
+        best = { ...g, repId: rep.id, repName: rep.name, gap: lineGap(lookup, line.ucis, oppColor === "white" ? "black" : "white") };
       }
     }
     return best || { ...line, covered: 0, prepared: false, repId: null, repName: null };
   });
 
   const sectionRating = maiaRatings?.[oppColor] ?? medianOpponentRating(games, oppColor);
-  const { branches: allOpeningLines, ancestorFreq } = scoutModule.rankedOpeningBranches(
-    games,
+  const { branches: allOpeningLines } = memoRankedOpeningBranches(
+    scoutModule, games,
     oppColor,
     { speedFilter, trie, baselineScorePct: baseline, limit: SCOUT_BRANCH_HARD_CEILING },
   );
@@ -1280,7 +1286,6 @@ export function buildScoutSectionReport(
     games,
     speedFilter,
     lineLastSeen,
-    ancestorFreq,
     pathGuard,
   });
   if (enginePatterns instanceof Map) {

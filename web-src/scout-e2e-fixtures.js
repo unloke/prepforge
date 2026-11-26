@@ -4,7 +4,7 @@ import {
   ENGINE_AGG_MIN_COVERAGE_PCT,
 } from "./scout-engine.js";
 import * as scoutModule from "./scout.js";
-import { fenAfterLine, triePathKey } from "./scout.js";
+import { branchPathKey, fenAfterLine } from "./scout.js";
 import { buildRefutations } from "./scout-refutation.js";
 import { buildScoutSectionReport } from "./scout-report.js";
 
@@ -50,7 +50,7 @@ function makeScanRecord(
 ) {
   const lastIdx = pathUcis.length - 1;
   const movePly = ply ?? lastIdx;
-  const parentKey = pathUcis.length > 1 ? triePathKey(pathUcis.slice(0, -1)) : "";
+  const parentKey = pathUcis.length > 1 ? branchPathKey(pathUcis.slice(0, -1)) : "";
   const lastUci = pathUcis[pathUcis.length - 1];
   const move = {
     ply: movePly,

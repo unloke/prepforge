@@ -151,6 +151,8 @@ describe("routeSupportGames semantics", () => {
     expect(deep.preparationEvidence.support).toBe(41);
     expect(deep.preparationEvidence.value).toBeGreaterThan(0);
     expect(deep.prepCategory).toBe("attack");
-    expect(deep.belowBaseline).toBe(30);
+    // Measured against the selection's own (recency-weighted) 70% baseline, not 50%.
+    expect(deep.belowBaseline).toBe(50);
+    expect(deep.weakSpotBaselinePct).toBe(70);
   });
 });

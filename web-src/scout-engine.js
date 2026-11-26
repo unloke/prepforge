@@ -6,20 +6,22 @@ import { createEngineProvider, ANALYSIS_MAX_NODES, ENGINE_ID } from "./engine/st
 import { analyzeGamePositions, isTerminalPosition } from "./engine/game-analyzer.js";
 import { classifyMove, evaluationToWin } from "./explain.js";
 import { confidence } from "./scout-stats.js";
-import { ANALYZE_PLIES, triePathKey } from "./scout.js";
+import { ANALYZE_PLIES, branchPathKey, triePathKey } from "./scout.js";
+import { readGameCache, writeGameCache } from "./scout-engine-cache.js";
 
 export { triePathKey };
+export {
+  ENGINE_CACHE_SCHEMA, ENGINE_CACHE_MAX_ENTRIES, ENGINE_CACHE_MAX_BYTES, ENGINE_CACHE_TTL_MS,
+  isCompleteScanCacheEntry, readGameCache, writeGameCache,
+} from "./scout-engine-cache.js";
 
 export const SCOUT_ENGINE_DEPTH = 12;
 export const SCOUT_ENGINE_MIN_RECURRENCE = 2;
 export const SCOUT_ENGINE_DEFAULT_GAMES = 60;
 export const ENGINE_AGG_MIN_ANALYZED_GAMES = 3;
 export const ENGINE_AGG_MIN_COVERAGE_PCT = 60;
-export const ENGINE_CACHE_SCHEMA = 5;
-export const ENGINE_CACHE_MAX_ENTRIES = 120;
-export const ENGINE_CACHE_MAX_BYTES = 4 * 1024 * 1024;
-export const ENGINE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const CACHE_PREFIX = "prepforge.scout.engine.v5";
+// Evals kept across the games and colours of one session's scans (a few KB each).
+export const SCAN_EVAL_CACHE_MAX = 4000;
 
 export function scoutCacheProvenance(game, oppColor) {
   return JSON.stringify({
@@ -30,98 +32,6 @@ export function scoutCacheProvenance(game, oppColor) {
     ucis: game.ucis,
     sans: game.sans,
   });
-}
-
-class ScanCancelled extends Error {
-  constructor(message = "Deep scan stopped") {
-    super(message);
-    this.cancelled = true;
-  }
-}
-
-function cacheKey(gameId, depth, plies) {
-  return `${CACHE_PREFIX}:${gameId}:d${depth}:p${plies}`;
-}
-
-
-function moveHasReplyFields(move) {
-  if (!move || typeof move !== "object") return false;
-  const hasOpponentAlt =
-    Object.prototype.hasOwnProperty.call(move, "opponentBestAlternativeUci");
-  return (
-    hasOpponentAlt &&
-    Object.prototype.hasOwnProperty.call(move, "ourReplyUci") &&
-    Object.prototype.hasOwnProperty.call(move, "ourReplyPv")
-  );
-}
-
-export function isCompleteScanCacheEntry(cached) {
-  if (!cached?.record || cached.schemaVersion !== ENGINE_CACHE_SCHEMA) return false;
-  const rec = cached.record;
-  if (!Number.isFinite(rec.eligibleOpponentPlies) || !Number.isFinite(rec.analyzedOpponentPlies)) {
-    return false;
-  }
-  if (!Array.isArray(rec.moves) || !Array.isArray(rec.mistakes)) return false;
-  if (rec.complete !== true || rec.analyzedOpponentPlies !== rec.eligibleOpponentPlies) return false;
-  if (rec.analyzedOpponentPlies > 0 && rec.moves.length !== rec.analyzedOpponentPlies) {
-    return false;
-  }
-  if (rec.moves.length > 0 && !rec.moves.every(moveHasReplyFields)) {
-    return false;
-  }
-  return true;
-}
-
-
-export function readGameCache(store, gameId, depth, plies, provenance) {
-  if (!gameId) return null;
-  try {
-    const key = cacheKey(gameId, depth, plies);
-    const raw = store.getItem(key);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const age = Date.now() - parsed.at;
-      if (provenance && parsed.provenance === provenance && Number.isFinite(age) &&
-          age >= 0 && age <= ENGINE_CACHE_TTL_MS && isCompleteScanCacheEntry(parsed)) return parsed;
-      store.removeItem(key);
-    }
-  } catch (_) {
-    return null;
-  }
-  return null;
-}
-
-export function writeGameCache(store, gameId, depth, plies, payload) {
-  if (!gameId) return;
-  try {
-    const value = JSON.stringify({ ...payload, schemaVersion: ENGINE_CACHE_SCHEMA });
-    if (!payload.provenance || !isCompleteScanCacheEntry({ ...payload, schemaVersion: ENGINE_CACHE_SCHEMA })) return;
-    // Count UTF-16 storage bytes conservatively. Evict only this derived cache;
-    // user data and sync receipts are never part of this retention policy.
-    if (value.length * 2 > ENGINE_CACHE_MAX_BYTES) return;
-    const entries = [];
-    let bytes = value.length * 2;
-    const target = cacheKey(gameId, depth, plies);
-    for (let i = 0; i < store.length; i++) {
-      const key = store.key(i);
-      if (!key?.startsWith(`${CACHE_PREFIX}:`) || key === target) continue;
-      const raw = store.getItem(key);
-      let at = 0;
-      try { at = JSON.parse(raw).at || 0; } catch (_) { /* malformed cache is evicted first */ }
-      entries.push({ key, bytes: (raw?.length || 0) * 2, at });
-      bytes += (raw?.length || 0) * 2;
-    }
-    entries.sort((a, b) => a.at - b.at);
-    while (entries.length && (entries.length >= ENGINE_CACHE_MAX_ENTRIES || bytes > ENGINE_CACHE_MAX_BYTES ||
-        Date.now() - entries[0].at > ENGINE_CACHE_TTL_MS)) {
-      const oldest = entries.shift();
-      store.removeItem(oldest.key);
-      bytes -= oldest.bytes;
-    }
-    store.setItem(target, value);
-  } catch (_) {
-    /* best-effort */
-  }
 }
 
 function moverFromFen(fen) {
@@ -162,7 +72,8 @@ function collectOpponentPositions(game, oppColor, maxPlies = ANALYZE_PLIES) {
         fenBefore,
         playedUci: game.ucis[i],
         playedSan: game.sans[i],
-        pathKey: triePathKey(pathUcis),
+        // Uncapped: a scan reaches ANALYZE_PLIES (24), past the trie's 16-ply display key.
+        pathKey: branchPathKey(pathUcis),
         pathSans: game.sans.slice(0, i),
         pathUcis,
       });
@@ -173,7 +84,7 @@ function collectOpponentPositions(game, oppColor, maxPlies = ANALYZE_PLIES) {
         to: game.ucis[i].slice(2, 4),
         promotion: game.ucis[i][4],
       });
-    } catch (_) {
+    } catch {
       break;
     }
   }
@@ -189,7 +100,7 @@ function afterPlayedFen(fenBefore, playedUci) {
       promotion: playedUci[4],
     });
     return chess.fen();
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -252,46 +163,49 @@ function buildGameScanRecord(game, positions, analyzedMoves) {
   };
 }
 
-async function analyzeGameForScan(game, oppColor, { depth, storage, shouldCancel, createProvider }) {
-  const provenance = scoutCacheProvenance(game, oppColor);
-  const cached = readGameCache(storage, game.gameId, depth, ANALYZE_PLIES, provenance);
-  if (cached?.record) {
-    return {
-      mistakes: cached.record.mistakes || buildMistakeMoves(cached.record.moves || []),
-      record: cached.record,
-    };
+class ScanCancelled extends Error {
+  constructor(message = "Deep scan stopped") {
+    super(message);
+    this.cancelled = true;
   }
+}
 
+/**
+ * Evals shared by every game, and both colours, of a session's deep scans: most games
+ * open the same way, so each position is searched once. Keyed by engine and depth.
+ */
+export function createScanEvalCache(max = SCAN_EVAL_CACHE_MAX) {
+  const map = new Map();
+  const keyOf = (depth, fen) => `${ENGINE_ID}|d${depth}|${fen}`;
+  return {
+    get: (depth, fen) => map.get(keyOf(depth, fen)) ?? null,
+    set(depth, fen, evalResult) {
+      const key = keyOf(depth, fen);
+      map.delete(key);
+      map.set(key, evalResult);
+      if (map.size > max) map.delete(map.keys().next().value);
+    },
+    get size() { return map.size; },
+  };
+}
+
+// The positions one game needs: before each opponent move, and after it unless the
+// game is over there (a finished position has no reply to read).
+function planGameScan(game, oppColor) {
   const positions = collectOpponentPositions(game, oppColor);
-  if (!positions.length) {
-    const empty = buildGameScanRecord(game, [], []);
-    return { mistakes: [], record: empty };
-  }
-
-  const fens = [];
+  const fens = new Set();
   for (const pos of positions) {
-    fens.push(pos.fenBefore);
+    fens.add(pos.fenBefore);
     const afterFen = afterPlayedFen(pos.fenBefore, pos.playedUci);
-    if (afterFen && !isTerminalPosition(afterFen)) fens.push(afterFen);
+    if (afterFen && !isTerminalPosition(afterFen)) fens.add(afterFen);
   }
+  return { game, positions, fens: [...fens], missing: 0 };
+}
 
-  const evalMap = await analyzeGamePositions({
-    positions: fens,
-    depth,
-    concurrency: 1,
-    shouldCancel,
-    createProvider,
-    onProgress: () => {},
-  });
-
-  const analyzedMoves = buildAnalyzedMoveResults(positions, evalMap);
-  const record = buildGameScanRecord(game, positions, analyzedMoves);
-  writeGameCache(storage, game.gameId, depth, ANALYZE_PLIES, {
-    record,
-    moves: record.mistakes,
-    at: Date.now(),
-    provenance,
-  });
+function finishGameScan(plan, evalMap, { depth, storage, provenance }) {
+  const analyzedMoves = buildAnalyzedMoveResults(plan.positions, evalMap);
+  const record = buildGameScanRecord(plan.game, plan.positions, analyzedMoves);
+  writeGameCache(storage, plan.game.gameId, depth, ANALYZE_PLIES, { record, at: Date.now(), provenance });
   return { mistakes: record.mistakes, record };
 }
 
@@ -506,6 +420,7 @@ export async function runScoutDeepScan({
   shouldCancel,
   storage,
   createProvider = createEngineProvider,
+  evalCache = createScanEvalCache(),
 } = {}) {
   const store =
     storage ||
@@ -517,22 +432,78 @@ export async function runScoutDeepScan({
   const filtered = scope.games;
 
   const total = filtered.length;
-  const allGameMoves = [];
-  const scanRecords = [];
+  const results = new Array(total);
+  let done = 0;
+  const evals = { get: (fen) => evalCache.get(depth, fen) };
+  const finish = (plan) => {
+    results[plan.index] = finishGameScan(plan, evals, { depth, storage: store, provenance: plan.provenance });
+    done += 1;
+    if (typeof onProgress === "function") onProgress(done, total);
+  };
+  const settle = (index, result) => {
+    results[index] = result;
+    done += 1;
+    if (typeof onProgress === "function") onProgress(done, total);
+  };
 
-  for (let i = 0; i < filtered.length; i += 1) {
-    if (typeof shouldCancel === "function" && shouldCancel()) throw new ScanCancelled();
-    const game = filtered[i];
-    const { mistakes, record } = await analyzeGameForScan(game, oppColor, {
+  if (typeof shouldCancel === "function" && shouldCancel()) throw new ScanCancelled();
+  // One engine pass over every uncached game: one provider for the whole scan, each
+  // distinct position searched once, and each game recorded (and cached) the moment
+  // its last position is known, so a stopped scan keeps the games it finished.
+  const waiting = new Map(); // fen -> plans still waiting on it
+  const queue = [];
+  const plans = [];
+  filtered.forEach((game, index) => {
+    const provenance = scoutCacheProvenance(game, oppColor);
+    const cached = readGameCache(store, game.gameId, depth, ANALYZE_PLIES, provenance);
+    if (cached?.record) {
+      settle(index, { mistakes: cached.record.mistakes, record: cached.record });
+      return;
+    }
+    const plan = { ...planGameScan(game, oppColor), index, provenance };
+    if (!plan.positions.length) {
+      settle(index, { mistakes: [], record: buildGameScanRecord(game, [], []) });
+      return;
+    }
+    for (const fen of plan.fens) {
+      if (evalCache.get(depth, fen)) continue;
+      plan.missing += 1;
+      if (!waiting.has(fen)) {
+        waiting.set(fen, []);
+        queue.push(fen);
+      }
+      waiting.get(fen).push(plan);
+    }
+    plans.push(plan);
+    if (!plan.missing) finish(plan);
+  });
+
+  if (queue.length) {
+    await analyzeGamePositions({
+      positions: queue,
       depth,
-      storage: store,
+      concurrency: 1,
       shouldCancel,
       createProvider,
+      reuse: (fen) => evalCache.get(depth, fen),
+      onResult: (fen, evalResult) => {
+        evalCache.set(depth, fen, evalResult);
+        const blocked = waiting.get(fen);
+        if (!blocked) return;
+        waiting.delete(fen);
+        for (const plan of blocked) {
+          plan.missing -= 1;
+          if (plan.missing === 0) finish(plan);
+        }
+      },
     });
-    allGameMoves.push(mistakes.map((m) => ({ ...m, gameId: game.gameId })));
-    scanRecords.push(record);
-    if (typeof onProgress === "function") onProgress(i + 1, total);
   }
+  // A game whose record failed to build in the callback is built from what is known.
+  for (const plan of plans) if (!results[plan.index]) finish(plan);
+
+  const allGameMoves = results.map((result, i) =>
+    result.mistakes.map((m) => ({ ...m, gameId: filtered[i].gameId })));
+  const scanRecords = results.map((result) => result.record);
 
   return {
     patterns: aggregateEngineByTriePath(allGameMoves),

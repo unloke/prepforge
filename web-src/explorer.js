@@ -50,11 +50,23 @@ export class ExplorerRateLimited extends Error {
   }
 }
 
+// The explorer's stats depend on the position alone, so the move counters are
+// neutral: two move orders that reach a position share one cache entry (here and
+// in the proxy, which normalises the same way).
+export function explorerPositionFen(fen) {
+  const text = String(fen || "");
+  const fields = text.trim().split(/\s+/);
+  // Only a well-formed FEN tail (4 fields, or 6 with numeric counters) is rewritten;
+  // anything else is left as given rather than guessed at.
+  const counters = fields.length === 6 && /^\d+$/.test(fields[4]) && /^\d+$/.test(fields[5]);
+  return fields.length === 4 || counters ? `${fields.slice(0, 4).join(" ")} 0 1` : text;
+}
+
 // Only fen + ratings (+ masters topGames) travel; the proxy pins every other
 // upstream parameter.
 export function explorerUrl(db, fen, { rating, topGames } = {}) {
   const params = new URLSearchParams();
-  params.set("fen", fen);
+  params.set("fen", explorerPositionFen(fen));
   if (db === "lichess") {
     params.set("ratings", ratingBucketsFor(rating).join(","));
   } else if (Number.isFinite(Number(topGames)) && Number(topGames) > 0) {

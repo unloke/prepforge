@@ -5,7 +5,6 @@ import { html } from "../html.js";
 import "./scout.css";
 import { createEnrichPipeline } from "../enrich-pipeline.js";
 import { countOf, nounOf } from "../plural.js";
-import { scoutLineText } from "../scout.js";
 
 import {
   applyScoutColorTabs,
@@ -27,9 +26,9 @@ import {
   scoutDistRowHtml,
   scoutDisplayDistribution,
   scoutLineDetailHtml,
-  scoutLineKey,
 } from "../scout-report.js";
 import { createScoutInitGuard, scoutStateCarryover } from "../scout-init-guard.js";
+import { createScoutPrepWriter } from "./scout-prep-writer.js";
 import { watchMaiaInit } from "../maia-init-notice.js";
 import { sameFetchSources } from "./shared/source-composer.js";
 
@@ -70,9 +69,13 @@ import { NODES_PER_GATE_READ, createPathGuard, selectGuardedRoutes } from "../sc
 import { routeKey } from "../scout-preparation-value.js";
 import { createPathGuardEngine } from "../scout-path-guard-engine.js";
 
+import {
+  SCOUT_STREAM_BATCH, failedSources, recordStreamResults, renderSourceWarnings, scoutErrorHtml,
+  scoutLabel, scoutSourceFailureMessage, scoutStreamCapNoteHtml, sourcesToStream,
+} from "./scout-sources.js";
+import { captureScoutViewState, restoreScoutViewState, scoutPrefilterFailedNoteHtml } from "./scout-render-state.js";
+
 const RENDER_DEBOUNCE_MS = 400;
-// Games per account per fetch; "Load older" pulls the next batch.
-const SCOUT_STREAM_BATCH = 500;
 const RENDER_FORCE_EVERY_INITIAL = 25;
 
 const PREFILTER_ENRICH_DEBOUNCE_MS = 400;
@@ -107,44 +110,17 @@ const PATH_GUARD_MAX_RERUNS = 3;
 
 const perColor = (make) => ({ white: make("white"), black: make("black") });
 
-function scoutErrorHtml(title, message, action = null) {
-  return html`<div class="scout-error" role="alert">
-    <p class="scout-error-title">${title}</p>
-    <p class="scout-error-body">${message}</p>
-    ${action ? html`<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>` : ""}
-  </div>`;
-}
-
-// Multi-identity label: "self (2 accounts)" keeps time/sample stats honest
-// while reading as one person, not a list of logins.
-function scoutLabel(usernames) {
-  const names = (usernames || []).filter(Boolean);
-  if (names.length <= 1) return names[0] || "";
-  return `self (${names.length} accounts)`;
-}
-
 export function createScoutView(deps) {
   const {
     setStatus,
     switchView,
     api,
-    showInputModal,
-    createRepertoirePrompt,
     editRepertoire,
-    boardAfterMove,
-    buildProvisionalNode,
-    hardFlushBuild,
     selectBuildNode,
-    resolveBuildId,
-    setBuildSync,
     notices,
     parseFenBoard,
     pieceSvg,
-    getBuildState,
-    getBuildNodeById,
-    queueBuildAdd,
     loadPgnIntoAnalyze,
-    rememberHandoff = () => {},
     maiaAnalysisEnabled = () => true,
     scoutPickedUsernames = () => [],
     // Unified sign-in gate (app.js): false + sign-in modal for a guest.
@@ -159,10 +135,6 @@ export function createScoutView(deps) {
   let scoutState = null;
   let scoutSession = null;
   let scoutSourceNames = null;
-  // One async action at a time: a double-click on "Add to prep" (or a repeated
-  // "Add all gaps") used to open two identical dialogs. The side card and the
-  // colour card stay mounted while a dialog is up, so both clicks land.
-  let actionBusy = false;
   const scoutBoundEventTargets = new WeakSet();
   const prefilterEnrich = createEnrichPipeline({ debounceMs: PREFILTER_ENRICH_DEBOUNCE_MS, run: enrichPrefilterReads });
   const maiaEnrich = createEnrichPipeline({ debounceMs: MAIA_ENRICH_DEBOUNCE_MS, run: enrichMaiaReads });
@@ -497,6 +469,7 @@ export function createScoutView(deps) {
     const profileEl = getProfileEl();
     const results = getResultsEl();
     const captured = results ? captureScoutExpanded(results) : null;
+    const kept = [results, getSideEl()].map((root) => captureScoutViewState(root));
 
     if (profileEl) {
       profileEl.innerHTML = renderScoutProfile(
@@ -542,7 +515,8 @@ export function createScoutView(deps) {
       },
     });
     const sections = [whiteReport.html, blackReport.html].filter(Boolean);
-    const progressHtml = html`<div id="scout-engine-progress" class="scout-engine-progress is-idle"></div>`;
+    const progressHtml = html`<div id="scout-engine-progress" class="scout-engine-progress is-idle"></div>${
+      scoutStreamCapNoteHtml(scoutSession)}${scoutPrefilterFailedNoteHtml(scoutState.prefilterEnrichState === PREFILTER_FAILED)}`;
     if (results) {
       const shownBefore = planRowKeys(results);
       results.innerHTML = sections.length
@@ -559,6 +533,8 @@ export function createScoutView(deps) {
       } else {
         clearScoutSide();
       }
+      restoreScoutViewState(results, kept[0], { redrill: renderDistDrilldown });
+      restoreScoutViewState(getSideEl(), kept[1]);
     }
     if (force) updateLiveCounter();
     patchEngineProgressUI();
@@ -700,7 +676,7 @@ export function createScoutView(deps) {
   }
 
   async function rerunPathGuard(gen) {
-    if (!scoutState?.games?.length || !scoutModule) return;
+    if (!scoutState?.games?.length || !scoutModule || isStreaming()) return;
     if (gen !== pathGuard.generation || scoutState.prefilterEnrichState !== PREFILTER_READY) return;
     const isCurrent = () => gen === pathGuard.generation && Boolean(scoutState);
     const engine = createPathGuardEngine({ shouldCancel: () => !isCurrent() });
@@ -719,29 +695,22 @@ export function createScoutView(deps) {
   }
 
 
-  function openingBranchBundleForColor(section, oppColor) {
+  function allOpeningLinesForColor(section, oppColor) {
     if (!scoutState?.games?.length || !scoutModule?.rankedOpeningBranches) {
-      return { branches: [], ancestorFreq: new Map() };
+      return [];
     }
     // The trie + baseline rank observed routes by measured struggle and family evidence.
     // Opponent-only conditional reach removes routes they are unlikely to enter before
     // Stockfish runs; our own chosen moves do not lower that reach.
     // Bound the engine queue using personal preparation value.
-    const { branches, ancestorFreq } =
+    const { branches } =
       scoutModule.rankedOpeningBranches(scoutState.games, oppColor, {
         speedFilter: scoutState.activeSpeed,
         trie: section?.trie || null,
         baselineScorePct: baselineScorePctForColor(oppColor),
         limit: 0,
-      }) || { branches: [], ancestorFreq: new Map() };
-    return { branches: trimRankedBranches(branches), ancestorFreq };
-  }
-
-  function allOpeningLinesForColor(section, oppColor) {
-    const { branches, ancestorFreq } = openingBranchBundleForColor(section, oppColor);
-    scoutState.ancestorFreq ||= { white: new Map(), black: new Map() };
-    scoutState.ancestorFreq[oppColor] = ancestorFreq;
-    return branches;
+      }) || { branches: [] };
+    return trimRankedBranches(branches);
   }
 
   function currentPrefilterScopeKey() {
@@ -760,7 +729,6 @@ export function createScoutView(deps) {
     scoutState.prefilterRanked = { white: [], black: [] };
     scoutState.prefilteredLines = { white: [], black: [] };
     scoutState.stockfishDisplayLines = { white: [], black: [] };
-    scoutState.ancestorFreq = { white: new Map(), black: new Map() };
     scoutState.pathGuard = { white: null, black: null };
   }
 
@@ -839,7 +807,7 @@ export function createScoutView(deps) {
   }
 
   async function enrichPrefilterReads(gen) {
-    if (!scoutState?.games?.length || !scoutModule) return;
+    if (!scoutState?.games?.length || !scoutModule || isStreaming()) return;
     if (gen !== prefilterEnrich.generation) return;
     const scopeKey = currentPrefilterScopeKey();
     if (prefilterSettled() && scoutState.prefilterScopeKey === scopeKey) {
@@ -873,7 +841,6 @@ export function createScoutView(deps) {
         const result = await runStockfishPrefilter(lines, {
           fenAfterLine: scoutModule.fenAfterLine,
           oppColor,
-          ancestorFreq: scoutState.ancestorFreq?.[oppColor],
           baselineScorePct: baselineScorePctForColor(oppColor),
           cache: scoutState.prefilterCache,
           shouldCancel: () => gen !== prefilterEnrich.generation,
@@ -910,13 +877,16 @@ export function createScoutView(deps) {
       if (gen !== prefilterEnrich.generation) return;
       scoutState.prefilterEnrichState = PREFILTER_READY;
       scoutState.prefilterScopeKey = scopeKey;
-    } catch {
+    } catch (error) {
       if (gen === prefilterEnrich.generation && scoutState) {
+        console.warn("[scout-prefilter] failed:", error?.message || error);
         for (const oppColor of ["white", "black"]) {
           if (scoutState.prefilterPools?.[oppColor]?.length) continue;
           const section = scoutState.sections?.[oppColor];
           applyPrefilterFallbackForColor(section, oppColor);
         }
+        // Settled for this scope, so renders don't re-run it in a loop; the
+        // report's Retry (retryPrefilter) clears the scope to read again.
         scoutState.prefilterEnrichState = PREFILTER_FAILED;
         scoutState.prefilterScopeKey = scopeKey;
       }
@@ -928,6 +898,14 @@ export function createScoutView(deps) {
         maiaEnrich.schedule();
       }
     }
+  }
+
+  function retryPrefilter() {
+    if (!scoutState || isStreaming() || scoutState.prefilterEnrichState !== PREFILTER_FAILED) return;
+    scoutState.prefilterScopeKey = null;
+    scoutState.prefilterEnrichState = PREFILTER_IDLE;
+    renderScoutReport();
+    prefilterEnrich.schedule();
   }
 
   // Redraws the plan from the Maia reads so far, records the funnel, and returns the
@@ -967,7 +945,7 @@ export function createScoutView(deps) {
       }
       return;
     }
-    if (!scoutState?.games?.length || !scoutModule) return;
+    if (!scoutState?.games?.length || !scoutModule || isStreaming()) return;
     if (gen !== maiaEnrich.generation) return;
     if (prefilterEnrich.inFlight) return;
     if (!prefilterSettled() || !globalMaiaRankedPool().length) return;
@@ -1050,7 +1028,7 @@ export function createScoutView(deps) {
 
 
   async function computeEngineAggregation(gen) {
-    if (!scoutState?.games?.length) return;
+    if (!scoutState?.games?.length || isStreaming()) return;
     if (gen !== engineAgg.generation) return;
     try {
       if (!scoutEngineModule) {
@@ -1088,7 +1066,7 @@ export function createScoutView(deps) {
 
 
   async function enrichExplorerReads(gen) {
-    if (!scoutState?.games?.length || !scoutModule) return;
+    if (!scoutState?.games?.length || !scoutModule || isStreaming()) return;
     if (gen !== explorerEnrich.generation) return;
     try {
       if (!scoutExplorerModule) {
@@ -1203,187 +1181,13 @@ export function createScoutView(deps) {
     if (!failed) setStatus(`Loaded ${username}'s line. Press Review to start.`);
   }
 
-  function formatScoutLinePreview(line) {
-    const text = line?.sans?.length ? scoutLineText(line.sans) : (line?.ucis || []).join(" ");
-    const reply = line?.suggestedReply?.san || line?.suggestedReply?.uci;
-    return reply ? `${text} → ${reply}` : text || "Line";
-  }
-
-  async function pickRepertoire(oppColor, ownColor, lines = null) {
-    const myColor = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
-    let reps = [];
-    try {
-      const payload = await api("/api/repertoires");
-      reps = (payload.repertoires || []).filter((r) => r.is_active !== false && r.color === myColor);
-    } catch (error) { setStatus(error.message); return null; }
-    const createNew = async () => {
-      const created = await createRepertoirePrompt({
-        title: "New repertoire for scout prep",
-        defaultName: scoutState?.username ? `vs ${scoutState.username}` : "Opponent prep",
-        defaultColor: myColor,
-        openAfter: false,
-      });
-      return created?.repertoire_id || null;
-    };
-    const batchCount = Array.isArray(lines) ? lines.length : 0;
-    if (!reps.length && !batchCount) return createNew();
-    const options = [
-      ...reps.map((r) => ({ value: r.id, label: `${r.name} (${r.color})` })),
-      { value: "__new__", label: "Create new repertoire…" },
-    ];
-    const countLabel = batchCount ? countOf(batchCount, "line") : null;
-    const previewGroup = batchCount ? `Lines to add (${batchCount})` : null;
-    const previewNotes = batchCount
-      ? lines.slice(0, 10).map((l) => ({ type: "note", group: previewGroup, label: formatScoutLinePreview(l) }))
-      : [];
-    if (batchCount > 10) previewNotes.push({ type: "note", group: previewGroup, label: `+${batchCount - 10} more` });
-    const result = await showInputModal({
-      title: countLabel ? `Add ${countLabel} to prep` : "Add line to prep",
-      okLabel: countLabel ? `Add ${countLabel}` : "Continue",
-      fields: [
-        { name: "repertoire", label: "Target repertoire", type: "select", default: reps[0]?.id || "__new__", options },
-        ...previewNotes,
-      ],
-    });
-    if (!result?.repertoire) return null;
-    return result.repertoire === "__new__" ? createNew() : result.repertoire;
-  }
-
-  async function scoutWriteLineToRep(line, repId, { reload = true, flush = true, side = null } = {}) {
-    await loadScoutModule();
-    const build = getBuildState();
-    if (reload || !build || build.repertoire_id !== repId) await editRepertoire(repId);
-    const freshBuild = getBuildState();
-    if (!freshBuild || freshBuild.repertoire_id !== repId) return null;
-
-    const lookup = scoutModule.repertoireChildLookup(freshBuild.nodes);
-    const ucisToWrite = [...(line.ucis || [])];
-    if (line.suggestedReply?.uci) ucisToWrite.push(line.suggestedReply.uci);
-    const { covered, deepestNodeId } = scoutModule.lineCoverage(lookup, ucisToWrite);
-    const remaining = ucisToWrite.slice(covered);
-    const alreadyPresent = ucisToWrite.length > 0 && !remaining.length && !String(deepestNodeId || "").startsWith("tmp-");
-    let parentId = deepestNodeId;
-    let parent = getBuildNodeById?.(parentId) || freshBuild.nodes.find((n) => n.id === parentId);
-    let lastNodeId = parentId;
-
-    let complete = true;
-    for (const uci of remaining) {
-      const existing = freshBuild.nodes.find((n) => n.parent_id === parentId && n.uci === uci);
-      if (existing) {
-        parentId = existing.id;
-        parent = getBuildNodeById?.(parentId) || existing;
-        lastNodeId = parentId;
-        continue;
-      }
-      if (!parent) { complete = false; break; }
-      let after;
-      try { after = await boardAfterMove(parent.fen, uci); } catch { complete = false; break; }
-      const node = buildProvisionalNode(parent, uci, after);
-      queueBuildAdd(node);
-      if (!freshBuild.nodes.includes(node)) freshBuild.nodes.push(node);
-      parentId = node.id;
-      parent = node;
-      lastNodeId = node.id;
-      setBuildSync("dirty");
-    }
-
-    // Whether the line went in whole and whether it synced are separate: the
-    // caller counts the first and reports the second as "not synced yet".
-    let syncError = "";
-    if (flush) try { await hardFlushBuild(); } catch (error) { syncError = error.message; }
-    if (!complete || getBuildState()?.repertoire_id !== repId) {
-      setStatus(`Couldn't add the whole line to prep.${syncError ? ` Not synced yet: ${syncError}` : ""}`, { severity: "error" });
-      return syncError ? { syncError, incomplete: true } : null;
-    }
-    if (syncError) { setStatus(syncError, { severity: "error" }); return { syncError }; }
-    const resolvedId = resolveBuildId(lastNodeId);
-    if (flush) await selectBuildNode(resolvedId);
-    rememberHandoff({
-      source: "scout",
-      reason: "scout-add-to-prep",
-      lineUcis: ucisToWrite,
-      lineSans: line.sans || [],
-      side,
-      repertoireId: repId,
-    });
-    if (flush) switchView("build");
-    return alreadyPresent ? { nodeId: resolvedId, alreadyPresent: true } : resolvedId;
-  }
-
-  // The busy flag covers the write too: a second click while the first line is
-  // still being written would open the picker again and write the line twice.
-  async function scoutAddToPrep(line, oppColor, { ownColor = false } = {}) {
-    if (actionBusy) return;
-    actionBusy = true;
-    try {
-      const repId = await pickRepertoire(oppColor, ownColor);
-      if (!repId) return;
-      const side = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
-      const res = await scoutWriteLineToRep(line, repId, { side });
-      const at = line.suggestedReply?.san || line.sans?.at(-1) || "position";
-      if (res && !res.syncError) setStatus(res.alreadyPresent ? `Already in prep. Opened at ${at}.` : `Added line to prep. Opened at ${at}.`);
-    } finally {
-      actionBusy = false;
-    }
-  }
-
-  async function scoutPrepareAll(lines, oppColor) {
-    if (actionBusy) return;
-    actionBusy = true;
-    try { await runPrepareAll(lines, oppColor); } finally { actionBusy = false; }
-  }
-
-  async function runPrepareAll(lines, oppColor) {
-    const unique = [];
-    const seen = new Set();
-    for (const line of lines) {
-      const key = scoutLineKey(line.ucis);
-      if (!seen.has(key)) { seen.add(key); unique.push(line); }
-    }
-    if (!unique.length) { setStatus("No lines to add"); return; }
-    if (notices.isBusy()) { setStatus("Another job is running"); return; }
-    const repId = await pickRepertoire(oppColor, false, unique);
-    if (!repId) return;
-    if (notices.isBusy()) { setStatus("Another job is running"); return; }
-
-    const ctrl = new AbortController();
-    notices.startJob({
-      id: `scout-prep-${Date.now()}`,
-      title: "Add Scout Lines",
-      tab: "build",
-      total: unique.length,
-      onCancel: () => ctrl.abort(),
-    });
-    let done = 0, written = 0, alreadyPresent = 0, failed = 0, syncError = "";
-    for (const line of unique) {
-      if (ctrl.signal.aborted) break;
-      notices.updateJob({ current: done, total: unique.length, message: `Adding ${done + 1}/${unique.length}` });
-      try {
-        const res = await scoutWriteLineToRep(line, repId, {
-          reload: done === 0,
-          flush: done === unique.length - 1,
-          side: oppColor === "white" ? "black" : "white",
-        });
-        if (res?.syncError) { syncError = res.syncError; if (res.incomplete) failed++; else written++; }
-        else if (res && typeof res === "object" && res.alreadyPresent) alreadyPresent++;
-        else if (res) written++;
-        else failed++;
-      } catch { failed++; }
-      done++;
-    }
-    // Only the last line flushes. Stopped earlier, the lines already queued would
-    // stay unsaved on this device until some later Build save.
-    if (done > 0 && done < unique.length) {
-      try { await hardFlushBuild(); } catch (error) { syncError = error.message; }
-    }
-    // A failed sync stays in the result: the lines are still only on this device.
-    const message = `Added ${countOf(written, "line")} to prep${alreadyPresent ? ` (${alreadyPresent} already present)` : ""}${failed ? ` · ${failed} failed` : ""}${syncError ? ` · not synced yet: ${syncError}` : ""}`;
-    notices.completeJob({
-      title: syncError ? "Not synced" : ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
-      message,
-    });
-    setStatus(message, ...(syncError ? [{ severity: "error" }] : []));
-  }
+  // Scout → Build writes (views/scout-prep-writer.js).
+  const prepWriter = createScoutPrepWriter({ ...deps,
+    loadScoutModule: async () => { await loadScoutModule(); return scoutModule; },
+    getScoutState: () => scoutState,
+  });
+  const scoutAddToPrep = prepWriter.addToPrep;
+  const scoutPrepareAll = prepWriter.prepareAll;
 
   async function copyScoutReport() {
     if (!scoutState) return;
@@ -1401,6 +1205,8 @@ export function createScoutView(deps) {
       setStatus("Scout an opponent first");
       return;
     }
+    // Mid-stream it would scan only the games read so far, beside the stream's own work.
+    if (isStreaming()) return setStatus("Deep scan starts once the games have loaded");
     if (notices.isBusy()) {
       setStatus("Another job is running");
       return;
@@ -1425,6 +1231,8 @@ export function createScoutView(deps) {
       onCancel: () => ctrl.abort(),
     });
     state.engineByColor ||= {};
+    // One eval cache for both colours: a position searched for one is not searched again.
+    const evalCache = engineMod.createScanEvalCache();
     let done = 0;
     try {
       for (const color of colors) {
@@ -1438,6 +1246,7 @@ export function createScoutView(deps) {
           games: state.games,
           oppColor: color,
           speedFilter: state.activeSpeed,
+          evalCache,
           shouldCancel: () => !canApplyDeepScan(opGen, state) || ctrl.signal.aborted,
           onProgress: (cur, tot) => {
             notices.updateJob({
@@ -1624,6 +1433,8 @@ export function createScoutView(deps) {
           ensureScoutLineSelection(results, scoutState?.sections, scoutSelectionCtx());
           return;
         }
+        if (e.target.closest?.("[data-scout-load-older]")) return void handleScoutAction();
+        if (e.target.closest?.("[data-scout-retry-prefilter]")) return retryPrefilter();
         await handleScoutResultsClick(e, scoutClickCtx());
       });
 
@@ -1694,7 +1505,6 @@ export function createScoutView(deps) {
       prefilterRanked: { white: [], black: [] },
       prefilteredLines: { white: [], black: [] },
       stockfishDisplayLines: { white: [], black: [] },
-      ancestorFreq: { white: new Map(), black: new Map() },
       prefilterCache: carry.prefilterCache,
       maiaAttemptsUsed: 0,
       // Persistent per-colour opening tries, grown one game at a time as the stream
@@ -1713,10 +1523,10 @@ export function createScoutView(deps) {
       controller: null,
       state: "idle",
       seenIds: new Set(),
-      oldestDatestamp: null,
-      // R-05: per-source watermark + outcome so a partial fetch is visible
-      // and a failed source can resume (and retry) on its own cursor.
+      // R-05: per-source cursor, progress and outcome (see scout-sources.js), so
+      // a partial fetch is visible and each source pages and retries on its own.
       oldestDatestampByUser: {},
+      sourceProgress: {},
       acceptedByUser: {},
       sourceStatus: {},
       gamesSinceRender: 0,
@@ -1745,11 +1555,6 @@ export function createScoutView(deps) {
     }
     scoutState.games.push(game);
     insertIntoLiveTries(game);
-    if (game.datestamp > 0) {
-      if (session.oldestDatestamp == null || game.datestamp < session.oldestDatestamp) {
-        session.oldestDatestamp = game.datestamp;
-      }
-    }
     session.acceptedThisBatch += 1;
     // R-05: per-source counts feed the coverage chips.
     if (game.scoutUsername) {
@@ -1767,7 +1572,7 @@ export function createScoutView(deps) {
     session.gamesSinceRender = 0;
     session.controller = null;
 
-    session.state = session.userStopped || session.batchFull ? "paused" : "done";
+    session.state = session.hasMore ? "paused" : "done";
     session.userStopped = false;
     if (accepted > 0) {
       invalidatePrefilterState();
@@ -1779,20 +1584,6 @@ export function createScoutView(deps) {
     if (!scoutState?.games?.length && session.state === "done") {
       showScoutEmptyState(session, scoutSourceFailureMessage(session) || SCOUT_ERR_NO_GAMES);
     }
-  }
-
-  function failedSources(session) {
-    return Object.keys(session.sourceStatus || {}).filter((user) => session.sourceStatus[user].status === "failed");
-  }
-
-  function scoutSourceFailureMessage(session) {
-    const failed = failedSources(session);
-    if (!failed.length) return null;
-    if (failed.length === 1) {
-      const error = session.sourceStatus[failed[0]].error;
-      return error ? `${failed[0]}: ${error}` : `${failed[0]} could not be read. Try again.`;
-    }
-    return `${failed.length} sources could not be read. Retry the ones that failed.`;
   }
 
   function showScoutEmptyState(session, message) {
@@ -1818,64 +1609,22 @@ export function createScoutView(deps) {
     return true;
   }
 
-  // R-05: per-source outcome tracking. A merged report must SAY which sources
-  // it covers — a partial fetch used to look like a complete one. Cursors are
-  // per source too, so a failed source is never skipped over on Resume.
-  function recordSourceOutcome(session, username, outcome) {
-    session.sourceStatus[username] = outcome;
-    renderSourceWarnings(session);
+  // A stream supersedes every read of the report it grows: those wait for the
+  // stream to stop, and one left running would publish mid-stream (Maia included).
+  function cancelForStream() {
+    cancelEnrichmentQueues();
+    explorerEnrich.cancel();
+    engineAgg.cancel();
+    document.getElementById("scout-cap-note")?.remove();
+    if (scoutState?.prefilterEnrichState === PREFILTER_LOADING) scoutState.prefilterEnrichState = PREFILTER_IDLE;
+    if (scoutState?.maiaEnrichState === MAIA_ENRICH_LOADING) scoutState.maiaEnrichState = "idle";
   }
 
-  function renderSourceWarnings(session) {
-    const results = getResultsEl();
-    if (!results) return;
-    const statuses = Object.entries(session.sourceStatus || {}).filter(
-      ([, s]) => s.status !== "ok",
-    );
-    // With no source left, the report area already shows the reason; don't repeat it.
-    const anyOk = Object.values(session.sourceStatus || {}).some((s) => s.status === "ok");
-    if (!anyOk && !scoutState?.games?.length) {
-      document.getElementById("scout-source-warnings")?.remove();
-      return;
-    }
-    let bar = document.getElementById("scout-source-warnings");
-    if (!statuses.length) {
-      if (bar) bar.remove();
-      return;
-    }
-    if (!bar) {
-      bar = document.createElement("div");
-      bar.id = "scout-source-warnings";
-      bar.className = "scout-source-warnings";
-      results.parentNode.insertBefore(bar, results);
-    }
-    const chips = Object.entries(session.sourceStatus || {})
-      .map(([user, s]) => {
-        const label =
-          s.status === "ok"
-            ? countOf(s.accepted, "game")
-            : s.status === "failed"
-              ? `failed${s.error && anyOk ? ` · ${s.error}` : ""}`
-              : "no games";
-        return html`<span class="source-chip is-${s.status}"><b>${user}</b> ${label}</span>`;
-      });
-    const failedCount = statuses.length;
-    bar.innerHTML =
-      html`<div class="source-warn-text" title="The report covers only the sources that returned games">${countOf(failedCount, "source")} incomplete</div><div class="source-chips">${chips}</div><button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
-    bar.querySelector("#scout-retry-failed")?.addEventListener("click", () => {
-      if (retryFailedSources(session)) bar.remove();
-    });
-  }
-
-  async function runStream({ until, session: sessionArg, only } = {}) {
+  async function runStream({ session: sessionArg, only } = {}) {
     const session = sessionArg || scoutSession;
     if (!isActiveSession(session)) return;
 
-    const usernames = only?.length
-      ? only
-      : session.usernames?.length
-        ? session.usernames
-        : [session.username].filter(Boolean);
+    const usernames = sourcesToStream(session, only);
     const controllers = usernames.map(() => new AbortController());
     session.controller = {
       abort: () => controllers.forEach((c) => c.abort()),
@@ -1883,7 +1632,7 @@ export function createScoutView(deps) {
     session.state = "running";
     session.userStopped = false;
     session.acceptedThisBatch = 0;
-    session.batchFull = false;
+    cancelForStream();
     updateScoutControls();
 
     try {
@@ -1891,9 +1640,10 @@ export function createScoutView(deps) {
         usernames.map((username, i) =>
           scoutClient.streamGames(username, {
             color: session.color,
-            // R-05: per-source cursor — a failed source resumes from ITS OWN
-            // watermark, so its time range is never silently skipped.
-            until: session.oldestDatestampByUser[username] ?? until,
+            // R-05: each source's own cursor only. A source with none yet (it
+            // failed before its first game) starts from its newest game: another
+            // source's cursor would silently skip its recent history.
+            until: session.oldestDatestampByUser[username] ?? undefined,
             // Big accounts (thousands of games) arrive in batches instead of one
             // unbounded stream that locks the page.
             max: SCOUT_STREAM_BATCH,
@@ -1907,48 +1657,20 @@ export function createScoutView(deps) {
       );
       if (!isActiveSession(session)) return;
 
-      const stamps = [];
-      const failures = [];
-      settled.forEach((result, i) => {
-        const username = usernames[i];
-        const accepted = session.acceptedByUser?.[username] || 0;
-        if (result.status === "fulfilled") {
-          const stamp = result.value?.lastDatestamp ?? null;
-          if (stamp != null) {
-            session.oldestDatestampByUser[username] = stamp;
-            stamps.push(stamp);
-          }
-          recordSourceOutcome(session, username, {
-            status: accepted ? "ok" : "empty",
-            accepted,
-          });
-        } else if (result.reason?.name !== "AbortError" && !session.userStopped) {
-          failures.push(result.reason);
-          recordSourceOutcome(session, username, {
-            status: "failed",
-            accepted,
-            error: scoutFetchErrorMessage(result.reason) || result.reason?.message || "failed",
-          });
-        }
+      recordStreamResults(session, usernames, settled, {
+        aborted: controllers.map((c) => c.signal.aborted),
+        errorMessage: (reason) => scoutFetchErrorMessage(reason) || reason?.message || "failed",
       });
-      const lastDatestamp = stamps.length ? Math.min(...stamps) : null;
-      if (lastDatestamp != null) {
-        if (session.oldestDatestamp == null || lastDatestamp < session.oldestDatestamp) {
-          session.oldestDatestamp = lastDatestamp;
-        }
-      }
-      const batchAccepted = session.acceptedThisBatch;
-      // Any source that filled its batch probably has older games left.
-      session.batchFull = settled.some(
-        (r) => r.status === "fulfilled" && (r.value?.received || 0) >= SCOUT_STREAM_BATCH,
-      );
       // R-05: partial failure with results — the report stands, but the gap is
       // visible (persistent warning above the report, not just a toast).
-      await onStreamEnd({ accepted: batchAccepted }, session);
+      renderSourceWarnings(session, { results: getResultsEl(), hasGames: Boolean(scoutState?.games?.length),
+        onRetry: () => retryFailedSources(session) });
+      await onStreamEnd({ accepted: session.acceptedThisBatch }, session);
     } catch (error) {
       if (!isActiveSession(session)) return;
       session.controller = null;
       if (error?.name === "AbortError" || session.userStopped) {
+        session.hasMore = true;
         await onStreamEnd({ accepted: session.acceptedThisBatch }, session);
         return;
       }
@@ -1995,6 +1717,9 @@ export function createScoutView(deps) {
     if (results) {
       results.innerHTML = "";
       results.classList.remove("is-streaming");
+      // The open colour tab belongs to this report: a next report without that
+      // colour would otherwise open on no section at all.
+      delete results.dataset.scoutTab;
     }
     if (profile) profile.hidden = true;
     clearScoutSide();
@@ -2058,6 +1783,7 @@ export function createScoutView(deps) {
       if (results) {
         results.innerHTML = "";
         results.classList.add("is-streaming");
+        delete results.dataset.scoutTab;
       }
       clearScoutSide();
       if (profile) profile.hidden = true;
@@ -2082,8 +1808,7 @@ export function createScoutView(deps) {
     if (!session || !scoutState) return;
     const results = getResultsEl();
     if (results) results.classList.add("is-streaming");
-    const until = session.oldestDatestamp;
-    await runStream({ until, session });
+    await runStream({ session });
     if (isActiveSession(session)) results?.classList.remove("is-streaming");
   }
 
