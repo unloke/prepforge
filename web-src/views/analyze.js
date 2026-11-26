@@ -8,6 +8,7 @@ import "./analyze-report.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { extractHeaders, pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
 import { paintFindGreat, renderReportBlock, reportGradeLabel, reportGradeOf } from "./analyze-report.js";
+import { createAnalyzePlates } from "./analyze-plates.js";
 import { paintSavedLine } from "./analyze-saved-line.js";
 import { createReviewBar } from "./analyze-review.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
@@ -57,6 +58,7 @@ export function createAnalyzeView({
     createMoveTreeRenderer();
   // The last report: its key moments (the chart's dots) are what Shift+←/→ steps through.
   let report = null;
+  const plates = createAnalyzePlates({ getReport: () => report, onFlip: () => paintEvalHead() });
   // The pillars' tabs and the evaluation card's place (beside or under the board).
   const panes = typeof document !== "undefined"
     ? installAnalyzePanes({ onEvalMoved: () => requestAnimationFrame(() => rescaleEvalMarkers()) })
@@ -200,11 +202,12 @@ export function createAnalyzeView({
   // Report and board peeks share the saved game's moves and repertoire cache.
   function renderReport(moves) {
     const analysis = appState.analysis || {};
+    const headers = pgnHeaderTags(analysis.pgn ?? document.getElementById("pgn-input")?.value ?? "");
     report = renderReportBlock(document.getElementById("analysis-summary"), {
       moves,
       evalGraph: analysis.eval_graph || [],
       positionEvals: analysis.position_evals || {},
-      headers: pgnHeaderTags(analysis.pgn ?? document.getElementById("pgn-input")?.value ?? ""),
+      headers,
       names: { white: analysis.white, black: analysis.black, result: analysis.result },
       reps: bookReps(),
       selfSide: selfSide(),
@@ -213,6 +216,7 @@ export function createAnalyzeView({
       onPeek: peek,
     });
     panes.syncReport?.();
+    plates.paintPlates(headers);
     markCurrentMoment();
     paintFindGreat(analysis);
   }
@@ -226,6 +230,7 @@ export function createAnalyzeView({
     document.querySelectorAll?.("#analysis-summary [data-km-ply]").forEach((row) => {
       row.classList.toggle("is-current", Number(row.dataset.kmPly) === ply);
     });
+    plates.paintMoveHead(appState);
     review.paint();
     paintSavedLine(appState);
   }
@@ -527,11 +532,15 @@ export function createAnalyzeView({
     // on the engine's own line, and turning the engine on over an empty board
     // must not pop up an empty grey block.
     const card = document.getElementById("analysis-eval-card");
-    if (card) {
-      const graph = document.getElementById("analysis-eval-graph");
-      const job = document.querySelector("#analysis-job-dock .notice");
-      card.hidden = (!graph || graph.hidden) && !job;
-    }
+    const graph = document.getElementById("analysis-eval-graph");
+    const job = document.querySelector("#analysis-job-dock .notice");
+    if (card) card.hidden = (!graph || graph.hidden) && !job;
+    plates.paintVerticalEval({
+      text,
+      side,
+      pct,
+      show: Boolean(text) || (!graph?.hidden && (appState.evalChartPoints || []).length > 0),
+    });
   }
 
   const watch = (id, fn, options) => {

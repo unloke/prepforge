@@ -138,15 +138,13 @@ export function openBuildAtlas({ appState }) {
   dialog.querySelector("[data-close]").onclick = () => close();
   const body = dialog.querySelector(".lineage-body");
   const children = indexTree(build.nodes);
-  const selected = atlasAnalysis(build.nodes, build.color).nodes.find((node) => node.id === appState.buildCurrentNodeId);
   const personal = !appState.sharedToken && !build.shared;
   body.innerHTML = html`<div class="atlas-identity"><h3>${build.name}</h3><span class="atlas-side"><i class="${build.color === "black" ? "is-black" : ""}"></i>${build.color === "black" ? "Black" : "White"}</span></div>
-    <div class="atlas-tools"><label>Scope <select data-scope aria-label="Atlas scope"><option value="${root.id}">Whole repertoire</option>${selected && selected.id !== root.id ? html`<option value="${selected.id}">Current position · ${selected.san || "Position"}</option>` : ""}</select></label></div>
     <div data-atlas-content></div>`;
   const paint = () => {
     cancelCalculation();
-    const scope = body.querySelector("[data-scope]").value;
-    const start = build.nodes.find((node) => node.id === scope);
+    const scope = root.id;
+    const start = root;
     const scoped = subtreeNodes(start, children);
     const data = atlasAnalysis(scoped, build.color);
     const moveCount = data.nodes.filter((node) => node.id !== scope).length;
@@ -167,6 +165,5 @@ export function openBuildAtlas({ appState }) {
       onError: (error) => { if (dialog.open) render(null, `${error.message}. Reopen Atlas to retry.`); },
     });
   };
-  body.querySelector("[data-scope]").onchange = paint;
   paint();
 }

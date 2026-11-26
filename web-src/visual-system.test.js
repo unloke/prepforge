@@ -311,8 +311,9 @@ describe("axe baseline contrast guard", () => {
     expect(contrast(tokenValue("--accent-strong"), tokenValue("--accent-soft"))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("keeps primary buttons readable (accent-ink on the one accent)", () => {
+  it("keeps primary buttons readable (accent-ink on the one accent and hover)", () => {
     expect(contrast(tokenValue("--accent-ink"), tokenValue("--accent"))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(tokenValue("--accent-strong-ink"), tokenValue("--accent-strong"))).toBeGreaterThanOrEqual(4.5);
     expect(ruleBody(".btn.primary")).toMatch(/background:\s*var\(--accent\)/);
     expect(ruleBody(".btn.primary")).toMatch(/color:\s*var\(--accent-ink\)/);
   });
@@ -387,6 +388,16 @@ describe("semantic text colors meet WCAG AA", () => {
         expect(fg, `${themeName} --coord-on-${square} must resolve to a hex token`).toBeTruthy();
         expect(bg, `${themeName} --square-${square} must resolve to a hex token`).toBeTruthy();
         expect(contrast(fg, bg), `${themeName} coords on ${square} squares`).toBeGreaterThanOrEqual(4.5);
+      }
+      for (const board of ["slate", "classic", "green", "walnut"]) {
+        const bTokens = tokensOf(css.match(new RegExp(`:root\\[data-board="${board}"\\][^{]*\\{([^}]+)\\}`))?.[1] ?? "");
+        const merged = { ...resolved, ...bTokens };
+        for (const square of ["light", "dark"]) {
+          expect(
+            contrast(merged[`--coord-on-${square}`], merged[`--square-${square}`]),
+            `${themeName} ${board} coords on ${square} squares`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
       }
     });
     it(`${themeName} theme: text tokens clear 4.5:1 on panel-family surfaces`, () => {

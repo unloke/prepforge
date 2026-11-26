@@ -272,7 +272,6 @@ export function buildGameReport({ moves = [], evalGraph = [], positionEvals = {}
 }
 
 const SIDE_WORD = { white: "White", black: "Black" };
-const sideHead = (side) => html`<span class="rp-side-h" role="rowheader" title="${SIDE_WORD[side]}"><i class="rp-disc rp-${side}" aria-label="${SIDE_WORD[side]}"></i></span>`;
 
 // Each grade's head in the counts table: the board badge's symbol on the
 // grade's colour, so seven columns fit a phone without cutting the words
@@ -281,10 +280,8 @@ const sideHead = (side) => html`<span class="rp-side-h" role="rowheader" title="
 const GRADE_MARK = { brilliant: "!!", great: "!", best: "★", good: "✓", inaccuracy: "?!", mistake: "?", blunder: "??", missed: "×" }; // taste-skill-ignore: chess move annotation symbols, named in accessible column headers
 const gradeBadge = (g) => html`<i class="rp-badge g-${g.key}" aria-hidden="true">${GRADE_MARK[g.key]}</i>`;
 
-// Grade counts as a small table: a column per grade, a row per side. Every
-// grade is a column, a zero printed as a zero; a count is a jump to that
-// side's next move of the grade. The heads are symbols, named for a screen
-// reader and in their tooltip; Key opens the same names as a legend.
+// Grade counts as a symmetrical 3-column table: White (left) | Grade (center) | Black (right).
+// Every grade stays a row with accessible columnheader semantics and a Key legend.
 function countsHtml(report, keyOpen = false) {
   const grades = REPORT_GRADES.filter((g) => g.key !== "missed" || SIDES.some((s) => report.sides[s].counts.missed));
   const cell = (side, g) => {
@@ -293,8 +290,11 @@ function countsHtml(report, keyOpen = false) {
       ? html`<button type="button" class="rp-n g-${g.key}" role="cell" data-side="${side}" data-grade="${g.key}" aria-label="${`${SIDE_WORD[side]} ${g.label}: ${n}, go to the next one`}">${n}</button>`
       : html`<span class="rp-n is-zero" role="cell">0</span>`;
   };
-  return html`<section class="rp-sec rp-grades"><div class="rp-sec-head"><h3 class="rp-h">Move grades</h3><button type="button" class="rp-key-btn" data-toggle-key aria-expanded="${keyOpen ? "true" : "false"}" aria-controls="rp-key">Key</button></div><div class="rp-counts rp-grid" role="table" aria-label="Move grades"><span role="row" class="rp-tr"><span></span>${grades.map((g) => html`<span class="rp-col g-${g.key}" role="columnheader" aria-label="${g.label}" title="${g.label}">${gradeBadge(g)}</span>`)}</span>${SIDES.map(
-    (side) => html`<span role="row" class="rp-tr">${sideHead(side)}${grades.map((g) => cell(side, g))}</span>`,
+  return html`<section class="rp-sec rp-grades"><div class="rp-sec-head"><h3 class="rp-h">Move grades</h3><button type="button" class="rp-key-btn" data-toggle-key aria-expanded="${keyOpen ? "true" : "false"}" aria-controls="rp-key">Key</button></div><div class="rp-counts rp-grid rp-sym" role="table" aria-label="Move grades">${grades.map(
+    (g) => {
+      const emptyTier = (g.key === "brilliant" || g.key === "great") && !(report.sides.white.counts[g.key] || report.sides.black.counts[g.key]);
+      return html`<span role="row" class="rp-tr rp-sym-row${emptyTier ? " is-empty-tier" : ""}">${cell("white", g)}<span class="rp-col g-${g.key}" role="columnheader" aria-label="${g.label}" title="${g.label}">${gradeBadge(g)}<span class="rp-grade-name" aria-hidden="true">${g.label}</span></span>${cell("black", g)}</span>`;
+    },
   )}</div><ul class="rp-key" id="rp-key"${keyOpen ? "" : " hidden"}>${grades.map((g) => html`<li>${gradeBadge(g)}<span>${g.label}</span></li>`)}</ul></section>`;
 }
 
@@ -305,21 +305,20 @@ function prepHtml(report) {
   return departure ? html`<p class="rp-sec rp-prep"><span>${LEFT_PREP[departure.by] || "Left prep"}</span><button type="button" class="rp-prep-jump" data-ply="${departure.ply}">${departure.label}</button><span class="rp-rep">${departure.repName}</span></p>` : "";
 }
 
-// Each side's accuracy by phase, the phases as columns; a phase's name goes
-// to its first move.
+// Each side's accuracy by phase as a symmetrical Left (White) | Center (Phase) | Right (Black) table.
 function phasesHtml(report) {
   if (!report.phases.length || report.sides.white.accuracy == null) return "";
-  const acc = (v) => (v == null ? "–" : v);
-  return html`<section class="rp-sec rp-phases"><h3 class="rp-h">Accuracy by phase</h3><div class="rp-ph rp-grid" role="table" aria-label="Accuracy by phase"><span role="row" class="rp-tr"><span></span>${report.phases.map(
-    (p) => html`<button type="button" class="rp-phase rp-col" role="columnheader" data-ply="${p.from}" title="${`Go to move ${p.moves.split("–")[0]}`}">${p.label}<span class="rp-span">${p.moves}</span></button>`,
-  )}</span>${SIDES.map((side) => html`<span role="row" class="rp-tr">${sideHead(side)}${report.phases.map((p) => html`<span class="rp-n" role="cell">${acc(p[side])}</span>`)}</span>`)}</div></section>`;
+  const acc = (v) => (v == null ? "–" : `${v}%`);
+  return html`<section class="rp-sec rp-phases"><h3 class="rp-h">Accuracy by phase</h3><div class="rp-ph rp-grid rp-sym" role="table" aria-label="Accuracy by phase">${report.phases.map(
+    (p) => html`<span role="row" class="rp-tr rp-sym-row"><span class="rp-n rp-n-white" role="cell">${acc(p.white)}</span><button type="button" class="rp-phase rp-col" role="rowheader" data-ply="${p.from}" title="${`Go to move ${p.moves.split("–")[0]}`}">${p.label}<span class="rp-span">${p.moves}</span></button><span class="rp-n rp-n-black" role="cell">${acc(p.black)}</span></span>`,
+  )}</div></section>`;
 }
 
 function openingHtml(report) {
   return report.opening ? html`<p class="rp-sec rp-opening"><span class="rp-h">Opening</span> <span class="rp-opening-name">${report.opening}</span></p>` : "";
 }
 
-function compactErrors(counts) {
+export function compactErrors(counts) {
   const errors = REPORT_GRADES.filter((g) => ERRORS.has(g.key) && counts[g.key]);
   if (!errors.length) return html`<span class="rp-clean" title="No errors" aria-label="No errors"><span class="rp-error-total">0</span><span class="rp-error-word">No errors</span></span>`;
   const total = errors.reduce((sum, g) => sum + counts[g.key], 0);
@@ -337,7 +336,7 @@ function summaryHtml(report, open) {
     const name = s.name || (key === "white" ? "White" : "Black");
     return html`<span class="rp-side rp-${key}"><i class="rp-disc" aria-hidden="true"></i><span class="rp-name" title="${name}">${name}</span><b class="rp-acc" title="${`${SIDE_WORD[key]} accuracy`}">${s.accuracy == null ? "–" : `${s.accuracy}%`}</b><span class="rp-errs">${compactErrors(s.counts)}</span></span>`;
   };
-  return html`<button type="button" class="rp-summary" data-toggle-summary aria-expanded="${open ? "true" : "false"}">${side("white")}${side("black")}<i class="rp-chev" aria-hidden="true"></i></button>`;
+  return html`<button type="button" class="rp-summary" data-toggle-summary aria-expanded="${open ? "true" : "false"}">${side("white")}<span class="rp-acc-label" aria-hidden="true">Accuracy</span>${side("black")}<i class="rp-chev" aria-hidden="true"></i></button>`;
 }
 
 /** The report as markup (no listeners). `open` marks the summary's toggle; the body is always written. */
@@ -358,6 +357,8 @@ export function renderReportBlock(host, { moves, evalGraph = [], positionEvals =
   if (!host) return report;
   host.clearErrorPreview?.();
   host.innerHTML = reportHtml(report, host.dataset.open === "true", host.dataset.key === "true");
+  const detail = host.querySelector?.(".rp-detail");
+  if (detail) detail.open = true;
   host.clearErrorPreview = report?.graded ? bindErrorChart(host, report, onJump, (ply) => {
     const move = ply == null ? null : moves.find((m) => Number(m.ply) === ply);
     onPeek(move?.fen_after ? { fen: move.fen_after, lastMove: move.uci, classification: move.classification } : null);

@@ -103,7 +103,7 @@
 .sum-chip.t-none { color: var(--none); }
 
 
-.sum-chip.is-on { color: var(--text); background: var(--surface-3); }
+.sum-chip.is-on { color: var(--text); background: transparent; }
 
 
 .sum-chip.is-on::after { opacity: 1; }

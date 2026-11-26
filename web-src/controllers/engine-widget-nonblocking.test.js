@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { pvSan } from "../chess-local.js";
 import { createPassFeed } from "./engine-pass-feed.js";
+import { createLinesPicker } from "./engine-lines-picker.js";
 import { clampPly, decodeLine, encodeLine, moveLineHtml, walkLine } from "../move-text.js";
 
 // The full net's unlock row sits above the lines, never in place of them: while it
@@ -76,7 +77,7 @@ function harness({ choice = "ask", store = noPassStore(), view = "analyze", pvSa
       row.hidden = choiceNow !== "ask";
       row.innerHTML = choiceNow === "ask" ? html`<div class="unlock" data-place="${row.dataset.unlockPlace}">Full Stockfish</div>` : "";
     },
-    createPassFeed, hooks,
+    createPassFeed, createLinesPicker, hooks,
     clampPly, decodeLine, encodeLine, moveLineHtml, walkLine,
     analysisStore: async () => store,
   };

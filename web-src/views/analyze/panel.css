@@ -615,7 +615,7 @@
 #analysis-engine-slot .engine-head-tools { display: contents; }
 .engine-pane .an-pane-head > b { grid-area: 1 / 1; }
 #analysis-engine-slot .engine-head-depth { grid-area: 1 / 2; }
-#analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
+#analysis-engine-slot .engine-lines-more { grid-area: 1 / 4; justify-self: end; }
 .engine-pane .ev-engine { grid-area: 1 / 5; }
 #analysis-engine-slot .engine-window-body,
 #analysis-engine-slot .engine-window-unlock { grid-column: 1 / -1; }
@@ -786,29 +786,23 @@
      the field instead of being clipped. */
   overflow: visible;
   border-radius: 6px;
-  /* The field is a quiet step off the card, not a slab of its own tone: at a
-     mid grey it had more weight than either area, and the curve (2.2:1 against
-     it) was the least legible thing in the chart. Quiet, the white and black
-     wedges carry "who is ahead" and the curve reads at 5.9:1. */
+  /* Neutral field split by the equilibrium midline. High-clarity two-tone fills
+     above (White) and below (Black) read who is ahead at a glance with no labels. */
   --eval-field: color-mix(in srgb, var(--panel) 84%, var(--eval-side-black));
   --eval-area-white: var(--panel);
   background: var(--eval-field);
 }
 :root[data-theme="dark"] .eval-chart {
-  /* The same step the other way: the field comes up out of the dark card. */
   --eval-field: color-mix(in srgb, var(--panel) 84%, var(--eval-side-white));
-  /* Lichess's dark chart fills White's side a soft grey, not paper white: at
-     full white the wedge was the brightest thing on the screen after the
-     board. Still clearly lighter than the field and the black wedge. */
-  --eval-area-white: color-mix(in srgb, var(--eval-side-white) 58%, var(--panel));
+  --eval-area-white: color-mix(in srgb, var(--eval-side-white) 84%, var(--panel));
 }
-.eval-chart .eval-axis { stroke: var(--line-strong); }
+.eval-chart .eval-axis { stroke: color-mix(in srgb, var(--text) 28%, transparent); stroke-width: 1; }
 .eval-chart .eval-area-white { fill: var(--eval-area-white); stroke: none; }
 .eval-chart .eval-area-black { fill: var(--eval-side-black); stroke: none; }
 .eval-chart .eval-line {
   fill: none;
   stroke: var(--accent-strong);
-  stroke-width: 1.5;
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -956,3 +950,10 @@
    this same property: without it the glyph inherited the accent-blue ink from
    the cell while the glyph's own rule painted it dark, measured at 2.9:1. */
 .mtree-move.is-current .mtree-glyph { color: inherit; }
+
+/* Inert below 1180px; desktop broadcast rules live in analyze/desktop.css. */
+.an-plate,
+.an-plate-slot,
+.an-opening-head,
+.an-move-head,
+.an-moves-head { display: none; }

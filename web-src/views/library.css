@@ -394,21 +394,15 @@
 .lib-row.is-selected,
 .lib-row.is-selected:hover {
   position: relative;
-  background: var(--surface-3);
+  background: transparent;
 }
+.lib-row.is-selected:hover { background: var(--panel-soft); }
+.lib-row.is-selected::before { display: none; }
 
-
-.lib-row.is-selected::before {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  left: 0;
-  width: 3px;
-  background: var(--text);
-}
-
-
-.lib-row.is-disabled .name { color: var(--label); }
+/* Keep full AA text contrast on disabled rows; quiet only non-text chrome. */
+.lib-row.is-disabled .name { color: var(--muted); }
+.lib-row.is-disabled .color-dot,
+.lib-row.is-disabled .lib-mbar { opacity: 0.5; }
 
 
 /* ARIA: the option role covers the info cells; the ⋯ button is its sibling. */
@@ -487,10 +481,11 @@
    one measure ("how much of this repertoire have you got") rather than two
    unrelated quantities in green and blue. */
 .lib-mbar {
-  flex: 1;
-  min-width: 60px;
-  height: 4px;
-  border-radius: 2px;
+  flex: 0 0 112px;
+  width: 112px;
+  min-width: 112px;
+  height: 5px;
+  border-radius: 999px;
   background: var(--line-strong);
   overflow: hidden;
   position: relative;
@@ -675,48 +670,25 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 }
 
 
-/* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
-   44px touch targets. */
+.lib-list .card-head .search-field { margin-left: auto; }
+
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-dashboard) {
     padding: 8px 8px calc(64px + env(safe-area-inset-bottom));
   }
-
   .lib { gap: 10px; }
-
   .today { grid-template-columns: auto 1fr; gap: 10px 12px; }
-
   .today > .btn { grid-column: 1 / -1; height: 44px; }
-
   .today-streak { padding-right: 0; border-right: 0; }
-
   .today-body { grid-column: 1 / -1; }
-
   .search-field { width: 100%; margin-left: 0; }
-
   .lib .card-head .seg { max-width: 100%; overflow-x: auto; }
-
-  .lib-cols { display: none; }
-
+  .lib-cols,
+  #library-actions { display: none; }
   .lib-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; padding: 10px 12px; }
-
   .lib-cell-rep { grid-column: 1; grid-row: 1; }
-
   .lib-cell-mastery,
   .lib-cell-queue { grid-column: 1 / -1; }
-
-}
-
-@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
-  /* Library's Import / New live in the More sheet on phones (prototype). */
-  #library-actions { display: none; }
-
-}
-
-.lib-list .card-head .search-field { margin-left: auto; }
-
-
-@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .lib-actions { width: 100%; }
   .lib-actions .btn { flex: 1; }
 }

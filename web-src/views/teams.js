@@ -236,7 +236,7 @@ export function createTeamsView({
         const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
         const roleKey = team.role || "member";
         return html`
-        <div class="team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-label="Open ${name}" aria-pressed="${appState.selectedTeamId === team.id}">
+        <div class="team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-pressed="${appState.selectedTeamId === team.id}">
           <span class="tr-text">
             <span class="name">${name}</span>
             <span class="sub">${countLabel}</span>
@@ -279,9 +279,9 @@ export function createTeamsView({
           ? html`<select class="team-role-select team-share-role" data-rep-id="${id}" aria-label="Role for ${name}">${GRANT_ROLES.map((r) => html`<option value="${r}"${r === item.role ? " selected" : ""}>${roleLabel(r)}</option>`)}</select><button type="button" class="btn icon team-remove team-unshare" data-rep-id="${id}" data-rep-name="${name}" title="Stop sharing" aria-label="Stop sharing ${name}"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>`
           : html`<span class="team-role-badge share-role-badge" title="${roleAllows(item.role)}">${roleLabel(item.role)}</span>${canCopy(item.role) ? html`<button type="button" class="btn sm team-copy" data-rep-id="${id}" title="Copy to my account">Copy</button>` : ""}`;
         return html`
-        <div class="mem-row team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}" aria-label="Open ${name}">
+        <div class="mem-row team-shared-rep-row" data-repertoire-id="${id}">
           <span class="color-dot ${item.color}"></span>
-          <span class="mem-id">
+          <span class="mem-id" role="button" tabindex="0" aria-label="Open ${name}">
             <span class="name">${name}</span>
             <span class="sub">${owner}${isMine ? "" : html`<span class="sub-role"> · ${roleLabel(item.role)}</span>`}</span>
           </span>
@@ -294,8 +294,7 @@ export function createTeamsView({
         if (event.target.closest(".team-member-tail")) return;
         open();
       });
-      row.addEventListener("keydown", (event) => {
-        if (event.target !== row) return;
+      row.querySelector(".mem-id")?.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           open();

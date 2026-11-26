@@ -20,8 +20,8 @@ import { bindLongPress } from "../phone/sheet.js";
 function sharedRowHtml(item) {
   const from = item.owner_display_name ? ` · ${item.owner_display_name}` : "";
   return html`
-    <div class="lib-row is-shared" tabindex="0" data-repertoire-id="${item.id}" data-shared="1" data-role="${item.role}">
-      <span class="lib-opt" role="option" aria-selected="false">
+    <div class="lib-row is-shared" role="listitem" tabindex="0" data-repertoire-id="${item.id}" data-shared="1" data-role="${item.role}">
+      <span class="lib-opt">
         <span class="lib-cell-rep">
           <span class="color-dot ${item.color}"></span>
           <span class="lib-name">
@@ -73,8 +73,8 @@ function ownRowHtml(item, { selected, repSubline }) {
   if (health && health.untrained) queue.push(chip("new", health.untrained, "new"));
   const queueHtml = queue.length ? queue : html`<span class="muted">—</span>`;
   return html`
-    <div class="${cls}" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${selected}">
-      <span class="lib-opt" role="option" aria-selected="${selected}">
+    <div class="${cls}" role="listitem" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}"${selected ? html` aria-current="true"` : ""}>
+      <span class="lib-opt">
         <span class="lib-cell-rep">
           <span class="color-dot ${item.color}"></span>
           <span class="lib-name">
@@ -161,12 +161,8 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
     container.querySelectorAll("[data-repertoire-id]").forEach((row) => {
       const selected = row.dataset.repertoireId === selectedRepId;
       row.classList.toggle("is-selected", selected);
-      row.setAttribute("aria-selected", String(selected));
-      // The role=option lives on the inner .lib-opt (it must not own the menu
-      // button), so its aria-selected mirrors the row's selection state.
-      row.querySelectorAll(".lib-opt").forEach((opt) => {
-        opt.setAttribute("aria-selected", String(selected));
-      });
+      if (selected) row.setAttribute("aria-current", "true");
+      else row.removeAttribute("aria-current");
     });
   }
 
@@ -175,9 +171,12 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
     // reconciling against the nodes already there. Returns the rows the
     // selection highlight has to visit.
     render(container, visible, shared, { selectedRepId }) {
+      const activeOwn = visible.filter((item) => item.is_active !== false);
+      const disabledOwn = visible.filter((item) => item.is_active === false);
       const entries = [
-        ...visible.map((item) => ({ item, sharedRow: false })),
+        ...activeOwn.map((item) => ({ item, sharedRow: false })),
         ...shared.map((item) => ({ item, sharedRow: true })),
+        ...disabledOwn.map((item) => ({ item, sharedRow: false })),
       ].map((entry) => {
         const key = keyOf(entry.item, entry.sharedRow);
         const content = contentOf(entry.item, entry.sharedRow);

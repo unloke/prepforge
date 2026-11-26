@@ -20,6 +20,7 @@ export const LAYOUT_QUERIES = {
   phone: "(max-width: 760px)",
   stacked:
     "(min-width: 761px) and (max-width: 860px) and (orientation: portrait), (min-width: 761px) and (max-width: 860px) and (min-height: 521px), (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6)",
+  desktop: "(min-width: 1180px)",
 };
 
 /** The open pane for a stored value: the phone may open the coach; every other
@@ -114,12 +115,18 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
   const gradeLabel = document.getElementById("explain-engine-label");
   const gradeSwitch = document.getElementById("explain-engine-toggle");
   const engineHead = document.querySelector("#analysis-engine-pane .an-pane-head");
+  const movesHead = document.getElementById("analysis-moves-head");
   function placeGrade() {
     if (!gradeLabel || !gradeSwitch || !engineHead || !coach) return;
     const phone = media.phone.matches;
-    if (phone === engineHead.contains(gradeSwitch)) return;
-    if (phone) engineHead.append(gradeLabel, gradeSwitch);
-    else coach.querySelector("#analyze-actions")?.before(gradeLabel, gradeSwitch);
+    const desktop = Boolean(media.desktop?.matches && movesHead);
+    const target = phone ? engineHead : desktop ? movesHead : null;
+    if (target) {
+      if (target.contains(gradeSwitch)) return;
+      target.append(gradeLabel, gradeSwitch);
+    } else if (engineHead.contains(gradeSwitch) || movesHead?.contains(gradeSwitch)) {
+      coach.querySelector("#analyze-actions")?.before(gradeLabel, gradeSwitch);
+    }
   }
   // The game's name: the bar's text slot beside a pointer's panel; on a phone
   // it is the top strip over the board when there is no evaluation band to
