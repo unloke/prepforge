@@ -6,13 +6,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls = { reloads: 0 };
-vi.mock("./core/api.js", () => ({ postJson: vi.fn() }));
+vi.mock("./build-write.js", () => ({ postBuildWrite: vi.fn() }));
 vi.mock("./build-entry.js", () => ({
   resolveBuildId: (id) => (id && id.id) || id,
   reloadOpenBuildTree: vi.fn(async () => { calls.reloads += 1; }),
 }));
 
-import { postJson } from "./core/api.js";
+import { postBuildWrite as postJson } from "./build-write.js";
 import { buildState } from "./core/state.js";
 import { isolateRejectedBuildOps } from "./build-isolate.js";
 
@@ -48,7 +48,7 @@ describe("one rejected move in a Build flush", () => {
     expect(postJson.mock.calls[0][1]).toMatchObject({ repertoire_id: "rep", since: 7 });
     expect(postJson.mock.calls[0][1].moves).toHaveLength(39);
     expect(rejected.map((entry) => entry.tempId)).toEqual(["tmp-3", "tmp-41"]);
-    expect(settled.build).toHaveLength(41);
+    expect(settled.adds).toHaveLength(41);
     expect(idMap["tmp-0"]).toBe("n-tmp-0");
     expect(idMap["tmp-3"]).toBeUndefined();
   });
@@ -73,7 +73,7 @@ describe("one rejected move in a Build flush", () => {
     const { rejected, settled } = await isolateRejectedBuildOps(batch, deletes, "rep", denied, 7);
     expect(postJson).not.toHaveBeenCalled();
     expect(rejected).toHaveLength(4);
-    expect(settled.build).toEqual(["tmp-a", "tmp-b"]);
+    expect(settled.adds).toEqual(["tmp-a", "tmp-b"]);
     expect(settled.deletes).toEqual(["n-1", "n-2"]);
     expect(calls.reloads).toBe(1);
   });

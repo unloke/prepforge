@@ -1,10 +1,8 @@
-import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { createSyncQueue, loadDurableOutbox } from "./sync-queue.js";
+import { createSyncQueue } from "./sync-queue.js";
 
 beforeEach(() => {
   vi.useFakeTimers();
-  vi.stubGlobal("indexedDB", new IDBFactory());
   const locks = new Map();
   vi.stubGlobal("localStorage", { getItem: k => locks.get(k),
     setItem: (k, v) => locks.set(k, v), removeItem: k => locks.delete(k) });
@@ -15,29 +13,10 @@ function setup(options = {}) {
   const state = { pending: [{ attempt_uuid: "u" }], retry: 0, timer: null, flushing: null };
   const flush = vi.fn(async checkpoint => { await checkpoint; return true; });
   const queue = createSyncQueue({ key: "train", tabId: "one", state: () => state,
-    owner: () => "alice", generation: () => 1, idleMs: 4000,
-    serialize: () => ({ train: { pending: state.pending } }),
+    owner: () => "alice", generation: () => 1, idleMs: 4000, persist: vi.fn(async () => true),
     hasWork: () => state.pending.length, flush, ...options });
   return { state, flush, queue };
 }
-
-it("checkpoints before sending, survives reload, and dedupes stale replay", async () => {
-  vi.useRealTimers(); // fake-indexeddb transactions use native task scheduling.
-  const h = setup();
-  const stale = h.state.pending;
-  h.flush.mockImplementation(async checkpoint => {
-    await checkpoint;
-    expect((await loadDurableOutbox("alice")).train.pending).toEqual(stale);
-    h.state.pending = [];
-    await h.queue.persist({ train: ["u"] });
-    return true;
-  });
-  expect(await h.queue.flush()).toBe(true);
-  h.state.pending = stale;
-  await h.queue.persist();
-  expect((await loadDurableOutbox("alice")).train.pending).toEqual([]);
-  expect((await loadDurableOutbox("bob")).train.pending).toEqual([]);
-});
 
 it("shares one in-flight promise while edits arriving during the flush stay queued", async () => {
   let finish;

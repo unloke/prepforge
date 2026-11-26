@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { orderPendingBuildAdds } from "./sync-queue.js";
+import { orderPendingBuildAdds } from "./build-outbox.js";
 
 // R-05: per-op isolation replays the batch one move at a time. A move whose
 // parent is another move from the same batch can only be sent AFTER that

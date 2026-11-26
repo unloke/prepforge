@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { postBuildWrite } from "../build-write.js";
 import { modalDialog, openModal } from "../core/dialog.js";
 
 const ACTIONS = {
@@ -123,7 +124,7 @@ export function createBuildCollaboration({ appState, buildState, api, postJson, 
             title: `Restore edit r${button.dataset.revert}?`, okLabel: "Restore edit",
             fields: [{ name: "scope", type: "note", label: "Restore this tree edit. Subsequent changes are checked for conflicts. Training history is not restored." }],
             onSubmit: async (values, finish) => {
-              const payload = await postJson("/api/build/activity/revert", { repertoire_id: repertoireId, revision: Number(button.dataset.revert) });
+              const payload = await postBuildWrite("/api/build/activity/revert", { repertoire_id: repertoireId, revision: Number(button.dataset.revert) });
               if (rid() === repertoireId) await hydrateBuild(payload, buildState.buildCurrentNodeId);
               finish(values);
               await refresh();
@@ -160,7 +161,7 @@ export function createBuildCollaboration({ appState, buildState, api, postJson, 
       const changeThread = async (button, fields) => {
         button.disabled = true;
         try {
-          await postJson("/api/build/discussions/update", { repertoire_id: repertoireId, thread_id: active.id, ...fields });
+          await postBuildWrite("/api/build/discussions/update", { repertoire_id: repertoireId, thread_id: active.id, ...fields });
           await load(true);
           paint();
         } catch (error) { fail(error); button.disabled = false; }
@@ -177,7 +178,7 @@ export function createBuildCollaboration({ appState, buildState, api, postJson, 
         input.disabled = true;
         errorEl.hidden = true;
         try {
-          const sent = await postJson("/api/build/discussions", { repertoire_id: repertoireId,
+          const sent = await postBuildWrite("/api/build/discussions", { repertoire_id: repertoireId,
             ...(active ? { thread_id: active.id } : { fen }), body: input.value });
           drafts.delete(draftKey);
           input.value = "";

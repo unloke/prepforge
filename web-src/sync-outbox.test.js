@@ -1,19 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildAddId, buildDeleteId, mergeOutboxState, trainAttemptId } from "./outbox-state.js";
-import {
-  acquireFlushLock,
-  createSyncQueue,
-  outboxHasRejected,
-  outboxHasWork,
-  outboxIsQuiescent,
-  refreshFlushLock,
-  releaseFlushLock,
-} from "./sync-queue.js";
+import { composeOutboxMerge } from "./outbox-state.js";
+import { buildAddId, buildDeleteId, buildOutbox } from "./build-outbox.js";
+import { trainAttemptId, trainOutbox } from "./train-outbox.js";
+import { acquireFlushLock, createSyncQueue, refreshFlushLock, releaseFlushLock } from "./sync-queue.js";
 
 // Outbox merge rules (R-03/R-04): rejected training attempts are kept, rejected
 // Build edits are reported once and dropped, settled ops never return, and a cross-tab lock stops two
-// tabs from double-sending the same queue. Storage itself is outbox-db.js.
+// tabs from double-sending the same queue. Each feature merges its own slice
+// (build-outbox.js, train-outbox.js); storage itself is outbox-db.js.
 
 function fakeStorage() {
   const map = new Map();
@@ -33,6 +28,11 @@ function fakeStorage() {
 }
 
 const buildEntry = { tempId: "t1", parentRef: "root", uci: "e2e4" };
+
+const mergeOutboxState = composeOutboxMerge([buildOutbox, trainOutbox]);
+const hasWork = (state) => !!(state.build.pending.length || state.build.pendingDeletes.length
+  || state.train.pending.length);
+const isQuiescent = (state) => !hasWork(state) && !state.train.rejected.length;
 
 // The merge applied by every durable write, without the IndexedDB transport.
 function memoryOutbox() {
@@ -55,8 +55,8 @@ describe("outbox state", () => {
     };
     const box = memoryOutbox();
     box.save(state);
-    expect(box.load().build).toEqual(state.build);
-    expect(box.load().train).toEqual(state.train);
+    expect(box.load().build).toMatchObject(state.build);
+    expect(box.load().train).toMatchObject(state.train);
   });
 
   it("normalizes partial payloads instead of throwing", () => {
@@ -66,22 +66,16 @@ describe("outbox state", () => {
     expect(partial.build.idMap).toEqual({});
   });
 
-  it("reports pending work and rejected ops separately", () => {
-    const empty = {
-      build: { pending: [], pendingDeletes: [], idMap: {} },
-      train: { pending: [], rejected: [] },
-    };
-    expect(outboxHasWork(empty)).toBe(false);
-    expect(outboxHasRejected(empty)).toBe(false);
-    expect(outboxHasWork({ ...empty, build: { ...empty.build, pending: [buildEntry] } })).toBe(true);
-    expect(
-      outboxHasWork({ ...empty, build: { ...empty.build, pendingDeletes: [{ tempId: "d" }] } }),
-    ).toBe(true);
-    expect(outboxHasWork({ ...empty, train: { ...empty.train, pending: [{}] } })).toBe(true);
-    // Rejected ops are for the user to act on — they are NOT auto-retried work.
-    const rejected = { ...empty, train: { ...empty.train, rejected: [{ sessionId: "s", attempts: [] }] } };
-    expect(outboxHasWork(rejected)).toBe(false);
-    expect(outboxHasRejected(rejected)).toBe(true);
+  it("keeps each feature's slice to itself", () => {
+    // A feature's merge sees only its own slice and its own settled ids: an id
+    // that happens to match across features settles nothing in the other one.
+    const merged = mergeOutboxState(null, {
+      build: { pending: [{ tempId: "same", uci: "e2e4" }] },
+      train: { pending: [{ attempt_uuid: "same" }] },
+    }, { train: ["same"] });
+    expect(merged.build.pending.map(buildAddId)).toEqual(["same"]);
+    expect(merged.train.pending).toEqual([]);
+    expect(Object.keys(merged)).toEqual(["build", "train"]);
   });
 });
 
@@ -97,43 +91,43 @@ describe("cross-tab flush lock", () => {
   it("degrades to permissive behaviour when storage is blocked", () => {
     const blocked = () => { throw new Error("blocked"); };
     vi.stubGlobal("localStorage", { getItem: blocked, setItem: blocked, removeItem: blocked });
-    expect(acquireFlushLock("owner", "tab")).toBe(true);
-    expect(() => releaseFlushLock("tab")).not.toThrow();
+    expect(acquireFlushLock("owner", "tab", 1000, "build")).toBe(true);
+    expect(() => releaseFlushLock("tab", "build")).not.toThrow();
   });
 
   it("blocks a second tab but lets the same tab re-acquire", () => {
-    expect(acquireFlushLock("owner", "tab-1", 1000)).toBe(true);
-    expect(acquireFlushLock("owner", "tab-1", 1100)).toBe(true);
-    expect(acquireFlushLock("owner", "tab-2", 1200)).toBe(false);
+    expect(acquireFlushLock("owner", "tab-1", 1000, "build")).toBe(true);
+    expect(acquireFlushLock("owner", "tab-1", 1100, "build")).toBe(true);
+    expect(acquireFlushLock("owner", "tab-2", 1200, "build")).toBe(false);
   });
 
   it("steals a lock whose holder stopped renewing it (a dead tab)", () => {
-    expect(acquireFlushLock("owner", "tab-1", 1000)).toBe(true);
+    expect(acquireFlushLock("owner", "tab-1", 1000, "build")).toBe(true);
     // The holder renews while it works, so only a holder that stopped (a crash)
     // lets the lease run out — in seconds, not in half a minute.
-    expect(acquireFlushLock("owner", "tab-2", 5_000)).toBe(false);
-    expect(acquireFlushLock("owner", "tab-2", 9_500)).toBe(true);
+    expect(acquireFlushLock("owner", "tab-2", 5_000, "build")).toBe(false);
+    expect(acquireFlushLock("owner", "tab-2", 9_500, "build")).toBe(true);
   });
 
   it("renews the holder's lease without touching someone else's lock", () => {
-    expect(acquireFlushLock("owner", "tab-1", 1000)).toBe(true);
+    expect(acquireFlushLock("owner", "tab-1", 1000, "build")).toBe(true);
     expect(refreshFlushLock("tab-1", "build", 6_000)).toBe(true);
     // Renewed: the lock is still held, now until 6s + the lease.
-    expect(acquireFlushLock("owner", "tab-2", 8_000)).toBe(false);
+    expect(acquireFlushLock("owner", "tab-2", 8_000, "build")).toBe(false);
     expect(refreshFlushLock("tab-2", "build", 8_000)).toBe(false);
   });
 
   it("ignores locks held for a different owner", () => {
-    expect(acquireFlushLock("owner-a", "tab-1", 1000)).toBe(true);
-    expect(acquireFlushLock("owner-b", "tab-2", 1100)).toBe(true);
+    expect(acquireFlushLock("owner-a", "tab-1", 1000, "build")).toBe(true);
+    expect(acquireFlushLock("owner-b", "tab-2", 1100, "build")).toBe(true);
   });
 
   it("releases only its own tab's lock", () => {
-    acquireFlushLock("owner", "tab-1", 1000);
-    releaseFlushLock("tab-2");
-    expect(acquireFlushLock("owner", "tab-2", 1100)).toBe(false);
-    releaseFlushLock("tab-1");
-    expect(acquireFlushLock("owner", "tab-2", 1200)).toBe(true);
+    acquireFlushLock("owner", "tab-1", 1000, "build");
+    releaseFlushLock("tab-2", "build");
+    expect(acquireFlushLock("owner", "tab-2", 1100, "build")).toBe(false);
+    releaseFlushLock("tab-1", "build");
+    expect(acquireFlushLock("owner", "tab-2", 1200, "build")).toBe(true);
   });
 });
 
@@ -159,24 +153,24 @@ describe("outbox settling", () => {
     });
     // Build's queue empties and is confirmed: only Build's op is tombstoned.
     box.save({ ...empty, train: { pending: [{ attempt_uuid: "u1" }], rejected: [] } },
-      { build: [buildAddId(buildEntry)] },
+      { build: { adds: [buildAddId(buildEntry)] } },
     );
     let stored = box.load();
     expect(stored.build.pending).toHaveLength(0);
     expect(stored.train.pending).toHaveLength(1);
 
     // Train's queue drains too: only now is the owner's copy droppable.
-    expect(outboxIsQuiescent(stored)).toBe(false);
+    expect(isQuiescent(stored)).toBe(false);
     box.save(empty, { train: ["u1"] });
     stored = box.load();
-    expect(outboxIsQuiescent(stored)).toBe(true);
+    expect(isQuiescent(stored)).toBe(true);
   });
 
   it("never reports quiescent while rejected ops are kept for review", () => {
     box.save({ ...empty, train: { ...empty.train, rejected: [{ sessionId: "s", attempts: [], status: 422 }] } });
     const stored = box.load();
-    expect(outboxHasWork(stored)).toBe(false);
-    expect(outboxIsQuiescent(stored)).toBe(false);
+    expect(hasWork(stored)).toBe(false);
+    expect(isQuiescent(stored)).toBe(false);
   });
 
   it("merges a stale tab's write instead of overwriting newer ops (R-04)", () => {
@@ -203,7 +197,7 @@ describe("outbox settling", () => {
       train: { pending: [{ attempt_uuid: "u1" }, { attempt_uuid: "u2" }], rejected: [] },
     };
     box.save(state);
-    box.save(empty, { deletes: ["n1"], train: ["u1"] });
+    box.save(empty, { build: { deletes: ["n1"] }, train: ["u1"] });
     const stored = box.load();
     expect(stored.build.pendingDeletes.map(buildDeleteId)).toEqual(["n2"]);
     expect(stored.train.pending.map(trainAttemptId)).toEqual(["u2"]);
@@ -226,14 +220,14 @@ describe("outbox settling", () => {
       ...empty,
       build: { ...empty.build, pending: [buildEntry] },
     };
-    const merged = mergeOutboxState(stored, empty, { build: [buildAddId(buildEntry)] });
+    const merged = mergeOutboxState(stored, empty, { build: { adds: [buildAddId(buildEntry)] } });
     expect(merged.build.pending).toHaveLength(0);
   });
 
   it("drops stored rejected Build edits: they are reported once, not kept", () => {
     box.save({ ...empty, build: { ...empty.build, rejected: [{ kind: "add", tempId: "bad" }] } });
     expect(box.load().build.rejected).toBeUndefined();
-    expect(outboxIsQuiescent(box.load())).toBe(true);
+    expect(isQuiescent(box.load())).toBe(true);
   });
 
   it("requires attempt UUIDs rather than deriving identities from grades", () => {
@@ -251,7 +245,7 @@ describe("outbox settling", () => {
     const tabB = { tempId: "tmp-bbb-1", uci: "d2d4" };
 
     // Tab A flushes and settles its own op.
-    box.save(empty, { build: [buildAddId(tabA)] });
+    box.save(empty, { build: { adds: [buildAddId(tabA)] } });
     expect(box.load().build.pending).toHaveLength(0);
 
     // Tab B persists its own move; it must survive AND not resurrect A's.
@@ -261,7 +255,7 @@ describe("outbox settling", () => {
     });
     const stored = box.load();
     expect(stored.build.pending.map(buildAddId)).toEqual(["tmp-bbb-1"]);
-    expect(stored.settled.build).toContain("tmp-aaa-1");
+    expect(stored.build.settled.adds).toContain("tmp-aaa-1");
   });
 
   it("would drop a colliding id — which is why app.js mints per-tab temp ids", () => {
@@ -271,7 +265,7 @@ describe("outbox settling", () => {
     const merged = mergeOutboxState(empty, {
       ...empty,
       build: { ...empty.build, pending: [collided] },
-    }, { build: ["tmp-1"] });
+    }, { build: { adds: ["tmp-1"] } });
     expect(merged.build.pending).toHaveLength(0);
   });
 });

@@ -8,11 +8,10 @@
 // (403 that is not a stale security token) rejects the whole batch at once: no
 // single move would land, and resending each one only hits the rate limit.
 
-import { postJson } from "./core/api.js";
+import { postBuildWrite } from "./build-write.js";
 import { buildState } from "./core/state.js";
 import { classifySyncError } from "./sync-errors.js";
-import { orderPendingBuildAdds } from "./sync-queue.js";
-import { buildAddId, buildDeleteId } from "./outbox-state.js";
+import { buildAddId, buildDeleteId, orderPendingBuildAdds } from "./build-outbox.js";
 import { reloadOpenBuildTree, resolveBuildId } from "./build-entry.js";
 import { postBuildAdds } from "./build-flush.js";
 
@@ -27,7 +26,7 @@ const rejectedAdd = (m, error) => ({
 // and nothing is put on the new account's queue.
 export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, error, since, owns = () => true) {
   const rejected = [];
-  const settled = { build: [], deletes: [], train: [] };
+  const settled = { adds: [], deletes: [] };
   const idMap = {};
   let payload = null;
   let failure = deleteBatch.length ? null : error;
@@ -43,7 +42,7 @@ export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, 
     if (!owns()) return { rejected, settled, idMap, payload };
     try {
       if (lostAccess(error)) throw error;
-      payload = await postJson("/api/build/delete-nodes", { repertoire_id: repertoireId, since, node_ids: [id] });
+      payload = await postBuildWrite("/api/build/delete-nodes", { repertoire_id: repertoireId, since, node_ids: [id] });
       settled.deletes.push(buildDeleteId(entry));
     } catch (err) {
       if (classifySyncError(err).retriable) {
@@ -61,7 +60,7 @@ export async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId, 
   }
 
   let remaining = orderPendingBuildAdds(batch);
-  const settle = (ops) => settled.build.push(...ops.map(buildAddId));
+  const settle = (ops) => settled.adds.push(...ops.map(buildAddId));
   while (remaining.length) {
     if (!failure) {
       try {
@@ -116,18 +115,18 @@ async function isolateEachAdd(ordered, repertoireId, since, owns, result) {
     // A parent from this same isolation round now has a real id.
     const parentRef = result.idMap[m.parentRef] || resolveBuildId(m.parentRef);
     try {
-      const reply = await postJson("/api/build/add-moves", {
+      const reply = await postBuildWrite("/api/build/add-moves", {
         repertoire_id: repertoireId, since, moves: [{ tempId: m.tempId, parentRef, uci: m.uci }],
       });
       Object.assign(result.idMap, reply?.id_map || {});
       result.payload = reply || result.payload;
-      result.settled.build.push(buildAddId(m));
+      result.settled.adds.push(buildAddId(m));
     } catch (err) {
       if (classifySyncError(err).retriable) {
         if (owns()) buildState.buildPending = ordered.slice(i).concat(buildState.buildPending);
         break;
       }
-      result.settled.build.push(buildAddId(m));
+      result.settled.adds.push(buildAddId(m));
       result.rejected.push(rejectedAdd(m, err));
     }
   }

@@ -37,13 +37,12 @@ import { getBuildTree, summarizeBuild } from "./build-tree.js";
 import { bindUnlocks } from "./engine-unlock.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { createBoardController } from "./board/board-controller.js";
-import { buildAddId, buildDeleteId } from "./outbox-state.js";
 import { clearCheckpoint, loadCheckpoint } from "./analyze-checkpoint.js";
 import { loadReturnState, setHandoffOwner } from "./handoff-context.js";
 import { activateWorkspaceTab, parseWorkspaceLocation, serializeWorkspaceLocation, trainQueueRepertoireId, workspaceLocationFromState } from "./workspace-url.js";
 import { createAnalyzeRestore } from "./controllers/analyze-restore.js";
 import { bindCommandPalette, closePalette, createPalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
-import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
+import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildProvisionalNode,
   isBuildReadOnly, explorerDrawerOpen, explorerEvalEngine, undoLastBuildAdd, queueBuildAdd,
   reloadOpenBuildTree, renderBuilderTree, resolveBuildId, setBuildInspector, setBuildView, setExplorerDb,
   startBuildLive, buildView } from "./build-entry.js";
@@ -240,7 +239,7 @@ const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
 
 const syncController = createSyncController();
 const {
-  scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt,
+  scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, discardBuildOps, queueTrainAttempt,
   markTrainPositionDirty, beaconFlushTrain, flushTrainSync,
   persistOutbox, restoreOutbox, flushAllPendingForSignOut,
 } = syncController;
@@ -790,14 +789,9 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       const meta = await fetchRepertoireMeta(repertoireId).catch(() => null);
       appState.pendingRepDeletes.add(repKey);
       invalidateBook();
-      // Its queued edits go too, tombstoned so the durable outbox can't bring
-      // them back. This happens at delete time (not commit time) so the doomed
-      // tree can't keep taking edits.
-      const doomedAdds = buildState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repKey));
-      const doomedDeletes = buildState.buildPendingDeletes.filter((entry) => buildOpMatchesRepertoire(entry, repKey));
-      buildState.buildPending = buildState.buildPending.filter((m) => !doomedAdds.includes(m));
-      buildState.buildPendingDeletes = buildState.buildPendingDeletes.filter((entry) => !doomedDeletes.includes(entry));
-      void persistOutbox({ build: doomedAdds.map(buildAddId), deletes: doomedDeletes.map(buildDeleteId) });
+      // Its queued edits go too. This happens at delete time (not commit time)
+      // so the doomed tree can't keep taking edits.
+      void discardBuildOps(repKey);
       if (String(trainState.trainingRepertoireId) === repKey) {
         trainState.trainingRepertoireId = null;
       }

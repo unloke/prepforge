@@ -1,5 +1,3 @@
-import { mergeOutboxState } from "./outbox-state.js";
-
 export const OUTBOX_DATABASE = "prepforge-sync-outbox";
 const STORE = "owners";
 const ownerKey = (owner) => String(owner || "anon");
@@ -15,9 +13,11 @@ function openDatabase() {
 }
 
 // One read/merge/write transaction per save, so concurrent tabs never lose
-// each other's ops. Tombstones are kept: there is no enforced server replay
-// horizon, and a suspended tab may still hold settled work.
-async function update(owner, incoming, settled) {
+// each other's ops. ``merge`` is the caller's (outbox-state.js composes one from
+// each feature's rules): this store knows no feature's shape. Tombstones are
+// kept: there is no enforced server replay horizon, and a suspended tab may
+// still hold settled work.
+async function update(owner, incoming, settled, merge) {
   const writing = incoming !== null || settled !== null;
   const db = await openDatabase();
   try {
@@ -31,8 +31,7 @@ async function update(owner, incoming, settled) {
       const read = store.get(ownerKey(owner));
       read.onsuccess = () => {
         try {
-          value = writing ? mergeOutboxState(read.result?.state, incoming, settled)
-            : read.result?.state || mergeOutboxState(null, null);
+          value = merge(read.result?.state ?? null, incoming, settled);
           if (writing) store.put({ version: 1, state: value }, ownerKey(owner));
         } catch (error) {
           failure = error;
@@ -43,12 +42,12 @@ async function update(owner, incoming, settled) {
   } finally { db.close(); }
 }
 
-export function loadDurableOutbox(owner) { return update(owner, null, null); }
+export function loadDurableOutbox(owner, merge) { return update(owner, null, null, merge); }
 
-export function saveDurableOutbox(owner, state, settled = null) {
+export function saveDurableOutbox(owner, state, settled, merge) {
   // Snapshot before the async open: callers may clear their live queues next.
-  return update(owner, structuredClone(state), structuredClone(settled));
+  return update(owner, structuredClone(state), structuredClone(settled ?? null), merge);
 }
 
 /** Confirmed history is retained; clearing never deletes another tab's work. */
-export function clearDurableOutbox(owner) { return loadDurableOutbox(owner); }
+export function clearDurableOutbox(owner, merge) { return loadDurableOutbox(owner, merge); }

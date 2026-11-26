@@ -1,7 +1,8 @@
 import { html } from "./html.js";
 import { readFileSync } from "node:fs";
 import { countOf } from "./plural.js";
-import { createSyncQueue, flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
+import { createSyncQueue } from "./sync-queue.js";
+import { flushGroups, groupAttempts, ungroupAttempts } from "./train-outbox.js";
 import { createBookActions } from "./analyze-book.js";
 import { indexBuildNodes } from "./build-tree.js";
 import { createSettingsActions } from "./settings-actions.js";
@@ -34,6 +35,9 @@ function queueFlush(marker, deps) {
     persist: () => deps.persistOutbox(), flush: (checkpoint, isCurrent) => compile(marker, deps)(checkpoint, isCurrent),
   });
   deps[train ? "trainQueue" : "buildQueue"] = queue;
+  // Each adapter files settled ids under its own slice; the tests watch one mock.
+  deps[train ? "persistTrainOutbox" : "persistBuildOutbox"] = (...args) => deps.persistOutbox(...args);
+  if (!train) deps.postBuildWrite = (...args) => deps.postJson(...args);
   return queue.flush;
 }
 
@@ -364,7 +368,7 @@ it("moves whose line was deleted elsewhere are settled with one notice", async (
   h.deps.postJson.mockResolvedValueOnce({ repertoire_id: "r", revision: 3, id_map: {}, dropped: ["tmp-a"], nodes: [{ id: "root" }] });
   expect(await h.run()).toBe(true);
   expect(h.buildState.buildPending).toEqual([]);
-  expect(h.deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ build: ["tmp-a"] }));
+  expect(h.deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ adds: ["tmp-a"] }));
   expect(h.deps.setStatus).toHaveBeenCalledWith("1 move not saved: line deleted elsewhere", { severity: "warning" });
 });
 
@@ -386,7 +390,7 @@ it("queued edits for a repertoire that is not open still save", async () => {
   expect(h.deps.postJson.mock.calls[0][1].repertoire_id).toBe("r");
   expect(h.deps.hydrateBuild).not.toHaveBeenCalled();
   expect(h.buildState.buildPending).toEqual([]);
-  expect(h.deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ build: ["tmp-a"] }));
+  expect(h.deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ adds: ["tmp-a"] }));
 });
 
 it("Build render failure after commit does not requeue confirmed adds", async () => {
@@ -394,7 +398,7 @@ it("Build render failure after commit does not requeue confirmed adds", async ()
   expect(await run()).toBe(true);
   expect(appState.buildPending).toEqual([]);
   expect(appState.buildIdMap["tmp-a"]).toBe("real");
-  expect(deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ build: ["tmp-a"] }));
+  expect(deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ adds: ["tmp-a"] }));
   expect(deps.postJson).toHaveBeenCalledTimes(1);
 });
 
@@ -476,12 +480,12 @@ it("a Train sync response after changing owners cannot settle the new owner's ou
 
 
 it("a late Generate save response cannot hydrate the repertoire the user left", async () => {
-  const start = source.indexOf('    const payload = await postJson(', source.indexOf('    notices.lockJob("saving'));
+  const start = source.indexOf('    const payload = await postBuildWrite(', source.indexOf('    notices.lockJob("saving'));
   const end = source.indexOf('    const summary = payload.summary', start);
   const response = deferred();
   let current = true;
   const hydrateBuild = vi.fn();
-  const run = new Function("postJson", "hydrateBuild", "isCurrent", "controller",
+  const run = new Function("postBuildWrite", "hydrateBuild", "isCurrent", "controller",
     "generatedRepertoireId", "generatedBaseRevision", "nodeId", "plan",
     `return (async () => { ${source.slice(start, end)} })();`);
   const pending = run(() => response.promise, hydrateBuild, () => current,

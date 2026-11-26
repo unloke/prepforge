@@ -1,45 +1,16 @@
-// The durable outbox's shape and its merge: pure functions shared by the sync
-// queue (sync-queue.js) and the IndexedDB store (outbox-db.js), so neither has
-// to import the other.
+// The durable outbox's merge, without any feature in it. Each feature owns one
+// slice of an owner's stored outbox (build-outbox.js, train-outbox.js): its
+// queued operations, their identities and the tombstones of settled ones. A
+// save merges every slice with that slice's own rules, inside one IndexedDB
+// transaction (outbox-db.js), so concurrent tabs never lose each other's ops.
 
-function emptyOutbox() {
-  return {
-    build: { pending: [], pendingDeletes: [], idMap: {} },
-    train: { pending: [], rejected: [] },
-    settled: { build: [], deletes: [], train: [] },
-  };
-}
-
-function asArray(value) {
+export function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-// ----- operation identity ----------------------------------------------------
-// Merge is per operation, so every entry needs a stable identity. Train
-// attempts carry a server-side dedupe UUID; Build entries carry their tmp id
-// (deletes are plain node ids, stringified so both shapes dedupe).
-
-export function buildAddId(entry) {
-  return String(entry?.tempId || "");
-}
-
-export function buildDeleteId(entry) {
-  return String(entry?.id || "");
-}
-
-export function trainAttemptId(entry) {
-  return String(entry?.attempt_uuid || "");
-}
-
-function rejectedId(entry) {
-  try {
-    return JSON.stringify(entry);
-  } catch (_) {
-    return "";
-  }
-}
-
-function mergeById(base, incoming, idOf) {
+// Merge is per operation: an entry whose identity is already present stays
+// where it was; entries without an identity are always kept.
+export function mergeById(base, incoming, idOf) {
   const out = [];
   const seen = new Set();
   for (const entry of base) {
@@ -58,53 +29,16 @@ function mergeById(base, incoming, idOf) {
   return out;
 }
 
-// A suspended tab can retain a stale snapshot indefinitely. Do not evict
-// tombstones until an enforced replay horizon exists.
-// Rejected operations remain available until the user resolves them.
-export function mergeOutboxState(stored, incoming, settled = null) {
-  const base = stored || emptyOutbox();
-  const next = incoming || emptyOutbox();
-  const done = {
-    build: new Set([...asArray(base.settled?.build), ...asArray(settled?.build)].map(String)),
-    deletes: new Set([...asArray(base.settled?.deletes), ...asArray(settled?.deletes)].map(String)),
-    train: new Set([...asArray(base.settled?.train), ...asArray(settled?.train)].map(String)),
-  };
-  for (const group of [...asArray(base.train.rejected), ...asArray(next.train?.rejected)]) {
-    for (const attempt of asArray(group.attempts)) {
-      done.train.add(trainAttemptId({ ...attempt, session_id: group.sessionId }));
-    }
-  }
-  const keepBuild = (entry) => !done.build.has(buildAddId(entry));
-  const keepDelete = (entry) => !done.deletes.has(buildDeleteId(entry));
-  const keepTrain = (entry) => !done.train.has(trainAttemptId(entry));
+// Settled identities only ever accumulate. A suspended tab can retain a stale
+// snapshot indefinitely, so tombstones are not evicted until an enforced
+// replay horizon exists.
+export function tombstones(...lists) {
+  return new Set(lists.flatMap(asArray).map(String));
+}
 
-  return {
-    build: {
-      pending: mergeById(
-        asArray(base.build.pending).filter(keepBuild),
-        asArray(next.build?.pending).filter(keepBuild),
-        buildAddId,
-      ),
-      pendingDeletes: mergeById(
-        asArray(base.build.pendingDeletes).filter(keepDelete),
-        asArray(next.build?.pendingDeletes).filter(keepDelete),
-        buildDeleteId,
-      ),
-      // tmp -> real ids are additive facts: a later flush's mapping always wins.
-      idMap: { ...(base.build.idMap || {}), ...(next.build?.idMap || {}) },
-    },
-    train: {
-      pending: mergeById(
-        asArray(base.train.pending).filter(keepTrain),
-        asArray(next.train?.pending).filter(keepTrain),
-        trainAttemptId,
-      ),
-      rejected: mergeById(asArray(base.train.rejected), asArray(next.train?.rejected), rejectedId),
-    },
-    settled: {
-      build: [...done.build],
-      deletes: [...done.deletes],
-      train: [...done.train],
-    },
-  };
+// One merge for a whole stored outbox from each domain's ``{ key, merge }``.
+// ``settled`` carries each domain's newly confirmed identities under its key.
+export function composeOutboxMerge(domains) {
+  return (stored, incoming, settled = null) => Object.fromEntries(domains.map(({ key, merge }) =>
+    [key, merge(stored?.[key] ?? null, incoming?.[key] ?? null, settled?.[key] ?? null)]));
 }

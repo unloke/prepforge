@@ -1,23 +1,9 @@
-import { classifySyncError } from "./sync-errors.js";
-
-// Transport-independent lifecycle; flush snapshots synchronously, then awaits
-// the durable checkpoint before sending. Payload/reconcile policy stays local.
-export function createSyncQueue({ key, state, owner, generation, serialize, flush,
-  hasWork, idleMs, persist, onPersist, tabId }) {
-  persist ??= checkpoint;
-  async function checkpoint(settled = null) {
-    const account = owner(), epoch = generation();
-    // Capture before loading the storage chunk or draining live queues.
-    let ok = false;
-    try {
-      const snapshot = structuredClone(serialize()), done = structuredClone(settled);
-      await (await outboxDatabase()).saveDurableOutbox(account, snapshot, done);
-      ok = true;
-    }
-    catch (error) { console.warn("Outbox persistence failed", error); }
-    if (account === owner() && epoch === generation()) onPersist?.(ok);
-    return ok;
-  }
+// One local-first queue's lifecycle, with no feature or storage in it: idle
+// debounce, backoff, one in-flight flush, and a cross-tab lease so two tabs
+// never send the same owner's queue. A flush snapshots synchronously, then
+// awaits ``persist`` (the durable checkpoint, outbox.js) before sending.
+// Payload and reconcile policy stay with the feature's ``flush``.
+export function createSyncQueue({ key, state, owner, generation, flush, hasWork, idleMs, persist, tabId }) {
   function cancel() {
     const sync = state();
     clearTimeout(sync.timer);
@@ -99,10 +85,6 @@ export async function withRequestDeadline(run, { signal, timeoutMs = 30_000, met
   }
 }
 
-const outboxDatabase = () => import("./outbox-db.js");
-export const loadDurableOutbox = async (owner) => (await outboxDatabase()).loadDurableOutbox(owner);
-export const clearDurableOutbox = async (owner) => (await outboxDatabase()).clearDurableOutbox(owner);
-
 const LOCK_KEY = "prepforge.outbox.lock.v1";
 // The cross-tab lock is a lease: the holder renews it while it works, so a
 // second tab waits its turn instead of sending the same queue twice. A holder
@@ -110,24 +92,7 @@ const LOCK_KEY = "prepforge.outbox.lock.v1";
 // in seconds — a dead tab must not block the next load of the same owner.
 const LOCK_LEASE_MS = 8_000;
 const LOCK_HEARTBEAT_MS = 2_000;
-export function outboxHasWork(state) {
-  return !!(
-    state &&
-    ((state.build.pending && state.build.pending.length) ||
-      (state.build.pendingDeletes && state.build.pendingDeletes.length) ||
-      (state.train.pending && state.train.pending.length))
-  );
-}
-
-export function outboxHasRejected(state) {
-  return !!state?.train.rejected?.length;
-}
-
-export function outboxIsQuiescent(state) {
-  return !outboxHasWork(state) && !outboxHasRejected(state);
-}
-
-export function acquireFlushLock(ownerId, tabId, now = Date.now(), key = "build") {
+export function acquireFlushLock(ownerId, tabId, now, key) {
   const lockKey = `${LOCK_KEY}.${key}`;
   try {
     const raw = localStorage.getItem(lockKey);
@@ -154,7 +119,7 @@ export function acquireFlushLock(ownerId, tabId, now = Date.now(), key = "build"
 
 // Renews the holder's lease. A lock that is not ours any more (another tab
 // took it over) is left alone.
-export function refreshFlushLock(tabId, key = "build", now = Date.now()) {
+export function refreshFlushLock(tabId, key, now = Date.now()) {
   const lockKey = `${LOCK_KEY}.${key}`;
   try {
     const raw = localStorage.getItem(lockKey);
@@ -168,7 +133,7 @@ export function refreshFlushLock(tabId, key = "build", now = Date.now()) {
   }
 }
 
-export function releaseFlushLock(tabId, key = "build") {
+export function releaseFlushLock(tabId, key) {
   const lockKey = `${LOCK_KEY}.${key}`;
   try {
     const raw = localStorage.getItem(lockKey);
@@ -178,76 +143,4 @@ export function releaseFlushLock(tabId, key = "build") {
   } catch (_) {
     /* ignore */
   }
-}
-export function orderPendingBuildAdds(entries) {
-  let remaining = Array.isArray(entries) ? entries.slice() : [];
-  const ordered = [];
-  while (remaining.length) {
-    const waiting = new Set(
-      remaining.map((entry) => entry && entry.tempId).filter(Boolean),
-    );
-    const ready = [];
-    const rest = [];
-    for (const entry of remaining) {
-      const parentRef = entry && entry.parentRef;
-      if (parentRef && parentRef !== entry.tempId && waiting.has(parentRef)) {
-        rest.push(entry);
-      } else {
-        ready.push(entry);
-      }
-    }
-    if (!ready.length) {
-      ordered.push(...rest); // unresolvable chain: keep it, let the server judge
-      break;
-    }
-    ordered.push(...ready);
-    remaining = rest;
-  }
-  return ordered;
-}
-
-export function groupAttempts(pending, currentSessionId, currentGeneration) {
-  const bySession = new Map();
-  const key = (id, generation) => JSON.stringify([id, generation ?? null]);
-  for (const item of pending) {
-    const k = key(item.session_id, item.session_generation);
-    if (!bySession.has(k)) bySession.set(k, [item.session_id, []]);
-    bySession.get(k)[1].push({ node_id: item.node_id, correct: item.correct, attempt_uuid: item.attempt_uuid,
-      ...(item.hinted ? { hinted: true } : {}),
-      ...(item.session_generation != null ? { session_generation: item.session_generation } : {}) });
-  }
-  const currentKey = key(currentSessionId, currentGeneration);
-  if (currentSessionId && !bySession.has(currentKey)) bySession.set(currentKey, [currentSessionId, []]);
-  return [...bySession.values()];
-}
-
-export function isRetriableSyncError(error) {
-  return classifySyncError(error).retriable;
-}
-
-export async function flushGroups(groups, postGroup) {
-  const rejectedGroups = [];
-  for (let i = 0; i < groups.length; i++) {
-    const [sessionId, attempts] = groups[i];
-    try {
-      await postGroup(sessionId, attempts);
-    } catch (error) {
-      if (isRetriableSyncError(error)) {
-        return { retriable: true, failedGroups: groups.slice(i), rejectedGroups };
-      }
-      rejectedGroups.push({ sessionId, attempts, status: error && error.status });
-    }
-  }
-  return { retriable: false, failedGroups: [], rejectedGroups };
-}
-
-export function ungroupAttempts(groups) {
-  const flat = [];
-  for (const [sessionId, attempts] of groups) {
-    for (const a of attempts) {
-      flat.push({ session_id: sessionId, node_id: a.node_id, correct: a.correct, attempt_uuid: a.attempt_uuid,
-        ...(a.session_generation != null ? { session_generation: a.session_generation } : {}) });
-    }
-  }
-  return flat;
 }

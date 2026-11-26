@@ -2,7 +2,6 @@ import { html } from "./html.js";
 import { analysisHistoryResult } from "./analyze-orient.js";
 import { expect, it, vi } from 'vitest';
 import { createSettingsActions } from './settings-actions.js';
-import { BUILD_MUTATIONS } from './build-live.js';
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from './views/team-skeleton.js';
 const source = appSource();
 function compile(marker, deps, prelude = '') {
@@ -20,8 +19,9 @@ it('production annotation wrapper advances the open revision only past its own w
     expect(JSON.parse(options.body)).not.toHaveProperty('base_revision');
     return replies.shift();
   });
-  const postJson = compile('async function postJson(', {...asSlices(appState), api,BUILD_MUTATIONS,announceBuildWrite:noop,currentOwnerId:()=> "owner"});
-  const save = compile('async function saveBuildAnnotations(', {...asSlices(appState), postJson,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
+  const postJson = (path, body, options) => api(path, { method: 'POST', body: JSON.stringify(body || {}), ...options });
+  const postBuildWrite = compile('async function postBuildWrite(', {...asSlices(appState), postJson,announceBuildWrite:noop,currentOwnerId:()=> "owner"});
+  const save = compile('async function saveBuildAnnotations(', {...asSlices(appState), postBuildWrite,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
     hardFlushBuild:async()=>{},resolveBuildId:id=>id,boards:{build:{setAnnotations:noop}},setStatusError:vi.fn(),pokeBuildLive:noop});
   await save(['Ga1a2'],[]);
   expect(appState.build.revision).toBe(5);
@@ -124,7 +124,7 @@ it('annotations send in-flight plus latest snapshot and never replay earlier dra
   const first=deferred(),last=deferred(),node={arrows:[],circles:[]},board={setAnnotations:vi.fn()};
   const appState={build:{repertoire_id:'r',revision:1},buildCurrentNodeId:'n',buildNodeById:new Map([['n',node]])};
   const postJson=vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(last.promise);
-  const save=compile('async function saveBuildAnnotations(',{...asSlices(appState), currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,hardFlushBuild:async()=>{},resolveBuildId:id=>id,postJson,boards:{build:board},setStatusError:noop,pokeBuildLive:noop});
+  const save=compile('async function saveBuildAnnotations(',{...asSlices(appState), currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,hardFlushBuild:async()=>{},resolveBuildId:id=>id,postBuildWrite:postJson,boards:{build:board},setStatusError:noop,pokeBuildLive:noop});
   const a=save(['Ga1a2'],[]);await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(1));
   const b=save(['Ga1a3'],[]),c=save(['Ga1a4'],[]);expect(node.arrows).toEqual(['Ga1a4']);
   first.resolve({revision:2});await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(2));
@@ -132,19 +132,6 @@ it('annotations send in-flight plus latest snapshot and never replay earlier dra
   expect(board.setAnnotations).not.toHaveBeenCalledWith(['Ga1a2'],[]);
   last.reject(Error('offline'));await Promise.all([a,b,c]);
   expect(node.arrows).toEqual(['Ga1a2']);expect(board.setAnnotations).toHaveBeenLastCalledWith(['Ga1a2'],[]);
-});
-it('Build writes serialize, carry no base revision and tell other tabs',async()=>{
-  const first=deferred(),appState={build:{repertoire_id:'r',revision:4},buildPending:[],buildPendingDeletes:[]};
-  const announce=vi.fn();
-  const api=vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce({revision:6}).mockResolvedValueOnce({});
-  const post=compile('async function postJson(',{...asSlices(appState), currentOwnerId:()=> 'owner',api,BUILD_MUTATIONS,announceBuildWrite:announce});
-  const a=post('/api/build/annotations',{repertoire_id:'r'}),b=post('/api/build/add-moves',{repertoire_id:'r'});
-  expect(api).toHaveBeenCalledTimes(1);first.resolve({revision:5});await Promise.all([a,b]);
-  expect(api).toHaveBeenCalledTimes(2);
-  expect(appState.build.revision).toBe(6);
-  expect(announce).toHaveBeenCalledTimes(2);
-  await post('/api/settings',{repertoire_id:'r'});
-  expect(announce).toHaveBeenCalledTimes(2); // not a Build write
 });
 it('download responses become Blob directly without text parsing',async()=>{
   const blob=new Blob(['{"large":true}']),text=vi.fn();
