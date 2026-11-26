@@ -61,7 +61,7 @@ from prepforge_chess.services.scheduler import (
     sibling_moves,
 )
 from prepforge_chess.services.training import grade_attempt
-from prepforge_chess.services.training_view import (
+from prepforge_chess.services.training_hints import (
     heuristic_strategy,
     node_annotation,
     piece_name_at,

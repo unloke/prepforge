@@ -33,10 +33,8 @@ from prepforge_chess.services.training import TrainingService
 from prepforge_chess.services.scheduler import CARD_KINDS
 from prepforge_chess.services.training_smart import REQUEUE_GAP
 from prepforge_chess.services.training_smart import SmartTrainingService
+from prepforge_chess.services.training_hints import heuristic_strategy, node_annotation, piece_name_at
 from prepforge_chess.services.training_view import (
-    heuristic_strategy,
-    node_annotation,
-    piece_name_at,
     prompt_to_json,
     smart_prompt_to_json,
     training_line_to_json,
