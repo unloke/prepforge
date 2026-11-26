@@ -1,4 +1,4 @@
-import { appState } from "./core/state.js";
+import { analysisState, appState } from "./core/state.js";
 import { api, currentOwnerId, postJson, setStatus, setStatusError } from "./core/api.js";
 import { rememberHandoff } from "./handoff-context.js";
 import { preloadCoach, _coachReady } from "./coach/coach-loader.js";
@@ -47,7 +47,7 @@ export function invalidateBook() {
 let bookActionsPromise = null;
 function loadBookActions() {
   bookActionsPromise ||= import("./analyze-book.js").then(({ createBookActions }) => createBookActions({
-    bookState, appState, currentOwnerId, api, loadCoach: () => (_coachReady || preloadCoach()),
+    bookState, appState, analysisState, currentOwnerId, api, loadCoach: () => (_coachReady || preloadCoach()),
     rememberHandoff, postJson, setStatus, setStatusError, editRepertoire, analysisSelfSide,
   })).catch((error) => { bookActionsPromise = null; throw error; });
   return bookActionsPromise;

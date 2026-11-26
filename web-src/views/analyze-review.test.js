@@ -4,6 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createReviewBar } from "./analyze-review.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 const blunder = {
   ply: 3, side: "white", label: "2.Nf3", grade: "blunder", loss: 31,
@@ -35,14 +36,14 @@ function setup() {
   const appState = { analysisTree: makeTree(), analysisCurrentNodeId: "root", analysisPly: 0 };
   const calls = { show: [], select: [] };
   const review = createReviewBar({
-    appState,
+    ...asSlices(appState), 
     getReport: () => ({ moments: [blunder, great] }),
     showAnalysisPly: async (ply) => calls.show.push(ply),
     selectAnalysisNode: async (id) => { calls.select.push(id); appState.analysisCurrentNodeId = id; },
   });
   const at = (id, ply) => { appState.analysisCurrentNodeId = id; appState.analysisPly = ply; review.paint(); };
   const click = (kind) => bar.addEventListener.mock.calls[0][1]({ target: { closest: () => ({ dataset: { review: kind }, disabled: false }) } });
-  return { bar, appState, calls, review, at, click };
+  return { bar, ...asSlices(appState), appState, calls, review, at, click };
 }
 
 afterEach(() => { delete globalThis.document; });
@@ -51,7 +52,7 @@ describe("review bar", () => {
   it("is hidden while the report has no key moments", () => {
     const { bar, review } = setup();
     globalThis.document.getElementById("coach-review").hidden = false;
-    createReviewBar({ appState: {}, getReport: () => null, showAnalysisPly() {}, selectAnalysisNode() {} }).paint();
+    createReviewBar({ ...asSlices({}), getReport: () => null, showAnalysisPly() {}, selectAnalysisNode() {} }).paint();
     expect(bar.hidden).toBe(true);
     expect(review.step).toBeTypeOf("function");
   });

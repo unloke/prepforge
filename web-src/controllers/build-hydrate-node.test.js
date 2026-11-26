@@ -8,6 +8,6 @@ import { readFileSync } from "node:fs";
 const session = readFileSync(new URL("./build-session.js", import.meta.url), "utf8");
 
 it("the opening node is one the payload contains, falling back to the root", () => {
-  expect(session).toMatch(/const known = \(id\) => !!id && appState\.buildNodeById\.has\(id\);/);
+  expect(session).toMatch(/const known = \(id\) => !!id && buildState\.buildNodeById\.has\(id\);/);
   expect(session).toMatch(/const nextNodeId = \[selectedNodeId, payload\.selected_node_id\]\.find\(known\) \|\| root\?\.id;/);
 });

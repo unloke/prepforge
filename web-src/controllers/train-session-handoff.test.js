@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTrainSession } from "./train-session.js";
-import { appState, boards } from "../core/state.js";
+import { appState, boards, trainState } from "../core/state.js";
 import { provideApp } from "../core/app-context.js";
 import { invalidateAnalysisSource } from "./analyze-entry.js";
 
@@ -28,10 +28,8 @@ describe("Practice to Analyze account handoff", () => {
     const runAnalysis = vi.fn().mockResolvedValue(undefined);
     const switchView = vi.fn();
     const setOrientation = vi.fn();
-    Object.assign(appState, {
-      lichessUsername,
-      play: { userColor, book: "maia", rating: 1500, history: [{ san: "e4" }] },
-    });
+    appState.lichessUsername = lichessUsername;
+    trainState.play = { userColor, book: "maia", rating: 1500, history: [{ san: "e4" }] };
     boards.analysis = { setOrientation };
     provideApp({ loadPgnIntoAnalyze, switchView, runAnalysis });
     const session = createTrainSession();

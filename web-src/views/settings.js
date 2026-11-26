@@ -16,7 +16,7 @@ import { createSettingsRouter } from "./settings-router.js";
 import { createAppearanceSection } from "./settings-appearance.js";
 
 export function createSettingsView({
-  appState,
+  appState, settingsState,
   setStatus,
   saveSettings,
   loadSettings,
@@ -88,7 +88,7 @@ export function createSettingsView({
     const ratingEl = document.getElementById("settings-maia-rating");
     const ratingOut = document.getElementById("settings-maia-rating-readout");
     if (!depthEl || !autoEl || !ratingEl) return;
-    const settings = appState.settings || {};
+    const settings = settingsState.settings || {};
     if (Number.isFinite(settings.stockfish_depth)) {
       depthEl.value = String(settings.stockfish_depth);
     }

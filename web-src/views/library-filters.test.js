@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDashboardView, filterLibraryRows } from "./dashboard.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // Characterization for the Library filter bar (ui-prototype-v2 round):
 //  - All / White / Black / Shared / Disabled + a repertoire name search are a
@@ -106,7 +107,7 @@ describe("library filter wiring", () => {
       return { repertoires: REPS, shared: [] };
     });
     view = createDashboardView({
-      appState: { signedIn: true, teams: [], pendingRepDeletes: new Set() },
+      ...asSlices({ signedIn: true, teams: [], pendingRepDeletes: new Set() }), 
       api,
       postJson: vi.fn(),
       setStatus: vi.fn(),

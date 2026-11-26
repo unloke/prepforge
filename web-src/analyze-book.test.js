@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Chess } from "chess.js";
 import { createBookActions } from "./analyze-book.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -31,11 +32,11 @@ function harness(side, sans, reps, deps = {}) {
   const buildBookline = vi.fn(() => "Departure");
   const appState = { signedIn: true, analysisCurrentNodeId: node.id, analysisTree: { byId } };
   const actions = createBookActions({
-    bookState: { loaded: true, reps }, appState, analysisSelfSide: () => side,
+    bookState: { loaded: true, reps }, ...asSlices(appState), analysisSelfSide: () => side,
     loadCoach: async () => ({ buildBookline }),
     ...deps,
   });
-  return { ...actions, appState, buildBookline, el };
+  return { ...actions, ...asSlices(appState), appState, buildBookline, el };
 }
 
 describe("Analyze repertoire ownership", () => {

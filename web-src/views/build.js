@@ -50,7 +50,7 @@ function forkWindow(list, pickedIndex, size) {
 }
 
 export function createBuildView({
-  appState,
+  appState, buildState,
   boards,
   getMoveTreeRenderer,
   ensureMoveTreeRenderer,
@@ -67,22 +67,22 @@ export function createBuildView({
   let collapseOwner = appState.ownerGeneration;
   const collapseByRepertoire = new Map();
   const boundContainers = new WeakSet();
-  const miniBoard = (fen) => positionThumbnail(fen, appState.build?.color, boardRenderers);
+  const miniBoard = (fen) => positionThumbnail(fen, buildState.build?.color, boardRenderers);
   const collaboration = collaborationApi ? createBuildCollaboration({
-    appState, selectBuildNode, miniBoard, ...collaborationApi,
+    appState, buildState, selectBuildNode, miniBoard, ...collaborationApi,
   }) : null;
 
   function focusLine(id) {
     focusId = id;
-    focusRepertoire = appState.build?.repertoire_id;
+    focusRepertoire = buildState.build?.repertoire_id;
     renderBuilderTree();
   }
 
   function renderTools() {
     collaboration?.sync();
-    if (!appState.build) return;
+    if (!buildState.build) return;
     const crumb = document.getElementById("build-focus");
-    if (focusRepertoire !== appState.build.repertoire_id || !appState.buildNodeById.has(focusId)) focusId = null;
+    if (focusRepertoire !== buildState.build.repertoire_id || !buildState.buildNodeById.has(focusId)) focusId = null;
     if (crumb) {
       crumb.hidden = !focusId;
       crumb.innerHTML = focusId ? html`<button type="button" class="btn sm ghost" data-unfocus>All lines</button><span aria-hidden="true">›</span><b>${buildPath(focusId).filter((n) => n.parent_id).map((n) => n.san).join(" ")}</b>` : "";
@@ -91,10 +91,10 @@ export function createBuildView({
   }
   function buildPath(nodeId) {
     const path = [];
-    let current = appState.buildNodeById.get(nodeId);
+    let current = buildState.buildNodeById.get(nodeId);
     while (current) {
       path.push(current);
-      current = current.parent_id ? appState.buildNodeById.get(current.parent_id) : null;
+      current = current.parent_id ? buildState.buildNodeById.get(current.parent_id) : null;
     }
     return path.reverse();
   }
@@ -102,16 +102,16 @@ export function createBuildView({
   function renderBuildRepHeader() {
     const nameEl = document.getElementById("build-rep-name");
     if (!nameEl) return;
-    if (!appState.build) {
+    if (!buildState.build) {
       nameEl.textContent = "No repertoire open";
       renderTools();
       return;
     }
-    const { nodes, root, children } = getBuildTree(appState.build);
-    const glyph = routeGlyph(nodes, root?.id, appState.buildCurrentNodeId, { byId: appState.buildNodeById, children });
+    const { nodes, root, children } = getBuildTree(buildState.build);
+    const glyph = routeGlyph(nodes, root?.id, buildState.buildCurrentNodeId, { byId: buildState.buildNodeById, children });
     nameEl.innerHTML =
-      html`<span class="color-dot ${appState.build.color}"></span><b>${appState.build.name}</b><span class="rep-color-sub"> · ${appState.build.color}</span><button type="button" class="rep-route-mark" aria-label="Open repertoire atlas" title="Open repertoire atlas" aria-haspopup="dialog">${glyph}</button>`;
-    nameEl.querySelector?.(".rep-route-mark")?.addEventListener("click", () => openBuildAtlas({ appState }));
+      html`<span class="color-dot ${buildState.build.color}"></span><b>${buildState.build.name}</b><span class="rep-color-sub"> · ${buildState.build.color}</span><button type="button" class="rep-route-mark" aria-label="Open repertoire atlas" title="Open repertoire atlas" aria-haspopup="dialog">${glyph}</button>`;
+    nameEl.querySelector?.(".rep-route-mark")?.addEventListener("click", () => openBuildAtlas({ appState, buildState }));
     renderTools();
   }
 
@@ -136,10 +136,10 @@ export function createBuildView({
       return;
     }
     const picked = ctx.options.find((n) => n.id === ctx.choiceId) || ctx.options[0];
-    if (reopen || forkDismissedFor !== appState.buildCurrentNodeId) forkDismissedFor = null;
+    if (reopen || forkDismissedFor !== buildState.buildCurrentNodeId) forkDismissedFor = null;
     const pickedIndex = ctx.options.indexOf(picked);
     const size = forkWindowSize();
-    const expanded = forkExpandedFor === appState.buildCurrentNodeId && ctx.options.length > size;
+    const expanded = forkExpandedFor === buildState.buildCurrentNodeId && ctx.options.length > size;
     const shown = expanded ? ctx.options : forkWindow(ctx.options, pickedIndex, size);
     const chips = shown
       .map((n) => {
@@ -165,7 +165,7 @@ export function createBuildView({
         const title = n.is_mainline ? `Play ${n.san} — main line` : `Play ${n.san}`;
         // The chip names its move as a line from here, so pointing at it shows
         // the move on the board (line-preview.js, peek).
-        const from = appState.buildNodeById.get(n.parent_id)?.fen;
+        const from = buildState.buildNodeById.get(n.parent_id)?.fen;
         const peek = from && n.uci ? html` data-mt="${encodeLine(from, [n.uci])}" data-p="0"` : "";
         return (
           html`<button class="${cls}" type="button" data-node-id="${String(n.id)}" title="${title}"${peek}><span class="mtree-num">${num}</span>${n.san}${share}</button>`
@@ -183,7 +183,7 @@ export function createBuildView({
     bar.innerHTML =
       html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${countOf(ctx.options.length, "option")}</span>${more}</div><div class="fork-chips${expanded ? " is-all" : ""}">${chips}</div><button class="fork-close" type="button" aria-label="Hide move choices" title="Hide · ↑/↓ to reopen">×</button>`;
     bar.querySelector(".fork-close")?.addEventListener("click", () => {
-      forkDismissedFor = appState.buildCurrentNodeId;
+      forkDismissedFor = buildState.buildCurrentNodeId;
       bar.hidden = true;
       document.getElementById("build-root")?.focus();
     });
@@ -191,7 +191,7 @@ export function createBuildView({
     const moreBtn = bar.querySelector(".fork-more");
     if (moreBtn) {
       moreBtn.addEventListener("click", () => {
-        forkExpandedFor = expanded ? null : appState.buildCurrentNodeId;
+        forkExpandedFor = expanded ? null : buildState.buildCurrentNodeId;
         renderBuildBranchBar();
         document.querySelector("#build-branchbar .fork-more")?.focus();
       });
@@ -221,8 +221,8 @@ export function createBuildView({
   // Explorer has named ("B20 Sicilian Defense"), so stepping past the last
   // named move keeps the name instead of blanking it.
   function openingName() {
-    const named = appState.buildOpeningByFen;
-    const path = buildPath(appState.buildCurrentNodeId);
+    const named = buildState.buildOpeningByFen;
+    const path = buildPath(buildState.buildCurrentNodeId);
     for (let i = path.length - 1; i >= 0; i -= 1) {
       const name = named.get(String(path[i].fen || "").split(" ").slice(0, 4).join(" "));
       if (name) return name;
@@ -231,14 +231,14 @@ export function createBuildView({
   }
 
   function nameOpening(fen, name) {
-    appState.buildOpeningByFen.set(String(fen).split(" ").slice(0, 4).join(" "), name);
+    buildState.buildOpeningByFen.set(String(fen).split(" ").slice(0, 4).join(" "), name);
     renderBuildOpening();
   }
 
   function renderBuildOpening() {
     const el = document.getElementById("build-opening");
     if (!el) return;
-    const name = appState.build ? openingName() : "";
+    const name = buildState.build ? openingName() : "";
     el.hidden = !name;
     el.textContent = name;
     el.title = name;
@@ -250,18 +250,18 @@ export function createBuildView({
   let paintedTree = null, paintedSelectionId = null;
 
   function treeNode(id) {
-    return appState.buildNodeById.get(id) || appState.buildGenerationPreview?.node(id);
+    return buildState.buildNodeById.get(id) || buildState.buildGenerationPreview?.node(id);
   }
 
   function moveTreeOptions(children) {
-    const preview = appState.buildGenerationPreview;
+    const preview = buildState.buildGenerationPreview;
     const orderedChildren = (node) => {
       if (node.children) return node.children;
       const saved = children.get(node.id) || NO_CHILDREN;
       return preview?.childrenOf(node.id, saved) || saved;
     };
     return {
-      currentId: appState.buildCurrentNodeId,
+      currentId: buildState.buildCurrentNodeId,
       orderedChildren,
       moveNumberOf: (node) => node.move_number,
       sideOf: (node) => node.move_side,
@@ -276,7 +276,7 @@ export function createBuildView({
         const classes = [];
         if (b.mastery) classes.push(`m-${b.mastery}`);
         if (!b.is_enabled) classes.push("is-disabled");
-        const opp = b.move_side !== appState.build.color;
+        const opp = b.move_side !== buildState.build.color;
         if (opp) classes.push("is-opp");
         // The one gap the tree marks: the opponent has just moved here and
         // no answer is recorded. A line that ends on our own move is finished.
@@ -284,7 +284,7 @@ export function createBuildView({
         if (gap) classes.push("is-gap");
         // The move this session just made: one rise, once, so a line the user
         // added is distinguishable from the seventy already there.
-        if (b.id === appState.buildJustAddedId) classes.push("is-added");
+        if (b.id === buildState.buildJustAddedId) classes.push("is-added");
         // One quiet mark per move and one sentence behind it. The tree used to
         // carry four signals at once — a mastery bar, a "prepared" underline,
         // the accent fill on every move of the path, and a bold mainline — so
@@ -313,7 +313,7 @@ export function createBuildView({
   }
 
   function revealCurrentPath(children) {
-    for (const node of buildPath(appState.buildCurrentNodeId)) {
+    for (const node of buildPath(buildState.buildCurrentNodeId)) {
       if (!node.parent_id || children.get(node.parent_id)?.[0] === node) continue;
       if (collapseState.byDefault) collapseState.overrides.add(node.id);
       else collapseState.overrides.delete(node.id);
@@ -343,7 +343,7 @@ export function createBuildView({
       const varEl = toggle.closest?.(".mtree-var");
       if (renderer?.renderMoveVariation && varNode && varEl && "outerHTML" in varEl) {
         const restoreFocus = document.activeElement === toggle;
-        const { children } = getBuildTree(appState.build);
+        const { children } = getBuildTree(buildState.build);
         varEl.outerHTML = String(renderer.renderMoveVariation(varNode, moveTreeOptions(children)));
         if (restoreFocus) {
           container.querySelector(`[data-collapse-id="${id}"]`)?.focus({ preventScroll: true });
@@ -367,7 +367,7 @@ export function createBuildView({
       collapseState = null;
       openNotes.clear();
     }
-    if (!appState.build) {
+    if (!buildState.build) {
       collapseState = null;
       paintedSelectionId = null;
       renderBuildOpening();
@@ -378,8 +378,8 @@ export function createBuildView({
       onTreeRendered();
       return;
     }
-    const { root, children, length } = getBuildTree(appState.build);
-    const focused = appState.buildNodeById.get(focusId);
+    const { root, children, length } = getBuildTree(buildState.build);
+    const focused = buildState.buildNodeById.get(focusId);
     const treeRoot = focused?.parent_id ? { children: [focused] } : root;
     const options = moveTreeOptions(children);
     if (!treeRoot || !options.orderedChildren(treeRoot).length) {
@@ -397,7 +397,7 @@ export function createBuildView({
         .catch(() => {});
       return;
     }
-    const repId = appState.build.repertoire_id;
+    const repId = buildState.build.repertoire_id;
     let nextCollapseState = collapseByRepertoire.get(repId);
     if (!nextCollapseState) {
       nextCollapseState = { byDefault: false, overrides: new Set() };
@@ -415,7 +415,7 @@ export function createBuildView({
     }
     // A rename keeps the same selection; a save may replace a selected
     // provisional ID, and a fresh open can explicitly land on a hidden move.
-    const selectedId = appState.buildCurrentNodeId;
+    const selectedId = buildState.buildCurrentNodeId;
     if (revealSelection || selectedId !== paintedSelectionId) revealCurrentPath(children);
     const treeHtml = moveTreeRenderer.renderMoveTree(treeRoot, options);
     renderBuildOpening();
@@ -424,11 +424,11 @@ export function createBuildView({
     // The arrival is over once the token has landed: drop the flag now so no
     // later render replays it, and drop the class on animationend so nothing
     // is left carrying an entrance that already happened.
-    const el = appState.buildJustAddedId ? container.querySelector(".mtree-move.is-added") : null;
-    appState.buildJustAddedId = null;
+    const el = buildState.buildJustAddedId ? container.querySelector(".mtree-move.is-added") : null;
+    buildState.buildJustAddedId = null;
     if (el?.addEventListener) el.addEventListener("animationend", () => el.classList.remove("is-added"), { once: true });
     finishPreviewEntrance(container);
-    paintedTree = appState.build;
+    paintedTree = buildState.build;
     paintedSelectionId = selectedId;
     bindContainerEvents(container);
     moveTreeRenderer.bindMoveTreeClicks(
@@ -444,7 +444,7 @@ export function createBuildView({
 
   function finishPreviewEntrance(container) {
     for (const el of container.querySelectorAll(".is-preview-entering")) {
-      const node = appState.buildGenerationPreview?.node(el.dataset.nodeId);
+      const node = buildState.buildGenerationPreview?.node(el.dataset.nodeId);
       if (node) node.previewEntering = false;
       if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
         el.classList.remove("is-preview-entering");
@@ -457,7 +457,7 @@ export function createBuildView({
   function renderGeneratePreview(parents) {
     const container = document.getElementById("builder-tree");
     const renderer = getMoveTreeRenderer();
-    const { children } = getBuildTree(appState.build);
+    const { children } = getBuildTree(buildState.build);
     const options = moveTreeOptions(children);
     const variations = new Set();
     for (const id of parents) {
@@ -505,27 +505,27 @@ export function createBuildView({
   function updateBuildTreeSelection({ revealSelection = false } = {}) {
     const container = document.getElementById("builder-tree");
     const renderer = getMoveTreeRenderer();
-    if (focusId && !buildPath(appState.buildCurrentNodeId).some((n) => n.id === focusId)) {
+    if (focusId && !buildPath(buildState.buildCurrentNodeId).some((n) => n.id === focusId)) {
       focusId = null;
       renderBuilderTree({ revealSelection });
       return;
     }
     // The tree renderer chunk is still loading: the first paint of this tree is
     // a render, not a mark move (renderBuilderTree waits for the chunk itself).
-    if (!container || !renderer || paintedTree !== appState.build) {
+    if (!container || !renderer || paintedTree !== buildState.build) {
       renderBuilderTree({ revealSelection });
       return;
     }
     // Not on screen (inside a collapsed branch, or the tree has not been
     // painted since it changed): only a render can put the mark there. The
     // start position is not a move, so there it marks nothing — like a render.
-    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    const node = buildState.buildNodeById.get(buildState.buildCurrentNodeId);
     const currentId = node && node.parent_id ? node.id : null;
     if (!renderer.updateMoveTreeSelection(container, { currentId })) {
       renderBuilderTree({ revealSelection: true });
       return;
     }
-    paintedSelectionId = appState.buildCurrentNodeId;
+    paintedSelectionId = buildState.buildCurrentNodeId;
     renderTools();
     renderBuildOpening();
     renderBuildBranchBar();
@@ -534,7 +534,7 @@ export function createBuildView({
   }
 
   return {
-    openAtlas: () => openBuildAtlas({ appState }),
+    openAtlas: () => openBuildAtlas({ appState, buildState }),
     openActivity: () => collaboration?.openActivity(),
     openDiscussion: () => collaboration?.openDiscussion(),
     activityLabel: () => collaboration?.activityLabel() || "Activity",

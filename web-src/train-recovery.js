@@ -20,24 +20,24 @@ export function trainMoveResultUnconfirmed(error) {
 // card, another account, or a mode switch wins.
 export function trainRecoveryIsCurrent(
   { training, owner, generation, mode, prompt },
-  { appState, currentOwnerId },
+  { appState, trainState, currentOwnerId },
 ) {
-  return appState.training === training
-    && !appState.smart
-    && appState.training?.prompt === prompt
-    && (appState.trainMode || "smart") === mode
+  return trainState.training === training
+    && !trainState.smart
+    && trainState.training?.prompt === prompt
+    && (trainState.trainMode || "smart") === mode
     && currentOwnerId() === owner
     && appState.ownerGeneration === generation;
 }
 
 export function createTrainRecovery(deps) {
   const {
-    api, appState, boards, currentOwnerId, notices, setStatus, setStatusError,
+    api, appState, trainState, boards, currentOwnerId, notices, setStatus, setStatusError,
     setTrainBanner, syncTrainSessionControls, renderTraining, finishTrainingSession,
   } = deps;
 
   function stillCurrent(ctx) {
-    return !ctx.superseded() && trainRecoveryIsCurrent(ctx, { appState, currentOwnerId });
+    return !ctx.superseded() && trainRecoveryIsCurrent(ctx, { appState, trainState, currentOwnerId });
   }
 
   // A reconciliation that a newer card (or another account) superseded owns
@@ -48,11 +48,11 @@ export function createTrainRecovery(deps) {
   // answer still on the wire, after ‹ Train dropped ours) a late read leaves it.
   function lock(ctx) {
     ctx.lock = { recovering: ctx.prompt.session_id };
-    appState.trainBusy = ctx.lock;
+    trainState.trainBusy = ctx.lock;
     return ctx;
   }
   function release(ctx) {
-    if (ctx.lock && appState.trainBusy === ctx.lock) appState.trainBusy = false;
+    if (ctx.lock && trainState.trainBusy === ctx.lock) trainState.trainBusy = false;
   }
 
   async function sync(ctx) {
@@ -79,7 +79,7 @@ export function createTrainRecovery(deps) {
     }
     if (!stillCurrent(ctx)) return release(ctx);
     ctx.card?.dismiss();
-    appState.trainBusy = false;
+    trainState.trainBusy = false;
     // The server moved past the card, so the lost request did apply.
     if (state.prompt?.current_index !== ctx.prompt.current_index) ctx.onApplied?.();
     setStatus("Caught up with the server.");
@@ -98,10 +98,10 @@ export function createTrainRecovery(deps) {
       // card the server may already have advanced past, and no second answer.
       const ctx = lock({
         prompt,
-        training: appState.training,
+        training: trainState.training,
         owner: currentOwnerId(),
         generation: appState.ownerGeneration,
-        mode: appState.trainMode,
+        mode: trainState.trainMode,
         superseded,
       });
       boards.train.setEngineArrow(null);
@@ -131,7 +131,7 @@ export function createTrainRecovery(deps) {
   async function recoverSkip(error, prompt, superseded) {
     if (superseded()) return;
     if (!trainMoveResultUnconfirmed(error)) {
-      appState.trainBusy = false;
+      trainState.trainBusy = false;
       setStatusError(error.message);
       syncTrainSessionControls();
       return;
@@ -139,14 +139,14 @@ export function createTrainRecovery(deps) {
     // Skip's own lock becomes this check's token, released only by this check.
     const ctx = lock({
       prompt,
-      training: appState.training,
+      training: trainState.training,
       owner: currentOwnerId(),
       generation: appState.ownerGeneration,
-      mode: appState.trainMode,
+      mode: trainState.trainMode,
       superseded,
       onApplied: () => {
-        appState.trainStats.skipped += 1;
-        appState.trainAttempt = 1;
+        trainState.trainStats.skipped += 1;
+        trainState.trainAttempt = 1;
       },
     });
     setTrainBanner("move", "Checking your skip", "");

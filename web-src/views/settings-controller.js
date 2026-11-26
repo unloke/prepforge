@@ -1,4 +1,4 @@
-import { appState } from "../core/state.js";
+import { appState, settingsState } from "../core/state.js";
 import { activeViewName, api, currentOwnerId, postJson, setStatus, setStatusError } from "../core/api.js";
 import { hooks } from "../core/hooks.js";
 import { effectiveMaiaRating, pref, setPref } from "../core/prefs.js";
@@ -51,7 +51,7 @@ export async function ensureSettingsView() {
   const mod = await preloadSettingsView();
   if (!settingsView) {
     settingsView = mod.createSettingsView({
-      appState,
+      appState, settingsState,
       setStatus,
       saveSettings,
       loadSettings,
@@ -105,7 +105,7 @@ export async function openSettingsSection(sectionId) {
 let settingsActionsPromise = null;
 function loadSettingsActions() {
   settingsActionsPromise ||= import("../settings-actions.js").then(({ createSettingsActions }) => createSettingsActions({
-    appState, currentOwnerId, ensureSettingsView, api, applySettingsPayload,
+    appState, settingsState, currentOwnerId, ensureSettingsView, api, applySettingsPayload,
     applyServerEngineGating, setStatusError, getPositionCoach: () => hooks.analyzeSession?.()?.positionCoach, engineWidget,
     activeViewName, explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
   })).catch((error) => { settingsActionsPromise = null; throw error; });
@@ -119,7 +119,7 @@ export async function loadSettingsOnce() {
 // Fold a /api/settings payload into state: the blob itself, the server-engine flag,
 // and the pinned Maia rating (null = AUTO). Shared by init, loadSettings and saves.
 export function applySettingsPayload(payload) {
-  appState.settings = payload;
+  settingsState.settings = payload;
   appState.maiaRatingPinned = Number.isFinite(payload.maia_rating) ? payload.maia_rating : null;
   settingsView?.renderStrengthControls();
 }

@@ -1,4 +1,4 @@
-import { appState, boards } from "./state.js";
+import { appState, settingsState, boards } from "./state.js";
 import { hooks } from "./hooks.js";
 import { PREFS_KEY, applyAccent, applyBoardTheme, applyTheme, readStoredAccent, readStoredPrefs, readStoredTheme, setAccent, storeTheme } from "../theme.js";
 import { fetchLichessProfile } from "../lichess-profile.js";
@@ -154,7 +154,7 @@ export const STOCKFISH_MIN_DEPTH = 1;
 export const STOCKFISH_MAX_DEPTH = 30;
 
 export function effectiveStockfishDepth() {
-  const raw = appState.settings && Number(appState.settings.stockfish_depth);
+  const raw = settingsState.settings && Number(settingsState.settings.stockfish_depth);
   const depth = Number.isFinite(raw) ? raw : STOCKFISH_FALLBACK_DEPTH;
   return Math.max(STOCKFISH_MIN_DEPTH, Math.min(STOCKFISH_MAX_DEPTH, Math.round(depth)));
 }

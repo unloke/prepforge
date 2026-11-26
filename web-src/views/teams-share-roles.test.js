@@ -15,7 +15,7 @@ vi.mock("../core/api.js", () => ({
   setStatus: (text) => calls.status.push(text),
   setStatusError: (text) => calls.errors.push(text),
 }));
-vi.mock("../core/state.js", () => ({ appState: { teams: [], selectedTeamId: "t1", accountUserId: "u1" } }));
+vi.mock("../core/state.js", () => ({ appState: { accountUserId: "u1" }, teamsState: { teams: [], selectedTeamId: "t1" } }));
 vi.mock("../core/modals.js", () => ({ showConfirmModal: vi.fn(), showInputModal: vi.fn() }));
 
 const { createTeamsController } = await import("./teams-controller.js");

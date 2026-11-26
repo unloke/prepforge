@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { coachTipMayReplace, wrongMoveBanner, wrongMoveTip } from "./train-hint.js";
 import { prefetchTrainCoach } from "./controllers/train-coach.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -27,7 +28,7 @@ function harness() {
   const coach = deferred();
   const sleepGate = deferred();
   const deps = {
-    appState, document: { getElementById: (id) => id === "train-banner" ? banner : { textContent: banner.title } },
+    ...asSlices(appState), document: { getElementById: (id) => id === "train-banner" ? banner : { textContent: banner.title } },
     boards: { train: { setPosition: vi.fn(), setEngineArrow: vi.fn() } },
     setTrainBanner: (state, title, sub) => { banner.dataset.state = state; banner.title = title; banner.sub = sub; },
     maiaPhaseCoach: () => coach.promise, trainTeachLine: () => "", coachTipMayReplace, wrongMoveTip, wrongMoveBanner,
@@ -36,7 +37,7 @@ function harness() {
     renderTrainStats: async () => {}, boardAfterMove: async () => ({ board: { fen: "preview" } }),
     playSound: vi.fn(), sleep: () => sleepGate.promise, rememberSmartSession: vi.fn(),
   };
-  return { appState, banner, coach, sleepGate, deps, prompt };
+  return { ...asSlices(appState), appState, banner, coach, sleepGate, deps, prompt };
 }
 
 describe("Smart coach response ownership", () => {
@@ -46,7 +47,7 @@ describe("Smart coach response ownership", () => {
     globalThis.document = h.deps.document;
     const pending = prefetchTrainCoach(h.prompt, h.deps);
     expect(pending).toBeInstanceOf(Promise);
-    h.appState.trainHintLevel = 2;
+    h.trainState.trainHintLevel = 2;
     h.banner.title = "Hint 2 · Piece";
     h.banner.sub = "Move the pawn";
     h.coach.resolve({ promptTip: "Generic idea" });

@@ -35,7 +35,7 @@ if (typeof document !== "undefined") {
 }
 
 export function createAnalyzeView({
-  appState,
+  analysisState,
   START_FEN,
   showAnalysisPly,
   selectAnalysisNode,
@@ -192,8 +192,8 @@ export function createAnalyzeView({
   }
 
   function jumpToGrade(side, grade) {
-    const moves = appState.analysis ? appState.analysis.moves : [];
-    const current = Number(appState.analysisPly) || 0;
+    const moves = analysisState.analysis ? analysisState.analysis.moves : [];
+    const current = Number(analysisState.analysisPly) || 0;
     const matches = (move) => (move.side === "black" ? "black" : "white") === side && reportGradeOf(move.classification) === grade;
     const match = moves.find((m) => Number(m.ply) > current && matches(m)) || moves.find((m) => matches(m));
     if (match) jumpToPly(Number(match.ply));
@@ -201,7 +201,7 @@ export function createAnalyzeView({
 
   // Report and board peeks share the saved game's moves and repertoire cache.
   function renderReport(moves) {
-    const analysis = appState.analysis || {};
+    const analysis = analysisState.analysis || {};
     const headers = pgnHeaderTags(analysis.pgn ?? document.getElementById("pgn-input")?.value ?? "");
     report = renderReportBlock(document.getElementById("analysis-summary"), {
       moves,
@@ -222,17 +222,17 @@ export function createAnalyzeView({
   }
 
   // The review bar under the coach; Shift+←/→ step it too.
-  const review = createReviewBar({ appState, getReport: () => report, showAnalysisPly, selectAnalysisNode });
+  const review = createReviewBar({ analysisState, getReport: () => report, showAnalysisPly, selectAnalysisNode });
 
   // The key moment on the board is marked in the report as the reader steps.
   function markCurrentMoment() {
-    const ply = Number(appState.analysisPly);
+    const ply = Number(analysisState.analysisPly);
     document.querySelectorAll?.("#analysis-summary [data-km-ply]").forEach((row) => {
       row.classList.toggle("is-current", Number(row.dataset.kmPly) === ply);
     });
-    plates.paintMoveHead(appState);
+    plates.paintMoveHead(analysisState);
     review.paint();
-    paintSavedLine(appState);
+    paintSavedLine(analysisState);
   }
 
   function buildAnalysisTree(moves) {
@@ -269,7 +269,7 @@ export function createAnalyzeView({
       prev.children.push(node);
       prev = node;
     });
-    const pending = Array.from(appState.analysisVarNodes.values()).sort(
+    const pending = Array.from(analysisState.analysisVarNodes.values()).sort(
       (a, b) => a.seq - b.seq
     );
     for (const v of pending) {
@@ -346,7 +346,7 @@ export function createAnalyzeView({
   }
 
   function serializeAnalysisPgn(sourcePgn) {
-    const analysis = appState.analysis;
+    const analysis = analysisState.analysis;
     sourcePgn = analysis?.pgn ?? sourcePgn;
     const movetext = treeToMovetext(buildAnalysisTree(analysis?.moves || []).root, sourcePgn);
     if (!movetext) return "";
@@ -382,9 +382,9 @@ export function createAnalyzeView({
   function renderAnalysisTree(movesArg) {
     const container = document.getElementById("analysis-moves");
     if (!container) return;
-    const moves = movesArg || (appState.analysis ? appState.analysis.moves : []);
+    const moves = movesArg || (analysisState.analysis ? analysisState.analysis.moves : []);
     const tree = buildAnalysisTree(moves);
-    appState.analysisTree = tree;
+    analysisState.analysisTree = tree;
     const hasContent = (tree.root.children || []).length > 0;
     if (!hasContent) {
       container.innerHTML =
@@ -393,9 +393,9 @@ export function createAnalyzeView({
     }
     const panel = document.getElementById("analysis-results");
     if (panel && panel.hidden) revealAnalysisResults();
-    const pathIds = analysisPathIds(appState.analysisCurrentNodeId, tree);
+    const pathIds = analysisPathIds(analysisState.analysisCurrentNodeId, tree);
     container.innerHTML = renderMoveTree(tree.root, {
-      currentId: appState.analysisCurrentNodeId,
+      currentId: analysisState.analysisCurrentNodeId,
       pathIds,
       decorate: (node) => {
         if (node.isVariation) {
@@ -444,7 +444,7 @@ export function createAnalyzeView({
   // goes through renderAnalysisTree, the only path that writes the container.
   function updateAnalysisTreeSelection() {
     const container = document.getElementById("analysis-moves");
-    const tree = appState.analysisTree;
+    const tree = analysisState.analysisTree;
     if (!container || !tree) {
       // No tree on screen yet: the first paint of one is a render.
       renderAnalysisTree();
@@ -453,8 +453,8 @@ export function createAnalyzeView({
     const moved = updateMoveTreeSelection(container, {
       // The start position is not a move: the sheet then marks none, as a
       // render of it does.
-      currentId: appState.analysisCurrentNodeId === "root" ? null : appState.analysisCurrentNodeId,
-      pathIds: analysisPathIds(appState.analysisCurrentNodeId, tree),
+      currentId: analysisState.analysisCurrentNodeId === "root" ? null : analysisState.analysisCurrentNodeId,
+      pathIds: analysisPathIds(analysisState.analysisCurrentNodeId, tree),
     });
     // Not on screen (a tree built but never painted, or a node inside a
     // collapsed branch): only a render can put the mark there.
@@ -469,8 +469,8 @@ export function createAnalyzeView({
     const chart = document.getElementById("eval-chart");
     if (!chart) return;
     // A new chart size changes the insets in user units: redraw at the new geometry.
-    if (measurePlotPads(chart) && (appState.evalChartPoints || []).length) {
-      renderEvalChart(appState.evalChartPoints);
+    if (measurePlotPads(chart) && (analysisState.evalChartPoints || []).length) {
+      renderEvalChart(analysisState.evalChartPoints);
       return;
     }
     const markers = chart.querySelectorAll(".eval-marker");
@@ -539,7 +539,7 @@ export function createAnalyzeView({
       text,
       side,
       pct,
-      show: Boolean(text) || (!graph?.hidden && (appState.evalChartPoints || []).length > 0),
+      show: Boolean(text) || (!graph?.hidden && (analysisState.evalChartPoints || []).length > 0),
     });
   }
 
@@ -641,8 +641,8 @@ export function createAnalyzeView({
     const marker = document.getElementById("eval-chart-cursor");
     if (!marker) return;
     const dot = document.getElementById("eval-chart-cursor-dot");
-    const points = appState.evalChartPoints || [];
-    const ply = appState.analysisPly;
+    const points = analysisState.evalChartPoints || [];
+    const ply = analysisState.analysisPly;
     const idx = points.findIndex((p) => p.ply === ply);
     const hidden = !points.length || idx < 0;
     // While a run is in progress the stored points are the previous game's (the
@@ -698,7 +698,7 @@ export function createAnalyzeView({
   function showEvalChartTooltip(idx, cursorX = null) {
     const tooltip = document.getElementById("eval-chart-tooltip");
     const chart = document.getElementById("eval-chart");
-    const points = appState.evalChartPoints || [];
+    const points = analysisState.evalChartPoints || [];
     if (!tooltip || !chart) return;
     if (idx < 0 || idx >= points.length) {
       hideEvalChartTooltip();
@@ -707,8 +707,8 @@ export function createAnalyzeView({
     const point = points[idx];
     const x = evalChartXOf(idx, points.length);
     const rect = chart.getBoundingClientRect();
-    const move = (appState.analysis?.moves || []).find((m) => Number(m.ply) === Number(point.ply)) || null;
-    const markup = String(evalChartTooltipHtml(point, { isCurrent: point.ply === appState.analysisPly }));
+    const move = (analysisState.analysis?.moves || []).find((m) => Number(m.ply) === Number(point.ply)) || null;
+    const markup = String(evalChartTooltipHtml(point, { isCurrent: point.ply === analysisState.analysisPly }));
     // Same markup as the last move: keep the measured width instead of writing
     // content and then reading its box back on every pointermove.
     if (tooltip.hidden || tooltipMarkup !== markup) {
@@ -745,7 +745,7 @@ export function createAnalyzeView({
   }
 
   function selectEvalChartIdx(idx) {
-    const points = appState.evalChartPoints || [];
+    const points = analysisState.evalChartPoints || [];
     if (idx < 0 || idx >= points.length) return;
     evalChartFocusIdx = idx;
     showAnalysisPly(points[idx].ply);
@@ -758,7 +758,7 @@ export function createAnalyzeView({
     chart.dataset.evalChartBound = "1";
 
     chart.addEventListener("click", (event) => {
-      const points = appState.evalChartPoints || [];
+      const points = analysisState.evalChartPoints || [];
       if (!points.length) return;
       selectEvalChartIdx(evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX)));
     });
@@ -769,7 +769,7 @@ export function createAnalyzeView({
     // interaction, since no mouseleave follows a touch.
     let scrubIdx = -1;
     const scrub = (event) => {
-      const points = appState.evalChartPoints || [];
+      const points = analysisState.evalChartPoints || [];
       if (!points.length) return;
       const idx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
       showEvalChartTooltip(idx, event.clientX);
@@ -790,7 +790,7 @@ export function createAnalyzeView({
         scrub(event);
         return;
       }
-      const points = appState.evalChartPoints || [];
+      const points = analysisState.evalChartPoints || [];
       if (!points.length) return;
       evalChartFocusIdx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
       peekOnHover = true;
@@ -834,7 +834,7 @@ export function createAnalyzeView({
     const chart = document.getElementById("eval-chart");
     measurePlotPads(chart);
     chart.innerHTML = "";
-    appState.evalChartPoints = points || [];
+    analysisState.evalChartPoints = points || [];
     onEvalChartRendered();
     const width = EVAL_CHART_W;
     const height = EVAL_CHART_H;
@@ -933,7 +933,7 @@ export function createAnalyzeView({
     // The "left prep at" row reads the repertoire trees, which load lazily:
     // repaint once they land, so the report carries it without holding it up.
     void ensureBookLoaded().then(() => {
-      if (appState.analysis === payload) renderReport(payload.moves);
+      if (analysisState.analysis === payload) renderReport(payload.moves);
     }).catch(() => {});
   }
 
