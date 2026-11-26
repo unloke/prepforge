@@ -34,14 +34,13 @@ const SCENARIOS = [
   {
     id: "deepScanGap",
     async assert(page) {
-      const deepScanGap = page.locator('[data-testid="scout-refutation-gap-deep-scan"]').first();
-      await deepScanGap.waitFor({ timeout: TIMEOUT_MS });
-      await deepScanGap.click();
+      const deepScan = page.locator("#scout-deep-scan-btn");
+      await deepScan.click({ timeout: TIMEOUT_MS });
       const jobTitle = page.locator("#notices .notice-title");
       try {
         await jobTitle.filter({ hasText: /Scout Deep Scan/i }).waitFor({ timeout: 10_000 });
       } catch {
-        fail("Deep scan gap CTA did not start the scout deep scan job");
+        fail("The profile Deep scan button did not start the scout deep scan job");
       }
     },
   },

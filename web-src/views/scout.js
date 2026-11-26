@@ -1570,7 +1570,7 @@ export function createScoutView(deps) {
   }
 
   async function mountE2eRefutationScenarioEnabled(scenarioId) {
-    const { SCOUT_E2E_REFUTATION_SCENARIOS, scoutE2eSeedGames } = await import(
+    const { SCOUT_E2E_REFUTATION_SCENARIOS, scoutE2eSeedGames, buildE2ePrepSection } = await import(
       "../scout-e2e-fixtures.js"
     );
     const scenario = SCOUT_E2E_REFUTATION_SCENARIOS[scenarioId];
@@ -1604,21 +1604,23 @@ export function createScoutView(deps) {
     updateScoutControls();
     updateLiveCounter();
 
+    const profileEl = getProfileEl();
+    if (profileEl) {
+      profileEl.innerHTML = renderScoutProfile(scoutState.profile, scoutState.username, scoutState.activeSpeed);
+      profileEl.hidden = false;
+    }
+
     const results = getResultsEl();
     if (!results) {
       throw new Error("scout-results element missing");
     }
 
-    const { buildE2ePrepSection } = await import(
-      "../scout-e2e-fixtures.js"
-    );
-    const normalizedId = scenarioId;
-    const { html: markup, sectionData } = buildE2ePrepSection(normalizedId);
+    const { html: markup, sectionData } = buildE2ePrepSection(scenarioId);
     results.innerHTML = markup;
     scoutState.sections = { black: sectionData };
     const root = results.querySelector(".scout-section[data-scout-color='black']");
     if (root) root.dataset.e2eRefutation = scenarioId;
-    return { scenarioId, normalizedId };
+    return { scenarioId, normalizedId: scenarioId };
   }
 
   function bindScoutEvents() {
