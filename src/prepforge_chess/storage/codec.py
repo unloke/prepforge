@@ -311,7 +311,11 @@ def board_fen(board: chess.Board) -> str:
 
     Serializing the position is the dominant cost of hydrating an opening tree
     (one FEN per node), and python-chess builds the placement square by square.
+    Variant boards (Crazyhouse pockets, Three-check counters) add FEN fields of
+    their own, so they keep python-chess's serializer.
     """
+    if type(board) is not chess.Board:
+        return board.fen()
     grid = ["1"] * 64
     white = board.occupied_co[chess.WHITE]
     black = board.occupied_co[chess.BLACK]
