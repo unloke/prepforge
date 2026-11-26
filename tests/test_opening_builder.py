@@ -110,7 +110,7 @@ def test_node_operations_update_tree_metadata():
     assert children[second.id].tags == ["demo"]
 
 
-def test_disable_branch_is_recursive_and_report_filters_nodes():
+def test_disable_branch_is_recursive():
     repository, builder = _builder()
     repertoire = builder.create_repertoire(CreateRepertoireRequest(name="Filters", color=Color.WHITE))
     first = builder.add_move(repertoire.id, repertoire.root_node.id, "e2e4", is_mainline=True)
@@ -119,16 +119,9 @@ def test_disable_branch_is_recursive_and_report_filters_nodes():
 
     builder.disable_branch(repertoire.id, reply.id)
 
-    all_report = builder.tree_report(repertoire.id, include_disabled=True)
-    visible_report = builder.tree_report(repertoire.id)
-    mainline_report = builder.tree_report(repertoire.id, filter_mode="mainline", include_disabled=True)
-    trap_report = builder.tree_report(repertoire.id, filter_mode="mistake-traps", include_disabled=True)
-
-    assert all_report.total_nodes == 4
-    assert len(visible_report.visible_nodes) == 2
-    assert any(not item.is_enabled for item in all_report.visible_nodes)
-    assert [item.san for item in mainline_report.visible_nodes] == ["root", "e4"]
-    assert [item.san for item in trap_report.visible_nodes] == ["root", "e4", "e5", "Nf3"]
+    loaded = repository.load_repertoire(repertoire.id)
+    enabled = {node.move.san if node.move else "root": node.is_enabled for node in loaded.root_node.walk()}
+    assert enabled == {"root": True, "e4": True, "e5": False, "Nf3": False}
 
 
 # --- Phase 3c: apply_generation_plan (browser submits a plan, server applies) ---

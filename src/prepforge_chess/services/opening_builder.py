@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import math
 import json
+import math
 import re
 import uuid
-from dataclasses import dataclass, field
-from typing import List, Optional, Set, Tuple
+from dataclasses import asdict, dataclass, field
+from typing import List, Optional, Tuple
 
 from prepforge_chess.core.limits import (
     MAX_EVAL_DEPTH,
@@ -50,31 +50,6 @@ class CreateRepertoireRequest:
     root_fen: str = STARTING_FEN
     notes: Optional[str] = None
     tags: List[str] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class OpeningTreeItem:
-    node_id: str
-    parent_id: Optional[str]
-    depth: int
-    san: str
-    uci: Optional[str]
-    source: MoveSource
-    is_mainline: bool
-    is_prepared: bool
-    is_enabled: bool
-    maia_probability: Optional[float]
-    tags: List[str]
-    comment: Optional[str]
-
-
-@dataclass(frozen=True)
-class OpeningTreeReport:
-    repertoire_id: str
-    name: str
-    color: Color
-    total_nodes: int
-    visible_nodes: List[OpeningTreeItem]
 
 
 # Sources a browser-submitted generation plan may add or upgrade. The plan comes
@@ -181,15 +156,14 @@ def _validate_plan_source(value) -> MoveSource:
     return source
 
 
-class OpeningBuilderService:
-    def __init__(
-        self,
-        repository: RepertoireRepository,
-        chess_core: Optional[ChessCore] = None,
-    ):
-        self.repository = repository
-        self.chess_core = chess_core or ChessCore()
+# Authorship a generated plan never relabels or demotes.
+_USER_SOURCES = frozenset({MoveSource.MANUAL, MoveSource.IMPORTED_PGN})
 
+
+class OpeningBuilderService:
+    def __init__(self, repository: RepertoireRepository):
+        self.repository = repository
+        self.chess_core = ChessCore()
 
     def create_repertoire(
         self, request: CreateRepertoireRequest, owner_user_id: Optional[str] = None,
@@ -263,7 +237,6 @@ class OpeningBuilderService:
         self.repository.save_changed_nodes(repertoire_id, [child])
         return child
 
-
     def apply_generation_plan(
         self,
         repertoire_id: str,
@@ -310,9 +283,7 @@ class OpeningBuilderService:
         # generated under this anchor, so scoping every write here stops a stray
         # or hostile plan from mutating nodes elsewhere in the repertoire. Depths
         # are tracked alongside so a new node's depth-from-anchor can be capped.
-        nodes_by_id: dict = {}
-        depth_by_id: dict = {}
-        self._index_subtree(anchor, 0, nodes_by_id, depth_by_id)
+        nodes_by_id, depth_by_id = self._index_subtree(anchor)
         # Freshly planned nodes are addressed by a same-run tempId so a child
         # change can parent onto a sibling added earlier in the same plan; the
         # plan is emitted in DFS order (parents first), so a single forward pass
@@ -349,10 +320,9 @@ class OpeningBuilderService:
         receipt = None
         if receipt_target:
             owner, key, digest = receipt_target
-            receipt = (owner, key, {"digest": digest, "id_map": self.applied_plan_id_map, "summary": {
-                "added_nodes": summary.added_nodes, "updated_nodes": summary.updated_nodes,
-                "high_probability_unprepared": summary.high_probability_unprepared,
-            }})
+            receipt = (owner, key, {
+                "digest": digest, "id_map": self.applied_plan_id_map, "summary": asdict(summary),
+            })
         self.repository.save_changed_nodes(
             repertoire_id, self._changed_nodes(repertoire, before), receipt=receipt
         )
@@ -395,10 +365,8 @@ class OpeningBuilderService:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         before = self._node_snapshot(repertoire.root_node)
         # parentRef / tempId resolve against the whole tree (manual moves can
-        # attach anywhere). depth_by_id from the index is unused for the cap below.
-        nodes_by_id: dict = {}
-        depth_by_id: dict = {}
-        self._index_subtree(repertoire.root_node, 0, nodes_by_id, depth_by_id)
+        # attach anywhere).
+        nodes_by_id, _ = self._index_subtree(repertoire.root_node)
 
         temp_to_node: dict = {}
         seen_temp_ids: set = set()
@@ -488,41 +456,29 @@ class OpeningBuilderService:
 
     @staticmethod
     def _node_snapshot(root: OpeningNode) -> dict:
-        def state(node: OpeningNode) -> tuple:
-            return (
+        return {
+            node.id: (
                 node.is_mainline, node.is_user_prepared_move, node.is_enabled,
                 node.maia_probability, node.engine_evaluation, node.source,
                 node.comment, tuple(node.tags), tuple(node.arrows), tuple(node.circles),
             )
-
-        result = {}
-        stack = [root]
-        while stack:
-            node = stack.pop()
-            result[node.id] = state(node)
-            stack.extend(node.children)
-        return result
+            for node in root.walk()
+        }
 
     def _changed_nodes(self, repertoire: Repertoire, before: dict) -> List[OpeningNode]:
+        """Nodes added or edited since ``before`` was snapshotted."""
         after = self._node_snapshot(repertoire.root_node)
-        changed = set(after) - set(before)
-        changed.update(node_id for node_id in before if after.get(node_id) != before[node_id])
-        nodes = []
-        stack = [repertoire.root_node]
-        while stack:
-            node = stack.pop()
-            if node.id in changed:
-                nodes.append(node)
-            stack.extend(node.children)
-        return nodes
+        return [node for node in repertoire.root_node.walk() if before.get(node.id) != after[node.id]]
 
-    def _index_subtree(
-        self, node: OpeningNode, depth: int, nodes_into: dict, depth_into: dict
-    ) -> None:
-        nodes_into[node.id] = node
-        depth_into[node.id] = depth
-        for child in node.children:
-            self._index_subtree(child, depth + 1, nodes_into, depth_into)
+    @staticmethod
+    def _index_subtree(anchor: OpeningNode) -> Tuple[dict, dict]:
+        """Every node under ``anchor`` by id, and its depth below the anchor."""
+        nodes_by_id: dict = {}
+        depth_by_id: dict = {}
+        for node, depth in anchor.walk_with_depth():
+            nodes_by_id[node.id] = node
+            depth_by_id[node.id] = depth
+        return nodes_by_id, depth_by_id
 
     def _resolve_plan_parent(
         self, parent_ref, nodes_by_id: dict, temp_to_node: dict
@@ -674,8 +630,7 @@ class OpeningBuilderService:
         if parent is None:
             return
         if any(
-            sibling.is_mainline
-            and sibling.source in {MoveSource.MANUAL, MoveSource.IMPORTED_PGN}
+            sibling.is_mainline and sibling.source in _USER_SOURCES
             for sibling in parent.children
             if sibling is not node
         ):
@@ -709,14 +664,13 @@ class OpeningBuilderService:
             changed = True
         if (
             source is not None
-            and node.source not in {MoveSource.MANUAL, MoveSource.IMPORTED_PGN}
+            and node.source not in _USER_SOURCES
             and node.source != source
         ):
             node.source = source
             changed = True
         if changed:
             summary.updated_nodes += 1
-
 
     def set_as_mainline(self, repertoire_id: str, node_id: str) -> OpeningNode:
         repertoire = self._load_repertoire_or_raise(repertoire_id)
@@ -734,12 +688,8 @@ class OpeningBuilderService:
         ])
         return node
 
-    def mark_prepared(
-        self, repertoire_id: str, node_id: str, prepared: bool = True,
-        *, repertoire: Optional[Repertoire] = None,
-    ) -> OpeningNode:
-        repertoire = repertoire or self._load_repertoire_or_raise(repertoire_id)
-        self.loaded_repertoire = repertoire
+    def mark_prepared(self, repertoire_id: str, node_id: str, prepared: bool = True) -> OpeningNode:
+        repertoire = self._load_repertoire_or_raise(repertoire_id)
         node = self._find_node_or_raise(repertoire.root_node, node_id)
         node.is_user_prepared_move = prepared
         self.repository.update_opening_nodes(repertoire_id, [
@@ -747,45 +697,30 @@ class OpeningBuilderService:
         ])
         return node
 
-    def disable_branch(
-        self, repertoire_id: str, node_id: str, *, repertoire: Optional[Repertoire] = None,
-    ) -> OpeningNode:
-        repertoire = repertoire or self._load_repertoire_or_raise(repertoire_id)
-        self.loaded_repertoire = repertoire
-        node = self._find_node_or_raise(repertoire.root_node, node_id)
-        self._set_branch_enabled(node, False)
-        self.repository.update_opening_nodes(repertoire_id, [
-            {"id": child.id, "is_enabled": False}
-            for child in node.walk()
-        ])
-        return node
+    def disable_branch(self, repertoire_id: str, node_id: str) -> OpeningNode:
+        return self._set_branch_enabled(repertoire_id, node_id, False)
 
-    def enable_branch(
-        self, repertoire_id: str, node_id: str, *, repertoire: Optional[Repertoire] = None,
-    ) -> OpeningNode:
-        repertoire = repertoire or self._load_repertoire_or_raise(repertoire_id)
-        self.loaded_repertoire = repertoire
+    def enable_branch(self, repertoire_id: str, node_id: str) -> OpeningNode:
+        return self._set_branch_enabled(repertoire_id, node_id, True)
+
+    def _set_branch_enabled(self, repertoire_id: str, node_id: str, enabled: bool) -> OpeningNode:
+        repertoire = self._load_repertoire_or_raise(repertoire_id)
         node = self._find_node_or_raise(repertoire.root_node, node_id)
-        self._set_branch_enabled(node, True)
-        # A-02: a node is only reachable through ENABLED ancestors, so
-        # re-enabling a branch also re-enables its ancestor chain. "Enabled"
-        # then means exactly one thing everywhere: the node is trainable again
-        # (health stats and the scheduler agree by construction).
-        ancestors = []
-        current = node
-        while current.parent_id is not None:
-            parent = self._find_node_or_raise(repertoire.root_node, current.parent_id)
-            if not parent.is_enabled:
-                parent.is_enabled = True
-                ancestors.append(parent)
-            current = parent
+        changed = list(node.walk())
+        if enabled:
+            # A-02: a node is only reachable through ENABLED ancestors, so
+            # re-enabling a branch also re-enables its ancestor chain. "Enabled"
+            # then means exactly one thing everywhere: the node is trainable again
+            # (health stats and the scheduler agree by construction).
+            current = node
+            while current.parent_id is not None:
+                current = self._find_node_or_raise(repertoire.root_node, current.parent_id)
+                if not current.is_enabled:
+                    changed.append(current)
+        for target in changed:
+            target.is_enabled = enabled
         self.repository.update_opening_nodes(
-            repertoire_id,
-            [
-                {"id": child.id, "is_enabled": True}
-                for child in node.walk()
-            ]
-            + [{"id": parent.id, "is_enabled": True} for parent in ancestors],
+            repertoire_id, [{"id": target.id, "is_enabled": enabled} for target in changed]
         )
         return node
 
@@ -821,14 +756,7 @@ class OpeningBuilderService:
         if node.parent_id is None:
             raise ValueError("cannot delete the root position")
         parent = self._find_node_or_raise(repertoire.root_node, node.parent_id)
-        removed_ids: List[str] = []
-
-        def collect(target: OpeningNode) -> None:
-            removed_ids.append(target.id)
-            for child in target.children:
-                collect(child)
-
-        collect(node)
+        removed_ids = [target.id for target in node.walk()]
         parent.children = [child for child in parent.children if child.id != node_id]
         self.repository.delete_opening_nodes(repertoire_id, removed_ids)
         return parent.id
@@ -851,14 +779,7 @@ class OpeningBuilderService:
                 )
             )
         repertoire = self._load_repertoire_or_raise(repertoire_id)
-
         removed_ids: List[str] = []
-
-        def collect(target: OpeningNode) -> None:
-            removed_ids.append(target.id)
-            for child in target.children:
-                collect(child)
-
         for node_id in node_ids:
             if not node_id or not isinstance(node_id, str):
                 raise ValueError("each node id must be a non-empty string")
@@ -870,7 +791,7 @@ class OpeningBuilderService:
             parent = repertoire.root_node.find(node.parent_id)
             if parent is None:
                 continue
-            collect(node)
+            removed_ids.extend(target.id for target in node.walk())
             parent.children = [c for c in parent.children if c.id != node_id]
 
         receipt = (*receipt_target, {"removed_node_ids": removed_ids}) if receipt_target else None
@@ -887,104 +808,6 @@ class OpeningBuilderService:
         repertoire.name = cleaned
         self.repository.update_repertoire_fields(repertoire_id, name=cleaned)
         return repertoire
-
-    def set_repertoire_active(self, repertoire_id: str, active: bool) -> Repertoire:
-        repertoire = self._load_repertoire_or_raise(repertoire_id)
-        repertoire.is_active = bool(active)
-        self.repository.update_repertoire_fields(repertoire_id, is_active=int(bool(active)))
-        return repertoire
-
-    def tree_report(
-        self,
-        repertoire_id: str,
-        *,
-        filter_mode: str = "all",
-        include_disabled: bool = False,
-        repertoire: Optional[Repertoire] = None,
-    ) -> OpeningTreeReport:
-        repertoire = repertoire or self._load_repertoire_or_raise(repertoire_id)
-        all_items: List[OpeningTreeItem] = []
-        self._collect_tree_items(repertoire.root_node, 0, all_items)
-        included_ids = self._included_node_ids(all_items, filter_mode)
-        visible = [
-            item
-            for item in all_items
-            if (include_disabled or item.is_enabled) and item.node_id in included_ids
-        ]
-        return OpeningTreeReport(
-            repertoire_id=repertoire.id,
-            name=repertoire.name,
-            color=repertoire.color,
-            total_nodes=len(all_items),
-            visible_nodes=visible,
-        )
-
-
-    def _set_branch_enabled(self, node: OpeningNode, enabled: bool) -> None:
-        node.is_enabled = enabled
-        for child in node.children:
-            self._set_branch_enabled(child, enabled)
-
-    def _collect_tree_items(
-        self,
-        node: OpeningNode,
-        depth: int,
-        items: List[OpeningTreeItem],
-    ) -> None:
-        move = node.move
-        items.append(
-            OpeningTreeItem(
-                node_id=node.id,
-                parent_id=node.parent_id,
-                depth=depth,
-                san=move.san if move is not None else "root",
-                uci=move.uci if move is not None else None,
-                source=node.source,
-                is_mainline=node.is_mainline,
-                is_prepared=node.is_user_prepared_move,
-                is_enabled=node.is_enabled,
-                maia_probability=node.maia_probability,
-                tags=list(node.tags),
-                comment=node.comment,
-            )
-        )
-        for child in node.children:
-            self._collect_tree_items(child, depth + 1, items)
-
-    def _matches_filter(self, item: OpeningTreeItem, filter_mode: str) -> bool:
-        if filter_mode == "all":
-            return True
-        if filter_mode == "mainline":
-            return item.is_mainline or item.depth == 0
-        if filter_mode == "prepared":
-            return item.is_prepared or item.depth == 0
-        if filter_mode == "human-likely":
-            return item.depth == 0 or (
-                item.maia_probability is not None and item.maia_probability >= MAINLINE_THRESHOLD
-            )
-        if filter_mode == "engine":
-            return item.depth == 0 or item.source is MoveSource.GENERATED_STOCKFISH
-        if filter_mode == "mistake-traps":
-            return "trap" in item.tags or "tactical-warning" in item.tags
-        raise ValueError("unknown tree filter: {0}".format(filter_mode))
-
-    def _included_node_ids(
-        self,
-        items: List[OpeningTreeItem],
-        filter_mode: str,
-    ) -> Set[str]:
-        if filter_mode == "all":
-            return {item.node_id for item in items}
-        by_id = {item.node_id: item for item in items}
-        included = set()
-        for item in items:
-            if not self._matches_filter(item, filter_mode):
-                continue
-            current = item
-            while current is not None:
-                included.add(current.node_id)
-                current = by_id.get(current.parent_id) if current.parent_id is not None else None
-        return included
 
     def _load_repertoire_or_raise(self, repertoire_id: str) -> Repertoire:
         repertoire = self.repository.load_repertoire(repertoire_id)
