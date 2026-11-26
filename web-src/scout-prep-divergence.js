@@ -25,13 +25,14 @@ export function lineGap(lookup, lineUcis, myColor) {
   if (covered >= ucis.length) return null;
   const onYourMove = moverAt(covered) === myColor;
   const children = onYourMove ? lookup.childUci.get(deepestNodeId) : null;
-  const yourUci = children?.size
-    ? [...children.entries()].sort(([, a], [, b]) => Number(b.is_mainline) - Number(a.is_mainline))[0][0]
+  const yours = children?.size
+    ? [...children.entries()].sort(([, a], [, b]) => Number(b.is_mainline) - Number(a.is_mainline))[0]
     : null;
+  const yourUci = yours?.[0] ?? null;
   const fen = fenAfterLine(ucis.slice(0, covered));
   const label = (uci) => plyMoveLabel(covered, uciToSan(fen, uci) || uci);
   const lineUci = ucis[covered];
-  return { ply: covered, onYourMove, lineUci, lineLabel: label(lineUci), yourUci,
+  return { ply: covered, onYourMove, lineUci, lineLabel: label(lineUci), yourUci, yourId: yours?.[1]?.id ?? null,
     yourLabel: yourUci ? label(yourUci) : null };
 }
 
@@ -59,6 +60,11 @@ export function addLineToLookup(lookup, lineUcis) {
     nodeId = kids.get(uci).id;
   });
   return lookup;
+}
+
+/** Whether two divergences are the same branch: same place, same move of yours, same new move. */
+export function sameDivergence(a, b) {
+  return Boolean(a && b && a.ply === b.ply && a.lineUci === b.lineUci && a.yourUci === b.yourUci);
 }
 
 /** One preview line for a divergence: "branches from your 1…c5 (adds 1…e5)". */

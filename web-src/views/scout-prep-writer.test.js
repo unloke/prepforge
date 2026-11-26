@@ -148,3 +148,46 @@ describe("Scout add to prep checks your latest tree", () => {
     expect(deps.setStatus).toHaveBeenLastCalledWith("Added 1 line to prep · 1 skipped");
   });
 });
+
+// Review of #326 (second round): Build can hold a stale copy of the open repertoire
+// while another tab added 1.d4 d5. The preview passed on that copy, and the write
+// (which reloads the tree) then added 1.d4 Nf6 unasked. The write now checks the tree
+// it reloaded, the one it writes to.
+describe("Scout add to prep checks the tree it writes to", () => {
+  const D4_NF6 = { ucis: ["d2d4", "g8f6"], sans: ["d4", "Nf6"] };
+  const reloadAddsD4D5 = (build) => vi.fn(async () => {
+    if (!build.nodes.some((n) => n.id === "d4")) {
+      build.nodes.push(
+        { id: "d4", depth: 1, parent_id: "r", uci: "d2d4", fen: "fen-d4" },
+        { id: "d5", depth: 2, parent_id: "d4", uci: "d7d5", fen: "fen-d5", is_mainline: true },
+      );
+    }
+  });
+
+  it("asks again when the reloaded tree branches where the stale copy did not, and writes nothing on cancel", async () => {
+    const { deps, build } = setup({ modalAnswers: [{ repertoire: "sicilian" }, null] });
+    deps.editRepertoire = reloadAddsD4D5(build);
+    await createScoutPrepWriter(deps).addToPrep(D4_NF6, "white");
+    const asks = deps.showInputModal.mock.calls.map(([opts]) => opts.title);
+    expect(asks).toEqual(["Add line to prep", "Add as an alternative move?"]);
+    expect(deps.queueBuildAdd).not.toHaveBeenCalled();
+    expect(deps.setStatus).toHaveBeenLastCalledWith("Nothing added to prep.");
+  });
+
+  it("writes it once you say yes to the second ask", async () => {
+    const { deps, build } = setup({ modalAnswers: [{ repertoire: "sicilian" }, {}] });
+    deps.editRepertoire = reloadAddsD4D5(build);
+    await createScoutPrepWriter(deps).addToPrep(D4_NF6, "white");
+    expect(deps.queueBuildAdd.mock.calls.map(([node]) => node.uci)).toEqual(["g8f6"]);
+  });
+
+  it("holds back a batch line that branches only in the reloaded tree", async () => {
+    const EXTENDING = { ucis: ["e2e4", "c7c5", "g1f3"], sans: ["e4", "c5", "Nf3"] };
+    const { deps, build } = setup({ modalAnswers: [{ repertoire: "sicilian" }] });
+    deps.editRepertoire = reloadAddsD4D5(build);
+    await createScoutPrepWriter(deps).prepareAll([D4_NF6, EXTENDING], "white");
+    expect(deps.queueBuildAdd.mock.calls.map(([node]) => node.uci)).toEqual(["g1f3"]);
+    expect(deps.setStatus).toHaveBeenLastCalledWith(
+      "Added 1 line to prep · 1 held back: your repertoire changed since the check");
+  });
+});
