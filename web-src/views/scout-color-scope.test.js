@@ -60,7 +60,7 @@ describe("Scout colour scope control", () => {
     elements.set("scout-results", makeEl("scout-results", { querySelectorAll: () => [], scrollTop: 0 }));
     elements.set("scout-profile", makeEl("scout-profile", { hidden: true }));
     api = vi.fn(async (url) => {
-      if (url === "/api/repertoires") return { repertoires: [] };
+      if (url === "/api/repertoires" || url === "/api/scout/trees") return { repertoires: [] };
       return { nodes: [] };
     });
     view = createScoutView({
@@ -98,7 +98,7 @@ describe("Scout colour scope control", () => {
   it("locks the scope while the scout is initialising", async () => {
     let resolveReps;
     api.mockImplementation(async (url) => {
-      if (url === "/api/repertoires") return new Promise((resolve) => { resolveReps = resolve; });
+      if (url === "/api/repertoires" || url === "/api/scout/trees") return new Promise((resolve) => { resolveReps = resolve; });
       return { nodes: [] };
     });
     const running = view.runScout();

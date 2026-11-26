@@ -53,7 +53,7 @@ describe("Scout row actions", () => {
     deps = {
       setStatus: vi.fn(),
       switchView: vi.fn(),
-      api: vi.fn(async (url) => (url === "/api/repertoires"
+      api: vi.fn(async (url) => (url === "/api/repertoires" || url === "/api/scout/trees"
         ? { repertoires: [{ id: "rep-w", name: "Ruy", color: "white", is_active: true }] }
         : { nodes: [] })),
       showInputModal: vi.fn(async () => ({ repertoire: "rep-w" })),
@@ -258,27 +258,24 @@ describe("Scout row actions", () => {
   });
 
   describe("repertoires read at Start", () => {
-    const reps = [
-      ...Array.from({ length: 7 }, (_, i) => ({ id: `b${i}`, name: `B${i}`, color: "black", is_active: true })),
-      { id: "w0", name: "W0", color: "white", is_active: true },
-      { id: "off", name: "Off", color: "black", is_active: false },
-    ];
-    const loadsFor = async (scope) => {
-      const api = vi.fn(async (url) => (url === "/api/repertoires" ? { repertoires: reps } : { nodes: [] }));
-      elements.get("scout-color").value = scope;
+    it("reads your trees in one request, not one Build load per repertoire", async () => {
+      const api = vi.fn(async (url) => (url === "/api/scout/trees"
+        ? { repertoires: [{ id: "b0", name: "B0", color: "black", nodes: [] }] } : { nodes: [] }));
       await makeView({ api }).runScout();
-      return api.mock.calls.map(([url]) => url).filter((url) => url.startsWith("/api/build/load"))
-        .map((url) => new URL(url, "http://x").searchParams.get("repertoire_id"));
-    };
-
-    it("reads every active repertoire, not only the first six", async () => {
-      expect((await loadsFor("both")).sort()).toEqual(["b0", "b1", "b2", "b3", "b4", "b5", "b6", "w0"]);
+      const urls = api.mock.calls.map(([url]) => url);
+      expect(urls.filter((url) => url === "/api/scout/trees")).toHaveLength(1);
+      expect(urls.filter((url) => url.startsWith("/api/build/load") || url === "/api/repertoires")).toEqual([]);
     });
 
-    it("reads only the colour you play against a one-colour scout", async () => {
-      // Scouting their White games: only your Black repertoires answer them.
-      expect((await loadsFor("white")).sort()).toEqual(["b0", "b1", "b2", "b3", "b4", "b5", "b6"]);
-      expect(await loadsFor("black")).toEqual(["w0"]);
+    it("stops Scout with an error when your trees can't be read", async () => {
+      const api = vi.fn(async (url) => {
+        if (url === "/api/scout/trees") throw new Error("Server error");
+        return { repertoires: [], nodes: [] };
+      });
+      await makeView({ api }).runScout();
+      expect(api.mock.calls.map(([url]) => url).filter((url) => url.startsWith("/api/build/load"))).toEqual([]);
+      expect(streamGames).not.toHaveBeenCalled();
+      expect(elements.get("scout-results").innerHTML).toContain("Scout stopped");
     });
   });
 });

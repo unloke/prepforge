@@ -129,7 +129,7 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
 
     view = createScoutView({
       setStatus: vi.fn(), switchView: vi.fn(),
-      api: vi.fn(async (url) => (url === "/api/repertoires" ? { repertoires: [] } : { nodes: [{ id: "root", depth: 0, parent_id: null, uci: null }] })),
+      api: vi.fn(async (url) => (url === "/api/repertoires" || url === "/api/scout/trees" ? { repertoires: [] } : { nodes: [{ id: "root", depth: 0, parent_id: null, uci: null }] })),
       showInputModal: vi.fn(), createRepertoirePrompt: vi.fn(), editRepertoire: vi.fn(),
       boardAfterMove: vi.fn(), buildProvisionalNode: vi.fn(), hardFlushBuild: vi.fn(),
       selectBuildNode: vi.fn(), resolveBuildId: vi.fn(), setBuildSync: vi.fn(),

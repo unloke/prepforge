@@ -28,19 +28,31 @@ describe("Scout start-up trees", () => {
     expect(lookups.black.map((e) => e.rep.id)).toEqual(["b"]);
   });
 
-  it("falls back to each Build payload when the server has no trees read", async () => {
+  it("reads every active tree, not only the first six, and skips inactive ones", async () => {
+    const reps = [
+      ...Array.from({ length: 7 }, (_, i) => ({ id: `b${i}`, name: `B${i}`, color: "black", nodes: tree("e2e4") })),
+      { id: "w0", name: "W0", color: "white", nodes: tree("e2e4") },
+      { id: "off", name: "Off", color: "black", is_active: false, nodes: tree("e2e4") },
+    ];
+    const lookups = await loadScoutLookups({ api: vi.fn(async () => ({ repertoires: reps })), repertoireChildLookup, color: "both" });
+    expect(lookups.black.map((e) => e.rep.id)).toEqual(["b0", "b1", "b2", "b3", "b4", "b5", "b6"]);
+    expect(lookups.white.map((e) => e.rep.id)).toEqual(["w0"]);
+  });
+
+  // Review of #327: a failed read fell back to /api/repertoires plus one Build load per
+  // tree, and dropped any tree whose load failed, so coverage ran on a partial set.
+  it("lets a failed read fail, with no per-tree reads", async () => {
     const api = vi.fn(async (url) => {
-      if (url === "/api/scout/trees") throw new Error("Not Found");
-      if (url === "/api/repertoires") return { repertoires: [
-        { id: "w", name: "KP", color: "white", is_active: true },
-        { id: "off", name: "Old", color: "white", is_active: false },
-      ] };
-      if (url.includes("repertoire_id=w")) return { nodes: tree("d2d4") };
-      throw new Error("unexpected");
+      if (url === "/api/scout/trees") throw new Error("Server error");
+      return { repertoires: [], nodes: [] };
     });
-    const lookups = await loadScoutLookups({ api, repertoireChildLookup, color: "both" });
-    expect(api.mock.calls.map(([url]) => url)).toEqual(
-      ["/api/scout/trees", "/api/repertoires", "/api/build/load?repertoire_id=w"]);
-    expect(lineCoverage(lookups.white[0].lookup, ["d2d4"]).covered).toBe(1);
+    await expect(loadScoutLookups({ api, repertoireChildLookup, color: "both" })).rejects.toThrow("Server error");
+    expect(api.mock.calls.map(([url]) => url)).toEqual(["/api/scout/trees"]);
+  });
+
+  it("treats an answer without trees as a failure", async () => {
+    const api = vi.fn(async () => ({ nodes: [] }));
+    await expect(loadScoutLookups({ api, repertoireChildLookup, color: "both" })).rejects.toThrow();
+    expect(api).toHaveBeenCalledTimes(1);
   });
 });
