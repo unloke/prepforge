@@ -76,7 +76,7 @@ agent-tools/
 # Scout v12 harness working data (game dumps, bias fits, route audits) - local only
 tmp/
 
-# Research and design work lives on the history branch; local copies stay untracked.
+# Local research and design work stays untracked.
 /research/
 /designs/
 

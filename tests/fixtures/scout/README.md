@@ -26,9 +26,8 @@ Reproduce offline:
 npx vitest run web-src/scout-selection-v2.test.js
 ```
 
-The study script that regenerated these engine reads
-(`scripts/scout-selection-v2-study.mjs`) was removed with `research/` after
-commit f7487ee1; the fixture itself is frozen.
+The [archived study script](https://github.com/unloke/prepforge/blob/archive/pre-cleanup-pr-307/scripts/scout-selection-v2-study.mjs)
+can regenerate these engine reads with `--refresh-engine` in the archived checkout.
 
 Results are descriptive regression evidence, not held-out prediction accuracy or
 measured improvement in human preparation outcomes.

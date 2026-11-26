@@ -109,9 +109,9 @@ the Maia leaf score moves the ranking, changing only whole-game results does not
 Scout regression tests retain legality, evidence transport, cancellation,
 cache and empty-plan UI coverage, plus reach, recency and transposition cases.
 
-The route-ranking benchmark (`scripts/scout-route-ranking-benchmark.mjs` at
-[f7487ee1](https://github.com/unloke/prepforge/tree/f7487ee1c5c5f0f7aa829d2394bb98f1709c4baa/scripts), removed from the tree with `research/`) read the pinned
-Eric Rosen games and Stockfish cache offline and printed Markdown plus JSON. Frozen v9 candidate generation, queue math,
+The archived [route-ranking benchmark](https://github.com/unloke/prepforge/blob/archive/pre-cleanup-pr-307/scripts/scout-route-ranking-benchmark.mjs)
+reads the pinned Eric Rosen games and Stockfish cache offline and prints Markdown plus JSON.
+Frozen v9 candidate generation, queue math,
 engine gates and selector lived in `research/scout*-v9.js`, imported only by that
 benchmark. End-to-end and fallback measure the full ranking pipeline; same-pool
 compares selectors using a common cached assessed pool. Each version receives

@@ -95,6 +95,8 @@ export default [
       "node_modules/**",
       "tmp/**",
       "out/**",
+      "research/**",
+      "designs/**",
       "src/prepforge_chess/web/static/**",
       // Vendored/generated engine runtimes are not authored product JavaScript;
       // lint their callers, not their bundled assets. Scout modules remain
