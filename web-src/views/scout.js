@@ -1500,8 +1500,7 @@ export function createScoutView(deps) {
     const { SCOUT_E2E_REFUTATION_SCENARIOS, scoutE2eSeedGames, buildE2ePrepSection } = await import(
       "../scout-e2e-fixtures.js"
     );
-    const scenario = SCOUT_E2E_REFUTATION_SCENARIOS[scenarioId];
-    if (!scenario) {
+    if (!SCOUT_E2E_REFUTATION_SCENARIOS[scenarioId]) {
       throw new Error(`Unknown scout E2E refutation scenario: ${scenarioId}`);
     }
 
@@ -1530,9 +1529,10 @@ export function createScoutView(deps) {
     updateLiveCounter();
 
     const results = getResultsEl();
-    if (!results) {
-      throw new Error("scout-results element missing");
-    }
+    const profileEl = getProfileEl();
+    if (!results || !profileEl) throw new Error("Scout results or profile element missing");
+    profileEl.innerHTML = renderScoutProfile(scoutState.profile, scoutState.username, scoutState.activeSpeed);
+    profileEl.hidden = false;
 
     const { html: markup, sectionData } = buildE2ePrepSection(scenarioId);
     results.innerHTML = markup;
