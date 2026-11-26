@@ -71,6 +71,11 @@ try {
     const restore = async () => {
       await page.goto(`${base}/#/analyze`);
       await page.waitForFunction(() => document.querySelector('#view-analyze:not([hidden])'));
+      // The view shows before its lazy stylesheet lands. Until then the phone bar's
+      // shared rule (phone/study.css) shows the Games button that Analyze's own
+      // phone.css hides when no game is open, so a cold load could see it visible
+      // and then click it after it had gone.
+      await page.waitForFunction(() => [...document.styleSheets].some((sheet) => /\/assets\/analyze-[^/]*\.css$/.test(sheet.href || "")));
       await page.evaluate(() => {
         for (const key of Object.keys(sessionStorage)) if (key.startsWith("prepforge.return_state.v1.")) sessionStorage.removeItem(key);
       });

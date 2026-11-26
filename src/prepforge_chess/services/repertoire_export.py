@@ -55,6 +55,37 @@ def _extract_drawings(comment: Optional[str]) -> Tuple[Optional[str], List[str],
     return (cleaned or None), arrows, circles
 
 
+# What ``export_tree_pgn`` writes for a disabled branch and for tags. They use
+# the PGN comment-command form (``[%cmd ...]``, like Lichess's ``[%cal ...]``) so
+# that a note's own text, "[disabled]" or "[critical]" included, is never read
+# back as one.
+_DISABLED_MARKER = "[%pf-disabled]"
+_MARKER_PATTERN = re.compile(r"\s*\[%pf-(disabled|tags)(?: ([^\]]*))?\]")
+
+
+def _tags_marker(tags: List[str]) -> str:
+    return "[%pf-tags " + ",".join(tags) + "]"
+
+
+def _extract_markers(comment: Optional[str]) -> Tuple[Optional[str], bool, List[str]]:
+    """Read back the markers ``export_tree_pgn`` writes into a comment. Returns
+    the comment without them, whether the branch was disabled, and its tags (an
+    item that is not a valid tag is skipped). Any other text, brackets included,
+    stays as written."""
+    found = {"disabled": False, "tags": []}
+
+    def _take(match: "re.Match[str]") -> str:
+        if match.group(1) == "disabled":
+            found["disabled"] = True
+        else:
+            items = [item.strip() for item in (match.group(2) or "").split(",")]
+            found["tags"].extend(item for item in items if _TAG_PATTERN.match(item))
+        return ""
+
+    text = _MARKER_PATTERN.sub(_take, comment or "").strip()
+    return (text or None), found["disabled"], found["tags"]
+
+
 def _validate_id(value: Any, label: str) -> str:
     if not isinstance(value, str) or not _ID_PATTERN.match(value):
         raise ValueError("invalid {0}".format(label))
@@ -211,9 +242,9 @@ class RepertoireExportService:
             if node.circles:
                 parts.append("[%csl " + ",".join("G" + s for s in node.circles) + "]")
             if not node.is_enabled:
-                parts.append("[disabled]")
+                parts.append(_DISABLED_MARKER)
             if node.tags:
-                parts.append("[" + ",".join(node.tags) + "]")
+                parts.append(_tags_marker(node.tags))
             return " ".join(parts)
 
         game.comment = annotation(repertoire.root_node)
@@ -272,7 +303,16 @@ class RepertoireExportService:
         repertoire_id = str(uuid.uuid4())
         starting_fen = parsed.headers.get("FEN") or STARTING_FEN
         root_id = str(uuid.uuid4())
+        # A PGN this app exported (export_tree_pgn) marks disabled branches and
+        # tags at the end of each comment; read those back instead of keeping
+        # them as comment text. Other PGNs keep their comments as written.
+        ours = "PrepForgeColor" in parsed.headers
+
+        def markers(text: Optional[str]) -> Tuple[Optional[str], bool, List[str]]:
+            return _extract_markers(text) if ours else (text, False, [])
+
         root_comment, root_arrows, root_circles = _extract_drawings(parsed.comment)
+        root_comment, _root_disabled, root_tags = markers(root_comment)
         root = OpeningNode(
             id=root_id,
             repertoire_id=repertoire_id,
@@ -287,7 +327,7 @@ class RepertoireExportService:
             is_enabled=True,
             priority=0.0,
             comment=root_comment,
-            tags=[],
+            tags=root_tags,
             arrows=root_arrows,
             circles=root_circles,
             source=MoveSource.IMPORTED_PGN,
@@ -306,6 +346,7 @@ class RepertoireExportService:
                 # OpeningNode has one comment/drawing set, not separate before/after fields.
                 intro, intro_arrows, intro_circles = _extract_drawings(variation.starting_comment)
                 note, arrows, circles = _extract_drawings(variation.comment)
+                note, disabled, tags = markers(note)
                 comment = "\n\n".join(part for part in (intro, note) if part) or None
                 arrows = intro_arrows + arrows
                 circles = intro_circles + circles
@@ -329,10 +370,10 @@ class RepertoireExportService:
                     maia_probability=None,
                     is_mainline=(index == 0),
                     is_user_prepared_move=(Color.WHITE if board.turn else Color.BLACK) is color,
-                    is_enabled=True,
+                    is_enabled=not disabled,
                     priority=0.0,
                     comment=comment,
-                    tags=[],
+                    tags=tags,
                     arrows=arrows,
                     circles=circles,
                     source=MoveSource.IMPORTED_PGN,

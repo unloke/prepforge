@@ -24,6 +24,8 @@ from prepforge_chess.services.scheduler import (
     build_session_plan,
     decode_card,
     encode_card,
+    mix_plans,
+    preorder_index,
 )
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
@@ -181,6 +183,48 @@ def test_targeted_practice_rejects_opponent_and_disabled_nodes():
     rep.root_node.children[0].is_enabled = False
     with pytest.raises(ValueError, match="enabled own moves"):
         build_session_plan(rep.root_node, rep.color, {}, target_node_ids=[ids["nf3"]])
+
+
+def _recorded_miss(node_id):
+    """What Analyze's "train this" or a game departure stores: Again, due now."""
+    from dataclasses import replace
+
+    from fsrs import Rating
+
+    from prepforge_chess.services.srs import review
+
+    missed = review(TrainingProgress(node_id=node_id), Rating.Again, now=PAST)
+    return replace(missed, due_at=missed.last_reviewed_at)
+
+
+def test_recorded_miss_leads_a_crowded_session():
+    # 11 overdue moves would fill a 4-target session; the deepest move, flagged
+    # from Analyze, must still be card 1 as the toast promises.
+    rep, ids = _build_wide_tree()
+    progress = {node_id: _progress(node_id, **DUE) for node_id in ids.values()}
+    progress[ids["qd2"]] = _recorded_miss(ids["qd2"])
+    plan = build_session_plan(rep.root_node, rep.color, progress, session_size=4, now=NOW)
+    assert plan.cards[0].first_target_id == ids["qd2"]
+    assert plan.leading == frozenset({ids["qd2"]})
+
+
+def test_recorded_miss_stays_first_in_a_mixed_queue():
+    rep, ids = _build_wide_tree()
+    other, _ = _build_tree()
+    progress = {node_id: _progress(node_id, **DUE) for node_id in ids.values()}
+    progress[ids["qd2"]] = _recorded_miss(ids["qd2"])
+    plans = [
+        (r.id, build_session_plan(r.root_node, r.color, p, now=NOW), preorder_index(r.root_node, r.color))
+        for r, p in ((other, {}), (rep, progress))
+    ]
+    mixed = mix_plans(plans)
+    assert mixed.cards[0].first_target_id == ids["qd2"]
+
+
+def test_new_target_count_is_reported_per_target():
+    rep, _ = _build_tree()
+    plan = build_session_plan(rep.root_node, rep.color, {}, now=NOW)
+    assert plan.counts[CARD_NEW] < plan.counts["new_targets"] == DEFAULT_NEW_CAP
 
 
 # ---- codec ------------------------------------------------------------------

@@ -211,9 +211,19 @@ function copyAnnotations(node, source) {
   }
 }
 
+// The last source PGN treeToMovetext copied annotations from, parsed. Analyze
+// serializes its tree against the same source on every board step, and re-parsing
+// a long game (each move replayed to validate it) was nearly all of that step's
+// cost. copyAnnotations only reads the source tree, so one parse serves every call.
+let lastSource = null;
+function parsedSource(sourcePgn) {
+  if (lastSource?.text !== sourcePgn) lastSource = { text: sourcePgn, parsed: parsePgn(sourcePgn) };
+  return lastSource.parsed;
+}
+
 export function treeToMovetext(root, sourcePgn) {
   if (sourcePgn) {
-    const source = parsePgn(sourcePgn);
+    const source = parsedSource(sourcePgn);
     if (source.ok) copyAnnotations(root, source.root);
   }
   const top = root.children || [];

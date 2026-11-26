@@ -34,7 +34,6 @@ function linePayload(overrides = {}) {
     seed: 7,
     mode: "all_lines",
     line_order: ["n1", "n2"],
-    lines: [{ line_node_id: "n1" }, { line_node_id: "n2" }],
     prompt: {
       session_id: "line-4",
       current_index: 0,

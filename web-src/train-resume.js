@@ -26,7 +26,7 @@ export function mapTrainUiSession(payload, { fresh = false } = {}) {
   const smart = isSmartPayload(payload);
   const queue = smart
     ? (payload.cards || []).filter((card) => card && Array.isArray(card.targets) && card.targets.length)
-    : payload.lines || [];
+    : payload.line_order || [];
   const total = smart
     ? asInt(payload.total_cards, queue.length)
     : asInt(payload.prompt && payload.prompt.total_lines, queue.length);
@@ -53,6 +53,7 @@ export function mapTrainUiSession(payload, { fresh = false } = {}) {
     healthBefore: payload.health || null,
     prompt: payload.prompt || null,
     resumed,
+    leading: smart ? payload.leading || [] : [],
     stats: emptyStats(),
     cardsDone: fresh ? 0 : serverIndex,
     seed: payload.seed,

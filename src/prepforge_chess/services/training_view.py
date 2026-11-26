@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from prepforge_chess.core.chess_core import ChessCore
-from prepforge_chess.services.training import TrainingLine, TrainingPrompt
+from prepforge_chess.services.training import TrainingPrompt
 from prepforge_chess.services.training_smart import SmartPrompt
 
 
@@ -28,18 +28,14 @@ def prompt_to_json(
         "fen_before": prompt.fen_before,
         "remaining_mistakes": prompt.remaining_mistakes,
         "legal_moves": chess.legal_moves(prompt.fen_before),
+        "target_index": prompt.target_index,
+        "start_fen": prompt.start_fen,
+        "run_in": [
+            {"uci": node.move.uci, "san": node.move.san, "fen_after": node.move.fen_after}
+            for node in prompt.run_in
+            if node.move is not None
+        ],
     }
-
-
-def training_line_to_json(line: TrainingLine) -> dict[str, Any]:
-    return {
-        "line_node_id": line.line_node_id,
-        "node_ids": line.node_ids,
-        "own_move_node_ids": line.own_move_node_ids,
-        "ply_count": len(line.node_ids),
-        "own_move_count": len(line.own_move_node_ids),
-    }
-
 
 
 def smart_prompt_to_json(
