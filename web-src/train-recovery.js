@@ -43,9 +43,16 @@ export function createTrainRecovery(deps) {
   // A reconciliation that a newer card (or another account) superseded owns
   // nothing any more — including the lock it took. Releasing only our own lock
   // keeps a live session's card answerable instead of stranding "Checking your
-  // answer" over a card the player can no longer play.
+  // answer" over a card the player can no longer play. The lock is a token of
+  // its own, so once anything else has taken trainBusy (a new rehearsal's
+  // answer still on the wire, after ‹ Train dropped ours) a late read leaves it.
+  function lock(ctx) {
+    ctx.lock = { recovering: ctx.prompt.session_id };
+    appState.trainBusy = ctx.lock;
+    return ctx;
+  }
   function release(ctx) {
-    if (ctx.locked) appState.trainBusy = false;
+    if (ctx.lock && appState.trainBusy === ctx.lock) appState.trainBusy = false;
   }
 
   async function sync(ctx) {
@@ -73,6 +80,8 @@ export function createTrainRecovery(deps) {
     if (!stillCurrent(ctx)) return release(ctx);
     ctx.card?.dismiss();
     appState.trainBusy = false;
+    // The server moved past the card, so the lost request did apply.
+    if (state.prompt?.current_index !== ctx.prompt.current_index) ctx.onApplied?.();
     setStatus("Caught up with the server.");
     if (state.prompt) await renderTraining(state.prompt);
     else finishTrainingSession();
@@ -87,19 +96,18 @@ export function createTrainRecovery(deps) {
     if (trainMoveResultUnconfirmed(error)) {
       // Lock the board while the authority is unknown: no "Your move" over a
       // card the server may already have advanced past, and no second answer.
-      appState.trainBusy = true;
-      boards.train.setEngineArrow(null);
-      setTrainBanner("move", "Checking your answer", "");
-      syncTrainSessionControls();
-      await sync({
+      const ctx = lock({
         prompt,
         training: appState.training,
         owner: currentOwnerId(),
         generation: appState.ownerGeneration,
         mode: appState.trainMode,
         superseded,
-        locked: true,
       });
+      boards.train.setEngineArrow(null);
+      setTrainBanner("move", "Checking your answer", "");
+      syncTrainSessionControls();
+      await sync(ctx);
       return;
     }
     // The answer was not graded, so the card is still the same one: put the
@@ -116,5 +124,34 @@ export function createTrainRecovery(deps) {
     syncTrainSessionControls();
   }
 
-  return { recoverAnswer };
+  // A failed Skip. A rejection the server answered skipped nothing, so the card
+  // stays and Skip works again. A lost response may have skipped already, so the
+  // server's current prompt decides, as for a lost answer: reopening Skip there
+  // would skip a second card.
+  async function recoverSkip(error, prompt, superseded) {
+    if (superseded()) return;
+    if (!trainMoveResultUnconfirmed(error)) {
+      appState.trainBusy = false;
+      setStatusError(error.message);
+      syncTrainSessionControls();
+      return;
+    }
+    // Skip's own lock becomes this check's token, released only by this check.
+    const ctx = lock({
+      prompt,
+      training: appState.training,
+      owner: currentOwnerId(),
+      generation: appState.ownerGeneration,
+      mode: appState.trainMode,
+      superseded,
+      onApplied: () => {
+        appState.trainStats.skipped += 1;
+        appState.trainAttempt = 1;
+      },
+    });
+    setTrainBanner("move", "Checking your skip", "");
+    await sync(ctx);
+  }
+
+  return { recoverAnswer, recoverSkip };
 }

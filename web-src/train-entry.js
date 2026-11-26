@@ -28,11 +28,25 @@ export function renderSyncChip(el, state, scope = "repertoire") {
   el.className = `build-sync ${v.cls}`;
   el.textContent = v.text;
   el.title = state === "blocked" ? `${v.text} — click to sign in` : v.text;
+  // Only the blocked chip acts (it opens sign-in), so only it is a keyboard stop.
+  if (state === "blocked") {
+    el.setAttribute?.("role", "button");
+    el.tabIndex = 0;
+  } else {
+    el.removeAttribute?.("role");
+    el.removeAttribute?.("tabindex");
+  }
   if (el.dataset && !el.dataset.authBound && typeof el.addEventListener === "function") {
     el.dataset.authBound = "true";
-    el.addEventListener("click", () => {
+    const signIn = () => {
       const current = scope === "training" ? appState.trainSyncState : appState.buildSyncState;
       if (current === "blocked") hooks.authRequired?.();
+    };
+    el.addEventListener("click", signIn);
+    el.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      signIn();
     });
   }
 }

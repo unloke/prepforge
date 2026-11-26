@@ -190,7 +190,11 @@ function resetSessions() {
 export async function leaveToHome() {
   const state = appState, entrySeq = state.trainEntryVersion || 0, current = () => (state.trainEntryVersion || 0) === entrySeq && state.currentView === "train";
   if (!current() || !(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return;
-  if (state.smart && !(await flushTrainSync()) || !current()) return;
+  // Progress that did not save keeps the session open, and says so: a silent
+  // no-op read as a dead back button.
+  const saved = !state.smart || await flushTrainSync();
+  if (!saved && current()) setStatusError("Couldn't save your progress yet. Try again in a moment.");
+  if (!saved || !current()) return;
   state.trainEntryVersion = entrySeq + 1; delete state.trainPendingRoute;
   resetSessions(); setTrainBanner("move", "", "");
   syncWorkspaceUrl(); invalidateTrainPreview();

@@ -235,6 +235,9 @@ describe("Smart memo integration at Start", () => {
     late.resolve({ due_tomorrow: 1 });
     await done;
     expect(h.deps.showTrainResult).toHaveBeenCalledTimes(1);
+    // The counts this session changed still refresh after the player has left.
+    expect(h.deps.refreshRepertoireHead).toHaveBeenCalled();
+    expect(h.deps.refreshDashboardRepertoires).toHaveBeenCalled();
   });
 
   it("Finish clears only this owner/session's memo", async () => {
