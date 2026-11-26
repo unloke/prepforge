@@ -121,6 +121,9 @@ export function restoreScoutRun(state, session, run) {
   for (const user of session.usernames) {
     const saved = savedSources.get(user.toLowerCase());
     const accepted = session.acceptedByUser[user] || 0;
+    // No saved games from this source: it starts as in a fresh run, from its newest
+    // game, so games played since the save are not missed.
+    if (saved?.newest == null && !accepted) continue;
     if (saved?.oldest != null) session.oldestDatestampByUser[user] = saved.oldest;
     session.sourceProgress[user] = saved?.exhausted
       ? { full: false, stopped: false, exhausted: true }
@@ -133,6 +136,17 @@ export function restoreScoutRun(state, session, run) {
     }
   }
   return true;
+}
+
+/**
+ * A game the stream sent again. During a refresh, one that came from the save means
+ * the refresh reached the saved games: the new games join them with no gap between.
+ */
+export function noteRepeatedGame(session, game) {
+  const user = game.scoutUsername;
+  if (game.gameId && user && session.refreshPending?.has(user) && session.restoredIds?.has(game.gameId)) {
+    (session.refreshReached ||= new Set()).add(user);
+  }
 }
 
 /**

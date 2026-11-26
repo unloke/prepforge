@@ -71,13 +71,13 @@ describe("a Start over a saved run", () => {
   let store;
   let history;
 
-  function mount() {
+  function mount(usernames = ["rival"]) {
     view = createScoutView({
       setStatus: vi.fn(), switchView: vi.fn(),
       api: vi.fn(async (url) => (url === "/api/repertoires" ? { repertoires: [] } : { nodes: [] })),
       notices: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn(), cancelJob: vi.fn(), failJob: vi.fn() },
       parseFenBoard: vi.fn(() => ({})), pieceSvg: vi.fn(() => ""), getBuildState: vi.fn(),
-      scoutPickedUsernames: () => ["rival"],
+      scoutPickedUsernames: () => usernames,
       scoutHistory: history, currentOwnerId: () => "u1", onScoutHistorySaved: vi.fn(),
     });
     view.bindControls();
@@ -220,5 +220,47 @@ describe("a Start over a saved run", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(streamGames).toHaveBeenCalledTimes(1);
     expect(elements.get("scout-live-count").textContent).toBe("6");
+  });
+  // Review of #328: the saved newest game is stamped to the second, so the refresh
+  // ("since" newest + 1 ms) returns it again. With a full batch that read as a gap:
+  // the deduped newest game was dropped with the other saved games, and Load older
+  // (from the batch's oldest game, that one) could never bring it back.
+  it("a full refresh that reaches the newest saved game keeps it and the saved games", async () => {
+    store.set(savedRun().key, savedRun());
+    mount();
+    streamGames.mockImplementationOnce(async (_user, opts) => {
+      for (const g of games("n", 200_000, 499)) opts.onGame(g);
+      opts.onGame(games("s", 100_000, 1)[0]);
+      return { accepted: 499, received: 500, lastDatestamp: 100_000 };
+    });
+    await view.runScout();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(elements.get("scout-live-count").textContent).toBe("505");
+    const saved = lastSave();
+    expect(saved.games.map((g) => g.gameId)).toContain("s-0");
+    expect(saved.sources.rival).toMatchObject({ oldest: 99_950, newest: 200_000 });
+    streamGames.mockResolvedValueOnce({ accepted: 0, received: 0, lastDatestamp: null });
+    await view.runScout(); // Load older goes on from the saved oldest game
+    await vi.advanceTimersByTimeAsync(0);
+    expect(streamGames.mock.calls[1][1].until).toBe(99_950);
+  });
+
+  // Review of #328: a source that had no games when saved was stored as read to its
+  // end with no newest game, so a reopen never asked it again.
+  it("a source that had no games when saved is read again on reopen", async () => {
+    const run = savedRun();
+    run.key = scoutHistoryKey(["rival", "quiet"], "white");
+    run.usernames = ["rival", "quiet"];
+    run.sources.quiet = { oldest: null, newest: null, exhausted: true, full: false };
+    store.set(run.key, run);
+    mount(["rival", "quiet"]);
+    streamGames.mockResolvedValue({ accepted: 0, received: 0, lastDatestamp: null });
+    await view.runScout();
+    await vi.advanceTimersByTimeAsync(0);
+    const asked = Object.fromEntries(streamGames.mock.calls.map(([user, opts]) => [user, opts]));
+    expect(Object.keys(asked).sort()).toEqual(["quiet", "rival"]);
+    expect(asked.quiet.since).toBeUndefined();
+    expect(asked.quiet.until).toBeUndefined();
+    expect(asked.rival.since).toBe(100_001);
   });
 });

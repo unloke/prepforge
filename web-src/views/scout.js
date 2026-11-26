@@ -73,7 +73,7 @@ import {
   SCOUT_STREAM_BATCH, failedSources, recordStreamResults, renderSourceWarnings, scoutErrorHtml,
   scoutLabel, scoutSourceFailureMessage, scoutStreamCapNoteHtml, sourcesToStream, streamWindow,
 } from "./scout-sources.js";
-import { createScoutSession, createScoutState, restoreScoutRun, scoutRunSnapshot, settleRefresh } from "./scout-session.js";
+import { createScoutSession, createScoutState, noteRepeatedGame, restoreScoutRun, scoutRunSnapshot, settleRefresh } from "./scout-session.js";
 import { captureScoutViewState, restoreScoutViewState, scoutPrefilterFailedNoteHtml } from "./scout-render-state.js";
 
 const RENDER_DEBOUNCE_MS = 400;
@@ -1503,7 +1503,7 @@ export function createScoutView(deps) {
       session.oldestDatestampByUser[game.scoutUsername] = previous == null
         ? game.datestamp : Math.min(previous, game.datestamp);
     }
-    if (game.gameId && session.seenIds.has(game.gameId)) return false;
+    if (game.gameId && session.seenIds.has(game.gameId)) { noteRepeatedGame(session, game); return false; }
     if (game.gameId) session.seenIds.add(game.gameId);
     // Tag the source identity so merged "self" reports stay attributable.
     if (game.sourceAccount == null && game.scoutUsername) {

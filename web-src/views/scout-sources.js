@@ -79,7 +79,10 @@ export function recordStreamResults(session, usernames, settled, { aborted = [],
     if (result.status === "fulfilled" && refresh && !aborted[i]) {
       session.refreshPending.delete(username);
       session.sourceStatus[username] = { status: accepted ? "ok" : "empty", accepted };
-      if ((result.value?.received || 0) < SCOUT_STREAM_BATCH) return;
+      // A full batch that reached the saved games (its last game was one of them) has
+      // no gap: the saved games and their older-games cursor stay.
+      const reached = session.refreshReached?.delete(username);
+      if ((result.value?.received || 0) < SCOUT_STREAM_BATCH || reached) return;
       (session.refreshGapped ||= []).push(username);
       session.oldestDatestampByUser[username] = result.value.lastDatestamp ?? undefined;
       session.sourceProgress[username] = { full: true, stopped: false, exhausted: false };
