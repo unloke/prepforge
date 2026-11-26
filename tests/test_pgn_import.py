@@ -1,6 +1,7 @@
 from prepforge_chess.services.pgn_import import PgnImportService
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from prepforge_chess.storage import codec
 
 
 def _service() -> PgnImportService:
@@ -201,13 +202,15 @@ def test_batch_import_loads_existing_signatures_once():
 
 def test_signature_read_covers_only_matching_move_sequences():
     service = _service()
-    service.import_text('[Event "a"]\n\n1. e4 e5 *\n', owner_user_id="sig-owner")
+    first = service.import_text('[Event "a"]\n\n1. e4 e5 *\n', owner_user_id="sig-owner")
     service.import_text('[Event "b"]\n\n1. d4 d5 *\n', owner_user_id="sig-owner")
     repo = service.repository
-    assert len(repo.existing_move_signature_ids("sig-owner")) == 2
-    only = repo.existing_move_signature_ids("sig-owner", uci_blobs=["e2e4 e7e5"])
-    assert list(only) == [next(k for k in repo.existing_move_signature_ids("sig-owner") if k.endswith("|e2e4 e7e5"))]
-    assert repo.existing_move_signature_ids("sig-owner", uci_blobs=[]) == {}
+    e4 = codec.move_signature(None, ["e2e4", "e7e5"])
+    assert repo.existing_move_signature_ids("sig-owner", [e4, codec.move_signature(None, ["c2c4"])]) == {
+        e4: first.imported_game_ids[0]
+    }
+    assert repo.existing_move_signature_ids("someone-else", [e4]) == {}
+    assert repo.existing_move_signature_ids("sig-owner", []) == {}
     # Re-pasting a stored game still resolves to the stored id.
     again = service.import_text('[Event "a"]\n\n1. e4 e5 *\n', owner_user_id="sig-owner")
     assert again.imported_count == 0 and again.skipped_count == 1

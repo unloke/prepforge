@@ -157,6 +157,9 @@ games = Table(
     Column("source", Text, nullable=False),
     Column("initial_fen", Text, nullable=False),
     Column("uci_blob", Text, nullable=False),
+    # codec.stored_move_signature: SHA-256 of initial position + UCI sequence,
+    # the import dedupe key.
+    Column("move_signature", LargeBinary, nullable=False),
     Column("pgn", Text),
     Column("white", Text),
     Column("black", Text),
@@ -171,6 +174,7 @@ games = Table(
     Column("updated_at", UTCDateTime(), nullable=False),
     Index("idx_games_owner_created", "owner_user_id", "created_at", "id"),
     Index("idx_games_owner_lichess", "owner_user_id", "lichess_id", unique=True),
+    Index("idx_games_owner_signature", "owner_user_id", "move_signature"),
 )
 
 positions = Table(

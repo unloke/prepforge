@@ -117,6 +117,7 @@ class GameRepository(EvaluationRepository):
         reassigns an existing owner.
         """
         now = datetime.now(timezone.utc)
+        uci_blob = codec.game_uci_blob(game)
         with self.engine.begin() as conn:
             _upsert(
                 conn,
@@ -125,7 +126,8 @@ class GameRepository(EvaluationRepository):
                     "id": game.id,
                     "source": game.source.value,
                     "initial_fen": game.initial_fen,
-                    "uci_blob": codec.game_uci_blob(game),
+                    "uci_blob": uci_blob,
+                    "move_signature": codec.stored_move_signature(game.initial_fen, uci_blob),
                     "pgn": game.pgn,
                     "white": game.white,
                     "black": game.black,
@@ -141,7 +143,7 @@ class GameRepository(EvaluationRepository):
                 },
                 conflict=[t.games.c.id],
                 update_cols=(
-                    "source", "initial_fen", "uci_blob", "pgn", "white", "black", "result",
+                    "source", "initial_fen", "uci_blob", "move_signature", "pgn", "white", "black", "result",
                     "event", "site", "played_at", "lichess_id", "tags_json", "updated_at",
                 ),
                 coalesce_cols=("owner_user_id",),
@@ -521,38 +523,34 @@ class GameRepository(EvaluationRepository):
         return "analysis-save:{0}".format(digest)
 
     def existing_move_signature_ids(
-        self, owner_user_id: Optional[str] = None, uci_blobs: Optional[Iterable[str]] = None
+        self, owner_user_id: Optional[str], signatures: Iterable[str]
     ) -> Dict[str, str]:
-        """Map each stored game's move-signature to its game id, so a re-imported
-        game (no lichess id) is detected as a duplicate AND resolved back to the
-        already-stored game rather than a fresh, unsaved candidate.
+        """Map each of ``signatures`` that a stored game already has to that
+        game's id, so a re-imported game (no lichess id) is detected as a
+        duplicate AND resolved back to the already-stored game rather than a
+        fresh, unsaved candidate.
 
-        The signature is ``codec.move_signature``: the starting position PLUS the
+        A signature is ``codec.move_signature``: the starting position PLUS the
         UCI sequence, so two games with identical moves from different starting
-        positions stay distinct (a move-sequence-only signature conflated them).
+        positions stay distinct. Lookups go by the stored digest through
+        ``idx_games_owner_signature``, so an import reads only the games it
+        collides with and decodes none of them.
 
         Owner-scoped: when an owner is supplied only that owner's games are
         considered, so one user pasting a PGN another user already stored gets their
-        own owned copy rather than being bounced to the other user's game.
-
-        ``uci_blobs`` limits the read to games with those exact move sequences
-        (``codec.game_uci_blob``), the only ones whose signature can match, so an
-        import never reads and decodes every game the owner has."""
-        stmt = select(t.games.c.id, t.games.c.uci_blob, t.games.c.initial_fen)
+        own owned copy rather than being bounced to the other user's game."""
+        by_digest = {codec.move_signature_digest(sig): sig for sig in signatures if sig}
+        if not by_digest:
+            return {}
+        stmt = select(t.games.c.id, t.games.c.move_signature).where(
+            t.games.c.move_signature.in_(sorted(by_digest))
+        )
         if owner_user_id is not None:
             stmt = stmt.where(t.games.c.owner_user_id == owner_user_id)
-        if uci_blobs is not None:
-            blobs = sorted({blob for blob in uci_blobs if blob})
-            if not blobs:
-                return {}
-            stmt = stmt.where(t.games.c.uci_blob.in_(blobs))
         with self.engine.connect() as conn:
-            rows = conn.execute(stmt).mappings().all()
-        signatures: Dict[str, str] = {}
-        for row in rows:
-            ucis = codec.decode_uci_sequence(row["uci_blob"])
-            if not ucis:
-                continue
-            # Keep the first game id seen for a signature (stable across calls).
-            signatures.setdefault(codec.move_signature(row["initial_fen"], ucis), row["id"])
-        return signatures
+            rows = conn.execute(stmt).all()
+        found: Dict[str, str] = {}
+        for game_id, digest in rows:
+            # Keep the first game id seen for a signature.
+            found.setdefault(by_digest[bytes(digest)], game_id)
+        return found

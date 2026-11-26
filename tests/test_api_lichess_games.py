@@ -310,9 +310,9 @@ def test_explorer_proxies_with_token_and_caches(client, monkeypatch):
     _link(client)
     calls = []
 
-    def _fake_fetch(url, token, **kwargs):
+    async def _fake_fetch(url, token, **kwargs):
         calls.append((url, token))
-        return dict(_EXPLORER_RAW)
+        return dict(_EXPLORER_RAW), 200
 
     monkeypatch.setattr(
         "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
@@ -333,9 +333,9 @@ def test_explorer_validates_ratings_and_pins_params(client, monkeypatch):
     _link(client)
     seen = {}
 
-    def _fake_fetch(url, token, **kwargs):
+    async def _fake_fetch(url, token, **kwargs):
         seen["url"] = url
-        return dict(_EXPLORER_RAW)
+        return dict(_EXPLORER_RAW), 200
 
     monkeypatch.setattr(
         "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
@@ -355,7 +355,7 @@ def test_explorer_passes_through_rate_limit(client, monkeypatch):
     _register(client, "a@example.com")
     _link(client)
 
-    def _fake_fetch(url, token, **kwargs):
+    async def _fake_fetch(url, token, **kwargs):
         from prepforge_chess.services.lichess_fetch import ExplorerRateLimitedError
 
         raise ExplorerRateLimitedError("explorer rate limit")
@@ -372,9 +372,9 @@ def test_explorer_masters_top_games_passthrough(client, monkeypatch):
     _link(client)
     seen = {}
 
-    def _fake_fetch(url, token, **kwargs):
+    async def _fake_fetch(url, token, **kwargs):
         seen["url"] = url
-        return dict(_EXPLORER_RAW)
+        return dict(_EXPLORER_RAW), 200
 
     monkeypatch.setattr(
         "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
@@ -392,9 +392,9 @@ def test_explorer_masters_top_games_clamped(client, monkeypatch):
     _link(client)
     seen = {}
 
-    def _fake_fetch(url, token, **kwargs):
+    async def _fake_fetch(url, token, **kwargs):
         seen["url"] = url
-        return dict(_EXPLORER_RAW)
+        return dict(_EXPLORER_RAW), 200
 
     monkeypatch.setattr(
         "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
@@ -422,9 +422,9 @@ def test_explorer_lichess_ignores_top_games(client, monkeypatch):
     _link(client)
     seen = {}
 
-    def _fake_fetch(url, token, **kwargs):
+    async def _fake_fetch(url, token, **kwargs):
         seen["url"] = url
-        return dict(_EXPLORER_RAW)
+        return dict(_EXPLORER_RAW), 200
 
     monkeypatch.setattr(
         "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
@@ -444,9 +444,9 @@ def test_explorer_masters_default_top_games_zero(client, monkeypatch):
     _link(client)
     seen = {}
 
-    def _fake_fetch(url, token, **kwargs):
+    async def _fake_fetch(url, token, **kwargs):
         seen["url"] = url
-        return dict(_EXPLORER_RAW)
+        return dict(_EXPLORER_RAW), 200
 
     monkeypatch.setattr(
         "prepforge_chess.services.lichess_fetch.fetch_explorer_json", _fake_fetch
@@ -1308,3 +1308,24 @@ def test_compare_many_identities_returns_newest_n_across_accounts(monkeypatch):
     assert stamps == sorted(stamps, reverse=True)
     assert [src for _, src in pairs].count("alpha") == 8
     assert [src for _, src in pairs].count("beta") == 2
+
+
+def test_explorer_cache_keeps_to_its_byte_budget(monkeypatch):
+    from prepforge_chess.api.routers import lichess as lichess_router
+
+    monkeypatch.setattr(lichess_router, "_EXPLORER_CACHE_BYTES", 100)
+    remember = lichess_router._remember_explorer
+    remember("a", 0.0, {"n": "a"}, 40)
+    remember("b", 0.0, {"n": "b"}, 40)
+    remember("c", 0.0, {"n": "c"}, 40)  # over 100 bytes: the oldest goes
+    assert list(lichess_router._explorer_cache) == ["b", "c"]
+    remember("huge", 0.0, {"n": "huge"}, 101)  # larger than the budget: not kept
+    assert list(lichess_router._explorer_cache) == ["b", "c"]
+
+
+def test_lifespan_opens_and_closes_the_pooled_explorer_client(client):
+    from prepforge_chess.services import lichess_fetch
+
+    with client:
+        assert lichess_fetch._explorer_client is not None
+    assert lichess_fetch._explorer_client is None
