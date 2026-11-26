@@ -34,6 +34,7 @@ from prepforge_chess.storage.repositories.repertoires import ROLE_RANK
 from prepforge_chess.core.models import Color, MoveSource, Repertoire
 from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
+    MoveRejected,
     OpeningBuilderService,
     PlanSummary,
 )
@@ -43,7 +44,7 @@ from prepforge_chess.services.workflows import (
     delete_repertoire_and_archive_training,
 )
 from prepforge_chess.services.repertoire_export import RepertoireExportService
-from prepforge_chess.services.workspace_view import build_workspace_payload
+from prepforge_chess.services.workspace_view import build_workspace_changes, build_workspace_payload
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
 from prepforge_chess.storage.repositories.repertoires import NodeGone
 from prepforge_chess.storage.ports import AccessStore, BuildPayloadStore, EditGate, RepertoireReader, RepertoireWriter, SettingsStore, SharingStore, WorkspaceRoutes
@@ -105,6 +106,9 @@ def _rebased(repo: RepertoireWriter, meta: dict[str, Any], apply: Callable[[], T
     try:
         with repo.repertoire_edit(meta["id"]):
             return apply()
+    except MoveRejected as exc:
+        detail = {"error": "move_rejected", "temp_id": exc.temp_id, "message": str(exc)}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -298,32 +302,50 @@ def build_changes(
     indexed read. ``reset`` means the log no longer reaches back to ``since``
     (or the tree was replaced): reload it with ``/build/load``. Anyone but the
     owner gets no training colour (health/mastery), as in ``_payload``."""
-    meta = _repertoire_access(repo, repertoire_id, owner)
-    revision, role = meta["revision"], meta["role"]
+    return _changes_reply(repo, _repertoire_access(repo, repertoire_id, owner), since)
+
+
+def _changes_reply(
+    repo: WorkspaceRoutes, meta: dict[str, Any], since: int, revision: int | None = None
+) -> dict[str, Any]:
+    """The change feed after ``since`` (see ``build_changes``). Edits answer with it
+    too when the client sends ``since``: its tree already shows the edit, so the
+    whole tree need not travel back. ``revision`` is the current one when the
+    caller just wrote (``meta`` was read before the write)."""
+    repertoire_id, role = meta["id"], meta["role"]
+    revision = meta["revision"] if revision is None else revision
     if since >= revision:
         return {"revision": revision, "role": role}
     ops = repo.repertoire_ops_since(repertoire_id, since)
     if not ops or ops[0]["revision"] != since + 1 or any(op.get("reset") for op in ops):
         return {"revision": revision, "role": role, "reset": True}
-    view = compose_build_payload_with_training_state(repo, meta)
     removed = {node_id for op in ops for node_id in op.get("removed", ())}
     written = {node_id for op in ops for node_id in op.get("nodes", ())} - removed
-    nodes = [node for node in view["nodes"] if node["id"] in written]
-    # A written node that is gone now went with a deleted ancestor.
-    removed |= written - {node["id"] for node in nodes}
-    return {
-        # The tree was read after these ops, so it holds at least all of them.
+    reply: dict[str, Any] = {
         "revision": ops[-1]["revision"],
         "role": role,
-        "name": view["name"],
-        "nodes_total": view["nodes_total"],
-        "health": view.get("health"),
-        "nodes": nodes,
-        "removed": sorted(removed),
+        "name": (repo.repertoire_meta(repertoire_id) or meta)["name"],
         "ops": [
             {key: op[key] for key in ("revision", "kind", "actor_user_id", "client_id")}
             for op in ops
         ],
+    }
+    if not written and not removed:
+        # Discussion and metadata writes touch no node: the tree is unchanged.
+        return {**reply, "nodes": [], "removed": []}
+    view = build_workspace_changes(repo, repertoire_id, written, owner_user_id=meta["owner_user_id"])
+    nodes = view["nodes"]
+    # A written node that is gone now went with a deleted ancestor.
+    removed |= written - {node["id"] for node in nodes}
+    if role != "owner":
+        for node in nodes:
+            node.pop("mastery", None)
+    return {
+        **reply,
+        "nodes_total": view["nodes_total"],
+        "health": view["health"] if role == "owner" else None,
+        "nodes": nodes,
+        "removed": sorted(removed),
     }
 
 
@@ -814,15 +836,29 @@ def _batch_receipt(
 ) -> tuple[str, dict[str, Any] | None]:
     """The batch's receipt key, and the payload to answer a retry with when this
     exact request (its complete body is the retry identity) already landed."""
-    digest = hashlib.sha256(json.dumps(body.model_dump(), sort_keys=True).encode()).hexdigest()
+    # ``since`` only shapes the answer, so a retry from a tab that caught up
+    # meanwhile is still the same request.
+    digest = hashlib.sha256(json.dumps(body.model_dump(exclude={"since"}), sort_keys=True).encode()).hexdigest()
     key = "build-receipt:" + kind + ":" + digest
     receipt = repo.get_user_setting(owner, key)
-    return key, None if receipt is None else {**compose_build_payload_with_training_state(repo, meta), **receipt}
+    return key, None if receipt is None else {**_edit_reply(repo, meta, body.since), **receipt}
+
+
+def _edit_reply(
+    repo: WorkspaceRoutes, meta: dict[str, Any], since: int | None, **kwargs: Any
+) -> dict[str, Any]:
+    """What a local-first flush gets back: the change feed after ``since`` when the
+    client sent it (its tree already shows its own edit), else the whole payload."""
+    if since is None:
+        return compose_build_payload_with_training_state(repo, meta, **kwargs)
+    return _changes_reply(repo, meta, since, revision=repo.repertoire_reply_revision(meta["id"]))
 
 
 class AddMovesBody(BaseModel):
     repertoire_id: str
     moves: list[AddMovesItem] = Field(default_factory=list, max_length=MAX_ADD_MOVES_BATCH)
+    # The revision the client's tree is at: answer with the changes after it.
+    since: int | None = Field(default=None, ge=0)
 
 
 @router.post("/build/add-moves")
@@ -849,7 +885,7 @@ def build_add_moves(
         [item.model_dump() for item in body.moves],
         receipt_target=(owner, key),
     ))
-    payload = compose_build_payload_with_training_state(repo, meta, repertoire=repertoire, summary=asdict(summary))
+    payload = _edit_reply(repo, meta, body.since, repertoire=repertoire, summary=asdict(summary))
     payload["id_map"] = id_map
     payload["dropped"] = service.dropped_temp_ids
     return payload
@@ -858,6 +894,7 @@ def build_add_moves(
 class DeleteNodesBody(BaseModel):
     repertoire_id: str
     node_ids: list[str] = Field(default_factory=list, max_length=MAX_DELETE_NODES_BATCH)
+    since: int | None = Field(default=None, ge=0)
 
 
 @router.post("/build/delete-nodes")
@@ -884,7 +921,7 @@ def build_delete_nodes(
     removed = _rebased(repo, meta, lambda: service.delete_nodes_batch(
         body.repertoire_id, list(body.node_ids), receipt_target=(owner, key)
     ))
-    payload = compose_build_payload_with_training_state(repo, meta, repertoire=service.loaded_repertoire)
+    payload = _edit_reply(repo, meta, body.since, repertoire=service.loaded_repertoire)
     payload["removed_node_ids"] = removed
     return payload
 

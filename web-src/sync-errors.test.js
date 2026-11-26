@@ -42,6 +42,14 @@ describe("classifySyncError", () => {
     expect(info.retriable).toBe(true);
     expect(info.keepsDraft).toBe(true);
     expect(info.pauseForAuth).toBe(false);
+    expect(classifySyncError({ status: 403, detail: "CSRF token missing or invalid" }).kind).toBe("csrf");
+  });
+
+  it("does not retry a 403 that took edit rights away", () => {
+    const info = classifySyncError({ status: 403, detail: "You can't edit this repertoire.", message: "You can't edit this repertoire." });
+    expect(info.kind).toBe("forbidden");
+    expect(info.retriable).toBe(false);
+    expect(describeSyncError(info, { count: 3 })).toBe("You can no longer edit this repertoire — 3 edits could not be saved.");
   });
 
   it("keeps the draft on 409 conflict but does not auto-retry it", () => {
