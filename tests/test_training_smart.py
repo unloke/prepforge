@@ -1423,3 +1423,18 @@ def test_a_recorded_miss_in_the_last_repertoire_still_leads_a_mixed_session():
     record_forgotten_move_as_training_miss(repository, last.id, missed, owner)
     session = SmartTrainingService(repository, owner).start_or_resume_mixed(owner, seed=5, session_size=4)
     assert decode_card(session.line_order[0]).first_target_id == missed
+
+
+def test_a_recorded_miss_queued_further_on_moves_to_the_next_card_on_resume():
+    from prepforge_chess.services.workflows import record_forgotten_move_as_training_miss
+
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    session = SmartTrainingService(repository, "t-owner").start_or_resume(repertoire.id, seed=5)
+    last = decode_card(session.line_order[-1])
+    assert len(session.line_order) > 1
+    record_forgotten_move_as_training_miss(repository, repertoire.id, last.target_ids[-1], "t-owner")
+    service = SmartTrainingService(repository, "t-owner")
+    resumed = service.start_or_resume(repertoire.id)
+    assert resumed.line_order == [session.line_order[-1], *session.line_order[:-1]]
+    assert service.leading == [session.line_order[-1]]

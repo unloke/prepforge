@@ -53,6 +53,7 @@ export function mapTrainUiSession(payload, { fresh = false } = {}) {
     healthBefore: payload.health || null,
     prompt: payload.prompt || null,
     resumed,
+    leading: smart ? payload.leading || [] : [],
     stats: emptyStats(),
     cardsDone: fresh ? 0 : serverIndex,
     seed: payload.seed,

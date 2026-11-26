@@ -322,6 +322,9 @@ def smart_start(
         "total_cards": len(session.line_order),
         "card_index": session.current_index,
         "resumed": service.resumed,
+        # Cards this resume moved up for recorded misses (the client's saved
+        # queue puts them next too).
+        "leading": service.leading,
         "counts": service.counts(session),
         "requeue_gap": REQUEUE_GAP,
         "card_kinds": CARD_KINDS,

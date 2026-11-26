@@ -71,12 +71,19 @@ export function finishSmartSessionMemo(ownerId, smart, stats) {
 
 export function restoreSmartSession(ownerId, mapped, smart) {
   const memo = mapped.resumed ? loadSessionMemo(ownerId, mapped.sessionId, mapped.generation) : null;
+  const leading = new Set(mapped.leading || []);
   if (!memo || memo.generation !== mapped.generation || memo.seed !== mapped.seed || memo.cardIndex < mapped.cardIndex ||
-      !mapped.queue.every((card) => memo.queue.some((saved) => saved.encoded === card.encoded))) return null;
+      !mapped.queue.every((card) => leading.has(card.encoded) || memo.queue.some((saved) => saved.encoded === card.encoded))) return null;
   // Restore order/requeues, but use the server's current FENs, hints and replies.
   const cards = new Map(mapped.queue.map((card) => [card.encoded, card]));
   if (memo.queue.some((card) => !cards.has(card.encoded))) return null;
-  const queue = memo.queue.map((card) => cards.get(card.encoded));
+  // Cards the server moved up or added for recorded misses come next, after
+  // a half-answered card, so the answers so far and that card's place stay.
+  const at = memo.cardIndex + (memo.targetIndex > 0 || memo.attempt > 1 ? 1 : 0);
+  const head = memo.queue.slice(0, at).map((card) => cards.get(card.encoded));
+  const lead = mapped.queue.filter((card) => leading.has(card.encoded) && !head.some((done) => done.encoded === card.encoded));
+  const rest = memo.queue.slice(at).filter((card) => !leading.has(card.encoded)).map((card) => cards.get(card.encoded));
+  const queue = [...head, ...lead, ...rest];
   if (memo.cardIndex < queue.length && memo.targetIndex >= queue[memo.cardIndex].targets.length) return null;
   Object.assign(smart, {
     queue, cardIndex: memo.cardIndex, targetIndex: memo.targetIndex,

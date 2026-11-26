@@ -150,6 +150,24 @@ describe("Smart memo integration at Start", () => {
     expect(h.present).toHaveBeenCalledWith({ cardIndex: 0, targetIndex: 1 }, { attempt: 2 });
     expect(h.trainState.trainStats).toEqual(stats);
   });
+  it("keeps the saved answers and the half-done card when the server adds a recorded miss", async () => {
+    const miss = { encoded: "miss", targets: [{ uci: "g1f3" }] };
+    const h = harness({ cards: [queue[0], queue[1], miss, queue[2]], leading: ["miss"] });
+    saveSessionMemo("alice", "session", memo);
+    await h.start();
+    expect(h.trainState.trainStats).toEqual(stats);
+    expect(h.trainState.smart.queue.map((card) => card.encoded)).toEqual(["card-0", "card-1", "miss", "card-2"]);
+    expect(h.present).toHaveBeenCalledWith({ cardIndex: 1, targetIndex: 1 }, { attempt: 2 });
+  });
+  it("brings a recorded miss queued further on to the next card", async () => {
+    const four = [...queue, { encoded: "card-3", targets: [{ uci: "g1f3" }] }];
+    const h = harness({ cards: [four[0], four[3], four[1], four[2]], leading: ["card-3"] });
+    saveSessionMemo("alice", "session", { ...memo, queue: four, targetIndex: 0, attempt: 1 });
+    await h.start();
+    expect(h.trainState.trainStats).toEqual(stats);
+    expect(h.trainState.smart.queue.map((card) => card.encoded)).toEqual(["card-0", "card-3", "card-1", "card-2"]);
+    expect(h.present).toHaveBeenCalledWith({ cardIndex: 1, targetIndex: 0 }, { attempt: 1 });
+  });
   it("uses the fresh server target data while restoring the memo's cursor", async () => {
     const updated = queue.map((card) => ({ ...card, targets: [{ uci: "g1f3" }, { uci: "f1c4" }] }));
     const h = harness({ cards: updated });
