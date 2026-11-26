@@ -23,6 +23,7 @@ from prepforge_chess.core.limits import (
     MAX_DELETE_NODES_BATCH,
     PGN_LIMITS,
 )
+from prepforge_chess.api.access import ACCESS_DENIED, editable_repertoire, owned_repertoire, require_access
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
@@ -30,7 +31,6 @@ from prepforge_chess.api.models import LinkedAccount, User
 from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.routers.teams import user_team_ids
-from prepforge_chess.storage.repositories.repertoires import ROLE_RANK
 from prepforge_chess.core.models import Color, MoveSource, Repertoire
 from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
@@ -47,7 +47,7 @@ from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_changes, build_workspace_payload
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
 from prepforge_chess.storage.repositories.repertoires import NodeGone
-from prepforge_chess.storage.ports import AccessStore, BuildPayloadStore, EditGate, RepertoireReader, RepertoireWriter, SettingsStore, SharingStore, WorkspaceRoutes
+from prepforge_chess.storage.ports import BuildPayloadStore, RepertoireReader, RepertoireWriter, SettingsStore, SharingStore, WorkspaceRoutes
 
 router = APIRouter(prefix="/api", tags=["workspace"])
 T = TypeVar("T")
@@ -57,47 +57,6 @@ def _repertoire_cap(user: User, settings: Settings) -> int | None:
     """The Free-plan cap every repertoire-producing route passes to the save,
     which enforces it in the write transaction (402 via the app handler)."""
     return None if user.plan == Plan.pro else settings.free_repertoire_limit
-
-
-def _repertoire_access(
-    repo: AccessStore, repertoire_id: str, user_id: str, need: str = "view"
-) -> dict[str, Any]:
-    """The one access gate. Returns the repertoire's meta with the caller's
-    ``role`` (owner / edit / copy / view). 404 when the caller has no access at
-    all (never revealing the repertoire), 403 when their role is below ``need``."""
-    meta, role = repo.access_role(repertoire_id, user_id)
-    if role is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    if ROLE_RANK[role] < ROLE_RANK[need]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_DENIED[need])
-    return {**meta, "role": role}
-
-
-_DENIED = {
-    "copy": "The owner hasn't allowed copies of this repertoire.",
-    "edit": "You can't edit this repertoire.",
-    "owner": "Only the owner can do this.",
-}
-
-
-def _owned_repertoire(repo: EditGate, repertoire_id: str, owner: str) -> dict[str, Any]:
-    """Owner-only actions: rename, delete, enable/disable, sharing.
-    Tags the writes this request makes with their author for the op log."""
-    meta = _repertoire_access(repo, repertoire_id, owner, "owner")
-    repo.op_actor = owner
-    return meta
-
-
-def _editable_repertoire(
-    repo: EditGate, repertoire_id: str, user_id: str, kind: str
-) -> dict[str, Any]:
-    """Edit gate for tree mutations: the owner or an ``edit`` grant (404 without
-    access, 403 below edit). Tags the writes this request makes with their author
-    and kind for the ``repertoire_ops`` log."""
-    meta = _repertoire_access(repo, repertoire_id, user_id, "edit")
-    repo.op_actor = user_id
-    repo.op_kind = kind
-    return meta
 
 
 def _rebased(repo: RepertoireWriter, meta: dict[str, Any], apply: Callable[[], T]) -> T:
@@ -284,7 +243,7 @@ def build_load(
     """The Build-view payload for a repertoire the caller can read, with their
     ``role``; ``writable`` for the owner and editors. Computes no chess — pure
     serialization of the stored tree + training progress."""
-    return compose_build_payload_with_training_state(repo, _repertoire_access(repo, repertoire_id, owner))
+    return compose_build_payload_with_training_state(repo, require_access(repo, repertoire_id, owner))
 
 
 @router.get("/build/changes")
@@ -302,7 +261,7 @@ def build_changes(
     indexed read. ``reset`` means the log no longer reaches back to ``since``
     (or the tree was replaced): reload it with ``/build/load``. Anyone but the
     owner gets no training colour (health/mastery), as in ``_payload``."""
-    return _changes_reply(repo, _repertoire_access(repo, repertoire_id, owner), since)
+    return _changes_reply(repo, require_access(repo, repertoire_id, owner), since)
 
 
 def _changes_reply(
@@ -371,7 +330,7 @@ def repertoire_access(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """The Share dialog's state: the link (with its URL while on) and every grant."""
-    meta = _owned_repertoire(repo, repertoire_id, owner)
+    meta = owned_repertoire(repo, repertoire_id, owner)
     return _access_state(repo, meta, settings.secret_key)
 
 
@@ -407,7 +366,7 @@ def grant_access(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Share with a team or a person at a role, or change an existing grant's role."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = owned_repertoire(repo, body.repertoire_id, owner)
     if sum(bool(v) for v in (body.team_id, body.user_id, body.person and body.person.strip())) != 1:
         raise HTTPException(status_code=400, detail="name one team or one person")
     if body.team_id:
@@ -448,7 +407,7 @@ def revoke_access(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Stop sharing with one team or person. Their access ends with their next request."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = owned_repertoire(repo, body.repertoire_id, owner)
     if bool(body.team_id) == bool(body.user_id):
         raise HTTPException(status_code=400, detail="name one team or one person")
     repo.delete_grant(body.repertoire_id, team_id=body.team_id, user_id=body.user_id)
@@ -466,7 +425,7 @@ def delete_repertoire(
     repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Delete one of this owner's repertoires (cascades to its nodes/training)."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    owned_repertoire(repo, body.repertoire_id, owner)
     delete_repertoire_and_archive_training(repo, body.repertoire_id)
     return {"deleted": body.repertoire_id}
 
@@ -483,7 +442,7 @@ def set_repertoire_active(
     repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Toggle a repertoire's active flag (drives trainer eligibility in the SPA)."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = owned_repertoire(repo, body.repertoire_id, owner)
     repo.op_kind = "set_active"
     repo.set_repertoire_active(body.repertoire_id, body.active)
     return {"id": body.repertoire_id, "name": meta["name"], "is_active": body.active}
@@ -493,7 +452,7 @@ def set_repertoire_active(
 # create / rename / add-move are pure data mutations on the stored tree — they
 # never read the Maia model, so they run on the (now Maia-free) builder and return
 # the shared Build payload. Ownership: create *claims* a freshly-made repertoire for
-# the caller; rename/add-move pass through the `_owned_repertoire` IDOR gate first.
+# the caller; rename/add-move pass through the `owned_repertoire` IDOR gate first.
 
 
 def _reassign_ids(repertoire: Repertoire) -> None:
@@ -660,7 +619,7 @@ def create_share_link(
     Idempotent mint: while a link is live, this returns the current token. If
     the link was off, enabling mints a FRESH link (rotation) — a revoked link
     never comes back to life (F-01). ``role`` sets what the link allows."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = owned_repertoire(repo, body.repertoire_id, owner)
     return _set_link(repo, body, settings, rotate=not meta["share_enabled"])
 
 
@@ -673,7 +632,7 @@ def rotate_share_link(
 ) -> dict[str, Any]:
     """Regenerate the public link: bumps the share revision so every previously
     minted link stops working immediately."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    owned_repertoire(repo, body.repertoire_id, owner)
     return _set_link(repo, body, settings, rotate=True)
 
 
@@ -685,7 +644,7 @@ def revoke_share_link(
 ) -> dict[str, Any]:
     """Turn the public link OFF. Grants are untouched — the two are
     independent controls (F-01)."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    owned_repertoire(repo, body.repertoire_id, owner)
     return repo.set_share_state(body.repertoire_id, enabled=False)
 
 
@@ -727,7 +686,7 @@ def fork_shared_repertoire(
     copy is independent and cannot be recalled by revoking the link."""
     meta = _resolve_share_link(repo, token, settings.secret_key)
     if meta["role"] != "copy":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_DENIED["copy"])
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=ACCESS_DENIED["copy"])
     return _fork(repo, meta["id"], owner, user, settings)
 
 
@@ -745,7 +704,7 @@ def fork_repertoire(
 ) -> dict[str, Any]:
     """Copy a repertoire shared with the caller (role copy or edit) into their own
     account. Callers who already own it get 400 — there is nothing to fork."""
-    meta = _repertoire_access(repo, body.repertoire_id, owner, "copy")
+    meta = require_access(repo, body.repertoire_id, owner, "copy")
     if meta["role"] == "owner":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -766,7 +725,7 @@ def build_rename(
     repo: WorkspaceRoutes = Depends(get_repository),
 ) -> dict[str, Any]:
     """Rename one of the caller's repertoires and return its refreshed Build payload."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = owned_repertoire(repo, body.repertoire_id, owner)
     repo.op_kind = "rename"
     # Last writer wins: a concurrent rename on another device is replaced.
     _rebased(repo, meta, lambda: OpeningBuilderService(repo).rename_repertoire(
@@ -789,7 +748,7 @@ def build_add_move(
     """Append a manual move under a parent node and return the refreshed Build payload.
     Classifies ownership: a move played on the owner's turn is flagged
     ``prepared``; the first enabled child of a parent becomes the mainline."""
-    meta = _editable_repertoire(repo, body.repertoire_id, owner, "add_moves")
+    meta = editable_repertoire(repo, body.repertoire_id, owner, "add_moves")
 
     def apply():
         repertoire = _load(repo, body.repertoire_id)
@@ -875,7 +834,7 @@ def build_add_moves(
     No compute: the service re-validates legality + parentage and recomputes the
     persisted flags itself, so a malformed batch raises ``ValueError`` → 400
     before anything lands. Owner-gated so a user can't flush onto another's tree."""
-    meta = _editable_repertoire(repo, body.repertoire_id, owner, "add_moves")
+    meta = editable_repertoire(repo, body.repertoire_id, owner, "add_moves")
     key, replay = _batch_receipt(repo, owner, "adds", body, meta)
     if replay is not None:
         return replay
@@ -913,7 +872,7 @@ def build_delete_nodes(
     subtree-root ids on the same debounce. Idempotent per id (an id deleted by
     an earlier subtree in the batch, or by a previous flush, is skipped) so an
     optimistic over-delete can't fail the whole flush. Owner-gated."""
-    meta = _editable_repertoire(repo, body.repertoire_id, owner, "delete_nodes")
+    meta = editable_repertoire(repo, body.repertoire_id, owner, "delete_nodes")
     key, replay = _batch_receipt(repo, owner, "deletes", body, meta)
     if replay is not None:
         return replay
@@ -956,7 +915,7 @@ def build_apply_plan(
     anything lands. Owner-gated so a user can't apply a plan onto another's tree."""
     if not isinstance(body.plan, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="plan must be an object")
-    meta = _editable_repertoire(repo, body.repertoire_id, owner, "generate")
+    meta = editable_repertoire(repo, body.repertoire_id, owner, "generate")
     receipt_target = None
     if body.operation_id is not None:
         key = "build-receipt:plan:" + str(body.operation_id)
@@ -985,7 +944,7 @@ def build_apply_plan(
 
 # ---- Build node actions / annotations / export (2b-2e) ----------------------
 # Pure data operations on the stored tree (no engine) use the Maia-free builder.
-# Owner-gated via `_owned_repertoire`; the node-action/annotation handlers return
+# Owner-gated via `owned_repertoire`; the node-action/annotation handlers return
 # the shared Build payload, export returns a downloadable blob.
 
 
@@ -1018,7 +977,7 @@ def build_action(
     comment / tag / queue / critical) and return the refreshed Build payload.
     Scalar edits are last-writer-wins; an action on a node deleted elsewhere is 409."""
     action = body.action
-    meta = _editable_repertoire(repo, body.repertoire_id, owner, action)
+    meta = editable_repertoire(repo, body.repertoire_id, owner, action)
     builder = OpeningBuilderService(repo)
     rid, node_id = body.repertoire_id, body.node_id
 
@@ -1067,7 +1026,7 @@ def build_annotations(
 ) -> dict[str, Any]:
     """Persist a node's arrows/circles and echo them back (the SPA ignores the rest of
     a Build payload here, so no full reserialization)."""
-    meta = _editable_repertoire(repo, body.repertoire_id, owner, "annotate")
+    meta = editable_repertoire(repo, body.repertoire_id, owner, "annotate")
     _rebased(repo, meta, lambda: OpeningBuilderService(repo).set_annotations(
         body.repertoire_id, body.node_id, body.arrows, body.circles
     ))
@@ -1093,7 +1052,7 @@ def build_export(
 ) -> dict[str, Any]:
     """Serialize a repertoire to a downloadable blob: ``json`` (full package) or
     ``pgn`` (mainline, or the path to ``node_id`` when given). Pure serialization."""
-    _repertoire_access(repo, body.repertoire_id, owner, "copy")
+    require_access(repo, body.repertoire_id, owner, "copy")
     repertoire = _load(repo, body.repertoire_id)
     exporter = RepertoireExportService()
     safe_name = _safe_filename(repertoire.name)
@@ -1123,7 +1082,7 @@ def export_tree_pgn(
 ) -> dict[str, Any]:
     """Full tree-with-variations PGN for the top-level "Export PGN" action (the SPA's
     per-line export goes through ``/build/export``). Pure serialization, owner-gated."""
-    _repertoire_access(repo, repertoire_id, owner, "copy")
+    require_access(repo, repertoire_id, owner, "copy")
     repertoire = _load(repo, repertoire_id)
     return {
         "filename": "{0}.pgn".format(_safe_filename(repertoire.name)),

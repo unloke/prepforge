@@ -3,6 +3,7 @@ import { api, currentOwnerId, postJson, setStatus, setStatusError } from "./core
 import { rememberHandoff } from "./handoff-context.js";
 import { preloadCoach, _coachReady } from "./coach/coach-loader.js";
 import { bookRepFromLoad } from "./analyze-book-tree.js";
+import { onRepertoireChanged } from "./repertoire-changes.js";
 
 // Analyze ↔ repertoire sync ("the book"). The module is lazy; this is the one
 // cached copy of the active repertoire trees the Analyze coach walks.
@@ -15,7 +16,7 @@ let editRepertoire, analysisSelfSide;
 
 export function createBook(deps) {
   ({ editRepertoire, analysisSelfSide } = deps);
-  return { invalidateBook, ensureBookLoaded, updateBookline };
+  return { ensureBookLoaded, updateBookline };
 }
 
 // ---------------------------------------------------------------------------
@@ -37,13 +38,13 @@ const bookState = {
   reps: [], // { id, name, color, rootId, children: Map("parentId|uci" -> node), kids: Map(parentId -> [node]) }
 };
 
-// Build edits make this copy stale. A Build hydrate passes the tree it just loaded
-// (what /api/build/load returns): a loaded book that already holds that repertoire
-// takes the new tree in place, so the next Analyze look does not refetch every
-// active repertoire after each Build save. Anything else (a repertoire the book
-// does not hold, a load in flight, an activation change or a delete) drops the
-// copy so the next Analyze look refetches.
-export function invalidateBook(hydrated = null) {
+// Repertoire changes make this copy stale. A change that carries the tree just
+// loaded (what /api/build/load returns) for a repertoire the loaded book already
+// holds swaps it in place, so the next Analyze look does not refetch every active
+// repertoire after each Build save. Anything else (a repertoire the book does not
+// hold, a load in flight, an activation change or a delete) drops the copy so the
+// next Analyze look refetches.
+function invalidateBook(hydrated = null) {
   const at = hydrated && bookState.loaded
     ? bookState.reps.findIndex((rep) => String(rep.id) === String(hydrated.repertoire_id)) : -1;
   const fresh = at >= 0 ? bookRepFromLoad(hydrated) : null;
@@ -56,6 +57,7 @@ export function invalidateBook(hydrated = null) {
   bookState.loading = null;
   bookState.reps = [];
 }
+onRepertoireChanged(({ tree }) => invalidateBook(tree));
 
 let bookActionsPromise = null;
 function loadBookActions() {
