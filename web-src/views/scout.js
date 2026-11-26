@@ -1287,14 +1287,15 @@ export function createScoutView(deps) {
       setBuildSync("dirty");
     }
 
-    if (flush) {
-      // The line is queued on this device; the caller reports it as not synced.
-      try { await hardFlushBuild(); } catch (error) { setStatus(error.message, { severity: "error" }); return { syncError: error.message }; }
-    }
+    // Whether the line went in whole and whether it synced are separate: the
+    // caller counts the first and reports the second as "not synced yet".
+    let syncError = "";
+    if (flush) try { await hardFlushBuild(); } catch (error) { syncError = error.message; }
     if (!complete || getBuildState()?.repertoire_id !== repId) {
-      setStatus("Couldn't add the whole line to prep.", { severity: "error" });
-      return null;
+      setStatus(`Couldn't add the whole line to prep.${syncError ? ` Not synced yet: ${syncError}` : ""}`, { severity: "error" });
+      return syncError ? { syncError, incomplete: true } : null;
     }
+    if (syncError) { setStatus(syncError, { severity: "error" }); return { syncError }; }
     const resolvedId = resolveBuildId(lastNodeId);
     if (flush) await selectBuildNode(resolvedId);
     rememberHandoff({
@@ -1363,7 +1364,7 @@ export function createScoutView(deps) {
           flush: done === unique.length - 1,
           side: oppColor === "white" ? "black" : "white",
         });
-        if (res?.syncError) { syncError = res.syncError; written++; }
+        if (res?.syncError) { syncError = res.syncError; if (res.incomplete) failed++; else written++; }
         else if (res && typeof res === "object" && res.alreadyPresent) alreadyPresent++;
         else if (res) written++;
         else failed++;

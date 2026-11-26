@@ -183,6 +183,24 @@ describe("Scout row actions", () => {
     expect(deps.switchView).not.toHaveBeenCalled();
   });
 
+  it("counts a last line that was only partly added as failed when its sync fails too", async () => {
+    const view = makeView({
+      boardAfterMove: vi.fn(async (fen, uci) => { if (uci === "c7c5") throw new Error("illegal"); return `${fen}:${uci}`; }),
+      hardFlushBuild: vi.fn(async () => { throw new Error("Offline"); }),
+    });
+    await view.__testHandlePrepareAll([{ ucis: ["d2d4"], sans: ["d4"] }, { ucis: ["c2c4", "c7c5"], sans: ["c4", "c5"] }], "black");
+    expect(deps.notices.completeJob).toHaveBeenCalledWith({ title: "Not synced", message: "Added 1 line to prep · 1 failed · not synced yet: Offline" });
+  });
+
+  it("says a single line went in partly and did not sync", async () => {
+    const view = makeView({
+      boardAfterMove: vi.fn(async (fen, uci) => { if (uci === "c7c5") throw new Error("illegal"); return `${fen}:${uci}`; }),
+      hardFlushBuild: vi.fn(async () => { throw new Error("Offline"); }),
+    });
+    await view.__testHandleAddToPrep({ ucis: ["c2c4", "c7c5"], sans: ["c4", "c5"] }, "black");
+    expect(deps.setStatus).toHaveBeenLastCalledWith("Couldn't add the whole line to prep. Not synced yet: Offline", { severity: "error" });
+  });
+
   it("keeps a failed sync visible after a single Add to prep", async () => {
     const view = makeView({ hardFlushBuild: vi.fn(async () => { throw new Error("Offline"); }) });
     await view.__testHandleAddToPrep({ ucis: ["e2e4", "e7e5"], sans: ["e4", "e5"] }, "black");
