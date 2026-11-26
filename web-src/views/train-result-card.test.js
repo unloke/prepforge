@@ -44,14 +44,14 @@ it("the foot says what is due tomorrow, without an exclamation", () => {
 });
 
 it("a rehearsal reports lines, first-try score and misses", () => {
-  const result = drillResult({ lines: [1, 2, 3, 4], repertoire_name: "Italian" }, { correct: 9, mistakes: 1 });
+  const result = drillResult({ line_order: [1, 2, 3, 4], repertoire_name: "Italian" }, { correct: 9, mistakes: 1 });
   expect(result.cells).toEqual([[4, "lines"], ["90%", "first try"], [1, "missed"]]);
   expect(result.title).toBe("Rehearsal complete");
 });
 
 it("a skipped-only rehearsal reports skips without an empty accuracy score", () => {
-  expect(drillResult({ lines: [1] }, { skipped: 1 }).cells).toEqual([[1, "line"], [1, "skipped"]]);
-  expect(drillResult({ lines: [1, 2] }, { correct: 1, skipped: 1 }).cells)
+  expect(drillResult({ line_order: [1] }, { skipped: 1 }).cells).toEqual([[1, "line"], [1, "skipped"]]);
+  expect(drillResult({ line_order: [1, 2] }, { correct: 1, skipped: 1 }).cells)
     .toEqual([[2, "lines"], ["100%", "first try"], [0, "missed"], [1, "skipped"]]);
 });
 

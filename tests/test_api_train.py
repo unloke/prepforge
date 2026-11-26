@@ -287,8 +287,18 @@ def test_session_read_matches_the_start_prompt(client):
     body = _session_read(client, start["session_id"]).json()
     assert body["session_id"] == start["session_id"]
     assert body["current_index"] == 0
-    assert body["total_lines"] == len(start["lines"])
+    assert body["total_lines"] == len(start["line_order"])
     assert body["prompt"] == start["prompt"]
+
+
+def test_start_ships_the_prompt_and_its_run_in_but_not_the_line_table(client):
+    # The whole line table was ~630 KB on a 1,400-node tree and only its length
+    # was read; line_order already says how many lines the run has.
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = _start(client, rep).json()
+    assert "lines" not in start
+    assert {"target_index", "start_fen", "run_in"} <= set(start["prompt"])
 
 
 def test_session_read_reports_the_advanced_prompt_without_grading(client):

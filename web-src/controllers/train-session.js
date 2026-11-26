@@ -29,7 +29,7 @@ import { requeueMissedTarget } from "../train-retry.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, showTrainResult, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
-import { restoreRehearsal, saveRehearsal } from "../train-rehearsal.js";
+import { playRehearsalRunIn, restoreRehearsal, saveRehearsal } from "../train-rehearsal.js";
 import { appState, buildState, trainState, boards, notices, START_FEN } from "../core/state.js";
 import { api, currentOwnerId, localDateString, postJson, setStatus, setStatusError, sleep } from "../core/api.js";
 import { effectiveMaiaRating } from "../core/prefs.js";
@@ -140,6 +140,7 @@ async function renderTraining(payloadOrPrompt, options) {
   if (!prompt) return;
   applyTrainingPromptState(prompt);
   saveRehearsal(currentOwnerId(), trainState.training, trainState.trainStats, trainState.trainAttempt);
+  if (!(await playRehearsalRunIn(boards.train, trainState, prompt, { sleep, setTrainBanner }))) return;
   const out = await (await ensureTrainView()).renderTraining(prompt, options);
   syncTrainSessionControls();
   return out;
@@ -1063,7 +1064,7 @@ function finishTrainingSession() {
   saveRun(currentOwnerId(), {
     id: runId, mode: "all_lines", blitz: false,
     repertoires: [training?.repertoire_name].filter(Boolean), startedAt: new Date(stats.startedAt || Date.now()).toISOString(), finishedAt: new Date().toISOString(),
-    cards: Number(training?.lines?.length) || 0, correct: stats.correct, mistakes: stats.mistakes, skipped: stats.skipped || 0, learned: 0,
+    cards: Number(training?.line_order?.length) || 0, correct: stats.correct, mistakes: stats.mistakes, skipped: stats.skipped || 0, learned: 0,
   });
   showTrainResult({ ...drillResult(training, stats), runId });
   celebrate();

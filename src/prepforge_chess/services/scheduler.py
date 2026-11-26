@@ -187,6 +187,19 @@ def _find_path(root: OpeningNode, node_id: str) -> List[OpeningNode]:
     raise ValueError("opening node not found: {0}".format(node_id))
 
 
+def target_run_in(
+    path: List[OpeningNode], targets: List[OpeningNode], index: int
+) -> List[OpeningNode]:
+    """Moves auto-played before a target's prompt: from move 1 for the line's
+    first target, else from after the previous target's reply. Own moves that
+    are not due play themselves here instead of being asked."""
+    pos = next(i for i, node in enumerate(path) if node.id == targets[index].id)
+    start = 0
+    if index > 0:
+        start = next(i for i, node in enumerate(path) if node.id == targets[index - 1].id) + 2
+    return [node for node in path[start:pos] if node.move is not None]
+
+
 def own_move_nodes_on(path: Sequence[OpeningNode], color: Color) -> List[OpeningNode]:
     return [
         node

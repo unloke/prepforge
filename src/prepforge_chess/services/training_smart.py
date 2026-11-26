@@ -57,6 +57,7 @@ from prepforge_chess.services.scheduler import (
     path_to_node,
     preorder_index,
     sibling_moves,
+    target_run_in,
 )
 from prepforge_chess.services.training import grade_attempt
 from prepforge_chess.services.training_hints import (
@@ -997,19 +998,6 @@ def line_targets(
         return None
     order = [next(i for i, node in enumerate(path) if node.id == t.id) for t in targets]
     return targets if order == sorted(order) else None
-
-
-def target_run_in(
-    path: List[OpeningNode], targets: List[OpeningNode], index: int
-) -> List[OpeningNode]:
-    """Moves auto-played before a target's prompt: from move 1 for the line's
-    first target, else from after the previous target's reply. Own moves that
-    are not due play themselves here instead of being asked."""
-    pos = next(i for i, node in enumerate(path) if node.id == targets[index].id)
-    start = 0
-    if index > 0:
-        start = next(i for i, node in enumerate(path) if node.id == targets[index - 1].id) + 2
-    return [node for node in path[start:pos] if node.move is not None]
 
 
 def _numbered_line(nodes: List[OpeningNode]) -> str:
