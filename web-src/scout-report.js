@@ -5,11 +5,7 @@ import { Chess } from "chess.js";
 import { countOf } from "./plural.js";
 
 import { engineScanPatterns, SCOUT_ENGINE_DEFAULT_GAMES } from "./scout-engine.js";
-import {
-  buildRefutations,
-  collectActionableRefutationGapActions,
-  collectActionableRefutationGaps,
-} from "./scout-refutation.js";
+import { buildRefutations, collectActionableRefutationGapActions, collectActionableRefutationGaps } from "./scout-refutation.js";
 import {
   SCOUT_BRANCH_HARD_CEILING,
   attachPrepReplies,
@@ -21,12 +17,7 @@ import {
 } from "./scout.js";
 import { buildScoutStats, formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
 import { START_FEN, moveLineHtml, moveTextHtml, moveTokenHtml } from "./move-text.js";
-import {
-  applyMaiaToLines,
-  medianOpponentRating,
-  scoutLineWdlCounts,
-  scoutMaiaRankedNote,
-} from "./scout-maia.js";
+import { applyMaiaToLines, medianOpponentRating, scoutLineWdlCounts, scoutMaiaRankedNote } from "./scout-maia.js";
 import { buildScoutSectionSummary, expectationText } from "./scout-summary.js";
 
 export function scoutLineKey(ucis) {
@@ -178,6 +169,12 @@ export function restoreScoutExpanded(resultsEl, sections, captured, ctx) {
   resultsEl.scrollTop = scrollTop || 0;
 }
 
+// The row's moves are its control: the row also holds the Add to prep button,
+// and a button may not sit inside another.
+function lineToggle(lineEl) {
+  return lineEl.querySelector?.(".scout-line-toggle") || lineEl;
+}
+
 // Marks `lineEl` as the single open row and paints its detail into the side
 // panel (ctx.sideEl). The ECO name is filled in from the cache, or enriched.
 export function openScoutLine(lineEl, line, rowKind, ctx) {
@@ -187,13 +184,13 @@ export function openScoutLine(lineEl, line, rowKind, ctx) {
     if (el === lineEl) continue;
     delete el.dataset.userOpen;
     el.classList.remove("is-expanded");
-    el.setAttribute("aria-expanded", "false");
+    lineToggle(el).setAttribute("aria-expanded", "false");
   }
   const key = lineEl.dataset.lineKey;
   const color = lineEl.dataset.color;
   const idx = parseInt(lineEl.dataset.rowIdx, 10);
   lineEl.classList.add("is-expanded");
-  lineEl.setAttribute("aria-expanded", "true");
+  lineToggle(lineEl).setAttribute("aria-expanded", "true");
   if (sideEl) {
     // Always repaint from the line we were handed: while games stream in the
     // same row is rebuilt with fresh counts, so skipping the paint when the
@@ -615,8 +612,13 @@ function explorerA11ySummary(explorerReads) {
   return parts.join(" ");
 }
 
+// A masters comparison that failed says so; one with nothing to compare stays quiet.
+const LOAD_FAILED = "Couldn't load the masters comparison.";
+const EXPLORER_FAILED = { auth: "Masters comparison needs your Lichess account linked.", "masters-unavailable": LOAD_FAILED, error: LOAD_FAILED };
+
 function renderScoutExplorerReads(explorerReads) {
-  if (!explorerReads?.available) return "";
+  const failed = !explorerReads?.available && EXPLORER_FAILED[explorerReads?.reason];
+  if (!explorerReads?.available) return failed ? html`<p class="scout-explorer-failed muted hint">${failed}</p>` : "";
   const chips = [];
 
   const dev = explorerReads.theoryDeviation?.items?.[0];
@@ -1143,10 +1145,10 @@ function scoutLineRowHtml(
       : scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 });
     const wdlHtml = oneGame ? "" : scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate, counts: false });
     return html`
-      <div class="scout-line scout-line-row line-row ${status.cls} scout-weakness-row scout-ranked-row" data-line-key="${lineKey}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}"${pathAttr} role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+      <div class="scout-line scout-line-row line-row ${status.cls} scout-weakness-row scout-ranked-row" data-line-key="${lineKey}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}"${pathAttr}${rowTitle}>
         <div class="scout-lr-main lr-main">
           <span class="scout-line-eco"></span>
-          <span class="scout-line-moves">${framing}</span>
+          <span class="scout-line-moves scout-line-toggle" role="button" tabindex="0" aria-expanded="false">${framing}</span>
           ${refCard}
         </div>
         <span class="lr-meta">${categoryBadge}${lastSeenBadge}</span>
@@ -1157,11 +1159,11 @@ function scoutLineRowHtml(
   }
   const countCell = html`<span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>`;
   return html`
-      <div class="scout-line scout-line-row ${status.cls}" data-line-key="${lineKey}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+      <div class="scout-line scout-line-row ${status.cls}" data-line-key="${lineKey}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}"${rowTitle}>
         ${countCell}
         <div class="scout-lr-main">
           <span class="scout-line-eco"></span>
-          <span class="scout-line-moves">${framing}</span>
+          <span class="scout-line-moves scout-line-toggle" role="button" tabindex="0" aria-expanded="false">${framing}</span>
         </div>
         <span class="scout-lr-score">${scoutScoreCell(displayScore, rawCount, { baseline, maiaEstimate })}</span>
         <span class="scout-lr-wdl">${scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate })}</span>
