@@ -15,11 +15,11 @@ it("records when the rehearsal started", () => {
   try {
     vi.setSystemTime(new Date("2026-11-26T05:00:00Z"));
     const appState = { training: { session_id: "s", repertoire_name: "Italian", lines: [1, 2] }, trainAttempt: 1 };
-    compile("function trainStatsReset(", { appState })();
+    compile("function trainStatsReset(", { appState, trainState: appState })();
     vi.setSystemTime(new Date("2026-11-26T05:12:00Z"));
     const saveRun = vi.fn();
     const finish = compile("function finishTrainingSession(", {
-      appState, saveRun, currentOwnerId: () => "u", saveRehearsal: vi.fn(),
+      appState, trainState: appState, saveRun, currentOwnerId: () => "u", saveRehearsal: vi.fn(),
       boards: { train: { setEngineArrow: vi.fn() } }, updateTrainTurnBadge: vi.fn(),
       document: { getElementById: () => ({ textContent: "" }) },
       showTrainResult: vi.fn(), drillResult: () => ({}), celebrate: vi.fn(),

@@ -27,7 +27,7 @@ function harness() {
   const banner = { title: "Opponent thinking…" };
   const explorer = deferred();
   const deps = {
-    appState, boards: { train: board }, boardInfo: async (fen) => localBoardInfo(fen),
+    appState, trainState: appState, boards: { train: board }, boardInfo: async (fen) => localBoardInfo(fen),
     boardAfterMove: async (fen, uci) => localBoardAfterMove(fen, uci),
     fetchPlayExplorer: vi.fn(() => explorer.promise), fetchPlayMaia: vi.fn(async () => []),
     pickOpponentReply, playPositionAfterReply, replyReasonNote,
@@ -43,7 +43,7 @@ function harness() {
     submitPlayMove: vi.fn(),
   };
   const reply = compile("async function playOpponentReply(", deps);
-  return { play, appState, board, banner, explorer, deps, reply };
+  return { play, appState, trainState: appState, board, banner, explorer, deps, reply };
 }
 
 describe("Play opponent response ownership", () => {
@@ -103,7 +103,7 @@ describe("Play opponent response ownership", () => {
     const appState = { trainMode: "play" };
     const paint = vi.fn();
     const deps = {
-      appState, START_FEN: FEN, playBook: () => "maia", playPickerColor: () => "white",
+      appState, trainState: appState, START_FEN: FEN, playBook: () => "maia", playPickerColor: () => "white",
       resolvePlayColor: () => "white", effectiveMaiaRating: () => 1500, boardInfo: () => info.promise,
       document: { getElementById: () => ({ hidden: false }) }, boards: { train: { setOrientation: vi.fn() } },
       paintPlayPosition: paint, playBookLabel: () => "Maia", isStartFen: () => true,
@@ -112,7 +112,7 @@ describe("Play opponent response ownership", () => {
       updateTrainTurnBadge: vi.fn(), playOpponentReply: vi.fn(), renderPlayTrail: vi.fn(),
       getSharedMaia3Provider: vi.fn(() => ({ warmup: vi.fn(() => new Promise(() => {})) })),
     };
-    return { appState, info, paint, deps, start: compile("async function startPlaySession(", deps) };
+    return { appState, trainState: appState, info, paint, deps, start: compile("async function startPlaySession(", deps) };
   }
 
   it("starts loading Maia while the player considers their first move without blocking the board", async () => {

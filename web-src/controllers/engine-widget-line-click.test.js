@@ -51,7 +51,7 @@ function harness({ view = "analyze", boardFen = START, lands = true, withSession
   const deps = {
     html, setEngineBestArrow: vi.fn(), localGameOver: () => null, pvSan: () => [],
     activeViewName: () => view, effectiveStockfishDepth: () => 16,
-    createSharedEvaluationProvider: vi.fn(), appState, boards: {}, START_FEN: START,
+    createSharedEvaluationProvider: vi.fn(), appState, analysisState: appState, buildState: appState, trainState: appState, boards: {}, START_FEN: START,
     explorerEvalEngine: { repaint: vi.fn() }, formatEngineEval: () => "0.00",
     getAnalyzeSession: () => (withSession ? session : null),
     paintUnlocks: () => {}, createPassFeed, createLinesPicker, hooks: {},
@@ -66,7 +66,7 @@ function harness({ view = "analyze", boardFen = START, lands = true, withSession
   });
   widget._bindControls();
   widget.lastFen = boardFen;
-  return { widget, appState, session, deps };
+  return { widget, appState, analysisState: appState, buildState: appState, trainState: appState, session, deps };
 }
 
 const LINE = encodeLine(START, ["e2e4", "e7e5", "g1f3"]);

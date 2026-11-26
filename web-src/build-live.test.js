@@ -71,7 +71,7 @@ function harness({ changes = { revision: 5 }, open = true, defaultOpen = false }
   };
   const appState = { build: tree(), buildCurrentNodeId: "nf3", buildNodeById: new Map(), accountUserId: "u1" };
   const deps = {
-    appState, timers, doc: { hidden: false, addEventListener() {}, removeEventListener() {} },
+    appState, buildState: appState, timers, doc: { hidden: false, addEventListener() {}, removeEventListener() {} },
     api: vi.fn(async () => (typeof changes === "function" ? changes() : changes)),
     hydrate: vi.fn(async (payload) => {
       appState.build = payload;
@@ -90,7 +90,7 @@ function harness({ changes = { revision: 5 }, open = true, defaultOpen = false }
     appState.signedIn = true;
   }
   const live = createBuildLive(deps);
-  return { live, deps, appState, pending };
+  return { live, deps, appState, buildState: appState, pending };
 }
 
 describe("createBuildLive", () => {

@@ -21,14 +21,14 @@ function luckyEntry(appState, refreshAuthStatus, openAuthModal) {
   const end = source.indexOf("\nexport async function takebackPlaySession", start);
   const body = source.slice(start, end);
   return new Function(
-    "appState",
+    "appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState",
     "refreshAuthStatus",
     "openAuthModal",
     "beginLuckyDiscovery",
     "finishLuckyDiscovery",
     "luckyDiscoveryCurrent",
     `${body}; return { onFeelingLucky };`,
-  )(appState, refreshAuthStatus, openAuthModal, beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent);
+  )(appState, appState, appState, appState, appState, appState, appState, refreshAuthStatus, openAuthModal, beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent);
 }
 
 describe("Random discovery auth ownership", () => {

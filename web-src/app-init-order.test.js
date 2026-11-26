@@ -95,7 +95,7 @@ describe("teams paints nothing owner-scoped until auth is known (C2)", () => {
       querySelector: () => null,
     };
     const view = createTeamsView({
-      appState,
+      appState, settingsState: appState, teamsState: appState, trainState: appState,
       api: async () => ({ teams: [] }),
       hideTeamDetail: () => {},
       openTeamDetail: async () => {},
@@ -211,7 +211,7 @@ describe("app boot holds auth-dependent state until the session is known", () =>
     expect(src).toMatch(/trainRouteMatches\(loc\)/);
     expect(src).toMatch(/isCurrent: stillActive/);
     expect(src).toMatch(/void loadTrainRepertoireOptions\(\)\.catch\(\(\) => \{\}\);/);
-    expect(src).toMatch(/!deferTrainEntry && !appState\.trainEntering\) void retryTrainEntry/);
+    expect(src).toMatch(/!deferTrainEntry && !trainState\.trainEntering\) void retryTrainEntry/);
   });
 
   it("holds the account chip too: an unread session is not a signed-out one", () => {

@@ -29,7 +29,7 @@ function collaboration({ entries = [], threads = [] } = {}) {
   const api = vi.fn(async (url) => (url.includes("/activity")
     ? { entries, unread_nodes: [], revision: 3, truncated: false }
     : { threads }));
-  return createBuildCollaboration({ appState, api, postJson: vi.fn(), hydrateBuild: vi.fn(), selectBuildNode: vi.fn(), showInputModal: vi.fn(), miniBoard: () => "" });
+  return createBuildCollaboration({ appState, buildState: appState, api, postJson: vi.fn(), hydrateBuild: vi.fn(), selectBuildNode: vi.fn(), showInputModal: vi.fn(), miniBoard: () => "" });
 }
 
 beforeEach(() => { dialogs.length = 0; vi.stubGlobal("document", { getElementById: () => null, querySelectorAll: () => [] }); });

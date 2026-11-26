@@ -145,14 +145,14 @@ function setup() {
   const showAnalysisPly = vi.fn(async () => {});
   const peek = vi.fn();
   const view = createAnalyzeView({
-    appState,
+    appState, analysisState: appState,
     START_FEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     showAnalysisPly,
     selectAnalysisNode: vi.fn(async () => {}),
     revealAnalysisResults: vi.fn(),
     peek,
   });
-  return { doc, chart, tooltip, appState, showAnalysisPly, peek, view };
+  return { doc, chart, tooltip, appState, analysisState: appState, showAnalysisPly, peek, view };
 }
 
 function allElements(chart) {

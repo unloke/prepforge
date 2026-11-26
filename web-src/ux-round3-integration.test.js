@@ -24,12 +24,12 @@ function harness(realBoard = false) {
     renderReport: vi.fn(), buildAnalysisTree: () => ({ root: parsePgn("1. e4").root }) };
   const input = { setAttribute() {}, value: "1. d4", addEventListener: vi.fn() };
   const appState = { analysis: null, analysisVarNodes: new Map() };
-  const realView = createAnalyzeView({ appState, START_FEN });
+  const realView = createAnalyzeView({ appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, START_FEN });
   view.serializeAnalysisPgn = realView.serializeAnalysisPgn;
   view.adaptParsedTree = realView.adaptParsedTree;
   const doc = { getElementById: () => input, querySelector: () => null, activeElement: null };
   const deps = {
-    appState, document: doc, START_FEN, parsePgn,
+    appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, document: doc, START_FEN, parsePgn,
     analysisStudy: { flush: async () => {} },
     api: () => pending.promise, ensureAnalyzeView: vi.fn(async () => view),
     hideAnalysisHandoff: vi.fn(), showAnalysisPly: vi.fn(async () => {}),
@@ -67,7 +67,7 @@ function harness(realBoard = false) {
     ${helper}\n${functions}\n${inputBinding}
     return { recallAnalysis, loadPgnIntoAnalyze, runAnalysis, renderAnalysis, syncPgnFromTree, retryAnalyzeSave };
   `)(...Object.values(deps), input);
-  return { ...actions, pending, chunk, view, input, appState, deps, doc,
+  return { ...actions, pending, chunk, view, input, appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, deps, doc,
     edit: () => input.addEventListener.mock.calls[0][1]() };
 }
 const saved = (id) => ({ game_id: id, moves: [{ ply: 1, san: "e4", uci: "e2e4", move_number: 1, side: "white", fen_before: START_FEN }], eval_graph: [] });
@@ -180,7 +180,7 @@ describe("Recall source ownership", () => {
 describe("Boot route lifecycle", () => {
   it("a repertoire command picked during boot counts as navigation despite deferred URL sync", async () => {
     const appState = { currentView: "dashboard", signedIn: true };
-    const deps = { appState, invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), paintBuildSkeleton, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
+    const deps = { appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), paintBuildSkeleton, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
       hardFlushBuild: async () => {}, api: async () => ({ repertoire_id: "picked", nodes: [] }), hydrateBuild: vi.fn(),
       ensureMoveTreeRenderer: async () => {},
       loadReturnState: () => null, syncWorkspaceUrl: vi.fn(), updateBuildReadOnlyUi: vi.fn(), setStatusError: vi.fn(),
@@ -204,7 +204,7 @@ describe("Boot route lifecycle", () => {
   it("a page picked while the URL repertoire loads supersedes that restore", async () => {
     const rep = deferred();
     const appState = { currentView: "dashboard", signedIn: true };
-    const deps = { appState, invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), api: () => rep.promise, hydrateBuild: vi.fn(), loadReturnState: () => null,
+    const deps = { appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, invalidateTrainEntries: vi.fn(), cancelActiveTrainStart: vi.fn(), api: () => rep.promise, hydrateBuild: vi.fn(), loadReturnState: () => null,
       syncWorkspaceUrl: vi.fn(), window: { location: { href: "http://x/#/build?rep=old" } }, parseWorkspaceLocation };
     const start = source.indexOf("function switchView(");
     const navigation = source.slice(start, source.indexOf("  if (appState.currentView", start));
@@ -224,7 +224,7 @@ describe("Boot route lifecycle", () => {
 
   it.each([true, false])("Train picked during boot lands on Train Home and starts nothing (%s)", async (signedIn) => {
     const appState = { currentView: "train", signedIn, trainMode: "smart" };
-    const deps = { appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(),
+    const deps = { appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(),
       window: { location: { href: "http://x/#/dashboard" } }, parseWorkspaceLocation };
     const restore = new Function(...Object.keys(deps), `let navigatedDuringBoot = true;
       return (${body("async function restoreWorkspaceLocation(")});`)(...Object.values(deps));

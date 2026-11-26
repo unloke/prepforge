@@ -5,6 +5,7 @@ import { pvSan } from "./chess-local.js";
 import { readFileSync } from "node:fs";
 import { appSource } from "./test-app-source.js";
 import { createPassFeed } from "./controllers/engine-pass-feed.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const selectionSource = readFileSync(new URL("./controllers/analyze-selection.js", import.meta.url), "utf8");
@@ -13,7 +14,7 @@ function widgetHarness({ coachOn = false } = {}) {
   const deps = { html,
     setEngineBestArrow: vi.fn(), localGameOver: () => null, pvSan,
     activeViewName: () => "analyze", effectiveStockfishDepth: () => 16,
-    createSharedEvaluationProvider: vi.fn(), appState: {}, boards: {}, START_FEN: "start",
+    createSharedEvaluationProvider: vi.fn(), ...asSlices({}), boards: {}, START_FEN: "start",
     explorerEvalEngine: { repaint: vi.fn() }, formatEngineEval,
     getAnalyzeSession: () => (coachOn ? { positionCoach: { enabled: true, onWidgetSnapshot: vi.fn() } } : null),
     // The full net is here: no unlock row to paint.
@@ -140,8 +141,8 @@ describe("Analyze engine stepping", () => {
     const code = selectionSource.slice(start, selectionSource.indexOf("\n  async function onAnalysisBoardMove", start));
     // The source epoch: unchanged here, so the step is never fenced out.
     const captureSource = () => ({ isCurrent: () => true });
-    const nav = new Function("appState", "ensureAnalyzeView", "selectAnalysisNode", "captureSource",
-      `${code}; return analysisTreeNav;`)(appState, async () => ({}), select, captureSource);
+    const nav = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "ensureAnalyzeView", "selectAnalysisNode", "captureSource",
+      `${code}; return analysisTreeNav;`)(appState, appState, appState, appState, appState, appState, appState, async () => ({}), select, captureSource);
     await nav(kind);
     await nav(kind);
     expect(select).not.toHaveBeenCalled();

@@ -97,7 +97,7 @@ function makeHarness({ nodes, currentNodeId, choiceId }) {
     buildBranchChoiceId: choiceId,
   };
   const view = createBuildView({
-    appState,
+    appState, buildState: appState,
     boards: { build: { setBranchArrows: vi.fn() } },
     getMoveTreeRenderer: () => ({
       renderMoveTree: () => '<div class="mtree"></div>',
@@ -114,7 +114,7 @@ function makeHarness({ nodes, currentNodeId, choiceId }) {
       return { options, choiceId: picked.id };
     },
   });
-  return { view, bar: elements["build-branchbar"], appState };
+  return { view, bar: elements["build-branchbar"], appState, buildState: appState };
 }
 
 const chipIds = (markup) => [...String(markup).matchAll(/class="fork-chip[^"]*" type="button" data-node-id="([^"]+)"/g)].map((m) => m[1]);

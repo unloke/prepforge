@@ -298,8 +298,8 @@ describe("games/scout deep links", () => {
     const { dirname, join } = await import("node:path");
     const root = dirname(fileURLToPath(import.meta.url));
     const app = appSource();
-    expect(app).toContain("appState.replaySection = loc.replaySection");
-    expect(app).toContain("setReplaySection(appState.replaySection, { syncUrl: false })");
-    expect(app).toContain('button.dataset.replaySection === (appState.replaySection || "games")');
+    expect(app).toContain("replayState.replaySection = loc.replaySection");
+    expect(app).toContain("setReplaySection(replayState.replaySection, { syncUrl: false })");
+    expect(app).toContain('button.dataset.replaySection === (replayState.replaySection || "games")');
   });
 });

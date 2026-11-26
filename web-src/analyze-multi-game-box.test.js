@@ -51,13 +51,13 @@ const sansOf = (pgn) => {
 
 function serializer({ pgn, analysis, varNodes = new Map() }) {
   const appState = { analysis, analysisVarNodes: varNodes };
-  const view = createAnalyzeView({ appState, START_FEN });
+  const view = createAnalyzeView({ appState, analysisState: appState, START_FEN });
   return view.serializeAnalysisPgn(pgn);
 }
 
 function treeOf(pgn) {
   const appState = { analysisVarNodes: new Map(), analysis: null };
-  const view = createAnalyzeView({ appState, START_FEN });
+  const view = createAnalyzeView({ appState, analysisState: appState, START_FEN });
   const parsed = parsePgn(pgn);
   const { moves, varNodes } = view.adaptParsedTree(parsed.root);
   return { view, moves, varNodes };
@@ -112,7 +112,7 @@ describe("serializeAnalysisPgn keeps one game's header block", () => {
 // here exactly as it is in production.
 function harness() {
   const viewState = { analysisVarNodes: new Map(), analysis: null };
-  const view = createAnalyzeView({ appState: viewState, START_FEN });
+  const view = createAnalyzeView({ appState: viewState, analysisState: viewState, START_FEN });
   // The view's RENDERERS paint into the real DOM; the parse/tree/serialize code is
   // what this test exercises, so rendering is recorded rather than drawn.
   for (const name of ["renderAnalysisTree", "renderEvalChart", "renderReport", "renderAnalysis", "liveEvalChart"]) {
@@ -179,7 +179,7 @@ function harness() {
     };
   };
   const deps = {
-    html, appState, document: doc, START_FEN, parsePgn, ANALYSIS_ROOT_PATH: "root",
+    html, appState, analysisState: appState, document: doc, START_FEN, parsePgn, ANALYSIS_ROOT_PATH: "root",
     isBrowserEngineAvailable: () => true,
     setStatus: vi.fn(), setStatusError: vi.fn(), setCoachProse: vi.fn(),
     notices: {
@@ -252,14 +252,14 @@ function harness() {
   const session = new Function(...Object.keys(params), `
     let analysisRecallSeq = 0;
     // The real rule: a new source ends the batch and bumps the epoch.
-    const invalidateAnalysisSource = () => { appState.analysisMultiPgn = null; return ++analysisRecallSeq; };
-    const switchBatchAnalysis = createBatchSwitcher({ appState, recallAnalysis, runAnalysis, invalidateAnalysisSource,
+    const invalidateAnalysisSource = () => { analysisState.analysisMultiPgn = null; return ++analysisRecallSeq; };
+    const switchBatchAnalysis = createBatchSwitcher({ analysisState, recallAnalysis, runAnalysis, invalidateAnalysisSource,
       sourceIsCurrent: seq => seq === analysisRecallSeq, isBusy: () => notices.isBusy(), setStatus });
     ${functions}
     return { runAnalysis, renderImportPicker, rebuildAnalysisVariations, loadPgnIntoAnalyze };
   `);
   const built = session(...Object.values(params));
-  return { ...built, appState, input, view, posts, prepared, pickerHost, select, deps: params };
+  return { ...built, appState, analysisState: appState, input, view, posts, prepared, pickerHost, select, deps: params };
 }
 
 describe("a multi-game paste analyzes one game at a time", () => {

@@ -73,7 +73,7 @@ function rehearsalHarness({ move } = {}) {
   const board = { fen: "moved", setPosition: vi.fn((next) => { board.fen = next.fen; }) };
   const pending = deferred();
   const deps = {
-    appState,
+    appState, trainState: appState,
     currentOwnerId: () => appState.accountUserId,
     boards: { train: board },
     optimisticBoardMove: vi.fn(async () => true),
@@ -92,7 +92,7 @@ function rehearsalHarness({ move } = {}) {
   };
   deps.trainRecovery = createTrainRecovery(deps);
   const submit = compile("async function submitTrainingMove(", deps);
-  return { appState, board, pending, deps, submit };
+  return { appState, trainState: appState, board, pending, deps, submit };
 }
 
 describe("a failed rehearsal answer keeps the same card answerable", () => {

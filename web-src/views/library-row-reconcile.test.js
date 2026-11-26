@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDashboardView } from "./dashboard.js";
 import { settleEntrances } from "../list-enter.js";
+import { asSlices } from "../state/as-slices.fixture.js";
 
 // --- a small DOM ------------------------------------------------------------
 // The row reconciliation only needs the container's top-level children, their
@@ -234,7 +235,7 @@ describe("Library row reconciliation", () => {
     openTrain = vi.fn();
     let call = 0;
     view = createDashboardView({
-      appState: { signedIn: true, teams: [], pendingRepDeletes: new Set() },
+      ...asSlices({ signedIn: true, teams: [], pendingRepDeletes: new Set() }), 
       api: vi.fn(async (url) => {
         if (String(url).startsWith("/api/teams")) return { teams: [] };
         return payloads[Math.min(call++, payloads.length - 1)];

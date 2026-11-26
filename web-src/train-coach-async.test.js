@@ -27,7 +27,7 @@ function harness() {
   const coach = deferred();
   const sleepGate = deferred();
   const deps = {
-    appState, document: { getElementById: (id) => id === "train-banner" ? banner : { textContent: banner.title } },
+    appState, trainState: appState, document: { getElementById: (id) => id === "train-banner" ? banner : { textContent: banner.title } },
     boards: { train: { setPosition: vi.fn(), setEngineArrow: vi.fn() } },
     setTrainBanner: (state, title, sub) => { banner.dataset.state = state; banner.title = title; banner.sub = sub; },
     maiaPhaseCoach: () => coach.promise, trainTeachLine: () => "", coachTipMayReplace, wrongMoveTip, wrongMoveBanner,
@@ -36,7 +36,7 @@ function harness() {
     renderTrainStats: async () => {}, boardAfterMove: async () => ({ board: { fen: "preview" } }),
     playSound: vi.fn(), sleep: () => sleepGate.promise, rememberSmartSession: vi.fn(),
   };
-  return { appState, banner, coach, sleepGate, deps, prompt };
+  return { appState, trainState: appState, banner, coach, sleepGate, deps, prompt };
 }
 
 describe("Smart coach response ownership", () => {

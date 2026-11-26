@@ -12,11 +12,11 @@ function harness() {
   let seq = 0;
   const invalidate = () => { appState.analysisMultiPgn = null; return ++seq; };
   const deps = {
-    appState, invalidateAnalysisSource: invalidate, sourceIsCurrent: value => value === seq,
+    appState, analysisState: appState, invalidateAnalysisSource: invalidate, sourceIsCurrent: value => value === seq,
     recallAnalysis: vi.fn(async () => { appState.analysis = { game_id: "g2", pgn: "1. d4 d5" }; return true; }),
     runAnalysis: vi.fn(async () => {}), isBusy: vi.fn(() => false), setStatus: vi.fn(),
   };
-  return { change: createBatchSwitcher(deps), deps, appState, summary, host, select, old, invalidate };
+  return { change: createBatchSwitcher(deps), deps, appState, analysisState: appState, summary, host, select, old, invalidate };
 }
 
 describe("completed batch analysis switching", () => {

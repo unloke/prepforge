@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
 import { parseWorkspaceLocation, serializeWorkspaceLocation, workspaceLocationFromState } from "./workspace-url.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -39,7 +40,7 @@ function harness() {
     setAnnotations: vi.fn(),
   };
   const common = {
-    appState, boards: { build: board }, document: { getElementById }, localBoardInfo,
+    appState, buildState: appState, teamsState: appState, boards: { build: board }, document: { getElementById }, localBoardInfo,
     takeBuildPreview: vi.fn(), renderBuildRepHeader: vi.fn(), renderBuilderTree: vi.fn(), syncViewHeads: vi.fn(),
     paintBuildEmpty: vi.fn(),
     switchView: (name) => { appState.currentView = name; },
@@ -62,8 +63,8 @@ function harness() {
   };
   const syncStart = source.indexOf("function syncWorkspaceUrl(");
   const syncBody = source.slice(syncStart, source.indexOf("\n}\n", syncStart) + 2);
-  const syncWorkspaceUrl = new Function("window", "history", "workspaceLocationFromState", "serializeWorkspaceLocation", "appState",
-    `let workspaceUrlReady = true; return (${syncBody});`)(window, history, workspaceLocationFromState, serializeWorkspaceLocation, appState);
+  const syncWorkspaceUrl = new Function("window", "history", "workspaceLocationFromState", "serializeWorkspaceLocation", "appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState",
+    `let workspaceUrlReady = true; return (${syncBody});`)(window, history, workspaceLocationFromState, serializeWorkspaceLocation, appState, appState, appState, appState, appState, appState, appState);
   const deps = {
     ...common, setBuildLoading: loading, hardFlushBuild: vi.fn(async () => {}),
     ensureMoveTreeRenderer: vi.fn(async () => {}),
@@ -84,7 +85,7 @@ function harness() {
   const move = compile("async function onBuildBoardMove(", {
     ...common, optimisticBoardMove, isBuildReadOnly: () => false,
   });
-  return { appState, board, edit, move, requests, hydrateBuild, optimisticBoardMove, deps, getElementById, urlOperations, window, history };
+  return { appState, buildState: appState, teamsState: appState, board, edit, move, requests, hydrateBuild, optimisticBoardMove, deps, getElementById, urlOperations, window, history };
 }
 async function waitForRequest(h, id) {
   await vi.waitFor(() => expect(h.requests.has(id)).toBe(true));
@@ -165,7 +166,7 @@ describe("repertoire load isolation", () => {
     };
     const syncWorkspaceUrl = vi.fn();
     const hydrate = compile("async function hydrateBuild(", {
-      appState, coverageView: null, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(),
+      appState, buildState: appState, teamsState: appState, coverageView: null, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(),
       renderBuildRepHeader: vi.fn(), selectBuildNode: vi.fn(async () => {}),
       reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
       indexBuildNodes: (nodes) => new Map(nodes.map((node) => [node.id, node])),
@@ -262,7 +263,7 @@ describe("repertoire load isolation", () => {
 describe("route back to the shown tree while another loads", () => {
   it("compares the URL against the loading target, not the stale tree", async () => {
     const h = harness();
-    const shown = compile("function shownOrLoadingRepertoireId(", { appState: h.appState });
+    const shown = compile("function shownOrLoadingRepertoireId(", { ...asSlices(h.appState),  });
     expect(shown()).toBe("A");
     const load = h.edit("B"); await waitForRequest(h, "B");
     // Still showing A's tree, but B is what will land: a route to A must reopen A.

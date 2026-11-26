@@ -16,7 +16,8 @@ vi.mock("./core/prefs.js", () => ({ effectiveStockfishDepth: () => 16, pref: () 
 vi.mock("./core/engine.js", () => ({ EXPLORER_EVAL_MAX_LINES: 5, engineWantedIn: () => true, engineWidget: { isOpen: () => true, lastSnapshot: lines } }));
 vi.mock("./core/hooks.js", () => ({ hooks: { build: { session: {}, paintExplorerEvals } } }));
 vi.mock("./core/state.js", () => ({
-  appState: { buildCurrentNodeId: "n1", buildNodeById: new Map([["n1", { fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" }]]) },
+  appState: {},
+  buildState: { buildCurrentNodeId: "n1", buildNodeById: new Map([["n1", { fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" }]]) },
   boards: {},
 }));
 vi.mock("./undo.js", () => ({ showUndoToast: vi.fn() }));

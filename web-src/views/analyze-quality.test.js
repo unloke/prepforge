@@ -11,7 +11,7 @@ function render(quality) {
   globalThis.document = { getElementById: (id) => (id === "analysis-summary" ? host : null) };
   const appState = { analysis: { quality }, analysisVarNodes: new Map() };
   const view = createAnalyzeView({
-    appState,
+    appState, analysisState: appState,
     START_FEN: "",
     showAnalysisPly: () => {},
     selectAnalysisNode: () => {},

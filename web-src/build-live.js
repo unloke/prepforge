@@ -96,10 +96,10 @@ export function remoteChangeNotice(changes, { tabId, selectionLost, name }) {
 // activeView() (the shown view's name), notify(text), tabId; tests also pass
 // isOpen, now, timers ({ setTimeout, clearTimeout }) and doc (document).
 export function createBuildLive(deps) {
-  const { api, appState, hydrate, reload, notify, tabId } = deps;
+  const { api, appState, buildState, hydrate, reload, notify, tabId } = deps;
   // Polled only while Build shows a saved repertoire this account can read.
   const isOpen = deps.isOpen || (() => !!(appState.signedIn && !appState.sharedToken
-    && appState.build?.repertoire_id && !appState.build.optimistic && deps.activeView() === "build"));
+    && buildState.build?.repertoire_id && !buildState.build.optimistic && deps.activeView() === "build"));
   const now = deps.now || (() => Date.now());
   const timers = deps.timers || globalThis;
   const doc = deps.doc || (typeof document === "undefined" ? null : document);
@@ -108,8 +108,8 @@ export function createBuildLive(deps) {
   let lastChange = now();
   let stopped = false;
 
-  const busy = () => !!(appState.buildFlushing || appState.buildMutationSaving
-    || appState.buildAnnotationsSaving || appState.buildLoading);
+  const busy = () => !!(buildState.buildFlushing || buildState.buildMutationSaving
+    || buildState.buildAnnotationsSaving || buildState.buildLoading);
 
   function schedule(ms) {
     timers.clearTimeout(timer);
@@ -126,14 +126,14 @@ export function createBuildLive(deps) {
   }
 
   async function pull() {
-    const build = appState.build;
+    const build = buildState.build;
     const since = build.revision;
     const changes = await api(
       `/api/build/changes?repertoire_id=${encodeURIComponent(build.repertoire_id)}&since=${since}`,
     );
     // This tab wrote, navigated or started saving meanwhile: its own reply (or
     // the next tick) carries newer truth than this delta.
-    if (appState.build !== build || build.revision !== since || busy()) return;
+    if (buildState.build !== build || build.revision !== since || busy()) return;
     // The owner changed this caller's role (or a team's): reload so the banner,
     // Copy and editing follow it.
     if (changes.reset || (changes.role && changes.role !== buildRole(build))) {
@@ -143,12 +143,12 @@ export function createBuildLive(deps) {
     }
     if (!(changes.revision > since)) return;
     lastChange = now();
-    const selected = appState.buildCurrentNodeId;
+    const selected = buildState.buildCurrentNodeId;
     const { payload, selection } = applyBuildChanges(build, changes, selected);
     await hydrate(payload, String(selected).startsWith("tmp-") ? selected : selection);
     const text = remoteChangeNotice(changes, {
       tabId,
-      selectionLost: selection !== selected && !appState.buildNodeById.has(selected),
+      selectionLost: selection !== selected && !buildState.buildNodeById.has(selected),
       name: payload.name,
     });
     if (text) notify(text);
@@ -161,7 +161,7 @@ export function createBuildLive(deps) {
 
   const onVisible = () => { if (!doc?.hidden) poke(); };
   const onMessage = (event) => {
-    if (event?.data?.repertoire_id === appState.build?.repertoire_id) poke();
+    if (event?.data?.repertoire_id === buildState.build?.repertoire_id) poke();
   };
 
   const instance = {

@@ -11,19 +11,19 @@ import { eagerCss as css } from "./test-styles-source.js";
 
 const build = readFileSync(new URL("./views/build.js", import.meta.url), "utf8");
 const session = readFileSync(new URL("./controllers/build-session.js", import.meta.url), "utf8");
-const state = readFileSync(new URL("./core/state.js", import.meta.url), "utf8");
+const state = readFileSync(new URL("./state/build.js", import.meta.url), "utf8");
 
 describe("a move added to a repertoire", () => {
   it("is marked as the one just made", () => {
-    expect(session).toMatch(/appState\.buildJustAddedId = node\.id;/);
-    expect(build).toMatch(/b\.id === appState\.buildJustAddedId/);
+    expect(session).toMatch(/buildState\.buildJustAddedId = node\.id;/);
+    expect(build).toMatch(/b\.id === buildState\.buildJustAddedId/);
     // A cue for one render, never persisted.
     expect(state).toMatch(/buildJustAddedId: null/);
   });
 
   it("arrives once and never replays", () => {
     // The flag is cleared as soon as the tree carrying it has been painted...
-    expect(build).toMatch(/container\.innerHTML = treeHtml;[\s\S]{0,400}appState\.buildJustAddedId = null;/);
+    expect(build).toMatch(/container\.innerHTML = treeHtml;[\s\S]{0,400}buildState\.buildJustAddedId = null;/);
     // ...and the class comes off when the entrance ends, so nothing is left
     // carrying an animation that already happened.
     expect(build).toMatch(/addEventListener\("animationend", \(\) => el\.classList\.remove\("is-added"\)/);

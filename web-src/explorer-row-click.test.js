@@ -42,7 +42,7 @@ function makeAdd({ appState, onBuildBoardMove, boards = {} }) {
   const factory = new Function(
     "onBuildBoardMove",
     "sameFenPosition",
-    "appState",
+    "buildState",
     "boards",
     `${extractByMarker(ADD_START)}\nreturn onExplorerRowAdd;`,
   );
@@ -58,7 +58,7 @@ function makeClick({ appState, existing = null }) {
   };
   const factory = new Function(
     "sameFenPosition",
-    "appState",
+    "buildState",
     "boards",
     "onExplorerRowAdd",
     "selectBuildNode",
@@ -214,7 +214,7 @@ describe("Explorer add / mutation integration", () => {
     const status = vi.fn();
     const normalizeUci = (u) => ({ e1h1: "e1g1", e1a1: "e1c1", e8h8: "e8g8", e8a8: "e8c8" })[u] || u;
     const deps = {
-      appState, boards: { build: board }, boardAfterMove: async (f, u) => localBoardAfterMove(f, u),
+      appState, buildState: appState, boards: { build: board }, boardAfterMove: async (f, u) => localBoardAfterMove(f, u),
       normalizeUci, localBoardInfo, setStatus: status,
       isBuildReadOnly: () => false, optimisticBoardMove: async () => false, selectBuildNode,
       setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
@@ -226,7 +226,7 @@ describe("Explorer add / mutation integration", () => {
       ${extractByMarker("async function onBuildBoardMove(moveUci) {")}
       return { add: () => onBuildBoardMove(${JSON.stringify(uci)}) };
     `);
-    return { ...make(...Object.values(deps)), appState, board, status, selectBuildNode };
+    return { ...make(...Object.values(deps)), appState, buildState: appState, board, status, selectBuildNode };
   }
 
   for (const [side, raw, canonical] of [

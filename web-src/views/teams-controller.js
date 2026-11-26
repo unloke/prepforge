@@ -1,5 +1,5 @@
 import { html } from "../html.js";
-import { appState } from "../core/state.js";
+import { appState, teamsState } from "../core/state.js";
 import { api, currentOwnerId, postJson, setStatus, setStatusError } from "../core/api.js";
 import { showConfirmModal, showInputModal } from "../core/modals.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./team-skeleton.js";
@@ -23,7 +23,7 @@ export function createTeamsController(deps) {
 
 const TEAM_ROLE_LABELS = { owner: "Owner", admin: "Admin", member: "Member" };
 const teamRoleLabel = (role) => TEAM_ROLE_LABELS[role] || role;
-const teamById = (teamId) => appState.teams.find((tm) => tm.id === teamId) || null;
+const teamById = (teamId) => teamsState.teams.find((tm) => tm.id === teamId) || null;
 
 let teamsModule = null;
 let teamsView = null;
@@ -39,7 +39,7 @@ async function ensureTeamsView() {
   const mod = await preloadTeamsView();
   if (!teamsView) {
     teamsView = mod.createTeamsView({
-      appState, api, hideTeamDetail, openTeamDetail, loadSharedRepertoires, editRepertoire,
+      appState, teamsState, api, hideTeamDetail, openTeamDetail, loadSharedRepertoires, editRepertoire,
       unshareRepertoireFromTeam, changeTeamShareRole, copySharedRepertoire, teamRoleLabel,
       postJson, setStatus, setStatusError, showConfirmModal, requireSignIn,
     });
@@ -82,10 +82,10 @@ async function openTeamDetail(teamId) {
   const seq = ++teamDetailSeq;
   const owner = currentOwnerId();
   const generation = appState.ownerGeneration;
-  const isCurrent = () => seq === teamDetailSeq && appState.selectedTeamId === teamId && owner === currentOwnerId() && generation === appState.ownerGeneration;
-  appState.selectedTeamId = teamId;
+  const isCurrent = () => seq === teamDetailSeq && teamsState.selectedTeamId === teamId && owner === currentOwnerId() && generation === appState.ownerGeneration;
+  teamsState.selectedTeamId = teamId;
   renderTeamsList(); // reflect the selected row
-  const known = appState.teams?.find((team) => team.id === teamId);
+  const known = teamsState.teams?.find((team) => team.id === teamId);
   const canManageKnown = known?.role === "owner" || known?.role === "admin";
   for (const id of ["team-add-member", "team-detail-invite", "team-share-rep", "team-detail-rename", "team-detail-delete"]) {
     const button = document.getElementById(id);
@@ -238,7 +238,7 @@ async function changeTeamShareRole(teamId, repertoireId, role) {
     } catch (error) {
       if (item.role === role) item.role = before;
       setStatusError(error.message);
-      if (appState.selectedTeamId === teamId) renderTeamSharedRepertoires(teamId, list);
+      if (teamsState.selectedTeamId === teamId) renderTeamSharedRepertoires(teamId, list);
     }
   });
   roleWrites.set(key, write);
@@ -305,8 +305,8 @@ async function createTeam() {
       try {
         const team = await postJson("/api/teams", { name });
         saveCreateTeamDraft("");
-        appState.teams = [team, ...(appState.teams || []).filter((t) => t.id !== team.id)];
-        appState.selectedTeamId = team.id;
+        teamsState.teams = [team, ...(teamsState.teams || []).filter((t) => t.id !== team.id)];
+        teamsState.selectedTeamId = team.id;
         teamsView?.selectTeamPane?.("members");
         setStatus(`Created team "${name}"`, { severity: "success" });
         await loadTeams();
@@ -336,7 +336,7 @@ async function renameTeam(teamId, currentName) {
       if (!name) { setStatus("Name is empty"); return; }
       try {
         const updated = await api(`/api/teams/${encodeURIComponent(teamId)}`, { method: "PATCH", body: JSON.stringify({ name }) });
-        const existing = appState.teams?.find((team) => team.id === teamId);
+        const existing = teamsState.teams?.find((team) => team.id === teamId);
         if (existing) existing.name = updated?.name || name;
         setStatus(`Renamed to "${name}"`);
         await loadTeams();
@@ -567,7 +567,7 @@ async function loadSharedRepertoires() {
   // land, instead of flashing a skeleton over them.
   if (!container.children.length) container.innerHTML = sharedRepRowsSkeleton(1);
   try {
-    const [payload] = await Promise.all([api("/api/repertoires"), loadTeamDirectory(appState, api)]);
+    const [payload] = await Promise.all([api("/api/repertoires"), loadTeamDirectory(appState, teamsState, api)]);
     if (!isCurrent()) return;
     const shared = payload.shared || [];
     if (!shared.length) {

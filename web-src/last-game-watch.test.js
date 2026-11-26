@@ -1,5 +1,6 @@
 import { expect, it, describe, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 // The latest-game path is one import (Analyze's "Last game" and the watcher's
 // "You just finished a game!" card) and one watch loop. These read the real
@@ -24,7 +25,7 @@ function importHarness({ pgn = '[White "me"]\n[Black "them"]\n\n1. e4 e5 *', whi
   const order = [], appState = { accountUserId: 'u1', ownerGeneration: 0, lichessUsername: 'me' };
   const api = vi.fn(async () => ({ ...game, pgn }));
   const deps = {
-    appState,
+    ...asSlices(appState),
     currentOwnerId: () => appState.accountUserId,
     holdNewGameNudge: vi.fn(() => vi.fn()),
     requireSignIn: () => true, lichessAccounts: () => [], startLichessOAuth: vi.fn(), syncFetchMyGameButton: vi.fn(),
@@ -209,7 +210,7 @@ function watchHarness({ latestSequence = [], accounts = [{ id: "a1", username: "
     owner: () => owner,
   };
   const deps = {
-    appState, notices,
+    appState, settingsState: appState, notices,
     window: win, document: doc,
     api: (...args) => slots.api(...args),
     postJson: vi.fn(async () => ({ ok: true })),
@@ -249,7 +250,7 @@ function watchHarness({ latestSequence = [], accounts = [{ id: "a1", username: "
   const api2 = new Function(...Object.keys(deps), `${snippets}
     return { startLichessGameWatch, resetLichessGameWatch, checkLatestLichessGame, markLichessSeen,
       dismissNewGameNudge, holdNewGameNudge, finishedRecently };`)(...Object.values(deps));
-  return { ...api2, appState, shown, deps, slots, listeners, seen, get probeCount() { return probe; } };
+  return { ...api2, appState, settingsState: appState, shown, deps, slots, listeners, seen, get probeCount() { return probe; } };
 }
 
 const gamePayload = (id, { white = "me", black = "them", minutesAgo = 1, isNew = true } = {}) => ({

@@ -22,13 +22,13 @@ describe("Analyze study saves", () => {
     const pgn = `{intro}\n[Event "Custom"]\n[Site "Paris"]\n[Round "3"]\n[SetUp "1"]\n[FEN "${fen}"]\n\n9. Nf3 Nc6 *`;
     const parsed = parsePgn(pgn);
     const appState = { analysisPgnStale: false };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ appState, analysisState: appState, START_FEN });
     const { moves, varNodes } = view.adaptParsedTree(parsed.root);
     appState.analysis = { game_id: gameId, moves, pgn };
     appState.analysisVarNodes = varNodes;
     const input = { value: pgn };
     const sync = compile("syncPgnFromTree", {
-      appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
+      appState, analysisState: appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
       ensureAnalyzeView: async () => view,
     });
     await sync();
@@ -73,14 +73,14 @@ describe("Analyze study saves", () => {
 
   it("serializes new tree branches and queues the accepted PGN, not a textarea draft", async () => {
     const appState = { analysisVarNodes: new Map(), analysisPgnStale: true };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ appState, analysisState: appState, START_FEN });
     const { moves, varNodes } = view.adaptParsedTree(parsePgn(PGN).root);
     appState.analysis = { game_id: "g1", moves, pgn: PGN };
     appState.analysisVarNodes = varNodes;
     const input = { value: "1. Qh9" };
     const queue = vi.fn();
     const sync = compile("syncPgnFromTree", {
-      appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
+      appState, analysisState: appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
       ensureAnalyzeView: async () => view, analysisStudy: { queue }, currentOwnerId: () => "owner",
     });
     await sync();
@@ -107,7 +107,7 @@ describe("Analyze study saves", () => {
       .replace("e5 2.", "e5 ;Black's reply\n2.")
       .replace("Nf3", "Nf3!?").replace("(2... d6)", "({Alternative} 2... d6 $5 {Philidor})");
     const appState = { analysisPgnStale: true };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ appState, analysisState: appState, START_FEN });
     const extended = annotated.replace("Nc6 (", "Nc6 (2... Nf6) (");
     const { moves, varNodes } = view.adaptParsedTree(parsePgn(extended).root);
     appState.analysis = { game_id: "g1", moves, pgn: annotated };
@@ -115,7 +115,7 @@ describe("Analyze study saves", () => {
     const input = { value: annotated };
     const queue = vi.fn();
     const sync = compile("syncPgnFromTree", {
-      appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
+      appState, analysisState: appState, document: { getElementById: () => input }, analysisRecallSeq: 1,
       ensureAnalyzeView: async () => view, analysisStudy: { queue }, currentOwnerId: () => "owner",
     });
     await sync();
@@ -150,13 +150,13 @@ describe("Analyze study saves", () => {
 describe("Recent analyses study restore", () => {
   function harness(flush = vi.fn(async () => {})) {
     const appState = { analysisVarNodes: new Map() };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ appState, analysisState: appState, START_FEN });
     const { moves } = view.adaptParsedTree(parsePgn("1. e4 e5 2. Nf3 Nc6").root);
     const payload = { game_id: "g1", moves, pgn: PGN };
     const input = { value: '[Event "Other game"]' };
     const picker = { hidden: false };
     const deps = {
-      appState, analysisRecallSeq: 1, analysisStudy: { flush }, parsePgn, currentOwnerId: () => "owner",
+      appState, analysisState: appState, analysisRecallSeq: 1, analysisStudy: { flush }, parsePgn, currentOwnerId: () => "owner",
       api: vi.fn(async () => payload), ensureAnalyzeView: async () => ({ ...view, renderAnalysis: vi.fn() }),
       document: { getElementById: (id) => id === "pgn-input" ? input : id === "analysis-import-picker" ? picker : null, querySelector: () => null },
       invalidateAnalysisSource: () => { appState.analysisMultiPgn = null; return 1; },
@@ -164,7 +164,7 @@ describe("Recent analyses study restore", () => {
       orientAnalysisForSelf: vi.fn(), showAnalysisPly: vi.fn(), syncViewHeads: vi.fn(),
       revealAnalysisResults: vi.fn(), syncPgnFromTree: vi.fn(), setStatusError: vi.fn(),
     };
-    return { recall: compile("recallAnalysis", deps), deps, input, appState, payload, view, picker };
+    return { recall: compile("recallAnalysis", deps), deps, input, appState, analysisState: appState, payload, view, picker };
   }
 
   it("hides the previous batch picker when Recent analyses opens Morphy", async () => {

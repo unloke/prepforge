@@ -32,12 +32,12 @@ function fixtureTree() {
   const parsed = parsePgn(PGN);
   expect(parsed.ok).toBe(true);
   const appState = { analysisVarNodes: new Map(), analysis: null };
-  const view = createAnalyzeView({ appState, START_FEN });
+  const view = createAnalyzeView({ appState, analysisState: appState, START_FEN });
   const { moves, varNodes } = view.adaptParsedTree(parsed.root);
   appState.analysisVarNodes = varNodes;
   appState.analysis = { moves };
   const tree = view.buildAnalysisTree(moves);
-  return { moves, varNodes, tree, appState };
+  return { moves, varNodes, tree, appState, analysisState: appState };
 }
 
 // Drives the real selection module with recording seams, so a test asserts on the
@@ -62,7 +62,7 @@ function harness({ boardInfo = async () => ({ legal_moves: [] }) } = {}) {
     setBetterArrow: vi.fn(),
   };
   const deps = {
-    appState, START_FEN,
+    appState, analysisState: appState, START_FEN,
     boardInfo: vi.fn(boardInfo),
     boards: { analysis: board },
     boardAfterMove: vi.fn(async (fen, uci) => ({
@@ -84,7 +84,7 @@ function harness({ boardInfo = async () => ({ legal_moves: [] }) } = {}) {
     ensureAnalyzeView: vi.fn(async () => ({ buildAnalysisTree: () => appState.analysisTree })),
   };
   const api = createAnalysisSelection(deps);
-  return { ...api, appState, board, deps, fixture };
+  return { ...api, appState, analysisState: appState, board, deps, fixture };
 }
 
 const NODE_FEN = {
@@ -276,7 +276,7 @@ describe("Analyze's session identity survives reload and Back/Forward", () => {
     const saveReturnState = vi.fn();
     const syncPgnFromTree = vi.fn(async () => {});
     const selectedNodePath = vi.fn(() => "e2e4-d7d6");
-    const persist = new Function("appState", "document", "clearReturnState", "saveReturnState",
+    const persist = new Function("analysisState", "document", "clearReturnState", "saveReturnState",
       "syncPgnFromTree", "selectedNodePath", "ANALYSIS_ROOT_PATH",
       `${sessionSource.slice(start, end)} return persistAnalysisSession;`)(
       { analysis: { moves: [{ ply: 1 }] }, analysisPly: -1 },

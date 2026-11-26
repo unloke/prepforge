@@ -18,7 +18,7 @@ function harness() {
   const appState = { buildLoading: false, buildNodeById: new Map(), buildCurrentNodeId: null, currentView: "build", build: null };
   const painted = [];
   const deps = {
-    appState,
+    appState, buildState: appState,
     html,
     paintBuildSkeleton,
     boards: { build: { setPosition: vi.fn(), setBranchArrows: vi.fn(), setAnnotations: vi.fn() } },
@@ -31,7 +31,7 @@ function harness() {
     syncViewHeads: vi.fn(),
   };
   const setBuildLoading = compile("function setBuildLoading(", deps);
-  return { setBuildLoading, appState, painted, deps };
+  return { setBuildLoading, appState, buildState: appState, painted, deps };
 }
 
 describe("build loading repaints the panel", () => {

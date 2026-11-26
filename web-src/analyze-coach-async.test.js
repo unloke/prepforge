@@ -84,8 +84,8 @@ describe("PositionCoach async continuation ownership", () => {
     const appState = { explainContext: { prevFen: fen, lastUci: "e2e4" } };
     const start = source.indexOf("function paintMaiaCoachFromRead(");
     const end = source.indexOf("function refreshAnalysisExplain(", start);
-    const run = new Function("loadPhaseCoach", "effectiveMaiaRating", "paintMaiaCoachLine", "appState",
-      `${source.slice(start, end)}; return paintMaiaCoachFromRead;`)(() => gate.promise, () => 1500, paint, appState);
+    const run = new Function("loadPhaseCoach", "effectiveMaiaRating", "paintMaiaCoachLine", "appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState",
+      `${source.slice(start, end)}; return paintMaiaCoachFromRead;`)(() => gate.promise, () => 1500, paint, appState, appState, appState, appState, appState, appState, appState);
     const read = { predictions: [{ move_uci: "e2e4", probability: 0.6 }] };
     run(fen, read, { playedUci: "e2e4" });
     // A sibling variation has the same before-FEN but a different played move.
@@ -282,8 +282,8 @@ describe("PositionCoach async continuation ownership", () => {
   let view = "analyze";
   const start = source.indexOf("function paintPhaseFromFen(");
   const end = source.indexOf("\nfunction paintMaiaCoachFromRead", start);
-  const run = new Function("loadPhaseCoach", "paintPhaseChip", "appState", "activeViewName",
-    `${source.slice(start, end)}; return paintPhaseFromFen;`)(() => gate.promise, paint, appState, () => view);
+  const run = new Function("loadPhaseCoach", "paintPhaseChip", "appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "activeViewName",
+    `${source.slice(start, end)}; return paintPhaseFromFen;`)(() => gate.promise, paint, appState, appState, appState, appState, appState, appState, appState, () => view);
   run("before");
   appState.explainContext = { fen: "root" };
   gate.resolve({ buildPhaseCoach: () => ({ phase: "middlegame", title: "Middlegame" }) });
@@ -338,8 +338,8 @@ describe("PositionCoach async continuation ownership", () => {
   const positionCoach = { update: vi.fn(() => true) };
   const start = source.indexOf("function refreshAnalysisExplain(");
   const end = source.indexOf("\n// Instant, engine-free", start);
-  const run = new Function("appState", "positionCoach", "renderInstantCoach", "paintPhaseFromFen", "paintMaiaCoachLine", "updateBookline",
-    `${source.slice(start, end)}; return refreshAnalysisExplain;`)(appState, positionCoach, instant, phase, maia, async () => {});
+  const run = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "positionCoach", "renderInstantCoach", "paintPhaseFromFen", "paintMaiaCoachLine", "updateBookline",
+    `${source.slice(start, end)}; return refreshAnalysisExplain;`)(appState, appState, appState, appState, appState, appState, appState, positionCoach, instant, phase, maia, async () => {});
   run({ fen: "after", prevFen: "before" });
   expect(instant).not.toHaveBeenCalled();
   expect(phase).toHaveBeenCalledWith("before");
@@ -355,7 +355,7 @@ it("does not invite a move while a loaded game's review is still running", () =>
   const document = { getElementById: (id) => (id === "coach-prose" ? prose : null), createElement: () => ({ addEventListener() {} }) };
   const start = source.indexOf("function renderInstantCoach(");
   const end = source.indexOf("\nasync function runAnalysis(", start);
-  const run = new Function("appState", "document", "hasClassifiedMoves", "buildGameSummary", "analysisSelfSide",
+  const run = new Function("analysisState", "document", "hasClassifiedMoves", "buildGameSummary", "analysisSelfSide",
     "START_FEN", "paintPhaseChip", "paintMaiaCoachLine", "setCoachProse", "describeMove", "showAnalysisPly", "savedCoachQuality", "COACH_QUALITY_GROUP",
     "COACH_TONES",
     `${source.slice(start, end)}; return renderInstantCoach;`)({ analysis: { moves: [{ ply: 1, san: "e4" }] }, explainContext: {} },
@@ -367,10 +367,10 @@ it("does not invite a move while a loaded game's review is still running", () =>
 
   // Nothing loaded: the invitation is the right empty state.
   const empty = { analysis: null, explainContext: {} };
-  const runEmpty = new Function("appState", "document", "hasClassifiedMoves", "buildGameSummary", "analysisSelfSide",
+  const runEmpty = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "document", "hasClassifiedMoves", "buildGameSummary", "analysisSelfSide",
     "START_FEN", "paintPhaseChip", "paintMaiaCoachLine", "setCoachProse", "describeMove", "showAnalysisPly", "savedCoachQuality", "COACH_QUALITY_GROUP",
     "COACH_TONES",
-    `${source.slice(start, end)}; return renderInstantCoach;`)(empty,
+    `${source.slice(start, end)}; return renderInstantCoach;`)(empty, empty, empty, empty, empty, empty, empty,
       document, () => false, () => null, () => "white", "startfen", () => {}, () => {},
       (text) => { prose.textContent = text; }, () => "", () => {}, () => null, {}, []);
   runEmpty();

@@ -18,11 +18,11 @@ describe("Line rehearsal hint", () => {
     const banners = [];
     const appState = { smart: null, training: { prompt: { fen_before: "F", session_id: "s" } }, trainHintInfo: null, trainHintLevel: 0 };
     const showHint = compile({
-      appState, boards: { train: { setEngineArrow: vi.fn(), selectSquare: vi.fn() } },
+      appState, trainState: appState, boards: { train: { setEngineArrow: vi.fn(), selectSquare: vi.fn() } },
       setTrainBanner: (_state, title) => banners.push(title),
     }, "function showHint(");
     const trainHint = compile({
-      appState, postJson, smartHint: () => {}, setStatus: () => {}, setStatusError: () => {},
+      appState, trainState: appState, postJson, smartHint: () => {}, setStatus: () => {}, setStatusError: () => {},
       currentTrainingPrompt: () => appState.training.prompt, showHint,
     });
     const clicks = [trainHint(), trainHint(), trainHint()];

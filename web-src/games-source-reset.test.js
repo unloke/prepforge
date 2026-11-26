@@ -25,7 +25,7 @@ it("clearing the Games results drops the ledger, the filter and the selection", 
   // The extracted source declares clearGamesResults/gamesIdleHint itself and
   // calls paintGamesSource, so only the names it reads are bound here.
   const deps = {
-    appState,
+    appState, replayState: appState,
     html,
     document: { getElementById: (id) => ({
       "replay-summary": summary, "replay-results": results, "games-idle-hint": hint,
@@ -60,7 +60,7 @@ it("a failed Check drops its skeleton without invalidating the in-flight token",
   const appState = { replayResults: null, replayFilter: null, replayOpen: new Set(),
     replayCheckToken: 7, authKnown: true, signedIn: true };
   const deps = {
-    appState, html,
+    appState, replayState: appState, html,
     document: { getElementById: (id) => ({ "replay-summary": summary, "replay-results": skeleton })[id] || null },
     saveReturnState: () => {}, paintGamesSource: () => {},
   };

@@ -3,6 +3,7 @@ import { analysisHistoryResult } from "./analyze-orient.js";
 import { describe, expect, it, vi } from "vitest";
 import { normalizeSelection, selectionChips } from "./views/shared/source-composer.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function compile(marker, deps, prelude = "") {
@@ -22,7 +23,7 @@ describe("Recent analyses refresh ordering", () => {
     const old = deferred();
     const fresh = deferred();
     const host = { setAttribute() {}, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [], querySelector: () => null };
-    const deps = { appState: { pendingAnalysisDeletes: new Set() }, currentOwnerId: () => "owner", document: { getElementById: () => host }, localDayOf: (iso) => String(iso || "").slice(0, 10),
+    const deps = { ...asSlices({ pendingAnalysisDeletes: new Set() }), currentOwnerId: () => "owner", document: { getElementById: () => host }, localDayOf: (iso) => String(iso || "").slice(0, 10),
       api: vi.fn().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise) };
     const load = compile("async function loadAnalysisHistory(", deps, "let analysisHistorySeq = 0, historyFreshFor = null, historySaves = 0;");
     const first = load();
@@ -41,7 +42,7 @@ describe("Recall from Recent analyses", () => {
     const appState = { analysis: null };
     const pgn = { setAttribute() {}, value: "x" };
     const deps = {
-      appState, api, document: { getElementById: () => pgn },
+      appState, analysisState: appState, teamsState: appState, api, document: { getElementById: () => pgn },
       analysisStudy: { flush: async () => {} },
       currentOwnerId: () => "owner",
       hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(),
@@ -54,7 +55,7 @@ describe("Recall from Recent analyses", () => {
     const helper = source.slice(start, source.indexOf("\n}\n", start) + 2);
     const recall = compile("async function recallAnalysis(", deps,
       `let analysisRecallSeq = 0, analyzePgnInputTimer = null, lastOrientedPgnPlayers = "";\n${helper}`);
-    return { appState, deps, pgn, recall };
+    return { appState, analysisState: appState, teamsState: appState, deps, pgn, recall };
   }
 
   it("keeps the history row's player names, so the head is not 'Analysis board'", async () => {
@@ -94,7 +95,7 @@ describe("Library initial chunk failure", () => {
     const card = { classList: { toggle: (name, on) => on ? classes.add(name) : classes.delete(name) } };
     const view = { renderSignedOut: vi.fn(), loadDashboard: vi.fn() };
     const ensureDashboardView = vi.fn().mockRejectedValueOnce(new Error("chunk missing")).mockResolvedValue(view);
-    const deps = { appState: { signedIn: false }, ensureDashboardView, setStatusError: vi.fn(),
+    const deps = { ...asSlices({ signedIn: false }), ensureDashboardView, setStatusError: vi.fn(),
       document: { getElementById: () => host, querySelector: () => card } };
     const load = compile("async function loadDashboard(", deps);
     await load();
@@ -116,7 +117,7 @@ describe("Games link chip respects explicit Self selection", () => {
   ])("%s with %j and no linked accounts", (linkedMode, accountIds, expected) => {
     const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     const paint = compile("function paintGamesSource(", {
-      appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, normalizeSelection, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode, accountIds, external: [] }),
+      ...asSlices({ signedIn: true, authKnown: true }), document: { getElementById: () => tray }, selectionChips, normalizeSelection, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode, accountIds, external: [] }),
       gamesIdleHint: () => "",
     });
     paint();
@@ -129,7 +130,7 @@ describe("Games link chip respects explicit Self selection", () => {
   it("external usernames stay usable without linking", () => {
     const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     compile("function paintGamesSource(", {
-      appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, normalizeSelection, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode: "all", external: ["Foe"] }),
+      ...asSlices({ signedIn: true, authKnown: true }), document: { getElementById: () => tray }, selectionChips, normalizeSelection, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode: "all", external: ["Foe"] }),
       gamesIdleHint: () => "",
     })();
     expect(String(tray.innerHTML)).toContain("Foe");
@@ -141,7 +142,7 @@ describe("Navigation during boot", () => {
   it("restoreWorkspaceLocation keeps a page picked mid-boot instead of the load URL", async () => {
     const appState = { currentView: "replay", signedIn: true };
     const deps = {
-      appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
+      appState, analysisState: appState, teamsState: appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
       parseWorkspaceLocation: vi.fn(() => ({ view: "dashboard" })), loadReturnState: vi.fn(),
       window: { location: { href: "http://x/#/dashboard" } },
     };
@@ -156,7 +157,7 @@ describe("Navigation during boot", () => {
   it("without a boot-time click the URL route is restored as before", async () => {
     const appState = { currentView: "dashboard", signedIn: false };
     const deps = {
-      appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
+      appState, analysisState: appState, teamsState: appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(),
       parseWorkspaceLocation: vi.fn(() => ({ view: "teams" })), loadReturnState: vi.fn(),
       window: { location: { href: "http://x/#/teams" } },
     };

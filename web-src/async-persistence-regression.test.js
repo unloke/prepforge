@@ -51,7 +51,7 @@ it("opening a repertoire retains and reapplies its durable pending deletes", asy
     expect(appState.buildPendingDeletes).toEqual([deletion]);
   });
   const run = compile("async function hydrateBuild(", {
-    appState, coverageView: { sync: vi.fn() }, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
+    appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, coverageView: { sync: vi.fn() }, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
     selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes, indexBuildNodes,
     resolveBuildId: id => id,
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
@@ -90,7 +90,7 @@ it("team detail B stays visible after slow A responds", async () => {
     return elements.get(id);
   } };
   const appState = { accountUserId: "owner" };
-  const deps = { appState, document, currentOwnerId: () => "owner", renderTeamsList: vi.fn(),
+  const deps = { appState, teamsState: appState, document, currentOwnerId: () => "owner", renderTeamsList: vi.fn(),
     api: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     teamRoleLabel: (r) => r, teamsView: null,
     renderTeamSharedRepertoires: vi.fn(), memberRowsSkeleton, sharedRepRowsSkeleton,
@@ -108,7 +108,7 @@ it("settings saves serialize patches and only publish the latest state", async (
   const appState = {};
   const applySettingsPayload = vi.fn((p) => { appState.settings = p; });
   const api = vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
-  const deps = { appState, currentOwnerId: () => "owner", api,
+  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", api,
     applySettingsPayload, setStatusError: vi.fn(), explorerDrawerOpen: () => false };
   const actions = createSettingsActions(deps);
   const save = compile("async function saveSettings(", { ...deps, loadSettingsActions: async () => actions });
@@ -125,7 +125,7 @@ it("settings saves serialize patches and only publish the latest state", async (
 it("a legacy Train start cannot overwrite a newer session", async () => {
   const first = deferred(), second = deferred();
   const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r" };
-  const deps = { appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
+  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
     setTrainBanner: vi.fn(), trainStatsReset: vi.fn(), isNothingToTrainError: () => false,
     clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setSmartPanelsHidden: vi.fn(),
     setStatus: vi.fn(), hardFlushBuild: async () => {}, setStatusError: vi.fn(),
@@ -144,7 +144,7 @@ it("a legacy Train start cannot overwrite a newer session", async () => {
 
 function rehearsalHarness(flush) {
   const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r", trainStarting: true };
-  const deps = { appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
+  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
     setTrainBanner: vi.fn(), trainStatsReset: vi.fn(), isNothingToTrainError: () => false,
     clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setSmartPanelsHidden: vi.fn(),
     setStatus: vi.fn(), hardFlushBuild: vi.fn(() => flush.promise), setStatusError: vi.fn(),
@@ -152,7 +152,7 @@ function rehearsalHarness(flush) {
     boards: {}, document: { getElementById: () => ({}) }, renderTrainStats: vi.fn(),
     renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn(), reveal: (el) => { el.hidden = false; } };
   const run = compile("async function startTraining(", deps, "let smartStartSeq = 0; " + cancelStaleTrainStartSource());
-  return { appState, deps, run };
+  return { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, deps, run };
 }
 
 it("an invalidated rehearsal start cleans up when its Build flush resolves", async () => {
@@ -191,12 +191,12 @@ it("an invalidated rehearsal start cleans up when its Build flush rejects", asyn
 
 function practiceHarness(loads, flush = async () => {}) {
   const appState = { trainMode: "play", playStartToken: 0 };
-  const deps = { appState, START_FEN: "start", playBook: () => "repertoire", selectedTrainRepertoireIds: () => ["r"], trainRowError: vi.fn(), hardFlushBuild: vi.fn(flush),
+  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, START_FEN: "start", playBook: () => "repertoire", selectedTrainRepertoireIds: () => ["r"], trainRowError: vi.fn(), hardFlushBuild: vi.fn(flush),
     playRepertoireMeta: () => [{ id: "r", color: "white" }], loadPlayRepertoirePayload: loads, normalizePlayRepertoire: (payload) => ({ id: payload.repertoire_id, rootId: "root" }),
     playCursorsAtFen: () => ({ r: ["root"] }), resolvePlayColor: () => "white", playPickerColor: () => "white", boardInfo: vi.fn(async () => ({ fen: "start", legal_moves: [] })), effectiveMaiaRating: () => 1500,
     boards: { train: { setOrientation: vi.fn() } }, paintPlayPosition: vi.fn(), sideToMoveFromFen: () => "white", localPremoveMoves: () => [], playBookLabel: () => "Repertoire",
     renderPlayTrail: vi.fn(), syncTrainSessionControls: vi.fn(), getSharedMaia3Provider: () => ({ warmup: async () => {} }), playOpponentReply: vi.fn(async () => {}) };
-  return { appState, deps, run: compile("async function startPlaySession(", deps) };
+  return { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, deps, run: compile("async function startPlaySession(", deps) };
 }
 
 it("a canceled Practice start cannot adopt its tree over a replacement start", async () => {
@@ -262,7 +262,7 @@ function buildFlushHarness() {
   const op = { tempId: "tmp-a", parentRef: "root", uci: "e2e4", repertoire_id: "r" };
   const appState = { build: { repertoire_id: "r", revision: 1 }, buildPending: [op], buildPendingDeletes: [],
     buildSyncRetry: 0, buildIdMap: {}, buildNodeById: new Map([["tmp-a", {}]]), buildCurrentNodeId: "tmp-a" };
-  const deps = { appState, currentOwnerId: () => "owner", captureBuildContext: () => () => true,
+  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", captureBuildContext: () => () => true,
     resolveBuildId: (id) => id, acquireFlushLock: () => true, OUTBOX_TAB_ID: "tab", clearTimeout: vi.fn(), setBuildSync: vi.fn(),
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id, setStatus: vi.fn(),
     postJson: vi.fn(async () => ({ repertoire_id: "r", revision: 2, id_map: { "tmp-a": "real" }, nodes: [{ id: "real" }] })),
@@ -274,7 +274,7 @@ function buildFlushHarness() {
     reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
     selectBuildNode: vi.fn(),
   };
-  return { op, appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
+  return { op, appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
 }
 
 it("deleting a saved analysis hides the row and only calls the server after the undo window", async () => {
@@ -284,7 +284,7 @@ it("deleting a saved analysis hides the row and only calls the server after the 
   const row = { remove: vi.fn(), closest: () => row };
   const button = { dataset: { historyDelete: "g1", historyLabel: "me_user vs opp_one" }, closest: () => row };
   const deps = {
-    appState, html,
+    appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, html,
     showUndoToast: vi.fn(),
     setStatus: (message, options) => statuses.push([message, options]),
     loadAnalysisHistory: vi.fn(),
@@ -325,7 +325,7 @@ it("a failed analysis delete restores the row and says why", async () => {
   const row = { remove: vi.fn(), closest: () => row };
   const button = { dataset: { historyDelete: "g9", historyLabel: "a vs b" }, closest: () => row };
   const deps = {
-    appState, html,
+    appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, html,
     showUndoToast: vi.fn(),
     setStatus: (message, options) => statuses.push([message, options]),
     loadAnalysisHistory: vi.fn(),
@@ -401,12 +401,12 @@ function trainFlushHarness() {
   const response = deferred();
   const sync = { pending: [{ session_id: "s", session_generation: "old", node_id: "n", correct: true, attempt_uuid: "u" }], dirty: true, retry: 0 };
   const appState = { trainSync: sync, smart: { sessionId: "s", generation: "old", stateVersion: 3, cardIndex: 1, queue: [{ encoded: "old-card" }] } };
-  const deps = { appState, currentOwnerId: () => owner, flushGroups, groupAttempts, ungroupAttempts,
+  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => owner, flushGroups, groupAttempts, ungroupAttempts,
     setTrainSyncState: vi.fn(), clearTimeout: vi.fn(), postJson: vi.fn(() => response.promise),
     localDateString: () => "2026-10-02", persistOutbox: vi.fn(), trainAttemptId: (a) => a.attempt_uuid,
     classifySyncError, setStatus: vi.fn(), setTimeout: vi.fn(), TRAIN_SYNC_MAX_BACKOFF_MS: 30000,
     clearOutboxWhenQuiescent: vi.fn(), scheduleTrainSync: vi.fn() };
-  return { run: queueFlush("function flushTrainSync(", deps), appState, deps, response, setOwner: (next) => { owner = next; } };
+  return { run: queueFlush("function flushTrainSync(", deps), appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, deps, response, setOwner: (next) => { owner = next; } };
 }
 
 it("a late Smart sync failure keeps the old generation and cannot dirty its rebuilt session", async () => {
@@ -520,7 +520,7 @@ it("an older Settings GET cannot repaint state after a newer save", async () => 
   const get = deferred(), post = deferred();
   const appState = { signedIn: true };
   const view = { renderSettings: vi.fn() };
-  const deps = { appState, currentOwnerId: () => "owner", ensureSettingsView: async () => view,
+  const deps = { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, currentOwnerId: () => "owner", ensureSettingsView: async () => view,
     api: vi.fn().mockReturnValueOnce(get.promise).mockReturnValueOnce(post.promise),
     applySettingsPayload: (p) => { appState.settings = p; },
     applyServerEngineGating: vi.fn(), setStatusError: vi.fn(), explorerDrawerOpen: () => false };
@@ -548,7 +548,7 @@ it("a Scout line queued into the open repertoire is flushed by that repertoire",
   // 2026-10-08 audit: Scout pushed untagged ops, so every flush deferred them as
   // "edits for another repertoire" and Add to prep never saved.
   const appState = { build: { repertoire_id: "rep", revision: 3, nodes: [] }, buildNodeById: new Map(), buildPending: [] };
-  const queueBuildAdd = compile("function queueBuildAdd(", { appState, resolveBuildId: id => id });
+  const queueBuildAdd = compile("function queueBuildAdd(", { appState, analysisState: appState, buildState: appState, settingsState: appState, trainState: appState, resolveBuildId: id => id });
   const matches = compile("function buildOpMatchesRepertoire(", {});
   queueBuildAdd({ id: "tmp-1", parent_id: "root", uci: "e2e4" });
   expect(appState.buildPending[0]).toMatchObject({ tempId: "tmp-1", parentRef: "root", uci: "e2e4" });

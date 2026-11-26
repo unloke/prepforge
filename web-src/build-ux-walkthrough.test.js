@@ -41,11 +41,11 @@ describe("Coverage gap board preview", () => {
     const appState = { build: {}, buildCurrentNodeId: "e4", buildNodeById: new Map([["e4", node]]) };
     const board = { setPosition() {}, setAnnotations() {}, setBranchArrows: vi.fn() };
     const { selectBuildNode } = compile(["async function selectBuildNode("], {
-      appState, boards: { build: board }, boardInfo: async () => ({ legal_moves: [] }),
+      appState, buildState: appState, boards: { build: board }, boardInfo: async () => ({ legal_moves: [] }),
       document: { getElementById: () => ({}) }, engineWidget: null, scheduleExplorerRefresh() {},
       buildView: { updateBuildTreeSelection: () => board.setBranchArrows(["e7e5", "c7c5"], "e7e5") },
     });
-    return { selectBuildNode, board, appState, node };
+    return { selectBuildNode, board, appState, buildState: appState, node };
   }
 
   it("shows only the gap's temporary arrow, then restores saved branches on navigation", async () => {
@@ -230,7 +230,7 @@ describe("Repertoire ⋯ menu", () => {
     const appState = { build: role ? { repertoire_id: "r", name: "Open games" } : null,
       signedIn: true, repertoireList: [{ id: "r", is_active: false }], buildNodeById: new Map() };
     const { openBuildMenu } = compile(["function openBuildMenu(event) {"], {
-      appState, document: { getElementById: () => ({}) }, isBuildReadOnly: () => readOnly,
+      appState, buildState: appState, document: { getElementById: () => ({}) }, isBuildReadOnly: () => readOnly,
       buildRole: () => role, buildView: { activityLabel: () => "Activity", discussionLabel: () => "Discuss position" },
       openOverflowMenu: (_menu, options) => { shown = options.items; },
     });

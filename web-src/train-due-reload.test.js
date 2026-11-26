@@ -2,12 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { formatWorkspaceHash, parseWorkspaceLocation, trainQueueRepertoireId, workspaceLocationFromState } from "./workspace-url.js";
 import { retryTrainEntry, trainRouteMatches } from "./train-route-failure.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function runtime(hash, { signedIn = true, smart = null } = {}) {
   const deps = {
     window: { location: { href: `http://local/${hash}` } },
-    appState: { signedIn, currentView: "train", smart },
+    ...asSlices({ signedIn, currentView: "train", smart }), 
     parseWorkspaceLocation, trainQueueRepertoireId, loadReturnState: () => null,
     switchView: vi.fn(), openTrain: vi.fn(async () => {}),
     loadTrainSession: vi.fn(async () => ({ syncTrainControls: vi.fn() })), loadTrainRepertoireOptions: vi.fn(async () => {}), retryTrainEntry, trainRouteMatches: null, invalidateTrainEntries: vi.fn(),

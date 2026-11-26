@@ -31,11 +31,11 @@ function harness(side, sans, reps, deps = {}) {
   const buildBookline = vi.fn(() => "Departure");
   const appState = { signedIn: true, analysisCurrentNodeId: node.id, analysisTree: { byId } };
   const actions = createBookActions({
-    bookState: { loaded: true, reps }, appState, analysisSelfSide: () => side,
+    bookState: { loaded: true, reps }, appState, analysisState: appState, analysisSelfSide: () => side,
     loadCoach: async () => ({ buildBookline }),
     ...deps,
   });
-  return { ...actions, appState, buildBookline, el };
+  return { ...actions, appState, analysisState: appState, buildBookline, el };
 }
 
 describe("Analyze repertoire ownership", () => {

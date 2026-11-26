@@ -39,7 +39,7 @@ function harness(overrides = {}) {
   const present = vi.fn(async () => {});
   const deps = {
     countOf: (n, one) => `${n} ${n === 1 ? one : `${one}s`}`,
-    appState, mapTrainUiSession, saveSessionMemo, loadSessionMemo, clearSessionMemo, trainSessionMemo,
+    appState, buildState: appState, trainState: appState, mapTrainUiSession, saveSessionMemo, loadSessionMemo, clearSessionMemo, trainSessionMemo,
     loadTrainResume: async () => ({ mapTrainUiSession }),
     currentOwnerId: () => appState.accountUserId,
     trainStatsReset: () => { appState.trainStats = mapTrainUiSession(payload).stats; },
@@ -62,7 +62,7 @@ function harness(overrides = {}) {
   deps.syncTrainSessionControls = vi.fn();
   deps.celebrate = compile("function celebrate(", deps);
   deps.rememberSmartSession = compile("function rememberSmartSession(", deps);
-  return { appState, deps, start: compile("async function startSmartTraining(", deps), present, payload };
+  return { appState, buildState: appState, trainState: appState, deps, start: compile("async function startSmartTraining(", deps), present, payload };
 }
 afterEach(() => { delete globalThis.localStorage; });
 

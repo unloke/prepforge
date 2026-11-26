@@ -11,7 +11,7 @@ function harness() {
   const button = { disabled: false, textContent: "Check games", setAttribute() {}, removeAttribute() {} };
   const resultsHost = { innerHTML: "" };
   const deps = {
-    appState, countOf, MAX_FETCH, requireSignIn: () => true,
+    appState, replayState: appState, trainState: appState, countOf, MAX_FETCH, requireSignIn: () => true,
     gamesSourceSelection: () => selection, lichessAccounts: () => [],
     resolveFetchUsernames: ({ selection }) => selection.external,
     gamesSourceAccountIds: () => [], normalizeSelection: (s) => s,
@@ -25,7 +25,7 @@ function harness() {
   const start = source.indexOf("async function runLichessCompare(");
   const end = source.indexOf("\n}\n", start) + 2;
   const run = new Function(...Object.keys(deps), `return (${source.slice(start, end)});`)(...Object.values(deps));
-  return { appState, requests, button, deps, resultsHost, run, change: () => { selection = { ...selection, external: ["second"] }; } };
+  return { appState, replayState: appState, trainState: appState, requests, button, deps, resultsHost, run, change: () => { selection = { ...selection, external: ["second"] }; } };
 }
 
 it("shows the ledger skeleton while the check is in flight", async () => {

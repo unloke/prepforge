@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 import { MAX_FETCH } from "../generated/shared-constants.js";
 import { countOf } from "../plural.js";
-import { appState } from "../core/state.js";
+import { appState, buildState, replayState } from "../core/state.js";
 import { api, currentOwnerId, postJson, setStatus, setStatusError } from "../core/api.js";
 import { analysisRecallSeq, invalidateAnalysisSource, recallAnalysis } from "../controllers/analyze-entry.js";
 import { localBoardInfo } from "../chess-local.js";
@@ -26,10 +26,10 @@ async function runLichessCompare() {
   // Games are checked against your repertoires (owner-scoped /api/lichess/compare).
   if (!requireSignIn("Sign in to check your games against your repertoire", "games-check")) return;
   const selection = gamesSourceSelection();
-  const token = appState.replayCheckToken = (appState.replayCheckToken || 0) + 1;
+  const token = replayState.replayCheckToken = (replayState.replayCheckToken || 0) + 1;
   const owner = appState.accountUserId;
   const sourceKey = JSON.stringify(selection);
-  const isCurrent = () => appState.replayCheckToken === token && appState.signedIn
+  const isCurrent = () => replayState.replayCheckToken === token && appState.signedIn
     && appState.accountUserId === owner && JSON.stringify(gamesSourceSelection()) === sourceKey;
   const usernames = resolveFetchUsernames({
     selection,
@@ -64,11 +64,11 @@ async function runLichessCompare() {
     });
     if (!isCurrent()) return;
     payload.requested_sources = usernames.length;
-    appState.replayResults = payload;
+    replayState.replayResults = payload;
     // The filter is a view preference, not a position in the old list: a new
     // check keeps it (and the return state restored after a reload). The
     // selected game is gone with the old list, so its index is dropped.
-    appState.replayOpen = new Set();
+    replayState.replayOpen = new Set();
     await renderReplayResults(payload, isCurrent);
     if (!isCurrent()) return;
     // The ledger header already names the count and the source; a notice only
@@ -89,7 +89,7 @@ async function runLichessCompare() {
       await renderReplayFailure(error.message);
     }
   } finally {
-    if (appState.replayCheckToken === token) button.disabled = false;
+    if (replayState.replayCheckToken === token) button.disabled = false;
     button.textContent = "Check games";
     button.removeAttribute("aria-busy");
   }
@@ -116,7 +116,7 @@ function writeGamesSelection(selection) {
 // sources replaces it with the pre-check prompt, otherwise the header keeps
 // naming accounts the user just removed ("2 shown · old_account").
 function clearGamesResults() {
-  appState.replayCheckToken = (appState.replayCheckToken || 0) + 1;
+  replayState.replayCheckToken = (replayState.replayCheckToken || 0) + 1;
   resetGamesResults();
 }
 
@@ -124,9 +124,9 @@ function clearGamesResults() {
 // Check must drop its skeleton too, but its own response is still the current
 // one, so the finally still has to re-enable the button.
 function resetGamesResults({ keepPanel = false } = {}) {
-  appState.replayResults = null;
-  appState.replayFilter = null;
-  appState.replayOpen = new Set();
+  replayState.replayResults = null;
+  replayState.replayFilter = null;
+  replayState.replayOpen = new Set();
   saveReturnState("replay", { filter: null, openIndex: null });
   const summary = document.getElementById("replay-summary");
   if (summary) {
@@ -308,23 +308,23 @@ async function ensureReplayView() {
         const name = String(account || "").toLowerCase();
         return lichessAccounts().some((linked) => String(linked.username || "").toLowerCase() === name);
       },
-      getReplayFilter: () => appState.replayFilter,
-      isGameOpen: (index) => appState.replayOpen.has(index),
+      getReplayFilter: () => replayState.replayFilter,
+      isGameOpen: (index) => replayState.replayOpen.has(index),
       onToggleFilter: (kind) => {
-        appState.replayFilter = appState.replayFilter === kind ? null : kind;
+        replayState.replayFilter = replayState.replayFilter === kind ? null : kind;
         // The selection survives the filter: the ledger falls back to the
         // first visible row while the open game is filtered out, so clearing
         // the filter again brings the user's own game back.
         saveReturnState("replay", {
-          filter: appState.replayFilter,
-          openIndex: [...appState.replayOpen][0] ?? null,
+          filter: replayState.replayFilter,
+          openIndex: [...replayState.replayOpen][0] ?? null,
         });
-        void renderReplayResults(appState.replayResults).catch(() => {});
+        void renderReplayResults(replayState.replayResults).catch(() => {});
       },
       onToggleGame: (index) => {
-        appState.replayOpen = new Set([index]);
-        saveReturnState("replay", { filter: appState.replayFilter, openIndex: index });
-        void renderReplayResults(appState.replayResults).catch(() => {});
+        replayState.replayOpen = new Set([index]);
+        saveReturnState("replay", { filter: replayState.replayFilter, openIndex: index });
+        void renderReplayResults(replayState.replayResults).catch(() => {});
       },
       onTrainMiss: async (game, focus) => {
         const task = rememberHandoff(gameHandoff(game, focus, "practice-missed-move"));
@@ -339,7 +339,7 @@ async function ensureReplayView() {
         const mod = await import("../controllers/replay-actions.js");
         if (!isCurrent()) return;
         await mod.buildReply(game, { editRepertoire,
-          getNode: () => appState.buildNodeById.get(appState.buildCurrentNodeId),
+          getNode: () => buildState.buildNodeById.get(buildState.buildCurrentNodeId),
           isBuildReadOnly, localBoardInfo, onBuildBoardMove, isCurrent });
       },
       onAnalyze: (game, focus) => {

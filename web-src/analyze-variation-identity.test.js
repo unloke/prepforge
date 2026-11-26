@@ -24,6 +24,7 @@ import {
   ANALYSIS_ROOT_PATH, analysisNodeIdFromPath, analysisNodePath, isAnalysisNodePath,
 } from "./analyze-node-path.js";
 import { formatWorkspaceHash, parseWorkspaceHash, workspaceLocationFromState } from "./workspace-url.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -40,7 +41,7 @@ function buildTree(pgn) {
   const parsed = parsePgn(pgn);
   expect(parsed.ok).toBe(true);
   const state = { analysisVarNodes: new Map(), analysis: null };
-  const view = createAnalyzeView({ appState: state, START_FEN });
+  const view = createAnalyzeView({ appState: state, analysisState: state, trainState: state, START_FEN });
   const { moves, varNodes } = view.adaptParsedTree(parsed.root);
   state.analysis = { moves };
   state.analysisVarNodes = varNodes;
@@ -82,7 +83,7 @@ function harness({
   const saves = [];
   let sourceSeq = 1;
   const deps = {
-    appState, START_FEN,
+    appState, analysisState: appState, trainState: appState, START_FEN,
     boardInfo: vi.fn(boardInfo),
     boards: { analysis: board },
     boardAfterMove: vi.fn(boardAfterMove),
@@ -110,7 +111,7 @@ function harness({
   });
   api = createAnalysisSelection(deps);
   return {
-    ...api, appState, board, deps, fixture, input, saves,
+    ...api, appState, analysisState: appState, trainState: appState, board, deps, fixture, input, saves,
     bumpSource: () => { sourceSeq += 1; },
     syncPgnFromTree: deps.syncPgnFromTree,
   };
@@ -196,7 +197,7 @@ describe("a user-created branch is the same position after a reload", () => {
     // decline, not fall back to whatever node holds a similar id.
     const h = harness();
     const fresh = buildTree(BASE);
-    const api = createAnalysisSelection({ ...h.deps, appState: { ...h.appState, analysisTree: fresh.tree } });
+    const api = createAnalysisSelection({ ...h.deps, ...asSlices({ ...h.appState, analysisTree: fresh.tree }),  });
     await expect(api.selectAnalysisNodePath("e2e4-d7d6")).resolves.toBe(false);
     // A sequence id is not a path at all.
     await expect(api.selectAnalysisNodePath("v2")).resolves.toBe(false);
@@ -213,12 +214,12 @@ describe("rebuildAnalysisVariations parses only the analyzed game", () => {
   const MULTI = `${G1}\n\n${G2}\n`;
 
   // The real function from the session module.
-  const rebuild = new Function("parsePgn", "ensureAnalyzeView", "appState",
+  const rebuild = new Function("parsePgn", "ensureAnalyzeView", "analysisState",
     `${source.slice(source.indexOf("async function rebuildAnalysisVariations("),
       source.indexOf("\n}\n", source.indexOf("async function rebuildAnalysisVariations(")) + 2)}
     return rebuildAnalysisVariations;`);
 
-  const viewFor = (appState) => createAnalyzeView({ appState, START_FEN });
+  const viewFor = (appState) => createAnalyzeView({ appState, analysisState: appState, trainState: appState, START_FEN });
   // `text` is what the caller hands the rebuild: the analyzed game's own PGN in
   // production, the whole textarea in the failure this pins.
   const rebuildWith = (appState, text) =>
@@ -342,11 +343,11 @@ describe("serialization never clobbers a textarea the user is editing", () => {
       analysisPgnStale: false,
     };
     const doc = { getElementById: () => input, activeElement: active ? input : null };
-    const sync = new Function("appState", "document", "analysisRecallSeq", "ensureAnalyzeView",
+    const sync = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "document", "analysisRecallSeq", "ensureAnalyzeView",
       `${body} return syncPgnFromTree;`)(
-      appState, doc, 1, async () => fixture.view,
+      appState, appState, appState, appState, appState, appState, appState, doc, 1, async () => fixture.view,
     );
-    return { sync, input, appState };
+    return { sync, input, appState, analysisState: appState, trainState: appState };
   }
 
   it("leaves a focused box the user has typed into alone", async () => {
@@ -358,12 +359,12 @@ describe("serialization never clobbers a textarea the user is editing", () => {
 
   it("writes free-play moves without an analysis payload", async () => {
     const appState = { analysis: null, analysisVarNodes: new Map(), analysisPgnStale: true };
-    const view = createAnalyzeView({ appState, START_FEN });
+    const view = createAnalyzeView({ appState, analysisState: appState, trainState: appState, START_FEN });
     appState.analysisVarNodes = view.adaptParsedTree(parsePgn("1. e4 e5").root, 0).varNodes;
     const input = { value: "" };
     const doc = { getElementById: () => input, activeElement: null };
-    const sync = new Function("appState", "document", "analysisRecallSeq", "ensureAnalyzeView",
-      `let analyzePgnWriting = false; ${body} return syncPgnFromTree;`)(appState, doc, 1, async () => view);
+    const sync = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "document", "analysisRecallSeq", "ensureAnalyzeView",
+      `let analyzePgnWriting = false; ${body} return syncPgnFromTree;`)(appState, appState, appState, appState, appState, appState, appState, doc, 1, async () => view);
 
     await expect(sync()).resolves.toBeUndefined();
     expect(input.value).toBe("1. e4 e5");
@@ -392,7 +393,7 @@ describe("serialization never clobbers a textarea the user is editing", () => {
       source.indexOf('pgnInput.addEventListener("input",'),
       source.indexOf("\n  });", source.indexOf('pgnInput.addEventListener("input",')) + 6,
     );
-    expect(inputBinding).toContain("appState.analysisPgnStale = false");
+    expect(inputBinding).toContain("analysisState.analysisPgnStale = false");
     expect(inputBinding).toContain("invalidateAnalysisSource()");
     // ...and the bump happens on input, not only in the debounced reload.
     expect(inputBinding.indexOf("invalidateAnalysisSource()"))
@@ -413,14 +414,14 @@ describe("the saved snapshot and the box agree", () => {
       analysisPly: -1, analysisPgnStale: stale,
     };
     const doc = { getElementById: () => input, activeElement: active ? input : null };
-    const persist = new Function("appState", "document", "clearReturnState", "saveReturnState",
+    const persist = new Function("appState", "analysisState", "buildState", "trainState", "replayState", "teamsState", "settingsState", "document", "clearReturnState", "saveReturnState",
       "syncPgnFromTree", "selectedNodePath", "ANALYSIS_ROOT_PATH",
       `${persistBody} return persistAnalysisSession;`)(
-      appState, doc, vi.fn(), (view, state) => saves.push(state),
+      appState, appState, appState, appState, appState, appState, appState, doc, vi.fn(), (view, state) => saves.push(state),
       async () => { input.value = fixture.view.serializeAnalysisPgn(input.value); appState.analysisPgnStale = false; },
       () => "e2e4-d7d6", ANALYSIS_ROOT_PATH,
     );
-    return { persist, input, appState, saves };
+    return { persist, input, appState, analysisState: appState, trainState: appState, saves };
   }
 
   it("saves the serialized tree, so a just-created branch survives the reload", async () => {

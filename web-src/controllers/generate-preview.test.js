@@ -109,7 +109,7 @@ describe("Generate controller integration", () => {
     expect(generate).toMatch(/finally \{[\s\S]*preview.clear\(\)/);
   });
   it("clears the separate preview on hydration", () => {
-    expect(source).toContain("appState.buildGenerationPreview?.clear(false)");
+    expect(source).toContain("buildState.buildGenerationPreview?.clear(false)");
   });
 });
 
@@ -124,7 +124,7 @@ describe("preview rendering with the shared Build index", () => {
     vi.stubGlobal("document", { getElementById: (id) => id === "builder-tree" ? container : null });
     vi.stubGlobal("CSS", { escape: (id) => id });
     const renderer = { ...createMoveTreeRenderer(), bindMoveTreeClicks: vi.fn() };
-    const view = createBuildView({ appState, boards: {}, getMoveTreeRenderer: () => renderer,
+    const view = createBuildView({ appState, buildState: appState, boards: {}, getMoveTreeRenderer: () => renderer,
       ensureMoveTreeRenderer: async () => renderer, selectBuildNode: vi.fn(),
       openNodeContextMenu: vi.fn(), buildBranchContext: () => null });
     view.renderBuilderTree();

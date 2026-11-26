@@ -6,7 +6,7 @@ const start = source.indexOf("async function skipTrainingLine()");
 const body = source.slice(start, source.indexOf("\n}\n", start) + 2);
 function harness(postJson = vi.fn(async () => ({ prompt: { session_id: "s", current_index: 1 } }))) {
   const appState = { trainMode: "all_lines", training: { prompt: { session_id: "s" } }, trainStats: { skipped: 0, mistakes: 1 }, trainAttempt: 3 };
-  const deps = { appState, postJson, currentOwnerId: () => "u", currentTrainingPrompt: () => appState.training.prompt,
+  const deps = { appState, trainState: appState, postJson, currentOwnerId: () => "u", currentTrainingPrompt: () => appState.training.prompt,
     setStatus: vi.fn(), setStatusError: vi.fn(), skipSmartCard: vi.fn(), syncTrainSessionControls: vi.fn(),
     renderTraining: vi.fn(), finishTrainingSession: vi.fn(), trainRecovery: { recoverSkip: vi.fn(async () => {}) } };
   const skip = new Function(...Object.keys(deps), `${body}; return skipTrainingLine;`)(...Object.values(deps));

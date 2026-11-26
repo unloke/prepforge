@@ -4,6 +4,7 @@
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { isNothingToTrainError } from "./train-start.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 
@@ -20,7 +21,7 @@ function cancelStaleTrainStartSource() {
 
 function harness(postJson, resume = {}) {
   const deps = {
-    appState: { trainMode: "smart", trainStarting: true }, currentOwnerId: () => "owner",
+    ...asSlices({ trainMode: "smart", trainStarting: true }), currentOwnerId: () => "owner",
     setStatus: vi.fn(), setStatusError: vi.fn(), setTrainBanner: vi.fn(), trainRowError: vi.fn(),
     syncTrainSessionControls: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
     loadTrainResume: async () => resume, isAuthError: () => false, isNothingToTrainError, postJson,

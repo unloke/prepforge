@@ -7,7 +7,7 @@ import { createTrainView } from "./train.js";
 function view(appState, streaks = []) {
   const line = { textContent: "" };
   globalThis.document = { getElementById: (id) => (id === "train-stats-line" ? line : null), querySelector: () => null, querySelectorAll: () => [] };
-  const train = createTrainView({ appState, boards: {}, renderSyncChip: () => {}, setTrainBanner: () => {}, updateTrainTurnBadge: () => {}, onStreakRendered: (s) => streaks.push(s) });
+  const train = createTrainView({ appState, trainState: appState, boards: {}, renderSyncChip: () => {}, setTrainBanner: () => {}, updateTrainTurnBadge: () => {}, onStreakRendered: (s) => streaks.push(s) });
   return { train, line };
 }
 

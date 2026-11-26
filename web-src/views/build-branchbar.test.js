@@ -71,7 +71,7 @@ function makeHarness({ nodes, currentNodeId, renderer }) {
   };
   const boards = { build: { setBranchArrows: vi.fn() } };
   const view = createBuildView({
-    appState,
+    appState, buildState: appState, trainState: appState,
     boards,
     getMoveTreeRenderer: () => renderer || ({
       renderMoveTree: () => '<div class="mtree"></div>',
@@ -91,7 +91,7 @@ function makeHarness({ nodes, currentNodeId, renderer }) {
       return { options, choiceId: picked.id };
     },
   });
-  return { view, bar, container, meta, appState };
+  return { view, bar, container, meta, appState, buildState: appState, trainState: appState };
 }
 
 function variationToggle(container, id) {

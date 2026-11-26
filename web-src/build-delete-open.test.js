@@ -27,7 +27,7 @@ describe("closing the open repertoire", () => {
     const board = { setPosition: vi.fn(), setAnnotations: vi.fn() };
     const label = { textContent: "1... c5" };
     const deps = {
-      appState, boards: { build: board }, START_FEN, localBoardInfo,
+      appState, buildState: appState, trainState: appState, boards: { build: board }, START_FEN, localBoardInfo,
       document: { getElementById: () => label },
       renderBuildRepHeader: vi.fn(), renderBuilderTree: vi.fn(), renderBuildSync: vi.fn(),
       syncViewHeads: vi.fn(), syncWorkspaceUrl: vi.fn(), scheduleExplorerRefresh: vi.fn(),
@@ -51,15 +51,15 @@ describe("closing the open repertoire", () => {
     const start = source.indexOf('if (action === "delete") {\n      // Undo-toast model');
     const body = source.slice(start, source.indexOf("\n      return;\n    }\n", start));
     expect(body).toContain("if (wasOpen) closeOpenBuild();");
-    expect(body).toMatch(/onUndo[\s\S]*if \(wasOpen && !appState\.build && appState\.currentView === "build"\) void editRepertoire\(repertoireId\)/);
+    expect(body).toMatch(/onUndo[\s\S]*if \(wasOpen && !buildState\.build && appState\.currentView === "build"\) void editRepertoire\(repertoireId\)/);
     // The URL drops the deleted id: training's pointer clears before the URL sync.
-    expect(body.indexOf("appState.trainingRepertoireId = null")).toBeLessThan(body.indexOf("closeOpenBuild()"));
+    expect(body.indexOf("trainState.trainingRepertoireId = null")).toBeLessThan(body.indexOf("closeOpenBuild()"));
   });
 });
 
 describe("Recent analyses follow the signed-in owner", () => {
   const drawerFn = (appState, drawer, load) =>
-    compile("function syncAnalysisHistoryDrawer(", { appState, document: { getElementById: () => drawer }, loadAnalysisHistory: load });
+    compile("function syncAnalysisHistoryDrawer(", { appState, buildState: appState, trainState: appState, document: { getElementById: () => drawer }, loadAnalysisHistory: load });
 
   it("shows and loads the open drawer once signed in on Analyze", () => {
     const drawer = { hidden: true, open: true }, load = vi.fn();

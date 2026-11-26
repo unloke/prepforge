@@ -308,7 +308,7 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
       optimisticEmptyRepertoire: undefined, // compiled in from the same range below
       postJson,
       hydrateBuild: vi.fn(async (payload) => { appState.build = payload; }),
-      appState, OUTBOX_TAB_ID: "tab",
+      appState, buildState: appState, teamsState: appState, trainState: appState, OUTBOX_TAB_ID: "tab",
       START_FEN, localBoardInfo, boards: { build: board },
       switchView: (name) => views.push(name),
       setStatus: vi.fn(),
@@ -319,7 +319,7 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
       renderBuilderTree: () => rendered.push("tree"),
       syncWorkspaceUrl: () => rendered.push("url"),
     });
-    return { appState, board, views, rendered, postJson, prompt };
+    return { appState, buildState: appState, teamsState: appState, trainState: appState, board, views, rendered, postJson, prompt };
   }
 
   it("puts the empty board and tree on screen before the server answers", async () => {

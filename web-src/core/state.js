@@ -1,7 +1,14 @@
 import { createNotices } from "../notices.js";
 
-export const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-export const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+export { START_FEN, files } from "./board-constants.js";
+// Each feature owns its state slice (web-src/state/); the shell keeps routing,
+// the signed-in owner and the cross-feature repertoire listing here.
+export { analysisState } from "../state/analysis.js";
+export { buildState } from "../state/build.js";
+export { replayState } from "../state/replay.js";
+export { settingsState } from "../state/settings.js";
+export { teamsState } from "../state/teams.js";
+export { trainState } from "../state/train.js";
 
 export const appState = {
   currentView: "dashboard",
@@ -10,114 +17,14 @@ export const appState = {
   // The owner generation /api/repertoires last answered for. Train uses it to
   // tell "listing still unknown" apart from an account that truly has none.
   repertoireListGeneration: -1,
-  trainRepertoireOptionsError: "",
-  trainHomeReady: false,
   // Repertoires others shared with the user, at the user's role (Train drills them too).
   sharedRepertoireList: [],
-  analysis: null,
-  // Raw PGN from the most recent in-session Analyze run (not history recall):
-  // the SELECTED game's own text, never a multi-game paste.
-  analysisSourcePgn: null,
-  // The paste a multi-game batch imported, kept while its import picker is on
-  // screen: switching to another imported game re-posts THIS text, because after
-  // a run the box holds only the game that was analyzed. Any new source clears it.
-  analysisMultiPgn: null,
-  // The move tree holds a branch the PGN box does not (yet). A focused box is the
-  // user's, so serialization waits — except while this is set, because a reload
-  // would otherwise drop the branch they just played. Any edit clears it.
-  analysisPgnStale: false,
-  // A finished-but-unsaved analysis held only in memory (device storage
-  // refused the checkpoint) so "Retry save" can still reach it.
-  analysisUnsavedCheckpoint: null,
-  analysisJobId: null,
-  analysisPolling: false,
-  analysisPly: 0,
-  analysisBoardFen: START_FEN,
-  // Study variations explored on the Analyze board: a small client-side tree
-  // hanging off the analyzed mainline so the player can branch out and compare
-  // lines without losing the original game.
-  analysisVarNodes: new Map(),
-  analysisVarCounter: 0,
-  analysisCurrentNodeId: "root",
-  // The selected node's stable identity for the URL/session: the root-to-node UCI
-  // path (analyze-node-path.js). `null` at the root, where the ply names it.
-  analysisNodePath: null,
-  analysisTree: null,
-  // Last position fed to the coach panel: { fen, lastUci, lastSan }.
-  explainContext: { fen: START_FEN, lastUci: null, lastSan: null },
-  evalChartPoints: [],
-  build: null,
-  buildLoading: false,
-  buildLoadTarget: null,
-  buildLoadRequest: null,
-  buildNodeById: new Map(),
-  buildCurrentNodeId: null,
-  buildBranchChoiceId: null,
-  // The node a move just created, so the tree can show it arriving once. Cleared
-  // on the next add (or on a fresh tree), never persisted: it is a cue, not state.
-  buildJustAddedId: null,
-  // Moves this tab added, newest last, for Ctrl/Cmd+Z ({ repertoireId, id }).
-  buildAddedIds: [],
-  // Opening names the Explorer reported, by position (FEN without the clocks).
-  buildOpeningByFen: new Map(),
-  // ---- Local-first Build sync (Phase 1) --------------------------------------
-  // Moves land in the local tree instantly (no per-move round-trip) and flush to
-  // the server in debounced batches via POST /api/build/add-moves.
-  buildPending: [], // queued { tempId, parentRef, uci, node } awaiting a flush
-  buildPendingDeletes: [], // queued subtree-root node ids awaiting a delete flush
-  buildTmpCounter: 0, // monotonic source of `tmp-N` provisional ids
-  buildIdMap: {}, // tmp -> real id, accumulated across reconciles this session
-  buildFlushTimer: null, // idle-debounce handle
-  buildFlushing: null, // in-flight flush promise (hard flush awaits it)
-  buildSyncState: "saved", // saved | dirty | syncing | error
-  buildSyncRetry: 0, // exponential-backoff attempt counter
-  // Subtree-root ids pruned locally but still inside their undo window — not yet
-  // queued for the server. A reconcile re-hydrate must re-prune these too.
-  buildUndoDeletes: new Set(),
-  // `${parentId}:${uci}` -> commit fn for a parked subtree delete. Lets a replay of
-  // the SAME move force its delete to flush first (server still has the old node,
-  // so an add ahead of the delete would dedupe into the doomed node).
-  buildUndoCommitByMove: new Map(),
   // Repertoire ids hidden from lists while their delete-undo window is open.
   pendingRepDeletes: new Set(),
-  // Game ids hidden from the Analyze history while their delete-undo window is open.
-  pendingAnalysisDeletes: new Set(),
-  trainingRepertoireId: null,
-  // Practice game keeps its own multi-select independent of the
-  // line-rehearsal picker. `null` means the list has not been hydrated yet;
-  // the first active-list load then selects every active repertoire by default.
-  playRepertoireIds: null,
-  playRepertoirePreferenceKey: null,
-  training: null,
-  // Which trainer the Start button launches: "smart" (card queue, default) or
-  // "all_lines" (whole-line rehearsal for pre-game prep).
-  trainMode: "smart",
-  play: null,
-  // One on-demand Lucky round at a time. This protects Lichess's one-request
-  // at-a-time guidance and prevents two clicks from racing their Play boards.
-  luckyBusy: false,
-  luckyRun: null,
-  // Live smart-queue session state (see the Smart queue trainer section).
-  smart: null,
-  // ---- Local-first Train sync (plan §2) -----------------------------------
-  // The smart session runs entirely in the browser off the /smart/start card
-  // bundle; graded first attempts + the session position flush in debounced
-  // batches via POST /api/train/smart/sync.
-  trainSync: {
-    pending: [], // queued { session_id, node_id, correct } graded attempts
-    dirty: false, // position (card_index/queue) changed since the last flush
-    timer: null, // idle-debounce handle
-    flushing: null, // in-flight flush promise
-    retry: 0, // exponential-backoff attempt counter
-  },
-  // R-03: ops the server permanently refused. Kept for inspection/export —
-  // restored on reload, never silently dropped, never auto-retried.
-  trainRejected: [],
   // Whether the durable outbox write succeeded. False means the queue only
   // lives in this tab, which the UI must state honestly.
   outboxPersisted: true,
   outboxStorageWarned: false,
-  trainSyncState: "saved", // saved | dirty | syncing | error (Train save chip)
   // The LIVE Lichess token's username (drives latest-game fetch / replay). Null when
   // the token is absent/expired even if still signed in.
   lichessUsername: null,
@@ -136,14 +43,6 @@ export const appState = {
   // NOT "signed out": an owner-scoped view must hold a neutral loading state rather
   // than paint guest copy that a signed-in user would then see flashing on reload.
   authKnown: false,
-  replayResults: null,
-  replayFilter: null, // summary-chip filter: an outcome kind, or null = all
-  replayOpen: new Set(), // at most one selected game in the inspector
-  replaySection: "games",
-  // Teams view: cache of the caller's teams (for the rep-share picker) and the
-  // currently-expanded team's id (so a member add/remove re-renders the right one).
-  teams: [],
-  selectedTeamId: null,
   // Public share-link viewer (?shared=token). Team-shared read-only uses
   // build.writable === false instead — see isBuildReadOnly().
   sharedToken: null,

@@ -46,7 +46,7 @@ function harness({ kind = "due", correct = true } = {}) {
   const sleepGate = deferred();
   const noop = () => {};
   const deps = {
-    appState,
+    appState, trainState: appState,
     boards: { train: { setPosition, setEngineArrow: vi.fn() } },
     document: { getElementById: () => ({ textContent: "", dataset: {}, style: {}, hidden: false }) },
     setTrainBanner: vi.fn(),
@@ -101,7 +101,7 @@ function harness({ kind = "due", correct = true } = {}) {
     currentOwnerId: () => "u1",
     trainSessionMemo: null,
   };
-  return { deps, prompt, setPosition, playSound, optimisticBoardMove, sleepGate, appState, correct };
+  return { deps, prompt, setPosition, playSound, optimisticBoardMove, sleepGate, appState, trainState: appState, correct };
 }
 
 async function playAnswer(h, uci) {

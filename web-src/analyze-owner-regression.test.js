@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 
@@ -48,7 +49,7 @@ const code = `${fnText("function classifyPositions(")}\n${source.slice(source.in
 
 it("Retry save cannot replay a previous owner's in-memory checkpoint", async () => {
   const deps = {
-    appState: { analysisUnsavedCheckpoint: { ownerId: "alice", gameId: "private-game" } },
+    ...asSlices({ analysisUnsavedCheckpoint: { ownerId: "alice", gameId: "private-game" } }), 
     currentOwnerId: () => "bob", loadCheckpoint: () => null,
     hideAnalysisRetrySave: vi.fn(), invalidateAnalysisSource: () => 0,
     document: { getElementById: () => null }, evalMapFrom: () => new Map(),
@@ -68,7 +69,7 @@ it("a save response after switching accounts cannot paint or clear the new owner
   const response = new Promise((done) => { resolve = done; });
   const checkpoint = { ownerId: "alice", gameId: "alice-game", positions: [] };
   const deps = {
-    appState: { analysisUnsavedCheckpoint: checkpoint }, currentOwnerId: () => owner,
+    ...asSlices({ analysisUnsavedCheckpoint: checkpoint }), currentOwnerId: () => owner,
     loadCheckpoint: () => null, hideAnalysisRetrySave: vi.fn(), invalidateAnalysisSource: () => 1,
     document: { getElementById: () => null }, evalMapFrom: () => new Map(),
     postJson: vi.fn(() => response), clearCheckpoint: vi.fn(),
@@ -101,7 +102,7 @@ it("switching accounts during classify-save releases the analysis job without re
     cancelJob: vi.fn(() => { busy = false; }), failJob: vi.fn(), completeJob: vi.fn(),
   };
   const deps = {
-    appState, notices, currentOwnerId: () => owner,
+    appState, analysisState: appState, notices, currentOwnerId: () => owner,
     isBrowserEngineAvailable: () => true, ENGINE_ID: "sf-test", requireSignIn: () => true,
     document: { getElementById: (id) => id === "pgn-input" ? { value: "1. e4" } : runButton },
     invalidateAnalysisSource: () => 1, analysisRecallSeq: 1,

@@ -32,7 +32,7 @@ function makeView(appState, elements) {
       .map(([key, label]) => [key, { key, label, title: "" }]),
   );
   return createTrainView({
-    appState,
+    appState, trainState: appState,
     boards: {},
     renderSyncChip: () => {},
     setTrainBanner: () => {},

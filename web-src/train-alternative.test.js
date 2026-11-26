@@ -3,6 +3,7 @@
 // reopen the same prompt with nothing graded.
 import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -17,7 +18,7 @@ const FEN = "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1";
 function shared() {
   const board = { setPosition: vi.fn(), setEngineArrow: vi.fn() };
   const deps = {
-    appState: { trainHintLevel: 0 },
+    ...asSlices({ trainHintLevel: 0 }), 
     boards: { train: board },
     optimisticBoardMove: vi.fn(async (target, fen, move, cue) => {
       target.setPosition({ fen: "after", legalMoves: [], lastMove: move, cue });
@@ -75,7 +76,7 @@ describe("another repertoire move", () => {
     const elements = Object.fromEntries(["train-banner", "train-hint", "train-skip", "play-takeback", "play-resign"].map(id =>
       [id, { dataset: { state: "review" }, disabled: true }]));
     deps.syncTrainSessionControls = compile("function syncTrainSessionControls(", {
-      appState: deps.appState, document: { getElementById: id => elements[id] }, syncTrainScreen: vi.fn(), syncViewHeads: vi.fn(),
+      ...asSlices(deps.appState), document: { getElementById: id => elements[id] }, syncTrainScreen: vi.fn(), syncViewHeads: vi.fn(),
     });
     const answer = compile("async function answerAlternative(", deps);
     await answer({ fen: FEN, playedUci: "d7d5", san: "d5", still: () => true, reopen: async () => {

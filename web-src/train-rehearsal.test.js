@@ -43,7 +43,7 @@ it("reload after a miss sends attempt 2 and a correct retry does not earn first-
   saveRehearsal("u", payload, missed, 2);
   const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r" };
   const deps = {
-    appState, currentOwnerId: () => "u", restoreRehearsal,
+    appState, trainState: appState, currentOwnerId: () => "u", restoreRehearsal,
     postJson: vi.fn(async () => payload), hardFlushBuild: async () => {},
     trainStatsReset: () => { appState.trainStats = { ...stats }; },
     clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setTrainBanner: vi.fn(),

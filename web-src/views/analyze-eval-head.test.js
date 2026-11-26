@@ -38,13 +38,13 @@ function setup() {
   };
   const appState = { evalChartPoints: [], analysisPly: 0 };
   const view = createAnalyzeView({
-    appState,
+    appState, analysisState: appState,
     START_FEN: "",
     showAnalysisPly: () => {},
     selectAnalysisNode: async () => {},
     revealAnalysisResults: () => {},
   });
-  return { view, ids, head, fill, appState };
+  return { view, ids, head, fill, appState, analysisState: appState };
 }
 
 afterEach(() => {

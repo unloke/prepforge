@@ -2,6 +2,7 @@
 import { runInNewContext } from "node:vm";
 import { readFileSync } from "node:fs";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 // The phone bottom bar's tab is labelled Games: it is lit on Games only. Scout
 // lives in the More sheet, so More is what lights up on Scout (and on Teams
@@ -47,7 +48,7 @@ const RAIL_SCOUT = () => tab({ "data-replay-section": "scout" });
 // Paint a view switch to `view` plus the replay section, in app order.
 function nav(view, section, { buttons, currentView, more = null } = {}) {
   const context = {
-    appState: { currentView: currentView ?? view, replaySection: section },
+    ...asSlices({ currentView: currentView ?? view, replaySection: section }), 
     notices: { clearStatusOnNavigate() {} },
     resetViewScroll: () => {},
     syncPageTitle: () => {},

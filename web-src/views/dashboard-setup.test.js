@@ -92,7 +92,7 @@ describe("dashboard setup checklist", () => {
     goToView = vi.fn();
     appState = { signedIn: true, teams: [], pendingRepDeletes: new Set(), lichessAccounts: [] };
     view = createDashboardView({
-      appState,
+      appState, analysisState: appState, buildState: appState, teamsState: appState, trainState: appState,
       api,
       postJson: noop,
       setStatus: noop,

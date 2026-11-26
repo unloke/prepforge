@@ -3,6 +3,7 @@ import { appSource } from './test-app-source.js';
 import { playSessionPgn } from './train-play.js';
 import * as history from './train-history.js';
 import { openTrainingHistory } from './views/train-history.js';
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const modal = vi.hoisted(() => ({ overlay: null, close: null }));
 vi.mock('./core/dialog.js', () => ({
@@ -28,7 +29,7 @@ describe('saved Practice games', () => {
       const storage = { data: new Map(), getItem(k) { return this.data.get(k); }, setItem(k, v) { this.data.set(k, v); } };
       const play = { startedAt: Date.parse(saved.finishedAt), startFen, userColor: 'black', book: 'maia', rating: 1500,
         result: '1-0', history: [{ san: startFen ? 'e5' : 'e4', by: 'user' }] };
-      const deps = { appState: { play, lichessUsername: 'Alice' }, boards: { train: { setPremove: vi.fn() } },
+      const deps = { ...asSlices({ play, lichessUsername: 'Alice' }), boards: { train: { setPremove: vi.fn() } },
         updateTrainTurnBadge: vi.fn(), currentOwnerId: () => 'alice', playResult: () => ({}), showTrainResult: vi.fn(),
         playSessionPgn, saveRun: (owner, run) => history.saveRun(owner, run, storage) };
       compile('function endPlayGame(', deps)('Resigned');
@@ -42,7 +43,7 @@ describe('saved Practice games', () => {
 
   function analyzeHarness() {
     const input = {}, drawer = { open: true };
-    const deps = { appState: { play: null, ownerGeneration: 1 }, currentOwnerId: () => 'alice', analysisRecallSeq: 3,
+    const deps = { ...asSlices({ play: null, ownerGeneration: 1 }), currentOwnerId: () => 'alice', analysisRecallSeq: 3,
       invalidateAnalysisSource: () => 3, document: { getElementById: id => id === 'pgn-input' ? input : drawer },
       switchView: vi.fn(), boards: { analysis: { setOrientation: vi.fn() } }, playSessionPgn,
       loadPgnIntoAnalyze: vi.fn(async () => true), setStatus: vi.fn(), setStatusError: vi.fn(), runAnalysis: vi.fn() };

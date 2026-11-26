@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createTrainRecovery, trainMoveResultUnconfirmed, trainRecoveryIsCurrent } from "./train-recovery.js";
 import { appSource } from "./test-app-source.js";
+import { asSlices } from "./state/as-slices.fixture.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -48,7 +49,7 @@ function harness({ move, read } = {}) {
   const reads = [];
   const notices = { show: vi.fn(() => ({ dismiss: vi.fn() })) };
   const deps = {
-    appState,
+    appState, trainState: appState,
     currentOwnerId: () => appState.accountUserId,
     boards: { train: board },
     notices,
@@ -77,7 +78,7 @@ function harness({ move, read } = {}) {
   };
   deps.trainRecovery = createTrainRecovery(deps);
   const submit = compile("async function submitTrainingMove(", deps);
-  return { appState, board, notices, pending, readDeferred, reads, deps, submit };
+  return { appState, trainState: appState, board, notices, pending, readDeferred, reads, deps, submit };
 }
 
 describe("classifying a failed rehearsal answer", () => {
@@ -245,7 +246,7 @@ describe("the recovery fences", () => {
   const base = {
     training: { prompt: CARD_E4 }, owner: "alice", generation: 2, mode: "all_lines", prompt: CARD_E4,
   };
-  const state = () => ({ appState: { training: base.training, trainMode: "all_lines", accountUserId: "alice", ownerGeneration: 2 }, currentOwnerId: () => "alice" });
+  const state = () => ({ ...asSlices({ training: base.training, trainMode: "all_lines", accountUserId: "alice", ownerGeneration: 2 }), currentOwnerId: () => "alice" });
 
   it("accepts the exact rehearsal it started from", () => {
     expect(trainRecoveryIsCurrent(base, state())).toBe(true);
@@ -253,11 +254,11 @@ describe("the recovery fences", () => {
 
   it("refuses a newer card, account, generation, mode, or a smart session", () => {
     const cases = [
-      { appState: { ...state().appState, training: { prompt: CARD_NF3 } } },
+      { ...asSlices({ ...state().appState, training: { prompt: CARD_NF3 } }),  },
       { currentOwnerId: () => "bob" },
-      { appState: { ...state().appState, ownerGeneration: 3 } },
-      { appState: { ...state().appState, trainMode: "play" } },
-      { appState: { ...state().appState, smart: { prompt: {} } } },
+      { ...asSlices({ ...state().appState, ownerGeneration: 3 }),  },
+      { ...asSlices({ ...state().appState, trainMode: "play" }),  },
+      { ...asSlices({ ...state().appState, smart: { prompt: {} } }),  },
     ];
     for (const change of cases) expect(trainRecoveryIsCurrent(base, { ...state(), ...change })).toBe(false);
   });
