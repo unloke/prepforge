@@ -12,6 +12,7 @@
 import { Chess } from "chess.js";
 import { preparationValue, routeKey, selectPreparationRoutes, opponentOnlyReach } from "./scout-preparation-value.js";
 import { replayGuardedRoutes } from "./scout-path-guard.js";
+import { decisionShifted } from "./scout-decisions.js";
 
 import { gamePhase } from "./coach/material.js";
 
@@ -136,14 +137,17 @@ export function scoutLineText(sans) {
 export function mergeEngineIntoTargets(targets, enginePatterns) {
   if (!enginePatterns?.size) return targets;
   return targets.map((target) => {
-    const pathKey = triePathKey(target.ucis);
+    // Scan patterns are keyed by the full path (scans reach 24 plies).
+    const pathKey = branchPathKey(target.ucis);
     let pattern = enginePatterns.get(pathKey);
     if (!pattern) {
+      // Pattern may annotate a prefix of this target, not a descendant or sibling;
+      // the deepest such prefix is the most specific.
+      let best = -1;
       for (const [key, value] of enginePatterns) {
-        // Pattern may annotate a prefix of this target, not a descendant or sibling.
-        if (pathKey === key || pathKey.startsWith(`${key}>`)) {
+        if (key.length > best && pathKey.startsWith(`${key}>`)) {
           pattern = value;
-          break;
+          best = key.length;
         }
       }
     }
@@ -367,10 +371,13 @@ export function gameNextOwnThinkMedian(game, oppColor) {
   return medianOf(thinks);
 }
 
-function recencyWeight(game, newestTs, halfLifeDays = SCOUT_RECENCY_HALF_LIFE_DAYS) {
-  if (!game.datestamp || game.datestamp <= 0) return 0.3;
-  const ageDays = Math.max(0, (newestTs - game.datestamp) / MS_PER_DAY);
-  return Math.pow(2, -ageDays / halfLifeDays);
+// The one recency decay every Scout weight uses: a game's weight halves every
+// `halfLifeDays` before `anchorTs` (games after it count in full); an undated game gets
+// the caller's fixed `undated` weight. Callers differ only in those two parameters:
+//   display trie 45 days / 0.3, route selection 90 days / 1, branch score 90 days / 0.3.
+function recencyDecay(game, anchorTs, halfLifeDays, undated) {
+  if (!(game.datestamp > 0)) return undated;
+  return 2 ** (-Math.max(0, (anchorTs - game.datestamp) / MS_PER_DAY) / halfLifeDays);
 }
 
 function lengthWeight(totalPly, saturation = SCOUT_LENGTH_SATURATION_PLIES) {
@@ -565,10 +572,7 @@ export function trieAnchorTs(games) {
 // session start, instead of rebuilding from every game on each batch, and still match a
 // one-shot buildOpeningTrie on everything the report shows.
 function trieRecencyWeight(game, anchorTs, recency) {
-  if (!recency) return 1;
-  if (!game.datestamp || game.datestamp <= 0) return 0.3;
-  const ageDays = Math.max(0, (anchorTs - game.datestamp) / MS_PER_DAY);
-  return Math.pow(0.5, ageDays / TRIE_RECENCY_HALF_LIFE_DAYS);
+  return recency ? recencyDecay(game, anchorTs, TRIE_RECENCY_HALF_LIFE_DAYS, 0.3) : 1;
 }
 
 /** A fresh, empty opening trie root — seed for incremental insertion. */
@@ -589,8 +593,7 @@ export function insertGameIntoTrie(
   if (excludeCollapse && isEarlyResignCollapse(game)) return root;
   const anchor = anchorTs ?? (game.datestamp && game.datestamp > 0 ? game.datestamp : Date.now());
   const w = trieRecencyWeight(game, anchor, recency);
-  const selectionWeight = game.datestamp > 0
-    ? 2 ** (-Math.max(0, (anchor - game.datestamp) / MS_PER_DAY) / SCOUT_RECENCY_HALF_LIFE_DAYS) : 1;
+  const selectionWeight = recencyDecay(game, anchor, SCOUT_RECENCY_HALF_LIFE_DAYS, 1);
   incrementSelection(root, game.score, selectionWeight);
   root.count += w;
   root.score += game.score * w;
@@ -742,8 +745,6 @@ export function aggregateOpeningBranches(
   const thinkReady = thinkSamples.length >= SCOUT_THINK_MIN_SAMPLES && cohortMad > 0;
 
   const byKey = new Map();
-  const ancestorFreq = new Map();
-  const ancestorSeenGameIds = new Map();
   let droppedCount = 0;
 
   for (const game of filtered) {
@@ -751,22 +752,6 @@ export function aggregateOpeningBranches(
     if (!terminal) {
       droppedCount += 1;
       continue;
-    }
-    const fenBefore = fenBeforeLastMove(terminal.ucis);
-    if (fenBefore) {
-      if (!ancestorFreq.has(fenBefore)) {
-        ancestorFreq.set(fenBefore, { count: 0, frequency: 0, w: 0, d: 0, l: 0, games: 0, scorePct: 0 });
-        ancestorSeenGameIds.set(fenBefore, new Set());
-      }
-      const seenAncestors = ancestorSeenGameIds.get(fenBefore);
-      const skipAncestor =
-        game.gameId && seenAncestors.has(game.gameId);
-      if (!skipAncestor) {
-        if (game.gameId) seenAncestors.add(game.gameId);
-        const ancestor = ancestorFreq.get(fenBefore);
-        ancestor.count += 1;
-        incrementResult(ancestor, game.score);
-      }
     }
     const key = terminal.ucis.join(">");
     if (!byKey.has(key)) {
@@ -788,7 +773,7 @@ export function aggregateOpeningBranches(
       row.seenGameIds.add(game.gameId);
     }
 
-    const R = recencyWeight(game, newestTs);
+    const R = recencyDecay(game, newestTs, SCOUT_RECENCY_HALF_LIFE_DAYS, 0.3);
     const L = lengthWeight(game.totalPly ?? game.ucis?.length ?? 0);
     let T = 1;
     if (thinkReady) {
@@ -830,13 +815,7 @@ export function aggregateOpeningBranches(
     b.share = b.branchScore / totalScore;
     b.rawShare = b.games / totalGames;
   }
-  const ancestorTotalGames = filtered.length || 1;
-  for (const info of ancestorFreq.values()) {
-    info.frequency = info.count / ancestorTotalGames;
-    info.games = info.w + info.d + info.l;
-    info.scorePct = wdlScorePct(info.w, info.d, info.games);
-  }
-  return { branches, droppedCount, ancestorFreq };
+  return { branches, droppedCount };
 }
 
 /** Opponent W/D/L + score% for one colour over the games the report analyses. */
@@ -981,14 +960,27 @@ export function annotateRouteEvidence(b, trie, color, { total = trie.gameCount, 
   b.routeWdl = anchor ? { w: anchor.w, d: anchor.d, l: anchor.l } : null;
   b.selectionWdl = anchor?.selectionWdl;
   b.conditionalReach = anchor ? opponentOnlyReach(b) : 0;
-  const parent = k > 0 ? stats[k - 1] : null;
-  b.ancestorGames = parent?.gameCount ?? total;
-  b.ancestorScorePct = parent?.scorePct ?? baselineScorePct;
   return b;
 }
 
 /** Observed full opening routes, each scored by its anchor: the deepest prefix
  * with enough games. No invented moves and no truncated rows. */
+// Batch selection tries, memoised per games array. Scout's games array only ever grows
+// (push), so (length, last game) identifies its content; the report and the prefilter
+// rank the same games several times per render, and the streaming display tries (session
+// anchor) can never stand in for the newest-game anchor the selection weights need.
+const batchSelectionTries = new WeakMap();
+function batchSelectionTrie(games, color, speedFilter) {
+  let byScope = batchSelectionTries.get(games);
+  if (!byScope) batchSelectionTries.set(games, (byScope = new Map()));
+  const scope = `${color}|${speedFilter}`;
+  const hit = byScope.get(scope);
+  if (hit && hit.length === games.length && hit.last === games[games.length - 1]) return hit.trie;
+  const trie = buildOpeningTrie(games, color, { speedFilter, maxPlies: Infinity });
+  byScope.set(scope, { length: games.length, last: games[games.length - 1], trie });
+  return trie;
+}
+
 export function rankedOpeningBranches(
   games,
   color,
@@ -997,15 +989,15 @@ export function rankedOpeningBranches(
   const eligibleGames = games.filter(g => g.color === color && (speedFilter === "all" || g.speed === speedFilter) && !isEarlyResignCollapse(g));
   // Streaming display tries use a session anchor. Fixed-strength priors require the newest eligible game.
   if (!trie || trie.selectionAnchorTs !== trieAnchorTs(eligibleGames) || trie.selectionMaxPlies !== Infinity)
-    trie = buildOpeningTrie(games, color, { speedFilter, maxPlies: Infinity });
+    trie = batchSelectionTrie(games, color, speedFilter);
   const selectionBaseline = selectionBaselineFromTrie(trie);
-  const { branches, ancestorFreq } = aggregateOpeningBranches(games, color, { speedFilter, now });
+  const { branches } = aggregateOpeningBranches(games, color, { speedFilter, now });
   const total = trie.gameCount ?? branches.reduce((n,b) => n + b.games, 0);
   for (const b of branches) annotateRouteEvidence(b, trie, color, { total, baselineScorePct, selectionBaseline });
   const plausible = !plausibleOnly ? branches : branches.filter((branch) => branch.routePlausibility.complete &&
     (branch.routeReach == null || branch.routeReach >= SCOUT_MIN_ROUTE_REACH));
   const ranked = trimRankedBranches(plausible, { ceiling: limit > 0 ? limit : plausible.length });
-  return { branches: ranked, ancestorFreq };
+  return { branches: ranked };
 }
 
 
@@ -1076,19 +1068,27 @@ export function rankGamePlan(
   } else {
     selected = selectPreparationRoutes(eligible, { baseline: baselineScorePct, limit });
   }
-  // The weak-spot label is exactly the selection's weak-spot test: a positive
-  // utility is Maia rating their play from this leaf below their usual result.
-  for (const route of selected) {
-    const weak = route.preparationEvidence.value > 0;
-    route.prepCategory = weak ? "attack" : route.prepCategory === "attack" ? "neutral" : route.prepCategory;
-    route.belowBaseline = weak ? Math.max(1, Math.round(baselineScorePct - route.preparationEvidence.maiaScore * 100)) : 0;
-  }
+  // The badge reads the selection's own evidence: Maia's leaf score against the SAME
+  // baseline the selection measured it by (recency-weighted), with the honest gap.
+  // A route the selector valued by a sliver stays neutral: a weak spot needs at least
+  // SCOUT_ATTACK_MIN_MARGIN points, as enrichPrepTarget has always required.
+  for (const route of selected) Object.assign(route, weakSpotLabel(route));
   if (oppColor && games && lineLastSeen) {
     for (const route of selected) if (!route.lastSeen) {
       route.lastSeen = lineLastSeen(games, route.ucis, { color: oppColor, speedFilter });
     }
   }
   return selected;
+}
+
+/** Weak-spot / main-line badge from a selected route's preparationEvidence. */
+export function weakSpotLabel(route) {
+  const { value, maiaScore, baseline } = route.preparationEvidence;
+  const basePct = Math.round(baseline * 100);
+  const gap = maiaScore == null ? null : basePct - Math.round(maiaScore * 100);
+  const attack = value > 0 && gap >= SCOUT_ATTACK_MIN_MARGIN;
+  const prepCategory = attack ? "attack" : gap != null && gap <= -SCOUT_ATTACK_MIN_MARGIN ? "weapon" : "neutral";
+  return { prepCategory, belowBaseline: attack ? gap : 0, weakSpotBaselinePct: basePct };
 }
 
 /** Production Module B selector alias — keep rankGamePlan as the implementation. */
@@ -1112,11 +1112,11 @@ export function suggestReplyFromRepertoire(lookup, lineUcis) {
 export function attachPrepReplies(targets, { lookups = [], refutations = [], oppColor } = {}) {
   const refByKey = new Map();
   for (const item of refutations || []) {
-    const key = triePathKey(item.candidate?.pathUcis || []);
+    const key = branchPathKey(item.candidate?.pathUcis || []);
     if (key && item.refutation) refByKey.set(key, item.refutation);
   }
   return (targets || []).map((target) => {
-    const pathKey = triePathKey(target.ucis || []);
+    const pathKey = branchPathKey(target.ucis || []);
     let suggestedReply = null;
     for (const { lookup } of lookups || []) {
       const fromRep = suggestReplyFromRepertoire(lookup, target.ucis);
@@ -1223,7 +1223,11 @@ export function moveDistribution(root, { slipMinGames = SLIP_MIN_GAMES } = {}) {
         d: child.d,
         l: child.l,
         share: child.count / total,
-        scorePct: nodeScorePct(child),
+        // Their score in these games, from the same W/D/L the row's count and Wilson
+        // bound use. The recency-weighted value is recent form, kept apart: shown as
+        // "score" next to a real game count it read 1% for a 5-5 record.
+        scorePct: wdlScorePct(child.w, child.d, child.gameCount),
+        recentScorePct: nodeScorePct(child),
         wilsonScorePct: wilsonScorePct(child.w, child.d, child.l),
         node: child,
       };
@@ -1339,52 +1343,22 @@ export function fenAfterLine(ucis) {
   return fenAfterLineMemo(ucis || []);
 }
 
-// The player's own first decision: the first move with White, the reply to
-// White's first move with Black (the move before it was the other player's).
-function firstDecisionKey(game, color) {
-  const plies = color === "black" ? 2 : 1;
-  return game.ucis.length >= plies ? game.ucis.slice(0, plies).join(">") : null;
-}
-
-function decisionShares(games) {
-  const counts = new Map();
-  for (const key of games) counts.set(key, (counts.get(key) || 0) + 1);
-  const shares = new Map();
-  for (const [key, n] of counts) shares.set(key, n / games.length);
-  return shares;
-}
-
-// First entry with the highest share (ties keep the earlier key).
-function topDecision(shares) {
-  let top = [null, -1];
-  for (const entry of shares) if (entry[1] > top[1]) top = entry;
-  return top;
-}
-
 export const RECENT_CHANGE_MIN_GAMES = 3;
 // The recent favourite must have gained this much share for the badge: with a
 // near 50/50 split between two openings, the "most common" one flips between
 // windows by chance, which used to light the badge up for no reason.
 export const RECENT_CHANGE_MIN_SHIFT = 0.3;
+export const RECENT_CHANGE_WINDOW = 20;
 
-function colorDecisions(games, color) {
-  return games
-    .filter((g) => g.color === color && g.ucis.length)
-    .map((g) => firstDecisionKey(g, color))
-    .filter(Boolean);
-}
-
-function detectRecentChange(last20, prev20) {
+// Their newest 20 games of each colour against the 20 before (windows per colour, so a
+// mostly-White history still gives Black a real sample). With Black the favourite reply
+// is compared against the same first move, so a change in what their opponents open
+// with is not read as a change in their repertoire.
+function detectRecentChange(analyzed) {
   const changed = (color) => {
-    const last = colorDecisions(last20, color);
-    const prev = colorDecisions(prev20, color);
-    if (last.length < RECENT_CHANGE_MIN_GAMES || prev.length < RECENT_CHANGE_MIN_GAMES) {
-      return false;
-    }
-    const prevShares = decisionShares(prev);
-    const [topKey, topShare] = topDecision(decisionShares(last));
-    if (topKey === topDecision(prevShares)[0]) return false;
-    return topShare - (prevShares.get(topKey) || 0) >= RECENT_CHANGE_MIN_SHIFT;
+    const own = analyzed.filter((g) => g.color === color);
+    return decisionShifted(own.slice(0, RECENT_CHANGE_WINDOW), own.slice(RECENT_CHANGE_WINDOW, 2 * RECENT_CHANGE_WINDOW),
+      color, { minGames: RECENT_CHANGE_MIN_GAMES, minShift: RECENT_CHANGE_MIN_SHIFT });
   };
   return { white: changed("white"), black: changed("black") };
 }
@@ -1412,8 +1386,6 @@ export function opponentProfile(games) {
   analyzed.forEach((g) => {
     speedCounts[g.speed] = (speedCounts[g.speed] || 0) + 1;
   });
-  const last20 = analyzed.slice(0, 20);
-  const prev20 = analyzed.slice(20, 40);
   return {
     total: analyzed.length,
     // Games fetched but not analysed (early resignations), so the report label can
@@ -1423,7 +1395,7 @@ export function opponentProfile(games) {
     ratingMax: ratingsSeen.length ? Math.max(...ratingsSeen) : null,
     ratingLast: analyzed[0]?.rating || null,
     speedCounts,
-    recentlyChanged: detectRecentChange(last20, prev20),
+    recentlyChanged: detectRecentChange(analyzed),
     colorStats: {
       white: colorResultStats(analyzed, "white"),
       black: colorResultStats(analyzed, "black"),

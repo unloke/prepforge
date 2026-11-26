@@ -56,7 +56,9 @@ describe("Scout row actions", () => {
       api: vi.fn(async (url) => (url === "/api/repertoires" || url === "/api/scout/trees"
         ? { repertoires: [{ id: "rep-w", name: "Ruy", color: "white", is_active: true }] }
         : { nodes: [] })),
-      showInputModal: vi.fn(async () => ({ repertoire: "rep-w" })),
+      // The tree plays 1.e4, so a batch of other first moves asks whether to add them as
+      // alternatives; these tests choose "add" and are about writing and syncing them.
+      showInputModal: vi.fn(async () => ({ repertoire: "rep-w", divergent: "add" })),
       createRepertoirePrompt: vi.fn(),
       editRepertoire: vi.fn(async () => {}),
       boardAfterMove: vi.fn(async (fen, uci) => `${fen}:${uci}`),

@@ -74,7 +74,7 @@ export function collectPrefilterFens(lines, { fenAfterLine, oppColor }) {
 /**
  * Read objective position opportunity; personal relevance is scored separately.
  */
-export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ancestorFreq, funnel }) {
+export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, funnel }) {
   const drop = (key) => {
     if (funnel?.scoreDrops) {
       funnel.scoreDrops[key] = (funnel.scoreDrops[key] || 0) + 1;
@@ -92,8 +92,8 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     return null;
   }
 
-  // fenBefore is still derived (chess.js, not an engine read) for the mover check and the
-  // ancestor-frequency lookup; only its Stockfish eval is gone.
+  // fenBefore is still derived (chess.js, not an engine read) for the mover check;
+  // only its Stockfish eval is gone.
   const fenBefore = fenBeforeLastMove(ucis);
   const fenLeaf = fenAfterLine(ucis);
   const leafEval = fenLeaf ? evalMap.get(fenLeaf) ?? evalMap.get(canonicalEvalIndex(evalMap).get(canonicalPosition(fenLeaf))) : null;
@@ -122,8 +122,6 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     return null;
   }
 
-  const ancestorInfo = ancestorFreq?.get(fenBefore) || { frequency: 0.001 };
-
   if (funnel) funnel.scored = (funnel.scored || 0) + 1;
 
   return {
@@ -137,9 +135,6 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     maiaScorePct: line.maiaScorePct ?? null,
     routeReach: line.routeReach ?? null,
     routePlausibility: line.routePlausibility ?? null,
-    ancestorFrequency: line.routeReach ?? ancestorInfo.frequency,
-    ancestorScorePct: line.ancestorScorePct ?? ancestorInfo.scorePct,
-    ancestorGames: line.ancestorGames ?? ancestorInfo.games,
     scorePct: line.scorePct,
     games: line.games,
     routeSupportGames: line.routeSupportGames ?? null,
@@ -152,7 +147,7 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
 export function rankPrefilterCandidates(
   lines,
   evalMap,
-  { fenAfterLine, oppColor, ancestorFreq, baselineScorePct = 50, funnelOut },
+  { fenAfterLine, oppColor, baselineScorePct = 50, funnelOut },
 ) {
   const funnel = {
     totalLines: (lines || []).length,
@@ -173,7 +168,6 @@ export function rankPrefilterCandidates(
     const metrics = scorePrefilterLine(line, evalMap, {
       fenAfterLine,
       oppColor,
-      ancestorFreq,
       funnel,
     });
     if (!metrics) continue;
@@ -272,14 +266,38 @@ export function mergeGlobalPrefilterRanked(
   return entries.slice(0, poolSize);
 }
 
+// Cache scope ("<engine>|d<depth>|") + canonical position -> cache keys, in cache order.
+// Rebuilt only when the cache grows (entries are added or overwritten, never removed),
+// so a transposition lookup no longer scans the whole carried-over cache: 600 misses
+// against 4,000 entries took ~2 s of main thread.
+const cachePositionIndexes = new WeakMap();
+const SCOPED_CACHE_KEY = /^(.*?\|d\d+\|)(.*)$/s;
+function cachePositionIndex(cache) {
+  let entry = cachePositionIndexes.get(cache);
+  if (!entry || entry.size !== cache.size) {
+    const index = new Map();
+    for (const key of cache.keys()) {
+      const parts = SCOPED_CACHE_KEY.exec(key);
+      if (!parts) continue;
+      const position = parts[1] + canonicalPosition(parts[2]);
+      if (!index.has(position)) index.set(position, []);
+      index.get(position).push(key);
+    }
+    entry = { size: cache.size, index };
+    cachePositionIndexes.set(cache, entry);
+  }
+  return entry.index;
+}
+
 // Counter-only transpositions reuse successful reads without changing their cache keys.
 function cachedPositionEval(cache, fen, depth) {
   const hit = cache?.get(prefilterCacheKey(fen, depth));
-  if (hit?.complete === true) return hit;
+  if (hit?.complete === true || !cache) return hit;
   const scope = `${SCOUT_PREFILTER_ENGINE_VERSION}|d${depth}|`;
-  const position = canonicalPosition(fen);
-  for (const [key, value] of cache || []) if (value?.complete === true && key.startsWith(scope) &&
-    canonicalPosition(key.slice(scope.length)) === position) return value;
+  for (const key of cachePositionIndex(cache).get(scope + canonicalPosition(fen)) || []) {
+    const value = cache.get(key);
+    if (value?.complete === true) return value;
+  }
   return hit;
 }
 
@@ -320,7 +338,6 @@ export async function runStockfishPrefilter(
   {
     fenAfterLine,
     oppColor,
-    ancestorFreq = null,
     baselineScorePct = 50,
     depth = SCOUT_PREFILTER_DEPTH,
     poolSize = SCOUT_PREFILTER_POOL_SIZE,
@@ -412,14 +429,13 @@ export async function runStockfishPrefilter(
   const ranked = rankPrefilterCandidates(lines, evalMap, {
     fenAfterLine,
     oppColor,
-    ancestorFreq,
     baselineScorePct,
     funnelOut: funnel,
   });
   const pool = prefilterPoolLines(ranked, poolSize);
   const maiaLines = prefilterMaiaLines(ranked, SCOUT_MAIA_PREFILTER_LIMIT);
   const incompleteLines = pool.filter((line) => {
-    const metrics = scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ancestorFreq });
+    const metrics = scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor });
     return !metrics;
   });
 

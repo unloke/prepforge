@@ -92,3 +92,16 @@ describe('v10 evidence and cache boundaries', () => {
     expect(summary.headline).toContain('20 games');
   });
 });
+
+describe('batch selection trie reuse', () => {
+  it('ranks repeat calls on the same games identically and picks up a pushed game', () => {
+    const games = corpus(true), stream = createOpeningTrie();
+    for (const g of games) insertGameIntoTrie(stream,g,'black',{ anchorTs:NEWEST+500*DAY,maxPlies:Infinity });
+    const first = observed(games,stream);
+    expect(observed(games,stream)).toEqual(first);
+    games.push(game('late-loss',0,['e2e4','e7e5'],1));
+    const grown = observed(games,stream).find(r => r.ucis[1] === 'e7e5');
+    expect(grown.routeSupportGames).toBe(13);
+    expect(grown).toEqual(observed([...games],null).find(r => r.ucis[1] === 'e7e5'));
+  });
+});

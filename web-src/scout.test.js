@@ -21,7 +21,6 @@ import {
   SCOUT_ERR_RATE_LIMIT,
   scoutFetchErrorMessage,
   fenAfterLine,
-  fenBeforeLastMove,
   enrichPrepTarget,
   gradeLines,
   lineCoverage,
@@ -777,36 +776,6 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     const ucis = Array.from({ length: 20 }, (_, i) => `u${i}`);
     expect(branchPathKey(ucis)).toBe(ucis.join(">"));
     expect(branchPathKey(ucis).length).toBeGreaterThan(triePathKey(ucis).length);
-  });
-
-  it("builds ancestor-node frequencies from games reaching fenBefore", () => {
-    const mainLineGames = Array.from({ length: 12 }, (_, i) =>
-      scoutGame({
-        color: "black",
-        sans: ["e4", "c5", "Nf3", "Nc6"],
-        ucis: ["e2e4", "c7c5", "g1f3", "b8c6"],
-        gameId: `main-${i}`,
-        datestamp: 1000 + i,
-      }),
-    );
-    const sideline = scoutGame({
-      color: "black",
-      sans: ["e4", "c5", "Nf3", "a6"],
-      ucis: ["e2e4", "c7c5", "g1f3", "a7a6"],
-      gameId: "sideline",
-      datestamp: 2000,
-    });
-    const { branches, ancestorFreq } = aggregateOpeningBranches(
-      [...mainLineGames, sideline],
-      "black",
-    );
-    expect(branches).toHaveLength(2);
-    const sharedAncestor = fenBeforeLastMove(["e2e4", "c7c5", "g1f3", "b8c6"]);
-    const sharedInfo = ancestorFreq.get(sharedAncestor);
-    expect(sharedInfo?.count).toBe(13);
-    expect(sharedInfo?.frequency).toBeCloseTo(1, 4);
-    expect(sharedInfo?.games).toBe(13);
-    expect(sharedInfo?.scorePct).toBe(100);
   });
 
   it("does not stamp a deeper engine pattern onto a shorter sibling", () => {

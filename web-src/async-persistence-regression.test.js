@@ -224,16 +224,16 @@ it("a canceled Practice start does not paint a stale Build flush failure", async
 
 
 it("Scout bulk counts only confirmed complete lines and continues after failures", async () => {
-  const scoutSource = readFileSync(new URL("./views/scout.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
-  // Private view functions are indented inside createScoutView.
-  const code = scoutSource.replace(/^  /gm, "");
+  const writerSource = readFileSync(new URL("./views/scout-prep-writer.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  // Private writer functions are indented inside createScoutPrepWriter.
+  const code = writerSource.replace(/^  /gm, "");
   const notices = { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() };
   const write = vi.fn().mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce("node");
   const run = compile("async function runPrepareAll(", {
-    scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices, countOf,
+    scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices, countOf, otherColor: () => "black",
     // Bulk add already holds the Scout busy flag, so it picks without the
-    // guarded scoutPickRepertoire (which would refuse and do nothing).
-    pickRepertoire: async () => "r", scoutWriteLineToRep: write,
+    // guarded entry point (which would refuse and do nothing). No line branches, so none is skipped.
+    pickRepertoire: async () => "r", writeLineToRep: write, hardFlushBuild: vi.fn(), latestLookup: async () => ({ rootId: null, childUci: new Map() }), resolveDivergences: async () => ({ skip: new Set() }),
   }, "", code);
   await run(["a", "b", "c"].map((uci) => ({ ucis: [uci], sans: [uci] })), "white");
   expect(write).toHaveBeenCalledTimes(3);
