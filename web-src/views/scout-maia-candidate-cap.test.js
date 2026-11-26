@@ -18,7 +18,7 @@ vi.mock("../scout-explorer.js", async (importOriginal) => {
 vi.mock("../explorer.js", () => ({ createExplorerClient: () => ({ fetchStats: vi.fn() }) }));
 vi.mock("../scout.js", async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, createScoutClient: () => ({ streamGames, fetchGames: vi.fn() }) };
+  return { ...actual, createScoutClient: () => ({ streamGames }) };
 });
 vi.mock("../scout-prefilter.js", async (importOriginal) => {
   const actual = await importOriginal();

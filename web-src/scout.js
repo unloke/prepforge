@@ -151,12 +151,6 @@ export function mergeEngineIntoTargets(targets, enginePatterns) {
     return { ...target, enginePattern: pattern, hasEngineMistake: true };
   });
 }
-// v4: fetchGames now excludes bullet at the source (excludeBullet:true). The v3
-// cache may hold older results that still contain bullet games, so the key is
-// bumped to force a clean re-fetch rather than re-serving contaminated data.
-const CACHE_KEY = "prepforge.scout.cache.v4";
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // opponents play new games constantly
-const CACHE_CAP = 8;
 
 // ---------------------------------------------------------------------------
 // PGN parsing (multi-game export -> per-game opening records)
@@ -505,8 +499,7 @@ export function parseGameBlock(block, username) {
 
   // Coarse end-state, for the collapse down-weight rule. Lichess PGN marks resign and
   // checkmate alike as [Termination "Normal"]; the trailing "#" separates mate from a
-  // resignation, and time forfeits carry their own termination. The ND-JSON path later
-  // overrides this with Lichess's authoritative `status` (see parseGameFromJson).
+  // resignation, and time forfeits carry their own termination.
   const termination = (headerValue(block, "Termination") || "").toLowerCase();
   const lastSan = replayedSans[replayedSans.length - 1] || "";
   let status = null;
@@ -534,52 +527,6 @@ export function parseGameBlock(block, username) {
     openingEndPly,
     nextOwnThinkSeconds,
   };
-}
-
-/**
- * One ND-JSON game object (with `pgnInJson=true&clocks=true`) -> a scout record.
- * The embedded `pgn` reuses the full PGN reader so every derived field is identical to
- * the PGN path; we only *attach* the raw centisecond `clocks` array + the precise
- * initial/increment, which the PGN `[%clk]` annotation rounds to whole seconds.
- */
-export function parseGameFromJson(obj, username) {
-  if (!obj || typeof obj !== "object") return null;
-  const pgnText = typeof obj.pgn === "string" ? obj.pgn : null;
-  if (!pgnText) return null;
-  const game = parseGameBlock(pgnText, username);
-  if (!game) return null;
-  if (Array.isArray(obj.clocks) && obj.clocks.length) {
-    game.clockCsAfterPly = obj.clocks
-      .slice(0, game.ucis.length)
-      .map((c) => (Number.isFinite(c) ? c : null));
-  }
-  if (obj.clock && typeof obj.clock === "object") {
-    if (Number.isFinite(obj.clock.initial)) game.clockInitialSeconds = obj.clock.initial;
-    if (Number.isFinite(obj.clock.increment)) game.clockIncrementSeconds = obj.clock.increment;
-  }
-  // Authoritative end-state ("resign" / "mate" / "outoftime" / "draw" / …), which the
-  // PGN reader can only approximate — the collapse rule needs a reliable "resign".
-  if (typeof obj.status === "string") game.status = obj.status;
-  if (Number.isFinite(obj.createdAt)) game.datestamp = obj.createdAt;
-  return game;
-}
-
-/** Parse a Lichess ND-JSON games export (one JSON object per line). */
-export function parseNdjsonGames(text, username) {
-  const games = [];
-  for (const line of String(text || "").split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    let obj;
-    try {
-      obj = JSON.parse(trimmed);
-    } catch (_) {
-      continue; // tolerate blank/partial lines
-    }
-    const game = parseGameFromJson(obj, username);
-    if (game) games.push(game);
-  }
-  return games;
 }
 
 // ---------------------------------------------------------------------------
@@ -691,22 +638,12 @@ export const SCOUT_COLLAPSE_MIN_CLOCK_FRAC = 0.5; // ≥ half the clock left →
 // The scouted player's remaining-clock fraction (0..1) at their last recorded move, or
 // null when it can't be determined (the collapse rule then abstains rather than guesses).
 function opponentEndClockFraction(game) {
-  const initial = Number.isFinite(game?.clockInitialSeconds)
-    ? game.clockInitialSeconds
-    : Number.isFinite(game?.timeControl?.baseSeconds)
-      ? game.timeControl.baseSeconds
-      : null;
-  if (!initial || initial <= 0) return null;
-  const parity = game?.color === "white" ? 0 : 1; // clocks[p] is after ply p: even = White
-  const cs = game?.clockCsAfterPly;
-  const secs = game?.clockAfterPly;
-  const len = Math.max(cs?.length || 0, secs?.length || 0);
-  for (let p = len - 1; p >= 0; p -= 1) {
-    if (p % 2 !== parity) continue;
-    const fromCs = cs && Number.isFinite(cs[p]) ? cs[p] / 100 : null;
-    const fromSecs = secs && Number.isFinite(secs[p]) ? secs[p] : null;
-    const remaining = fromCs != null ? fromCs : fromSecs;
-    if (remaining != null) return remaining / initial;
+  const initial = game?.timeControl?.baseSeconds;
+  if (!(initial > 0)) return null;
+  const clocks = game.clockAfterPly || [];
+  const parity = game.color === "white" ? 0 : 1; // clocks[p] is after ply p: even = White
+  for (let p = clocks.length - 1; p >= 0; p -= 1) {
+    if (p % 2 === parity && Number.isFinite(clocks[p])) return clocks[p] / initial;
   }
   return null;
 }
@@ -1168,13 +1105,6 @@ export function rankGamePlan(
 }
 
 /** Production Module B selector alias — keep rankGamePlan as the implementation. */
-export function selectProductionRoutes(lines, baselineScorePct, options = {}) {
-  return rankGamePlan(lines, baselineScorePct, {
-    ...options,
-    limit: options.limit ?? SCOUT_GAME_PLAN_LIMIT,
-  });
-}
-
 /** Prefer an enabled mainline child; otherwise pick deterministically by UCI. */
 function pickRepertoireReplyChild(children) {
   if (!children?.size) return null;
@@ -1562,30 +1492,6 @@ export function opponentProfile(games) {
 // Fetching (with a small per-username cache)
 // ---------------------------------------------------------------------------
 
-export function scoutUrl(username, max, { pgnInJson = false, excludeBullet = false } = {}) {
-  const safe = encodeURIComponent(String(username || "").trim());
-  // Bullet think-times are too compressed to tell a real preparation gap from a
-  // mouse-slip, so bullet is dropped at the source. The production scout
-  // (streamGames / scoutStreamUrl) also excludes bullet now.
-  const perfType = excludeBullet ? "blitz,rapid,classical" : "bullet,blitz,rapid,classical";
-  const params = new URLSearchParams({
-    moves: "true",
-    clocks: "true",
-    evals: "false",
-    opening: "false",
-    perfType,
-    variant: "standard",
-  });
-  // pgnInJson lets the ND-JSON export carry both the PGN (parsed by the existing
-  // PGN reader) AND the raw centisecond `clocks` array the PGN `[%clk]` rounds away.
-  if (pgnInJson) params.set("pgnInJson", "true");
-  const maxN = Number(max);
-  if (max != null && Number.isFinite(maxN) && maxN > 0) {
-    params.set("max", String(Math.max(10, Math.round(maxN))));
-  }
-  return `https://lichess.org/api/games/user/${safe}?${params}`;
-}
-
 /** Streaming export URL — adds colour filter and since/until for resume pagination. */
 export function scoutStreamUrl(username, { color = "both", since, until, max } = {}) {
   const safe = encodeURIComponent(String(username || "").trim());
@@ -1664,14 +1570,8 @@ async function streamPgn(resp, username, onGame, signal) {
   return { accepted, emitted: accepted, received, lastDatestamp };
 }
 
-export function createScoutClient({ fetchImpl, storage, now } = {}) {
+export function createScoutClient({ fetchImpl } = {}) {
   const doFetch = fetchImpl || ((...args) => fetch(...args));
-  const clock = now || (() => Date.now());
-  const store =
-    storage ||
-    (typeof localStorage === "undefined"
-      ? { getItem: () => null, setItem: () => {} }
-      : localStorage);
 
   // The games export 404s both for a missing account and for an existing one
   // whose games Lichess will not export; only the profile lookup tells them
@@ -1691,50 +1591,6 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
     return new Error(`Lichess did not export ${username}'s games, and Scout couldn't verify the account. Try again in a moment.`);
   }
 
-  function readCache() {
-    try {
-      const parsed = JSON.parse(store.getItem(CACHE_KEY) || "null");
-      return parsed && parsed.entries ? parsed : { entries: {} };
-    } catch (_) {
-      return { entries: {} };
-    }
-  }
-
-  // fetchGames(username, {max}) -> parsed game records (cached for a few hours).
-  async function fetchGames(username, { max, signal } = {}) {
-    const key = `${username.toLowerCase()}:${max ?? "all"}`;
-    const cache = readCache();
-    const hit = cache.entries[key];
-    if (hit && clock() - hit.at < CACHE_TTL_MS) return hit.games;
-
-    // ND-JSON (not PGN) so we keep the raw centisecond `clocks` array that `[%clk]`
-    // rounds to whole seconds — the time-discrimination features need sub-second think.
-    const resp = await doFetch(scoutUrl(username, max, { pgnInJson: true, excludeBullet: true }), {
-      headers: { Accept: "application/x-ndjson" },
-      signal,
-    });
-    if (resp.status === 404) throw await notFoundError(username, signal);
-    if (resp.status === 429) throw new Error(SCOUT_ERR_RATE_LIMIT);
-    if (!resp.ok) throw new Error(`Lichess responded ${resp.status}`);
-    const games = parseNdjsonGames(await resp.text(), username);
-
-    const fresh = readCache();
-    fresh.entries[key] = { at: clock(), games };
-    const keys = Object.keys(fresh.entries);
-    if (keys.length > CACHE_CAP) {
-      keys
-        .sort((a, b) => fresh.entries[a].at - fresh.entries[b].at)
-        .slice(0, keys.length - CACHE_CAP)
-        .forEach((k) => delete fresh.entries[k]);
-    }
-    try {
-      store.setItem(CACHE_KEY, JSON.stringify(fresh));
-    } catch (_) {
-      /* best-effort cache */
-    }
-    return games;
-  }
-
   // streamGames(username, {color, since, until, onGame, signal}) -> {accepted, lastDatestamp}
   async function streamGames(username, { color, since, until, max, onGame, signal } = {}) {
     const resp = await doFetch(scoutStreamUrl(username, { color, since, until, max }), {
@@ -1747,5 +1603,5 @@ export function createScoutClient({ fetchImpl, storage, now } = {}) {
     return streamPgn(resp, username, onGame, signal);
   }
 
-  return { fetchGames, streamGames };
+  return { streamGames };
 }

@@ -1,8 +1,7 @@
 import { html } from "./html.js";
 import { readFileSync } from "node:fs";
 import { countOf } from "./plural.js";
-import { createSyncQueue } from "./sync-queue.js";
-import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
+import { createSyncQueue, flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
 import { createBookActions } from "./analyze-book.js";
 import { indexBuildNodes } from "./build-tree.js";
 import { createSettingsActions } from "./settings-actions.js";

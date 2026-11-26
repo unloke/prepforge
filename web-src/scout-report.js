@@ -16,6 +16,7 @@ import {
   fenAfterLine,
   mergeEngineIntoTargets,
   opponentColorStats,
+  rankGamePlan,
   scoutLineText,
 } from "./scout.js";
 import { buildScoutStats, formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
@@ -27,7 +28,6 @@ import {
   scoutMaiaRankedNote,
 } from "./scout-maia.js";
 import { buildScoutSectionSummary, expectationText } from "./scout-summary.js";
-import { PRODUCTION_MODULE_B_ID, selectProductionRoutes } from "./scout-selector.js";
 
 export function scoutLineKey(ucis) {
   return (ucis || []).join(">");
@@ -1273,7 +1273,7 @@ export function buildScoutSectionReport(
       enrichPrepTarget: scoutModule.enrichPrepTarget,
     });
   }
-  let weaknessTargets = selectProductionRoutes(gamePlanSource, baseline, {
+  let weaknessTargets = rankGamePlan(gamePlanSource, baseline, {
     oppColor,
     games,
     speedFilter,
@@ -1328,7 +1328,6 @@ export function buildScoutSectionReport(
   });
 
   const sectionData = {
-    moduleB: PRODUCTION_MODULE_B_ID,
     // The total the section itself states, so the colour tab can quote the same
     // number instead of the raw per-colour total.
     gameCount: trie.gameCount,
@@ -1408,7 +1407,7 @@ export function buildScoutSectionReport(
 
   const heading = oppColor === "white" ? "With White" : "With Black";
   const markup = html`
-    <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-board-side="${oppColor === "white" ? "black" : "white"}" data-module-b="${PRODUCTION_MODULE_B_ID}">
+    <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-board-side="${oppColor === "white" ? "black" : "white"}">
       <h3 class="visually-hidden">${heading} · <span class="scout-games-count">${countOf(trie.gameCount, "game")}</span></h3>
       <section class="color-sec card">
         <div class="scout-section-head cs-head">

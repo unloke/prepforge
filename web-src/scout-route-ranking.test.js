@@ -41,7 +41,7 @@ describe('v10 evidence and cache boundaries', () => {
   it('anchors selection at the newest colour/speed/collapse eligible game', () => {
     const games = [...corpus(true), game('wrong-colour',1,['d2d4'], -90,{ color:'white' }),
       game('wrong-speed',1,['d2d4','d7d5'],-180,{ speed:'rapid' }),
-      game('collapse',0,['e2e4','e7e5'],-270,{ status:'resign',totalPly:2,clockInitialSeconds:180,clockCsAfterPly:[17000,17000] })];
+      game('collapse',0,['e2e4','e7e5'],-270,{ status:'resign',totalPly:2,timeControl:{ baseSeconds:180 },clockAfterPly:[170,170] })];
     const trie = buildOpeningTrie(games,'black',{ speedFilter:'blitz',maxPlies:Infinity });
     expect(trie.selectionAnchorTs).toBe(NEWEST);
     expect(trie.gameCount).toBe(42);
