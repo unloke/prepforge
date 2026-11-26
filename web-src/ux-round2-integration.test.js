@@ -22,7 +22,7 @@ describe("Recent analyses refresh ordering", () => {
     const old = deferred();
     const fresh = deferred();
     const host = { setAttribute() {}, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [], querySelector: () => null };
-    const deps = { appState: {}, currentOwnerId: () => "owner", document: { getElementById: () => host }, localDayOf: (iso) => String(iso || "").slice(0, 10),
+    const deps = { appState: { pendingAnalysisDeletes: new Set() }, currentOwnerId: () => "owner", document: { getElementById: () => host }, localDayOf: (iso) => String(iso || "").slice(0, 10),
       api: vi.fn().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise) };
     const load = compile("async function loadAnalysisHistory(", deps, "let analysisHistorySeq = 0;");
     const first = load();

@@ -157,9 +157,12 @@ export async function loadAnalysisHistory() {
       };
       // Read as one sentence, not "Untitled game2026-11-02".
       const spoken = (a) => [label(a), resultOf(a).label, localDayOf(a.analyzed_at)].filter(Boolean).join(", ");
-      host.innerHTML = html`${[...rows.values()].map((a) =>
+      // A row whose delete is still in its undo window stays gone: a refresh while
+      // the window is open (a save lands, the drawer reopens) must not bring it back.
+      const shown = [...rows.values()].filter((a) => !appState.pendingAnalysisDeletes.has(String(a.game_id)));
+      host.innerHTML = shown.length ? html`${shown.map((a) =>
         html`<div class="history-item" data-game-id="${a.game_id}"><button class="hi-open" type="button" aria-label="${spoken(a)}"><span class="hi-players">${label(a)}</span><span class="hi-meta">${meta(a)}</span></button><button class="btn icon sm hi-delete" type="button" data-history-delete="${a.game_id}" data-history-label="${label(a)}" title="Delete this analysis" aria-label="Delete analysis of ${label(a)}"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
-      )}` || html`<div class="muted hint">No saved analyses yet.</div>`;
+      )}` : html`<div class="muted hint">No saved analyses yet.</div>`;
       if (cursor) host.innerHTML += html`<button class="btn sm" data-history-more>Load more</button>`;
       host.scrollTop = scroll;
       host.querySelectorAll(".hi-open").forEach((open) => {
@@ -176,7 +179,10 @@ export async function loadAnalysisHistory() {
       if (rows.size) {
         if (button) button.textContent = "Retry load more";
         setStatusError(error.message);
-      } else host.innerHTML = html`<div class="empty-state">${error.message}</div>`;
+      } else {
+        host.innerHTML = html`<div class="empty-state">${error.message} <button class="btn sm" type="button" data-history-retry>Retry</button></div>`;
+        host.querySelector("[data-history-retry]")?.addEventListener("click", () => void loadAnalysisHistory());
+      }
     } finally {
       if (isCurrent()) host.setAttribute("aria-busy", "false");
       loading = false;
