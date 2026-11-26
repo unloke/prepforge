@@ -277,7 +277,19 @@ def analyze_prepare(
             "enabled": BrilliantConfig().enabled,
             "rating": owner_maia_rating(repo, owner),
         },
+        # The latest saved analysis of this game (engine, depth, whether Maia ran),
+        # or null. The browser reopens it instead of searching the whole game again
+        # when it already covers this run. One row from the latest-analysis index.
+        "saved_analysis": _saved_analysis_meta(repo, game_id, owner),
     }
+
+
+def _saved_analysis_meta(repo: GameStore, game_id: str, owner: str) -> dict[str, Any] | None:
+    meta = repo.latest_analysis_meta(game_id, owner)
+    if meta is None:
+        return None
+    analyzed_at = meta["analyzed_at"]
+    return {**meta, "analyzed_at": analyzed_at.isoformat() if analyzed_at else None}
 
 
 class ClassifySavePayload(BaseModel):
@@ -394,10 +406,6 @@ def analyze_classify_save(
     timings_ms["save_game_ms"] = int((time.perf_counter() - mark) * 1000)
 
     mark = time.perf_counter()
-    # save_game already stores the analysis in the same transaction.
-    timings_ms["save_analysis_ms"] = int((time.perf_counter() - mark) * 1000)
-
-    mark = time.perf_counter()
     payload = analysis_result_to_payload(result)
     timings_ms["serialize_ms"] = int((time.perf_counter() - mark) * 1000)
     payload["server_timings_ms"] = timings_ms
@@ -488,13 +496,16 @@ def save_analysis_study(
     owner: str = Depends(current_owner),
     repo: GameStore = Depends(get_repository),
 ) -> dict[str, bool]:
-    game = repo.load_game(game_id, owner_user_id=owner)
-    if game is None or repo.load_latest_analysis_result(game_id, owner_user_id=owner) is None:
+    # The game's start and mainline only: the moves' evaluations and the analysis
+    # snapshot are not needed to check that the study keeps the analyzed game.
+    mainline = repo.analyzed_mainline(game_id, owner)
+    if mainline is None:
         raise HTTPException(status_code=404, detail="no saved analysis for that game")
+    initial_fen, game_ucis = mainline
     try:
         study = import_single_pgn(body.pgn)
-        if (study.initial_fen != game.initial_fen or
-                [m.uci for m in study.moves[:len(game.moves)]] != [m.uci for m in game.moves]):
+        if (study.initial_fen != initial_fen or
+                [m.uci for m in study.moves[:len(game_ucis)]] != game_ucis):
             raise ValueError("Study PGN must keep the analyzed game's mainline")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
