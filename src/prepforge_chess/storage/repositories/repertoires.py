@@ -926,19 +926,6 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 self.write_user_setting(conn, *receipt)
             self._archive_reviews(conn, reviewed, week_ago)
 
-    def _save_opening_node(
-        self,
-        conn: Connection,
-        node: OpeningNode,
-        pos_cache: Optional[Dict[str, int]] = None,
-    ) -> None:
-        values = self._opening_node_values(conn, node, pos_cache)
-        _upsert(
-            conn, t.opening_nodes, values,
-            conflict=[t.opening_nodes.c.id],
-            update_cols=tuple(name for name in values if name not in {"id", "created_at"}),
-        )
-
     @staticmethod
     def _opening_node_row(
         node: OpeningNode, engine_evaluation_id: Optional[int]
@@ -1000,14 +987,3 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 set_={name: stmt.excluded[name] for name in update_cols},
             )
             conn.execute(stmt)
-
-    def _opening_node_values(
-        self, conn: Connection, node: OpeningNode,
-        pos_cache: Optional[Dict[str, int]] = None,
-    ) -> Dict[str, Any]:
-        if pos_cache is None:
-            pos_cache = {}
-        engine_evaluation_id = self._save_engine_evaluation(
-            conn, node.engine_evaluation, node.fen, pos_cache
-        )
-        return self._opening_node_row(node, engine_evaluation_id)
