@@ -486,6 +486,18 @@ def test_mixed_session_keeps_each_repertoire_together():
     assert switches == 1
 
 
+def test_mixed_session_new_cap_counts_moves_not_cards():
+    # Each repertoire teaches its two new moves as one card; counting cards
+    # let three repertoires introduce six moves under a cap of four.
+    repository = _repository()
+    reps = [_build_black(repository) for _ in range(3)]
+    owner = "owner-cap"
+    _claim(repository, owner, *reps)
+    session = SmartTrainingService(repository, owner).start_or_resume_mixed(owner, seed=5, new_cap=4)
+    cards = [decode_card(raw) for raw in session.line_order]
+    assert sum(len(card.target_ids) for card in cards if card.kind == "new") == 4
+
+
 def test_all_repertoires_never_resumes_a_one_repertoire_session():
     """P0: Library Train (all) after "Train this repertoire" must not serve the
     one-repertoire queue, though both anchor on the same repertoire row."""

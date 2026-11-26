@@ -388,16 +388,16 @@ class SmartTrainingService:
             plan = self._plan_single(rep, size, new)
             plans.append((rep, plan, size, new))
             remaining_size -= plan.counts.get("targets", 0)
-            remaining_new -= plan.counts.get("new", 0)
+            remaining_new -= plan.counts.get("new_targets", 0)
         for index, (rep, plan, size, new) in enumerate(plans):
             if remaining_size <= 0:
                 break
-            targets, fresh = plan.counts.get("targets", 0), plan.counts.get("new", 0)
+            targets, fresh = plan.counts.get("targets", 0), plan.counts.get("new_targets", 0)
             if targets < size and fresh < new:
                 continue  # already took everything it had
             more = self._plan_single(rep, targets + remaining_size, fresh + max(0, remaining_new))
             remaining_size -= more.counts.get("targets", 0) - targets
-            remaining_new -= more.counts.get("new", 0) - fresh
+            remaining_new -= more.counts.get("new_targets", 0) - fresh
             plans[index] = (rep, more, size, new)
         return mix_plans(
             [(rep.id, plan, preorder_index(rep.root_node, rep.color)) for rep, plan, _, _ in plans]

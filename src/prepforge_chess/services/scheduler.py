@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple
 
 from prepforge_chess.core.models import Color, OpeningNode, TrainingProgress
 from prepforge_chess.services.progress import (
@@ -36,7 +36,7 @@ from prepforge_chess.services.progress import (
     effective_children,
     node_mastery,
 )
-from prepforge_chess.services.srs import retrievability
+from prepforge_chess.services.srs import is_flagged_miss, retrievability
 
 CARD_WEAK = "weak"
 CARD_DUE = "due"
@@ -87,9 +87,11 @@ class TrainingCard:
 @dataclass(frozen=True)
 class SessionPlan:
     cards: List[TrainingCard]
-    # kind -> card count, plus "cards" and "targets" totals (for the queue
-    # composition strip: "3 weak · 4 due · 3 new").
+    # kind -> card count, plus "cards", "targets" and "new_targets" totals (for
+    # the queue composition strip: "3 weak · 4 due · 3 new").
     counts: Dict[str, int]
+    # Targets that open the session: explicit practice, then flagged misses.
+    leading: FrozenSet[str] = frozenset()
 
 
 def encode_card(card: TrainingCard) -> str:
@@ -321,10 +323,15 @@ def build_session_plan(
     # to drill, it just doesn't get to monopolise the queue.
     # Explicit practice reserves at most half the queue, keeping room for
     # ordinary weak/due review. Reuse mastery kinds so grading stays unchanged.
+    # Misses recorded outside a session (games, Analyze) come right after, inside
+    # the same budget, so "this move leads your next session" stays true.
     target_budget = max(1, session_size // 2)
-    for pool, kind in ((weak, CARD_WEAK), (due, CARD_DUE), (new, CARD_NEW), (polish, CARD_POLISH)):
-        take([c for c in pool if c.node.id in requested], kind,
-             limit=max(0, target_budget - len(selected_kind)))
+    flagged = {c.node.id for c in candidates if is_flagged_miss(progress_by_id.get(c.node.id))} - requested
+    for lead in (requested, flagged):
+        for pool, kind in ((weak, CARD_WEAK), (due, CARD_DUE), (new, CARD_NEW), (polish, CARD_POLISH)):
+            take([c for c in pool if c.node.id in lead], kind,
+                 limit=max(0, target_budget - len(selected_kind)))
+    leading = frozenset(node_id for node_id in requested | flagged if node_id in selected_kind)
     targeted_new = sum(kind == CARD_NEW for kind in selected_kind.values())
     weak_share = max(1, int((session_size - len(selected_kind)) * WEAK_SHARE))
     take(weak, CARD_WEAK, limit=weak_share)
@@ -333,13 +340,19 @@ def build_session_plan(
     take(polish, CARD_POLISH)
     take(weak, CARD_WEAK)  # top off with leftover weak when nothing else remains
 
-    cards = _group_into_lines(candidates, selected_kind, max_targets_per_card, root.repertoire_id, requested)
+    cards = _group_into_lines(candidates, selected_kind, max_targets_per_card, root.repertoire_id, leading)
     ordered = order_lines(cards, {c.node.id: c.order for c in candidates})
     # Explicit practice opens the session: the move the user asked for is card 1.
-    ordered.sort(key=lambda card: card.first_target_id not in requested)
+    ordered.sort(key=lambda card: _lead_rank(card, requested, leading))
     counts = card_counts(ordered)
     counts["targets"] = len(selected_kind)
-    return SessionPlan(cards=ordered, counts=counts)
+    counts["new_targets"] = sum(kind == CARD_NEW for kind in selected_kind.values())
+    return SessionPlan(cards=ordered, counts=counts, leading=leading)
+
+
+def _lead_rank(card: TrainingCard, requested: Set[str], leading: FrozenSet[str]) -> int:
+    first = card.first_target_id
+    return 0 if first in requested else 1 if first in leading else 2
 
 
 @dataclass
@@ -363,7 +376,7 @@ def _group_into_lines(
     Candidates arrive in preorder, so the first branch under an ancestor
     extends its line and each sibling branch starts its own (it replays the
     shared prefix). New moves group only with new moves (a new line is taught
-    in one pass), reviews with reviews; a requested target opens its own card.
+    in one pass), reviews with reviews; a leading target opens its own card.
     """
     by_id = {cand.node.id: cand for cand in candidates}
     drafts: List[_LineDraft] = []
@@ -440,10 +453,13 @@ def mix_plans(
         preorder.update(order)
         heads.append((min(_BAND[card.kind] for card in plan.cards), len(heads), repertoire_id))
     rank = {repertoire_id: index for index, (_, _, repertoire_id) in enumerate(sorted(heads))}
+    leading = frozenset().union(*(plan.leading for _, plan, _ in plans))
     ordered = order_lines(cards, preorder, rank)
+    ordered.sort(key=lambda card: card.first_target_id not in leading)
     counts = card_counts(ordered)
-    counts["targets"] = sum(plan.counts.get("targets", 0) for _, plan, _ in plans)
-    return SessionPlan(cards=ordered, counts=counts)
+    for total in ("targets", "new_targets"):
+        counts[total] = sum(plan.counts.get(total, 0) for _, plan, _ in plans)
+    return SessionPlan(cards=ordered, counts=counts, leading=leading)
 
 
 def preorder_index(root: OpeningNode, color: Color) -> Dict[str, int]:
