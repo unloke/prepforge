@@ -30,7 +30,8 @@
     touch-action: none;
     transition: border-radius var(--dur) var(--ease-out);
   }
-  #build-panes > button {
+  #build-panes .build-pane-tabs { display: contents; }
+  #build-panes [role="tab"] {
     position: relative;
     flex: 1 1 0;
     min-width: 0;
@@ -44,8 +45,8 @@
     font-size: 13px;
     font-weight: 500;
   }
-  #build-panes > button[aria-selected="true"] { color: var(--text); }
-  #build-panes > button::after { content: ""; position: absolute; inset: 0 0 -8px; }
+  #build-panes [role="tab"][aria-selected="true"] { color: var(--text); }
+  #build-panes [role="tab"]::after { content: ""; position: absolute; inset: 0 0 -8px; }
   #build-pane-db::after { content: " \25BE"; color: var(--accent-text); }
   #build-panes .pane-engine { flex: none; width: var(--sw); display: flex; align-items: center; justify-content: flex-end; gap: 8px; color: var(--muted); font-size: 13px; }
   #build-panes .sheet-grab { position: absolute; top: 3px; left: 50%; width: 32px; height: 4px; margin-left: -16px; border-radius: 2px; background: var(--line-strong); }
@@ -86,7 +87,9 @@
   #view-build :is(#build-inspector, .build-tree-region) { animation: pane-in var(--dur) var(--ease-out); }
   @keyframes pane-in { from { opacity: 0; transform: translateY(6px); } }
 }
-.rep-route-mark { position: absolute; width: 64px; right: 0; top: 2px; opacity: 0.85; appearance: none; border: 1px solid var(--line); background: none; padding: 6px; margin-top: -6px; min-height: 32px; color: inherit; cursor: pointer; border-radius: 6px; transition: background 160ms ease, opacity 160ms ease; }
+.rep-route-mark { position: absolute; right: 0; top: 0; display: inline-flex; align-items: center; justify-content: center; appearance: none; border: 1px solid var(--line); background: var(--panel-soft); padding: 0 10px; min-height: 28px; color: var(--muted); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 999px; transition: background 160ms ease, color 160ms ease; }
+.rep-route-mark .route-glyph { display: none; }
+.rep-route-mark::after { content: "Atlas"; }
 .route-glyph { display: block; width: 100%; height: auto; overflow: visible; }
 .route-glyph path { fill: none; stroke: var(--line); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
 .route-glyph .route-active { stroke: var(--accent); fill: none; }

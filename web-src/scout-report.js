@@ -1393,7 +1393,7 @@ export function buildScoutSectionReport(
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
           </div>`
     : "";
-  const listHead = html`<div class="col-head scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Last seen</span><span>Their result</span><span></span><span></span></div>`;
+  const listHead = html`<div class="col-head scout-lines-head" aria-hidden="true"><span>Line</span><span>Last seen</span><span>Their result</span><span></span><span></span></div>`;
   const planBody = prepRows.length
     ? html`${listHead}
           <div class="scout-lines scout-ranked-list lines" role="list" data-ui>${prepRows}</div>
