@@ -303,7 +303,8 @@ class SmartTrainingService:
     def _with_misses(self, session: TrainingSession, reps: List[Repertoire]) -> Tuple[List[str], List[str]]:
         """The queue with each miss recorded since it was planned (Analyze, a
         game) as the next card: a card already queued further on moves up, a
-        missing move gets a card of its own. Also returns those leading cards."""
+        missing move gets a card of its own. Also returns those leading cards,
+        also when an earlier Start already put them there."""
         at = session.current_index + (1 if session.current_node_id else 0)
         rest = session.line_order[at:]
 
@@ -319,21 +320,21 @@ class SmartTrainingService:
             rep.root_node, rep.color, self.progress_by_id(rep.id), queued)] if flagged - queued else []
         leading = [rest[i] for i in moved] + added
         if not added and moved == list(range(len(moved))):
-            return session.line_order, []
+            return session.line_order, leading
         kept = [raw for i, raw in enumerate(rest) if i not in moved]
         return session.line_order[:at] + leading + kept, leading
 
     def _lead_with_misses(self, session: TrainingSession, reps: List[Repertoire]) -> TrainingSession:
         """Resume with recorded misses first; ``leading`` names those cards so
         the client can place them in its own saved queue."""
-        if not self._with_misses(session, reps)[1]:
+        line_order, self.leading = self._with_misses(session, reps)
+        if line_order == session.line_order:
             return session
         with self.repository.engine.begin() as conn:
             locked = self.repository.lock_training_session(conn, session_id=session.id) or session
             line_order, self.leading = self._with_misses(locked, reps)
             session = replace(locked, line_order=line_order, updated_at=_utc_now())
-            if self.leading:
-                self.repository.write_training_session(conn, session)
+            self.repository.write_training_session(conn, session)
         return session
 
     def _latest(self, repertoire_id: str, scope: str) -> Optional[TrainingSession]:

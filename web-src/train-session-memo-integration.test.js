@@ -168,6 +168,14 @@ describe("Smart memo integration at Start", () => {
     expect(h.trainState.smart.queue.map((card) => card.encoded)).toEqual(["card-0", "card-3", "card-1", "card-2"]);
     expect(h.present).toHaveBeenCalledWith({ cardIndex: 1, targetIndex: 0 }, { attempt: 1 });
   });
+  it("keeps the server's order when a lost Start already moved a miss up", async () => {
+    const four = [...queue, { encoded: "card-3", targets: [{ uci: "g1f3" }] }];
+    const h = harness({ cards: [four[0], four[3], four[1], four[2]], leading: [] });
+    saveSessionMemo("alice", "session", { ...memo, queue: four, targetIndex: 0, attempt: 1 });
+    await h.start();
+    expect(h.trainState.trainStats).toEqual(stats);
+    expect(h.trainState.smart.queue.map((card) => card.encoded)).toEqual(["card-0", "card-3", "card-1", "card-2"]);
+  });
   it("uses the fresh server target data while restoring the memo's cursor", async () => {
     const updated = queue.map((card) => ({ ...card, targets: [{ uci: "g1f3" }, { uci: "f1c4" }] }));
     const h = harness({ cards: updated });

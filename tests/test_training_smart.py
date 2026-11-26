@@ -1438,3 +1438,20 @@ def test_a_recorded_miss_queued_further_on_moves_to_the_next_card_on_resume():
     resumed = service.start_or_resume(repertoire.id)
     assert resumed.line_order == [session.line_order[-1], *session.line_order[:-1]]
     assert service.leading == [session.line_order[-1]]
+
+
+def test_a_repeated_resume_still_names_the_misses_it_already_moved_up():
+    # The first Start moved the miss up but its response was lost: the second
+    # Start must still name that card, or the client restores its stale order.
+    from prepforge_chess.services.workflows import record_forgotten_move_as_training_miss
+
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    session = SmartTrainingService(repository, "t-owner").start_or_resume(repertoire.id, seed=5)
+    record_forgotten_move_as_training_miss(
+        repository, repertoire.id, decode_card(session.line_order[-1]).target_ids[-1], "t-owner")
+    first = SmartTrainingService(repository, "t-owner")
+    moved = first.start_or_resume(repertoire.id)
+    again = SmartTrainingService(repository, "t-owner")
+    assert again.start_or_resume(repertoire.id).line_order == moved.line_order
+    assert again.leading == first.leading == [session.line_order[-1]]
