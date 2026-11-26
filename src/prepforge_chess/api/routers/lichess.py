@@ -16,9 +16,9 @@ import time
 import urllib.parse
 from collections import OrderedDict
 from contextlib import contextmanager
-from threading import Lock
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update
@@ -326,21 +326,24 @@ _EXPLORER_DBS = ("masters", "lichess")
 _EXPLORER_RATINGS = {"600", "1000", "1200", "1400", "1600", "1800", "2000", "2200", "2500"}
 _EXPLORER_CACHE_TTL_SECONDS = 24 * 3600
 _EXPLORER_CACHE_CAP = 500
-_explorer_cache: OrderedDict[str, tuple[float, dict]] = OrderedDict()
-# Sync routes run on a thread pool: an unguarded move_to_end could race a
-# concurrent eviction of the same key and raise KeyError (a 500).
-_explorer_cache_lock = Lock()
+# Upstream body bytes kept across all entries; a typical position is a few KB.
+_EXPLORER_CACHE_BYTES = 8 * 1024 * 1024
+# url -> (stored at, parsed body, upstream body size). Only the async route
+# below touches it, always on the event loop thread, so it needs no lock.
+_explorer_cache: OrderedDict[str, tuple[float, dict, int]] = OrderedDict()
 # The longest legal FEN is under 100 characters.
 _EXPLORER_FEN_MAX = 120
 
 
-def _any_linked_token(db: Session, user_id: str) -> str | None:
-    """The first usable OAuth token across ALL linked identities, primary first.
+def _explorer_token(db: Session, user_id: str) -> tuple[str | None, bool]:
+    """The first usable OAuth token across ALL linked identities, primary
+    first, and whether the user has any linked identity at all.
 
     The explorer only needs *a* token, so one account whose token can no longer
     be decrypted (key rotation) must not disable the explorer while
     another linked account still has a working one."""
-    for link in _self_links(db, user_id):
+    links = _self_links(db, user_id)
+    for link in links:
         if not link.encrypted_token:
             continue
         try:
@@ -348,13 +351,24 @@ def _any_linked_token(db: Session, user_id: str) -> str | None:
         except Exception:  # noqa: BLE001 - try the next identity
             continue
         if token:
-            return token
-    return None
+            return token, True
+    return None, bool(links)
+
+
+def _remember_explorer(url: str, stored_at: float, data: dict, size: int) -> None:
+    if size > _EXPLORER_CACHE_BYTES:
+        return
+    _explorer_cache[url] = (stored_at, data, size)
+    _explorer_cache.move_to_end(url)
+    while len(_explorer_cache) > _EXPLORER_CACHE_CAP or (
+        sum(entry[2] for entry in _explorer_cache.values()) > _EXPLORER_CACHE_BYTES
+    ):
+        _explorer_cache.popitem(last=False)
 
 
 @router.get("/explorer/{db_name}")
 @limiter.limit("120/minute")
-def explorer_proxy(
+async def explorer_proxy(
     request: Request,
     db_name: str,
     fen: str = Query(max_length=_EXPLORER_FEN_MAX),
@@ -367,7 +381,11 @@ def explorer_proxy(
 
     Query params beyond ``fen``/``ratings`` are pinned server-side, so this can't
     be used as a general-purpose proxy. The ratings list is validated against the
-    explorer's own buckets."""
+    explorer's own buckets.
+
+    The route is async so a slow explorer holds no worker thread while it
+    waits; only the token lookup (a database read) runs on the thread pool,
+    and a cache hit never leaves the event loop."""
     if db_name not in _EXPLORER_DBS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown explorer database")
     if db_name == "masters":
@@ -385,15 +403,13 @@ def explorer_proxy(
     )
 
     now = time.time()
-    with _explorer_cache_lock:
-        hit = _explorer_cache.get(url)
-        if hit and now - hit[0] < _EXPLORER_CACHE_TTL_SECONDS:
-            _explorer_cache.move_to_end(url)
-            return hit[1]
+    hit = _explorer_cache.get(url)
+    if hit and now - hit[0] < _EXPLORER_CACHE_TTL_SECONDS:
+        _explorer_cache.move_to_end(url)
+        return hit[1]
 
-    token = _any_linked_token(db, user.id)
+    token, linked = await run_in_threadpool(_explorer_token, db, user.id)
     if not token:
-        linked = bool(_links_for(db, user.id))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -403,7 +419,7 @@ def explorer_proxy(
             ),
         )
     try:
-        data = lichess_fetch.fetch_explorer_json(url, token)
+        data, size = await lichess_fetch.fetch_explorer_json(url, token)
     except lichess_fetch.ExplorerRateLimitedError as exc:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -412,11 +428,7 @@ def explorer_proxy(
     except lichess_fetch.LichessFetchError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
-    with _explorer_cache_lock:
-        _explorer_cache[url] = (now, data)
-        _explorer_cache.move_to_end(url)
-        while len(_explorer_cache) > _EXPLORER_CACHE_CAP:
-            _explorer_cache.popitem(last=False)
+    _remember_explorer(url, now, data, size)
     return data
 
 

@@ -164,10 +164,14 @@ class PgnImportService:
         return result
 
     def _stored_signatures(self, games: List[Game], owner_user_id: Optional[str]) -> Dict[str, str]:
-        """Signatures of the owner's stored games that share a move sequence
-        with ``games``: the only stored games an import can collide with."""
+        """The owner's stored games whose signature matches one of ``games``:
+        the only stored games an import can collide with."""
         return self.repository.existing_move_signature_ids(
-            owner_user_id, uci_blobs=[codec.game_uci_blob(game) for game in games]
+            owner_user_id,
+            signatures=[
+                codec.move_signature(game.initial_fen, (move.uci for move in game.moves))
+                for game in games if game.moves
+            ],
         )
 
     # ---- F-04: multi-game semantics -------------------------------------

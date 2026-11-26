@@ -129,6 +129,7 @@ def test_sa_games_round_trip():
                 "source": "manual",
                 "initial_fen": "startpos",
                 "uci_blob": "e2e4 e7e5",
+                "move_signature": b"\x00" * 32,
                 "result": "*",
                 "tags_json": "{}",
                 "owner_user_id": "u1",

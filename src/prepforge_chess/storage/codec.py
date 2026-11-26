@@ -515,8 +515,27 @@ def move_signature(initial_fen: Optional[str], moves: Iterable[str]) -> str:
     are different games and must never dedupe against each other. The FEN is
     canonicalised so equivalent spellings of one starting position still match.
     """
-    fen = canonicalize_fen(initial_fen) if initial_fen else STARTING_FEN
+    fen = canonicalize_fen(initial_fen) if initial_fen and initial_fen != STARTING_FEN else STARTING_FEN
     return "{0}|{1}".format(fen, encode_uci_sequence(moves))
+
+
+def move_signature_digest(signature: str) -> bytes:
+    """The stored, indexed form of a ``move_signature``: its 32-byte SHA-256.
+
+    A fixed-size digest keeps the ``(owner_user_id, move_signature)`` index
+    small however long the game is; callers compare digests, never decode."""
+    return hashlib.sha256(signature.encode("utf-8")).digest()
+
+
+def stored_move_signature(initial_fen: Optional[str], uci_blob: str) -> bytes:
+    """``games.move_signature`` for a stored row. A row whose initial FEN does
+    not parse keeps its raw FEN in the signature: no import can produce that
+    FEN, so the row simply never matches."""
+    try:
+        signature = move_signature(initial_fen, decode_uci_sequence(uci_blob))
+    except ValueError:
+        signature = "{0}|{1}".format(initial_fen, uci_blob)
+    return move_signature_digest(signature)
 
 
 def move_needs_row(move: MoveRecord) -> bool:

@@ -13,6 +13,8 @@ from collections import OrderedDict
 from threading import BoundedSemaphore, RLock
 from typing import List, Optional
 
+import httpx
+
 from prepforge_chess.core.limits import (
     MAX_FETCH,
     MAX_IDENTITIES,
@@ -120,37 +122,65 @@ class ExplorerRateLimitedError(LichessFetchError):
     """The upstream opening explorer returned 429 — caller should cool down."""
 
 
-def fetch_explorer_json(
+# One pooled client for the explorer, opened and closed by the app lifespan
+# (``open_explorer_client`` / ``close_explorer_client``), so successive lookups
+# reuse a kept-alive TLS connection instead of a fresh handshake each.
+_explorer_client: httpx.AsyncClient | None = None
+
+
+def _new_explorer_client() -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        follow_redirects=True,
+        headers={"Accept": "application/json", "User-Agent": "PrepForge/0.1 (local-tool)"},
+    )
+
+
+def open_explorer_client() -> None:
+    global _explorer_client
+    if _explorer_client is None:
+        _explorer_client = _new_explorer_client()
+
+
+async def close_explorer_client() -> None:
+    global _explorer_client
+    client, _explorer_client = _explorer_client, None
+    if client is not None:
+        await client.aclose()
+
+
+async def fetch_explorer_json(
     url: str, token: str, *, timeout: float = DEFAULT_TIMEOUT_SECONDS
-) -> dict:
-    """GET one opening-explorer URL with the user's OAuth token.
+) -> tuple[dict, int]:
+    """GET one opening-explorer URL with the user's OAuth token; returns the
+    parsed body and its size in bytes (for the proxy's cache budget).
 
     Since early 2026 explorer.lichess.ovh requires a logged-in request (DDoS
     mitigation), so the linked account's token rides along — server-side only,
     never handed to the browser. 429 raises the dedicated rate-limit error so
-    the API layer can pass the status through to the client's cooldown."""
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/json",
-            "Authorization": "Bearer {0}".format(token),
-            "User-Agent": "PrepForge/0.1 (local-tool)",
-        },
-    )
+    the API layer can pass the status through to the client's cooldown.
+
+    Async, so the wait holds no thread. Without the lifespan's pooled client
+    (a bare ``TestClient``) a one-off client serves the call."""
+    headers = {"Authorization": "Bearer {0}".format(token)}
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.loads(response.read().decode("utf-8", errors="replace"))
-    except urllib.error.HTTPError as exc:
-        if exc.code == 429:
-            raise ExplorerRateLimitedError("Lichess explorer rate limit") from exc
+        if _explorer_client is not None:
+            response = await _explorer_client.get(url, headers=headers, timeout=timeout)
+        else:
+            async with _new_explorer_client() as client:
+                response = await client.get(url, headers=headers, timeout=timeout)
+    except (httpx.HTTPError, OSError) as exc:
+        # Connect and read timeouts, resets, a body cut short.
         raise LichessFetchError(
-            "Lichess explorer responded with HTTP {0}".format(exc.code)
+            "Could not reach the Lichess explorer: {0}".format(str(exc) or type(exc).__name__)
         ) from exc
-    except (OSError, http.client.HTTPException) as exc:
-        # URLError, a read timeout or a connection dropped mid-body.
+    if response.status_code == 429:
+        raise ExplorerRateLimitedError("Lichess explorer rate limit")
+    if response.status_code >= 400:
         raise LichessFetchError(
-            "Could not reach the Lichess explorer: {0}".format(getattr(exc, "reason", exc))
-        ) from exc
+            "Lichess explorer responded with HTTP {0}".format(response.status_code)
+        )
+    try:
+        return json.loads(response.content.decode("utf-8", errors="replace")), len(response.content)
     except ValueError as exc:  # malformed JSON or text
         raise LichessFetchError("Lichess explorer returned malformed JSON") from exc
 

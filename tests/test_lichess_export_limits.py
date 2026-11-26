@@ -1,3 +1,4 @@
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from threading import Lock
@@ -5,6 +6,7 @@ from time import sleep
 from urllib.error import HTTPError
 from urllib.request import Request
 
+import httpx
 import pytest
 
 from prepforge_chess.services import lichess_fetch as fetch
@@ -120,14 +122,50 @@ def test_mid_body_failures_are_fetch_errors(monkeypatch, error):
     monkeypatch.setattr(fetch.urllib.request, "urlopen", lambda *a, **k: _FailingRead(error))
     with pytest.raises(fetch.LichessFetchError, match="Could not reach Lichess"):
         fetch.fetch_recent_pgns("alpha", 10)
-    with pytest.raises(fetch.LichessFetchError, match="explorer"):
-        fetch.fetch_explorer_json("https://explorer.lichess.ovh/masters", "tok")
+
+
+def _explorer(monkeypatch, handler):
+    """Run one explorer fetch against ``handler`` through a pooled client."""
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    monkeypatch.setattr(fetch, "_explorer_client", client)
+
+    async def run():
+        try:
+            return await fetch.fetch_explorer_json("https://explorer.lichess.ovh/masters", "tok")
+        finally:
+            await client.aclose()
+
+    return asyncio.run(run())
+
+
+@pytest.mark.parametrize("error", [httpx.ReadTimeout("timed out"), httpx.ConnectError("reset")])
+def test_explorer_network_failures_are_fetch_errors(monkeypatch, error):
+    def handler(request):
+        raise error
+
+    with pytest.raises(fetch.LichessFetchError, match="Could not reach the Lichess explorer"):
+        _explorer(monkeypatch, handler)
 
 
 def test_explorer_non_json_body_is_a_fetch_error(monkeypatch):
-    monkeypatch.setattr(fetch.urllib.request, "urlopen", lambda *a, **k: BytesIO(b"<html>busy</html>"))
     with pytest.raises(fetch.LichessFetchError, match="malformed"):
-        fetch.fetch_explorer_json("https://explorer.lichess.ovh/masters", "tok")
+        _explorer(monkeypatch, lambda request: httpx.Response(200, content=b"<html>busy</html>"))
+
+
+def test_explorer_status_mapping_and_token(monkeypatch):
+    with pytest.raises(fetch.ExplorerRateLimitedError):
+        _explorer(monkeypatch, lambda request: httpx.Response(429))
+    with pytest.raises(fetch.LichessFetchError, match="HTTP 503"):
+        _explorer(monkeypatch, lambda request: httpx.Response(503))
+
+    seen = {}
+
+    def handler(request):
+        seen["auth"] = request.headers["Authorization"]
+        return httpx.Response(200, content=b'{"white": 1}')
+
+    assert _explorer(monkeypatch, handler) == ({"white": 1}, 12)
+    assert seen["auth"] == "Bearer tok"
 
 
 def test_cache_hit_does_not_wait_for_an_upstream_slot(monkeypatch):

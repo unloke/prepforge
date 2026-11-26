@@ -69,8 +69,13 @@ class _TextGZipMiddleware(GZipMiddleware):
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    # Startup: nothing to warm (the engine builds lazily on first request).
+    # Startup: the engine builds lazily on first request; only the explorer's
+    # pooled HTTP client opens here, on the loop that will use it.
+    from prepforge_chess.services import lichess_fetch
+
+    lichess_fetch.open_explorer_client()
     yield
+    await lichess_fetch.close_explorer_client()
     # Graceful shutdown: dispose the SQLAlchemy pool so in-flight connections close
     # cleanly when uvicorn receives SIGTERM (Render sends it on deploy/scale-down).
     from prepforge_chess.api import db
