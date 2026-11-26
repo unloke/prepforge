@@ -48,7 +48,7 @@ it.each([false,true])('Settings reads wait for pending write (failure=%s)', asyn
   expect(renderSettings).toHaveBeenCalledWith({stockfish_depth:failure?12:20});
 });
 it.each(['success','failure'])('History ignores old owner %s responses',async(outcome)=>{
-  const response=deferred(),appState={ownerGeneration:1};let owner='A';
+  const response=deferred(),appState={ownerGeneration:1,pendingAnalysisDeletes:new Set()};let owner='A';
   const host={setAttribute() {}, get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelector:()=>null,querySelectorAll:()=>[]};
   const load=compile('async function loadAnalysisHistory(',{appState,currentOwnerId:()=>owner,document:{getElementById:()=>host},api:()=>response.promise,localDayOf:String},'let analysisHistorySeq=0;');
   const pending=load();owner='B';appState.ownerGeneration++;host.innerHTML='';
@@ -59,7 +59,7 @@ it('History follows cursors, deduplicates games and retains scroll',async()=>{
   let click;const button={addEventListener:(_t,fn)=>{click=fn;}};
   const host={setAttribute() {}, get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },scrollTop:77,querySelector:()=>button,querySelectorAll:()=>[]};
   const api=vi.fn().mockResolvedValueOnce({analyses:[{game_id:'one'}],next_cursor:'next'}).mockResolvedValueOnce({analyses:[{game_id:'one'},{game_id:'two'}]});
-  const load=compile('async function loadAnalysisHistory(',{appState:{},currentOwnerId:()=> 'A',document:{getElementById:()=>host},api,localDayOf:String},'let analysisHistorySeq=0;');
+  const load=compile('async function loadAnalysisHistory(',{appState:{pendingAnalysisDeletes:new Set()},currentOwnerId:()=> 'A',document:{getElementById:()=>host},api,localDayOf:String},'let analysisHistorySeq=0;');
   await load();expect(String(host.innerHTML)).toContain('Load more');await click();
   expect(api).toHaveBeenLastCalledWith('/api/analyses?cursor=next');
   expect(host.innerHTML.match(/data-game-id="one"/g)).toHaveLength(1);

@@ -35,6 +35,14 @@ describe("arrow keys and the board on screen", () => {
     expect(stepsBoardBlock()).toMatch(/view === "build"/);
   });
 
+  it("leaves Ctrl, Cmd and Alt chords to the browser", () => {
+    // Ctrl/Cmd+F is find in page and Alt+← is Back: neither may flip or step a board.
+    const guard = source.indexOf('if ((event.ctrlKey || event.metaKey || event.altKey) && !event.getModifierState?.("AltGraph")) return;');
+    expect(guard).toBeGreaterThan(source.indexOf("return void undoLastBuildAdd();"));
+    expect(guard).toBeLessThan(source.indexOf("// Arrow keys navigate the board of the view that is on screen"));
+    expect(guard).toBeLessThan(source.indexOf("// F flips the active tab"));
+  });
+
   it("keeps F and Escape on every view", () => {
     // These are not board steps: the flip follows the active board controller
     // (null on a view without one) and Escape closes what is open anywhere.

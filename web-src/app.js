@@ -1272,9 +1272,7 @@ function bindEvents() {
 
   document.getElementById("run-analysis").addEventListener("click", runAnalysis);
   // F-03: retry just the save from the on-device checkpoint (no re-analysis).
-  document.getElementById("analysis-retry-save-btn")?.addEventListener("click", () => {
-    void retryAnalyzeSave();
-  });
+  document.getElementById("analysis-retry-save-btn")?.addEventListener("click", () => void retryAnalyzeSave());
   document.getElementById("analysis-retry-save-discard")?.addEventListener("click", discardAnalyzeCheckpoint);
   const createRepFromGame = document.getElementById("create-repertoire-from-game");
   if (createRepFromGame) {
@@ -1468,6 +1466,10 @@ function bindEvents() {
       event.preventDefault();
       return void undoLastBuildAdd();
     }
+    // Every key below is a bare (or Shift) press. With Ctrl, Cmd or Alt held it is
+    // the browser's: Ctrl/Cmd+F finds in the page, Alt+← goes back. AltGr (which
+    // reports Ctrl+Alt) types characters such as ? on some layouts, so it passes.
+    if ((event.ctrlKey || event.metaKey || event.altKey) && !event.getModifierState?.("AltGraph")) return;
     // Arrow keys navigate the board of the view that is on screen — and only
     // there: Analyze and Build each have one; every other view has none, so ← →
     // must do nothing on it. This handler lives on the document, so it cannot be
