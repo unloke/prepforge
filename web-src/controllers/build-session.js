@@ -5,6 +5,7 @@ import { estimateBuildGenerateTotal, generateExistingPlies, generateEstimateText
   GEN_DEFAULT_MAIN_PCT, GEN_DEFAULT_BRANCH_PCT } from "./build-generate-estimate.js";
 import { openBuildOverflowMenu as openOverflowMenu } from "./build-overflow-menu.js";
 import { promptBuildPgnMerge } from "./build-pgn-merge-dialog.js";
+import { linePgn } from "../build-line-pgn.js";
 import { promptRenameRepertoire } from "../repertoire-rename.js";
 import { enterRows } from "../list-enter.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
@@ -137,10 +138,12 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
 }
 
 function openBuildMenu(event) {
-  event.preventDefault(); event.stopPropagation();
+  event.preventDefault();
+  event.stopPropagation();
   const menu = document.getElementById("repertoire-context-menu");
   if (!menu) return;
-  const rep = buildState.build, repId = rep?.repertoire_id;
+  const rep = buildState.build;
+  const repId = rep?.repertoire_id;
   const editable = !!rep && !isBuildReadOnly();
   const owner = !!rep && !appState.sharedToken && buildRole(rep) === "owner";
   const collaborative = !!rep && !appState.sharedToken && appState.signedIn;
@@ -162,6 +165,7 @@ function openBuildMenu(event) {
     ...(rep ? [item("manage", "Manage", { group: 1, children: [
       ...(owner ? [item("build-rename", "Rename…")] : []),
       item("build-export-pgn", "Export PGN"),
+      item("build-export-backup", "Export backup"),
       ...(editable ? [item("build-add-pgn", "Add lines from PGN…")] : []),
       ...(owner ? [item("toggle-active", isActive ? "Disable" : "Enable"), item("delete", "Delete…", { group: 1, danger: true })] : []),
     ] })] : []),
@@ -172,13 +176,15 @@ function openBuildMenu(event) {
   openOverflowMenu(menu, { event, title: rep?.name || "Repertoire", items, onPick: async (action) => {
     try {
       closeRepertoireContextMenu();
-      if (action === "build-node-menu") openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
-      else if (action === "build-atlas") buildView.openAtlas();
+      if (action === "build-node-menu") {
+        openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
+      } else if (action === "build-atlas") buildView.openAtlas();
       else if (action === "build-activity") await buildView.openActivity();
       else if (action === "build-discuss") await buildView.openDiscussion();
       else if (action === "build-generate") await generateFromCurrentNode();
       else if (action === "build-rename") await renameRepertoire();
       else if (action === "build-export-pgn") await exportBuild();
+      else if (action === "build-export-backup") await exportBuild(repId, { backup: true });
       else if (action === "build-add-pgn") await promptBuildPgnMerge();
       else if (action === "build-new-rep") await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
       else if (repId) await handleRepertoireContextAction(action, repId, isActive);
@@ -1668,12 +1674,8 @@ async function handleNodeContextAction(action, nodeId) {
       return;
     }
     if (action === "copy_line_pgn") {
-      const payload = await postJson("/api/build/export", {
-        repertoire_id: buildState.build.repertoire_id,
-        format: "pgn",
-        node_id: nodeId,
-      });
-      await navigator.clipboard.writeText(payload.content);
+      // From this tab's own tree: an unsaved move or a disabled line copies too.
+      await navigator.clipboard.writeText(linePgn(buildState.build, buildState.buildNodeById, nodeId));
       setStatus("Line PGN copied");
       return;
     }
@@ -1725,7 +1727,9 @@ function markNodeMenuTarget(nodeId) {
 
 // "Export PGN" in the repertoire's ⋯: the whole tree with its variations.
 // The per-move menu's one line export is a clipboard copy, not a download.
-export async function exportBuild(repertoireId = buildState.build?.repertoire_id) {
+// ``backup``: the whole repertoire as .prepforge.json (comments, arrows, flags,
+// disabled lines). Library → Import PGN takes the file back as a new repertoire.
+export async function exportBuild(repertoireId = buildState.build?.repertoire_id, { backup = false } = {}) {
   if (!repertoireId) {
     setStatus("Open a repertoire first");
     return;
@@ -1743,9 +1747,8 @@ export async function exportBuild(repertoireId = buildState.build?.repertoire_id
     setStatusError("Open this repertoire to sync your latest moves, then export.");
     return;
   }
-  const payload = await api(
-    `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
-  );
+  const payload = backup ? await postJson("/api/build/export", { repertoire_id: repertoireId, format: "json" })
+    : await api(`/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`);
   if (ownerId !== currentOwnerId()) return;
   downloadText(payload.filename, payload.mime, payload.content);
   setStatus(`Downloaded ${payload.filename}`);

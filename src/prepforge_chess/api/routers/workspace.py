@@ -1102,11 +1102,14 @@ def build_export(
         filename = "{0}.prepforge.json".format(safe_name)
         mime = "application/json"
     else:  # pgn
-        content = (
-            exporter.export_node_path_pgn(repertoire, body.node_id)
-            if body.node_id
-            else exporter.export_mainline_pgn(repertoire)
-        )
+        try:
+            content = (
+                exporter.export_node_path_pgn(repertoire, body.node_id)
+                if body.node_id
+                else exporter.export_mainline_pgn(repertoire)
+            )
+        except ValueError as exc:  # an unknown node, or a line under a disabled branch
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
         filename = "{0}.pgn".format(safe_name)
         mime = "application/x-chess-pgn"
     return {"filename": filename, "mime": mime, "content": content}

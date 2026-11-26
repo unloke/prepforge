@@ -55,6 +55,28 @@ def _extract_drawings(comment: Optional[str]) -> Tuple[Optional[str], List[str],
     return (cleaned or None), arrows, circles
 
 
+def _extract_markers(comment: Optional[str]) -> Tuple[Optional[str], bool, List[str]]:
+    """Read back what ``export_tree_pgn`` appends to a comment: ``[disabled]``
+    and ``[tag,tag]``. Returns the comment without them, whether the branch was
+    disabled, and its tags. Only trailing bracket groups count, and a group is
+    tags only when every item is a valid tag."""
+    disabled = False
+    tags: List[str] = []
+    text = (comment or "").rstrip()
+    while text.endswith("]") and "[" in text:
+        start = text.rindex("[")
+        token = text[start + 1:-1]
+        if token == "disabled":
+            disabled = True
+        else:
+            items = [item.strip() for item in token.split(",")]
+            if tags or not items or not all(_TAG_PATTERN.match(item) for item in items):
+                break
+            tags = items
+        text = text[:start].rstrip()
+    return (text or None), disabled, tags
+
+
 def _validate_id(value: Any, label: str) -> str:
     if not isinstance(value, str) or not _ID_PATTERN.match(value):
         raise ValueError("invalid {0}".format(label))
@@ -272,7 +294,16 @@ class RepertoireExportService:
         repertoire_id = str(uuid.uuid4())
         starting_fen = parsed.headers.get("FEN") or STARTING_FEN
         root_id = str(uuid.uuid4())
+        # A PGN this app exported (export_tree_pgn) marks disabled branches and
+        # tags at the end of each comment; read those back instead of keeping
+        # them as comment text. Other PGNs keep their comments as written.
+        ours = "PrepForgeColor" in parsed.headers
+
+        def markers(text: Optional[str]) -> Tuple[Optional[str], bool, List[str]]:
+            return _extract_markers(text) if ours else (text, False, [])
+
         root_comment, root_arrows, root_circles = _extract_drawings(parsed.comment)
+        root_comment, _root_disabled, root_tags = markers(root_comment)
         root = OpeningNode(
             id=root_id,
             repertoire_id=repertoire_id,
@@ -287,7 +318,7 @@ class RepertoireExportService:
             is_enabled=True,
             priority=0.0,
             comment=root_comment,
-            tags=[],
+            tags=root_tags,
             arrows=root_arrows,
             circles=root_circles,
             source=MoveSource.IMPORTED_PGN,
@@ -306,6 +337,7 @@ class RepertoireExportService:
                 # OpeningNode has one comment/drawing set, not separate before/after fields.
                 intro, intro_arrows, intro_circles = _extract_drawings(variation.starting_comment)
                 note, arrows, circles = _extract_drawings(variation.comment)
+                note, disabled, tags = markers(note)
                 comment = "\n\n".join(part for part in (intro, note) if part) or None
                 arrows = intro_arrows + arrows
                 circles = intro_circles + circles
@@ -329,10 +361,10 @@ class RepertoireExportService:
                     maia_probability=None,
                     is_mainline=(index == 0),
                     is_user_prepared_move=(Color.WHITE if board.turn else Color.BLACK) is color,
-                    is_enabled=True,
+                    is_enabled=not disabled,
                     priority=0.0,
                     comment=comment,
-                    tags=[],
+                    tags=tags,
                     arrows=arrows,
                     circles=circles,
                     source=MoveSource.IMPORTED_PGN,

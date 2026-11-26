@@ -262,12 +262,14 @@ describe("Repertoire ⋯ menu", () => {
     expect(allowed).not.toContain("delete");
     expect(allowed).not.toContain("share");
   });
-  it("offers Add lines from PGN… right after Export PGN, only while the tree is editable", () => {
+  it("offers Add lines from PGN… right after the two exports, only while the tree is editable", () => {
     for (const role of ["owner", "edit"]) {
       const manage = menuFor(role).find((item) => item.action === "manage").children;
       const at = manage.findIndex((item) => item.action === "build-export-pgn");
-      expect(manage[at + 1]).toEqual({ action: "build-add-pgn", label: "Add lines from PGN…" });
+      expect(manage[at + 1]).toEqual({ action: "build-export-backup", label: "Export backup" });
+      expect(manage[at + 2]).toEqual({ action: "build-add-pgn", label: "Add lines from PGN…" });
     }
+    expect(actions(menuFor("read", true))).toContain("build-export-backup");
     expect(actions(menuFor("read", true))).not.toContain("build-add-pgn");
     expect(actions(menuFor("owner", true))).not.toContain("build-add-pgn");
     expect(actions(menuFor(null))).not.toContain("build-add-pgn");
