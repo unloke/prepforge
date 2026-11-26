@@ -117,10 +117,8 @@ function createStubElement(tag = "div") {
       return false;
     },
     querySelector(selector) {
-      if (selector === ".scout-action-analyze") return el._analyzeBtn || null;
-      if (selector === ".scout-action-prep") return el._prepBtn || null;
-      if (selector === ".scout-miniboard") return el._miniboard || null;
-      return null;
+      const key = { ".scout-action-analyze": "_analyzeBtn", ".scout-action-prep": "_prepBtn", ".scout-miniboard": "_miniboard", ".scout-line-toggle": "_toggle" }[selector];
+      return (key && el[key]) || null;
     },
     insertAdjacentElement(_pos, child) {
       child.parent = el;
@@ -275,7 +273,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     );
     const line = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
     const key = scoutLineKey(line.ucis);
-    const lineEl = createStubElement("div");
+    const lineEl = Object.assign(createStubElement("div"), { _toggle: createStubElement("span") });
     lineEl.classList.add("scout-line");
     lineEl.dataset.lineKey = key;
     lineEl.dataset.color = "white";
@@ -304,7 +302,9 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
       },
     );
     expect(lineEl.classList.contains("is-expanded")).toBe(true);
-    expect(lineEl.getAttribute("aria-expanded")).toBe("true");
+    // The moves are the row's control, so they carry the open state.
+    expect(lineEl._toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(lineEl.getAttribute("aria-expanded")).toBeUndefined();
     // The open line's detail is painted into the side panel, not after the row.
     expect(String(sideEl.innerHTML)).toContain("scout-miniboard");
     expect(sideEl.hidden).toBe(false);

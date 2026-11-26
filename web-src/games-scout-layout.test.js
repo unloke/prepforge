@@ -20,6 +20,13 @@ describe("Games and Scout layout regressions", () => {
     expect(button).toContain('<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/>');
   });
 
+  it("announces the Scout stream's phase, not every game it counts", () => {
+    const card = html.slice(html.indexOf('class="scout-stream'), html.indexOf("</div></div>", html.indexOf('class="scout-stream')));
+    expect(card).toContain('<b id="scout-stream-phase" role="status">');
+    expect(card.match(/role="status"/g)).toHaveLength(1);
+    expect(card).toMatch(/<p id="scout-stream-detail"(?![^>]*role=)/);
+  });
+
   it("gives the Scout progress line its own row on phones", () => {
     // A zero-height line with negative margins drew "Checking lines…" over the colour tabs.
     expect(scoutCss).not.toMatch(/\.scout-engine-progress\s*\{[^}]*height:\s*0/);

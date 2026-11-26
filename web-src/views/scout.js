@@ -38,9 +38,7 @@ import { colorRecommendation } from "../scout-stats.js";
 import { buildColorRecommendationBanner } from "../scout-summary.js";
 import { engineScanPatterns } from "../scout-engine.js";
 import {
-  MAIA_ENRICH_LOADING,
-  MAIA_ENRICH_OFF,
-  SCOUT_MAIA_SUCCESS_TARGET,
+  MAIA_ENRICH_LOADING, MAIA_ENRICH_OFF, SCOUT_MAIA_SUCCESS_TARGET,
   buildGamePlanDisplayLines,
   classifyMaiaEnrichState,
   computeMaiaScopeKey,
@@ -52,10 +50,7 @@ import {
   resetMaiaScopeCache,
 } from "../scout-maia.js";
 import {
-  PREFILTER_FAILED,
-  PREFILTER_IDLE,
-  PREFILTER_LOADING,
-  PREFILTER_READY,
+  PREFILTER_FAILED, PREFILTER_IDLE, PREFILTER_LOADING, PREFILTER_READY,
   buildFallbackPrefilterData,
   computePrefilterScopeKey,
   mergeGlobalPrefilterRanked,
@@ -253,7 +248,8 @@ export function createScoutView(deps) {
   // Live progress while a fetch is in flight. The count and the phase come from
   // data the fetch already has: games accepted so far, plus which phase we are in
   // (init → streaming). The streaming card is the only surface mid-stream, before
-  // the first report render exists.
+  // the first report render exists. Only the phase is announced (role="status"
+  // in index.html): the count changes with every game.
   let lastPhaseKey = "";
   function updateStreamPhase() {
     const phase = document.getElementById("scout-stream-phase");
@@ -1130,7 +1126,13 @@ export function createScoutView(deps) {
         renderScoutReport();
       }
     } catch {
-      /* explorer reads are optional — hide on failure */
+      // The report says the masters comparison is missing instead of just
+      // dropping it (renderScoutExplorerReads).
+      // A colour already read in this run keeps its read.
+      if (gen !== explorerEnrich.generation || !scoutState) return;
+      const failed = { available: false, reason: "error" };
+      scoutState.explorerByColor = { white: failed, black: failed, ...scoutState.explorerByColor };
+      renderScoutReport();
     }
   }
 
@@ -1628,10 +1630,10 @@ export function createScoutView(deps) {
           return;
         }
         if (e.key !== "Enter" && e.key !== " ") return;
-        // Rows are role="button" divs and need the synthetic click. A real
-        // button inside a row (Add to prep) activates itself; clicking it here
-        // too could fire its action a second time.
-        if (e.target.matches?.(".scout-line, .scout-dist-row[data-first-uci]")) {
+        // A line's moves and a move row are role="button" elements and need
+        // the synthetic click. A real button (Add to prep) activates itself;
+        // clicking it here too could fire its action a second time.
+        if (e.target.matches?.(".scout-line-toggle, .scout-dist-row[data-first-uci]")) {
           e.preventDefault();
           e.target.click();
         }
@@ -1649,14 +1651,16 @@ export function createScoutView(deps) {
     await loadScoutModule();
     if (!initGuard.isCurrent(initToken)) return false;
 
+    // Every active repertoire counts toward coverage. A one-colour scout needs
+    // only the repertoires of the colour you play against them.
     const myReps = ((await api("/api/repertoires")).repertoires || []).filter(
-      (rep) => rep.is_active !== false,
+      (rep) => rep.is_active !== false && (color === "both" || rep.color !== color),
     );
     if (!initGuard.isCurrent(initToken)) return false;
 
     // The trees load side by side: one after another, each one added a round
     // trip to the "Loading your repertoires" wait before the first game.
-    const loaded = await Promise.all(myReps.slice(0, 6).map((rep) =>
+    const loaded = await Promise.all(myReps.map((rep) =>
       api(`/api/build/load?repertoire_id=${encodeURIComponent(rep.id)}`)
         .then((payload) => ({ rep, lookup: scoutModule.repertoireChildLookup(payload.nodes) }))
         .catch(() => null))); // unreadable repertoire — skip it

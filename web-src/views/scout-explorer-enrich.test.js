@@ -73,6 +73,7 @@ vi.mock("../scout.js", async (importOriginal) => {
 });
 
 import { createScoutView } from "./scout.js";
+import { fetchExplorerReads } from "../scout-explorer.js";
 
 const RENDER_DEBOUNCE_MS = 400;
 const EXPLORER_ENRICH_DEBOUNCE_MS = 800;
@@ -275,5 +276,28 @@ describe("scout explorer enrichment generation", () => {
     await vi.runOnlyPendingTimersAsync();
     await nextRun;
     expect(String(results.innerHTML)).not.toContain("STALE_PREVIOUS");
+  });
+
+  it("says the masters comparison failed when the explorer read throws", async () => {
+    fetchExplorerReads.mockImplementationOnce(() => Promise.reject(new Error("network down")));
+    const runPromise = view.runScout();
+    await vi.runOnlyPendingTimersAsync();
+    await runPromise;
+    await vi.advanceTimersByTimeAsync(EXPLORER_ENRICH_DEBOUNCE_MS + RENDER_DEBOUNCE_MS);
+    expect(String(elements.get("scout-results").innerHTML)).toContain("Couldn&#39;t load the masters comparison.");
+  });
+
+  it("names the Lichess link the masters comparison needs", async () => {
+    await startScoutAndBeginExplorerFetch();
+    pendingExplorerFetches.shift()({ available: false, reason: "auth", mastersByFen: new Map() });
+    await vi.runOnlyPendingTimersAsync();
+    expect(String(elements.get("scout-results").innerHTML)).toContain("Masters comparison needs your Lichess account linked.");
+  });
+
+  it("stays quiet when there is nothing to compare", async () => {
+    await startScoutAndBeginExplorerFetch();
+    pendingExplorerFetches.shift()({ available: false, reason: "no-positions", mastersByFen: new Map() });
+    await vi.runOnlyPendingTimersAsync();
+    expect(String(elements.get("scout-results").innerHTML)).not.toContain("scout-explorer-failed");
   });
 });

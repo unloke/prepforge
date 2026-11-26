@@ -46,6 +46,9 @@ describe("Scout row actions", () => {
   let deps;
   let buildState;
 
+  let lastView;
+  const view_runScout = () => lastView.runScout();
+
   function makeView(overrides = {}) {
     deps = {
       setStatus: vi.fn(),
@@ -74,6 +77,7 @@ describe("Scout row actions", () => {
     };
     const view = createScoutView(deps);
     view.bindControls();
+    lastView = view;
     return view;
   }
 
@@ -179,6 +183,20 @@ describe("Scout row actions", () => {
     expect(deps.setStatus).toHaveBeenLastCalledWith("Couldn't open this line in Analyze.", { severity: "error" });
   });
 
+  it("makes a line's moves its control, beside the Add to prep button", async () => {
+    makeView();
+    await view_runScout();
+    const html = elements.get("scout-results").innerHTML;
+    const rows = html.match(/<div class="scout-line [^>]*>/g) || [];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) expect(row).not.toMatch(/role=|tabindex=|aria-expanded=/);
+    const toggles = html.match(/<span class="scout-line-moves scout-line-toggle" role="button" tabindex="0" aria-expanded="false">/g) || [];
+    expect(toggles).toHaveLength(rows.length);
+    // The toggle closes before the row's Add to prep button opens.
+    const toggleAt = html.indexOf("scout-line-toggle");
+    expect(html.indexOf("</span>", toggleAt)).toBeLessThan(html.indexOf("scout-action-add-prep", toggleAt));
+  });
+
   it("leaves a real button inside a row to activate itself on Enter and Space", async () => {
     makeView();
     const keydown = handlerFor(elements.get("scout-results"), "keydown");
@@ -189,11 +207,36 @@ describe("Scout row actions", () => {
       expect(button.click).not.toHaveBeenCalled();
       expect(event.preventDefault).not.toHaveBeenCalled();
 
-      const row = { matches: (sel) => sel.includes(".scout-line"), closest: () => ({}), click: vi.fn() };
+      const row = { matches: (sel) => sel.includes(".scout-line-toggle"), closest: () => ({}), click: vi.fn() };
       const rowEvent = { key, target: row, preventDefault: vi.fn() };
       keydown(rowEvent);
       expect(row.click).toHaveBeenCalledTimes(1);
       expect(rowEvent.preventDefault).toHaveBeenCalledTimes(1);
     }
+  });
+
+  describe("repertoires read at Start", () => {
+    const reps = [
+      ...Array.from({ length: 7 }, (_, i) => ({ id: `b${i}`, name: `B${i}`, color: "black", is_active: true })),
+      { id: "w0", name: "W0", color: "white", is_active: true },
+      { id: "off", name: "Off", color: "black", is_active: false },
+    ];
+    const loadsFor = async (scope) => {
+      const api = vi.fn(async (url) => (url === "/api/repertoires" ? { repertoires: reps } : { nodes: [] }));
+      elements.get("scout-color").value = scope;
+      await makeView({ api }).runScout();
+      return api.mock.calls.map(([url]) => url).filter((url) => url.startsWith("/api/build/load"))
+        .map((url) => new URL(url, "http://x").searchParams.get("repertoire_id"));
+    };
+
+    it("reads every active repertoire, not only the first six", async () => {
+      expect((await loadsFor("both")).sort()).toEqual(["b0", "b1", "b2", "b3", "b4", "b5", "b6", "w0"]);
+    });
+
+    it("reads only the colour you play against a one-colour scout", async () => {
+      // Scouting their White games: only your Black repertoires answer them.
+      expect((await loadsFor("white")).sort()).toEqual(["b0", "b1", "b2", "b3", "b4", "b5", "b6"]);
+      expect(await loadsFor("black")).toEqual(["w0"]);
+    });
   });
 });
