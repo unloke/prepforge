@@ -1,17 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { buildAddId, buildDeleteId, mergeOutboxState, trainAttemptId } from "./outbox-state.js";
 import {
   acquireFlushLock,
-  buildAddId,
-  buildDeleteId,
   createSyncQueue,
-  mergeOutboxState,
   outboxHasRejected,
   outboxHasWork,
   outboxIsQuiescent,
   refreshFlushLock,
   releaseFlushLock,
-  trainAttemptId,
 } from "./sync-queue.js";
 
 // Outbox merge rules (R-03/R-04): rejected training attempts are kept, rejected

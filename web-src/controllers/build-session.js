@@ -15,8 +15,7 @@ import { formatEngineEval } from "../engine-eval.js";
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
 // outbox and its flushes) stays in app.js so it can run before this loads and on unload.
 
-import { buildView, coverageView } from "../app.js";
-import { buildDockTab, explorerClient, explorerDb, explorerModule } from "../build-entry.js";
+import { coverageView } from "../coverage-entry.js";
 import { pokeBuildLive } from "../build-live.js";
 import { localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
@@ -31,10 +30,10 @@ import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, downlo
   engineLifecycleMark, OUTBOX_TAB_ID, postJson, setStatus, setStatusError } from "../core/api.js";
 import { appState, boards, notices, START_FEN } from "../core/state.js";
 import { boardAfterMove, boardInfo, optimisticBoardMove } from "../board/ui.js";
-import { buildDockFolded, buildOpMatchesRepertoire, buildProvisionalNode, deleteBuildNodeLocal,
-  ensureExplorerClient, explorerDrawerOpen, explorerEvalEngine, hasPendingBuildOpsFor, isBuildReadOnly,
-  normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes, renderBuilderTree,
-  resolveBuildId, sameFenPosition } from "../build-entry.js";
+import { buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode, buildView,
+  deleteBuildNodeLocal, ensureExplorerClient, explorerClient, explorerDb, explorerDrawerOpen, explorerEvalEngine,
+  explorerModule, hasPendingBuildOpsFor, isBuildReadOnly, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
+  reapplyPendingBuildNodes, renderBuilderTree, resolveBuildId, sameFenPosition } from "../build-entry.js";
 import { effectiveMaiaRating, effectiveStockfishDepth, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "../core/prefs.js";
 import { engineWidget, EXPLORER_EVAL_MAX_LINES } from "../core/engine.js";
 import { invalidateBook } from "../analyze-book-state.js";

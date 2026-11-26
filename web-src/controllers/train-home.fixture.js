@@ -92,6 +92,6 @@ export function setup(state = {}) {
   const switchView = vi.fn((view) => { appState.currentView = view; });
   provideApp({ switchView, lichessAccounts: () => [], requireSignIn: vi.fn(), flushTrainSync: vi.fn(async () => true), setTrainBanner: vi.fn(), syncWorkspaceUrl: vi.fn() });
   const deps = { api, localDateString, confirmAbandonGame, switchView, ...session };
-  createTrainHome();
+  createTrainHome(session);
   return { appState, deps };
 }

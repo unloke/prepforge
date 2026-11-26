@@ -27,6 +27,10 @@ import { enterOnce } from "./list-enter.js";
 // bundle; the client inside it handles caching, request dedup, and 429 cooldown
 // (see explorer.js). Here we only debounce navigation and skip work while closed.
 
+// The Build view, created by the shell on the first visit (app.js ensureBuildView).
+export let buildView = null;
+export function setBuildView(view) { buildView = view; }
+
 export let explorerModule = null;
 export let explorerClient = null;
 let explorerLoading = null;

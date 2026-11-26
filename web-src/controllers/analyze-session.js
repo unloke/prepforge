@@ -9,9 +9,8 @@ import {
 import { isReviewedMove } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
 import { createBatchSwitcher } from "../analyze-batch.js";
-import { recallAnalysis } from "./analyze-entry.js";
+import { analysisRecallSeq, recallAnalysis } from "./analyze-entry.js";
 import { ANALYSIS_ROOT_PATH } from "../analyze-node-path.js";
-import { _coachReady, analysisRecallSeq, analyzeView } from "../app.js";
 import { setPositionCaption } from "../board-caption.js";
 import { isAuthError } from "../auth-gate.js";
 import { localBoardAfterMove, localGameOver, pvSan } from "../chess-local.js";
@@ -38,8 +37,8 @@ import { analysisStore, engineWidget, sanLineFromUci, savedPvSan, setEngineBestA
 import { appState, boards, notices, START_FEN } from "../core/state.js";
 import { boardAfterMove, boardInfo } from "../board/ui.js";
 import { effectiveMaiaRating, effectiveStockfishDepth, maiaAnalysisEnabled, pref } from "../core/prefs.js";
-import { ensureAnalyzeView, renderAnalysisTreeEmptyState } from "../views/analyze-loader.js";
-import { loadPhaseCoach, preloadCoach } from "../coach/coach-loader.js";
+import { analyzeView, ensureAnalyzeView, renderAnalysisTreeEmptyState } from "../views/analyze-loader.js";
+import { _coachReady, loadPhaseCoach, preloadCoach } from "../coach/coach-loader.js";
 import { showConfirmModal, showInputModal } from "../core/modals.js";
 import { updateBookline } from "../analyze-book-state.js";
 import { accountService, analysisSelfSide, defaultRepertoireNameFromPgn, hideAnalysisRetrySave,

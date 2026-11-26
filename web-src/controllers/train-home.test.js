@@ -273,9 +273,9 @@ describe("the Due row", () => {
   });
 
   it("keeps Maia Practice usable while the first listing load is pending", async () => {
-    setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1, playBook: "maia" });
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [], repertoireListGeneration: -1, playBook: "maia" });
     const pending = loadTrainRepertoireOptions();
-    await createTrainHome().paintTrainHome();
+    await createTrainHome(deps).paintTrainHome();
     expect(doc.getElementById("start-play").getAttribute("inert")).toBeNull();
     expect(doc.getElementById("start-rehearse").getAttribute("inert")).toBe("");
     await pending;
@@ -285,7 +285,7 @@ describe("the Due row", () => {
     const { deps } = setup();
     deps.api.mockImplementation((url) => url === "/api/repertoires" ? Promise.resolve({ repertoires: [{ id: "r1", name: "Italian", color: "white", is_active: true }], shared: [] }) : Promise.reject(Object.assign(new Error("unauthorized"), { status: 401, authRequired: true })));
     await loadTrainRepertoireOptions();
-    await createTrainHome().paintTrainHome();
+    await createTrainHome(deps).paintTrainHome();
     expect(doc.getElementById("start-train").textContent).toBe("Sign in to train");
     expect(doc.getElementById("start-train").dataset.action).toBe("signin");
   });

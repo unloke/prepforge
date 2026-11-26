@@ -1,8 +1,8 @@
 import {
-  buildAddId, buildDeleteId, createSyncQueue, flushGroups, groupAttempts,
-  loadDurableOutbox, orderPendingBuildAdds, outboxHasWork,
-  trainAttemptId, ungroupAttempts,
+  createSyncQueue, flushGroups, groupAttempts, loadDurableOutbox, orderPendingBuildAdds, outboxHasWork,
+  ungroupAttempts,
 } from "../sync-queue.js";
+import { buildAddId, buildDeleteId, trainAttemptId } from "../outbox-state.js";
 import { classifySyncError, describeSyncError } from "../sync-errors.js";
 
 import { appState } from "../core/state.js";

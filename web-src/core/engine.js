@@ -50,12 +50,19 @@ export const savedPvSan = new WeakMap();
 // panel); the widget only ever asks it to repaint its Eval column.
 export const explorerEvalEngine = { repaint: () => hooks.explorerEvals?.repaint() };
 
+// The widget chunk's import comes from the shell, which owns every feature's lazy
+// import (app.js), so the widget is mapped from the entry chunk like the views.
+let importWidget = () => Promise.reject(new Error("Engine widget is not wired yet"));
+export function setEngineWidgetImport(load) { importWidget = load; }
+
 let loadedEngineWidget = null;
 let engineWidgetLoading = null;
 let engineWidgetOpenSeq = 0;
 export function loadEngineWidget() {
-  engineWidgetLoading ||= import("../controllers/engine-widget.js").then((mod) => {
-    loadedEngineWidget = mod.createEngineWidget();
+  engineWidgetLoading ||= importWidget().then((mod) => {
+    loadedEngineWidget = mod.createEngineWidget({
+      analysisStore, createSharedEvaluationProvider, explorerEvalEngine, setEngineBestArrow, setEngineOn,
+    });
     return loadedEngineWidget;
   }).catch((error) => {
     engineWidgetLoading = null;
