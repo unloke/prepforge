@@ -61,7 +61,7 @@ export const BLITZ_SECONDS = 10;
 export function blitzEnabled() {
   try {
     return localStorage.getItem(BLITZ_KEY) === "1";
-  } catch (_) {
+  } catch {
     return false;
   }
 }
@@ -70,7 +70,7 @@ export function setBlitzEnabled(on) {
   try {
     if (on) localStorage.setItem(BLITZ_KEY, "1");
     else localStorage.removeItem(BLITZ_KEY);
-  } catch (_) { /* private mode: the toggle just won't persist */ }
+  } catch { /* private mode: the toggle just won't persist */ }
 }
 
 // Binds Train's Home screen (once, when app.js first loads Train) and returns
@@ -84,7 +84,6 @@ export function createTrainSession() {
     syncTrainControls: syncTrainSessionControls, takebackPlaySession, trainHint,
   };
 }
-
 
 export async function skipTrainingLine() {
   if (appState.play && appState.play.active) {
@@ -146,25 +145,9 @@ async function renderTraining(payloadOrPrompt, options) {
   return out;
 }
 
-
 async function renderSmartProgress(prompt) {
   return (await ensureTrainView()).renderSmartProgress(prompt);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // The session's transient control states (busy, teaching); which controls
 // exist at all is the screen's business (train-home.js).
@@ -195,11 +178,10 @@ export async function resetTrainBoardIdle(label) {
       legalMoves: info.legal_moves || [],
       lastMove: null,
     });
-  } catch (_) {
+  } catch {
     boards.train.setPosition({ fen: START_FEN, legalMoves: [], lastMove: null });
   }
 }
-
 
 // Score a first-try answer in the session's accuracy chips; a miss ends the run.
 function tallyAnswer(stats, recalled) {
@@ -298,12 +280,6 @@ export async function startTraining(mode, options = {}) {
     failed(isNothingToTrainError(error) ? "No moves to rehearse. Add lines in Repertoire." : error.message);
   }
 }
-
-
-
-
-
-
 
 function playBookLabel(play) {
   const session = play || appState.play;
@@ -688,8 +664,7 @@ async function playOpponentReply() {
       }
     }
   }
-  let maiaPredictions = [];
-  let reply = pickOpponentReply({
+  const pick = (maiaPredictions) => pickOpponentReply({
     book: play.book,
     legalUcis: info.legal_moves,
     explorer,
@@ -697,6 +672,7 @@ async function playOpponentReply() {
     repertoireChildren: play.book === "repertoire" ? [] : playChildren(play.nodeId),
     maiaPredictions,
   });
+  let reply = pick([]);
   if (!reply.uci) {
     if (play.book !== "maia" && !explorer.unavailable) play.explorerOff = "out-of-book";
     const maia = await fetchPlayMaia(fen, (text) => {
@@ -709,15 +685,7 @@ async function playOpponentReply() {
       endPlayGame("Opponent unavailable", maiaErrorText(maia.error));
       return;
     }
-    maiaPredictions = maia;
-    reply = pickOpponentReply({
-      book: play.book,
-      legalUcis: info.legal_moves,
-      explorer,
-      repertoireReplies,
-      repertoireChildren: play.book === "repertoire" ? [] : playChildren(play.nodeId),
-      maiaPredictions,
-    });
+    reply = pick(maia);
   }
   if (!reply.uci) {
     endPlayGame("No reply from the opponent", "The opponent has no legal move from this book.");
@@ -791,22 +759,16 @@ export async function onFeelingLucky() {
   }
 }
 
+// Feeling Lucky: a fresh titled-player Lichess feed replayed and scored
+// locally, with the slower Masters walk as a quality fallback. Sign-in gates
+// it because that fallback and the resulting session need an account; the
+// sign-in modal is transient, so tab navigation dismisses it.
 async function runFeelingLuckyClick(run) {
-  // Feeling Lucky is on-demand live-data discovery: after this click, Lichess
-  // supplies a fresh titled-player feed and the client replays/scores it
-  // locally. The slower Masters walk remains a quality fallback when live
-  // feeds are empty. Personal repertoire picks live in train-lucky.js.
-  //
-  // Sign-in still gates the button because the optional Masters fallback uses
-  // the Explorer proxy and the resulting position starts a training session.
-  // The live game feed itself is anonymous, but keeping this gate preserves
-  // the existing training/account contract. The modal this opens is transient —
-  // tab navigation dismisses it (dismissTransientOverlays).
   const luckyCurrent = () => luckyDiscoveryCurrent(appState, run);
   if (!appState.accountUsername) {
     try {
       await refreshAuthStatus();
-    } catch (_) {
+    } catch {
       // fall through to the sign-in prompt below
     }
     if (!luckyCurrent()) return;
@@ -815,16 +777,11 @@ async function runFeelingLuckyClick(run) {
     if (luckyCurrent()) openAuthModal("login", { notice: "Sign in first, then try a random position." });
     return;
   }
-  // No Lichess-link hard gate: the live Lichess game-feed endpoints are
-  // public/anonymous. Do not refresh link status here; that would add a
-  // needless network round trip before the actual on-demand game request.
-  let dbPicked = null;
   try {
-    if (!luckyCurrent()) return;
     setTrainBanner("runin", "Finding a position…", "Discovering a fresh titled player");
     const { runFeelingLucky } = await import("../feeling-lucky.js");
     if (!luckyCurrent()) return;
-    dbPicked = await runFeelingLucky({
+    await runFeelingLucky({
       signal: run.controller.signal,
       storage: typeof localStorage === "undefined" ? null : localStorage,
       exclude: [appState.lastLuckyFen, appState.play && appState.play.startFen].filter(Boolean),
@@ -833,22 +790,15 @@ async function runFeelingLuckyClick(run) {
       onStatus: (...args) => luckyCurrent() && setStatus(...args),
       setBanner: (...args) => luckyCurrent() && setTrainBanner(...args),
       startSession: async (session) => {
-        if (!luckyCurrent()) return false; appState.lastLuckyFen = session.fen;
+        if (!luckyCurrent()) return false;
+        appState.lastLuckyFen = session.fen;
         return startPlaySessionTracked(session);
       },
     });
   } catch (error) {
-    if (!luckyCurrent()) return;
-    const msg = error && error.message ? error.message : String(error);
-    setStatus(msg);
-    // Lucky's own runFeelingLucky already painted the right banner for every
-    // outcome (Database unavailable vs Nothing sharp vs Play session). Do not
-    // repaint here — a stale overwrite is exactly how "Database unavailable"
-    // used to mask the real "Nothing sharp" state.
-    return;
-  }
-  if (!dbPicked) {
-    return;
+    // runFeelingLucky already painted the banner for every outcome, so only
+    // the status line reports a failure here.
+    if (luckyCurrent()) setStatus(error && error.message ? error.message : String(error));
   }
 }
 
@@ -1043,7 +993,7 @@ async function submitTrainingMove(playedUci) {
       const after = await boardAfterMove(prompt.fen_before, playedUci);
       playedSan = after.move?.san || playedSan;
       boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci, cue: false });
-    } catch (_) {
+    } catch {
       // Keep SAN-only feedback even if the preview move cannot be rendered.
     }
     playSound("wrong");
@@ -1191,7 +1141,6 @@ function showHint({ strategy, piece, expected_uci: uci, expected_san: san }) {
 function currentTrainingPrompt() {
   return appState.training ? appState.training.prompt : null;
 }
-
 
 // Mount/unmount the clock for a whole session. During a blitz session the bar
 // stays in the layout (merely emptied between cards) so the board never jumps.
@@ -1384,7 +1333,7 @@ function smartLocalPrompt(smart) {
   let legal = [];
   try {
     legal = localBoardInfo(target.fen_before).legal_moves;
-  } catch (_) {
+  } catch {
     /* malformed FEN: the board just won't accept moves */
   }
   return {
@@ -1560,7 +1509,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       const after = await boardAfterMove(prompt.fen_before, playedUci);
       playedSan = after.move?.san || "";
       boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci, cue: false });
-    } catch (_) {
+    } catch {
       // Wrong-move preview is cosmetic (a blitz timeout has no move to show);
       // grading already happened above.
     }
@@ -1737,7 +1686,6 @@ function rememberSmartSession(progress = {}) {
   trainSessionMemo?.saveSmartSession(currentOwnerId(), smart, appState.trainStats, progress);
 }
 
-
 // The finished queue's Result is up the moment the last card is answered; the
 // flush and the server summary then fill in what changed (the card reserves
 // that line's height, so nothing shifts).
@@ -1779,7 +1727,7 @@ async function finishSmartSession() {
         ? `/api/train/smart/summary?mixed=true&local_date=${ld}`
         : `/api/train/smart/summary?repertoire_id=${encodeURIComponent(smart.repertoireId)}&local_date=${ld}`
     );
-  } catch (_) {
+  } catch {
     // The summary is a bonus — never block the finish on it.
   }
   if (after?.day_streak) appState.dayStreak = after.day_streak;

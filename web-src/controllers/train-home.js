@@ -233,7 +233,6 @@ function previewUrl() {
   return `/api/train/smart/summary?${scope}&preview=true&local_date=${encodeURIComponent(localDateString())}&utc_offset=${-new Date().getTimezoneOffset()}`;
 }
 
-
 function setChip(id, text, disabled = false) {
   const chip = document.getElementById(id);
   chip.querySelector("span").textContent = text;
@@ -387,7 +386,7 @@ export function playPickerColor() {
 export function setPlayPickerColor(color, { persist = true } = {}) {
   const want = color === "black" ? "black" : "white";
   if (persist) {
-    try { localStorage.setItem(PLAY_COLOR_KEY, want); } catch (_) { /* private mode */ }
+    try { localStorage.setItem(PLAY_COLOR_KEY, want); } catch { /* private mode */ }
   }
   document.querySelectorAll("#train-play-color .seg-btn").forEach((btn) => {
     btn.classList.toggle("is-active", btn.dataset.color === want);
@@ -404,7 +403,7 @@ function syncPlayColorLock() {
     try {
       const stored = localStorage.getItem(PLAY_COLOR_KEY);
       if (stored === "black" || stored === "white") setPlayPickerColor(stored, { persist: false });
-    } catch (_) { /* private mode */ }
+    } catch { /* private mode */ }
   }
   document.querySelectorAll("#train-play-color .seg-btn").forEach((btn) => {
     btn.disabled = lock;
@@ -419,7 +418,7 @@ function playRepertoireStorageKey() {
 }
 
 function persistPlayRepertoireIds() {
-  try { localStorage.setItem(playRepertoireStorageKey(), JSON.stringify(appState.playRepertoireIds || [])); } catch (_) { /* private mode */ }
+  try { localStorage.setItem(playRepertoireStorageKey(), JSON.stringify(appState.playRepertoireIds || [])); } catch { /* private mode */ }
 }
 
 export function selectedTrainRepertoireIds() {
@@ -455,7 +454,7 @@ export async function loadTrainRepertoireOptions() {
   if (!current()) return; const key = playRepertoireStorageKey();
   if (state.playRepertoirePreferenceKey !== key) {
     state.playRepertoirePreferenceKey = key; let stored = null;
-    try { stored = JSON.parse(localStorage.getItem(key) || "null"); } catch (_) { /* malformed */ }
+    try { stored = JSON.parse(localStorage.getItem(key) || "null"); } catch { /* malformed */ }
     state.playRepertoireIds = Array.isArray(stored) ? stored.map(String) : ownActive().map((r) => String(r.id));
   }
   state.playRepertoireIds = selectedTrainRepertoireIds();
@@ -561,7 +560,7 @@ function bind() {
   });
   try {
     if (localStorage.getItem(PLAY_COLOR_KEY) === "black") setPlayPickerColor("black", { persist: false });
-  } catch (_) { /* private mode */ }
+  } catch { /* private mode */ }
   $("train-blitz-toggle").addEventListener("click", (e) => {
     const next = !blitzEnabled();
     setBlitzEnabled(next);
