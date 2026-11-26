@@ -47,7 +47,7 @@ describe("scout per-source paging", () => {
     elements.set("scout-color", makeEl("scout-color", { value: "both" }));
     view = createScoutView({
       setStatus: vi.fn(), switchView: vi.fn(),
-      api: async (url) => (url === "/api/repertoires" ? { repertoires: [] } : { nodes: [] }),
+      api: async (url) => (url === "/api/repertoires" || url === "/api/scout/trees" ? { repertoires: [] } : { nodes: [] }),
       notices: { isBusy: () => false }, parseFenBoard: () => ({}), pieceSvg: () => "", getBuildState: vi.fn(),
       scoutPickedUsernames: () => ["a", "b"],
     });

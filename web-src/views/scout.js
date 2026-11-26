@@ -29,6 +29,7 @@ import {
 } from "../scout-report.js";
 import { createScoutInitGuard, scoutStateCarryover } from "../scout-init-guard.js";
 import { createScoutPrepWriter } from "./scout-prep-writer.js";
+import { loadScoutLookups } from "./scout-trees.js";
 import { watchMaiaInit } from "../maia-init-notice.js";
 import { sameFetchSources } from "./shared/source-composer.js";
 
@@ -1472,20 +1473,8 @@ export function createScoutView(deps) {
 
     // Every active repertoire counts toward coverage. A one-colour scout needs
     // only the repertoires of the colour you play against them.
-    const myReps = ((await api("/api/repertoires")).repertoires || []).filter(
-      (rep) => rep.is_active !== false && (color === "both" || rep.color !== color),
-    );
+    const lookups = await loadScoutLookups({ api, repertoireChildLookup: scoutModule.repertoireChildLookup, color });
     if (!initGuard.isCurrent(initToken)) return false;
-
-    // The trees load side by side: one after another, each one added a round
-    // trip to the "Loading your repertoires" wait before the first game.
-    const loaded = await Promise.all(myReps.map((rep) =>
-      api(`/api/build/load?repertoire_id=${encodeURIComponent(rep.id)}`)
-        .then((payload) => ({ rep, lookup: scoutModule.repertoireChildLookup(payload.nodes) }))
-        .catch(() => null))); // unreadable repertoire — skip it
-    if (!initGuard.isCurrent(initToken)) return false;
-    const lookups = { white: [], black: [] };
-    for (const entry of loaded) if (entry) lookups[entry.rep.color].push(entry);
     const carry = scoutStateCarryover(scoutState, scoutLabel(usernames));
     scoutState = createScoutState({ usernames, color, lookups, carry });
     scoutSession = createScoutSession({ usernames, color });

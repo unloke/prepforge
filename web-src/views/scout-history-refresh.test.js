@@ -74,7 +74,7 @@ describe("a Start over a saved run", () => {
   function mount(usernames = ["rival"]) {
     view = createScoutView({
       setStatus: vi.fn(), switchView: vi.fn(),
-      api: vi.fn(async (url) => (url === "/api/repertoires" ? { repertoires: [] } : { nodes: [] })),
+      api: vi.fn(async (url) => (url === "/api/repertoires" || url === "/api/scout/trees" ? { repertoires: [] } : { nodes: [] })),
       notices: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn(), cancelJob: vi.fn(), failJob: vi.fn() },
       parseFenBoard: vi.fn(() => ({})), pieceSvg: vi.fn(() => ""), getBuildState: vi.fn(),
       scoutPickedUsernames: () => usernames,

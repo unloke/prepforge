@@ -8,7 +8,9 @@
 import { countOf } from "../plural.js";
 import { scoutLineText } from "../scout.js";
 import { scoutLineKey } from "../scout-report.js";
-import { bestCoveringRepertoireId, divergenceNote, ownMoveDivergence } from "../scout-prep-divergence.js";
+import {
+  addLineToLookup, bestCoveringRepertoireId, copyLookup, divergenceNote, ownMoveDivergence, sameDivergence,
+} from "../scout-prep-divergence.js";
 
 const PREVIEW_MAX = 10;
 const otherColor = (color) => (color === "white" ? "black" : "white");
@@ -83,19 +85,35 @@ export function createScoutPrepWriter(deps) {
     return result.repertoire === "__new__" ? createNew() : result.repertoire;
   }
 
-  // The tree Scout loaded for coverage at start-up; a repertoire made since has none,
-  // so nothing it holds can branch.
-  function knownLookup(repId, color) {
-    return getScoutState()?.lookups?.[color]?.find((entry) => entry.rep?.id === repId)?.lookup || null;
+  // The target's tree as it is now, for the "second move of yours" check. Scout's own
+  // copy is from its Start, so a move added in Build since would be missed. The open
+  // repertoire is read from Build (its unsynced moves included); any other from the
+  // server. Undefined when it can't be read: the caller then writes nothing.
+  async function latestLookup(repId) {
+    const scoutModule = await loadScoutModule();
+    const build = getBuildState();
+    if (build?.repertoire_id === repId && Array.isArray(build.nodes)) return scoutModule.repertoireChildLookup(build.nodes);
+    try {
+      const payload = await api(`/api/build/load?repertoire_id=${encodeURIComponent(repId)}`, { responseType: "large-json" });
+      return scoutModule.repertoireChildLookup(payload?.nodes || []);
+    } catch (error) {
+      setStatus(`Couldn't read the repertoire, so nothing was added: ${error.message}`, { severity: "error" });
+      return undefined;
+    }
   }
 
   // Lines that would add a second move of yours, and whether to write them anyway.
   // Resolves { skip: Set<line> } or null when the dialog was cancelled.
+  // Each line is checked against the tree plus the lines before it in the batch, so two
+  // lines that put different moves of yours at one position are caught too.
   async function resolveDivergences(lines, lookup, side) {
     const divergent = [];
+    const queued = copyLookup(lookup);
     for (const line of lines) {
-      const divergence = lookup ? ownMoveDivergence(lookup, lineUcisToWrite(line), side) : null;
+      const ucis = lineUcisToWrite(line);
+      const divergence = ownMoveDivergence(queued, ucis, side);
       if (divergence) divergent.push({ line, divergence });
+      else addLineToLookup(queued, ucis);
     }
     if (!divergent.length) return { skip: new Set() };
     const single = lines.length === 1;
@@ -124,7 +142,12 @@ export function createScoutPrepWriter(deps) {
     return { skip: add ? new Set() : new Set(divergent.map((d) => d.line)), divergent };
   }
 
-  async function writeLineToRep(line, repId, { reload = true, flush = true, side = null } = {}) {
+  // `confirmed` is the branch you said yes to for this line (or none), `queued` the ids
+  // of the moves this batch has queued. The check before the write read the tree as
+  // it was then; this one reads the tree the line is written to, so a move of yours
+  // added since (in another tab, say) is not branched from unasked. Such a line is
+  // not written: the result is { branches } for the caller to ask about or hold back.
+  async function writeLineToRep(line, repId, { reload = true, flush = true, side = null, confirmed = null, queued = null } = {}) {
     const scoutModule = await loadScoutModule();
     const build = getBuildState();
     if (reload || !build || build.repertoire_id !== repId) await editRepertoire(repId);
@@ -133,6 +156,10 @@ export function createScoutPrepWriter(deps) {
 
     const lookup = scoutModule.repertoireChildLookup(freshBuild.nodes);
     const ucisToWrite = lineUcisToWrite(line);
+    if (side) {
+      const branches = ownMoveDivergence(lookup, ucisToWrite, side);
+      if (branches && !sameDivergence(branches, confirmed) && !queued?.has(branches.yourId)) return { branches };
+    }
     const { covered, deepestNodeId } = scoutModule.lineCoverage(lookup, ucisToWrite);
     const remaining = ucisToWrite.slice(covered);
     const alreadyPresent = ucisToWrite.length > 0 && !remaining.length && !String(deepestNodeId || "").startsWith("tmp-");
@@ -154,6 +181,7 @@ export function createScoutPrepWriter(deps) {
       try { after = await boardAfterMove(parent.fen, uci); } catch { complete = false; break; }
       const node = buildProvisionalNode(parent, uci, after);
       queueBuildAdd(node);
+      queued?.add(node.id);
       if (!freshBuild.nodes.includes(node)) freshBuild.nodes.push(node);
       parentId = node.id;
       parent = node;
@@ -191,9 +219,19 @@ export function createScoutPrepWriter(deps) {
       const repId = await pickRepertoire(oppColor, ownColor, null, { coverLines: [line] });
       if (!repId) return;
       const side = ownColor ? oppColor : otherColor(oppColor);
-      const decision = await resolveDivergences([line], knownLookup(repId, side), side);
+      const lookup = await latestLookup(repId);
+      if (!lookup) return;
+      const decision = await resolveDivergences([line], lookup, side);
       if (!decision) { setStatus("Nothing added to prep."); return; }
-      const res = await writeLineToRep(line, repId, { side });
+      let res = await writeLineToRep(line, repId, { side, confirmed: decision.divergent?.[0]?.divergence });
+      if (res?.branches) {
+        // The tree changed since the check: ask again about the tree as it is now.
+        const scoutModule = await loadScoutModule();
+        const again = await resolveDivergences([line], scoutModule.repertoireChildLookup(getBuildState()?.nodes || []), side);
+        if (!again) { setStatus("Nothing added to prep."); return; }
+        res = await writeLineToRep(line, repId, { reload: false, side, confirmed: res.branches });
+        if (res?.branches) { setStatus("Nothing added to prep: your repertoire changed again."); return; }
+      }
       const at = line.suggestedReply?.san || line.sans?.at(-1) || "position";
       if (res && !res.syncError) setStatus(res.alreadyPresent ? `Already in prep. Opened at ${at}.` : `Added line to prep. Opened at ${at}.`);
     } finally {
@@ -213,7 +251,9 @@ export function createScoutPrepWriter(deps) {
     const repId = await pickRepertoire(oppColor, false, unique);
     if (!repId) return;
     const side = otherColor(oppColor);
-    const decision = await resolveDivergences(unique, knownLookup(repId, side), side);
+    const lookup = await latestLookup(repId);
+    if (!lookup) return;
+    const decision = await resolveDivergences(unique, lookup, side);
     if (!decision) { setStatus("Nothing added to prep."); return; }
     const toWrite = unique.filter((line) => !decision.skip.has(line));
     const skipped = unique.length - toWrite.length;
@@ -228,7 +268,9 @@ export function createScoutPrepWriter(deps) {
       total: toWrite.length,
       onCancel: () => ctrl.abort(),
     });
-    let done = 0, written = 0, alreadyPresent = 0, failed = 0, syncError = "";
+    const confirmed = new Map((decision.divergent || []).map(({ line, divergence }) => [line, divergence]));
+    const queued = new Set();
+    let done = 0, written = 0, alreadyPresent = 0, failed = 0, heldBack = 0, syncError = "";
     for (const line of toWrite) {
       if (ctrl.signal.aborted) break;
       notices.updateJob({ current: done, total: toWrite.length, message: `Adding ${done + 1}/${toWrite.length}` });
@@ -237,8 +279,11 @@ export function createScoutPrepWriter(deps) {
           reload: done === 0,
           flush: done === toWrite.length - 1,
           side,
+          confirmed: confirmed.get(line),
+          queued,
         });
-        if (res?.syncError) { syncError = res.syncError; if (res.incomplete) failed++; else written++; }
+        if (res?.branches) heldBack++;
+        else if (res?.syncError) { syncError = res.syncError; if (res.incomplete) failed++; else written++; }
         else if (res && typeof res === "object" && res.alreadyPresent) alreadyPresent++;
         else if (res) written++;
         else failed++;
@@ -247,11 +292,12 @@ export function createScoutPrepWriter(deps) {
     }
     // Only the last line flushes. Stopped earlier, the lines already queued would
     // stay unsaved on this device until some later Build save.
-    if (done > 0 && done < toWrite.length) {
+    // A held-back last line skipped the flush the last line does.
+    if (done > 0 && (done < toWrite.length || heldBack)) {
       try { await hardFlushBuild(); } catch (error) { syncError = error.message; }
     }
     // A failed sync stays in the result: the lines are still only on this device.
-    const message = `Added ${countOf(written, "line")} to prep${alreadyPresent ? ` (${alreadyPresent} already present)` : ""}${skipped ? ` · ${skipped} skipped` : ""}${failed ? ` · ${failed} failed` : ""}${syncError ? ` · not synced yet: ${syncError}` : ""}`;
+    const message = `Added ${countOf(written, "line")} to prep${alreadyPresent ? ` (${alreadyPresent} already present)` : ""}${skipped ? ` · ${skipped} skipped` : ""}${heldBack ? ` · ${heldBack} held back: your repertoire changed since the check` : ""}${failed ? ` · ${failed} failed` : ""}${syncError ? ` · not synced yet: ${syncError}` : ""}`;
     notices.completeJob({
       title: syncError ? "Not synced" : ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
       message,
