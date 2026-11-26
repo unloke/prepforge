@@ -33,12 +33,12 @@ export function trainBotsHtml({ usable, selected, reasons }) {
 const PANE_KEY = "prepforge.train-pane";
 
 export function trainPane() {
-  try { return localStorage.getItem(PANE_KEY) === "play" ? "play" : "drill"; } catch (_) { return "drill"; }
+  try { return localStorage.getItem(PANE_KEY) === "play" ? "play" : "drill"; } catch { return "drill"; }
 }
 
 export function setTrainPane(pane) {
   const want = pane === "play" ? "play" : "drill";
-  try { localStorage.setItem(PANE_KEY, want); } catch (_) { /* private mode */ }
+  try { localStorage.setItem(PANE_KEY, want); } catch { /* private mode */ }
   paintTrainPane(want);
 }
 
