@@ -139,7 +139,7 @@ def test_export_tree_writes_root_annotations_before_moves():
     assert root.comment in parsed.comment
     assert "[%cal Gc1f4]" in parsed.comment
     assert "[%csl Gd4]" in parsed.comment
-    assert parsed.variations[0].comment == "Main move [prepared]"
+    assert parsed.variations[0].comment == "Main move [%pf-tags prepared]"
 
 
 def test_variation_intro_stays_on_its_branch_and_survives_roundtrip():

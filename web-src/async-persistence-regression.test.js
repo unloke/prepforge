@@ -272,6 +272,9 @@ function buildFlushHarness() {
     setTimeout: vi.fn(), BUILD_FLUSH_MAX_BACKOFF_MS: 30000, scheduleBuildFlush: vi.fn(),
     reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
     selectBuildNode: vi.fn(),
+    // build-flush.js, reduced to the whole-payload answer these tests send back.
+    flushSince: () => 1, applyFlushReply: (reply, hydrate) => hydrate(reply, appState.buildCurrentNodeId),
+    postBuildAdds: (rep, batch, since) => deps.postJson("/api/build/add-moves", { repertoire_id: rep, since, moves: batch.map(({ tempId, parentRef, uci }) => ({ tempId, parentRef, uci })) }),
   };
   return { op, ...asSlices(appState), appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
 }
@@ -345,12 +348,13 @@ it("a failed analysis delete restores the row and says why", async () => {
 // Production 2026-10-14: one edit made elsewhere moved the server revision and
 // every queued edit then hit 409 on each flush. The server now rebases each edit
 // onto the current tree, so a queued edit carries no revision and just lands.
+// (``since`` only asks for the changes after the tab's revision in the answer.)
 it("a queued Build edit carries no base revision and lands after edits made elsewhere", async () => {
   const h = buildFlushHarness();
   h.deps.hydrateBuild.mockResolvedValue(undefined);
   expect(await h.run()).toBe(true);
   expect(h.deps.postJson).toHaveBeenCalledWith("/api/build/add-moves", {
-    repertoire_id: "r", moves: [{ tempId: "tmp-a", parentRef: "root", uci: "e2e4" }] });
+    repertoire_id: "r", since: 1, moves: [{ tempId: "tmp-a", parentRef: "root", uci: "e2e4" }] });
   expect(h.buildState.buildPending).toEqual([]);
 });
 

@@ -7,10 +7,11 @@ layers mastery/health on top for FastAPI ``/api/build/load``.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from prepforge_chess.core.models import EngineEvaluation, OpeningNode, Repertoire
 from prepforge_chess.services.progress import compute_health, mastery_map
+from prepforge_chess.storage import codec
 from prepforge_chess.storage.ports import BuildPayloadStore
 
 _EMPTY_SUMMARY = {"added_nodes": 0, "updated_nodes": 0, "high_probability_unprepared": 0}
@@ -88,6 +89,34 @@ def build_workspace_payload(
             raise ValueError("opening node not found: {0}".format(selected_node_id))
     else:
         selected = repertoire.root_node
+    mastery, health_data = _owner_training_colour(repository, repertoire, revision, owner_user_id)
+    return {
+        "repertoire_id": repertoire.id,
+        "name": repertoire.name,
+        "color": repertoire.color.value,
+        "selected_node_id": selected.id,
+        "selected_fen": selected.fen,
+        "summary": summary or dict(_EMPTY_SUMMARY),
+        "nodes_total": len(walked),
+        "revision": revision,
+        "health": health_data,
+        "nodes": [
+            opening_node_to_json(node, depth, mastery.get(node.id))
+            for node, depth in walked
+        ],
+    }
+
+
+def _owner_training_colour(
+    repository: BuildPayloadStore,
+    repertoire: Repertoire,
+    revision: Optional[int],
+    owner_user_id: Optional[str],
+) -> tuple[Dict[str, str], Dict[str, Any]]:
+    """Per-node mastery and the health badge against the owner's progress.
+
+    Uses only the tree's shape (no SAN/FEN), so a structurally loaded tree gives
+    the same answer as a hydrated one."""
     progress_by_id = (
         {
             p.node_id: p
@@ -117,18 +146,38 @@ def build_workspace_payload(
         )
         repertoire._cached_health = health_data
     health_data = getattr(repertoire, "_cached_health", None) or dict(health.to_dict())
+    return mastery, health_data
+
+
+def build_workspace_changes(
+    repository: BuildPayloadStore,
+    repertoire_id: str,
+    node_ids: Iterable[str],
+    *,
+    owner_user_id: str | None = None,
+) -> Dict[str, Any]:
+    """The part of the Build payload a change feed needs: the current state of
+    ``node_ids`` (those still in the tree), the tree size and the health badge.
+
+    Loads the tree structurally and replays SAN/FEN only along the paths to the
+    written nodes, so a catch-up after a one-move edit doesn't serialize (or
+    replay) the whole tree. Node JSON and health match ``build_workspace_payload``.
+    Raises ``ValueError`` if the repertoire does not exist."""
+    revision = repository.repertoire_reply_revision(repertoire_id)
+    repertoire = repository.load_repertoire(repertoire_id, hydrate=False)
+    if repertoire is None:
+        raise ValueError("repertoire not found: {0}".format(repertoire_id))
+    walked = list(repertoire.root_node.walk_with_depth())
+    wanted = set(node_ids)
+    codec.hydrate_opening_paths(repertoire.root_node, wanted)
+    mastery, health_data = _owner_training_colour(repository, repertoire, revision, owner_user_id)
     return {
-        "repertoire_id": repertoire.id,
-        "name": repertoire.name,
-        "color": repertoire.color.value,
-        "selected_node_id": selected.id,
-        "selected_fen": selected.fen,
-        "summary": summary or dict(_EMPTY_SUMMARY),
         "nodes_total": len(walked),
         "revision": revision,
         "health": health_data,
         "nodes": [
             opening_node_to_json(node, depth, mastery.get(node.id))
             for node, depth in walked
+            if node.id in wanted
         ],
     }
