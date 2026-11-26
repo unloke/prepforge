@@ -107,6 +107,36 @@ def test_prepare_returns_positions_and_move_skeleton(client):
     assert rating is None or rating >= 1
 
 
+def test_prepare_names_the_saved_analysis_a_repeat_run_can_reopen(client):
+    _register(client, "repeat@example.com")
+    first = _prepare(client)
+    assert first["saved_analysis"] is None
+    assert _classify_save(client, first, depth=14).status_code == 200
+    again = _prepare(client)
+    assert again["game_id"] == first["game_id"]
+    saved = again["saved_analysis"]
+    assert saved["engine"] == "sf-test" and saved["depth"] == 14
+    assert saved["maia"] is False and saved["analyzed_at"]
+    # Another account importing the same PGN does not see this owner's analysis.
+    other = _client()
+    _register(other, "other-repeat@example.com")
+    assert _prepare(other)["saved_analysis"] is None
+
+
+def test_prepare_does_not_offer_an_unreadable_snapshot(client):
+    from sqlalchemy import update
+
+    from prepforge_chess.api import db
+    from prepforge_chess.storage import sa_tables
+
+    _register(client, "unreadable@example.com")
+    first = _prepare(client)
+    assert _classify_save(client, first).status_code == 200
+    with db.get_engine().begin() as conn:
+        conn.execute(update(sa_tables.analysis_results).values(move_results=None))
+    assert _prepare(client)["saved_analysis"] is None
+
+
 def test_prepare_rejects_empty_pgn(client):
     _register(client, "a@example.com")
     r = client.post("/api/analyze/prepare", json={"pgn": "   "}, headers=csrf_headers(client))
@@ -479,3 +509,27 @@ def test_classify_requires_actual_depth_for_each_position(client):
     response = _classify_save(client, prepared, depth=16, positions=positions)
     assert response.status_code == 400
     assert "depth is required" in response.json()["detail"]
+
+
+def test_classify_save_keeps_each_reused_eval_engine(client):
+    # A lite-net re-run of a full-net review reuses the saved full-net reads: each one
+    # keeps the engine that searched it, and only the fresh reads take the run's engine.
+    _register(client, "engine-source@example.com")
+    prepared = _prepare(client)
+    first, *rest = prepared["positions"]
+    positions = [{"depth": 16, "fen": first, "score_cp": 20, "engine": "sf-big t1 h16"}]
+    positions += [{"depth": 16, "fen": f, "score_cp": 20, "engine": None} for f in rest]
+    r = _classify_save(client, prepared, engine="sf-lite t1 h16", positions=positions)
+    assert r.status_code == 200, r.text
+    recall = client.get(f"/api/analyses/{prepared['game_id']}").json()["position_evals"]
+    assert recall[first]["engine"] == "sf-big t1 h16"
+    assert {recall[f]["engine"] for f in rest} == {"sf-lite t1 h16"}
+
+
+def test_classify_save_rejects_a_malformed_eval_engine(client):
+    _register(client, "engine-bad@example.com")
+    prepared = _prepare(client)
+    positions = [{"depth": 10, "fen": f, "score_cp": 20, "engine": 7} for f in prepared["positions"]]
+    assert _classify_save(client, prepared, positions=positions).status_code == 400
+    positions = [{"depth": 10, "fen": f, "score_cp": 20, "engine": "x" * 121} for f in prepared["positions"]]
+    assert _classify_save(client, prepared, positions=positions).status_code == 400

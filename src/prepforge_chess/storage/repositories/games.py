@@ -449,6 +449,48 @@ class GameRepository(EvaluationRepository):
 
         return self._analysis_from_row(row)
 
+    def latest_analysis_meta(self, game_id: str, owner_user_id: str) -> Optional[Dict[str, Any]]:
+        """The engine, depth and Maia coverage of this owner's latest readable
+        analysis of a game, or None. One row from the latest-analysis index; the
+        move snapshot itself is not read, only whether it is there."""
+        ar = t.analysis_results
+        stmt = (
+            select(ar.c.engine, ar.c.depth, ar.c.quality_json, ar.c.analyzed_at,
+                   ar.c.move_results.is_not(None).label("has_moves"))
+            .join(t.games, t.games.c.id == ar.c.game_id)
+            .where(ar.c.game_id == game_id, t.games.c.owner_user_id == owner_user_id)
+            .order_by(ar.c.analyzed_at.desc(), ar.c.id.desc())
+            .limit(1)
+        )
+        with self.engine.connect() as conn:
+            row = conn.execute(stmt).mappings().first()
+        if row is None or not row["has_moves"]:
+            return None
+        quality = _json_load(row["quality_json"], None) or {}
+        return {
+            "engine": row["engine"],
+            "depth": row["depth"],
+            "maia": bool((quality.get("maia") or {}).get("available")),
+            "analyzed_at": row["analyzed_at"],
+        }
+
+    def analyzed_mainline(self, game_id: str, owner_user_id: str) -> Optional[tuple[str, List[str]]]:
+        """``(initial_fen, mainline UCIs)`` of this owner's game when it has a saved
+        analysis, else None. One row; the moves and evaluations are not loaded."""
+        g = t.games
+        has_analysis = select(t.analysis_results.c.id).where(
+            t.analysis_results.c.game_id == g.c.id
+        ).exists()
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(g.c.initial_fen, g.c.uci_blob).where(
+                    g.c.id == game_id, g.c.owner_user_id == owner_user_id, has_analysis,
+                )
+            ).mappings().first()
+        if row is None:
+            return None
+        return row["initial_fen"], list(codec.decode_uci_sequence(row["uci_blob"]))
+
     def load_analysis_save(self, game_id: str, save_id: str) -> Optional[AnalysisResult]:
         with self.engine.connect() as conn:
             row = conn.execute(select(t.analysis_results).where(

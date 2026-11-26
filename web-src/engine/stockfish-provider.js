@@ -16,6 +16,11 @@ export function engineScriptUrl(net = usableEngineProfile().net) {
 }
 export let ENGINE_ID = engineIdentity();
 subscribeUsableEngineProfile(() => { ENGINE_ID = engineIdentity(); });
+// A saved eval from either net this app ships reads as a Stockfish eval here: a review
+// made on the full net keeps its numbers on a phone that runs the lite one.
+export function savedEvalUsable(id) {
+  return !!id && Object.keys(STOCKFISH || {}).some((net) => id === engineIdentity(net));
+}
 
 const DEFAULT_MAX_DEPTH = 18;
 // Node budget for searches that must finish (whole-game analysis, the coach's verdict),

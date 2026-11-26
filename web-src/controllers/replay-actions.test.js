@@ -54,11 +54,12 @@ it("Add reply does not add a move after the view changed or into a read-only tre
 // ---- Games → Analyze notice ---------------------------------------------------
 
 const replayGame = { lichess_id: 'A1b2C3d4', move_san_history: ['e4', 'e5', 'Nf3'], white: 'Alice', black: 'Bob', departure_ply: 3, result: '*' };
+const OLD_PGN = '[White "Old"]\n\n1. d4 *';
 const savedReview = { game_id: 'saved-id', lichess_id: replayGame.lichess_id, white: 'Alice', black: 'Bob' };
 function replayHarness(rows = []) {
-  const input = { value: '' }, drawer = { open: false };
+  const input = { value: OLD_PGN }, drawer = { open: false };
   vi.stubGlobal('document', { getElementById: id => id === 'pgn-input' ? input : drawer });
-  return {
+  return { input,
     switchView: vi.fn(), orientAnalysisForSelf: vi.fn(),
     loadPgnIntoAnalyze: vi.fn(async () => true), showAnalysisPly: vi.fn(async () => {}),
     api: vi.fn(async () => ({ analyses: rows })), recallAnalysis: vi.fn(async () => true),
@@ -71,7 +72,7 @@ it('Games reuses the saved review instead of reparsing away its chart and grades
   const deps = replayHarness([savedReview]);
   await replayToAnalyze(replayGame, deps);
   expect(deps.api).toHaveBeenCalledWith('/api/analyses?lichess_id=A1b2C3d4&limit=1');
-  expect(deps.recallAnalysis).toHaveBeenCalledWith('saved-id', savedReview, { sourceSeq: 7 });
+  expect(deps.recallAnalysis).toHaveBeenCalledWith('saved-id', savedReview, { sourceSeq: 7, onMissing: expect.any(Function) });
   expect(deps.loadPgnIntoAnalyze).not.toHaveBeenCalled();
   expect(deps.showAnalysisPly).toHaveBeenCalledWith(2);
   expect(deps.setStatus).toHaveBeenCalledWith('Loaded saved analysis for Alice vs Bob.');
@@ -113,6 +114,31 @@ it('lookup errors reach the existing Games action error handler', async () => {
   deps.api.mockRejectedValue(new Error('Network unavailable'));
   await expect(replayToAnalyze(replayGame, deps)).rejects.toThrow('Network unavailable');
   expect(deps.loadPgnIntoAnalyze).not.toHaveBeenCalled();
+});
+
+// The PGN box and the board name one game: a Games entry that does not load
+// leaves both on the game Analyze already shows.
+it('a failed lookup or recall leaves the box on the game the board still shows', async () => {
+  const lookup = replayHarness();
+  lookup.api.mockRejectedValue(new Error('Network unavailable'));
+  await expect(replayToAnalyze(replayGame, lookup)).rejects.toThrow('Network unavailable');
+  expect(lookup.input.value).toBe(OLD_PGN);
+  expect(lookup.orientAnalysisForSelf).not.toHaveBeenCalled();
+  const recall = replayHarness([savedReview]);
+  recall.recallAnalysis.mockResolvedValue(false);
+  await replayToAnalyze(replayGame, recall);
+  expect(recall.input.value).toBe(OLD_PGN);
+  expect(recall.orientAnalysisForSelf).not.toHaveBeenCalled();
+});
+
+it('a saved review deleted meanwhile falls back to the game for a first analysis', async () => {
+  const deps = replayHarness([savedReview]);
+  deps.recallAnalysis.mockImplementation(async (_id, _row, { onMissing }) => { onMissing(); return false; });
+  await replayToAnalyze(replayGame, deps);
+  expect(deps.loadPgnIntoAnalyze).toHaveBeenCalledWith(expect.stringContaining('1. e4 e5 2. Nf3'), { goToEnd: false, quiet: true, sourceSeq: 7 });
+  expect(deps.input.value).toContain('1. e4 e5 2. Nf3');
+  expect(deps.orientAnalysisForSelf).toHaveBeenCalledWith('Alice', 'Bob');
+  expect(deps.setStatus).toHaveBeenCalledWith('Loaded Alice vs Bob. Press Review.');
 });
 
 it("names the button the user actually presses, and stays one line", async () => {
