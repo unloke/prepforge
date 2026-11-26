@@ -40,6 +40,8 @@ function harness({ reviewed = true, saved = { classification: "good" } } = {}) {
   const moduleGate = deferred();
   const render = vi.fn();
   const store = fakeStore();
+  const noteTriedGrade = vi.fn();
+  const noteUngraded = vi.fn();
   const deps = {
     ENGINE_ID: "sf-test",
     window: globalThis, effectiveStockfishDepth: () => 16, analysisStore: async () => store,
@@ -53,7 +55,7 @@ function harness({ reviewed = true, saved = { classification: "good" } } = {}) {
     renderCoachProse: render, maiaAnalysisEnabled: () => false,
     COACH_MIN_REUSE_DEPTH: 10, SAVED_ERROR_GRADES: new Set(["inaccuracy", "mistake", "blunder"]),
     localBoardAfterMove,
-    COACH_RAPID_STEP_MS: 120, COACH_RAPID_SETTLE_MS: 160,
+    COACH_RAPID_STEP_MS: 120, COACH_RAPID_SETTLE_MS: 160, noteTriedGrade, noteUngraded,
   };
   const start = source.indexOf("class PositionCoach {");
   const end = source.indexOf("\n// Created by createAnalyzeSession", start);
@@ -67,13 +69,14 @@ function harness({ reviewed = true, saved = { classification: "good" } } = {}) {
       ...x,
       isBest: !!(x.beforeEval.lines[0] && x.beforeEval.lines[0].uci === x.uci),
       forced: false,
+      classification: { code: x.beforeEval.lines[0]?.uci === x.uci ? "best" : "mistake" },
     }),
     applySavedGrade: () => {},
     buildCommentary: (f, { selfSide }) =>
       ({ prose: f.opponentRead ? `Read for ${selfSide} on ${f.fenAfter}` : `Engine verdict on ${f.fenAfter}` }),
   };
   const answerAll = (depth) => store.leases.filter((l) => !l.released).forEach((l) => l.answer(read(l.fen, depth)));
-  return { coach, store, moduleGate, mod, render, answerAll, terminal: (over) => { gameOver = over; }, leave: () => { view = "build"; coach.cancel(); } };
+  return { coach, store, moduleGate, mod, render, answerAll, noteTriedGrade, noteUngraded, terminal: (over) => { gameOver = over; }, leave: () => { view = "build"; coach.cancel(); } };
 }
 afterEach(() => vi.useRealTimers());
 
@@ -200,6 +203,27 @@ describe("PositionCoach async continuation ownership", () => {
     await pending;
     expect(h.store.acquire).toHaveBeenCalledTimes(2);
     expect(h.render).toHaveBeenCalledOnce();
+    // A move with no saved grade hands its live grade to the review bar's Retry.
+    expect(h.noteTriedGrade).toHaveBeenCalledExactlyOnceWith("before w - - 0 1", "e2e4", expect.any(String));
+  });
+
+  it("tells the review bar's Retry it will not grade while Grade moves is off", () => {
+    const h = harness({ saved: null });
+    h.coach.enabled = false;
+    h.coach.update(h.coach.fen, h.coach.ctx);
+    expect(h.noteUngraded).toHaveBeenCalledExactlyOnceWith(h.coach.ctx);
+    expect(h.store.acquire).not.toHaveBeenCalled();
+  });
+
+  it("tells the review bar's Retry it could not grade when the engine read comes back empty", async () => {
+    const h = harness({ saved: null });
+    h.moduleGate.resolve(h.mod);
+    const pending = h.coach._run(h.coach.fen);
+    await vi.waitFor(() => expect(h.store.acquire).toHaveBeenCalledTimes(2));
+    h.store.leases.forEach((l) => l.answer({ fen: l.fen, current_depth: 16, running: false, pvs: [] }));
+    await pending;
+    expect(h.noteTriedGrade).not.toHaveBeenCalled();
+    expect(h.noteUngraded).toHaveBeenCalledExactlyOnceWith(h.coach.ctx);
   });
 
   it("reads the opponent's move for the user instead of leaving it blank", async () => {

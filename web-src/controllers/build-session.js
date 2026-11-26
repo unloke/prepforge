@@ -98,7 +98,7 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
   }
   buildState.build = payload;
   buildState.buildNodeById = indexBuildNodes(payload.nodes);
-  invalidateBook();
+  invalidateBook(payload);
   // Orient only when a repertoire opens — a reconcile re-hydrate after an
   // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
   if (boards.build && payload.repertoire_id !== prevRepId) {

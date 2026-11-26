@@ -48,6 +48,8 @@ from prepforge_chess.services.analysis_metadata import (
 
 # Bounded shapes for the untrusted per-position payload (D-03).
 _UCI_RE = re.compile(r"^[a-h][1-8][a-h][1-8][qrbn]?$")
+# Same bound as the run's own ``engine`` field on classify-save.
+MAX_EVAL_ENGINE_LENGTH = 120
 
 
 class MissingEvaluationError(ValueError):
@@ -122,6 +124,17 @@ def validate_position_item(item: Any, index: int) -> Dict[str, Any]:
     validate_int(item.get("nodes"), "{0}.nodes".format(field), lo=0, hi=MAX_EVAL_NODES)
     validate_int(item.get("time_ms"), "{0}.time_ms".format(field), lo=0, hi=10**10)
     _validate_uci(item.get("best_move_uci"), "{0}.best_move_uci".format(field))
+    # A read reused from a saved review names the engine that searched it; a fresh
+    # read leaves it out and takes the run's engine (see _evaluation_from_client).
+    engine = item.get("engine")
+    if engine is not None and (
+        not isinstance(engine, str) or not engine.strip() or len(engine) > MAX_EVAL_ENGINE_LENGTH
+    ):
+        raise PositionPayloadError(
+            "{0}.engine must be a string of at most {1} characters".format(
+                field, MAX_EVAL_ENGINE_LENGTH
+            )
+        )
     pv = item.get("pv")
     if pv is not None:
         if not isinstance(pv, list):
@@ -155,7 +168,7 @@ def _evaluation_from_client(
         # readable-4xx semantics as a last line of defence (never a 500).
         raise PositionPayloadError("score_cp/mate_in must be numbers") from exc
     return EngineEvaluation(
-        engine=engine_name,
+        engine=(data.get("engine") or "").strip() or engine_name,
         depth=int(data["depth"]),
         nodes=int(data["nodes"]) if data.get("nodes") is not None else None,
         score_cp=score_cp,

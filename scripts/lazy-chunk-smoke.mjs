@@ -74,10 +74,8 @@ async function staticChecks() {
   assert(!/analyze-/.test(build.text), `${build.name} must not reference analyze chunk`);
   assert(!/movetree-/.test(build.text), `${build.name} must not reference movetree chunk`);
 
-  // The analyze view chunk is "analyze-<hash>.js", like build's above.
-  // analyze-book-* and analyze-session-* are helper chunks: matching them by
-  // prefix picked whichever the filesystem listed first, so a hash change alone
-  // could point this check at the wrong chunk.
+  // The view chunk is analyze-<8-char hash>.js; analyze-book, analyze-session and
+  // analyze-tried-grade are helper chunks, and filesystem order changes with hashes.
   const analyze = await readAsset(/^analyze-[A-Za-z0-9_-]{8}\.js$/);
   assert(/movetree-/.test(analyze.text), `${analyze.name} must static-import movetree chunk`);
 

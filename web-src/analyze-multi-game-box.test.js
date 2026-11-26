@@ -212,7 +212,7 @@ function harness() {
     ensureAnalyzeView: async () => view,
     createEngineAnalysisRun: () => ({ profile: () => ({ net: "big" }), done: vi.fn(), error: null }),
     readyIfCached: async () => {},
-    engineIdentity: () => "sf-test",
+    engineIdentity: () => "sf-test", savedRunReads: async () => null, api: vi.fn(),
     saveCheckpoint: vi.fn(async () => true),
     refreshAnalysisHistoryIfOpen: vi.fn(),
     activeViewName: () => "analyze",
