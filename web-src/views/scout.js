@@ -524,7 +524,7 @@ export function createScoutView(deps) {
       profileEl.hidden = false;
     }
     scoutState.sections = {};
-    scoutState.maiaResults = scoutState.maiaResults || new Map();
+    scoutState.maiaResults ||= new Map();
     if (scoutState.games?.length) scoutState.maiaRatings = perColor((c) => medianOpponentRating(scoutState.games, c));
     const whiteReport = buildSectionReport("white");
     if (whiteReport.sectionData) scoutState.sections.white = whiteReport.sectionData;
@@ -662,8 +662,8 @@ export function createScoutView(deps) {
   async function runPathGuardForColor(oppColor, engine, isCurrent, overrides = {}) {
     const section = buildSectionReport(oppColor, { ...overrides, pathGuard: null }).sectionData;
     if (!section?.gamePlanSource?.length) return true;
-    scoutState.pathGuard = scoutState.pathGuard || { white: null, black: null };
-    scoutState.pathGuardVerdicts = scoutState.pathGuardVerdicts || { white: new Map(), black: new Map() };
+    scoutState.pathGuard ||= { white: null, black: null };
+    scoutState.pathGuardVerdicts ||= { white: new Map(), black: new Map() };
     const prev = scoutState.pathGuard[oppColor];
     const baseline = section.baselineScorePct;
     const candidates = gamePlanCandidates(section.gamePlanSource, baseline, { oppColor });
@@ -736,7 +736,7 @@ export function createScoutView(deps) {
 
   function allOpeningLinesForColor(section, oppColor) {
     const { branches, ancestorFreq } = openingBranchBundleForColor(section, oppColor);
-    scoutState.ancestorFreq = scoutState.ancestorFreq || { white: new Map(), black: new Map() };
+    scoutState.ancestorFreq ||= { white: new Map(), black: new Map() };
     scoutState.ancestorFreq[oppColor] = ancestorFreq;
     return branches;
   }
@@ -791,7 +791,7 @@ export function createScoutView(deps) {
   }
 
   function snapshotStockfishDisplayLine(oppColor, lines) {
-    scoutState.stockfishDisplayLines = scoutState.stockfishDisplayLines || { white: [], black: [] };
+    scoutState.stockfishDisplayLines ||= { white: [], black: [] };
     scoutState.stockfishDisplayLines[oppColor] = lines;
   }
 
@@ -807,8 +807,8 @@ export function createScoutView(deps) {
 
   function refreshGamePlanDisplayLines() {
     if (!scoutState?.games?.length || !scoutModule) return;
-    scoutState.stockfishDisplayLines = scoutState.stockfishDisplayLines || { white: [], black: [] };
-    scoutState.prefilteredLines = scoutState.prefilteredLines || { white: [], black: [] };
+    scoutState.stockfishDisplayLines ||= { white: [], black: [] };
+    scoutState.prefilteredLines ||= { white: [], black: [] };
     for (const oppColor of ["white", "black"]) {
       const stockfish = scoutState.stockfishDisplayLines[oppColor]?.length
         ? scoutState.stockfishDisplayLines[oppColor]
@@ -831,27 +831,25 @@ export function createScoutView(deps) {
     };
   }
 
+  function prefilterSettled() {
+    return [PREFILTER_READY, PREFILTER_FAILED].includes(scoutState.prefilterEnrichState);
+  }
+
   async function enrichPrefilterReads(gen) {
     if (!scoutState?.games?.length || !scoutModule) return;
     if (gen !== prefilterEnrich.generation) return;
     const scopeKey = currentPrefilterScopeKey();
-    const prefilterSettled =
-      scoutState.prefilterEnrichState === PREFILTER_READY ||
-      scoutState.prefilterEnrichState === PREFILTER_FAILED;
-    if (
-      prefilterSettled &&
-      scoutState.prefilterScopeKey === scopeKey
-    ) {
+    if (prefilterSettled() && scoutState.prefilterScopeKey === scopeKey) {
       if (globalMaiaRankedPool().length) maiaEnrich.schedule();
       return;
     }
 
     scoutState.prefilterEnrichState = PREFILTER_LOADING;
     scoutState.engineProgress = { phase: "stockfish", done: 0, total: 0 };
-    scoutState.prefilterPools = scoutState.prefilterPools || { white: [], black: [] };
-    scoutState.prefilterRanked = scoutState.prefilterRanked || { white: [], black: [] };
-    scoutState.prefilteredLines = scoutState.prefilteredLines || { white: [], black: [] };
-    scoutState.prefilterCache = scoutState.prefilterCache || new Map();
+    scoutState.prefilterPools ||= { white: [], black: [] };
+    scoutState.prefilterRanked ||= { white: [], black: [] };
+    scoutState.prefilteredLines ||= { white: [], black: [] };
+    scoutState.prefilterCache ||= new Map();
     renderScoutReport();
 
     // Carry positions counted in earlier colours so the bar climbs monotonically across
@@ -889,7 +887,7 @@ export function createScoutView(deps) {
         sfBaseDone += lastColorProgress.done;
         sfBaseTotal += lastColorProgress.total;
         if (gen !== prefilterEnrich.generation) return;
-        scoutState.funnel = scoutState.funnel || {};
+        scoutState.funnel ||= {};
         scoutState.funnel[oppColor] = result.funnel;
         if (!result.ranked?.length && (!result.funnel ||
           result.funnel.scoreDrops?.noEval === result.funnel.totalLines)) {
@@ -938,7 +936,7 @@ export function createScoutView(deps) {
       ...maiaPoolContext(),
     });
     const { resolved, failed, missing, expected } = outcomes;
-    scoutState.funnel = scoutState.funnel || {};
+    scoutState.funnel ||= {};
     scoutState.funnel.maia = {
       globalPool: globalMaiaRankedPool().length,
       attempts: scoutState.maiaAttemptsUsed || 0,
@@ -959,7 +957,7 @@ export function createScoutView(deps) {
     // Scout's Maia enrichment is an explicitly Maia-powered read of the
     // opponent's human-likeness. When analysis-layer Maia is OFF the report
     // states the requirement instead of silently changing shape.
-    if (typeof maiaAnalysisEnabled === "function" && !maiaAnalysisEnabled()) {
+    if (!maiaAnalysisEnabled()) {
       if (scoutState && scoutState.maiaEnrichState !== MAIA_ENRICH_OFF) {
         scoutState.maiaEnrichState = MAIA_ENRICH_OFF;
         renderScoutReport();
@@ -969,13 +967,10 @@ export function createScoutView(deps) {
     if (!scoutState?.games?.length || !scoutModule) return;
     if (gen !== maiaEnrich.generation) return;
     if (prefilterEnrich.inFlight) return;
-    const prefilterState = scoutState.prefilterEnrichState;
-    const prefilterDone =
-      prefilterState === PREFILTER_READY || prefilterState === PREFILTER_FAILED;
-    if (!prefilterDone || !globalMaiaRankedPool().length) return;
+    if (!prefilterSettled() || !globalMaiaRankedPool().length) return;
 
-    scoutState.maiaResults = scoutState.maiaResults || new Map();
-    scoutState.maiaCache = scoutState.maiaCache || new Map();
+    scoutState.maiaResults ||= new Map();
+    scoutState.maiaCache ||= new Map();
     syncMaiaScope();
 
     if (!maiaWorkRemaining()) {
@@ -991,7 +986,7 @@ export function createScoutView(deps) {
     }
 
     scoutState.maiaEnrichState = MAIA_ENRICH_LOADING;
-    scoutState.maiaAttemptsUsed = scoutState.maiaAttemptsUsed || 0;
+    scoutState.maiaAttemptsUsed ||= 0;
     scoutState.engineProgress = { phase: "maia", done: 0, total: 0 };
     renderScoutReport();
 
@@ -1101,7 +1096,7 @@ export function createScoutView(deps) {
       if (gen !== explorerEnrich.generation) return;
 
       const rating = scoutState.profile?.ratingLast ?? scoutState.profile?.ratingMax;
-      scoutState.explorerByColor = scoutState.explorerByColor || {};
+      scoutState.explorerByColor ||= {};
       let changed = false;
 
       for (const oppColor of ["white", "black"]) {
@@ -1405,7 +1400,7 @@ export function createScoutView(deps) {
       total,
       onCancel: () => ctrl.abort(),
     });
-    state.engineByColor = state.engineByColor || {};
+    state.engineByColor ||= {};
     let done = 0;
     try {
       for (const color of colors) {
