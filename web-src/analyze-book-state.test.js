@@ -9,16 +9,17 @@ const { ensureBookLoaded, getBookReps } = await import("./analyze-book-state.js"
 const { announceRepertoireChanged } = await import("./repertoire-changes.js");
 const { appState } = await import("./core/state.js");
 
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const tree = (id, moves) => ({
-  repertoire_id: id, name: `${id} prep`, color: "white",
-  nodes: [{ id: `${id}-root`, parent_id: null }, ...moves.map(([nid, uci]) => ({ id: nid, parent_id: `${id}-root`, san: uci, uci }))],
+  repertoire_id: id, name: `${id} prep`, color: "white", root_fen: START_FEN,
+  nodes: [{ id: `${id}-root`, parent_id: null, fen: START_FEN }, ...moves.map(([nid, uci]) => ({ id: nid, parent_id: `${id}-root`, san: uci, uci }))],
 });
 
 // The slim book read: one request for every active tree.
 function serve(trees) {
   api.mockImplementation(async (path) => {
     if (path !== "/api/analyze/book") throw new Error(`unexpected ${path}`);
-    return { repertoires: Object.values(trees).map((t) => ({ id: t.repertoire_id, name: t.name, color: t.color, nodes: t.nodes })) };
+    return { repertoires: Object.values(trees).map((t) => ({ id: t.repertoire_id, name: t.name, color: t.color, root_fen: t.root_fen, nodes: t.nodes })) };
   });
 }
 
@@ -39,6 +40,7 @@ describe("Analyze's book after a repertoire change", () => {
     expect(api).toHaveBeenCalledTimes(1);
     const [a, b] = getBookReps();
     expect([...a.children.keys()]).toEqual(["a-root|e2e4", "a-root|c2c4"]);
+    expect(a.rootFen).toBe(START_FEN);
     expect(b).toBe(before);
   });
 

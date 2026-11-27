@@ -43,7 +43,7 @@ function fixtureTree() {
 
 // Drives the real selection module with recording seams, so a test asserts on the
 // same code the session wires up (controllers/analyze-selection.js).
-function harness({ boardInfo = async () => ({ legal_moves: [] }) } = {}) {
+function harness({ boardInfo = async () => ({ legal_moves: [] }), selectionDeps = {} } = {}) {
   const fixture = fixtureTree();
   const appState = {
     analysis: fixture.analysisState.analysis,
@@ -83,6 +83,7 @@ function harness({ boardInfo = async () => ({ legal_moves: [] }) } = {}) {
       `${moveNumber}${side === "black" ? "..." : "."} ${san} · variation`,
     classBadgeSymbol: () => "",
     ensureAnalyzeView: vi.fn(async () => ({ buildAnalysisTree: () => appState.analysisTree })),
+    ...selectionDeps,
   };
   const api = createAnalysisSelection(deps);
   return { ...api, ...asSlices(appState), appState, board, deps, fixture };
@@ -312,5 +313,69 @@ describe("Analyze's session identity survives reload and Back/Forward", () => {
     expect(
       workspaceLocationFromState({ currentView: "analyze", analysisPly: 0, analysisNodePath: "root" }).node,
     ).toBeNull();
+  });
+});
+
+describe("variation grade identity", () => {
+  it("uses a live branch grade only for the same position, and keeps a saved grade authoritative", async () => {
+    const { nodeGrade } = await import("./analyze-tried-grade.js");
+    const { noteTriedGrade } = await import("./analyze-tried-grade.js");
+    const fen = "grade-fen-live";
+    const node = { classification: null, fenBefore: fen, uci: "c2c4" };
+    expect(nodeGrade(node)).toBeNull();
+    noteTriedGrade(fen, "c2c4", "good");
+    expect(nodeGrade(node)).toBe("good");
+    noteTriedGrade(fen, "c2c4", "great");
+    expect(nodeGrade(node)).toBe("great");
+    expect(nodeGrade({ classification: "mistake", fenBefore: fen, uci: "c2c4" })).toBe("mistake");
+    expect(nodeGrade({ classification: null, fenBefore: "another-fen", uci: "c2c4" })).toBeNull();
+  });
+
+  it("repaints a delayed variation glyph without rebuilding the tree", async () => {
+    const { noteTriedGrade } = await import("./analyze-tried-grade.js");
+    const { paintVariationGrade, moveDecoration } = await import("./views/analyze-variation-grade.js");
+    const fen = "grade-fen-repaint";
+    const node = { classification: null, fenBefore: fen, uci: "c2c4", san: "c4", side: "white", moveNumber: 1, isVariation: true };
+    let glyph = null;
+    const san = {
+      insertAdjacentHTML: (where, markup) => {
+        glyph = { textContent: String(markup).includes("✓") ? "✓" : "!", remove: () => { glyph = null; } };
+      },
+    };
+    const classes = new Set();
+    const attrs = {};
+    const token = {
+      classList: { toggle: (name, on) => classes[on ? "add" : "delete"](name), contains: (name) => classes.has(name) },
+      querySelector: (name) => name === ".mtree-san" ? san : name === ".mtree-glyph" ? glyph : null,
+      setAttribute: (name, value) => { attrs[name] = value; },
+      getAttribute: (name) => attrs[name] ?? null,
+    };
+    noteTriedGrade(fen, "c2c4", "good");
+    vi.stubGlobal("document", { querySelector: () => token });
+    const state = { analysisCurrentNodeId: "m1", analysisTree: { byId: new Map([["v1", node]]) } };
+    const plates = { paintMoveHead: vi.fn() };
+    paintVariationGrade(state, plates, { fenBefore: fen, uci: "c2c4" });
+    vi.unstubAllGlobals();
+    expect(plates.paintMoveHead).toHaveBeenCalledWith(state);
+    expect(token.querySelector(".mtree-glyph")?.textContent).toBeUndefined();
+    expect(token.classList.contains("cls-good")).toBe(true);
+    expect(token.getAttribute("aria-label")).toContain("Good");
+    expect(moveDecoration({ ...node, fenBefore: fen, uci: "e2e4" }).suffix).toBeFalsy();
+    expect(moveDecoration({ ...node, classification: "forced" }).suffix).toBeFalsy();
+  });
+});
+
+
+describe("review board-move seam", () => {
+  it("consumes a retry guess before branch creation, PGN serialization or persistence", async () => {
+    const tryReviewMove = vi.fn(() => true);
+    const h = harness({ selectionDeps: { tryReviewMove } });
+    const before = h.appState.analysisVarNodes.size;
+    await h.onAnalysisBoardMove("e2e4", START_FEN);
+    expect(tryReviewMove).toHaveBeenCalledWith("e2e4", START_FEN);
+    expect(h.deps.boardAfterMove).not.toHaveBeenCalled();
+    expect(h.deps.syncPgnFromTree).not.toHaveBeenCalled();
+    expect(h.deps.persistAnalysisSession).not.toHaveBeenCalled();
+    expect(h.appState.analysisVarNodes.size).toBe(before);
   });
 });

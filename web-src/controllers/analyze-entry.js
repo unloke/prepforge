@@ -7,7 +7,7 @@ import { analysisHistoryResult } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
 import { createAnalysisStudySaver } from "../analyze-study.js";
 import { showUndoToast } from "../undo.js";
-import { ensureAnalyzeView } from "../views/analyze-loader.js";
+import { ensureAnalyzeView, analyzeView } from "../views/analyze-loader.js";
 import { shell } from "../core/app-context.js";
 
 const { switchView, syncViewHeads } = shell;
@@ -271,6 +271,7 @@ export function deleteSavedAnalysis(delButton) {
 }
 
 export function invalidateAnalysisSource() {
+  analyzeView?.endReview?.();
   analysisState.analysisFileSeq = null;
   // A new source supersedes the batch an import picker may still be listing.
   analysisState.analysisMultiPgn = null;

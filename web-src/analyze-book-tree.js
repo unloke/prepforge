@@ -17,5 +17,5 @@ export function bookRepFromTree(tree) {
     if (!kids.has(node.parent_id)) kids.set(node.parent_id, []);
     kids.get(node.parent_id).push(move);
   }
-  return rootId ? { id: tree.id, name: tree.name, color: tree.color, rootId, children, kids } : null;
+  return rootId ? { id: tree.id, name: tree.name, color: tree.color, rootFen: tree.root_fen, rootId, children, kids } : null;
 }

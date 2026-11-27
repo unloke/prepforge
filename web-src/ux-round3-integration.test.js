@@ -30,7 +30,7 @@ function harness(realBoard = false) {
   view.adaptParsedTree = realView.adaptParsedTree;
   const doc = { getElementById: () => input, querySelector: () => null, activeElement: null };
   const deps = {
-    ...asSlices(appState), document: doc, START_FEN, parsePgn,
+    ...asSlices(appState), analyzeView: null, document: doc, START_FEN, parsePgn,
     analysisStudy: { flush: async () => {} },
     api: () => pending.promise, ensureAnalyzeView: vi.fn(async () => view),
     hideAnalysisHandoff: vi.fn(), showAnalysisPly: vi.fn(async () => {}),

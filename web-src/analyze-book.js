@@ -1,6 +1,7 @@
 import { html } from "./html.js";
 import { moveTokenHtml, plyOfFen, walkLine } from "./move-text.js";
 import { bookRepFromTree } from "./analyze-book-tree.js";
+import { positionKey } from "./board/move-motion.js";
 // Analyze's repertoire cache and departure actions load with the view.
 export function createBookActions({
   bookState, appState, analysisState, currentOwnerId, api, loadCoach, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire, analysisSelfSide,
@@ -41,7 +42,7 @@ function bookMatch(ucis, reps) {
     let matched = 0;
     for (const uci of ucis) {
       const child = rep.children.get(`${cur}|${uci}`);
-      if (!child) break;
+      if (!child || child.is_enabled === false) break;
       node = child;
       cur = child.id;
       matched += 1;
@@ -96,9 +97,11 @@ async function updateBookline() {
   // Re-read after the await — the user may have navigated while the trees loaded.
   if ((analysisState.analysisCurrentNodeId || "root") !== nodeId) return;
   const side = analysisSelfSide();
-  const reps = side ? bookState.reps.filter((rep) => rep.color === side) : bookState.reps;
-  if (!reps.length) return hideBookline();
   const tree = analysisState.analysisTree;
+  const gameRoot = analysisState.analysis?.moves?.[0]?.fen_before || tree?.root?.fenAfter;
+  const reps = (side ? bookState.reps.filter((rep) => rep.color === side) : bookState.reps)
+    .filter((rep) => positionKey(rep.rootFen) === positionKey(gameRoot));
+  if (!reps.length) return hideBookline();
   const node = tree && tree.byId.get(nodeId);
   if (!node || !node.parent) return hideBookline(); // root: nothing played yet
   const path = analysisNodePath(node);
@@ -114,20 +117,23 @@ async function updateBookline() {
       let walk = rep.rootId;
       for (const uci of prefix) {
         const child = rep.children.get(`${walk}|${uci}`);
-        if (!child) return null;
+        if (!child || child.is_enabled === false) return null;
         walk = child.id;
       }
       return { rep, nodeId: walk };
     })
     .filter(Boolean);
   if (!fullPrev.length) return hideBookline();
-  const prev = fullPrev.find((m) => node.side === m.rep.color) || fullPrev[0];
+  const ownSide = fullPrev.filter((m) => node.side === m.rep.color);
+  const tied = ownSide.length ? ownSide : fullPrev;
+  const enabledKids = (m) => (m.rep.kids.get(m.nodeId) || []).filter((child) => child.is_enabled !== false);
+  const prev = tied.find((m) => enabledKids(m).length) || tied[0];
   const rep = prev.rep;
   const moverIsUser = node.side === rep.color;
 
   if (moverIsUser) {
     // The player left their own prep: say what the script wanted, offer to drill it.
-    const prescribed = (rep.kids.get(prev.nodeId) || [])
+    const prescribed = enabledKids(prev)
       .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline))[0];
     if (!prescribed) return hideBookline(); // book actually ends here — no miss
     // The book holds moves, not their names: name it from the position here.

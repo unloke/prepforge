@@ -6,13 +6,20 @@
 // instead of a diagonal through a square it never crosses.
 
 const SQUARE = 12.5;
-const HALF_SHAFT = 1.4; // shaft ≈ 22% of a square wide
-const HALF_HEAD = 3.1; // head ≈ 50% of a square wide
-const HEAD_LENGTH = 4.4;
-const TAIL_OFFSET = 3.4; // start off the moving piece's centre so it stays visible
-const TIP_INSET = 0.9; // stop just short of the target centre
+const TAIL_OFFSET = 3.5; // start off the moving piece's centre so it stays visible
+const TIP_INSET = 2.7; // stop inside the target square, short of its centre
+const DEFAULT_SHAPE = { shaft: 0.95, head: 2.55, length: 3.45 };
+const ROLE_SHAPE = {
+  engine: { shaft: 1.05, head: 2.65, length: 3.6 },
+  better: DEFAULT_SHAPE,
+  user: { shaft: 0.85, head: 2.35, length: 3.2 },
+  branch: { shaft: 0.68, head: 2.05, length: 2.85 },
+  "branch is-pick": { shaft: 0.94, head: 2.5, length: 3.35 },
+};
+const shapeFor = (role) => ROLE_SHAPE[String(role || "")] || DEFAULT_SHAPE;
 
 const fmt = (n) => (Math.abs(n) < 5e-4 ? "0" : n.toFixed(3));
+const pathOf = (outline) => outline.map((p, i) => `${i ? "L" : "M"}${fmt(p.x)},${fmt(p.y)}`).join(" ") + " Z";
 
 function unit(ax, ay, bx, by) {
   const dx = bx - ax;
@@ -28,7 +35,7 @@ export function isKnightHop(from, to) {
 }
 
 // The arrow's centre line: [tail, (corner), neck] plus the tip it points at.
-function spine(from, to, headLength = HEAD_LENGTH) {
+function spine(from, to, headLength) {
   const knight = isKnightHop(from, to);
   const corner = knight
     ? Math.abs(to.x - from.x) > Math.abs(to.y - from.y)
@@ -45,10 +52,22 @@ function spine(from, to, headLength = HEAD_LENGTH) {
   return { points: corner ? [tail, corner, neck] : [tail, neck], tip, dir: u1 };
 }
 
-export function buildArrowPath(from, to) {
-  const halfShaft = HALF_SHAFT;
-  const halfHead = HALF_HEAD;
-  const { points, tip, dir } = spine(from, to);
+// A plain triangular marker: left wing, tip, right wing. The full arrow and a
+// redrawn stop head share these exact vertices so a shared endpoint has no seam.
+function headPoints(neck, tip, dir, halfHead) {
+  const px = -dir.y;
+  const py = dir.x;
+  return [
+    { x: neck.x + px * halfHead, y: neck.y + py * halfHead },
+    tip,
+    { x: neck.x - px * halfHead, y: neck.y - py * halfHead },
+  ];
+}
+
+export function buildArrowPath(from, to, role) {
+  const shape = shapeFor(role);
+  const halfShaft = shape.shaft;
+  const { points, tip, dir } = spine(from, to, shape.length);
   const left = [];
   const right = [];
   for (let i = 0; i < points.length; i++) {
@@ -70,31 +89,19 @@ export function buildArrowPath(from, to) {
     right.push({ x: p.x - nx * k, y: p.y - ny * k });
   }
   const neck = points[points.length - 1];
-  const px = -dir.y;
-  const py = dir.x;
   const outline = [
     ...left,
-    { x: neck.x + px * halfHead, y: neck.y + py * halfHead },
-    tip,
-    { x: neck.x - px * halfHead, y: neck.y - py * halfHead },
+    ...headPoints(neck, tip, dir, shape.head),
     ...right.reverse(),
   ];
-  return outline.map((p, i) => `${i ? "L" : "M"}${fmt(p.x)},${fmt(p.y)}`).join(" ") + " Z";
+  return pathOf(outline);
 }
 
 // Just the head of the arrow buildArrowPath(from, to) draws, as its own polygon.
-export function buildArrowHeadPath(from, to) {
-  const halfHead = HALF_HEAD;
-  const { points, tip, dir } = spine(from, to);
-  const neck = points[points.length - 1];
-  const px = -dir.y;
-  const py = dir.x;
-  const outline = [
-    { x: neck.x + px * halfHead, y: neck.y + py * halfHead },
-    tip,
-    { x: neck.x - px * halfHead, y: neck.y - py * halfHead },
-  ];
-  return outline.map((p, i) => `${i ? "L" : "M"}${fmt(p.x)},${fmt(p.y)}`).join(" ") + " Z";
+export function buildArrowHeadPath(from, to, role) {
+  const shape = shapeFor(role);
+  const { points, tip, dir } = spine(from, to, shape.length);
+  return pathOf(headPoints(points[points.length - 1], tip, dir, shape.head));
 }
 
 // True when the straight arrow a ends on the path of the longer straight arrow b from the

@@ -304,6 +304,16 @@
     margin: 0;
   }
 
+  /* A retry owns the move-head row while it is active: the narrow key-review
+     rail cannot carry the side, count, feedback and retry actions. */
+  #view-analyze:has(#analysis-explain > .coach-review > .cr-replay) .an-move-head {
+    visibility: hidden;
+  }
+  #view-analyze:has(#analysis-explain > .coach-review > .cr-replay) #analysis-explain > .coach-review {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
   /* Once graded, primary action shifts to calm surface tone */
   #view-analyze:has(#analysis-summary .rp-summary) #run-analysis.primary {
     background: var(--surface-3);
@@ -339,15 +349,6 @@
   }
   #view-analyze #analysis-eval-card .eval-chart .eval-axis {
     stroke: color-mix(in srgb, var(--text) 30%, transparent);
-  }
-  #view-analyze #analysis-eval-card .eval-chart .eval-cursor {
-    stroke: color-mix(in srgb, var(--accent) 85%, var(--text));
-    stroke-width: 1.5;
-  }
-  #view-analyze #analysis-eval-card .eval-chart .eval-cursor-dot {
-    fill: var(--panel);
-    stroke: var(--accent);
-    stroke-width: 2;
   }
 
   /* Bottom 2-column spread: Moves (left) | Engine + Report (right) */
@@ -492,16 +493,6 @@
     flex-direction: column;
     gap: 5px;
   }
-  #view-analyze #analysis-summary::before {
-    content: "Report";
-    display: block;
-    padding: 0 0 3px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1.2;
-  }
-  #view-analyze #analysis-summary:empty::before { display: none; }
 
   /* Symmetrical accuracy hero row: 87% | Accuracy | 75% */
   #view-analyze #analysis-summary:is([data-open="true"], :not([data-open="true"])) > .rp-summary {

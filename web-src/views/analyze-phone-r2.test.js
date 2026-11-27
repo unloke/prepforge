@@ -68,11 +68,11 @@ function analyzeView() {
   return { view, label, toggle, actions, engineHead };
 }
 
-function install(phone) {
+function install(phone, desktop = { value: false }) {
   const dom = analyzeView();
   const listeners = [];
   globalThis.document = { getElementById: (id) => (dom.view.id === id ? dom.view : dom.view.all().find((e) => e.id === id) || null), querySelector: (sel) => dom.view.querySelector(sel) };
-  globalThis.window = { matchMedia: (q) => ({ get matches() { return phone.value && q === "(max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px)"; }, addEventListener: (_, fn) => listeners.push(fn) }) };
+  globalThis.window = { matchMedia: (q) => ({ get matches() { return q === "(min-width: 1180px)" ? desktop.value : phone.value && q === "(max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px)"; }, addEventListener: (_, fn) => listeners.push(fn) }) };
   globalThis.localStorage = { getItem: () => null, setItem: () => {} };
   return { dom, relayout: () => listeners.forEach((fn) => fn()) };
 }
@@ -86,7 +86,8 @@ afterEach(() => {
 describe("Analyze phone, round 2", () => {
   it("uses the Report tab as disclosure and enables folding only in the wide layout", async () => {
     const { installAnalyzePanes } = await import("./analyze-panes.js");
-    const { dom } = install({ value: true });
+    const desktop = { value: false };
+    const { dom } = install({ value: true }, desktop);
     const tabs = dom.view.querySelector("#analyze-tabs");
     tabs.offsetParent = dom.view;
     const summary = new El();
@@ -101,6 +102,11 @@ describe("Analyze phone, round 2", () => {
     tabs.offsetParent = null;
     panes.syncReport();
     expect(summary.disabled).toBe(false);
+    desktop.value = true;
+    panes.syncReport();
+    expect(summary.disabled).toBe(true);
+    expect(report.dataset.open).toBe("true");
+    desktop.value = false;
     // A freshly rendered summary must regain the tab's disclosure state too.
     report.dataset.open = "false";
     tabs.offsetParent = dom.view;

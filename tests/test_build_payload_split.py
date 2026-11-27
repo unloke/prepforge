@@ -130,7 +130,8 @@ def test_the_analyze_book_is_every_active_tree_slim(client):
     assert r.status_code == 200, r.text
     reps = r.json()["repertoires"]
     assert [row["id"] for row in reps] == [rep]
-    assert {key for key in reps[0]} == {"id", "name", "color", "nodes"}
+    assert {key for key in reps[0]} == {"id", "name", "color", "root_fen", "nodes"}
+    assert reps[0]["root_fen"] == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     nodes = reps[0]["nodes"]
     assert all(set(node) == {"id", "parent_id", "uci", "depth", "is_enabled", "is_mainline"} for node in nodes)
     assert [node["uci"] for node in nodes] == [None, "e2e4", "e7e5", "g1f3"]

@@ -146,7 +146,13 @@
 }
 
 
-/* All arrows share one solid, borderless silhouette. */
+/* One opacity on the whole overlay: overlapping or redrawn arrows composite
+   first, then the group alpha lets pieces and square colour show through. */
+.annotations,
+.replay-arrows {
+  opacity: 0.56;
+}
+
 .annot-arrow {
   fill: var(--arrow-ink);
   stroke: none;
@@ -165,12 +171,9 @@
 }
 
 .annot-branch {
-  --arrow-ink: color-mix(in srgb, var(--arrow-line) 83%, var(--square-light));
-}
-
-.annot-branch.is-pick {
   --arrow-ink: var(--arrow-line);
 }
+
 
 /* Use an ink step, not a rim, to separate a shorter stop from the shared shaft. */
 .annot-stop {

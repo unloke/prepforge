@@ -63,15 +63,15 @@ export function createAnalyzeSession() {
       analysisState, START_FEN, boardInfo, boards, classBadgeSymbol, setPositionCaption,
       highlightCurrentMove, persistAnalysisSession, syncViewHeads, syncWorkspaceUrl,
       refreshAnalysisExplain, engineWidget, analysisVariationLabel, ensureAnalyzeView,
-      boardAfterMove, syncPgnFromTree, setStatusError,
       // The source epoch: every await in the selection path re-checks it, so a board
       // read for a superseded game/owner can never repaint the board.
-      analysisSourceSeq: () => analysisRecallSeq, currentOwnerId,
-      ownerGeneration: () => appState.ownerGeneration,
+      analysisSourceSeq: () => analysisRecallSeq, currentOwnerId, ownerGeneration: () => appState.ownerGeneration,
+      boardAfterMove, syncPgnFromTree, setStatusError, tryReviewMove: (uci, fen) => analyzeView?.tryReviewMove(uci, fen) ?? false,
     }));
   return {
-    analysisTreeNav, discardAnalyzeCheckpoint, hideAnalysisHandoff, loadPgnIntoAnalyze,
-    onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, positionCoach,
+    analysisTreeNav, discardAnalyzeCheckpoint, hideAnalysisHandoff, loadPgnIntoAnalyze, onAnalysisBoardMove,
+    onCreateRepertoireFromGameClick, playHumanPick,
+    positionCoach, gradeReviewPosition: (fen, ctx) => positionCoach.update(fen, ctx),
     rebuildAnalysisVariations, resetAnalysisVariations, retryAnalyzeSave, revealAnalysisResults, runAnalysis,
     selectAnalysisNode, selectAnalysisNodePath, selectedNodePath, showAnalysisPly,
     reviewNav: (kind) => ensureAnalyzeView().then((view) => view.reviewStep(kind)),
@@ -385,8 +385,7 @@ class PositionCoach {
       //   • Unintuitive — a human rarely finds it.
       //   • Reveal — Stockfish's truth sits far above Maia's first-glance read. (Free: both
       //     numbers are already in hand.)
-      const hardFind =
-        a.humanProbability <= c.BRILLIANT_MAX_HUMAN_PROB &&
+      const hardFind = a.humanProbability <= c.BRILLIANT_MAX_HUMAN_PROB &&
         features.winAfterMover - a.winChanceAfter * 100 >= c.BRILLIANT_MIN_WIN_GAP;
       // Great's critical find, the server's second route: an only move bounds its gaps
       // (free), so it needs no search either — just a moderately unexpected move.
@@ -406,6 +405,7 @@ class PositionCoach {
       if (grade === "brilliant") c.markBrilliant(features, maia);
       else if (grade === "great") c.markGreat(features, maia);
       else return;
+      noteTriedGrade(prevFen, uci, grade);
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
     } catch (err) {
       console.warn("Coach: Maia brilliancy check unavailable", err);

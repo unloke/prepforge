@@ -51,4 +51,10 @@ describe("arrow keys and the board on screen", () => {
     expect(block).toMatch(/activeBoardController\(\)/);
     expect(block).not.toMatch(/analysisTreeNav|buildGo/);
   });
+
+  it("ends an active Analyze review on SPA navigation and source invalidation", () => {
+    expect(source).toMatch(/if \(name !== "analyze"\) \{[\s\S]*?analyzeView\?\.endReview\?\.\(\)/);
+    expect(source).toMatch(/export function invalidateAnalysisSource\(\) \{\s*analyzeView\?\.endReview\?\.\(\)/);
+  });
+
 });

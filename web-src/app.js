@@ -73,7 +73,7 @@ import { engineWidget, setEngineOn, syncEngineForView, engineWantedIn, applyServ
 import { preloadCoach } from "./coach/coach-loader.js";
 import { createAccountEntry } from "./account-entry.js";
 import { bindEvalChart, createAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer, preloadAnalyzeView,
-  renderAnalysisTree } from "./views/analyze-loader.js";
+  renderAnalysisTree, analyzeView } from "./views/analyze-loader.js";
 import { createAnalyzeEntry, analysisRecallSeq } from "./controllers/analyze-entry.js";
 
 // A controller chunk loaded on first use. `via(name)` calls straight through once it
@@ -501,7 +501,10 @@ function switchView(name, { fromUrl = false } = {}) {
   if (appState.currentView === "teams" && name !== "teams") teamsLazy.current?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
   document.getElementById("app-rail")?.classList.add("is-nav-collapsed");
-  if (name !== "analyze") analyzeLazy.current?.positionCoach.cancel();
+  if (name !== "analyze") {
+    analyzeLazy.current?.positionCoach.cancel();
+    analyzeView?.endReview?.();
+  }
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -1462,6 +1465,7 @@ async function init() {
   analyzeLoader = createAnalyzeView({
     loadSession: loadAnalyzeSession, showPly: showAnalysisPly,
     selectNode: selectAnalysisNode, reveal: revealAnalysisResults, selfSide: analysisSelfSide,
+    gradeAttempt: viaAnalyzeSession("gradeReviewPosition"),
   });
   libraryEntry = createLibrary({
     switchView, hydrateBuild, syncViewHeads, openTrain, editRepertoire,

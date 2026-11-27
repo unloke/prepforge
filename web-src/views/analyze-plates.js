@@ -1,6 +1,7 @@
 import { html } from "../html.js";
 import { reportGradeLabel, reportGradeOf } from "./analyze-report.js";
 import { classBadgeSymbol } from "../move-grades.js";
+import { nodeGrade } from "../analyze-tried-grade.js";
 
 const ERROR_TIERS = [
   ["blunder", "??", "Blunder"],
@@ -59,14 +60,14 @@ export function createAnalyzePlates({ getReport, onFlip }) {
     const round = cleanTag(headers.Round);
     const date = cleanTag(headers.Date || headers.UTCDate);
     const meta = [round ? `Round ${round}` : "", date].filter(Boolean).join(" · ");
-    const title = opening || event || (meta ? "Coach" : "");
+    const title = opening || event || meta;
     if (!title) {
       head.hidden = true;
       head.innerHTML = "";
       return;
     }
     head.hidden = false;
-    head.innerHTML = html`<b class="an-oh-title" title="${title}">${title}</b>${meta ? html`<span class="an-oh-meta">${meta}</span>` : ""}`;
+    head.innerHTML = html`<b class="an-oh-title" title="${title}">${title}</b>${meta && title !== meta ? html`<span class="an-oh-meta">${meta}</span>` : ""}`;
   }
 
   function paintPlates(headers = {}) {
@@ -120,9 +121,10 @@ export function createAnalyzePlates({ getReport, onFlip }) {
     }
     const moveNum = node.moveNumber ?? Math.ceil((Number(node.ply) || 1) / 2);
     const sep = node.side === "black" ? "… " : ". ";
-    const gradeKey = reportGradeOf(node.classification);
-    const gradeWord = reportGradeLabel(node.classification);
-    const gradeMark = classBadgeSymbol(node.classification);
+    const nodeClassification = nodeGrade(node);
+    const gradeKey = reportGradeOf(nodeClassification);
+    const gradeWord = reportGradeLabel(nodeClassification);
+    const gradeMark = classBadgeSymbol(nodeClassification);
     host.hidden = false;
     host.innerHTML = html`<span class="an-mh-san"><span class="an-mh-number">${moveNum}${sep}</span>${node.san}</span>${gradeWord ? html`<span class="an-mh-grade g-${gradeKey}" role="img" aria-label="${gradeWord}" title="${gradeWord}">${gradeMark || gradeWord}</span>` : ""}`;
   }

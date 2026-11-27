@@ -235,12 +235,6 @@
 .dep-note { padding-left: 2px; }
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.replay-arrows path {
-  opacity: 0.92;
-  stroke: rgba(255, 255, 255, 0.55);
-  stroke-width: 1.4;
-  paint-order: stroke fill;
-}
 .replay-arrows .t-good { fill: var(--good); }
 .replay-arrows .t-bad { fill: var(--danger); }
 

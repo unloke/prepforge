@@ -50,9 +50,9 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
     const report = document.getElementById("analysis-summary");
     const summary = report?.querySelector("[data-toggle-summary]");
     if (!summary) return;
-    const tabbed = tabs.offsetParent !== null;
-    summary.disabled = tabbed;
-    if (tabbed) report.dataset.open = "true";
+    const alwaysOpen = tabs.offsetParent !== null || Boolean(media.desktop?.matches);
+    summary.disabled = alwaysOpen;
+    if (alwaysOpen) report.dataset.open = "true";
     summary.setAttribute("aria-expanded", String(report.dataset.open === "true"));
   }
 
@@ -149,5 +149,5 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
   placeGrade();
   placeCaption();
   select(readStored(), { store: false });
-  return { select, syncReport };
+  return { select, syncReport, isPhone: () => media.phone.matches };
 }

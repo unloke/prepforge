@@ -7,10 +7,12 @@ import "./analyze-chart.css";
 import "./analyze-report.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { extractHeaders, pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
-import { paintFindGreat, renderReportBlock, reportGradeLabel, reportGradeOf } from "./analyze-report.js";
+import { paintFindGreat, renderReportBlock, reportGradeOf } from "./analyze-report.js";
 import { createAnalyzePlates } from "./analyze-plates.js";
 import { paintSavedLine } from "./analyze-saved-line.js";
 import { createReviewBar } from "./analyze-review.js";
+import { onTriedGrade } from "../analyze-tried-grade.js";
+import { paintVariationGrade, moveDecoration } from "./analyze-variation-grade.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
 
 // The board, the move list, the eval display and the engine's controls are
@@ -53,6 +55,8 @@ export function createAnalyzeView({
   selfSide = () => null,
   // Show a position on the Analyze board while the chart is hovered (board peek()).
   peek = () => {},
+  // Grade one ephemeral retry guess without making it an analysis variation.
+  gradeAttempt = () => {},
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection } =
     createMoveTreeRenderer();
@@ -222,7 +226,8 @@ export function createAnalyzeView({
   }
 
   // The review bar under the coach; Shift+←/→ step it too.
-  const review = createReviewBar({ analysisState, getReport: () => report, showAnalysisPly, selectAnalysisNode, selectPane: (p) => panes.select(p) });
+  const review = createReviewBar({ analysisState, getReport: () => report, showAnalysisPly, selectAnalysisNode, selectPane: (p, options) => panes.select(p, options), isPhone: () => panes.isPhone?.() || false, previewPosition: (pos) => peek(pos), gradeAttempt });
+  onTriedGrade((fenBefore, uci) => paintVariationGrade(analysisState, plates, { fenBefore, uci }));
 
   // The key moment on the board is marked in the report as the reader steps.
   function markCurrentMoment() {
@@ -397,23 +402,7 @@ export function createAnalyzeView({
     container.innerHTML = renderMoveTree(tree.root, {
       currentId: analysisState.analysisCurrentNodeId,
       pathIds,
-      decorate: (node) => {
-        if (node.isVariation) {
-          return { classes: ["is-variation"], title: "variation", label: "variation" };
-        }
-        const cls = String(node.classification || "unknown");
-        const group = CLASS_GROUP_OF[cls.toLowerCase()];
-        // A sound move carries no sign: the list marks only what stands out.
-        const glyph = group && group !== "good" ? classBadgeSymbol(cls) : "";
-        // "unknown" is the absent-grade sentinel: nothing to show or read out.
-        const grade = reportGradeLabel(cls);
-        return {
-          classes: [`cls-${cls}`, node.side === "black" ? "is-black" : "is-white"],
-          suffix: glyph ? html`<i class="mtree-glyph">${glyph}</i>` : "",
-          title: grade,
-          label: grade,
-        };
-      },
+      decorate: moveDecoration,
     });
     bindMoveTreeClicks(container, (id) => void selectAnalysisNode(id).catch(() => {}));
     followCurrentMove(container);
@@ -661,8 +650,8 @@ export function createAnalyzeView({
     marker.setAttribute("visibility", hidden ? "hidden" : "visible");
     updateChartCaption(hidden || running ? null : points[idx]);
     if (!dot) return;
-    // Ring on the curve at the current ply: a SHAPE cue on top of the dashed
-    // line (and the tooltip's "current" text), so the position indicator never
+    // Stud on the curve at the current ply: a SHAPE cue on top of the hairline
+    // (and the tooltip's "current" text), so the position indicator never
     // relies on colour alone.
     if (hidden) {
       dot.setAttribute("visibility", "hidden");
@@ -910,13 +899,12 @@ export function createAnalyzeView({
         showAnalysisPly(c.ply);
       });
     });
-    rescaleEvalMarkers();
-
-    // Current-ply position: dashed vertical line + a ring on the curve (shape,
-    // not colour) above everything else.
-    svgChild(chart, "line", { id: "eval-chart-cursor", class: "eval-cursor", "stroke-dasharray": "3 3", ...offChart });
+    // Current-ply position: a fine neutral hairline + a small ink stud on the
+    // curve (shape, not colour) above everything else.
+    svgChild(chart, "line", { id: "eval-chart-cursor", class: "eval-cursor", ...offChart });
     const ring = svgChild(chart, "ellipse", { id: "eval-chart-cursor-dot", class: "eval-marker eval-cursor-dot", cx: -10, cy: -10, visibility: "hidden" });
-    ring.dataset.baseR = "4.5";
+    ring.dataset.baseR = "3";
+    rescaleEvalMarkers();
 
     updateEvalChartCursor();
     bindEvalChartInteractions();
@@ -939,6 +927,8 @@ export function createAnalyzeView({
     paintEvalHead,
     renderReport,
     reviewStep: review.step,
+    endReview: review.endReview,
+    tryReviewMove: review.tryReviewMove,
     renderEvalChart,
     renderAnalysisTree,
     updateAnalysisTreeSelection,

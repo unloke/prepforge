@@ -13,7 +13,7 @@ export function noteTriedGrade(fenBefore, uci, code) {
   grades.delete(key);
   grades.set(key, code);
   if (grades.size > MAX_GRADES) grades.delete(grades.keys().next().value);
-  for (const listener of listeners) listener();
+  for (const listener of listeners) listener(fenBefore, uci, code);
 }
 
 // The coach will not grade this move (Grade moves is off, no engine, or its read came
@@ -26,6 +26,14 @@ export function noteUngraded({ prevFen, lastUci } = {}) {
 
 export function triedGrade(fenBefore, uci) {
   return (fenBefore && uci && grades.get(`${fenBefore}|${uci}`)) || null;
+}
+
+// A tree node's effective grade: the saved grade first, then the coach's
+// live grade of the same move in the same position. `ungraded` is state, not
+// a grade.
+export function nodeGrade(node) {
+  const grade = node?.classification || triedGrade(node?.fenBefore, node?.uci);
+  return grade === UNGRADED ? null : grade;
 }
 
 export function onTriedGrade(listener) {

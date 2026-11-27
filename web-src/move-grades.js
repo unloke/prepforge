@@ -5,7 +5,7 @@
 export const CLASS_GROUPS = [
   { key: "brilliant", label: "Brilliant", members: ["brilliant"] },
   { key: "great", label: "Great", members: ["great"] },
-  { key: "good", label: "Good", members: ["best", "excellent", "good", "book"] },
+  { key: "good", label: "Good", members: ["best", "excellent", "good", "book", "forced"] },
   { key: "inaccuracy", label: "Inaccuracy", members: ["inaccuracy"] },
   { key: "mistake", label: "Mistake", members: ["mistake"] },
   { key: "blunder", label: "Blunder", members: ["blunder"] },

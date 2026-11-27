@@ -291,7 +291,7 @@ export function renderAnnotations(
     }
     const from = squareCenter(uci.slice(0, 2), orientation);
     const to = squareCenter(uci.slice(2, 4), orientation);
-    paint(kind, buildArrowPath(from, to));
+    paint(kind, buildArrowPath(from, to, kind));
     drawn.push({ uci, from, to, kind });
   };
   const engine = valid(engineArrow) ? engineArrow : null;
@@ -308,7 +308,7 @@ export function renderAnnotations(
     const sharedHead = sharedHeads.get(arrow.uci);
     const shorter = drawn.some((other) => endsUnder(arrow, other));
     if (sharedHead || shorter) {
-      paint(sharedHead ?? arrow.kind, buildArrowHeadPath(arrow.from, arrow.to), shorter ? " annot-stop" : "");
+      paint(sharedHead ?? arrow.kind, buildArrowHeadPath(arrow.from, arrow.to, sharedHead ?? arrow.kind), shorter ? " annot-stop" : "");
     }
   });
 }

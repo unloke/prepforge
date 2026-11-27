@@ -15,14 +15,14 @@ function repertoire(color, sans) {
     kids.set(parent, [node]);
     parent = node.id;
   }
-  return { id: color, name: `${color} prep`, color, rootId: "root", children, kids };
+  return { id: color, name: `${color} prep`, color, rootFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", rootId: "root", children, kids };
 }
 
 function harness(side, sans, reps, deps = {}) {
   const el = { hidden: true, innerHTML: "", querySelector: () => ({ addEventListener: vi.fn() }) };
   vi.stubGlobal("document", { getElementById: () => el });
   const chess = new Chess(), byId = new Map();
-  let node = { id: "root" };
+  let node = { id: "root", fenAfter: chess.fen() };
   for (const san of sans) {
     const fenBefore = chess.fen(), move = chess.move(san);
     node = { id: `ply-${chess.history().length}`, parent: node, san, uci: move.lan,
@@ -30,7 +30,7 @@ function harness(side, sans, reps, deps = {}) {
     byId.set(node.id, node);
   }
   const buildBookline = vi.fn(() => "Departure");
-  const appState = { signedIn: true, analysisCurrentNodeId: node.id, analysisTree: { byId } };
+  const appState = { signedIn: true, analysisCurrentNodeId: node.id, analysisTree: { byId, root: { fenAfter: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" } } };
   const actions = createBookActions({
     bookState: { loaded: true, reps }, ...asSlices(appState), analysisSelfSide: () => side,
     loadCoach: async () => ({ buildBookline }),
@@ -45,7 +45,7 @@ describe("Analyze repertoire ownership", () => {
     const c4 = { id: "c4", parent_id: "root", uci: "c2c4", depth: 1, is_enabled: true, is_mainline: false };
     const d4 = { id: "d4", parent_id: "root", uci: "d2d4", depth: 1, is_enabled: true, is_mainline: true };
     const api = vi.fn().mockResolvedValueOnce({ repertoires: [
-      { id: "white", name: "white prep", color: "white", nodes: [
+      { id: "white", name: "white prep", color: "white", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", nodes: [
         { id: "root", parent_id: null, uci: null, depth: 0, is_enabled: true, is_mainline: true },
         c4, d4, { id: "e4", parent_id: "root", uci: "e2e4", depth: 1, is_enabled: false, is_mainline: false },
       ] },
@@ -106,6 +106,23 @@ describe("Analyze repertoire ownership", () => {
     const h = harness(null, ["e4", "c5"], [
       repertoire("white", ["e4", "e5"]), repertoire("black", ["e4", "c5"]),
     ]);
+    await h.updateBookline();
+    expect(h.buildBookline).not.toHaveBeenCalled();
+    expect(h.el.hidden).toBe(true);
+  });
+
+  it("prefers a tied prepared book over an exhausted one", async () => {
+    const h = harness("white", ["e4", "e5", "Bc4"], [
+      repertoire("white", ["e4", "e5"]),
+      repertoire("white", ["e4", "e5", "Nf3"]),
+    ]);
+    await h.updateBookline();
+    expect(h.buildBookline).toHaveBeenCalledWith(expect.objectContaining({ kind: "user", expectedSan: "Nf3" }));
+  });
+
+  it("ignores a book whose root position is not the game's root", async () => {
+    const wrongRoot = { ...repertoire("white", ["e4", "e5"]), rootFen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" };
+    const h = harness("white", ["e4", "e5", "Bc4"], [wrongRoot]);
     await h.updateBookline();
     expect(h.buildBookline).not.toHaveBeenCalled();
     expect(h.el.hidden).toBe(true);

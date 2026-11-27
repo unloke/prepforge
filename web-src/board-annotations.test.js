@@ -50,8 +50,8 @@ describe("board annotation layering", () => {
     ]);
     const center = { x: 6.25 + 6 * 12.5, y: 6.25 + 7 * 12.5 };
     const nf3 = { x: 6.25 + 5 * 12.5, y: 6.25 + 5 * 12.5 };
-    expect(out[1].d).toBe(buildArrowPath(center, nf3));
-    expect(out[3].d).toBe(buildArrowHeadPath(center, nf3));
+    expect(out[1].d).toBe(buildArrowPath(center, nf3, "user"));
+    expect(out[3].d).toBe(buildArrowHeadPath(center, nf3, "branch"));
   });
 
   it("draws the engine's move once in engine ink when it matches a fork option", () => {
@@ -81,17 +81,21 @@ describe("board annotation layering", () => {
     ]);
     const f1 = { x: 6.25 + 5 * 12.5, y: 6.25 + 7 * 12.5 };
     const d3 = { x: 6.25 + 3 * 12.5, y: 6.25 + 5 * 12.5 };
-    expect(out[2].d).toBe(buildArrowHeadPath(f1, d3));
+    expect(out[2].d).toBe(buildArrowHeadPath(f1, d3, "branch is-pick"));
   });
 });
 
-describe("uniform arrow shape", () => {
-  it("renders every role with the same geometry for the same move", () => {
-    expect(render([], "white", "g1f3")[0].d).toBe(render(["g1f3"], "white")[0].d);
+describe("role arrow shape", () => {
+  it("gives nearby roles different silhouettes for the same move", () => {
     const user = render(["g1f3"], "white")[0].d;
     const engine = render([], "white", "g1f3")[0].d;
     const better = render([], "white", null, [], null, "g1f3")[0].d;
     const branch = render([], "white", null, ["g1f3"])[0].d;
-    expect(new Set([user, engine, better, branch]).size).toBe(1);
+    expect(new Set([user, engine, better, branch]).size).toBe(4);
+    const pick = render([], "white", null, ["g1f3"], "g1f3")[0].d;
+    expect(pick).not.toBe(branch);
+    const from = { x: 6.25 + 6 * 12.5, y: 6.25 + 7 * 12.5 };
+    const to = { x: 6.25 + 5 * 12.5, y: 6.25 + 5 * 12.5 };
+    expect(pick).toBe(buildArrowPath(from, to, "branch is-pick"));
   });
 });

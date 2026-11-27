@@ -48,7 +48,7 @@ function invalidateBook(hydrated = null) {
   const at = hydrated && bookState.loaded
     ? bookState.reps.findIndex((rep) => String(rep.id) === String(hydrated.repertoire_id)) : -1;
   const fresh = at >= 0
-    ? bookRepFromTree({ id: hydrated.repertoire_id, name: hydrated.name, color: hydrated.color, nodes: hydrated.nodes })
+    ? bookRepFromTree({ id: hydrated.repertoire_id, name: hydrated.name, color: hydrated.color, root_fen: hydrated.nodes?.find((node) => !node.parent_id)?.fen, nodes: hydrated.nodes })
     : null;
   if (fresh) {
     bookState.reps = bookState.reps.map((rep, index) => (index === at ? fresh : rep));

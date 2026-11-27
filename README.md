@@ -60,8 +60,10 @@ game. Run Review to review move classifications,
 the evaluation graph and turning points. Expand Game Report for player accuracy
 and phase statistics. Errors appear in move order on White and Black tracks,
 using chess annotations (?!, ?, ??). Hover to preview a position and its loss; click
-to select it, or tap on a phone. Move between Coach references or Engine moves
-to preview consecutive positions without returning to the game between them.
+to select it, or tap on a phone. Key moments browse normally. Retry starts at the next
+mistake or missed preparation ahead, hides the answer, accepts your own repertoire
+moves and advances automatically. Move between Coach references or Engine moves to
+preview consecutive positions without returning to the game between them.
 
 ### Prepare for an opponent
 

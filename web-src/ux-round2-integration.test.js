@@ -42,7 +42,7 @@ describe("Recall from Recent analyses", () => {
     const appState = { analysis: null };
     const pgn = { setAttribute() {}, value: "x" };
     const deps = {
-      ...asSlices(appState), api, document: { getElementById: () => pgn },
+      ...asSlices(appState), api, analyzeView: null, document: { getElementById: () => pgn },
       analysisStudy: { flush: async () => {} },
       currentOwnerId: () => "owner",
       hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(),

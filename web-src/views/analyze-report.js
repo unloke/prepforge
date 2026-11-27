@@ -8,6 +8,7 @@
 // buildGameReport is pure; the rendered report links its error chart to the board.
 import { Chess } from "chess.js";
 import { sanOf } from "../chess-local.js";
+import { positionKey } from "../board/move-motion.js";
 import { html } from "../html.js";
 import { evaluationToWin } from "../explain.js";
 import { averageAccuracy } from "./analyze-accuracy.js";
@@ -138,6 +139,7 @@ export function reviewMoments(moves = [], evalGraph = [], reps = [], selfSide = 
         departure: ply === departure?.ply,
         by: ply === departure?.ply ? departure.by : null,
         prepared: ply === departure?.ply ? departure.prepared : false,
+        preparedMoves: ply === departure?.ply ? departure.preparedMoves || [] : [],
         repName: ply === departure?.ply ? departure.repName : "",
         before: formatEval(row?.prev),
         after: formatEval(row?.point),
@@ -201,33 +203,59 @@ const known = (value) => (value && !/^[?*.\s]+$/.test(String(value)) ? String(va
 // With the user's side known, only that colour's repertoires are walked; `by`
 // says whose move left the book, and is null when the side is unknown.
 export function prepDeparture(moves = [], reps = [], selfSide = null) {
-  const pool = selfSide ? reps.filter((rep) => rep.color === selfSide) : reps;
+  const gameRoot = positionKey(moves[0]?.fen_before);
+  const pool = (selfSide ? reps.filter((rep) => rep.color === selfSide) : reps)
+    .filter((rep) => gameRoot && positionKey(rep.rootFen) === gameRoot);
   if (!moves.length || !pool.length) return null;
   let deepest = -1;
-  let deepestRep = null;
-  let deepestWalk = null;
+  let deepestWalks = [];
   for (const rep of pool) {
     let walk = rep.rootId;
     let matched = 0;
     for (const move of moves) {
       const child = rep.children.get(`${walk}|${move.uci}`);
-      if (!child) break;
+      if (!child || child.is_enabled === false) break;
       walk = child.id;
       matched += 1;
     }
     if (matched > deepest) {
       deepest = matched;
-      deepestRep = rep;
-      deepestWalk = walk;
+      deepestWalks = [{ rep, walk }];
+    } else if (matched === deepest) {
+      deepestWalks.push({ rep, walk });
     }
   }
-  if (deepest <= 0 || deepest >= moves.length) return null;
+  if (deepest < 0 || deepest >= moves.length) return null;
   const move = moves[deepest];
   const ply = Number(move.ply) || deepest + 1;
-  const by = selfSide ? (sideOfMove(move, ply) === selfSide ? "you" : "opponent") : null;
-  // `prepared`: the book had a move to play here, the one the coach would drill.
-  const prepared = (deepestRep.kids?.get(deepestWalk)?.length || 0) > 0;
-  return { ply, label: moveRef(move, ply), move, repName: deepestRep?.name || "", by, prepared };
+  const side = sideOfMove(move, ply);
+  // A first-move miss is meaningful only for a known player whose root really
+  // is the game's root. With the side unknown, or when the opponent moves first
+  // from it, depth zero still proves nothing about preparation.
+  if (deepest === 0 && (!selfSide || side !== selfSide)) return null;
+  const by = selfSide ? (side === selfSide ? "you" : "opponent") : null;
+  const seen = new Set();
+  const preparedMoves = [];
+  const candidates = deepestWalks.flatMap(({ rep, walk }) => (rep.kids?.get(walk) || []).map((child) => ({ rep, child })));
+  candidates.sort((a, b) => Number(b.child.is_mainline) - Number(a.child.is_mainline));
+  for (const { rep, child } of candidates) {
+    if (!child.uci || child.is_enabled === false || seen.has(child.uci)) continue;
+    const san = sanOf(move.fen_before, child.uci);
+    if (!san) continue;
+    seen.add(child.uci);
+    preparedMoves.push({ uci: child.uci, san, repName: rep.name || "" });
+  }
+  if (!deepest && !preparedMoves.length) return null;
+  const repName = preparedMoves[0]?.repName || deepestWalks[0]?.rep.name || "";
+  return {
+    ply,
+    label: moveRef(move, ply),
+    move,
+    repName,
+    by,
+    prepared: preparedMoves.length > 0,
+    preparedMoves: by === "you" ? preparedMoves.map(({ uci, san }) => ({ uci, san })) : [],
+  };
 }
 
 /**
@@ -267,6 +295,7 @@ export function buildGameReport({ moves = [], evalGraph = [], positionEvals = {}
     moments: reviewMoments(moves, evalGraph, reps, selfSide),
     phases: phaseBreakdown(evalGraph, moves, positionEvals),
     opening: openingFromHeaders(headers),
+    selfSide,
     graded: moves.some((m) => reportGradeOf(m.classification)),
   };
 }

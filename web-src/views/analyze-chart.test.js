@@ -434,7 +434,7 @@ describe("eval chart current-ply indicator", () => {
     expect(Number(ring.getAttribute("cx"))).toBeCloseTo(640, 6);
   });
 
-  it("marks the current ply with a dashed line and a ring (shape, not colour)", () => {
+  it("marks the current ply with a neutral hairline and an ink stud (shape, not colour)", () => {
     const { chart, appState, view } = setup();
     view.renderEvalChart(POINTS);
     appState.analysisPly = 3;
@@ -444,7 +444,7 @@ describe("eval chart current-ply indicator", () => {
     const x = xOfIdx(2, 5); // ply 3 sits at index 2
     expect(cursor.getAttribute("x1")).toBe(String(x));
     expect(cursor.getAttribute("x2")).toBe(String(x));
-    expect(cursor.getAttribute("stroke-dasharray")).toBe("3 3"); // pattern cue
+    expect(cursor.getAttribute("stroke-dasharray")).toBeNull(); // solid hairline
     expect(cursor.getAttribute("visibility")).toBe("visible");
 
     const ring = doc(chart).getElementById("eval-chart-cursor-dot");

@@ -92,11 +92,14 @@ try {
     assert.equal((await page.locator("#builder-tree").boundingBox()).y, treeTop);
     const arrow = await page.locator("#build-annotations .annot-branch.is-pick").evaluate(el => {
       const css = getComputedStyle(el);
-      return { dash: css.strokeDasharray, opacity: css.fillOpacity, fill: css.fill, stroke: css.stroke };
+      const rootCss = getComputedStyle(document.getElementById("build-annotations"));
+      return { dash: css.strokeDasharray, pathOpacity: css.opacity, rootOpacity: rootCss.opacity, fill: css.fill, stroke: css.stroke };
     });
     assert.equal(arrow.dash, "none");
-    assert.equal(arrow.opacity, "1");
-    assert.notEqual(arrow.fill, arrow.stroke);
+    assert.equal(arrow.pathOpacity, "1", "path alpha must not compound with the root overlay alpha");
+    const alpha = Number(arrow.rootOpacity);
+    assert(alpha >= 0.4 && alpha <= 0.65, `annotation overlay alpha ${alpha} outside 0.4..0.65`);
+    assert.equal(arrow.stroke, "none");
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "page overflows horizontally");
     await page.waitForTimeout(250);
     await page.screenshot({ path: `${OUT}/repertoire-${width}.png`, fullPage: true });

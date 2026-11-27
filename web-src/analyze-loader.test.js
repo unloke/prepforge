@@ -15,5 +15,7 @@ describe("analyze view loader", () => {
     await api.preloadAnalyzeView();
     // Called with no arguments: the loader takes none and caches its own promise.
     expect(loadSession).toHaveBeenCalledOnce();
+    const view = await api.ensureAnalyzeView();
+    expect(view.endReview).toBeTypeOf("function");
   });
 });

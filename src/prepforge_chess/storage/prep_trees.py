@@ -39,12 +39,12 @@ def _slim_nodes(rows: list[Any]) -> list[dict[str, Any]]:
 
 def active_prep_trees(engine: Engine, owner_user_id: str) -> list[dict[str, Any]]:
     """Every active repertoire ``owner_user_id`` owns, newest edit first, as
-    ``{id, name, color, nodes}`` with ``{id, parent_id, uci, depth, is_enabled,
+    ``{id, name, color, root_fen, nodes}`` with ``{id, parent_id, uci, depth, is_enabled,
     is_mainline}`` nodes."""
     reps, nodes = t.repertoires, t.opening_nodes
     with engine.connect() as conn:
         rep_rows = conn.execute(
-            select(reps.c.id, reps.c.name, reps.c.color)
+            select(reps.c.id, reps.c.name, reps.c.color, reps.c.root_fen)
             .where(reps.c.owner_user_id == owner_user_id, reps.c.is_active == 1)
             .order_by(reps.c.updated_at.desc())
         ).all()
@@ -58,6 +58,6 @@ def active_prep_trees(engine: Engine, owner_user_id: str) -> list[dict[str, Any]
     for row in node_rows:
         by_rep.setdefault(row.repertoire_id, []).append(row)
     return [
-        {"id": row.id, "name": row.name, "color": row.color, "nodes": _slim_nodes(by_rep.get(row.id, []))}
+        {"id": row.id, "name": row.name, "color": row.color, "root_fen": row.root_fen, "nodes": _slim_nodes(by_rep.get(row.id, []))}
         for row in rep_rows
     ]

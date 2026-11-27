@@ -177,13 +177,42 @@ const repertoire = (ucis, name = "Italian", color = "white") => {
   const kids = new Map();
   let walk = "n0";
   ucis.forEach((uci, i) => {
-    const node = { id: `n${i + 1}`, san: uci };
+    const node = { id: `n${i + 1}`, san: uci, uci };
     children.set(`${walk}|${uci}`, node);
     kids.set(walk, [node]);
     walk = `n${i + 1}`;
   });
-  return { rootId: "n0", children, kids, name, color };
+  return { rootId: "n0", rootFen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", children, kids, name, color };
 };
+
+
+// Branched production-shaped book fixture: enabled/disabled UCI records keyed
+// exactly as bookRepFromTree prepares them, with the root position carried
+// separately because UCIs alone do not identify a position.
+function branchedRepertoire(lines, { name = "Book", color = "white", rootFen = new Chess().fen(), disabled = new Set() } = {}) {
+  const children = new Map();
+  const kids = new Map();
+  const ids = new Map();
+  const idAt = (path) => path.length ? `n:${path.join(",")}` : "root";
+  for (const [lineIndex, line] of lines.entries()) {
+    let parent = "root";
+    const prefix = [];
+    line.forEach((uci, index) => {
+      const nodePath = [...prefix, uci];
+      const id = idAt(nodePath);
+      if (!ids.has(id)) {
+        const node = { id, uci, is_enabled: !disabled.has(uci), is_mainline: lineIndex === 0 };
+        ids.set(id, node);
+        children.set(`${parent}|${uci}`, node);
+        if (!kids.has(parent)) kids.set(parent, []);
+        kids.get(parent).push(node);
+      }
+      parent = id;
+      prefix.push(uci);
+    });
+  }
+  return { rootId: "root", rootFen, children, kids, name, color };
+}
 
 describe("opening and prep", () => {
   it("joins the opening's name and code, and drops what the PGN lacks", () => {
@@ -201,6 +230,44 @@ describe("opening and prep", () => {
     expect(prepDeparture(MOVES, [repertoire(MOVES.map((m) => m.uci))])).toBeNull();
     expect(prepDeparture(MOVES, [])).toBeNull();
     expect(prepDeparture(MOVES, [repertoire([])])).toBeNull();
+  });
+
+  it("marks a known player's first-move miss only when the book root is the game root", () => {
+    const d4 = branchedRepertoire([["d2d4"]]);
+    expect(prepDeparture(MOVES, [d4], "white")).toMatchObject({ ply: 1, by: "you", prepared: true });
+    expect(prepDeparture(MOVES, [d4], "white").preparedMoves).toEqual([{ uci: "d2d4", san: "d4" }]);
+    expect(prepDeparture(MOVES, [d4], null)).toBeNull();
+    expect(prepDeparture(MOVES, [{ ...d4, color: "black" }], "black")).toBeNull();
+    expect(prepDeparture(MOVES, [{ ...d4, rootFen: MOVES[0].fen_after }], "white")).toBeNull();
+  });
+
+  it("does not fabricate a first-move departure for an empty book", () => {
+    expect(prepDeparture(MOVES, [branchedRepertoire([])], "white")).toBeNull();
+  });
+
+  it("keeps an exhausted book unprepared and does not report a game that stayed in it", () => {
+    expect(prepDeparture(MOVES, [branchedRepertoire([FOUR])], "white")).toMatchObject({ ply: 5, prepared: false, preparedMoves: [] });
+    expect(prepDeparture(MOVES, [branchedRepertoire([MOVES.map((m) => m.uci)])], "white")).toBeNull();
+  });
+
+  it("aggregates unique valid prepared answers across tied books, mainline first", () => {
+    const first = branchedRepertoire([[...FOUR, "d2d3"], [...FOUR, "f1c4"]], { name: "Main" });
+    const tied = branchedRepertoire([[...FOUR, "f1c4"]], { name: "Tied" });
+    const exhausted = branchedRepertoire([FOUR], { name: "Exhausted" });
+    const departure = prepDeparture(MOVES, [exhausted, tied, first], "white");
+    expect(departure.prepared).toBe(true);
+    expect(departure.repName).toBe("Tied");
+    expect(departure.preparedMoves).toEqual([
+      { uci: "f1c4", san: "Bc4" },
+      { uci: "d2d3", san: "d3" },
+    ]);
+  });
+
+  it("skips disabled and illegal prepared records", () => {
+    const disabled = branchedRepertoire([[...FOUR, "f1c4"]], { disabled: new Set(["f1c4"]) });
+    expect(prepDeparture(MOVES, [disabled], "white")).toMatchObject({ prepared: false, preparedMoves: [] });
+    const illegal = branchedRepertoire([[...FOUR, "a1a2"]]);
+    expect(prepDeparture(MOVES, [illegal], "white")).toMatchObject({ prepared: false, preparedMoves: [] });
   });
 });
 

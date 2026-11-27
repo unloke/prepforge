@@ -11,7 +11,7 @@
 //      is not a focus stop (moves are stepped with the global arrow keys),
 //   4. the chart colours resolve from theme tokens and actually change with
 //      data-theme (light vs dark),
-//   5. the current-ply vertical indicator (dashed line + ring) tracks the
+//   5. the current-ply vertical indicator (solid hairline + stud) tracks the
 //      selected ply.
 //
 // Env:
@@ -156,15 +156,17 @@ measured: ${JSON.stringify(chartBox)}`);
       "board label follows the clicked ply",
     );
 
-    // --- 5. Current-ply indicator follows the selection (dashed line + ring). ---
+    // --- 5. Current-ply indicator follows the selection (solid hairline + stud). ---
     const cursor = await page.evaluate(() => ({
       x1: document.getElementById("eval-chart-cursor").getAttribute("x1"),
       ring: document.getElementById("eval-chart-cursor-dot").getAttribute("visibility"),
       dash: document.getElementById("eval-chart-cursor").getAttribute("stroke-dasharray"),
+      pointer: getComputedStyle(document.getElementById("eval-chart-cursor")).pointerEvents,
     }));
     check(Math.abs(Number(cursor.x1) - plotX(0.75)) < 0.5, `cursor sits on ply 4's x (got ${cursor.x1})`);
-    check(cursor.ring === "visible", "current-ply ring marker is visible");
-    check(cursor.dash === "3 3", "cursor line carries a dashed (non-colour) cue");
+    check(cursor.ring === "visible", "current-ply stud marker is visible");
+    check(cursor.dash == null, "cursor line is a solid neutral hairline");
+    check(cursor.pointer === "none", "cursor never intercepts chart clicks");
 
     // --- 3. The tooltip never lingers; the chart is not a focus stop. ---
     await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y - 120);

@@ -14,14 +14,15 @@ let moveTreeModule = null;
 let moveTreeRenderer = null;
 export let analyzeView = null;
 
-let loadAnalyzeSession, showAnalysisPly, selectAnalysisNode, revealAnalysisResults, analysisSelfSide = () => null;
+let loadAnalyzeSession, showAnalysisPly, selectAnalysisNode, revealAnalysisResults, analysisSelfSide = () => null, gradeReviewAttempt = () => {};
 
-export function createAnalyzeView({ loadSession, showPly, selectNode, reveal, selfSide }) {
+export function createAnalyzeView({ loadSession, showPly, selectNode, reveal, selfSide, gradeAttempt = () => {} }) {
   loadAnalyzeSession = loadSession;
   showAnalysisPly = showPly;
   selectAnalysisNode = selectNode;
   revealAnalysisResults = reveal;
   analysisSelfSide = selfSide;
+  gradeReviewAttempt = gradeAttempt;
   return { preloadAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer,
     renderAnalysisTree, renderAnalysisTreeEmptyState, bindEvalChart,
     get analyzeView() { return analyzeView; },
@@ -53,6 +54,7 @@ export async function ensureAnalyzeView() {
       bookReps: getBookReps,
       selfSide: () => analysisSelfSide(),
       peek: (pos) => boards.analysis?.peek(pos),
+      gradeAttempt: (fen, ctx) => gradeReviewAttempt(fen, ctx),
       ensureBookLoaded,
     });
   }

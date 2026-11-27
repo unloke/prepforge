@@ -15,6 +15,7 @@
 
 import { analysisNodeIdFromPath, analysisPathOf } from "../analyze-node-path.js";
 import { clearPeek } from "../line-preview.js";
+import { nodeGrade } from "../analyze-tried-grade.js";
 
 export function createAnalysisSelection(deps) {
   const {
@@ -27,6 +28,7 @@ export function createAnalysisSelection(deps) {
     // when the analysis object and the selected node id happen to be unchanged (a
     // recall of the same game, an account switch during a read).
     analysisSourceSeq = () => 0, currentOwnerId = () => null, ownerGeneration = () => 0,
+    tryReviewMove = () => false,
   } = deps;
 
   // Bumped by every selection intent. A continuation that resolves after a newer
@@ -136,8 +138,9 @@ export function createAnalysisSelection(deps) {
     boards.analysis.setPosition({ fen, legalMoves: info.legal_moves, lastMove: move ? move.uci : null, back });
     // Only an analysed move gets a badge; an unclassified one (a pasted PGN, a game
     // sent from Train) shows none instead of an empty placeholder dot.
-    const badge = move && move.classification ? classBadgeSymbol(move.classification) : "";
-    boards.analysis.setMoveBadge(badge ? move.uci.slice(2, 4) : null, badge ? move.classification : null, badge);
+    const badgeGrade = move ? nodeGrade(move) : null;
+    const badge = move && badgeGrade ? classBadgeSymbol(badgeGrade) : "";
+    boards.analysis.setMoveBadge(badge ? move.uci.slice(2, 4) : null, badge ? badgeGrade : null, badge);
     // Which position is on the board is a phone fact: its eval row says it, because
     // the thumb bar has no room and the bar under the board names the game. On a
     // desktop the board itself shows the position and the moves list marks it.
@@ -233,6 +236,7 @@ export function createAnalysisSelection(deps) {
   }
 
   async function onAnalysisBoardMove(moveUci, fen) {
+    if (tryReviewMove(moveUci, fen)) return;
     const fromId =
       analysisState.analysisCurrentNodeId ||
       (analysisState.analysisPly > 0 ? `m${analysisState.analysisPly}` : "root");

@@ -409,6 +409,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze:not([data-pane="report"]) .an-panes > .report-pane,
   #view-analyze:not([data-pane="moves"]) .an-panes > .moves-pane { display: none; }
   .an-panes > .report-pane > summary { display: none; }
+  .engine-pane .an-pane-head > b { display: none; }
   .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
   #view-analyze[data-pane="engine"] .an-panes > .engine-pane { display: grid; }
   #view-analyze[data-pane="report"] .an-panes > .report-pane { display: flex; }
