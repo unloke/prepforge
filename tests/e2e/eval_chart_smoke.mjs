@@ -84,7 +84,7 @@ async function main() {
   if (!browser) fail("could not launch Chromium/Chrome/Edge");
 
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await page.goto(APP_URL, { timeout: 30_000 });
     await until(page, () => !!window.__prepforgeAnalyzeE2e, 20_000);
 
@@ -189,7 +189,7 @@ measured: ${JSON.stringify(chartBox)}`);
     const readColors = () =>
       page.evaluate(() => {
         const probe = document.createElement("span");
-        probe.style.color = "var(--accent-strong)";
+        probe.style.color = "color-mix(in srgb, var(--text) 72%, transparent)";
         document.body.appendChild(probe);
         const token = getComputedStyle(probe).color;
         const line = getComputedStyle(document.querySelector("#eval-chart .eval-line")).stroke;
@@ -204,8 +204,8 @@ measured: ${JSON.stringify(chartBox)}`);
       document.documentElement.dataset.theme = "dark";
     });
     const dark = await readColors();
-    check(light.line === light.token, "light theme: main line colour equals --accent-strong");
-    check(dark.line === dark.token, "dark theme: main line colour equals --accent-strong");
+    check(light.line === light.token, "light theme: desktop main line uses the theme text tint");
+    check(dark.line === dark.token, "dark theme: desktop main line uses the theme text tint");
     check(light.line !== dark.line, "main line colour actually changes with the theme");
 
     console.log("[eval-chart-smoke] passed.");
