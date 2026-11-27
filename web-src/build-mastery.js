@@ -13,23 +13,21 @@ export function masteryOf(buildState, nodeId) {
 
 // deps: api, appState, buildState, repaint() (called once new colour lands).
 // refresh() asks for the colour of the tree buildState.build holds, at most one
-// request at a time: a refresh during a request asks once more after it.
+// request at a time: a refresh during a request asks once more after it. Every
+// re-read asks, even at the same revision: a finished Train session moves the
+// colour without moving the tree.
 export function createBuildMastery({ api, appState, buildState, repaint }) {
   let inflight = null;
   let again = false;
 
   const coloured = (build) => !!build && !appState.sharedToken && buildRole(build) === "owner";
-  const current = (build) => {
-    const held = buildState.buildMastery;
-    return !!held && held.repertoireId === build.repertoire_id && held.revision === build.revision;
-  };
 
   async function run() {
     try {
       do {
         again = false;
         const build = buildState.build;
-        if (!coloured(build) || current(build)) break;
+        if (!coloured(build)) break;
         const reply = await api(`/api/train/mastery?repertoire_id=${encodeURIComponent(build.repertoire_id)}`);
         // The view moved on (another repertoire, or the account changed) while
         // this was in flight: its own refresh asks for its own colour.
@@ -43,7 +41,7 @@ export function createBuildMastery({ api, appState, buildState, repaint }) {
         };
         repaint();
       } while (again);
-    } catch (_) {
+    } catch {
       // The tree stays as last coloured; the next hydrate asks again.
     }
   }
@@ -61,7 +59,6 @@ export function createBuildMastery({ api, appState, buildState, repaint }) {
       again = true;
       return inflight;
     }
-    if (current(build)) return Promise.resolve();
     inflight = run().finally(() => { inflight = null; });
     return inflight;
   }

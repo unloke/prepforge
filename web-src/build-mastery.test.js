@@ -23,9 +23,20 @@ describe("Build mastery: Train's colour beside the tree", () => {
     expect(masteryOf(h.buildState, "a")).toBe("weak");
     expect(masteryOf(h.buildState, "b")).toBeNull();
     expect(h.repaint).toHaveBeenCalledTimes(1);
-    // The same revision asks nothing more.
-    await h.mastery.refresh();
-    expect(h.api).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks again when the same revision is re-read: training moves the colour, not the tree", async () => {
+    const h = harness({ repertoire_id: "r1", revision: 3, role: "owner", nodes: [] });
+    const first = h.mastery.refresh();
+    h.pending[0].resolve(reply("r1", 3, { a: "untrained" }));
+    await first;
+    // A finished Train session re-reads the open tree; its revision is unchanged.
+    const second = h.mastery.refresh();
+    expect(h.api).toHaveBeenCalledTimes(2);
+    h.pending[1].resolve(reply("r1", 3, { a: "learning" }));
+    await second;
+    expect(masteryOf(h.buildState, "a")).toBe("learning");
+    expect(h.repaint).toHaveBeenCalledTimes(2);
   });
 
   it("colours nothing it can't own: a shared tree or a public link never asks", async () => {
