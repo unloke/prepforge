@@ -5,7 +5,7 @@ import {
   groupAttempts,
   isRetriableSyncError,
   ungroupAttempts,
-} from "./sync-queue.js";
+} from "./train-outbox.js";
 
 const attempt = (session, node, correct = true) => ({
   session_id: session,

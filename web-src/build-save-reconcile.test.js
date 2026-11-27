@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
 import { indexBuildNodes } from "./build-tree.js";
 import { createSyncController } from "./controllers/sync.js";
-import { loadDurableOutbox } from "./sync-queue.js";
+import { loadDurableOutbox } from "./outbox-db.js";
+import { composeOutboxMerge } from "./outbox-state.js";
+import { buildOutbox } from "./build-outbox.js";
+import { trainOutbox } from "./train-outbox.js";
 import { appSource } from "./test-app-source.js";
 import { appState as sharedState, buildState, trainState } from "./core/state.js";
 import { resetState } from "./state/state-view.fixture.js";
@@ -143,10 +146,10 @@ describe("repertoire durable save", () => {
     expect(h.deps.postJson).toHaveBeenCalledOnce();
     expect(writes).toHaveBeenCalledTimes(3);
     expect(h.appState.buildSyncState).toBe("saved");
-    const restored = await loadDurableOutbox("owner");
+    const restored = await loadDurableOutbox("owner", composeOutboxMerge([buildOutbox, trainOutbox]));
     expect(restored.build.pending).toEqual([]);
     expect(restored.build.idMap["tmp-first"]).toBe("first");
-    expect(restored.settled.build).toContain("tmp-first");
+    expect(restored.build.settled.adds).toContain("tmp-first");
   });
 
   it("keeps a move played during the request selected and queued with its real parent", async () => {

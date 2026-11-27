@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
-import { clearDurableOutbox, loadDurableOutbox, saveDurableOutbox } from "./outbox-db.js";
-import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
+import * as db from "./outbox-db.js";
+import { composeOutboxMerge } from "./outbox-state.js";
+import { buildOutbox } from "./build-outbox.js";
+import { flushGroups, groupAttempts, trainOutbox, ungroupAttempts } from "./train-outbox.js";
+
+// The store is feature-blind: the merge it applies is the caller's.
+const merge = composeOutboxMerge([buildOutbox, trainOutbox]);
+const loadDurableOutbox = (owner) => db.loadDurableOutbox(owner, merge);
+const saveDurableOutbox = (owner, state, settled = null) => db.saveDurableOutbox(owner, state, settled, merge);
+const clearDurableOutbox = (owner) => db.clearDurableOutbox(owner, merge);
 
 beforeEach(() => { vi.stubGlobal("indexedDB", new IDBFactory()); });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -12,10 +20,10 @@ const sample = () => ({ build: { pending: [{ tempId: "tmp-a", repertoireId: "r",
 });
 
 it("keeps each owner's work separate", async () => {
-  await saveDurableOutbox("a", sample(), { build: ["older"] });
+  await saveDurableOutbox("a", sample(), { build: { adds: ["older"] } });
   const stored = await loadDurableOutbox("a");
   expect(stored.build.pending).toEqual(sample().build.pending);
-  expect(stored.settled.build).toContain("older");
+  expect(stored.build.settled.adds).toContain("older");
   expect((await loadDurableOutbox("b")).build.pending).toEqual([]);
 });
 
@@ -40,7 +48,7 @@ it("concurrent transactions merge independent tabs instead of overwriting each o
 it("a stale writer cannot replay settled adds/deletes/attempts", async () => {
   const stale = sample();
   await saveDurableOutbox("a", stale);
-  await saveDurableOutbox("a", {}, { build: ["tmp-a"], deletes: ["n"], train: ["attempt"] });
+  await saveDurableOutbox("a", {}, { build: { adds: ["tmp-a"], deletes: ["n"] }, train: ["attempt"] });
   await clearDurableOutbox("a");
   await saveDurableOutbox("a", stale);
   const restored = await loadDurableOutbox("a");
@@ -57,8 +65,8 @@ it("clear never erases another tab's work", async () => {
 });
 
 it("settlements outlive many later edits in a suspended tab", async () => {
-  await saveDurableOutbox("a", {}, { build: ["old"] });
-  for (let i = 0; i < 250; i++) await saveDurableOutbox("a", {}, { build: [`new-${i}`] });
+  await saveDurableOutbox("a", {}, { build: { adds: ["old"] } });
+  for (let i = 0; i < 250; i++) await saveDurableOutbox("a", {}, { build: { adds: [`new-${i}`] } });
   await saveDurableOutbox("a", { build: { pending: [{ tempId: "old", uci: "e2e4" }] } });
   expect((await loadDurableOutbox("a")).build.pending).toEqual([]);
 });
@@ -87,13 +95,13 @@ it("queued writes snapshot mutable queues before awaiting database initializatio
 });
 
 it("recovery reads work even when storage refuses new writes", async () => {
-  await saveDurableOutbox("a", sample(), { build: ["settled"] });
+  await saveDurableOutbox("a", sample(), { build: { adds: ["settled"] } });
   vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(() => {
     throw new DOMException("quota", "QuotaExceededError");
   });
   const restored = await loadDurableOutbox("a");
   expect(restored.build.pending).toEqual(sample().build.pending);
-  expect(restored.settled.build).toEqual(["settled"]);
+  expect(restored.build.settled.adds).toEqual(["settled"]);
   expect((await loadDurableOutbox("new-owner")).build.pending).toEqual([]);
   await clearDurableOutbox("a");
 });

@@ -29,8 +29,8 @@ import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-co
 import { getBuildTree, indexBuildNodes } from "../build-tree.js";
 import { createBuildMastery } from "../build-mastery.js";
 
-import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, downloadText,
-  engineLifecycleMark, OUTBOX_TAB_ID, postJson, setStatus, setStatusError } from "../core/api.js";
+import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, downloadText, engineLifecycleMark, OUTBOX_TAB_ID, postJson, setStatus, setStatusError } from "../core/api.js";
+import { postBuildWrite } from "../build-write.js";
 import { appState, buildState, trainState, boards, notices, START_FEN } from "../core/state.js";
 import { boardAfterMove, boardInfo, optimisticBoardMove } from "../board/ui.js";
 import { buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode, buildView, deleteBuildNodeLocal,
@@ -920,7 +920,7 @@ async function saveBuildAnnotations(arrows, circles) {
         if (!isOwner()) return;
         snapshot = slot.latest;
         slot.latest = null;
-        await postJson("/api/build/annotations", {
+        await postBuildWrite("/api/build/annotations", {
           repertoire_id: repertoireId, node_id: resolvedId(), ...snapshot,
         });
         slot.confirmed = snapshot;
@@ -1539,7 +1539,7 @@ async function generateFromCurrentNode() {
       message: "saving",
     });
     notices.lockJob("saving — finishing up");
-    const payload = await postJson(
+    const payload = await postBuildWrite(
       "/api/build/generate/apply-plan",
       {
         repertoire_id: generatedRepertoireId,
@@ -1690,7 +1690,7 @@ async function handleNodeContextAction(action, nodeId) {
           { name: "comment", label: "Note", type: "textarea", default: node.comment || "" },
         ],
         onSubmit: async (result, close) => {
-          const payload = await postJson("/api/build/action", {
+          const payload = await postBuildWrite("/api/build/action", {
             repertoire_id: repertoireId, node_id: nodeId, action, value: result.comment,
           });
           if (buildState.build?.repertoire_id === repertoireId) await hydrateBuild(payload, nodeId);
@@ -1701,7 +1701,7 @@ async function handleNodeContextAction(action, nodeId) {
       return;
     }
     const repertoireId = buildState.build.repertoire_id;
-    const payload = await postJson("/api/build/action", { repertoire_id: repertoireId, node_id: nodeId, action, value: null });
+    const payload = await postBuildWrite("/api/build/action", { repertoire_id: repertoireId, node_id: nodeId, action, value: null });
     // Another repertoire opened meanwhile: this answer must not reopen the old one.
     if (buildState.build?.repertoire_id !== repertoireId) return;
     await hydrateBuild(payload, nodeId);

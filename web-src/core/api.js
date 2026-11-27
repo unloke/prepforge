@@ -1,10 +1,9 @@
-import { appState, buildState, boards, notices } from "./state.js";
+import { appState, boards, notices } from "./state.js";
 import { hooks } from "./hooks.js";
 import { createCsrfTokenSource, headersWithCsrf } from "../csrf.js";
 import { withRequestDeadline } from "../sync-queue.js";
 import { apiErrorMessage } from "../api-errors.js";
 import { AUTH_REQUIRED_MESSAGE, isAuthRequiredMessage, isSessionAuthFailure } from "../auth-gate.js";
-import { BUILD_MUTATIONS, announceBuildWrite } from "../build-live.js";
 import { ENGINE_PHASE_KEY } from "../engine/engine-ladder.js";
 
 // Shown when a browser-only compute action (whole-game Analyze, Build → Generate)
@@ -133,11 +132,8 @@ export async function api(path, options = {}) {
   }, { signal: callerSignal, timeoutMs, method });
 }
 
-// ----- Durable outbox (R-03) -----------------------------------------------
-// Build and Train share an owner-scoped IndexedDB outbox.
-// crash, or sign-out can't silently drop work the user already did. Operation
-// identity survives (Build temp ids, Train attempt UUIDs) — replays after a
-// lost response are recognized server-side instead of double-counted.
+// This tab's id: the durable outbox's cross-tab lock (outbox.js) and the
+// server's per-tab write attribution both use it.
 export const OUTBOX_TAB_ID = Math.random().toString(36).slice(2);
 // Sent on every request, so the server can tell which tab made each write.
 const CLIENT_ID_HEADER = "X-PF-Client";
@@ -188,30 +184,8 @@ export function localDayOf(iso) {
   return Number.isNaN(d.getTime()) ? raw.slice(0, 10) : localDateString(d);
 }
 
+// A JSON POST. Feature rules about ordering or side effects belong to the
+// feature: Build's tree writes go through build-write.js.
 export async function postJson(path, body, options = {}) {
-  const build = buildState.build;
-  const owner = currentOwnerId();
-  const generation = appState.ownerGeneration;
-  // Build writes run one at a time so each is applied on top of the last.
-  // The server rebases every edit onto the current tree, so none carries the
-  // revision it was made on.
-  const mutation = BUILD_MUTATIONS.has(path);
-  const previous = mutation ? buildState.buildMutationSaving : null;
-  const task = (async () => {
-    if (previous) await previous.catch(() => {});
-    if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) throw new Error("Account changed");
-    const before = build?.revision;
-    const payload = await api(path, { method: "POST", body: JSON.stringify(body || {}), ...options });
-    if (mutation && body?.repertoire_id === build?.repertoire_id) {
-      // Exactly the next revision means nobody else wrote in between, so the
-      // open tree (which already shows this edit) is now at that revision.
-      // Otherwise the change feed fills the gap.
-      if (buildState.build === build && payload?.revision === before + 1) build.revision = payload.revision;
-      announceBuildWrite(body.repertoire_id);
-    }
-    return payload;
-  })();
-  if (mutation) buildState.buildMutationSaving = task;
-  try { return await task; }
-  finally { if (buildState.buildMutationSaving === task) buildState.buildMutationSaving = null; }
+  return api(path, { method: "POST", body: JSON.stringify(body || {}), ...options });
 }

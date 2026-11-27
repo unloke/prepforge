@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const reloads = [];
 vi.mock("./build-entry.js", () => ({ reloadOpenBuildTree: vi.fn(async () => { reloads.push(1); return true; }) }));
-vi.mock("./core/api.js", () => ({ postJson: vi.fn() }));
+vi.mock("./build-write.js", () => ({ postBuildWrite: vi.fn() }));
 
 import { NO_TREE_SINCE, applyFlushReply, flushSince, postBuildAdds } from "./build-flush.js";
 import { MAX_ADD_MOVES_BATCH, MAX_PLAN_DEPTH } from "./generated/shared-constants.js";

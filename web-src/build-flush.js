@@ -8,11 +8,11 @@
 
 import { MAX_ADD_MOVES_BATCH, MAX_PLAN_DEPTH } from "./generated/shared-constants.js";
 import { buildState } from "./core/state.js";
-import { postJson } from "./core/api.js";
+import { postBuildWrite } from "./build-write.js";
 import { applyBuildChanges } from "./build-live.js";
 import { buildRole } from "./share-roles.js";
 import { reloadOpenBuildTree } from "./build-entry.js";
-import { orderPendingBuildAdds } from "./sync-queue.js";
+import { orderPendingBuildAdds } from "./build-outbox.js";
 
 // Past any real revision: the server answers with the revision and role only.
 export const NO_TREE_SINCE = Number.MAX_SAFE_INTEGER;
@@ -53,7 +53,7 @@ export function splitBuildAdds(batch) {
 // is asked before each batch: once the queue is no longer this account's (a
 // sign-out or another sign-in mid-flush), nothing more goes out under the new
 // session, and ``unsent`` counts what was held back.
-export async function postBuildAdds(repertoireId, batch, since, { post = postJson, owns = () => true } = {}) {
+export async function postBuildAdds(repertoireId, batch, since, { post = postBuildWrite, owns = () => true } = {}) {
   const batches = splitBuildAdds(batch);
   const idMap = {};
   const dropped = [];

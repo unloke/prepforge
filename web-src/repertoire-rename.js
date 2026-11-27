@@ -1,4 +1,5 @@
-import { postJson, setStatus } from "./core/api.js";
+import { setStatus } from "./core/api.js";
+import { postBuildWrite } from "./build-write.js";
 import { showInputModal } from "./core/modals.js";
 
 export function promptRenameRepertoire({ repertoireId, name, afterSave }) {
@@ -8,7 +9,7 @@ export function promptRenameRepertoire({ repertoireId, name, afterSave }) {
     onSubmit: async (values, close) => {
       const next = (values.name || "").trim();
       if (!next) throw new Error("Enter a name.");
-      const payload = await postJson("/api/build/rename", { repertoire_id: repertoireId, name: next });
+      const payload = await postBuildWrite("/api/build/rename", { repertoire_id: repertoireId, name: next });
       await afterSave(payload);
       close(values);
       setStatus(`Renamed to ${next}`);

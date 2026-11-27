@@ -1,5 +1,6 @@
 import { appState, buildState, notices } from "./core/state.js";
-import { BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, postJson, setStatusError } from "./core/api.js";
+import { BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, setStatusError } from "./core/api.js";
+import { postBuildWrite } from "./build-write.js";
 import { effectiveMaiaRating, effectiveStockfishDepth } from "./core/prefs.js";
 import { showConfirmModal } from "./core/modals.js";
 import { isBuildReadOnly } from "./build-entry.js";
@@ -55,7 +56,7 @@ export async function previewCoverageReplies(gaps, options) {
     isBuildReadOnly, isBrowserEngineAvailable, unavailableMessage: BROWSER_ENGINE_UNAVAILABLE,
     notices, hardFlushBuild, captureBuildContext, getBuild: () => buildState.build,
     effectiveMaiaRating, effectiveStockfishDepth, getGenerator: () => preloadBuildGen(),
-    getProvider: getSharedMaia3Provider, showConfirmModal, postJson, classifySyncError,
+    getProvider: getSharedMaia3Provider, showConfirmModal, postBuildWrite, classifySyncError,
     hydrateBuild, trainRepertoire,
   });
 }

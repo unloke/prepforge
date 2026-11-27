@@ -3,7 +3,7 @@ import { prepareCoverageReply } from "../coverage-plan.js";
 export async function previewCoverageReplies(gaps, { isValid }, deps) {
   const { isBuildReadOnly, isBrowserEngineAvailable, unavailableMessage, notices,
     hardFlushBuild, captureBuildContext, getBuild, effectiveMaiaRating, effectiveStockfishDepth,
-    getGenerator, getProvider, showConfirmModal, postJson, classifySyncError, hydrateBuild,
+    getGenerator, getProvider, showConfirmModal, postBuildWrite, classifySyncError, hydrateBuild,
     trainRepertoire } = deps;
   if (isBuildReadOnly()) throw new Error("Copy this repertoire to add replies");
   if (!isBrowserEngineAvailable()) throw new Error(unavailableMessage);
@@ -61,13 +61,13 @@ export async function previewCoverageReplies(gaps, { isValid }, deps) {
       operation_id: crypto.randomUUID(),
     };
     let payload;
-    try { payload = await postJson("/api/build/generate/apply-plan", request); }
+    try { payload = await postBuildWrite("/api/build/generate/apply-plan", request); }
     catch (error) {
       if (!classifySyncError(error).retriable || !isCurrent()) throw error;
       const retry = await showConfirmModal({ title: "Save not confirmed",
         body: error.message, okLabel: "Retry same save" });
       if (!retry || !isCurrent()) throw error;
-      payload = await postJson("/api/build/generate/apply-plan", request);
+      payload = await postBuildWrite("/api/build/generate/apply-plan", request);
     }
     if (isCurrent()) {
       await hydrateBuild(payload, ready[0].rootNodeId);
