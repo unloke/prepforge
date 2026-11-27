@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from prepforge_chess.api.deps import current_owner, get_repository, member_name
-from prepforge_chess.api.routers.workspace import _repertoire_access
+from prepforge_chess.api.access import require_access
 from prepforge_chess.storage.ports import CollaborationStore, DiscussionRoutes, RepertoireReader
 
 router = APIRouter(prefix="/api/build/discussions", tags=["discussions"])
@@ -48,7 +48,7 @@ def _thread(repo: CollaborationStore, conn, rid, thread_id):
 @router.get("")
 def discussions(repertoire_id: str, owner: str = Depends(current_owner),
                 repo: DiscussionRoutes = Depends(get_repository)):
-    meta = _repertoire_access(repo, repertoire_id, owner)
+    meta = require_access(repo, repertoire_id, owner)
     positions = _positions(repo, repertoire_id)
     threads, messages = repo.discussions(repertoire_id)
     by_thread = {}
@@ -84,7 +84,7 @@ class MessageBody(BaseModel):
 @router.post("")
 def add_message(body: MessageBody, owner: str = Depends(current_owner),
                 repo: DiscussionRoutes = Depends(get_repository)):
-    _repertoire_access(repo, body.repertoire_id, owner)
+    require_access(repo, body.repertoire_id, owner)
     repo.op_actor, repo.op_kind = owner, "discussion"
     with repo.repertoire_edit(body.repertoire_id) as conn:
         now = datetime.now(timezone.utc)
@@ -116,7 +116,7 @@ class ThreadBody(BaseModel):
 @router.post("/update")
 def update_thread(body: ThreadBody, owner: str = Depends(current_owner),
                   repo: DiscussionRoutes = Depends(get_repository)):
-    meta = _repertoire_access(repo, body.repertoire_id, owner)
+    meta = require_access(repo, body.repertoire_id, owner)
     repo.op_actor, repo.op_kind = owner, "discussion_update"
     with repo.repertoire_edit(body.repertoire_id) as conn:
         row = _thread(repo, conn, body.repertoire_id, body.thread_id)
@@ -126,7 +126,7 @@ def update_thread(body: ThreadBody, owner: str = Depends(current_owner),
                 raise HTTPException(403, detail="Only the author or repertoire owner can resolve this discussion.")
             values["resolved"] = int(body.resolved)
         if body.fen is not None:
-            _repertoire_access(repo, body.repertoire_id, owner, "edit")
+            require_access(repo, body.repertoire_id, owner, "edit")
             key = position_key(body.fen)
             if key not in _positions(repo, body.repertoire_id, conn):
                 raise HTTPException(409, detail="Choose a position in this repertoire.")

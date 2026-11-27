@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from prepforge_chess.api.deps import current_owner, get_repository, member_name
-from prepforge_chess.api.routers.workspace import _repertoire_access
+from prepforge_chess.api.access import require_access
 from prepforge_chess.services.workflows import (
     build_payload_for_viewer, refresh_health_badge_after_tree_edit, revert_repertoire_edit,
 )
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/build", tags=["activity"])
 @router.get("/activity")
 def activity(repertoire_id: str, owner: str = Depends(current_owner),
              repo: ActivityRoutes = Depends(get_repository)):
-    meta = _repertoire_access(repo, repertoire_id, owner)
+    meta = require_access(repo, repertoire_id, owner)
     seen = repo.get_user_setting(owner, f"activity.seen.{repertoire_id}", 0)
     rows = repo.activity_rows(repertoire_id)
     reversed_revisions = {json.loads(row["op_json"]).get("reverted_revision") for row in rows}
@@ -57,7 +57,7 @@ class SeenBody(BaseModel):
 @router.post("/activity/seen")
 def activity_seen(body: SeenBody, owner: str = Depends(current_owner),
                   repo: ActivityRoutes = Depends(get_repository)):
-    meta = _repertoire_access(repo, body.repertoire_id, owner)
+    meta = require_access(repo, body.repertoire_id, owner)
     revision = min(body.revision, meta["revision"])
     seen = repo.mutate_user_setting(owner, f"activity.seen.{body.repertoire_id}",
                                    lambda value: max(value or 0, revision))
@@ -71,7 +71,7 @@ class RevertBody(SeenBody):
 @router.post("/activity/revert")
 def activity_revert(body: RevertBody, owner: str = Depends(current_owner),
                     repo: ActivityRoutes = Depends(get_repository)):
-    meta = _repertoire_access(repo, body.repertoire_id, owner, "owner")
+    meta = require_access(repo, body.repertoire_id, owner, "owner")
     repo.op_actor, repo.op_kind = owner, "revert"
     try:
         revert_repertoire_edit(repo, body.repertoire_id, body.revision)

@@ -5,7 +5,8 @@ vi.mock("./core/api.js", () => ({
   api: (...args) => api(...args), currentOwnerId: () => "owner", postJson: vi.fn(), setStatus: vi.fn(), setStatusError: vi.fn(),
 }));
 
-const { ensureBookLoaded, getBookReps, invalidateBook } = await import("./analyze-book-state.js");
+const { ensureBookLoaded, getBookReps } = await import("./analyze-book-state.js");
+const { announceRepertoireChanged } = await import("./repertoire-changes.js");
 const { appState } = await import("./core/state.js");
 
 const tree = (id, moves) => ({
@@ -21,10 +22,10 @@ function serve(trees) {
   });
 }
 
-describe("Analyze's book after a Build hydrate", () => {
+describe("Analyze's book after a repertoire change", () => {
   beforeEach(() => {
     appState.pendingRepDeletes = new Set();
-    invalidateBook();
+    announceRepertoireChanged({ repertoireId: "any" });
     api.mockReset();
   });
 
@@ -33,7 +34,7 @@ describe("Analyze's book after a Build hydrate", () => {
     await ensureBookLoaded();
     expect(api).toHaveBeenCalledTimes(1);
     const [, before] = getBookReps();
-    invalidateBook(tree("a", [["a1", "e2e4"], ["a2", "c2c4"]]));
+    announceRepertoireChanged({ repertoireId: "a", tree: tree("a", [["a1", "e2e4"], ["a2", "c2c4"]]) });
     await ensureBookLoaded();
     expect(api).toHaveBeenCalledTimes(1);
     const [a, b] = getBookReps();
@@ -41,20 +42,20 @@ describe("Analyze's book after a Build hydrate", () => {
     expect(b).toBe(before);
   });
 
-  it("drops the copy for a repertoire the book does not hold, or with no argument", async () => {
+  it("drops the copy for a repertoire the book does not hold, or a change with no tree", async () => {
     serve({ a: tree("a", [["a1", "e2e4"]]) });
     await ensureBookLoaded();
-    invalidateBook(tree("new", [["n1", "g1f3"]]));
+    announceRepertoireChanged({ repertoireId: "new", tree: tree("new", [["n1", "g1f3"]]) });
     expect(getBookReps()).toEqual([]);
     await ensureBookLoaded();
     expect(api).toHaveBeenCalledTimes(2);
-    invalidateBook();
+    announceRepertoireChanged({ repertoireId: "a" });
     expect(getBookReps()).toEqual([]);
   });
 
   it("leaves a book that was never loaded to load on the next Analyze look", async () => {
     serve({ a: tree("a", [["a1", "e2e4"]]) });
-    invalidateBook(tree("a", [["a1", "e2e4"]]));
+    announceRepertoireChanged({ repertoireId: "a", tree: tree("a", [["a1", "e2e4"]]) });
     expect(getBookReps()).toEqual([]);
     await ensureBookLoaded();
     expect(api).toHaveBeenCalledTimes(1);
