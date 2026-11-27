@@ -1,3 +1,5 @@
+import { pickBoardArrowColors } from "./board-arrow-colors.js";
+
 export const THEME_MODES = Object.freeze(["system", "light", "dark"]);
 
 export const DEFAULT_ACCENT = "blue";
@@ -103,10 +105,16 @@ export function applyAccent(value, { root = document.documentElement } = {}) {
 
 // Board colours: one attribute on <html>, like the accent. Unknown names fall
 // back to the default, so a hand-edited pref cannot leave the board unpainted.
-export function applyBoardTheme(value, { root = document.documentElement } = {}) {
+export function applyBoardTheme(value, { root = document.documentElement, readStyles = (el) => getComputedStyle(el) } = {}) {
   const board = BOARD_MODES.includes(value) ? value : DEFAULT_BOARD_THEME;
   if (board === DEFAULT_BOARD_THEME) delete root.dataset.board;
   else root.dataset.board = board;
+  const styles = readStyles(root);
+  const light = styles.getPropertyValue("--square-light").trim();
+  const dark = styles.getPropertyValue("--square-dark").trim();
+  for (const [role, color] of Object.entries(pickBoardArrowColors(light, dark))) {
+    root.style.setProperty(`--arrow-${role}`, color);
+  }
   return board;
 }
 

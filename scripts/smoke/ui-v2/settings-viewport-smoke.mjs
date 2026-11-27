@@ -158,10 +158,30 @@ async function runViewport(vp) {
   const woodColors = () => woodPreview.evaluateAll((squares) => squares.map((el) => getComputedStyle(el).backgroundColor));
   const originalWood = await woodColors();
   check(originalWood.length === 4 && new Set(originalWood).size === 2, "Wood should preview two square colors");
+  const arrowFills = () => page.evaluate(() => {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    document.body.append(svg);
+    const fills = ["user", "engine", "better", "branch"].map((kind) => {
+      const path = document.createElementNS(svg.namespaceURI, "path");
+      path.setAttribute("class", `annot-arrow annot-${kind}`);
+      svg.append(path);
+      return getComputedStyle(path).fill;
+    });
+    svg.remove();
+    return fills;
+  });
+  const slateArrows = await arrowFills();
   await blueAccent.click();
   await greenBoard.click();
   check(JSON.stringify(await woodColors()) === JSON.stringify(originalWood),
     "the Wood preview must keep its colors when Green is selected");
+  const greenArrows = await arrowFills();
+  check(greenArrows.every((fill, i) => fill !== slateArrows[i]) && new Set(greenArrows).size === 4,
+    "Green board must have distinct arrow colors that differ from Slate");
+  await page.getByRole("button", { name: "Orange", exact: true }).click();
+  check(JSON.stringify(await arrowFills()) === JSON.stringify(greenArrows),
+    "changing the interface accent must not recolor the board arrows");
+  await blueAccent.click();
 
   const classic = page.getByRole("group", { name: "Piece set" }).getByRole("button", { name: "Classic" });
   const staunton = page.getByRole("button", { name: "Staunton Pro" });

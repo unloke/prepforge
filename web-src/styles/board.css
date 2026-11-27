@@ -146,94 +146,35 @@
 }
 
 
-/* Accent marks identify annotations and prep; engine and better moves blend in
-   their own hues so they stay distinct as the accent changes. */
+/* All arrows share one solid, borderless silhouette. */
 .annot-arrow {
-  stroke: var(--arrow-rim);
-  stroke-width: .65;
-  paint-order: stroke fill;
-  stroke-linejoin: round;
-  transition: opacity var(--dur-fast) var(--ease-out);
+  fill: var(--arrow-ink);
+  stroke: none;
 }
-
 
 .annot-user {
-  fill: var(--arrow-user);
+  --arrow-ink: var(--arrow-user);
 }
-
 
 .annot-engine {
-  fill: var(--arrow-engine);
+  --arrow-ink: var(--arrow-engine);
 }
 
-
-/* The move that should have been played (Analyze, on an error): its own hue, so it
-   never reads as the engine's next move or as one of yours. */
 .annot-better {
-  fill: var(--arrow-better);
+  --arrow-ink: var(--arrow-better);
 }
-
-
-/* Prepared continuations use the active accent with a dark rim. The selected
-   continuation is solid and paints above the other options. */
-.annot-branches {
-  opacity: 0.85;
-}
-
 
 .annot-branch {
-  fill: var(--arrow-line);
-  fill-opacity: .66;
-  stroke: var(--arrow-rim);
-  stroke-width: 0.6;
-  paint-order: stroke fill;
-  stroke-linejoin: round;
-  filter: none;
+  --arrow-ink: color-mix(in srgb, var(--arrow-line) 83%, var(--square-light));
 }
-
 
 .annot-branch.is-pick {
-  fill-opacity: 1;
-  stroke-width: 1;
+  --arrow-ink: var(--arrow-line);
 }
 
-
-.annot-branch.is-echo {
-  fill: none;
-  stroke-width: 0.7;
-}
-
-
-/* The engine's move keeps its success-tinted fill and the continuation rim. */
-.annot-branch.is-engine {
-  fill: var(--arrow-engine);
-  fill-opacity: 0.55;
-  filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22));
-}
-
-
-.annot-branch.is-engine.is-pick {
-  fill-opacity: 0.8;
-}
-
-
-/* The head of a move whose arrow a longer one from the same square covers (Bd3 under
-   Bc4): solid, with a light rim, so it reads as a second stop on the shaft. */
+/* Use an ink step, not a rim, to separate a shorter stop from the shared shaft. */
 .annot-stop {
-  stroke: rgba(255, 255, 255, 0.9);
-  stroke-width: 0.5;
-  stroke-dasharray: none;
-  stroke-linejoin: round;
-}
-
-
-.annot-branch.annot-stop {
-  fill-opacity: 0.85;
-}
-
-
-.annot-stop.is-idle {
-  opacity: 0.8;
+  fill: color-mix(in srgb, var(--arrow-ink), #fff5e4 40%);
 }
 
 
@@ -337,8 +278,8 @@
   background-image: radial-gradient(
     circle,
     transparent 56%,
-    var(--arrow-user) 57.5%,
-    var(--arrow-user) 66%,
+    color-mix(in srgb, var(--arrow-user) 78%, transparent) 57.5%,
+    color-mix(in srgb, var(--arrow-user) 78%, transparent) 66%,
     transparent 67.5%
   );
 }

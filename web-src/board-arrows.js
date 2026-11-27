@@ -1,7 +1,7 @@
 // Board annotation arrow geometry, in the overlay's 0..100 viewBox (one square = 12.5).
 //
 // Each arrow is ONE closed polygon (shaft + head), so the head can never drift off the
-// shaft at any stroke width, scale or orientation. A knight-shaped hop (1×2 squares) is
+// shaft at any stroke width or orientation. A knight-shaped hop (1×2 squares) is
 // drawn as an L — long leg first, then the short one — so it reads as the knight's path
 // instead of a diagonal through a square it never crosses.
 
@@ -45,12 +45,10 @@ function spine(from, to, headLength = HEAD_LENGTH) {
   return { points: corner ? [tail, corner, neck] : [tail, neck], tip, dir: u1 };
 }
 
-// ``scale`` thins the shaft and head (same tip and tail), for arrows that should
-// read as secondary next to a full-weight one.
-export function buildArrowPath(from, to, { scale = 1 } = {}) {
-  const halfShaft = HALF_SHAFT * scale;
-  const halfHead = HALF_HEAD * scale;
-  const { points, tip, dir } = spine(from, to, HEAD_LENGTH * Math.sqrt(scale));
+export function buildArrowPath(from, to) {
+  const halfShaft = HALF_SHAFT;
+  const halfHead = HALF_HEAD;
+  const { points, tip, dir } = spine(from, to);
   const left = [];
   const right = [];
   for (let i = 0; i < points.length; i++) {
@@ -84,10 +82,10 @@ export function buildArrowPath(from, to, { scale = 1 } = {}) {
   return outline.map((p, i) => `${i ? "L" : "M"}${fmt(p.x)},${fmt(p.y)}`).join(" ") + " Z";
 }
 
-// Just the head of the arrow buildArrowPath(from, to, opts) draws, as its own polygon.
-export function buildArrowHeadPath(from, to, { scale = 1 } = {}) {
-  const halfHead = HALF_HEAD * scale;
-  const { points, tip, dir } = spine(from, to, HEAD_LENGTH * Math.sqrt(scale));
+// Just the head of the arrow buildArrowPath(from, to) draws, as its own polygon.
+export function buildArrowHeadPath(from, to) {
+  const halfHead = HALF_HEAD;
+  const { points, tip, dir } = spine(from, to);
   const neck = points[points.length - 1];
   const px = -dir.y;
   const py = dir.x;

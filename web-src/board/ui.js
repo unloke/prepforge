@@ -275,54 +275,41 @@ export function renderAnnotations(
   overlay.innerHTML = "";
   const NS = "http://www.w3.org/2000/svg";
   const valid = (uci) => typeof uci === "string" && uci.length >= 4 && uci.slice(0, 2) !== uci.slice(2, 4);
-  // Colours and stroke come from CSS tokens (.annot-arrow rules) so board
-  // arrows stay in step with the rest of the theme.
   const drawn = [];
-  const drawArrow = (parent, arrow, kind, opts) => {
-    const from = squareCenter(arrow.slice(0, 2), orientation);
-    const to = squareCenter(arrow.slice(2, 4), orientation);
+  const sharedHeads = new Map();
+  const manual = new Set(arrows.filter(valid));
+  const paint = (kind, d, extra = "") => {
     const path = document.createElementNS(NS, "path");
-    path.setAttribute("d", buildArrowPath(from, to, opts));
-    path.setAttribute("class", `annot-arrow annot-${kind}`);
-    parent.appendChild(path);
-    drawn.push({ from, to, kind, opts, idle: parent !== overlay });
+    path.setAttribute("d", d);
+    path.setAttribute("class", `annot-arrow annot-${kind}${extra}`);
+    overlay.appendChild(path);
   };
-  // Paint order is importance order, so a stronger mark is never buried under a weaker
-  // one: idle fork options → the picked option → the engine-also-likes-this option →
-  // the better move → your own arrows → the engine's move.
+  const drawArrow = (uci, kind) => {
+    if (manual.has(uci) && kind !== "user") {
+      sharedHeads.set(uci, kind);
+      return;
+    }
+    const from = squareCenter(uci.slice(0, 2), orientation);
+    const to = squareCenter(uci.slice(2, 4), orientation);
+    paint(kind, buildArrowPath(from, to));
+    drawn.push({ uci, from, to, kind });
+  };
   const engine = valid(engineArrow) ? engineArrow : null;
   const branches = [...new Set((branchArrows || []).filter(valid))];
   const pick = branches.includes(branchPick) ? branchPick : null;
-  // Idle options share one translucent group, so where two cross the overlap does not
-  // darken into a third, stronger-looking arrow; they are also drawn slimmer.
-  const idle = branches.filter((u) => u !== pick && u !== engine);
-  if (idle.length) {
-    const group = document.createElementNS(NS, "g");
-    group.setAttribute("class", "annot-branches");
-    idle.forEach((u) => drawArrow(group, u, "branch", { scale: 0.78 }));
-    overlay.appendChild(group);
-  }
-  if (pick && pick !== engine) drawArrow(overlay, pick, "branch is-pick");
-  // The engine's move is one of the fork options: one arrow, the engine's fill inside the
-  // option's outline, instead of a green arrow hiding the option underneath.
-  const engineIsBranch = !!engine && branches.includes(engine);
-  if (engineIsBranch) drawArrow(overlay, engine, `branch is-engine${engine === pick ? " is-pick" : ""}`);
-  if (valid(betterArrow) && betterArrow !== engine) drawArrow(overlay, betterArrow, "better");
-  arrows.forEach((arrow) => drawArrow(overlay, arrow, "user"));
-  // A line option you also drew yourself: its dashed outline on top, so the option
-  // doesn't vanish under your arrow.
-  branches.filter((u) => u !== engine && arrows.includes(u)).forEach((u) => drawArrow(overlay, u, "branch is-echo"));
-  // Slimmer than a user arrow, so one you drew on the same move still shows around it.
-  if (engine && !engineIsBranch) drawArrow(overlay, engine, "engine", { scale: 0.7 });
-  // Two moves along one line from the same square (Bd3 and Bc4): the longer arrow's shaft
-  // covers the shorter one, so the shorter one's head is drawn again on top — one shaft,
-  // a head at each stop.
-  drawn.forEach((a, i) => {
-    if (!drawn.slice(i + 1).some((b) => endsUnder(a, b))) return;
-    const head = document.createElementNS(NS, "path");
-    head.setAttribute("d", buildArrowHeadPath(a.from, a.to, a.opts));
-    head.setAttribute("class", `annot-arrow annot-${a.kind} annot-stop${a.idle ? " is-idle" : ""}`);
-    overlay.appendChild(head);
+  // Paint stronger marks last. A branch the engine also likes uses engine ink once.
+  branches.filter((uci) => uci !== pick && uci !== engine).forEach((uci) => drawArrow(uci, "branch"));
+  if (pick && pick !== engine) drawArrow(pick, "branch is-pick");
+  if (valid(betterArrow) && betterArrow !== engine) drawArrow(betterArrow, "better");
+  manual.forEach((uci) => drawArrow(uci, "user"));
+  if (engine) drawArrow(engine, "engine");
+  // Identical moves share a shaft. Nested moves leave both destinations visible.
+  drawn.forEach((arrow) => {
+    const sharedHead = sharedHeads.get(arrow.uci);
+    const shorter = drawn.some((other) => endsUnder(arrow, other));
+    if (sharedHead || shorter) {
+      paint(sharedHead ?? arrow.kind, buildArrowHeadPath(arrow.from, arrow.to), shorter ? " annot-stop" : "");
+    }
   });
 }
 

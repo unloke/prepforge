@@ -15,6 +15,7 @@ import {
   storeTheme,
 } from "./theme.js";
 import { eagerCss } from "./test-styles-source.js";
+import { pickBoardArrowColors } from "./board-arrow-colors.js";
 
 function fakeStorage(initial = null) {
   let value = initial;
@@ -63,19 +64,38 @@ describe("persisted theme", () => {
 });
 
 describe("board colour themes", () => {
+  const readStyles = (root) => ({
+    getPropertyValue: (name) => (root.dataset.board === "wood"
+      ? { "--square-light": "#e6dac5", "--square-dark": "#a98b6d" }
+      : { "--square-light": "#e2eaf4", "--square-dark": "#8ea4c0" })[name],
+  });
+
   it("keeps slate as the default and writes the attribute only for a named board", () => {
     expect(BOARD_MODES).toContain("slate");
-    const root = { dataset: {} };
-    expect(applyBoardTheme("wood", { root })).toBe("wood");
+    const root = { dataset: {}, style: { setProperty: vi.fn() } };
+    expect(applyBoardTheme("wood", { root, readStyles })).toBe("wood");
     expect(root.dataset.board).toBe("wood");
-    expect(applyBoardTheme("slate", { root })).toBe("slate");
+    expect(root.style.setProperty).toHaveBeenCalledWith("--arrow-user", pickBoardArrowColors("#e6dac5", "#a98b6d").user);
+    root.style.setProperty.mockClear();
+    expect(applyBoardTheme("slate", { root, readStyles })).toBe("slate");
     expect(root.dataset).not.toHaveProperty("board");
+    expect(root.style.setProperty.mock.calls).toEqual(
+      Object.entries(pickBoardArrowColors("#e2eaf4", "#8ea4c0")).map(([role, color]) => [`--arrow-${role}`, color]));
   });
 
   it("paints the default for an unknown name instead of leaving the board unstyled", () => {
-    const root = { dataset: { board: "classic" } };
-    expect(applyBoardTheme("violet", { root })).toBe("slate");
+    const root = { dataset: { board: "classic" }, style: { setProperty: vi.fn() } };
+    expect(applyBoardTheme("violet", { root, readStyles })).toBe("slate");
     expect(root.dataset).not.toHaveProperty("board");
+  });
+
+  it("selects distinct opaque role colors for custom squares, independent of square order", () => {
+    const result = pickBoardArrowColors("#f9d", "#173962");
+    expect(Object.keys(result)).toEqual(["user", "engine", "better", "line"]);
+    expect(new Set(Object.values(result)).size).toBe(4);
+    for (const color of Object.values(result)) expect(color).toMatch(/^#[0-9a-f]{6}$/);
+    expect(pickBoardArrowColors("#173962", "#ff99dd")).toEqual(result);
+    expect(pickBoardArrowColors("#101010", "#212121")).not.toEqual(result);
   });
 
   it("has a CSS pair for every named board", () => {
