@@ -1,8 +1,4 @@
 /* One stylesheet for the first skeleton and the settled workspace. */
-.workspace:has(> .view.is-active#view-teams) {
-  max-width: none;
-  padding: 16px;
-}
 .teams {
   display: grid;
   gap: var(--gap-card);

@@ -8,24 +8,21 @@
    on either side. The right workspace takes the rest and scrolls internally. */
 .study {
   --study-h: calc(100dvh - 36px);
-  /* Board square budget: min(100dvh − chrome, (100vw − rail − 48) × share,
-     100vw − rail − padding/gap − panel floor, 820px). With no top bar the
-     height budget is generous, so the width share is what sizes the board:
-     62% on wide screens, 60% on laptops and narrow laptops (a 56% step left
-     a 160px empty band under a 498px board at 1000x700; Lichess draws 528). The panel-floor term keeps the side panel ≥ 360px down to the
-     860px stacking breakpoint, so board and feedback share one screen at
-     ~980×614. The column wraps exactly around it (max-content). */
-  --board-share: 0.62;
+  --study-gap: 16px;
+  --board-share: 0.6;
   --study-panel-min: 360px;
+  --board-chrome: 46px;
+  --board-head-h: 0px;
+  --board-rail-w: 0px;
   --board-size: min(
-    calc(var(--study-h) - var(--board-chrome)),
-    calc((100vw - 60px - 48px) * var(--board-share)),
-    calc(100vw - 60px - 44px - var(--study-panel-min)),
+    calc(var(--study-h) - var(--board-chrome) - var(--board-head-h)),
+    calc(100% * var(--board-share)),
+    calc(100% - var(--study-gap) - var(--board-rail-w) - var(--study-panel-min)),
     820px
   );
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: calc(var(--board-size) + var(--board-rail-w)) minmax(0, 1fr);
+  gap: var(--study-gap);
   align-items: stretch;
   justify-content: start;
   height: 100%;
@@ -100,34 +97,20 @@
 }
 
 
-.workspace:has(> .view.is-active#view-analyze),
-.workspace:has(> .view.is-active#view-build),
-.workspace:has(> .view.is-active#view-train) {
-  max-width: none;
-  padding-left: 14px;
-  padding-right: 14px;
-}
-
-
 .board-area {
   display: flex;
   flex-direction: column;
   gap: 6px;
   min-width: 0;
   min-height: 0;
-  width: var(--board-size);
+  width: 100%;
+  margin-top: var(--board-head-h);
   max-width: 100%;
   justify-self: start;
 }
 
 
-/* Train tab: coach feedback lives in the right workspace (see .train-coach),
-   so the left column starts at the board, nothing above it. */
-#view-analyze .study,
-#view-build .study,
-#view-train .study {
-  --board-chrome: 42px;
-}
+.study-board-frame { display: contents; }
 
 
 .board-stack {
@@ -163,11 +146,13 @@
 }
 
 
-/* Board marks share one language: a mark is the colour of what it means (accent =
-   yours, good-green = the engine's choice, the grade colours = move quality), drawn
-   translucent so the square and piece under it stay readable, flat as Lichess draws them. */
+/* Accent marks identify annotations and prep; engine and better moves blend in
+   their own hues so they stay distinct as the accent changes. */
 .annot-arrow {
-  stroke: none;
+  stroke: var(--arrow-rim);
+  stroke-width: .65;
+  paint-order: stroke fill;
+  stroke-linejoin: round;
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 
@@ -189,8 +174,8 @@
 }
 
 
-/* Prepared continuations: amber with a dark rim reads on either square.
-   The selected continuation is solid and paints above the other options. */
+/* Prepared continuations use the active accent with a dark rim. The selected
+   continuation is solid and paints above the other options. */
 .annot-branches {
   opacity: 0.85;
 }
@@ -198,8 +183,8 @@
 
 .annot-branch {
   fill: var(--arrow-line);
-  fill-opacity: 0.55;
-  stroke: rgba(35, 29, 16, 0.85);
+  fill-opacity: .66;
+  stroke: var(--arrow-rim);
   stroke-width: 0.6;
   paint-order: stroke fill;
   stroke-linejoin: round;
@@ -219,7 +204,7 @@
 }
 
 
-/* The engine's move keeps its green fill and the continuation's rim. */
+/* The engine's move keeps its success-tinted fill and the continuation rim. */
 .annot-branch.is-engine {
   fill: var(--arrow-engine);
   fill-opacity: 0.55;
@@ -404,44 +389,45 @@
 .piece path,
 .piece circle {
   fill: currentColor;
-  stroke: rgba(0, 0, 0, 0.55);
-  stroke-width: 1.4;
+  stroke: #1b2638;
+  stroke-width: 1.35;
   stroke-linejoin: round;
 }
 
 
 .piece .piece-line {
   fill: none;
-  stroke: rgba(0, 0, 0, 0.55);
-  stroke-width: 2;
+  stroke: #425368;
+  stroke-width: 1.45;
+  stroke-linecap: round;
 }
 
 
 .piece .piece-cut {
-  fill: #f4f3f1;
+  fill: #b8cce5;
   stroke: none;
 }
 
 
 .piece-white .piece-cut {
-  fill: rgba(35, 30, 24, 0.78);
+  fill: #33435a;
 }
 
 
 .piece-black .piece-line {
-  stroke: rgba(255, 255, 255, 0.34);
+  stroke: #91a9c4;
 }
 
 
 .piece-white {
-  color: #fafafa;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
+  color: #f9fbff;
+  filter: drop-shadow(0 1px 0 rgba(14, 24, 41, .2));
 }
 
 
 .piece-black {
-  color: #1d1d1d;
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.25));
+  color: #253247;
+  filter: drop-shadow(0 1px 0 rgba(6, 13, 24, .24));
 }
 
 
@@ -982,13 +968,33 @@
     margin: 0 auto;
   }
   /* A portrait tablet has the height to spare: the board takes the width up
-     to 58% of the screen (Train's Start still above the fold at 768x1024),
-     and the bar and panel line up under it. */
+     to 58dvh while leaving space for the panel (Train's Start still above
+     the fold at 768x1024), and the bar and panel line up under it. */
   @media (min-width: 761px) {
-    .study { --stack-w: min(100%, 58vh); }
-    .board-area,
-    .study > .sidebar { width: var(--stack-w); justify-self: center; }
+    .study {
+      --stack-w: min(100%, 58dvh, calc(var(--study-h) - 50px - 16px - 200px));
+      grid-template-rows: auto minmax(0, 1fr);
+      height: var(--study-h);
+    }
+    .board-area { width: var(--stack-w); justify-self: center; }
+    .study > .sidebar {
+      width: 100%;
+      min-height: 0;
+      height: auto;
+      max-height: none;
+      overflow: hidden;
+      align-self: stretch;
+    }
     .board-stack { max-width: none; }
+    #view-build #build-sidebar > .panel-body,
+    #view-train .train-sidebar > .panel-scroll {
+      flex: 1 1 0;
+      min-height: 0;
+      max-height: none;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    #view-build .tree-wrap { max-height: none; }
   }
 
   .sidebar {
@@ -1041,7 +1047,20 @@
 #view-analyze .panel-actions { margin-left: auto; }
 
 
-@media (max-width: 1279px) {
-  .study { --board-share: 0.6; }
+@media (min-width: 1180px) {
+  .study {
+    --board-share: 0.54;
+    --study-panel-min: 512px;
+    --board-head-h: 30px;
+    --board-rail-w: 28px;
+  }
+  .study-board-frame {
+    display: grid;
+    grid-template-columns: calc(var(--board-rail-w) - 6px) minmax(0, 1fr);
+    gap: 6px;
+  }
+  .study-board-frame > .board-stack { grid-column: 2; grid-row: 1; }
+  .study-board-frame > .eval-rail { grid-column: 1; grid-row: 1; }
+  .board-area > .board-bar { margin-inline-start: var(--board-rail-w); }
 }
 

@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { reportGradeLabel, reportGradeOf } from "./analyze-report.js";
+import { classBadgeSymbol } from "../move-grades.js";
 
 const ERROR_TIERS = [
   ["blunder", "??", "Blunder"],
@@ -8,16 +9,6 @@ const ERROR_TIERS = [
   ["inaccuracy", "?!", "Inaccuracy"],
 ];
 
-const GRADE_DOT_GLYPH = {
-  brilliant: "!!",
-  great: "!",
-  best: "•",
-  good: "•",
-  inaccuracy: "?!",
-  mistake: "?",
-  blunder: "??",
-  missed: "×",
-};
 
 function plateNameHtml(sideKey, sideData) {
   const fallback = sideKey === "white" ? "White" : "Black";
@@ -64,13 +55,11 @@ export function createAnalyzePlates({ getReport, onFlip }) {
     const head = typeof document !== "undefined" && document.getElementById("analysis-opening-head");
     if (!head) return;
     const opening = cleanTag(headers.Opening) || report?.opening || "";
-    const white = report?.sides?.white?.name || cleanTag(headers.White);
-    const black = report?.sides?.black?.name || cleanTag(headers.Black);
-    const title = opening || (white && black ? `${white} vs ${black}` : "");
+    const event = cleanTag(headers.Event);
     const round = cleanTag(headers.Round);
     const date = cleanTag(headers.Date || headers.UTCDate);
-    const event = opening ? "" : cleanTag(headers.Event);
-    const meta = [event, round ? `Round ${round}` : "", date].filter(Boolean).join(" · ");
+    const meta = [round ? `Round ${round}` : "", date].filter(Boolean).join(" · ");
+    const title = opening || event || (meta ? "Coach" : "");
     if (!title) {
       head.hidden = true;
       head.innerHTML = "";
@@ -133,9 +122,9 @@ export function createAnalyzePlates({ getReport, onFlip }) {
     const sep = node.side === "black" ? "… " : ". ";
     const gradeKey = reportGradeOf(node.classification);
     const gradeWord = reportGradeLabel(node.classification);
-    const glyph = gradeKey ? GRADE_DOT_GLYPH[gradeKey] || "•" : "";
+    const gradeMark = classBadgeSymbol(node.classification);
     host.hidden = false;
-    host.innerHTML = html`<span class="an-mh-san">${moveNum}${sep}${node.san}</span>${gradeWord ? html`<span class="an-mh-grade g-${gradeKey}"><i aria-hidden="true">${glyph}</i> ${gradeWord}</span>` : ""}`;
+    host.innerHTML = html`<span class="an-mh-san"><span class="an-mh-number">${moveNum}${sep}</span>${node.san}</span>${gradeWord ? html`<span class="an-mh-grade g-${gradeKey}" role="img" aria-label="${gradeWord}" title="${gradeWord}">${gradeMark || gradeWord}</span>` : ""}`;
   }
 
   function compactRailEval(text) {

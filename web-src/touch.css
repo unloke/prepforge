@@ -73,11 +73,9 @@
   /* Study screens: the board is as tall as the screen allows. */
   .study {
     --study-h: calc(100dvh - 16px);
-    --board-size: min(
-      calc(var(--study-h) - var(--board-chrome)),
-      calc(100vw - var(--land-rail) - 32px - 300px)
-    );
-    gap: 12px;
+    --study-panel-min: 300px;
+    --study-gap: 12px;
+    --board-share: 1;
   }
   .board-bar { min-height: 40px; }
   .board-bar .btn.icon { width: 40px; min-width: 40px; height: 40px; }
@@ -99,35 +97,6 @@
   .mtree-move { position: relative; }
   .mtree-move::after { content: ""; position: absolute; inset: -6px -1px; }
 
-  .workspace:has(> .view.is-active:is(#view-build, #view-train)) {
-    height: 100dvh;
-    padding-top: 12px;
-    padding-bottom: 12px;
-    overflow: hidden;
-  }
-  :is(#view-build, #view-train) .study {
-    /* The board leaves the panel at least 38% of the screen. */
-    --stack-w: min(100%, calc(62dvh - 84px));
-    grid-template-rows: auto minmax(0, 1fr);
-    height: 100%;
-    gap: 12px;
-  }
-  :is(#view-build, #view-train) .study > .sidebar {
-    min-height: 0;
-    height: auto;
-    max-height: none;
-    overflow: hidden;
-    align-self: stretch;
-  }
-  #view-build #build-sidebar > .panel-body,
-  #view-train .train-sidebar > .panel-scroll {
-    flex: 1 1 0;
-    min-height: 0;
-    max-height: none;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-  #view-build .tree-wrap { max-height: none; }
   .dock-tabs button { min-height: 44px; }
   .board-bar { min-height: 44px; }
   .board-bar .btn.icon { width: 44px; min-width: 44px; height: 44px; }

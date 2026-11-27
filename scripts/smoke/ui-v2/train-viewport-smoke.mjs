@@ -289,8 +289,10 @@ async function runViewport(vp) {
   check(session.upnext === 3 && /London System/.test(session.upnextText), `up next shows the real queue, got ${session.upnext}`);
   check(session.back, "a Session offers Back");
   await shot("session");
+  let sessionBoard = null;
   if (phone) {
     const live = await checkPhoneBoard(page, { view: "view-train", board: "train-board", label: "Train session" });
+    sessionBoard = live.got.board;
     for (const f of live.fails) check(false, f);
   }
   const startToasts = await page.locator(".notices .notice").allTextContents();
@@ -313,6 +315,8 @@ async function runViewport(vp) {
   await shot("result");
   if (phone) {
     const done = await checkPhoneBoard(page, { view: "view-train", board: "train-board", label: "Train result" });
+    check(JSON.stringify(done.got.board) === JSON.stringify(sessionBoard),
+      `Train Session → Result must keep the exact phone board rect: ${JSON.stringify({ sessionBoard, result: done.got.board })}`);
     for (const f of done.fails) check(false, f);
   }
   await checkTrainingHistory(page, check, shot);

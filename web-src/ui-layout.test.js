@@ -67,10 +67,10 @@ describe("workspace chrome layout", () => {
   it("sizes study boards off the viewport with a full-width workspace", () => {
     expect(css).toContain(".study");
     expect(css).toMatch(/\.study\s*\{[^}]*--board-size:\s*min\(/s);
-    expect(css).toMatch(/grid-template-columns:\s*max-content\s+minmax\(0,\s*1fr\)/);
+    expect(css).toMatch(/grid-template-columns:\s*calc\(var\(--board-size\) \+ var\(--board-rail-w\)\)\s+minmax\(0,\s*1fr\)/);
     expect(css).not.toMatch(/grid-template-columns:\s*min\(\s*calc\(var\(--study-h\)/);
     expect(css).toContain(".board-area");
-    expect(css).toMatch(/\.board-area\s*\{[^}]*width:\s*var\(--board-size\)/s);
+    expect(css).toMatch(/\.board-area\s*\{[^}]*width:\s*100%;[^}]*margin-top:\s*var\(--board-head-h\)/s);
     expect(css).toContain(".board-stack");
     expect(html).toContain('id="analysis-board"');
     expect(html).toContain('id="train-board"');
@@ -81,7 +81,7 @@ describe("workspace chrome layout", () => {
     // Narrow laptops / split screens (~980×614) keep two columns: the board
     // yields width so the panel never drops below its floor.
     expect(ruleBody(".study")).toMatch(/--study-panel-min:\s*360px/);
-    expect(ruleBody(".study")).toMatch(/calc\(100vw - 60px - 44px - var\(--study-panel-min\)\)/);
+    expect(ruleBody(".study")).toMatch(/calc\(100% - var\(--study-gap\) - var\(--board-rail-w\) - var\(--study-panel-min\)\)/);
     // No 56% step at ≤1100: it left a 160px band under a 498px board at 1000x700.
     expect(css).not.toMatch(/--board-share:\s*0\.56/);
     // Each media block body, keyed by its query.

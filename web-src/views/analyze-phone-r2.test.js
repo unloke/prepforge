@@ -72,7 +72,7 @@ function install(phone) {
   const dom = analyzeView();
   const listeners = [];
   globalThis.document = { getElementById: (id) => (dom.view.id === id ? dom.view : dom.view.all().find((e) => e.id === id) || null), querySelector: (sel) => dom.view.querySelector(sel) };
-  globalThis.window = { matchMedia: (q) => ({ get matches() { return phone.value && q === "(max-width: 760px)"; }, addEventListener: (_, fn) => listeners.push(fn) }) };
+  globalThis.window = { matchMedia: (q) => ({ get matches() { return phone.value && q === "(max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px)"; }, addEventListener: (_, fn) => listeners.push(fn) }) };
   globalThis.localStorage = { getItem: () => null, setItem: () => {} };
   return { dom, relayout: () => listeners.forEach((fn) => fn()) };
 }

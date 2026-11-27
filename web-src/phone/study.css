@@ -38,7 +38,13 @@
      line); Build's and Train's keep theirs. Last game is a row in the Games
      sheet here, and the pill in the thumb bar carries Analyze. */
   #fetch-my-game { display: none; }
-  .study .engine-banner { order: 0; flex: none; }
+  .study .engine-banner { order: 2; flex: none; }
+  #view-analyze .study .engine-banner { order: 4; }
+  #view-analyze .study:not(:has(.board-area > :is(.board-caption, #analysis-eval-card:not([hidden]))))::before {
+    content: "";
+    order: 0;
+    flex: 0 0 var(--phone-head-h);
+  }
   /* A diagnostic does not get a fifth of the screen above the board. Same one
      line as the desktop panel: the cause and the fix are behind the action's
      tooltip, which the row itself is. It keeps the phone gutter so its words
@@ -87,6 +93,11 @@
   .study .board-bar button { touch-action: none; }
   .mtree-move { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 48px 48px; }
+  #view-analyze .board-bar .bb-views { grid-column: 1; grid-row: 1; }
+  #view-analyze .board-bar .bb-sheet { grid-column: 2; grid-row: 1; }
+  #view-analyze .board-bar #analysis-flip { grid-column: 3; grid-row: 1; }
+  #view-analyze .board-bar #analysis-prev { grid-column: 5; grid-row: 1; }
+  #view-analyze .board-bar #analysis-next { grid-column: 6; grid-row: 1; }
   .study .board-bar :is(.bb-nav, .bb-right) { display: contents; }
   .study .board-bar :is(.bb-views, .bb-sheet) { display: flex; }
   .study .board-bar .bb-views { order: 1; }

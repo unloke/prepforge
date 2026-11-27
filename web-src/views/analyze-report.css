@@ -88,17 +88,6 @@
 .hi-result:empty { display: none; }
 .hi-result.win { color: var(--good-text); }
 .hi-result.loss { color: var(--danger); }
-/* Desktop review: the two arrows form a fixed trailing pair. Retry occupies
-   its own slot; long moment names only change the text lane. */
-@media (min-width: 761px), (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
-  #analysis-explain > .coach-review { display: grid; grid-template-columns: minmax(0, 1fr) 56px 28px 28px; gap: 6px; }
-  #analysis-explain .coach-review > .cr-label { grid-column: 1; grid-row: 1; width: 100%; }
-  #analysis-explain .coach-review > .btn { grid-column: 2; grid-row: 1; margin: 0; padding: 0 8px; }
-  #analysis-explain .coach-review > .cr-step { grid-column: 3; grid-row: 1; width: 28px; margin: 0; background: none; border-radius: 4px 0 0 4px; }
-  #analysis-explain .coach-review > .cr-step ~ .cr-step { grid-column: 4; border-radius: 0 4px 4px 0; }
-  #analysis-explain .coach-review > .cr-step:hover:not(:disabled) { background: var(--surface-3); }
-  #analysis-explain .cr-text { flex: 1; }
-}
 @media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6) {
   #view-analyze .report-pane:has(#analysis-summary[data-open="true"]) { max-height: min(66vh, 620px); }
   #analysis-summary > .rp-summary:hover { background: none; }

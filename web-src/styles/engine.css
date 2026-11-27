@@ -11,25 +11,14 @@
 }
 
 /* Shared vertical Eval Rail (Analyze & Repertoire desktop >= 1180px). */
-.an-board-frame { display: contents; }
 .eval-rail { display: none; }
 
 @media (min-width: 1180px) {
-  .an-board-frame {
-    display: flex;
-    align-items: stretch;
-    gap: 6px;
-  }
-  .an-board-frame > .board-stack {
-    width: var(--board-size);
-    flex: none;
-  }
   .eval-rail {
     position: relative;
     display: flex;
     flex-direction: column;
     flex: none;
-    width: 22px;
   }
   .eval-rail[hidden] { display: none; }
   .eval-rail-val {
@@ -87,14 +76,6 @@
   }
   .eval-rail-bar[data-flipped="true"] .eval-rail-fill {
     transform-origin: top center;
-  }
-  #view-build .board-area:has(#build-eval-rail:not([hidden])) {
-    width: auto;
-    max-width: none;
-  }
-  #view-build .board-area:has(#build-eval-rail:not([hidden])) .board-bar {
-    padding-left: 28px;
-    box-sizing: border-box;
   }
 }
 

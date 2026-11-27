@@ -14,10 +14,10 @@ describe("settings motion", () => {
     expect(css).toMatch(/\.is-view-entering \{[^}]*animation:\s*view-enter/);
   });
 
-  it("keeps the entrance to opacity and travel", () => {
+  it("keeps the entrance to opacity only", () => {
     const frames = /@keyframes view-enter \{([\s\S]*?)\n\}/.exec(css)[1];
-    expect(frames).not.toMatch(/width|height|top:|left:|margin|padding/);
-    // A reduced-motion reader gets the content without the travel.
+    expect(frames).not.toMatch(/width|height|top:|left:|margin|padding|transform|translate/);
+    // A reduced-motion reader gets the content without the entrance animation.
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?animation-duration: 0\.001ms !important/);
   });
 

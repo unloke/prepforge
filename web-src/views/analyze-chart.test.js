@@ -330,7 +330,7 @@ describe("coach note", () => {
 
   it("puts the phone review bar on the coach's first row, so the verdict keeps its lines", () => {
     // A row of its own under the Humans pills left the verdict 0px on a 660px phone.
-    expect(ALL_STYLES).toMatch(/#analysis-explain > \.coach-review \{ order: -1; gap: 0; height: 44px; \}/);
+    expect(ALL_STYLES).toMatch(/#analysis-explain > \.coach-review \{\s*--key-arrow: 44px;\s*--key-retry: 44px;\s*--key-height: 44px;[^}]*order: -1;/);
     expect(ALL_STYLES).toContain("#analysis-explain:has(> .coach-review:not([hidden])) .cc-head { display: contents; }");
     expect(ALL_STYLES).not.toContain("margin: 0 48px -50px 0");
   });

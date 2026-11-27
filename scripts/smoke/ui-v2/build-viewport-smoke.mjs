@@ -274,6 +274,29 @@ async function runViewport(vp) {
       const held = await checkPhoneBoard(page, { view: "view-build", board: "build-board", tabs: "#build-panes [role=tab]", label: `Build ${pane}` });
       for (const f of held.fails) check(false, f);
     }
+    const bannerProbe = await page.evaluate(async () => {
+      const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const banner = document.getElementById("build-engine-banner");
+      const rect = () => {
+        const r = document.getElementById("build-board").getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height };
+      };
+      const original = { hidden: banner.hidden, html: banner.innerHTML };
+      banner.hidden = true;
+      await settle();
+      const hiddenRect = rect();
+      banner.innerHTML = '<b class="engine-banner-title">Engine unavailable</b><p class="engine-banner-action">Use browser analysis.</p>';
+      banner.hidden = false;
+      await settle();
+      const shownRect = rect();
+      banner.hidden = original.hidden;
+      banner.innerHTML = original.html;
+      await settle();
+      const delta = Object.fromEntries(Object.keys(hiddenRect).map((key) => [key, Math.abs(hiddenRect[key] - shownRect[key])]));
+      return { hiddenRect, shownRect, delta };
+    });
+    check(Object.values(bannerProbe.delta).every((value) => value <= 1),
+      `Build's engine banner must not move the phone board: ${JSON.stringify(bannerProbe)}`);
     // 2026-11-11: the bar is flip and ‹ › at the thumb (a held arrow jumps to
     // the end); the shown move is the title's subline.
     const nav = await page.evaluate(() => {

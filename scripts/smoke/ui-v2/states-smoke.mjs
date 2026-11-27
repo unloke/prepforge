@@ -179,6 +179,72 @@ async function clickTab(page, view) {
   await page.close();
 }
 
+// Cross-view study geometry: Analyze, Build and Train share one board frame at
+// every non-phone shape. Measure the rendered boards and sidebar origins after
+// each lazy view has actually installed itself.
+{
+  const S = "study-geometry";
+  const signedInHandler = (path) => {
+    if (path.startsWith("/api/auth/me")) return SIGNED_IN;
+    if (path.startsWith("/api/auth/providers")) return { google: false };
+    if (path.startsWith("/api/csrf")) return { csrf_token: "x" };
+    if (path.startsWith("/api/dashboard")) return DASHBOARD;
+    if (path.startsWith("/api/repertoires")) return REPS;
+    if (path.startsWith("/api/teams")) return { teams: [] };
+    if (path.startsWith("/api/lichess")) return { accounts: [] };
+    if (path.startsWith("/api/train/smart/summary")) return { next_session: { cards: 0, weak: 0, due: 0, new: 0, polish: 0, resumed: 0, left: 0 }, outlook: { now: 0, today: 0, week: 0, next: null } };
+    return {};
+  };
+  const viewports = [
+    ["desktop-1440", 1440, 900], ["desktop-1180", 1180, 900], ["split-982", 982, 614],
+    ["stacked-860", 860, 900], ["landscape-844", 844, 390],
+  ];
+  for (const [name, width, height] of viewports) {
+    const { page, errors } = await openPage({ width, height, handler: signedInHandler });
+    await page.goto(base, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#boot-hold", { state: "detached", timeout: 10000 });
+    await page.waitForSelector("#view-dashboard.is-active", { timeout: 10000 });
+    const measurements = {};
+    for (const view of ["analyze", "build", "train"]) {
+      await page.evaluate(view => document.querySelector(`.tab[data-view="${view}"]`)?.click(), view);
+      // Analyze installs its pane behavior on first real use; boundary navigation
+      // is already a no-op at the initial position and forces that lazy install.
+      if (view === "analyze") await page.locator("#analysis-next").click();
+      await page.waitForFunction(view => {
+        const el = document.getElementById(`view-${view}`);
+        if (!el?.classList.contains("is-active")) return false;
+        if (!el.querySelector(".chessboard .square")) return false;
+        return view !== "analyze" || el.hasAttribute("data-pane");
+      }, view, { timeout: 10000 });
+      await page.evaluate(async () => {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      });
+      measurements[view] = await page.evaluate(view => {
+        const boardId = view === "analyze" ? "analysis-board" : `${view}-board`;
+        const board = document.getElementById(boardId)?.getBoundingClientRect();
+        const sidebar = (view === "analyze" ? document.getElementById("analyze-sidebar")
+          : view === "build" ? document.getElementById("build-sidebar")
+          : document.querySelector("#view-train .train-sidebar"))?.getBoundingClientRect();
+        const pack = (r) => r && { x: r.x, y: r.y, width: r.width, height: r.height };
+        return { board: pack(board), sidebar: pack(sidebar) };
+      }, view);
+    }
+    for (const part of ["board", "sidebar"]) {
+      const baseRect = measurements.analyze[part];
+      const keys = part === "sidebar" ? ["x", "y", "width"] : ["x", "y", "width", "height"];
+      for (const view of ["build", "train"]) {
+        const other = measurements[view][part];
+        const delta = baseRect && other ? Object.fromEntries(keys.map((key) => [key, Math.abs(baseRect[key] - other[key])])) : null;
+        const visible = [baseRect, other].every((rect) => rect && rect.width > 0 && rect.height > 0);
+        check(S, visible && !!delta && Object.values(delta).every((value) => value <= 1),
+          `${name}: Analyze and ${view} ${part} geometry must match: ${JSON.stringify({ analyze: baseRect, [view]: other, delta })}`);
+      }
+    }
+    check(S, errors.filter((t) => !/Failed to load resource/.test(t)).length === 0, `${name}: console errors: ${errors.join(" | ")}`);
+    await page.close();
+  }
+}
+
 // 3: Library error state ------------------------------------------------------
 for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   const S = `library-error ${failing}`;

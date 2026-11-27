@@ -1,13 +1,16 @@
 export const THEME_MODES = Object.freeze(["system", "light", "dark"]);
 
-// The accent presets. `amber` is the default and carries no override in
+export const DEFAULT_ACCENT = "blue";
+export const DEFAULT_BOARD_THEME = "slate";
+
+// The accent presets. Blue is the default and carries no override in
 // styles.css; every other name here must have a `:root[data-accent="…"]` block
 // (light) and a dark counterpart, each measured to 4.5:1.
-export const ACCENT_MODES = Object.freeze(["amber", "blue", "orange"]);
+export const ACCENT_MODES = Object.freeze([DEFAULT_ACCENT, "amber", "orange"]);
 
-// The board's square colours. `wood` is the default and carries no override;
+// The board's square colours. Slate is the default and carries no override;
 // every other name has a `:root[data-board="…"]` block in styles.css.
-export const BOARD_MODES = Object.freeze(["wood", "slate", "classic", "green", "walnut"]);
+export const BOARD_MODES = Object.freeze([DEFAULT_BOARD_THEME, "wood", "classic", "green", "walnut"]);
 
 // The persisted color theme, kept in the shared prefs blob. Writing the blob
 // rewrites every other pref as well, so a first paint reads it without writing
@@ -44,7 +47,7 @@ export function normalizeTheme(value) {
 }
 
 export function normalizeAccent(value) {
-  return ACCENT_MODES.includes(value) ? value : "amber";
+  return ACCENT_MODES.includes(value) ? value : DEFAULT_ACCENT;
 }
 
 export function readStoredAccent(storage = globalThis.localStorage) {
@@ -87,13 +90,13 @@ export function applyTheme(value, { root = document.documentElement, matchMedia 
 }
 
 // Applies the accent preset the same way the theme is applied: one attribute
-// on <html>, read by the `:root[data-accent="…"]` blocks in styles.css. Blue is
-// the default and writes no attribute, so a user who never picked one keeps the
-// CSS default (and a browser with the attribute set by hand cannot get stuck
-// on a preset the app does not know).
+// on <html>, read by the `:root[data-accent="…"]` blocks in styles.css. The
+// default writes no attribute, so a user who never picked one keeps the CSS
+// default (and a browser with the attribute set by hand cannot get stuck on a
+// preset the app does not know).
 export function applyAccent(value, { root = document.documentElement } = {}) {
   const accent = normalizeAccent(value);
-  if (accent === "amber") delete root.dataset.accent;
+  if (accent === DEFAULT_ACCENT) delete root.dataset.accent;
   else root.dataset.accent = accent;
   return accent;
 }
@@ -101,8 +104,8 @@ export function applyAccent(value, { root = document.documentElement } = {}) {
 // Board colours: one attribute on <html>, like the accent. Unknown names fall
 // back to the default, so a hand-edited pref cannot leave the board unpainted.
 export function applyBoardTheme(value, { root = document.documentElement } = {}) {
-  const board = BOARD_MODES.includes(value) ? value : "wood";
-  if (board === "wood") delete root.dataset.board;
+  const board = BOARD_MODES.includes(value) ? value : DEFAULT_BOARD_THEME;
+  if (board === DEFAULT_BOARD_THEME) delete root.dataset.board;
   else root.dataset.board = board;
   return board;
 }
