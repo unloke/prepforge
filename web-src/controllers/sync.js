@@ -5,12 +5,14 @@
 import { createOutbox } from "../outbox.js";
 import { appState } from "../core/state.js";
 import { OUTBOX_TAB_ID, currentOwnerId, setStatus } from "../core/api.js";
-import { beaconFlushBuild, buildSync, discardBuildOps, hardFlushBuild, scheduleBuildFlush, settleBuildOutbox,
+import { beaconFlushBuild, bindBuildSession, buildSync, discardBuildOps, hardFlushBuild, scheduleBuildFlush, settleBuildOutbox,
   syncBuildNow } from "./build-sync.js";
 import { beaconFlushTrain, markTrainPositionDirty, queueTrainAttempt, scheduleTrainSync, syncTrainNow,
   trainSync } from "./train-sync.js";
 
-export function createSyncController() {
+// The shell hands in the Build session's hydrate and its load-generation check.
+export function createSyncController(build) {
+  bindBuildSession(build);
   const outbox = createOutbox({
     domains: [buildSync, trainSync],
     owner: currentOwnerId,

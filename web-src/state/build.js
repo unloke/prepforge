@@ -7,6 +7,9 @@ export const buildState = {
   buildLoadRequest: null,
   buildNodeById: new Map(),
   buildCurrentNodeId: null,
+  // The owner's per-node mastery for the open tree (build-mastery.js):
+  // { repertoireId, revision, byNode: Map(nodeId -> state) }, or null.
+  buildMastery: null,
   buildBranchChoiceId: null,
   // The node a move just created, so the tree can show it arriving once. Cleared
   // on the next add (or on a fresh tree), never persisted: it is a cue, not state.

@@ -5,6 +5,8 @@ import { provideApp } from "../core/app-context.js";
 vi.mock("../core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 vi.mock("../train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 vi.mock("./train-session.js", () => import("./train-session.fixture.js"));
+vi.mock("../account-entry.js", async (orig) => ({ ...await orig(), requireSignIn: vi.fn() }));
+vi.mock("../train-banner.js", () => ({ setTrainBanner: vi.fn(), updateTrainTurnBadge: vi.fn() }));
 
 let doc;
 beforeEach(() => {
@@ -19,7 +21,7 @@ describe("Train Home ownership across awaits", () => {
     let finishFlush;
     const flushing = new Promise((done) => { finishFlush = done; });
     const flush = vi.fn(() => flushing);
-    provideApp({ flushTrainSync: flush });
+    provideApp({ persistence: { flushTrainSync: flush } });
     const home = createTrainHome(deps);
     const leaving = home.leaveToHome();
     await vi.waitFor(() => expect(flush).toHaveBeenCalledTimes(1));
@@ -41,7 +43,7 @@ describe("Train Home ownership across awaits", () => {
     let finishFlush;
     const flushing = new Promise((done) => { finishFlush = done; });
     const flush = vi.fn(() => flushing);
-    provideApp({ flushTrainSync: flush });
+    provideApp({ persistence: { flushTrainSync: flush } });
     const home = createTrainHome(deps);
     const leaving = home.leaveToHome();
     await vi.waitFor(() => expect(flush).toHaveBeenCalled());

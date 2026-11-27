@@ -23,13 +23,14 @@ describe("Repertoire atlas", () => {
   it("scores own enabled moves and excludes descendants of a disabled branch", () => {
     const tree = [
       { id: "r", parent_id: null },
-      { id: "a", parent_id: "r", move_side: "white", mastery: "mastered", ply: 1 },
-      { id: "b", parent_id: "a", move_side: "black", mastery: "weak", ply: 2 },
-      { id: "c", parent_id: "b", move_side: "white", mastery: "due", ply: 3 },
+      { id: "a", parent_id: "r", move_side: "white", ply: 1 },
+      { id: "b", parent_id: "a", move_side: "black", ply: 2 },
+      { id: "c", parent_id: "b", move_side: "white", ply: 3 },
       { id: "d", parent_id: "r", is_enabled: false, ply: 1 },
-      { id: "e", parent_id: "d", move_side: "white", mastery: "weak", ply: 2 },
+      { id: "e", parent_id: "d", move_side: "white", ply: 2 },
     ];
-    const result = atlasAnalysis(tree, "white");
+    const mastery = new Map([["a", "mastered"], ["b", "weak"], ["c", "due"], ["e", "weak"]]);
+    const result = atlasAnalysis(tree, "white", (id) => mastery.get(id));
     expect(result.score).toBe(50);
     expect(result.trainable).toBe(2);
     expect(result.review).toBe(1);
@@ -39,11 +40,13 @@ describe("Repertoire atlas", () => {
   });
 
   it("distinguishes untrained from a trained score of zero, including empty trees", () => {
-    expect(atlasAnalysis([], "white").score).toBeNull();
+    const mastery = new Map();
+    const stateOf = (id) => mastery.get(id);
+    expect(atlasAnalysis([], "white", stateOf).score).toBeNull();
     const tree = [{ id: "r", parent_id: null }, { id: "a", parent_id: "r", move_side: "white", ply: 1 }];
-    expect(atlasAnalysis(tree, "white").score).toBeNull();
-    tree[1].mastery = "learning";
-    expect(atlasAnalysis(tree, "white").score).toBe(0);
+    expect(atlasAnalysis(tree, "white", stateOf).score).toBeNull();
+    mastery.set("a", "learning");
+    expect(atlasAnalysis(tree, "white", stateOf).score).toBe(0);
   });
   it("focus keeps the selected branch and all its continuations, excluding siblings", () => {
     const branch = subtreeNodes(nodes[1], indexTree(nodes));

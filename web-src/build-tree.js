@@ -25,7 +25,6 @@ export function indexBuildNodes(nodes) {
       if (node.move_side) node.move_side = internString(strings, node.move_side);
       if (node.side_to_move) node.side_to_move = internString(strings, node.side_to_move);
       if (node.source) node.source = internString(strings, node.source);
-      if (node.mastery) node.mastery = internString(strings, node.mastery);
     }
     if (Array.isArray(node.tags) && !node.tags.length) node.tags = emptyNodeList;
     if (Array.isArray(node.arrows) && !node.arrows.length) node.arrows = emptyNodeList;

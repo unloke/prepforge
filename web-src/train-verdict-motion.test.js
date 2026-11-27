@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { eagerCss as css } from "./test-styles-source.js";
 
-const app = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+const app = readFileSync(new URL("./train-banner.js", import.meta.url), "utf8");
 
 const body = (selector) => {
   const start = css.indexOf(`${selector} {`);

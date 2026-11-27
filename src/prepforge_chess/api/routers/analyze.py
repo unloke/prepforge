@@ -44,7 +44,8 @@ from prepforge_chess.services.browser_compute import (
 from prepforge_chess.services.pgn_import import PgnImportOptions, PgnImportService
 from prepforge_chess.services.browser_compute import MissingEvaluationError
 from prepforge_chess.services.replay_maia import ReplayMaia
-from prepforge_chess.storage.ports import AnalyzeRoutes, GameStore
+from prepforge_chess.storage.ports import AnalyzeRoutes, GameStore, UnitOfWork
+from prepforge_chess.storage.prep_trees import active_prep_trees
 
 router = APIRouter(prefix="/api", tags=["analyze"])
 
@@ -192,6 +193,18 @@ def _brilliant_analyzer_from_client(
 
 
 # ---- Browser-compute flow --------------------------------------------------
+
+
+@router.get("/analyze/book")
+def analyze_book(
+    owner: str = Depends(current_owner),
+    repo: UnitOfWork = Depends(get_repository),
+) -> dict[str, Any]:
+    """The book Analyze walks a game against: every active repertoire the caller
+    owns, as ``{id, parent_id, uci, depth, is_enabled, is_mainline}`` nodes. No
+    SAN, FEN, evaluations or training state: the coach names a book move from the
+    position it already holds."""
+    return {"repertoires": active_prep_trees(repo.engine, owner)}
 
 
 class PreparePayload(BaseModel):

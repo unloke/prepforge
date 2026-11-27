@@ -54,7 +54,7 @@ it("opening a repertoire retains and reapplies its durable pending deletes", asy
     expect(appState.buildPendingDeletes).toEqual([deletion]);
   });
   const run = compile("async function hydrateBuild(", {
-    ...asSlices(appState), coverageView: { sync: vi.fn() }, clearTimeout: vi.fn(), boards: {}, announceRepertoireChanged: vi.fn(), renderBuildRepHeader: vi.fn(),
+    ...asSlices(appState), coverageView: { sync: vi.fn() }, clearTimeout: vi.fn(), boards: {}, announceRepertoireChanged: vi.fn(), buildMastery: { refresh: vi.fn() }, renderBuildRepHeader: vi.fn(),
     selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes, indexBuildNodes,
     resolveBuildId: id => id,
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,

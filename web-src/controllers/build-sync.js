@@ -9,10 +9,8 @@ import { currentOwnerId, setStatus, setStatusError } from "../core/api.js";
 import { CSRF_HEADER, readCsrfCookie } from "../csrf.js";
 import { classifySyncError, describeSyncError } from "../sync-errors.js";
 import { commitPendingUndos } from "../undo.js";
-import { buildOpMatchesRepertoire, hasPendingBuildOpsFor, resolveBuildId } from "../build-entry.js";
+import { buildOpMatchesRepertoire, hasPendingBuildOpsFor, resolveBuildId, setBuildSync } from "../build-entry.js";
 import { invalidateBuildTree } from "../build-tree.js";
-import { setBuildSync } from "../train-entry.js";
-import { captureBuildContext, hydrateBuild } from "../core/app-context.js";
 import { applyFlushReply, flushSince, postBuildAdds } from "../build-flush.js";
 import { isolateRejectedBuildOps } from "../build-isolate.js";
 import { buildAddId, buildDeleteId, buildOutbox } from "../build-outbox.js";
@@ -20,6 +18,13 @@ import { postBuildWrite } from "../build-write.js";
 
 // Set once the outbox attaches this domain.
 let buildQueue, persistBuildOutbox;
+// The Build session's hydrate and its load-generation check, handed in by the
+// shell through createSyncController.
+let captureBuildContext, hydrateBuild;
+
+export function bindBuildSession(build) {
+  ({ captureBuildContext, hydrateBuild } = build);
+}
 
 const buildQueueState = {
   get timer() { return buildState.buildFlushTimer; },

@@ -14,39 +14,46 @@ from typing import Any, Dict, List, Optional
 
 from fsrs import Rating
 
-from prepforge_chess.core.models import Color, TrainingProgress
+from prepforge_chess.core.models import Color, Repertoire, TrainingProgress
 from prepforge_chess.services.lichess_fetch import GameMatchSummary, determine_user_color
 from prepforge_chess.services.srs import review
+from prepforge_chess.services.training_colour import owner_training_colour
 from prepforge_chess.services.workspace_view import build_workspace_payload
-from prepforge_chess.storage.ports import BuildPayloadStore, BuildStore, MissStore, RevertStore
+from prepforge_chess.storage.ports import (
+    BuildStore, MissStore, RepertoireReader, RevertStore, TrainingColourStore,
+)
 from prepforge_chess.storage.repositories.repertoires import ROLE_RANK
 
 # ----------------------------------------------------------------- Build payload
 
 
-def _strip_readonly_build_payload(payload: Dict[str, Any]) -> None:
-    """Remove the owner's personal training colour from a payload someone else sees.
-
-    Share links and grants must not leak health or per-node mastery derived from
-    the owner's training progress."""
-    payload.pop("health", None)
-    for node in payload.get("nodes", []):
-        node.pop("mastery", None)
-
-
-def compose_build_payload_with_training_state(
-    store: BuildPayloadStore, meta: Dict[str, Any], **kwargs: Any
+def build_payload_for_viewer(
+    store: RepertoireReader, meta: Dict[str, Any], **kwargs: Any
 ) -> Dict[str, Any]:
-    """The Build payload as the caller may see it. Always computed against the
-    owner's progress (so the cached health badge stays the owner's), then stripped
-    of that progress for anyone else. ``role``/``writable`` drive the client."""
-    payload = build_workspace_payload(store, meta["id"], owner_user_id=meta["owner_user_id"], **kwargs)
+    """The Build tree payload as the caller may see it: the tree plus the caller's
+    ``role``, whether they may write, and ``shared`` when it isn't theirs. The tree
+    holds nothing personal, so sharing redacts nothing here; the owner's training
+    colour is a separate read (``training_colour``) that only the owner gets."""
+    payload = build_workspace_payload(store, meta["id"], **kwargs)
     payload["role"] = meta["role"]
     payload["writable"] = ROLE_RANK[meta["role"]] >= ROLE_RANK["edit"]
     if meta["role"] != "owner":
-        _strip_readonly_build_payload(payload)
         payload["shared"] = True
     return payload
+
+
+def refresh_health_badge_after_tree_edit(
+    store: TrainingColourStore, meta: Dict[str, Any], repertoire: Optional[Repertoire] = None
+) -> None:
+    """A tree edit changes what the owner has to train, so the owner's cached
+    Library badge is recomputed against the owner's progress, whoever edited.
+    ``repertoire`` is the tree the edit left, when the caller already holds it."""
+    repertoire = repertoire or store.load_repertoire(meta["id"], hydrate=False)
+    if repertoire is None:
+        return
+    owner_training_colour(
+        store, repertoire, store.repertoire_reply_revision(meta["id"]), meta["owner_user_id"]
+    )
 
 
 # ------------------------------------------------------- Tree deletes and training

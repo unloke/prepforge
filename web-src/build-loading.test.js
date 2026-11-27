@@ -166,7 +166,7 @@ describe("repertoire load isolation", () => {
     };
     const syncWorkspaceUrl = vi.fn(), announceRepertoireChanged = vi.fn();
     const hydrate = compile("async function hydrateBuild(", {
-      ...asSlices(appState), coverageView: null, clearTimeout: vi.fn(), boards: {}, announceRepertoireChanged,
+      ...asSlices(appState), coverageView: null, clearTimeout: vi.fn(), boards: {}, announceRepertoireChanged, buildMastery: { refresh: vi.fn() },
       renderBuildRepHeader: vi.fn(), selectBuildNode: vi.fn(async () => {}),
       reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
       indexBuildNodes: (nodes) => new Map(nodes.map((node) => [node.id, node])),

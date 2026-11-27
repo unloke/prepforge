@@ -34,7 +34,9 @@ const MIME = {
 
 // One repertoire, one real fork at e5: mainline 3...Bf5 (generated — carries a
 // real-shaped maia_probability), alternative 3...Na6 (manual — no probability).
-// Own-side nodes carry mastery so the tree colours have real training data.
+// Own-side nodes carry mastery so the tree colours have real training data:
+// the tree is served without it, and /api/train/mastery serves it, as the
+// server does.
 // FENs are chess.js-verified (1.e4 c6 2.d4 d5 3.e5 with Bf5/Na6 branches).
 const BUILD_NODES = [
   { id: "n0", parent_id: null, depth: 0, san: null, uci: null, fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", fen_before: null, fen_after: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", move_number: 1, ply: 0, move_side: "white", is_mainline: false, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null },
@@ -85,7 +87,12 @@ function bigBuildNodes() {
   return nodes;
 }
 
+const treeOnly = (nodes) => nodes.map(({ mastery: _mastery, ...node }) => node);
+const MASTERY = Object.fromEntries(BUILD_NODES.filter((node) => node.mastery).map((node) => [node.id, node.mastery]));
+
 const api = (path) => {
+  // Only rep-1's colour: an answer for another tree is dropped by the client.
+  if (path.startsWith("/api/train/mastery")) return { repertoire_id: "rep-1", mastery: MASTERY };
   if (path.startsWith("/api/build/activity")) return { revision: 1, entries: [], unread_nodes: [], truncated: false };
   if (path.startsWith("/api/build/discussions")) return { threads: [] };
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "Smoke Tester", email: "s@x.test" };
@@ -97,20 +104,20 @@ const api = (path) => {
     return {
       repertoire_id: "rep-shared", name: "Sicilian Najdorf (shared)", color: "black",
       role: "copy", shared: true, writable: false, selected_node_id: "n5", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-      nodes: BUILD_NODES,
+      nodes: treeOnly(BUILD_NODES),
     };
   }
   if (path.startsWith("/api/build/load") && decodeURIComponent(path).includes("rep-big")) {
     return {
       repertoire_id: "rep-big", name: "Wide Repertoire", color: "black",
-      writable: true, selected_node_id: "b0", root_fen: BIG_TREE_FENS[0], nodes: bigBuildNodes(),
+      writable: true, selected_node_id: "b0", root_fen: BIG_TREE_FENS[0], nodes: treeOnly(bigBuildNodes()),
     };
   }
   if (path.startsWith("/api/build/load")) {
     return {
       repertoire_id: "rep-1", name: "Caro-Kann: Advance", color: "black",
       writable: true, selected_node_id: "n5", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-      nodes: BUILD_NODES,
+      nodes: treeOnly(BUILD_NODES),
     };
   }
   if (path.startsWith("/api/repertoires")) {

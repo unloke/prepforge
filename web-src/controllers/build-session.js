@@ -1,8 +1,7 @@
 import { html } from "../html.js";
 import { createGeneratePreview } from "./generate-preview.js";
 import { readGenerateInt, showBuildGenerateDialog } from "./build-generate-dialog.js";
-import { estimateBuildGenerateTotal, generateExistingPlies, generateEstimateText,
-  GEN_DEFAULT_MAIN_PCT, GEN_DEFAULT_BRANCH_PCT } from "./build-generate-estimate.js";
+import { estimateBuildGenerateTotal, generateExistingPlies, generateEstimateText, GEN_DEFAULT_MAIN_PCT, GEN_DEFAULT_BRANCH_PCT } from "./build-generate-estimate.js";
 import { openBuildOverflowMenu as openOverflowMenu } from "./build-overflow-menu.js";
 import { promptBuildPgnMerge } from "./build-pgn-merge-dialog.js";
 import { linePgn } from "../build-line-pgn.js";
@@ -13,6 +12,7 @@ import { isPopoverOpen, menuKeys, openPopover } from "../core/dialog.js";
 import { paintDockOptions, toggleDockOptions } from "../dock-options.js";
 
 import { formatEngineEval } from "../engine-eval.js";
+import { ensureExplorerClient, explorerClient, explorerModule } from "../explorer-client.js";
 // Repertoire editor: the tree and board, the Explorer panel, the inspector dock, node
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
 // outbox and its flushes) stays in app.js so it can run before this loads and on unload.
@@ -27,26 +27,29 @@ import { buildRole } from "../share-roles.js";
 import { countOf } from "../plural.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
 import { getBuildTree, indexBuildNodes } from "../build-tree.js";
+import { createBuildMastery } from "../build-mastery.js";
 
 import { activeViewName, api, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, downloadText, engineLifecycleMark, OUTBOX_TAB_ID, postJson, setStatus, setStatusError } from "../core/api.js";
 import { postBuildWrite } from "../build-write.js";
 import { appState, buildState, trainState, boards, notices, START_FEN } from "../core/state.js";
 import { boardAfterMove, boardInfo, optimisticBoardMove } from "../board/ui.js";
-import { buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode, buildView,
-  deleteBuildNodeLocal, ensureExplorerClient, explorerClient, explorerDb, explorerDrawerOpen, explorerEvalEngine,
-  explorerModule, hasPendingBuildOpsFor, isBuildReadOnly, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
-  reapplyPendingBuildNodes, renderBuilderTree, resolveBuildId, sameFenPosition } from "../build-entry.js";
+import { buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode, buildView, deleteBuildNodeLocal,
+  explorerDb, explorerDrawerOpen, explorerEvalEngine, hasPendingBuildOpsFor, isBuildReadOnly, normalizeUci, queueBuildAdd,
+  reapplyPendingBuildDeletes, reapplyPendingBuildNodes, renderBuilderTree, renderBuildSync, resolveBuildId, sameFenPosition, setBuildSync } from "../build-entry.js";
 import { effectiveMaiaRating, effectiveStockfishDepth, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "../core/prefs.js";
 import { engineWidget, EXPLORER_EVAL_MAX_LINES } from "../core/engine.js";
 import { announceRepertoireChanged } from "../repertoire-changes.js";
-import { renderBuildSync, setBuildSync } from "../train-entry.js";
 import { showInputModal } from "../core/modals.js";
 import { repertoireLimitMessage } from "../repertoire-limit.js";
-import { captureBuildContext, closeRepertoireContextMenu, ensureBuildView, handleRepertoireContextAction,
-  hardFlushBuild, openSettingsSection, preloadBuildGen, refreshDashboardRepertoires, renderBuildRepHeader,
-  requireSignIn, scheduleBuildFlush, switchView, syncWorkspaceUrl } from "../core/app-context.js";
+import { requireSignIn } from "../account-entry.js";
+import { handoffs, persistence, shell } from "../core/app-context.js";
 
-export function createBuildSession() {
+const { openSettingsSection, switchView, syncWorkspaceUrl } = shell, { repertoiresChanged } = handoffs, { hardFlushBuild, scheduleBuildFlush } = persistence;
+// The shell's own: the Build view it creates and the Library's repertoire menu.
+let captureBuildContext, closeRepertoireContextMenu, ensureBuildView, handleRepertoireContextAction, preloadBuildGen, renderBuildRepHeader;
+
+export function createBuildSession(view) {
+  ({ captureBuildContext, closeRepertoireContextMenu, ensureBuildView, handleRepertoireContextAction, preloadBuildGen, renderBuildRepHeader } = view);
   initBuildDockLayout();
   return {
     buildBranchContext, buildBranchKey, buildGoBack, buildGoForward, buildGoRoot, buildGoToEnd,
@@ -64,6 +67,7 @@ export function createBuildSession() {
 // modal enforces these; MAX_PLAN_CHANGES comes from the server limits
 // so we fail with an actionable message instead of a raw 400 after the work is done.
 const GEN_MAX_PLY_DEPTH = 20;
+const buildMastery = createBuildMastery({ api, appState, buildState, repaint: () => renderBuilderTree() });
 
 async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = false } = {}) {
   // This takes a /api/build/load PAYLOAD. Writing anything else into
@@ -98,6 +102,7 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
   }
   buildState.build = payload;
   buildState.buildNodeById = indexBuildNodes(payload.nodes);
+  void buildMastery.refresh();
   announceRepertoireChanged({ repertoireId: payload.repertoire_id, tree: payload });
   // Orient only when a repertoire opens — a reconcile re-hydrate after an
   // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
@@ -1098,7 +1103,7 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
         trainState.trainingRepertoireId = payload.repertoire_id;
         close(payload);
         setStatus(`Created ${name}`);
-        await refreshDashboardRepertoires();
+        await repertoiresChanged();
       } catch (error) {
         if (optimistic) rollbackOptimisticRepertoire(optimistic);
         close(null);
@@ -1131,9 +1136,7 @@ function optimisticEmptyRepertoire(name, color) {
     selected_node_id: rootId,
     writable: true,
     optimistic: true,
-    nodes_total: 0,
-    summary: {},
-    health: {},
+    nodes_total: 0, summary: {},
     nodes: [{
       id: rootId,
       parent_id: null,
@@ -1157,7 +1160,6 @@ function optimisticEmptyRepertoire(name, color) {
       comment: "",
       arrows: [],
       circles: [],
-      mastery: null,
     }],
   };
   buildState.buildNodeById = new Map(buildState.build.nodes.map((node) => [node.id, node]));

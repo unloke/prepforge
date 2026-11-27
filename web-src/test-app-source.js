@@ -42,6 +42,10 @@ const FILES = [
   "./phone-entry.js",
   "./undo.js",
   "./controllers/analyze-entry.js",
+  "./analyze-recovery.js",
+  "./train-banner.js",
+  "./explorer-client.js",
+  "./sync-chip.js",
   "./views/shared/source-store.js",
 ];
 

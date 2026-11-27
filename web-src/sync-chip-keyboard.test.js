@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("./train-shell.css", () => ({}));
 vi.mock("./build-entry.js", () => ({ isBuildReadOnly: () => false }));
 
-import { renderSyncChip } from "./train-entry.js";
+import { renderSyncChip } from "./sync-chip.js";
 import { buildState } from "./core/state.js";
 import { hooks } from "./core/hooks.js";
 

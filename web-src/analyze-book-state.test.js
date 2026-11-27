@@ -14,10 +14,11 @@ const tree = (id, moves) => ({
   nodes: [{ id: `${id}-root`, parent_id: null }, ...moves.map(([nid, uci]) => ({ id: nid, parent_id: `${id}-root`, san: uci, uci }))],
 });
 
+// The slim book read: one request for every active tree.
 function serve(trees) {
   api.mockImplementation(async (path) => {
-    if (path === "/api/repertoires") return { repertoires: Object.keys(trees).map((id) => ({ id })) };
-    return trees[new URL(path, "http://x").searchParams.get("repertoire_id")];
+    if (path !== "/api/analyze/book") throw new Error(`unexpected ${path}`);
+    return { repertoires: Object.values(trees).map((t) => ({ id: t.repertoire_id, name: t.name, color: t.color, nodes: t.nodes })) };
   });
 }
 
@@ -31,11 +32,11 @@ describe("Analyze's book after a repertoire change", () => {
   it("swaps in the hydrated repertoire's tree without refetching the others", async () => {
     serve({ a: tree("a", [["a1", "e2e4"]]), b: tree("b", [["b1", "d2d4"]]) });
     await ensureBookLoaded();
-    expect(api).toHaveBeenCalledTimes(3);
+    expect(api).toHaveBeenCalledTimes(1);
     const [, before] = getBookReps();
     announceRepertoireChanged({ repertoireId: "a", tree: tree("a", [["a1", "e2e4"], ["a2", "c2c4"]]) });
     await ensureBookLoaded();
-    expect(api).toHaveBeenCalledTimes(3);
+    expect(api).toHaveBeenCalledTimes(1);
     const [a, b] = getBookReps();
     expect([...a.children.keys()]).toEqual(["a-root|e2e4", "a-root|c2c4"]);
     expect(b).toBe(before);
@@ -47,7 +48,7 @@ describe("Analyze's book after a repertoire change", () => {
     announceRepertoireChanged({ repertoireId: "new", tree: tree("new", [["n1", "g1f3"]]) });
     expect(getBookReps()).toEqual([]);
     await ensureBookLoaded();
-    expect(api).toHaveBeenCalledTimes(4);
+    expect(api).toHaveBeenCalledTimes(2);
     announceRepertoireChanged({ repertoireId: "a" });
     expect(getBookReps()).toEqual([]);
   });
@@ -57,7 +58,7 @@ describe("Analyze's book after a repertoire change", () => {
     announceRepertoireChanged({ repertoireId: "a", tree: tree("a", [["a1", "e2e4"]]) });
     expect(getBookReps()).toEqual([]);
     await ensureBookLoaded();
-    expect(api).toHaveBeenCalledTimes(2);
+    expect(api).toHaveBeenCalledTimes(1);
     expect(getBookReps()).toHaveLength(1);
   });
 });

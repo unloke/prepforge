@@ -1,60 +1,46 @@
-// The app shell's own entry points, for the controllers app.js lazy-loads.
+// The contracts the app shell gives the controllers it lazy-loads.
 //
-// Shared state and services live in their own modules (core/state.js,
-// core/api.js, board/ui.js, ...) and controllers import them from there. What
-// is left are the functions app.js itself owns — switching views, the sign-in
-// gate, URL sync, the lazy-session wrappers. app.js registers them once at
-// boot with provideApp(); a controller imports the names it calls. Each export
-// forwards to the registered function at call time, so nothing is copied into
-// module state, and a test registers its fakes the same way.
+// Three, each a fixed list of named capabilities:
+//   - shell: what only app.js can do: switch the view, keep the URL and the
+//     view heads in step, open a Settings section;
+//   - persistence: the outbox queues Build edits and Train attempts go through;
+//   - handoffs: one feature asking another for a result, by intent (open this
+//     game in Analyze, the repertoire listing changed, make a repertoire from a PGN).
+//
+// Everything else a controller needs is its own feature's module, identity
+// (account-entry.js), shared state and services (core/, board/, engine/), or a
+// dependency its factory is given. app.js registers the contracts once at boot
+// with provideApp(); a member forwards to the registered function at call time,
+// so nothing is copied into module state, and a test registers its fakes the same
+// way. Registering a name outside a contract throws: the contracts only grow on
+// purpose.
 
-const app = {};
+const CONTRACTS = {
+  shell: ["switchView", "syncWorkspaceUrl", "syncViewHeads", "openSettingsSection"],
+  persistence: ["scheduleBuildFlush", "hardFlushBuild", "flushTrainSync", "queueTrainAttempt", "markTrainPositionDirty"],
+  handoffs: ["openAnalyzeGame", "repertoiresChanged", "defaultRepertoireNameFromPgn", "importRepertoireFromPgnText"],
+};
 
-export function provideApp(entries) {
-  Object.assign(app, entries);
+const registered = {};
+
+function contract(name) {
+  const impl = registered[name] = {};
+  return Object.freeze(Object.fromEntries(CONTRACTS[name].map((member) => [member, (...args) => {
+    if (typeof impl[member] !== "function") throw new Error(`${name}.${member} is not registered`);
+    return impl[member](...args);
+  }])));
 }
 
-const forward = (name) => (...args) => app[name](...args);
+export const shell = contract("shell");
+export const persistence = contract("persistence");
+export const handoffs = contract("handoffs");
 
-export const accountService = forward("accountService");
-export const analysisSelfSide = forward("analysisSelfSide");
-export const captureBuildContext = forward("captureBuildContext");
-export const closeRepertoireContextMenu = forward("closeRepertoireContextMenu");
-export const defaultRepertoireNameFromPgn = forward("defaultRepertoireNameFromPgn");
-export const ensureBuildView = forward("ensureBuildView");
-export const flushTrainSync = forward("flushTrainSync");
-export const handleRepertoireContextAction = forward("handleRepertoireContextAction");
-export const hardFlushBuild = forward("hardFlushBuild");
-export const hideAnalysisHandoff = forward("hideAnalysisHandoff");
-export const hideAnalysisRetrySave = forward("hideAnalysisRetrySave");
-export const hydrateBuild = forward("hydrateBuild");
-export const importRepertoireFromPgnText = forward("importRepertoireFromPgnText");
-export const invalidateAnalysisSource = forward("invalidateAnalysisSource");
-export const lichessAccounts = forward("lichessAccounts");
-export const loadPgnIntoAnalyze = forward("loadPgnIntoAnalyze");
-export const markTrainPositionDirty = forward("markTrainPositionDirty");
-export const openAuthModal = forward("openAuthModal");
-export const openSettingsSection = forward("openSettingsSection");
-export const orientAnalysisFromPgn = forward("orientAnalysisFromPgn");
-export const preloadBuildGen = forward("preloadBuildGen");
-export const queueTrainAttempt = forward("queueTrainAttempt");
-export const refreshAnalysisHistoryIfOpen = forward("refreshAnalysisHistoryIfOpen");
-export const refreshAnalyzeRecovery = forward("refreshAnalyzeRecovery");
-export const refreshAuthStatus = forward("refreshAuthStatus");
-export const refreshDashboardRepertoires = forward("refreshDashboardRepertoires");
-export const refreshRepertoireHead = forward("refreshRepertoireHead");
-export const renderBuildRepHeader = forward("renderBuildRepHeader");
-export const requireSignIn = forward("requireSignIn");
-export const resetAnalysisVariations = forward("resetAnalysisVariations");
-export const revealAnalysisResults = forward("revealAnalysisResults");
-export const runAnalysis = forward("runAnalysis");
-export const scheduleBuildFlush = forward("scheduleBuildFlush");
-export const setTrainBanner = forward("setTrainBanner");
-export const showAnalysisPly = forward("showAnalysisPly");
-export const showAnalysisRetrySave = forward("showAnalysisRetrySave");
-export const startLichessOAuth = forward("startLichessOAuth");
-export const switchView = forward("switchView");
-export const syncPgnFromTree = forward("syncPgnFromTree");
-export const syncViewHeads = forward("syncViewHeads");
-export const syncWorkspaceUrl = forward("syncWorkspaceUrl");
-export const updateTrainTurnBadge = forward("updateTrainTurnBadge");
+export function provideApp(parts) {
+  for (const [name, members] of Object.entries(parts)) {
+    if (!CONTRACTS[name]) throw new Error(`No app contract named ${name}`);
+    for (const member of Object.keys(members)) {
+      if (!CONTRACTS[name].includes(member)) throw new Error(`${name}.${member} is not part of the ${name} contract`);
+    }
+    Object.assign(registered[name], members);
+  }
+}

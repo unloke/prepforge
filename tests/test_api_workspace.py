@@ -403,7 +403,8 @@ def test_build_load_returns_workspace_payload(client):
     assert body["nodes_total"] == 1
     assert len(body["nodes"]) == 1
     assert body["nodes"][0]["san"] == "root"
-    assert "health" in body and "mastery_pct" in body["health"]
+    # The tree alone: the owner's mastery is Train's read (/api/train/mastery).
+    assert "health" not in body and "mastery" not in body["nodes"][0]
 
 
 def test_build_load_is_owner_gated(client):

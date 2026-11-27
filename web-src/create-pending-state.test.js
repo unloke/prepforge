@@ -314,7 +314,7 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
       switchView: (name) => views.push(name),
       setStatus: vi.fn(),
       setStatusError: vi.fn(),
-      refreshDashboardRepertoires: vi.fn(async () => {}),
+      repertoiresChanged: vi.fn(async () => {}),
       renderBuildRepHeader: () => rendered.push("header"),
       renderBuildSync: () => rendered.push("sync"),
       renderBuilderTree: () => rendered.push("tree"),

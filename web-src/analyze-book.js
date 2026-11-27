@@ -1,6 +1,6 @@
 import { html } from "./html.js";
-import { moveTokenHtml, plyOfFen } from "./move-text.js";
-import { bookRepFromLoad } from "./analyze-book-tree.js";
+import { moveTokenHtml, plyOfFen, walkLine } from "./move-text.js";
+import { bookRepFromTree } from "./analyze-book-tree.js";
 // Analyze's repertoire cache and departure actions load with the view.
 export function createBookActions({
   bookState, appState, analysisState, currentOwnerId, api, loadCoach, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire, analysisSelfSide,
@@ -13,17 +13,13 @@ async function ensureBookLoaded() {
   bookState.loading = (async () => {
     let reps = [];
     try {
-      const payload = await api("/api/repertoires");
-      const active = (payload.repertoires || []).filter(
-        (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id))
-      );
-      reps = (
-        await Promise.all(
-          active.map(async (meta) => bookRepFromLoad(await api(
-            `/api/build/load?repertoire_id=${encodeURIComponent(meta.id)}`
-          )))
-        )
-      ).filter(Boolean);
+      // One slim read of every active repertoire: the book needs each move's
+      // place in the tree, not the Build payload.
+      const payload = await api("/api/analyze/book");
+      reps = (payload.repertoires || [])
+        .filter((tree) => !appState.pendingRepDeletes.has(String(tree.id)))
+        .map(bookRepFromTree)
+        .filter(Boolean);
     } catch (_) {
       /* guest / fetch failure → no book; the banner simply stays hidden */
     }
@@ -134,16 +130,19 @@ async function updateBookline() {
     const prescribed = (rep.kids.get(prev.nodeId) || [])
       .sort((a, b) => Number(b.is_mainline) - Number(a.is_mainline))[0];
     if (!prescribed) return hideBookline(); // book actually ends here — no miss
+    // The book holds moves, not their names: name it from the position here.
+    const prescribedSan = walkLine(node.fenBefore, [prescribed.uci])?.plies[0].san;
+    if (!prescribedSan) return hideBookline();
     const text = buildBookline({
       kind: "user",
       san: node.san,
       uci: node.uci,
       ply: path.length,
       repName: rep.name,
-      expectedSan: prescribed.san,
+      expectedSan: prescribedSan,
     });
     el.innerHTML =
-      html`${sanLinked(text, prescribed.san, node.fenBefore, prescribed.uci)} <button class="coach-bookaction" type="button" data-act="train">Add to training</button>`;
+      html`${sanLinked(text, prescribedSan, node.fenBefore, prescribed.uci)} <button class="coach-bookaction" type="button" data-act="train">Add to training</button>`;
     el.hidden = false;
     el.querySelector('[data-act="train"]').addEventListener("click", async (event) => {
       const btn = event.currentTarget;
@@ -170,7 +169,7 @@ async function updateBookline() {
           node_id: prescribed.id,
         });
         btn.textContent = "Added ✓";
-        setStatus(`${prescribed.san} will lead your next smart session`);
+        setStatus(`${prescribedSan} will lead your next smart session`);
       } catch (error) {
         btn.disabled = false;
         setStatusError(error.message);

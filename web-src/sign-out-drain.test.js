@@ -11,7 +11,7 @@ import { trainState } from "./core/state.js";
 
 vi.mock("./core/api.js", async (orig) => ({ ...await orig(), currentOwnerId: () => "owner", OUTBOX_TAB_ID: "drain-test",
   postJson: vi.fn(), setStatus: vi.fn(), setStatusError: vi.fn() }));
-vi.mock("./train-entry.js", async (orig) => ({ ...await orig(), setTrainSyncState: vi.fn(), setBuildSync: vi.fn() }));
+vi.mock("./train-entry.js", async (orig) => ({ ...await orig(), setTrainSyncState: vi.fn() }));
 
 beforeEach(() => {
   vi.stubGlobal("indexedDB", new IDBFactory());
@@ -28,7 +28,7 @@ afterEach(() => { vi.unstubAllGlobals(); });
 function inFlightSync() {
   let settle;
   postJson.mockImplementation(() => new Promise((resolve, reject) => { settle = { resolve, reject }; }));
-  const controller = createSyncController();
+  const controller = createSyncController({ captureBuildContext: () => () => true, hydrateBuild: vi.fn() });
   const flushing = controller.flushTrainSync();
   return { controller, flushing, settle: () => settle, started: () => postJson.mock.calls.length === 1 };
 }
@@ -59,7 +59,7 @@ it("reports a Train sync that fails during sign-out as unsaved", async () => {
 it("counts a Train sync that starts while sign-out is checkpointing", async () => {
   let settle;
   postJson.mockImplementation(() => new Promise((_resolve, reject) => { settle = reject; }));
-  const controller = createSyncController();
+  const controller = createSyncController({ captureBuildContext: () => () => true, hydrateBuild: vi.fn() });
   const draining = controller.flushAllPendingForSignOut();
   void controller.flushTrainSync(); // starts during the drain's checkpoint
   await vi.waitFor(() => expect(postJson).toHaveBeenCalledTimes(1));

@@ -9,7 +9,7 @@ import {
 import { isReviewedMove } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
 import { createBatchSwitcher } from "../analyze-batch.js";
-import { analysisRecallSeq, recallAnalysis } from "./analyze-entry.js";
+import { analysisRecallSeq, invalidateAnalysisSource, recallAnalysis, refreshAnalysisHistoryIfOpen, syncPgnFromTree } from "./analyze-entry.js";
 import { ANALYSIS_ROOT_PATH } from "../analyze-node-path.js";
 import { setPositionCaption } from "../board-caption.js";
 import { isAuthError } from "../auth-gate.js";
@@ -43,10 +43,10 @@ import { showConfirmModal, showInputModal } from "../core/modals.js";
 import { updateBookline } from "../analyze-book-state.js";
 import { savedRunReads } from "../analyze-saved-run.js";
 import { noteTriedGrade, noteUngraded } from "../analyze-tried-grade.js";
-import { accountService, analysisSelfSide, defaultRepertoireNameFromPgn, hideAnalysisRetrySave,
-  importRepertoireFromPgnText, invalidateAnalysisSource, refreshAnalysisHistoryIfOpen,
-  refreshAnalyzeRecovery, requireSignIn, showAnalysisRetrySave, switchView, syncPgnFromTree,
-  syncViewHeads, syncWorkspaceUrl } from "../core/app-context.js";
+import { hideAnalysisRetrySave, refreshAnalyzeRecovery, showAnalysisRetrySave } from "../analyze-recovery.js";
+import { accountService, analysisSelfSide, requireSignIn } from "../account-entry.js";
+import { handoffs, shell } from "../core/app-context.js";
+const { switchView, syncViewHeads, syncWorkspaceUrl } = shell, { defaultRepertoireNameFromPgn, importRepertoireFromPgnText } = handoffs;
 
 const switchBatchAnalysis = createBatchSwitcher({ analysisState, recallAnalysis, runAnalysis, invalidateAnalysisSource,
   sourceIsCurrent: (seq) => seq === analysisRecallSeq,
