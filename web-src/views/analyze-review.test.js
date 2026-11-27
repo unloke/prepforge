@@ -73,6 +73,11 @@ describe("review bar", () => {
     expect(bar.innerHTML).toContain("2.Nf3 Blunder");
     expect(bar.innerHTML).toContain('data-review="retry"');
     expect(bar.innerHTML).not.toContain('data-review="best"');
+    // DOM (and Tab) order matches visual left-to-right layout: label -> Retry -> prev -> next.
+    const idx = (s) => bar.innerHTML.indexOf(s);
+    expect(idx('data-review="go"')).toBeLessThan(idx('data-review="retry"'));
+    expect(idx('data-review="retry"')).toBeLessThan(idx('data-review="prev"'));
+    expect(idx('data-review="prev"')).toBeLessThan(idx('data-review="next"'));
     at("m6", 6);
     expect(bar.innerHTML).toContain("3…Nc6 Great");
     expect(bar.innerHTML).not.toContain('data-review="retry"');
@@ -152,5 +157,44 @@ describe("review bar", () => {
     review.step("next");
     review.step("prev");
     expect(calls.show).toEqual([6]);
+  });
+
+  it("switches Review to Next key after analysis, wraps on the last moment, and restores Review on PGN edit", () => {
+    const label = { textContent: "Review" };
+    const runListeners = [];
+    const pgnListeners = [];
+    const runBtn = {
+      dataset: {}, title: "",
+      querySelector: (s) => (s === ".bl" ? label : null),
+      addEventListener: (_t, fn) => runListeners.push(fn),
+    };
+    const pgnInput = {
+      dataset: {},
+      addEventListener: (_t, fn) => pgnListeners.push(fn),
+    };
+    const { bar, calls, at } = setup();
+    globalThis.document = {
+      getElementById: (id) => (id === "coach-review" ? bar : id === "run-analysis" ? runBtn : id === "pgn-input" ? pgnInput : null),
+    };
+
+    at("root", 0);
+    expect(runBtn.dataset.action).toBe("next-key");
+    expect(label.textContent).toBe("Next key");
+
+    const stop = vi.fn();
+    runListeners[0]({ stopImmediatePropagation: stop });
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(calls.show).toEqual([3]);
+
+    // On the last moment, label flips to First key and wraps cleanly to moment 0.
+    at("m6", 6);
+    expect(label.textContent).toBe("First key");
+    runListeners[0]({ stopImmediatePropagation: vi.fn() });
+    expect(calls.show).toEqual([3, 3]);
+
+    // Editing PGN immediately restores Review mode.
+    pgnListeners[0]();
+    expect(runBtn.dataset.action).toBeUndefined();
+    expect(label.textContent).toBe("Review");
   });
 });

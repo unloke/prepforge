@@ -224,7 +224,6 @@
   min-height: 0;
   max-height: none;
   overflow-y: auto;
-  scrollbar-width: thin;
   margin: 0;
   padding: 2px 0 2px 11px;
   border-left: 3px solid var(--line);
@@ -363,8 +362,8 @@
 .cr-label.g-blunder { --cr-tone: var(--danger); }
 .cr-label.is-right .cr-text { color: var(--good-text); }
 .cr-label.is-wrong .cr-text { color: var(--warn-text); }
+.coach-review > .cr-label { margin-right: auto; }
 .coach-review > .btn { flex: none; }
-.coach-review > .cr-step + .btn { margin-left: auto; }
 /* The book line is a quiet link in the coach's own row, not a button in a box. */
 .coach-bookaction {
   display: inline-flex;
@@ -534,7 +533,6 @@
   flex-direction: column;
   gap: 8px;
   overflow: auto;
-  scrollbar-width: thin;
 }
 .an-pane > * { flex: none; min-width: 0; }
 .an-pane[hidden] { display: none; }
@@ -583,7 +581,6 @@
   flex: none;
   max-height: min(45vh, 420px);
   overflow: auto;
-  scrollbar-width: thin;
 }
 .an-panes > .report-pane[open] > summary { margin-bottom: 10px; }
 #analysis-find-great { align-self: start; margin-top: 10px; }

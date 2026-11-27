@@ -560,15 +560,26 @@ class EngineWidget {
     }
     rail.hidden = false;
     const firstSq = document.querySelector("#build-board .square[data-square]")?.dataset?.square;
-    vBar.dataset.flipped = firstSq === "h1" ? "true" : "false";
+    const flipped = firstSq === "h1" ? "true" : "false";
+    rail.dataset.flipped = flipped;
+    vBar.dataset.flipped = flipped;
+    if (wc != null) rail.dataset.lead = wc < 0.5 ? "black" : "white";
     const vFill = document.getElementById("build-eval-v-fill");
     if (vFill && wc != null) {
-      const share = Math.max(0.04, Math.min(0.96, wc));
+      const share = Math.max(0.05, Math.min(0.95, wc));
       vFill.style.transform = `scaleY(${share.toFixed(4)})`;
     }
     const vVal = document.getElementById("build-eval-v-val");
     if (vVal && text != null) {
-      const compact = String(text).replace(/(\.\d)\d$/, "$1");
+      const s = String(text).trim();
+      const mate = /^#[-−]?(\d+)$/.exec(s);
+      let compact = mate ? `M${mate[1]}` : s;
+      if (!mate) {
+        const num = Number.parseFloat(s.replace("−", "-"));
+        compact = Number.isFinite(num)
+          ? (Math.abs(num) < 0.05 ? "0.0" : Math.abs(num) >= 10 ? String(Math.round(Math.abs(num))) : Math.abs(num).toFixed(1))
+          : s.replace(/^[+−-]/, "").replace(/(\.\d)\d$/, "$1");
+      }
       if (vVal.textContent !== compact) vVal.textContent = compact;
     }
   }

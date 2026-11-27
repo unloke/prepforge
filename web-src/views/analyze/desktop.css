@@ -24,7 +24,7 @@
     justify-content: space-between;
     gap: 12px;
     min-height: 24px;
-    padding-left: 40px;
+    padding-left: 28px;
     box-sizing: border-box;
   }
   #view-analyze .an-plate-top[hidden],
@@ -101,7 +101,7 @@
     align-items: center;
     gap: 4px;
     min-height: 30px;
-    padding: 2px 0 0 40px;
+    padding: 2px 0 0 28px;
     box-sizing: border-box;
   }
   #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) .board-bar > .an-plate-bot-left {
@@ -154,7 +154,6 @@
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    scrollbar-width: thin;
     padding: 14px 18px;
   }
   #view-analyze:has(#analysis-results:not([hidden])) .analyze-main {
@@ -165,15 +164,16 @@
     gap: 10px;
   }
 
-  /* Top header: opening + round/date on left, quiet Last game / Review on right.
+  /* Top header: opening + round/date on left, quiet Last game / Next key on right.
      Fixed height keeps the eval chart and panes completely stable across async
-     Coach / Maia / bookline / stepping updates (zero layout shift). */
+     Coach / Maia / bookline / stepping updates (zero layout shift) while giving
+     prose room for 2-3 lines without clipping or spawning scrollbars. */
   #view-analyze .coach-card {
-    height: 164px;
-    min-height: 164px;
+    height: 178px;
+    min-height: 178px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: 30px 32px minmax(0, 1fr) auto auto;
+    grid-template-rows: 30px 34px minmax(0, 1fr) auto auto;
     column-gap: 12px;
     overflow: hidden;
   }
@@ -271,37 +271,64 @@
     align-self: center;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 0;
     height: auto;
     margin-top: 0;
   }
   #view-analyze #analysis-explain .coach-review > .cr-label {
     width: auto;
     max-width: 210px;
-    height: 24px;
-    line-height: 24px;
-    padding: 0 2px;
+    height: 26px;
+    line-height: 26px;
+    margin-right: 0;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: var(--surface-3);
     font-size: 12px;
-    gap: 5px;
+    gap: 6px;
+  }
+  #view-analyze #analysis-explain .coach-review > .cr-label:hover {
+    background: var(--line);
+  }
+  #view-analyze #analysis-explain .coach-review[data-on-moment="true"] > .cr-label > .cr-move {
+    display: none;
   }
   #view-analyze #analysis-explain .coach-review > .cr-label .cr-move {
-    font: 500 13px/1 var(--sans);
+    font: 500 12.5px/1 var(--sans);
+  }
+  #view-analyze #analysis-explain .coach-review > .cr-label .cr-count {
+    font-size: 11px;
+    opacity: 0.85;
+  }
+  #view-analyze #analysis-explain .coach-review > .btn {
+    height: 26px;
+    min-height: 26px;
+    margin-left: 6px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
   }
   #view-analyze #analysis-explain .coach-review > .cr-step {
-    width: 22px;
-    height: 22px;
-    border-radius: 5px;
+    width: 24px;
+    height: 26px;
     background: var(--surface-3);
+    border: 1px solid var(--line);
+    color: var(--text);
+  }
+  #view-analyze #analysis-explain .coach-review > .cr-step[data-review="prev"] {
+    margin-left: 6px;
+    border-radius: 6px 0 0 6px;
+    border-right: 0;
+  }
+  #view-analyze #analysis-explain .coach-review > .cr-step[data-review="next"] {
+    border-radius: 0 6px 6px 0;
+  }
+  #view-analyze #analysis-explain .coach-review > .cr-step:disabled {
+    opacity: 0.35;
   }
   #view-analyze #analysis-explain .coach-review > .cr-step svg {
     width: 12px;
     height: 12px;
-  }
-  #view-analyze #analysis-explain .coach-review > .btn {
-    height: 22px;
-    min-height: 22px;
-    padding: 0 8px;
-    font-size: 11px;
   }
 
   /* High-clarity Coach verdict prose in primary ink */
@@ -310,11 +337,11 @@
     grid-row: 3;
     align-self: stretch;
     max-height: 100%;
-    margin: 4px 0 0;
+    margin: 4px 0 2px;
     padding: 0;
     border-left: 0;
-    font-size: 14.5px;
-    line-height: 1.48;
+    font-size: 14px;
+    line-height: 1.46;
     color: var(--text);
   }
   #view-analyze .coach-card > .coach-prose .move-ref {
@@ -324,17 +351,29 @@
   #view-analyze .coach-card > .coach-maia {
     grid-column: 1 / -1;
     grid-row: 4;
-    margin-top: 4px;
+    height: 24px;
+    margin-top: 2px;
+  }
+  #view-analyze .coach-card > .coach-maia .hp {
+    height: 22px;
+    padding: 0 7px;
+    font-size: 11.5px;
   }
   #view-analyze .coach-card > .coach-bookline {
     grid-column: 1 / -1;
     grid-row: 5;
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   #view-analyze:has(#analysis-results:not([hidden])) .coach-unlock {
     display: none;
   }
 
-  /* Once graded, Review yields primary emphasis so the panel stays calm */
+  /* Once graded, primary action shifts to calm surface tone */
   #view-analyze:has(#analysis-summary .rp-summary) #run-analysis.primary {
     background: var(--surface-3);
     color: var(--text);
@@ -345,7 +384,7 @@
     color: var(--text);
   }
 
-  /* Flush two-tone eval chart directly below prose (64px floor preserved for e2e) */
+  /* Flush two-tone eval chart directly below prose (matches V8.1 mockup) */
   #view-analyze:has(#analysis-eval-rail:not([hidden])) #analysis-eval-card:not(:has(.notice[data-state="running"])) {
     display: block;
     height: auto;
@@ -357,8 +396,25 @@
     display: none;
   }
   #view-analyze #analysis-eval-card .eval-chart {
-    height: 64px;
-    border-radius: 5px;
+    height: 68px;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  #view-analyze #analysis-eval-card .eval-chart .eval-line {
+    stroke: color-mix(in srgb, var(--text) 72%, transparent);
+    stroke-width: 1.4;
+  }
+  #view-analyze #analysis-eval-card .eval-chart .eval-axis {
+    stroke: color-mix(in srgb, var(--text) 30%, transparent);
+  }
+  #view-analyze #analysis-eval-card .eval-chart .eval-cursor {
+    stroke: color-mix(in srgb, var(--accent) 85%, var(--text));
+    stroke-width: 1.5;
+  }
+  #view-analyze #analysis-eval-card .eval-chart .eval-cursor-dot {
+    fill: var(--panel);
+    stroke: var(--accent);
+    stroke-width: 2;
   }
 
   /* Bottom 2-column spread: Moves (left) | Engine + Report (right) */
@@ -412,7 +468,6 @@
     min-height: 0;
     max-height: none;
     overflow-y: auto;
-    scrollbar-width: thin;
   }
   #view-analyze .moves-grid .mtree-line.is-main {
     grid-template-columns: 28px minmax(48px, 1fr) minmax(48px, 1fr);
@@ -487,8 +542,7 @@
     max-height: none;
     overflow-y: auto;
     padding-top: 0;
-    gap: 8px;
-    scrollbar-width: thin;
+    gap: 6px;
   }
   #view-analyze:has(#analysis-results:not([hidden])) .an-panes > .report-pane > summary {
     display: none;
@@ -500,11 +554,16 @@
   #view-analyze #analysis-summary {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
   }
   #view-analyze #analysis-summary::before {
     content: "Report";
+    position: sticky;
+    top: 0;
+    z-index: 2;
     display: block;
+    padding: 0 0 3px;
+    background: var(--panel);
     font-size: 13px;
     font-weight: 600;
     color: var(--text);
@@ -518,7 +577,7 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: baseline;
     gap: 8px;
-    padding: 0 0 8px;
+    padding: 0 0 6px;
     border-bottom: 1px solid var(--line);
     cursor: default;
   }
@@ -604,15 +663,15 @@
   }
   #view-analyze #analysis-summary .rp-sym .rp-sym-row {
     grid-template-columns: minmax(36px, auto) minmax(0, 1fr) minmax(36px, auto);
-    min-height: 26px;
+    min-height: 23px;
     border-bottom: 1px solid var(--line-soft);
   }
   #view-analyze #analysis-summary .rp-sym .rp-sym-row:last-child { border-bottom: 0; }
   #view-analyze #analysis-summary .rp-sym .rp-sym-row.is-empty-tier { display: none; }
   #view-analyze #analysis-summary .rp-phases .rp-sym .rp-n {
-    height: 26px;
-    line-height: 26px;
-    font: 500 13px/26px var(--sans);
+    height: 23px;
+    line-height: 23px;
+    font: 500 13px/23px var(--sans);
     color: var(--text);
   }
   #view-analyze #analysis-summary .rp-phases .rp-sym .rp-phase {
@@ -620,7 +679,7 @@
     align-items: baseline;
     justify-content: center;
     gap: 5px;
-    min-height: 26px;
+    min-height: 23px;
     padding: 0 4px;
     font-size: 12px;
     font-weight: 500;
@@ -637,8 +696,8 @@
     font-weight: 400;
   }
   #view-analyze #analysis-summary .rp-counts.rp-sym .rp-n {
-    height: 26px;
-    line-height: 26px;
+    height: 23px;
+    line-height: 23px;
     font-size: 13px;
     font-weight: 600;
   }
@@ -666,20 +725,21 @@
     }
   }
 
-  /* Compact laptop tuning (1280x720) — keeps eval-chart >= 64px and fixed Coach height */
+  /* Compact laptop tuning (1280x720) — keeps eval-chart >= 64px and zero prose clipping */
   @media (max-height: 760px) {
     #view-analyze:has(#analysis-results:not([hidden])) #analyze-sidebar > .panel-scroll {
       padding: 10px 14px;
     }
     #view-analyze .coach-card {
-      height: 138px;
-      min-height: 138px;
-      grid-template-rows: 30px 28px minmax(0, 1fr) auto auto;
+      height: 152px;
+      min-height: 152px;
+      grid-template-rows: 28px 30px minmax(0, 1fr) auto auto;
     }
     #view-analyze .an-mh-san { font-size: 24px; }
-    #view-analyze .coach-card > .coach-prose { font-size: 13.5px; line-height: 1.42; }
-    #view-analyze #analysis-summary .rp-sym .rp-sym-row { min-height: 22px; }
+    #view-analyze .coach-card > .coach-prose { font-size: 13.5px; line-height: 1.38; }
+    #view-analyze #analysis-eval-card .eval-chart { height: 64px; }
+    #view-analyze #analysis-summary .rp-sym .rp-sym-row { min-height: 21px; }
     #view-analyze #analysis-summary .rp-counts.rp-sym .rp-n,
-    #view-analyze #analysis-summary .rp-phases .rp-sym .rp-n { height: 22px; line-height: 22px; }
+    #view-analyze #analysis-summary .rp-phases .rp-sym .rp-n { height: 21px; line-height: 21px; }
   }
 }

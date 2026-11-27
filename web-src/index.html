@@ -276,13 +276,14 @@
                        PGN. The two that need more room open in place. -->
                   <div class="sheet-rows">
                     <button type="button" class="sheet-row" data-mirror="#fetch-my-game"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span>Last game</span></button>
-                    <button type="button" class="sheet-row" data-reveal="#history-drawer" aria-expanded="false" aria-controls="history-drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3.5 2M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z"/></svg><span>Recent analyses</span></button>
                     <button type="button" class="sheet-row" data-reveal="#pgn-drawer" aria-expanded="false" aria-controls="pgn-drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h7l4 4v12H7zM14 4v4h4"/></svg><span>Paste a PGN</span></button>
+                    <button type="button" class="sheet-row" data-reveal="#history-drawer" aria-expanded="false" aria-controls="history-drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3.5 2M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z"/></svg><span>Recent analyses</span></button>
                   </div>
-                  <details class="drawer" id="history-drawer" data-testid="history-drawer" hidden>
-                    <summary>Recent analyses</summary>
-                    <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
-                  </details>
+                  <!-- Lichess's Share & export: placed above Recent analyses so a long history never buries PGN/FEN actions. -->
+                  <div class="sheet-rows sheet-copy">
+                    <button type="button" class="sheet-row" data-copy="pgn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v11H9zM5 15V4h10"/></svg><span>Copy PGN</span></button>
+                    <button type="button" class="sheet-row" data-copy="fen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v11H9zM5 15V4h10"/></svg><span>Copy FEN</span></button>
+                  </div>
                   <details class="drawer" id="pgn-drawer">
                     <summary>PGN</summary>
                     <div class="pgn-editor">
@@ -303,11 +304,10 @@
                     </div>
                     </div>
                   </details>
-                  <!-- Lichess's Share & export: the game and the shown position as text. -->
-                  <div class="sheet-rows sheet-copy">
-                    <button type="button" class="sheet-row" data-copy="pgn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v11H9zM5 15V4h10"/></svg><span>Copy PGN</span></button>
-                    <button type="button" class="sheet-row" data-copy="fen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v11H9zM5 15V4h10"/></svg><span>Copy FEN</span></button>
-                  </div>
+                  <details class="drawer" id="history-drawer" data-testid="history-drawer" hidden>
+                    <summary>Recent analyses</summary>
+                    <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
+                  </details>
                 </div>
             </div>
           </aside>

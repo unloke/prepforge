@@ -222,7 +222,7 @@ export function createAnalyzeView({
   }
 
   // The review bar under the coach; Shift+←/→ step it too.
-  const review = createReviewBar({ analysisState, getReport: () => report, showAnalysisPly, selectAnalysisNode });
+  const review = createReviewBar({ analysisState, getReport: () => report, showAnalysisPly, selectAnalysisNode, selectPane: (p) => panes.select(p) });
 
   // The key moment on the board is marked in the report as the reader steps.
   function markCurrentMoment() {
@@ -887,8 +887,11 @@ export function createAnalyzeView({
       const clip = svgChild(defs, "clipPath", { id: `eval-clip-${side}` });
       svgChild(clip, "rect", { x: 0, y, width, height: h });
     });
+    const frameClip = svgChild(defs, "clipPath", { id: "eval-clip-frame" });
+    svgChild(frameClip, "rect", { x: 0, y: 0, width, height, rx: 6, ry: 6 });
+    const areaGroup = svgChild(chart, "g", { "clip-path": "url(#eval-clip-frame)" });
     ["white", "black"].forEach((side) => {
-      svgChild(chart, "polygon", { class: `eval-area eval-area-${side}`, points: areaPoints, "clip-path": `url(#eval-clip-${side})` });
+      svgChild(areaGroup, "polygon", { class: `eval-area eval-area-${side}`, points: areaPoints, "clip-path": `url(#eval-clip-${side})` });
     });
     svgChild(chart, "polyline", { class: "eval-line", points: stepStr, ...thin });
 
@@ -896,18 +899,11 @@ export function createAnalyzeView({
       const raw = String(c.classification || "").toLowerCase();
       return EVAL_MARKER_CLASS[CLASS_GROUP_OF[raw] || raw];
     };
-    // Colour the vertical cliff at each error/brilliant move so bad moves are unmissable.
-    coords.forEach((c, i) => {
-      const markerClass = i > 0 && markerClassOf(c);
-      if (!markerClass) return;
-      svgChild(chart, "line", { class: `eval-cliff ${markerClass}`, x1: c.x, x2: c.x, y1: coords[i - 1].y, y2: c.y, ...thin });
-    });
-
     coords.forEach((c) => {
       const markerClass = markerClassOf(c);
       if (!markerClass) return;
       const dot = svgChild(chart, "ellipse", { class: `eval-marker eval-dot ${markerClass}`, cx: c.x, cy: c.y, "data-ply": c.ply });
-      dot.dataset.baseR = "2.8";
+      dot.dataset.baseR = "2.6";
       dot.style.cursor = "pointer";
       dot.addEventListener("click", (event) => {
         event.stopPropagation();
