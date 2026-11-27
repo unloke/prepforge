@@ -64,7 +64,6 @@ def test_add_moves_with_since_answers_with_only_the_new_nodes(client):
         assert node == by_id[node["id"]]
     assert reply["removed"] == []
     assert reply["nodes_total"] == full["nodes_total"] == 6
-    assert reply["health"] == full["health"]
     assert reply["dropped"] == []
     assert "repertoire_id" not in reply  # not the whole payload
 
@@ -114,7 +113,7 @@ def test_a_retried_batch_with_a_newer_since_is_still_the_same_request(client):
     assert again["revision"] == first["revision"]  # replayed, nothing new written
 
 
-def test_change_feed_matches_the_full_payload_with_training_progress(client):
+def test_change_feed_matches_the_full_payload(client):
     owner, rep, root, ids = _setup(client)
     repo = WorkspaceRepository(__import__("prepforge_chess.api.db", fromlist=["get_engine"]).get_engine())
     now = datetime.now(timezone.utc)
@@ -128,8 +127,6 @@ def test_change_feed_matches_the_full_payload_with_training_progress(client):
     full = _load(client, rep)
     by_id = {node["id"]: node for node in full["nodes"]}
     assert feed["nodes"] and all(node == by_id[node["id"]] for node in feed["nodes"])
-    assert by_id[ids["tmp-a-1"]]["mastery"] not in (None, "untrained")
-    assert feed["health"] == full["health"]
     assert feed["nodes_total"] == full["nodes_total"]
 
 
@@ -150,7 +147,7 @@ def test_a_discussion_only_change_does_not_load_the_tree(client, monkeypatch):
     assert [op["kind"] for op in feed["ops"]] == ["discussion"]
 
 
-def test_an_editors_delta_carries_no_owner_training_colour(client):
+def test_an_editors_delta_is_signed_with_their_role(client):
     _owner, rep, root, _ids = _setup(client)
     editor = TestClient(client.app)
     _register(editor, "editor@example.com")
@@ -159,9 +156,7 @@ def test_an_editors_delta_carries_no_owner_training_colour(client):
     since = _load(editor, rep)["revision"]
     reply = _post(editor, "/api/build/add-moves", {"repertoire_id": rep, "since": since, "moves": [
         {"tempId": "tmp-x-1", "parentRef": root, "uci": "g1f3"}]}).json()
-    assert reply["health"] is None
-    assert reply["nodes"] and all("mastery" not in node for node in reply["nodes"])
-    assert reply["role"] == "edit"
+    assert reply["nodes"] and reply["role"] == "edit"
 
 
 def test_a_rejected_move_is_named_so_the_rest_can_be_resent(client):

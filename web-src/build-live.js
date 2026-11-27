@@ -78,7 +78,6 @@ export function applyBuildChanges(build, changes, selectedId) {
     revision: changes.revision,
     name: changes.name ?? build.name,
     nodes_total: changes.nodes_total ?? build.nodes_total,
-    ...(changes.health ? { health: changes.health } : {}),
   };
   return { payload, selection, removed };
 }

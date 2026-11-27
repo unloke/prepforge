@@ -442,7 +442,6 @@ export function buildProvisionalNode(parent, uci, after) {
     comment: "",
     arrows: [],
     circles: [],
-    mastery: null,
   };
 }
 

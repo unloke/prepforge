@@ -40,25 +40,28 @@ function harness(side, sans, reps, deps = {}) {
 }
 
 describe("Analyze repertoire ownership", () => {
-  it("keeps only playable book moves and the fields needed to match and recommend them", async () => {
+  it("loads the book in one slim read, keeps only playable moves, and names the book move from the position", async () => {
     const bookState = { loaded: false };
-    const c4 = { id: "c4", parent_id: "root", san: "c4", uci: "c2c4", is_mainline: false, arrows: [] };
-    const d4 = { id: "d4", parent_id: "root", san: "d4", uci: "d2d4", is_mainline: true, fen_after: "unused" };
-    const api = vi.fn()
-      .mockResolvedValueOnce({ repertoires: [{ id: "white" }] })
-      .mockResolvedValueOnce({ repertoire_id: "white", name: "white prep", color: "white", nodes: [
-        { id: "root", parent_id: null },
-        c4, d4, { id: "e4", parent_id: "root", san: "e4", uci: "e2e4", is_enabled: false },
-      ] });
+    const c4 = { id: "c4", parent_id: "root", uci: "c2c4", depth: 1, is_enabled: true, is_mainline: false };
+    const d4 = { id: "d4", parent_id: "root", uci: "d2d4", depth: 1, is_enabled: true, is_mainline: true };
+    const api = vi.fn().mockResolvedValueOnce({ repertoires: [
+      { id: "white", name: "white prep", color: "white", nodes: [
+        { id: "root", parent_id: null, uci: null, depth: 0, is_enabled: true, is_mainline: true },
+        c4, d4, { id: "e4", parent_id: "root", uci: "e2e4", depth: 1, is_enabled: false, is_mainline: false },
+      ] },
+      { id: "gone", name: "deleting", color: "white", nodes: [{ id: "g-root", parent_id: null }] },
+    ] });
     const h = harness("white", ["e4"], [], { bookState, api, currentOwnerId: () => "user" });
-    h.appState.pendingRepDeletes = new Set();
+    h.appState.pendingRepDeletes = new Set(["gone"]);
 
     await h.updateBookline();
 
+    expect(api.mock.calls.map(([url]) => url)).toEqual(["/api/analyze/book"]);
+    expect(bookState.reps.map((rep) => rep.id)).toEqual(["white"]);
     const [rep] = bookState.reps;
     expect([...rep.children.keys()]).toEqual(["root|c2c4", "root|d2d4"]);
     expect(rep.kids.get("root")).toContain(rep.children.get("root|c2c4"));
-    expect(rep.children.get("root|d2d4")).toStrictEqual({ id: "d4", san: "d4", uci: "d2d4", is_mainline: true });
+    expect(rep.children.get("root|d2d4")).toStrictEqual({ id: "d4", uci: "d2d4", is_mainline: true });
     expect(h.buildBookline).toHaveBeenCalledWith(expect.objectContaining({ kind: "user", expectedSan: "d4" }));
   });
 

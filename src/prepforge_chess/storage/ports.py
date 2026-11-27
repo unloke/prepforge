@@ -395,8 +395,8 @@ class MaintenanceStore(Protocol):
 # -------------------------------------------------------------- consumer ports
 
 
-class BuildPayloadStore(RepertoireReader, TrainingProgressReader, Protocol):
-    """The Build payload: the tree plus the owner's progress and health badge."""
+class TrainingColourStore(RepertoireReader, TrainingProgressReader, Protocol):
+    """Train's projection over a tree: the owner's mastery and health badge."""
 
 
 class BuildStore(RepertoireWriter, TrainingCleanupStore, SettingsStore, Protocol):

@@ -76,9 +76,11 @@ def test_read_role_and_writable_per_role(world):
         body = _load(c[who], rep).json()
         assert body["role"] == who, who
         assert body["writable"] is writable, who
-        # Only the owner sees the owner's training state.
-        assert ("health" in body) is (who == "owner"), who
-        assert all("mastery" not in n for n in body["nodes"]) or who == "owner"
+        # The tree payload carries nobody's training state; only the owner
+        # may read the owner's mastery.
+        assert "health" not in body and all("mastery" not in n for n in body["nodes"]), who
+        mastery = c[who].get(f"/api/train/mastery?repertoire_id={rep}").status_code
+        assert mastery == (200 if who == "owner" else 403), who
     assert _load(c["outsider"], rep).status_code == 404
 
 
@@ -140,8 +142,9 @@ def test_editor_writes_through_the_owner_rebase_path(world):
             continue
         r = _post(c["edit"], path, req)
         assert r.status_code == 200, (name, r.text)
-    # The editor's writes left the owner's cached health badge as the owner's.
-    assert "health" in _load(c["owner"], rep).json()
+    # The editor's writes kept the owner's Library badge, counted on the owner's tree.
+    badge = next(r for r in c["owner"].get("/api/repertoires").json()["repertoires"] if r["id"] == rep)["health"]
+    assert badge["trainable"] == 2
 
 
 def test_owner_only_actions(world):

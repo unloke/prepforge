@@ -21,7 +21,6 @@ function makeNode(overrides) {
     move_side: "white",
     is_mainline: false,
     is_enabled: true,
-    mastery: null,
     maia_probability: null,
     ...overrides,
   };

@@ -380,13 +380,11 @@ def test_an_editor_on_another_account_co_edits_live(client):
     feed = _changes(client, rep, base)
     assert sorted(op["actor_user_id"] for op in feed["ops"]) == sorted([owner_id, editor_id])
     assert {n["uci"] for n in feed["nodes"]} == {"e7e5", "d2d4"}
-    assert "health" in feed
 
-    # The editor and the viewer read the same feed without the owner's training colour.
+    # The editor and the viewer read the same feed.
     for reader in (editor, viewer):
         seen = _changes(reader, rep, base)
-        assert seen["revision"] == base + 2 and seen["health"] is None
-        assert all("mastery" not in n for n in seen["nodes"])
+        assert seen["revision"] == base + 2 and seen["nodes"] == feed["nodes"]
 
     # The viewer may not write; a revoked editor no longer sees the repertoire.
     denied = _post(viewer, "/api/build/add-moves",

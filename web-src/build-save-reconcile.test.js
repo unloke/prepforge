@@ -43,7 +43,7 @@ function harness() {
   });
   const positions = [];
   const deps = {
-    appState: sharedState, buildState, trainState, coverageView: null, indexBuildNodes, announceRepertoireChanged: vi.fn(), renderBuildRepHeader: vi.fn(),
+    appState: sharedState, buildState, trainState, coverageView: null, indexBuildNodes, announceRepertoireChanged: vi.fn(), buildMastery: { refresh: vi.fn() }, renderBuildRepHeader: vi.fn(),
     boards: { build: { setPosition: vi.fn(p => positions.push(p.fen)), setAnnotations: vi.fn() } },
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
     resolveBuildId: ref => { const id = ref && typeof ref === "object" ? ref.id : ref; return buildState.buildIdMap[id] || id; },
@@ -68,6 +68,8 @@ describe("repertoire save reconciliation", () => {
     expect(h.positions).toEqual(["tmp-next"]);
     expect(h.appState.buildCurrentNodeId).toBe("tmp-next");
     expect(h.deps.engineWidget.onBoardChanged).toHaveBeenCalledOnce();
+    // The owner's mastery is its own read, asked for the tree that just landed.
+    expect(h.deps.buildMastery.refresh).toHaveBeenCalledOnce();
   });
 
   it("chooses the nearest surviving ancestor when the selected line was removed", async () => {
