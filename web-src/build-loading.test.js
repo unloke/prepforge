@@ -164,9 +164,9 @@ describe("repertoire load isolation", () => {
       buildLoading: true, build: null, buildNodeById: new Map(),
       buildPending: [], buildPendingDeletes: [], buildIdMap: {},
     };
-    const syncWorkspaceUrl = vi.fn();
+    const syncWorkspaceUrl = vi.fn(), announceRepertoireChanged = vi.fn();
     const hydrate = compile("async function hydrateBuild(", {
-      ...asSlices(appState), coverageView: null, clearTimeout: vi.fn(), boards: {}, invalidateBook: vi.fn(),
+      ...asSlices(appState), coverageView: null, clearTimeout: vi.fn(), boards: {}, announceRepertoireChanged,
       renderBuildRepHeader: vi.fn(), selectBuildNode: vi.fn(async () => {}),
       reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
       indexBuildNodes: (nodes) => new Map(nodes.map((node) => [node.id, node])),
@@ -174,8 +174,10 @@ describe("repertoire load isolation", () => {
       renderBuildSync: vi.fn(), syncWorkspaceUrl, hasPendingBuildOpsFor: () => false,
       setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
     });
-    await hydrate({ repertoire_id: "B", nodes: [{ id: "root", depth: 0 }], selected_node_id: "root" });
+    const payload = { repertoire_id: "B", nodes: [{ id: "root", depth: 0 }], selected_node_id: "root" };
+    await hydrate(payload);
     expect(syncWorkspaceUrl).not.toHaveBeenCalled();
+    expect(announceRepertoireChanged).toHaveBeenCalledWith({ repertoireId: "B", tree: payload });
   });
 
   it("restores the cached tree and replaces the failed URL after a 503", async () => {
