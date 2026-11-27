@@ -2,7 +2,7 @@ import { html } from "../html.js";
 import { modalDialog, openModal } from "../core/dialog.js";
 import { startAtlasPreparation } from "../atlas-preparation-client.js";
 import { indexTree } from "../build-tree.js";
-import { masteryOf } from "../build-mastery.js";
+import { masteryOf, onMasteryLanded } from "../build-mastery.js";
 
 export function subtreeNodes(root, children) {
   const result = [], stack = [root];
@@ -135,7 +135,8 @@ export function openBuildAtlas({ appState, buildState }) {
   const dialog = modalDialog("lineage-modal atlas-modal");
   dialog.innerHTML = html`<header class="modal-header"><h2 class="modal-title">Repertoire atlas</h2><button type="button" class="btn icon" data-close aria-label="Close">×</button></header><div class="lineage-body"></div>`;
   let cancelCalculation = () => {};
-  dialog.addEventListener("close", () => cancelCalculation(), { once: true });
+  let stopImprint = () => {};
+  dialog.addEventListener("close", () => { cancelCalculation(); stopImprint(); }, { once: true });
   const close = openModal(dialog);
   dialog.querySelector("[data-close]").onclick = () => close();
   const body = dialog.querySelector(".lineage-body");
@@ -149,6 +150,9 @@ export function openBuildAtlas({ appState, buildState }) {
     const start = root;
     const scoped = subtreeNodes(start, children);
     const data = atlasAnalysis(scoped, build.color, (id) => masteryOf(buildState, id));
+    // The imprint is read when painted, not when opened: the owner's colour is
+    // its own read and can land while the Atlas is open.
+    const imprint = () => atlasAnalysis(scoped, build.color, (id) => masteryOf(buildState, id)).score ?? "—";
     const moveCount = data.nodes.filter((node) => node.id !== scope).length;
     const content = body.querySelector("[data-atlas-content]");
     const render = (result, error = null) => {
@@ -159,9 +163,16 @@ export function openBuildAtlas({ appState, buildState }) {
       <div class="atlas-seal">${profileGlyph(profile.facets.map((facet) => facet.value))}</div>
       <section class="atlas-facets" aria-label="Preparation profile">${profile.facets.map((facet, i) => html`<div class="atlas-facet" title="${facet.definition}"><span class="atlas-facet-id">${numerals[i]}</span><span>${facet.label}</span><b>${percent(facet.value)}</b><div class="atlas-facet-track"><i style="--value:${facet.value ?? 0}%;--delay:${i * 70}ms"></i></div></div>`)}</section></div>
       <section class="atlas-map" aria-label="Repertoire routes"><div class="atlas-section-head"><h4>Lineage</h4><span>${String(data.leaves.length).padStart(2, "0")} ${data.leaves.length === 1 ? "route" : "routes"}</span></div>${routeGlyph(data.nodes, scope, buildState.buildCurrentNodeId)}</section>
-      <footer class="atlas-foot"><span><b>${moveCount}</b> moves</span><span><b>${data.forks}</b> forks</span><span><b>${data.deepest}</b> depth</span>${personal ? html`<span class="atlas-imprint" title="Personal training imprint"><span>Imprint</span><b>${data.score ?? "—"}</b></span>` : ""}</footer>`;
+      <footer class="atlas-foot"><span><b>${moveCount}</b> moves</span><span><b>${data.forks}</b> forks</span><span><b>${data.deepest}</b> depth</span>${personal ? html`<span class="atlas-imprint" title="Personal training imprint"><span>Imprint</span><b>${imprint()}</b></span>` : ""}</footer>`;
     };
     render(null);
+    if (personal) {
+      stopImprint();
+      stopImprint = onMasteryLanded(() => {
+        const shown = dialog.open && content.querySelector(".atlas-imprint b");
+        if (shown) shown.textContent = String(imprint());
+      });
+    }
     cancelCalculation = startAtlasPreparation({ nodes: build.nodes, myColor: build.color, rootNodeId: scope }, {
       onResult: (result) => { if (dialog.open) render(result); },
       onError: (error) => { if (dialog.open) render(null, `${error.message}. Reopen Atlas to retry.`); },

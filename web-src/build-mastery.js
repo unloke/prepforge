@@ -11,6 +11,14 @@ export function masteryOf(buildState, nodeId) {
   return held.byNode.get(nodeId) || null;
 }
 
+// Views beside the tree that read the colour (the Atlas) hear when new colour
+// lands. Returns the unsubscribe.
+const listeners = new Set();
+export function onMasteryLanded(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
 // deps: api, appState, buildState, repaint() (called once new colour lands).
 // refresh() asks for the colour of the tree buildState.build holds, at most one
 // request at a time: a refresh during a request asks once more after it. Every
@@ -52,6 +60,7 @@ export function createBuildMastery({ api, appState, buildState, repaint }) {
         byNode: new Map(Object.entries(reply.mastery || {})),
       };
       repaint();
+      for (const listener of [...listeners]) listener();
     } while (again);
   }
 
