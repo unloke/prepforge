@@ -126,9 +126,11 @@ function inFlightDomain() {
   const notes = notesDomain();
   let finish;
   notes.flush.mockImplementation(async (checkpoint) => {
-    await checkpoint;
+    // Like Train's flush, the batch leaves the queue at once, before the
+    // checkpoint, and stays out while it is sent.
     const batch = notes.live.pending;
-    notes.live.pending = []; // the batch leaves the queue while it is sent
+    notes.live.pending = [];
+    await checkpoint;
     const ok = await new Promise((resolve) => { finish = resolve; });
     if (!ok) notes.live.pending = batch.concat(notes.live.pending);
     return ok;
@@ -162,4 +164,18 @@ it("counts the batch of an in-flight flush that fails as unsent at sign-out", as
   finish(false);
   expect(await draining).toEqual({ pending: 1 });
   expect((await outbox.load()).notes.pending).toEqual([{ id: "lost" }]);
+});
+
+// Review of #330, second pass: a flush that starts while the drain waits on
+// its own checkpoint was missed the same way.
+it("waits for a flush that starts while sign-out is checkpointing", async () => {
+  const { notes, finish, started } = inFlightDomain();
+  const { outbox } = outboxFor([notes]);
+  notes.live.pending = [{ id: "late" }];
+  const draining = outbox.drain();
+  void notes.queue.flush(); // e.g. a tab-visibility flush, during the drain's checkpoint
+  await vi.waitFor(() => expect(started()).toBe(true));
+  finish(false);
+  expect(await draining).toEqual({ pending: 1 });
+  expect(notes.live.pending).toEqual([{ id: "late" }]);
 });

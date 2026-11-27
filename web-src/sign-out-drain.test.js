@@ -55,3 +55,15 @@ it("reports a Train sync that fails during sign-out as unsaved", async () => {
   expect(trainState.trainSync.pending.map((a) => a.attempt_uuid)).toEqual(["u1"]);
   expect(postJson).toHaveBeenCalledTimes(1);
 });
+
+it("counts a Train sync that starts while sign-out is checkpointing", async () => {
+  let settle;
+  postJson.mockImplementation(() => new Promise((_resolve, reject) => { settle = reject; }));
+  const controller = createSyncController();
+  const draining = controller.flushAllPendingForSignOut();
+  void controller.flushTrainSync(); // starts during the drain's checkpoint
+  await vi.waitFor(() => expect(postJson).toHaveBeenCalledTimes(1));
+  settle(Object.assign(new Error("offline"), { status: 503 }));
+  expect(await draining).toEqual({ pending: 1 });
+  expect(trainState.trainSync.pending.map((a) => a.attempt_uuid)).toEqual(["u1"]);
+});

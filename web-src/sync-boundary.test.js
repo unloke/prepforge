@@ -3,9 +3,11 @@
 // (build-write.js), so it advances the tree revision and tells other tabs.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 
-const root = new URL(".", import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: on Windows the pathname starts "/C:/".
+const root = fileURLToPath(new URL(".", import.meta.url));
 const read = (file) => readFileSync(join(root, file), "utf8");
 
 const INFRASTRUCTURE = ["core/api.js", "sync-queue.js", "outbox.js", "outbox-db.js", "outbox-state.js"];
