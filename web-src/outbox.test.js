@@ -118,3 +118,48 @@ it("reports a checkpoint that could not be stored", async () => {
   expect(await outbox.persist()).toBe(false);
   expect(onPersist).toHaveBeenLastCalledWith(false);
 });
+
+// Review of #330: a flush already in flight holds its batch outside the queue,
+// so the drain saw an empty queue and reported nothing unsent while the
+// request was still out. Sign-out must wait for it, and count what it failed.
+function inFlightDomain() {
+  const notes = notesDomain();
+  let finish;
+  notes.flush.mockImplementation(async (checkpoint) => {
+    await checkpoint;
+    const batch = notes.live.pending;
+    notes.live.pending = []; // the batch leaves the queue while it is sent
+    const ok = await new Promise((resolve) => { finish = resolve; });
+    if (!ok) notes.live.pending = batch.concat(notes.live.pending);
+    return ok;
+  });
+  return { notes, finish: (ok) => finish(ok), started: () => typeof finish === "function" };
+}
+
+it("waits for a flush already in flight before reporting sign-out", async () => {
+  const { notes, finish, started } = inFlightDomain();
+  const { outbox } = outboxFor([notes]);
+  notes.live.pending = [{ id: "sent" }];
+  const flushing = notes.queue.flush();
+  await vi.waitFor(() => expect(started()).toBe(true));
+  let drained = null;
+  const draining = outbox.drain().then((result) => { drained = result; });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(drained).toBeNull(); // still waiting on the request
+  finish(true);
+  await draining;
+  expect(drained).toEqual({ pending: 0 });
+  expect(await flushing).toBe(true);
+});
+
+it("counts the batch of an in-flight flush that fails as unsent at sign-out", async () => {
+  const { notes, finish, started } = inFlightDomain();
+  const { outbox } = outboxFor([notes]);
+  notes.live.pending = [{ id: "lost" }];
+  void notes.queue.flush();
+  await vi.waitFor(() => expect(started()).toBe(true));
+  const draining = outbox.drain();
+  finish(false);
+  expect(await draining).toEqual({ pending: 1 });
+  expect((await outbox.load()).notes.pending).toEqual([{ id: "lost" }]);
+});

@@ -63,9 +63,14 @@ export function createOutbox({ domains, owner, generation, tabId, onPersist }) {
 
   // Before sign-out: checkpoint, then send whatever each queue can send.
   async function drain() {
+    // A flush already in flight holds its batch outside the queue, so the
+    // queue can look empty while its request is still out: wait for it. If
+    // it failed, its batch is back on the queue and counts as unsent.
+    const inFlight = domains.map((domain) => domain.state().flushing);
     await persist();
     for (const queue of queues) queue.cancel();
     await Promise.all(domains.map(async (domain, index) => {
+      if (inFlight[index] && !(await inFlight[index].catch(() => false))) return;
       // A flush may cover only part of a queue (Build sends one repertoire at
       // a time): keep going while each one saves.
       while (domain.hasWork()) {
