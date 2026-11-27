@@ -17,7 +17,8 @@ import { paintPhoneTabs } from "./phone-tabs.js";
 import { maybeWelcome } from "./welcome-entry.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { countOf } from "./plural.js";
-import { createBook, ensureBookLoaded, invalidateBook, updateBookline } from "./analyze-book-state.js";
+import { createBook, ensureBookLoaded, updateBookline } from "./analyze-book-state.js";
+import { announceRepertoireChanged } from "./repertoire-changes.js";
 import { createCoverage, runCoverageScanUI } from "./coverage-entry.js";
 import { createLibrary } from "./library-entry.js";
 import { installE2eHooks } from "./e2e-hooks.js";
@@ -774,10 +775,9 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
     if (action === "toggle-active") {
       const verb = isActive ? "Disable" : "Enable";
       await postJson("/api/repertoires/set-active", {
-        repertoire_id: repertoireId,
-        active: !isActive,
+        repertoire_id: repertoireId, active: !isActive,
       });
-      invalidateBook(); // the active set defines Analyze's book
+      announceRepertoireChanged({ repertoireId });
       await refreshDashboardRepertoires();
       setStatus(`${verb}d repertoire`);
       return;
@@ -789,7 +789,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       if (appState.pendingRepDeletes.has(repKey)) return;
       const meta = await fetchRepertoireMeta(repertoireId).catch(() => null);
       appState.pendingRepDeletes.add(repKey);
-      invalidateBook();
+      announceRepertoireChanged({ repertoireId: repKey });
       // Its queued edits go too, tombstoned so the durable outbox can't bring
       // them back. This happens at delete time (not commit time) so the doomed
       // tree can't keep taking edits.

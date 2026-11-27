@@ -38,7 +38,7 @@ import { buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvision
   reapplyPendingBuildNodes, renderBuilderTree, resolveBuildId, sameFenPosition } from "../build-entry.js";
 import { effectiveMaiaRating, effectiveStockfishDepth, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "../core/prefs.js";
 import { engineWidget, EXPLORER_EVAL_MAX_LINES } from "../core/engine.js";
-import { invalidateBook } from "../analyze-book-state.js";
+import { announceRepertoireChanged } from "../repertoire-changes.js";
 import { renderBuildSync, setBuildSync } from "../train-entry.js";
 import { showInputModal } from "../core/modals.js";
 import { repertoireLimitMessage } from "../repertoire-limit.js";
@@ -98,7 +98,7 @@ async function hydrateBuild(payload, selectedNodeId = null, { revealSelection = 
   }
   buildState.build = payload;
   buildState.buildNodeById = indexBuildNodes(payload.nodes);
-  invalidateBook(payload);
+  announceRepertoireChanged({ repertoireId: payload.repertoire_id, tree: payload });
   // Orient only when a repertoire opens — a reconcile re-hydrate after an
   // autosave must not undo the user's manual flip (or rebuild the grid mid-drag).
   if (boards.build && payload.repertoire_id !== prevRepId) {
