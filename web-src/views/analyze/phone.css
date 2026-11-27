@@ -139,12 +139,6 @@
   #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; gap: 4px; padding: 0 7px; }
   #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
   #analysis-explain .coach-bookline { max-height: none; }
-  /* One 44px row: the steps, the label and the Best/Retry action share the
-     thumb height (the steps were 36x40 beside a 44px label). */
-  #analysis-explain .cr-step { width: 44px; height: 44px; }
-  #analysis-explain .cr-count { display: none; }
-  #analysis-explain .coach-review > .btn { height: 44px; min-height: 44px; padding: 0 10px; }
-  #analysis-explain .cr-label { height: 44px; line-height: 44px; }
   /* The coach pane holds the verdict; the Maia offer waits in Settings. */
   #analysis-explain > .coach-unlock { display: none; }
 
@@ -230,23 +224,15 @@
 
   /* The Games sheet: where games come from. */
   #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
-  /* No game: the Games sheet fills the screen, so its button leaves the bar
-     and the bar closes up (a hidden 44px track left a hole between Menu and
-     Flip), with the pill centred in the wider middle. */
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 52px 52px; }
+  /* No game: the Games sheet fills the screen, so its button leaves the bar;
+     the empty track keeps the other controls where a loaded game puts them. */
   #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar .bb-sheet { display: none; }
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) #run-analysis { --pill-left: 106px; }
   /* 360-374px: the 84px middle clipped the pill's padding; the arrows give 4px
      each and the pill pads 14px, so "Analyze" sits whole. */
   @media (min-width: 360px) and (max-width: 374px) {
     #view-analyze .board-bar { grid-template-columns: 44px 44px 44px minmax(0, 1fr) 48px 48px; }
-    #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 48px 48px; }
     #view-analyze .board-bar :is(#analysis-prev, #analysis-next) { width: 48px; }
     #view-analyze #run-analysis { right: 114px; max-width: calc(100% - var(--pill-left) - 114px); padding: 0 14px; }
-  }
-  @media (max-width: 359px) {
-    #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 40px 40px minmax(0, 1fr) 44px 44px; }
-    #view-analyze:not(:has(#analysis-results:not([hidden]))) #run-analysis { --pill-left: 98px; }
   }
   :is(#analyze-open) :is(#pgn-drawer, #history-drawer:not([hidden])) {
     margin: 0;
@@ -475,34 +461,14 @@
   #view-analyze[data-pane="coach"] #analysis-explain { gap: 8px; padding: 6px var(--phone-gutter) 8px; }
   #analysis-explain:has(> .coach-review:not([hidden])) .cc-head { display: contents; }
   #analysis-explain:has(> .coach-review:not([hidden])) .cc-head > :not(#analyze-actions) { display: none; }
-  #analysis-explain > .coach-review { order: -1; gap: 0; height: 44px; }
-  #analysis-explain .coach-review > .cr-label { order: 0; flex: 1 1 auto; gap: 8px; padding: 0; font-size: 15px; font-weight: 500; }
-  /* Retry is the moment's one action: the accent's tint, the steps' shape. */
-  #analysis-explain .coach-review > .btn { order: 1; margin: 0 8px 0 auto; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); padding: 0 14px; font-weight: 500; }
-  #analysis-explain .coach-review > .cr-step { order: 2; width: 48px; border-radius: 12px 4px 4px 12px; }
-  #analysis-explain .coach-review > .cr-step ~ .cr-step { order: 3; margin-left: 2px; border-radius: 4px 12px 12px 4px; }
-  #analysis-explain .coach-review > .cr-label + .cr-step { margin-left: auto; }
-  #analysis-explain .coach-review > .btn + .cr-step,
-  #analysis-explain .coach-review > .cr-step:has(~ .btn) { margin-left: 0; }
-  /* The moment's grade is the board's badge, not a loose glyph. */
-  #analysis-explain .cr-label .rp-glyph {
-    display: inline-grid;
-    place-items: center;
-    align-self: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--label);
-    color: var(--accent-ink);
-    font-size: 12px;
-    line-height: 1;
-    letter-spacing: -0.06em;
+  #analysis-explain > .coach-review {
+    --key-arrow: 44px;
+    --key-retry: 44px;
+    --key-height: 44px;
+    order: -1;
+    margin: 0;
   }
-  #analysis-explain .cr-label .rp-glyph:empty { display: none; }
-  #analysis-explain .cr-label.g-brilliant .rp-glyph { background: var(--brilliant); }
-  #analysis-explain .cr-label.g-great .rp-glyph { background: var(--great); }
-  #analysis-explain .cr-label.g-mistake .rp-glyph { background: var(--warn); }
-  #analysis-explain .cr-label.g-blunder .rp-glyph { background: var(--danger); }
+  #analysis-explain .cr-retry { margin-left: 0; }
   #analysis-explain .coach-prose {
     flex: 0 1 auto;
     padding: 10px 14px 10px 12px;
@@ -608,14 +574,6 @@
   #analyze-open .history-item .hi-open { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 56px; }
   #analyze-open .history-item .hi-players { max-width: 100%; }
   #analyze-open .history-item .hi-delete { align-self: stretch; height: auto; min-height: 56px; }
-  /* 360-374px: the review line keeps "15.Be3 Blunder" whole beside Retry and
-     the steps; the players' error counts keep their words. */
-  @media (max-width: 374px) {
-    #analysis-explain .coach-review > .cr-step { width: 44px; }
-    #analysis-explain .coach-review > .btn { margin-right: 6px; padding: 0 10px; }
-    #analysis-explain .coach-review > .cr-label { gap: 6px; font-size: 14px; }
-  }
-
   /* ---- Phone, round 5: one board, Lichess's density --------------------------
      The board is the full width in every tab and state (phone.css). Over it one
      44px strip: the evaluation (Lichess sets its eval at 15px/700 in a 37px
@@ -679,7 +637,7 @@
   #view-analyze .an-panes > .an-tabs { position: relative; z-index: 2; }
   #view-analyze .an-tab::after { content: ""; position: absolute; inset: -2px 0 -8px; }
   #view-analyze .an-tab[aria-selected="true"] { color: var(--text); }
-  /* One underline that slides to the open tab, and the pane it opens rises in. */
+  /* One underline slides to the open tab while its pane fades in. */
   #view-analyze .an-panes > .an-tabs::before {
     content: "";
     position: absolute;
@@ -695,7 +653,7 @@
   #view-analyze[data-pane="engine"] .an-tabs { --tab: 1; }
   #view-analyze[data-pane="report"] .an-tabs { --tab: 2; }
   #view-analyze :is(.an-pane, #coach-prose) { animation: pane-in var(--dur) var(--ease-out); }
-  @keyframes pane-in { from { opacity: 0; transform: translateY(6px); } }
+  @keyframes pane-in { from { opacity: 0; } }
 
   /* The open pane takes what is left and scrolls inside it. */
   #view-analyze #analysis-explain,
@@ -705,20 +663,7 @@
   #view-analyze .an-panes > .an-pane:not(.moves-pane) { flex: 1 1 0; min-height: 72px; overflow-y: auto; }
   #view-analyze[data-pane="coach"] #analysis-explain { gap: 6px; padding: 11px var(--phone-gutter) 4px; }
 
-  /* Coach: the moment on a 36px line clear of the tab hit band, paired stepper
-     on the right (>=44px thumb targets via ::after), verdict in plain ink. */
-  #analysis-explain > .coach-review { height: 36px; gap: 0; }
-  #analysis-explain .coach-review > .cr-label { position: relative; z-index: 1; order: 0; flex: 0 1 auto; margin-right: auto; height: 30px; line-height: 30px; padding: 0 10px; border-radius: 999px; background: var(--surface-3); overflow: visible; gap: 6px; font-size: 13px; font-weight: 500; }
-  #analysis-explain .coach-review > .cr-label::after { content: ""; position: absolute; inset: -7px 0 -8px; }
-  #analysis-explain .coach-review[data-on-moment="true"] > .cr-label > .cr-move { display: none; }
-  #analysis-explain .cr-label .cr-count { display: inline; font-size: 11.5px; }
-  #analysis-explain .cr-label .rp-glyph { width: 18px; height: 18px; font-size: 11px; }
-  #analysis-explain .coach-review > .btn { position: relative; z-index: 1; order: 0; height: 28px; min-height: 0; margin: 0 0 0 6px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 500; }
-  #analysis-explain .coach-review > .btn::after { content: ""; position: absolute; inset: -8px -3px -9px; }
-  #analysis-explain .coach-review > .cr-step { position: relative; z-index: 1; order: 0; width: 40px; height: 28px; background: var(--surface-3); border: 1px solid var(--line); }
-  #analysis-explain .coach-review > .cr-step[data-review="prev"] { margin-left: 6px; border-radius: 8px 0 0 8px; border-right: 0; }
-  #analysis-explain .coach-review > .cr-step[data-review="next"] { margin-left: 0; border-radius: 0 8px 8px 0; }
-  #analysis-explain .coach-review > .cr-step::after { content: ""; position: absolute; inset: -9px 0 -10px; }
+  /* Coach: one full-width 44px key-move rail, then the verdict in plain ink. */
   #analysis-explain .coach-prose { flex: none; padding: 6px 10px 6px 12px; border-left-width: 3px; border-radius: 0 8px 8px 0; background: var(--panel); color: var(--text); font-size: 15px; line-height: 1.48; overflow: visible; }
   #analysis-explain .coach-prose .move-ref { color: var(--text); font-weight: 600; }
   #analysis-explain .coach-maia { height: 28px; }
@@ -759,11 +704,8 @@
   /* The thumb bar's pill keeps the bar's 32px (phone.css). */
   #view-analyze .board-bar { anchor-name: --analyze-controls; }
   #view-analyze #run-analysis { position-anchor: --analyze-controls; height: 32px; bottom: calc(anchor(bottom) + env(safe-area-inset-bottom) + (var(--phone-bar-h) - 32px) / 2); }
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 40px 40px minmax(0, 1fr) 48px 48px; }
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) #run-analysis { --pill-left: 98px; }
   @media (min-width: 360px) and (max-width: 374px) {
     #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
-    #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 40px 40px minmax(0, 1fr) 44px 44px; }
     #view-analyze .board-bar :is(#analysis-prev, #analysis-next) { width: 44px; }
     #view-analyze #run-analysis { right: 104px; max-width: calc(100% - var(--pill-left) - 104px); }
   }

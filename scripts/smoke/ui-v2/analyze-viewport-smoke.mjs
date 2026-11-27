@@ -196,23 +196,41 @@ async function runViewport(vp) {
     const layout = await page.evaluate(() => {
       const head = document.querySelector("#analysis-explain .cc-head");
       const bounds = head.getBoundingClientRect();
+      const style = getComputedStyle(head);
+      const shown = (el) => {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && cs.display !== "none" && cs.visibility !== "hidden";
+      };
+      const padTop = parseFloat(style.paddingTop) || 0;
+      const padBottom = parseFloat(style.paddingBottom) || 0;
+      const borderTop = parseFloat(style.borderTopWidth) || 0;
+      const borderBottom = parseFloat(style.borderBottomWidth) || 0;
+      const contentCenter = bounds.top + padTop + borderTop +
+        (bounds.height - padTop - padBottom - borderTop - borderBottom) / 2;
       const coachWord = head.querySelector("b").getBoundingClientRect();
-      const buttons = ["fetch-my-game", "run-analysis"].map((id) => {
+      const openingTitle = head.querySelector(".an-oh-title");
+      const anchorRight = Math.max(coachWord.right, shown(openingTitle) ? openingTitle.getBoundingClientRect().right : 0);
+      const review = document.getElementById("run-analysis");
+      const duplicateReviewHidden = innerWidth >= 1180 && review?.dataset.action === "next-key" &&
+        getComputedStyle(review).display === "none" && shown(document.querySelector("#coach-review .cr-preview"));
+      const buttons = ["fetch-my-game", "run-analysis"].filter((id) => !(id === "run-analysis" && duplicateReviewHidden)).map((id) => {
         const button = document.getElementById(id);
         const rect = button.getBoundingClientRect();
         return { id, inHead: head.contains(button) && rect.width > 0 && rect.height > 0 &&
           rect.left >= bounds.left && rect.right <= bounds.right &&
           rect.top >= bounds.top && rect.bottom <= bounds.bottom,
-        // Right of the word "Coach": the action row closes the line.
-        rightOfCoach: rect.left >= coachWord.right,
+        rightOfCoach: rect.left >= anchorRight - 1,
         bounds: rect.toJSON() };
       });
-      // One row: every part of the head is on the same line, whatever the chip says.
+      // One row: every visible part of the head centers in its content box; the
+      // bottom padding and divider are spacing under the row, not part of it.
       const oneRow = [...head.children].every((el) => {
         const r = el.getBoundingClientRect();
-        return !r.height || Math.abs((r.top + r.bottom) / 2 - (bounds.top + bounds.bottom) / 2) < 4;
+        return !r.height || Math.abs((r.top + r.bottom) / 2 - contentCenter) < 4;
       });
-      return { buttons, head: bounds.toJSON(), oneRow, rows: [...head.children].map((el) => el.getBoundingClientRect().toJSON()),
+      return { buttons, head: bounds.toJSON(), contentCenter, duplicateReviewHidden, oneRow, rows: [...head.children].map((el) => el.getBoundingClientRect().toJSON()),
         headless: !document.querySelector("#analyze-sidebar > .panel-head"),
         caption: (document.getElementById("analysis-board-caption").textContent || "").trim() };
     });
@@ -222,6 +240,22 @@ async function runViewport(vp) {
     check(layout.buttons.every((b) => b.inHead && b.rightOfCoach) && layout.oneRow,
       `${state}: Last game / Analyze must sit on the coach's line, right of its title, on one row: ${JSON.stringify(layout)}`);
     return { ...layout.head, oneRow: layout.oneRow };
+  };
+
+  const reportColumns = () => page.locator('#analysis-summary .rp-acc, #analysis-summary .rp-sym-row > .rp-n, #analysis-summary .rp-sym-row > .rp-col').evaluateAll(
+    (els) => els.filter((el) => el.getBoundingClientRect().width).map((el) => {
+      const r = el.getBoundingClientRect();
+      return [el.textContent, r.left, r.right];
+    }),
+  );
+  const checkReportColumns = (before, after, label) => {
+    const diffs = before.map((row, index) => {
+      const next = after[index] || [];
+      return { text: row[0], left: Math.abs((next[1] ?? NaN) - row[1]), right: Math.abs((next[2] ?? NaN) - row[2]) };
+    });
+    check(before.length > 0 && before.length === after.length && before.every((row, index) => row[0] === after[index]?.[0]) &&
+      diffs.every((row) => row.left <= 1 && row.right <= 1),
+      `${label}: Report text columns must keep their x edges within 1px: ${JSON.stringify({ before, after, diffs })}`);
   };
 
   // Server-side analysis pipeline stubs: prepare returns the demo game's REAL
@@ -391,6 +425,11 @@ async function runViewport(vp) {
   const isolated = await page.evaluate(() => self.crossOriginIsolated === true);
   check(isolated, "page should be cross-origin isolated (COOP/COEP)");
 
+  const emptyPhoneBoard = vp.width <= 760 ? await page.evaluate(() => {
+    const r = document.getElementById("analysis-board").getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  }) : null;
+
   // Run the REAL analysis pipeline on the demo PGN (5-ply Ruy fragment).
   check(await page.locator("#pgn-input").inputValue() === "", "Analyze should start with an empty PGN source");
   await page.locator("#pgn-input").evaluate((el, pgn) => { el.value = pgn; }, DEMO_PGN_MOVETEXT);
@@ -405,6 +444,15 @@ async function runViewport(vp) {
     null,
     { timeout: 20000 },
   );
+  if (emptyPhoneBoard) {
+    const loadedPhoneBoard = await page.evaluate(() => {
+      const r = document.getElementById("analysis-board").getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+    const delta = Object.fromEntries(Object.keys(emptyPhoneBoard).map((key) => [key, Math.abs(loadedPhoneBoard[key] - emptyPhoneBoard[key])]));
+    check(Object.values(delta).every((value) => value <= 1),
+      `Analyze empty → loaded must keep the phone board fixed: ${JSON.stringify({ emptyPhoneBoard, loadedPhoneBoard, delta })}`);
+  }
   const chartKids = await page.locator("#eval-chart *").count();
   check(chartKids > 0, "eval chart should have rendered the eval graph");
   const movesRows = await page.locator("#analysis-moves .mtree-move").count();
@@ -424,10 +472,13 @@ async function runViewport(vp) {
     return { engine: r.toJSON(), top: top && (top.id || top.className), coach: coach.toJSON() };
   });
   console.log(`[analyze-smoke] engine button: ${JSON.stringify(engineSpot)}`);
+  const reportColumnsBeforeLive = vp.width >= 1180 ? await reportColumns() : null;
   await page.locator("#open-engine-widget").click();
   // The full net's unlock row sits above the lines and never blocks them: the
   // first real line must appear with the row still up.
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
+  const reportColumnsLive = vp.width >= 1180 ? await reportColumns() : null;
+  if (reportColumnsBeforeLive) checkReportColumns(reportColumnsBeforeLive, reportColumnsLive, "Live on");
   const askedWhileSearching = await page.evaluate(() => {
     const row = document.getElementById("engine-window-unlock");
     const line = document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)");
@@ -475,10 +526,58 @@ async function runViewport(vp) {
       scrollOverflow: document.querySelector("#analyze-sidebar .panel-scroll").scrollWidth - document.querySelector("#analyze-sidebar .panel-scroll").clientWidth };
   });
   check(engineLayout.fits && engineLayout.scrollOverflow <= 1, `Engine must fit its pane: ${JSON.stringify(engineLayout)}`);
-  check(engineLayout.coachHeight <= 180, "Coach must keep its reserved verdict, Humans and prep rows compact");
+  if (vp.width >= 1180) check(engineLayout.coachHeight === (vp.height <= 760 ? 152 : 178),
+    `wide Coach must fit its original height: ${JSON.stringify(engineLayout)}`);
+  else check(engineLayout.coachHeight <= 180, "Coach must keep its reserved verdict, Humans and prep rows compact");
+  if (vp.width >= 1180) {
+    await page.locator("#engine-lines-more").focus();
+    await page.keyboard.press("ArrowDown");
+    await page.waitForFunction(() => document.getElementById("engine-lines")?.classList.contains("is-open"), null, { timeout: 3000 });
+    const linesPicker = await page.evaluate(() => {
+      const menu = document.getElementById("engine-lines").getBoundingClientRect();
+      const active = document.activeElement?.closest?.("#engine-lines [data-n]");
+      const activeRect = active?.getBoundingClientRect();
+      const insideViewport = (r) => r && r.left >= -1 && r.top >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1;
+      return {
+        open: true,
+        focusInMenu: Boolean(active),
+        menuVisible: menu.width > 100 && insideViewport(menu),
+        focusVisible: activeRect && activeRect.width >= 28 && activeRect.height >= 28 && insideViewport(activeRect),
+      };
+    });
+    check(linesPicker.focusInMenu && linesPicker.menuVisible && linesPicker.focusVisible,
+      `Analyze Lines picker must open unclipped with focus inside: ${JSON.stringify(linesPicker)}`);
+    await page.locator('#engine-lines [data-n="5"]').click();
+    await page.waitForFunction(() => document.getElementById("engine-lines-more").textContent.trim() === "5 lines", null, { timeout: 5000 });
+    await page.waitForFunction(() => document.querySelectorAll("#engine-window-pvs .engine-pv").length === 5, null, { timeout: 10000 }).catch(() => {});
+    const fiveLines = await page.evaluate(() => {
+      const pane = document.getElementById("analysis-engine-pane");
+      const rows = [...document.querySelectorAll("#engine-window-pvs .engine-pv")];
+      const paneRect = pane.getBoundingClientRect();
+      return {
+        rows: rows.length,
+        naturalFit: pane.scrollHeight <= pane.clientHeight + 1,
+        rowsFit: rows.every((row) => {
+          const r = row.getBoundingClientRect();
+          return r.top >= paneRect.top - 1 && r.bottom <= paneRect.bottom + 1;
+        }),
+        scrollHeight: pane.scrollHeight,
+        clientHeight: pane.clientHeight,
+      };
+    });
+    check(fiveLines.rows === 5 && fiveLines.naturalFit && fiveLines.rowsFit,
+      `Analyze wide engine pane must fit all 5 lines without scrolling: ${JSON.stringify(fiveLines)}`);
+    await page.locator("#engine-lines-more").click();
+    await page.locator('#engine-lines [data-n="1"]').click();
+    await page.waitForFunction(() => document.getElementById("engine-lines-more").textContent.trim() === "1 line", null, { timeout: 5000 });
+    await page.evaluate(() => { document.getElementById("analysis-engine-pane").scrollTop = 0; });
+  }
   await checkAnalyzeStability(page, vp.width <= 760, check);
   await shot("engine");
   await page.locator("#open-engine-widget").click();
+  await page.waitForFunction(() => document.getElementById("open-engine-widget").getAttribute("aria-pressed") === "false", null, { timeout: 5000 }).catch(() => {});
+  const reportColumnsAfterLiveOff = vp.width >= 1180 ? await reportColumns() : null;
+  if (reportColumnsLive) checkReportColumns(reportColumnsLive, reportColumnsAfterLiveOff, "Live off");
   await page.evaluate(() => document.getElementById("analysis-start").click());
 
   // Composition: the two actions close the coach's line (there is no desktop
@@ -531,9 +630,15 @@ async function runViewport(vp) {
         const h = head().getBoundingClientRect();
         const coach = document.getElementById("analysis-explain").getBoundingClientRect();
         const card = document.getElementById("analysis-eval-card").getBoundingClientRect();
+        const style = getComputedStyle(head());
+        const padTop = parseFloat(style.paddingTop) || 0;
+        const padBottom = parseFloat(style.paddingBottom) || 0;
+        const borderTop = parseFloat(style.borderTopWidth) || 0;
+        const borderBottom = parseFloat(style.borderBottomWidth) || 0;
+        const contentCenter = h.top + padTop + borderTop + (h.height - padTop - padBottom - borderTop - borderBottom) / 2;
         const oneRow = [...head().children].every((el) => {
           const r = el.getBoundingClientRect();
-          return !r.height || Math.abs((r.top + r.bottom) / 2 - (h.top + h.bottom) / 2) < 4;
+          return !r.height || Math.abs((r.top + r.bottom) / 2 - contentCenter) < 4;
         });
         return { coachTop: Math.round(coach.top), cardTop: Math.round(card.top), headH: Math.round(h.height), oneRow };
       };
@@ -566,7 +671,7 @@ async function runViewport(vp) {
     const headHs = [...new Set(drill.map((r) => r.headH))];
     check(drill.every((r) => r.oneRow), `the coach's line must stay one row whatever the phase chip says: ${JSON.stringify(drill)}`);
     check(coachTops.length === 1 && headHs.length === 1 && cardTops.length === 1,
-      `the coach card must not move when the board advances: ${JSON.stringify({ coachTops, cardTops, headHs, drill })}`);
+      `the Coach header and evaluation card must keep their positions when the board advances: ${JSON.stringify({ coachTops, cardTops, headHs, drill })}`);
   }
   await shot("results");
   const caption = await page.locator("#analysis-chart-caption").textContent();
@@ -645,14 +750,31 @@ async function runViewport(vp) {
     check(stack.coachFits, `the reserved Coach rows and controls must fit inside their band: ${JSON.stringify(stack)}`);
     check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
     // Round 5: the board is one size in every tab; it never shrinks for a pane.
+    const tabBoards = [];
     for (const tab of ["coach", "engine", "report", "coach"]) {
       const el = page.locator(`#an-tab-${tab}`);
       if (!(await el.isVisible())) continue;
       await el.click();
       await page.waitForFunction((t) => document.getElementById("view-analyze").dataset.pane === t, tab, { timeout: 5000 }).catch(() => {});
       const held = await checkPhoneBoard(page, { view: "view-analyze", board: "analysis-board", tabs: "#analyze-tabs [role=tab]", label: `Analyze ${tab}` });
+      tabBoards.push([tab, held.got.board]);
       for (const f of held.fails) check(false, f);
     }
+    for (let i = 1; i < tabBoards.length; i++) {
+      const [tab, boardRect] = tabBoards[i];
+      const [firstTab, firstRect] = tabBoards[0];
+      check(JSON.stringify(boardRect) === JSON.stringify(firstRect),
+        `Analyze ${firstTab} → ${tab} must keep the exact phone board rect: ${JSON.stringify(tabBoards)}`);
+    }
+    await page.locator("#an-tab-coach").focus();
+    await page.keyboard.press("ArrowRight");
+    const tabFocus = await page.evaluate(() => ({
+      active: document.activeElement?.id,
+      selected: document.querySelector('#analyze-tabs [aria-selected="true"]')?.id,
+    }));
+    check(tabFocus.active === "an-tab-engine" && tabFocus.selected === "an-tab-engine",
+      `Analyze phone tabs must move focus and selection with the keyboard: ${JSON.stringify(tabFocus)}`);
+    await page.keyboard.press("ArrowLeft");
     // Round 6: the move strip's ends are the game's ends (Lichess's |‹ … ›|):
     // one button at each edge of the strip row, the moves scrolling between.
     const ends = await page.evaluate(() => {

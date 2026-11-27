@@ -127,7 +127,7 @@
         <div class="study">
           <div class="board-area">
             <div class="an-plate an-plate-top" id="analysis-plate-top" hidden></div>
-            <div class="an-board-frame">
+            <div class="study-board-frame">
               <div class="eval-rail" id="analysis-eval-rail" aria-hidden="true" hidden>
                 <span class="eval-rail-val" id="analysis-eval-v-val"></span>
                 <div class="eval-rail-bar" id="analysis-eval-v">
@@ -185,7 +185,7 @@
                   <div class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></div>
                   <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
                   <div class="coach-unlock" data-unlock-place="analyze-coach" data-unlock-style="inline" hidden></div>
-                  <div class="coach-review" id="coach-review" data-testid="coach-review" hidden></div>
+                  <div class="coach-review" id="coach-review" data-testid="coach-review" role="group" aria-label="Key moves" hidden></div>
                 </section>
                 <!-- One Evaluation card: current eval + win meter, the live engine's
                      depth, line count and lines, the game graph, and the whole-game
@@ -317,7 +317,7 @@
       <section class="view" id="view-build" data-testid="view-build">
         <div class="study">
           <div class="board-area">
-            <div class="an-board-frame">
+            <div class="study-board-frame">
               <div class="eval-rail" id="build-eval-rail" aria-hidden="true" hidden>
                 <span class="eval-rail-val" id="build-eval-v-val"></span>
                 <div class="eval-rail-bar" id="build-eval-v">
@@ -465,9 +465,11 @@
               <i id="train-blitz-fill"></i>
             </div>
             <span class="blitz-secs" id="train-blitz-secs" data-testid="train-blitz-secs" hidden></span>
-            <div class="board-stack">
-              <div class="chessboard" id="train-board" data-testid="train-board"></div>
-              <svg class="annotations" id="train-annotations"></svg>
+            <div class="study-board-frame">
+              <div class="board-stack">
+                <div class="chessboard" id="train-board" data-testid="train-board"></div>
+                <svg class="annotations" id="train-annotations"></svg>
+              </div>
             </div>
             <div class="board-bar">
               <div class="bb-nav train-actions">

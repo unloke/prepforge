@@ -302,68 +302,69 @@
   padding-top: 0;
   overflow: auto;
 }
-/* The review bar: the previous and next key moment around the one in focus,
-   and at a mistake the better move or a try at finding it (Chess.com's Best,
-   Retry and Next). One row at the panel's control height (the .btn.sm height
-   every other control in the panel uses); the label gives way before the
-   buttons. */
-.coach-review {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: var(--control-h-sm);
+/* The key-move rail: previous, the visible next destination, and a reserved
+   Retry cell. One implementation scales from the desktop row to the phone's
+   thumb width. */
+#analysis-explain > .coach-review {
+  --key-arrow: 34px;
+  --key-retry: 38px;
+  --key-height: var(--control-h-sm);
+  display: grid;
+  grid-template-columns: var(--key-arrow) minmax(0, 1fr) var(--key-retry);
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  height: var(--key-height);
   margin-top: var(--coach-gap);
 }
-.cr-step {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: var(--control-h-sm);
-  height: var(--control-h-sm);
+.coach-review > .cr-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface-3);
   color: var(--text);
-  cursor: pointer;
-}
-.cr-step svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.cr-step:hover:not(:disabled) { background: var(--line); }
-.cr-step:disabled { opacity: 0.4; cursor: default; }
-.cr-label {
-  flex: 0 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  height: var(--control-h-sm);
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: var(--text);
   font: inherit;
-  font-size: var(--fs-s);
-  line-height: var(--control-h-sm);
-  text-align: left;
-  white-space: nowrap;
-  overflow: hidden;
   cursor: pointer;
 }
-.cr-label > :not(.cr-text) { flex: none; }
-.cr-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.cr-label .rp-glyph { font-style: normal; font-weight: 600; }
-.cr-count { color: var(--muted); font-variant-numeric: tabular-nums; }
-.cr-move { font: 400 20px/1 var(--serif); }
-.cr-move > i { color: var(--cr-tone, inherit); font-style: normal; }
-.cr-move + .cr-text { color: var(--cr-tone, var(--muted)); }
-.cr-label.g-brilliant { --cr-tone: var(--brilliant-text); }
-.cr-label.g-great { --cr-tone: var(--great-text); }
-.cr-label.g-mistake { --cr-tone: var(--warn-text); }
-.cr-label.g-blunder { --cr-tone: var(--danger); }
-.cr-label.is-right .cr-text { color: var(--good-text); }
-.cr-label.is-wrong .cr-text { color: var(--warn-text); }
-.coach-review > .cr-label { margin-right: auto; }
-.coach-review > .btn { flex: none; }
+.coach-review > .cr-prev {
+  grid-column: 1;
+  border-radius: var(--radius) 0 0 var(--radius);
+  border-right: 1px solid var(--line);
+}
+.coach-review > .cr-preview {
+  grid-column: 2;
+  gap: 5px;
+  padding: 0 9px 0 12px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font: 600 14px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.coach-review > .cr-preview:not([aria-disabled="true"]) { background: var(--accent-soft); color: var(--text); }
+.coach-review > .cr-preview svg { margin-left: auto; }
+.coach-review > .cr-retry {
+  grid-column: 3;
+  margin-left: 4px;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+}
+.coach-review .cr-notation { overflow: hidden; text-overflow: ellipsis; }
+.coach-review .cr-grade { flex: none; font-size: 12px; color: var(--cr-tone, var(--muted)); }
+.coach-review .g-brilliant { --cr-tone: var(--brilliant-text); }
+.coach-review .g-great { --cr-tone: var(--great-text); }
+.coach-review .g-mistake { --cr-tone: var(--warn-text); }
+.coach-review .g-blunder { --cr-tone: var(--danger-strong); }
+.coach-review .cr-control svg { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.coach-review .cr-control:hover:not(:disabled, [aria-disabled="true"]) { background: var(--line); }
+.coach-review .cr-control:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+.coach-review .cr-prev:disabled,
+.coach-review .cr-preview[aria-disabled="true"] svg { color: var(--label); opacity: .65; }
+#view-analyze[data-pane="coach"] #run-analysis[data-action="next-key"]:not(:disabled) { display: none; }
 /* The book line is a quiet link in the coach's own row, not a button in a box. */
 .coach-bookaction {
   display: inline-flex;

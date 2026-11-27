@@ -5,6 +5,13 @@
 #build-rep-header #build-rep-name { position: relative; padding-right: 72px; }
 .build-ply { display: none; }
 #build-rep-name b { font-family: var(--serif); font-size: 19px; font-weight: 400; letter-spacing: -0.2px; }
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+  @media (min-width: 761px) {
+    /* The engine and the move tree share the scroll area below the pinned board. */
+    #view-build #build-sidebar:has(#engine-window.is-visible) { overflow-y: auto; overscroll-behavior: contain; }
+    #view-build #build-sidebar:has(#engine-window.is-visible) > .panel-body { flex: 1 0 auto; overflow: visible; }
+  }
+}
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   #build-rep-header .color-dot { display: none; }
   #build-rep-name b { font-size: 20px; }

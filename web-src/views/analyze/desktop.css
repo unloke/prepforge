@@ -5,34 +5,22 @@
    and 2-column Moves | Engine + Report editorial spread. */
 
 @media (min-width: 1180px) {
-  #view-analyze .study {
-    --board-share: 0.54;
-    --board-chrome: 76px;
-    --study-panel-min: 536px;
-    gap: 18px;
-  }
-  #view-analyze .board-area {
-    width: auto;
-    max-width: none;
-    gap: 6px;
-  }
+  #view-analyze .board-area { position: relative; }
 
   /* Symmetrical top and bottom broadcast player plates aligned flush to board */
   #view-analyze .an-plate-top {
+    position: absolute;
+    inset-inline: var(--board-rail-w) 0;
+    bottom: calc(100% + 6px);
+    height: 24px;
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    min-height: 24px;
-    padding-left: 28px;
     box-sizing: border-box;
   }
   #view-analyze .an-plate-top[hidden],
   #view-analyze .an-plate-slot[hidden] { display: none; }
-  #view-analyze .board-area:has(#analysis-eval-rail[hidden]) .an-plate-top,
-  #view-analyze .board-area:has(#analysis-eval-rail[hidden]) .board-bar {
-    padding-left: 0;
-  }
   #view-analyze .an-plate-slot {
     display: inline-flex;
     align-items: baseline;
@@ -95,49 +83,46 @@
   #view-analyze .an-err-sep { color: var(--label); }
 
   /* Bottom bar: [• Player] | [« ‹ › » ⇅ 📁] | [87% ??3·?1] — exact board edge symmetry */
-  #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) .board-bar {
+  #view-analyze .board-bar {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
     align-items: center;
     gap: 4px;
     min-height: 30px;
-    padding: 2px 0 0 28px;
+    padding: 2px 0 0;
     box-sizing: border-box;
   }
-  #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) .board-bar > .an-plate-bot-left {
+  #view-analyze .board-bar > .an-plate-bot-left {
     grid-column: 1;
     grid-row: 1;
     justify-self: start;
   }
-  #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) .board-bar > .bb-nav {
+  #view-analyze .board-bar > .bb-nav {
     grid-column: 2;
     grid-row: 1;
     justify-self: center;
     gap: 2px;
   }
-  #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) .board-bar > .bb-right {
-    display: contents;
-  }
-  #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) #analysis-flip {
+  #view-analyze .board-bar > .bb-right { display: contents; }
+  #view-analyze #analysis-flip {
     grid-column: 3;
     grid-row: 1;
     justify-self: start;
     margin-left: 2px;
   }
-  #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) .board-bar .bb-sheet {
+  #view-analyze .board-bar .bb-sheet {
     grid-column: 4;
     grid-row: 1;
     justify-self: start;
   }
-  #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) .board-bar .bb-views {
-    display: none;
-  }
-  #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) #analysis-plate-bot-right {
+  #view-analyze .board-bar .bb-views { display: none; }
+  #view-analyze #analysis-plate-bot-right {
     grid-column: 5;
     grid-row: 1;
     justify-self: end;
   }
-  #view-analyze .board-area:has(#analysis-plate-top:not([hidden])) #analysis-board-caption {
+  #view-analyze #analysis-board-caption { grid-area: 1 / 1; text-align: start; }
+  #view-analyze .board-bar:has(.an-plate-bot-left:not([hidden])) #analysis-board-caption {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -147,202 +132,136 @@
   }
 
   /* ---- Right editorial panel --------------------------------------------- */
-  #view-analyze:has(#analysis-results:not([hidden])) #analyze-sidebar {
+  #view-analyze #analyze-sidebar {
     height: var(--study-h);
   }
-  #view-analyze:has(#analysis-results:not([hidden])) #analyze-sidebar > .panel-scroll {
+  #view-analyze #analyze-sidebar > .panel-scroll {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    scrollbar-gutter: stable;
     padding: 14px 18px;
   }
+  #view-analyze #analyze-engine-banner { order: 1; flex: none; }
   #view-analyze:has(#analysis-results:not([hidden])) .analyze-main {
     display: flex;
     flex-direction: column;
-    flex: 1 0 100%;
+    flex: 1 0 auto;
     min-height: 0;
     gap: 10px;
   }
 
-  /* Top header: opening + round/date on left, quiet Last game / Next key on right.
-     Fixed height keeps the eval chart and panes completely stable across async
-     Coach / Maia / bookline / stepping updates (zero layout shift) while giving
-     prose room for 2-3 lines without clipping or spawning scrollbars. */
+  /* Keep the review controls on the move line without shifting the chart. */
   #view-analyze .coach-card {
+    --coach-title-row: 30px;
     height: 178px;
     min-height: 178px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: 30px 34px minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) fit-content(54%);
+    grid-template-rows: var(--coach-title-row) 34px minmax(0, 1fr) auto auto;
     column-gap: 12px;
     overflow: hidden;
   }
   #view-analyze .coach-card > .cc-head {
-    position: relative;
-    grid-column: 1 / -1;
-    grid-row: 1;
-    height: 30px;
-    padding-bottom: 0;
-    margin-bottom: 0;
-    border-bottom: 0;
+    grid-area: 1 / 1 / 2 / -1;
+    gap: 8px;
   }
-  #view-analyze .coach-card > .cc-head::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -4px;
-    height: 1px;
-    background: var(--line);
-    pointer-events: none;
+  #view-analyze .cc-head .panel-actions .btn.sm {
+    height: var(--coach-title-row);
+    min-height: var(--coach-title-row);
   }
-  #view-analyze .cc-head:has(#analysis-opening-head:not([hidden])) > b,
-  #view-analyze .cc-head:has(#analysis-opening-head:not([hidden])) > #coach-phase {
+  #view-analyze .cc-head:has(#analysis-opening-head:not([hidden])) > :is(b, #coach-phase) {
     display: none;
   }
   #view-analyze .an-opening-head {
-    display: inline-flex;
+    display: flex;
     align-items: baseline;
     gap: 8px;
+    flex: 1 1 0;
     min-width: 0;
-    flex: 1 1 auto;
-    overflow: hidden;
   }
   #view-analyze .an-opening-head[hidden] { display: none; }
+  #view-analyze :is(.an-oh-title, .an-oh-meta) {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   #view-analyze .an-oh-title {
-    color: var(--text);
+    flex: 0 0 auto;
+    max-width: 100%;
     font-size: 13px;
     font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--text);
   }
+  #view-analyze .an-oh-title:not(:last-child) { max-width: 72%; }
   #view-analyze .an-oh-meta {
-    color: var(--muted);
     font-size: 12px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--muted);
+  }
+  #view-analyze #fetch-my-game:not(:disabled) {
+    background: transparent;
+    border-color: transparent;
+    color: var(--muted);
+  }
+  #view-analyze #fetch-my-game:hover:not(:disabled) {
+    background: var(--surface-3);
+    color: var(--text);
+  }
+  #view-analyze #run-analysis[data-action="next-key"]:not(:disabled) {
+    display: none;
   }
 
-  /* Sculptural serif move headline (left) + inline key-moment stepper (right) */
   #view-analyze .an-move-head {
     grid-column: 1;
     grid-row: 2;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 10px;
-    min-width: 0;
     align-self: center;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
   }
   #view-analyze .an-move-head[hidden] { display: none; }
   #view-analyze .an-mh-san {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--text);
     font: 400 30px/1.05 var(--serif);
-    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
+  #view-analyze .an-mh-number {
+    color: var(--muted);
+    font-size: .7em;
+  }
   #view-analyze .an-mh-grade {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: var(--surface-3);
-    font-size: 12.5px;
+    flex: none;
+    font-size: 14px;
     font-weight: 600;
     white-space: nowrap;
     color: var(--muted);
   }
-  #view-analyze .an-mh-grade i { font-style: normal; }
-  #view-analyze .an-mh-grade.g-brilliant { background: color-mix(in srgb, var(--brilliant) 16%, transparent); color: var(--brilliant-text); }
-  #view-analyze .an-mh-grade.g-great { background: color-mix(in srgb, var(--great) 16%, transparent); color: var(--great-text); }
+  #view-analyze .an-mh-grade.g-brilliant { color: var(--brilliant-text); }
+  #view-analyze .an-mh-grade.g-great { color: var(--great-text); }
   #view-analyze .an-mh-grade.g-best,
-  #view-analyze .an-mh-grade.g-good { background: var(--good-soft); color: var(--good-text); }
-  #view-analyze .an-mh-grade.g-inaccuracy { background: color-mix(in srgb, var(--inaccuracy) 16%, transparent); color: var(--inaccuracy-text); }
-  #view-analyze .an-mh-grade.g-mistake { background: var(--warn-soft); color: var(--warn-text); }
-  #view-analyze .an-mh-grade.g-blunder { background: var(--danger-soft); color: var(--danger); }
-  #view-analyze .an-mh-grade.g-missed { background: color-mix(in srgb, var(--missed) 16%, transparent); color: var(--missed); }
+  #view-analyze .an-mh-grade.g-good { color: var(--good-text); }
+  #view-analyze .an-mh-grade.g-inaccuracy { color: var(--inaccuracy-text); }
+  #view-analyze .an-mh-grade.g-mistake { color: var(--warn-text); }
+  #view-analyze .an-mh-grade.g-blunder { color: var(--danger-strong); }
+  #view-analyze .an-mh-grade.g-missed { color: var(--missed); }
 
-  #view-analyze #analysis-explain > .coach-review {
-    grid-column: 2;
-    grid-row: 2;
-    justify-self: end;
-    align-self: center;
-    display: inline-flex;
-    align-items: center;
-    gap: 0;
-    height: auto;
-    margin-top: 0;
-  }
-  #view-analyze #analysis-explain .coach-review > .cr-label {
-    width: auto;
-    max-width: 210px;
-    height: 26px;
-    line-height: 26px;
-    margin-right: 0;
-    padding: 0 9px;
-    border-radius: 999px;
-    background: var(--surface-3);
-    font-size: 12px;
-    gap: 6px;
-  }
-  #view-analyze #analysis-explain .coach-review > .cr-label:hover {
-    background: var(--line);
-  }
-  #view-analyze #analysis-explain .coach-review[data-on-moment="true"] > .cr-label > .cr-move {
-    display: none;
-  }
-  #view-analyze #analysis-explain .coach-review > .cr-label .cr-move {
-    font: 500 12.5px/1 var(--sans);
-  }
-  #view-analyze #analysis-explain .coach-review > .cr-label .cr-count {
-    font-size: 11px;
-    opacity: 0.85;
-  }
-  #view-analyze #analysis-explain .coach-review > .btn {
-    height: 26px;
-    min-height: 26px;
-    margin-left: 6px;
-    padding: 0 9px;
-    border-radius: 999px;
-    font-size: 11.5px;
-  }
-  #view-analyze #analysis-explain .coach-review > .cr-step {
-    width: 24px;
-    height: 26px;
-    background: var(--surface-3);
-    border: 1px solid var(--line);
-    color: var(--text);
-  }
-  #view-analyze #analysis-explain .coach-review > .cr-step[data-review="prev"] {
-    margin-left: 6px;
-    border-radius: 6px 0 0 6px;
-    border-right: 0;
-  }
-  #view-analyze #analysis-explain .coach-review > .cr-step[data-review="next"] {
-    border-radius: 0 6px 6px 0;
-  }
-  #view-analyze #analysis-explain .coach-review > .cr-step:disabled {
-    opacity: 0.35;
-  }
-  #view-analyze #analysis-explain .coach-review > .cr-step svg {
-    width: 12px;
-    height: 12px;
-  }
-
-  /* High-clarity Coach verdict prose in primary ink */
   #view-analyze .coach-card > .coach-prose {
     grid-column: 1 / -1;
     grid-row: 3;
-    align-self: stretch;
-    max-height: 100%;
+    align-self: start;
     margin: 4px 0 2px;
     padding: 0;
-    border-left: 0;
+    border: 0;
     font-size: 14px;
-    line-height: 1.46;
-    color: var(--text);
+    line-height: 20px;
+    max-height: calc(100% - 6px);
   }
   #view-analyze .coach-card > .coach-prose .move-ref {
     color: var(--text);
@@ -373,6 +292,16 @@
     display: none;
   }
 
+  #view-analyze #analysis-explain > .coach-review {
+    --key-height: 30px;
+    grid-area: 2 / 2;
+    justify-self: end;
+    align-self: center;
+    width: 218px;
+    max-width: 100%;
+    margin: 0;
+  }
+
   /* Once graded, primary action shifts to calm surface tone */
   #view-analyze:has(#analysis-summary .rp-summary) #run-analysis.primary {
     background: var(--surface-3);
@@ -385,18 +314,20 @@
   }
 
   /* Flush two-tone eval chart directly below prose (matches V8.1 mockup) */
-  #view-analyze:has(#analysis-eval-rail:not([hidden])) #analysis-eval-card:not(:has(.notice[data-state="running"])) {
-    display: block;
-    height: auto;
+  #view-analyze #analysis-eval-card {
+    height: 88px;
+    grid-template-rows: 18px minmax(0, 1fr);
     padding: 0;
-    gap: 0;
+    row-gap: 2px;
+  }
+  #view-analyze:has(#analysis-eval-rail:not([hidden])) #analysis-eval-card:not(:has(.notice[data-state="running"])) {
     background: none;
   }
   #view-analyze:has(#analysis-eval-rail:not([hidden])) #analysis-eval-card:not(:has(.notice[data-state="running"])) .ev-head {
     display: none;
   }
   #view-analyze #analysis-eval-card .eval-chart {
-    height: 68px;
+    height: 100%;
     border-radius: 6px;
     box-shadow: inset 0 0 0 1px var(--line);
   }
@@ -421,12 +352,10 @@
   #view-analyze:has(#analysis-results:not([hidden])) .an-panes {
     display: grid;
     grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: max-content 1fr;
     column-gap: 18px;
     row-gap: 12px;
-    flex: 1 1 0;
-    min-height: 0;
-    overflow: hidden;
+    flex: 1 0 auto;
     padding-top: 10px;
     border-top: 1px solid var(--line);
   }
@@ -466,7 +395,7 @@
   #view-analyze:has(#analysis-results:not([hidden])) .an-panes > .moves-pane #analysis-moves {
     flex: 1 1 0;
     min-height: 0;
-    max-height: none;
+    max-height: clamp(120px, calc(var(--study-h) - 300px), 440px);
     overflow-y: auto;
   }
   #view-analyze .moves-grid .mtree-line.is-main {
@@ -489,6 +418,7 @@
     grid-column: 2;
     grid-row: 1;
     min-width: 0;
+    min-height: 0;
     gap: 4px 6px;
     padding-bottom: 10px;
     border-bottom: 1px solid var(--line);
@@ -540,7 +470,8 @@
     flex-direction: column;
     min-height: 0;
     max-height: none;
-    overflow-y: auto;
+    overflow: visible;
+    align-self: start;
     padding-top: 0;
     gap: 6px;
   }
@@ -552,18 +483,15 @@
     block-size: auto;
   }
   #view-analyze #analysis-summary {
+    --report-columns: minmax(44px, 1fr) minmax(0, 3fr) minmax(44px, 1fr);
     display: flex;
     flex-direction: column;
     gap: 5px;
   }
   #view-analyze #analysis-summary::before {
     content: "Report";
-    position: sticky;
-    top: 0;
-    z-index: 2;
     display: block;
     padding: 0 0 3px;
-    background: var(--panel);
     font-size: 13px;
     font-weight: 600;
     color: var(--text);
@@ -574,9 +502,9 @@
   /* Symmetrical accuracy hero row: 87% | Accuracy | 75% */
   #view-analyze #analysis-summary:is([data-open="true"], :not([data-open="true"])) > .rp-summary {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: var(--report-columns);
     align-items: baseline;
-    gap: 8px;
+    column-gap: 6px;
     padding: 0 0 6px;
     border-bottom: 1px solid var(--line);
     cursor: default;
@@ -662,12 +590,22 @@
     block-size: auto;
   }
   #view-analyze #analysis-summary .rp-sym .rp-sym-row {
-    grid-template-columns: minmax(36px, auto) minmax(0, 1fr) minmax(36px, auto);
+    grid-template-columns: var(--report-columns);
+    column-gap: 6px;
     min-height: 23px;
     border-bottom: 1px solid var(--line-soft);
   }
   #view-analyze #analysis-summary .rp-sym .rp-sym-row:last-child { border-bottom: 0; }
   #view-analyze #analysis-summary .rp-sym .rp-sym-row.is-empty-tier { display: none; }
+  #view-analyze #analysis-summary .rp-sym-row > .rp-n {
+    padding-inline: 0;
+  }
+  #view-analyze #analysis-summary .rp-acc {
+    font-variant-numeric: tabular-nums;
+  }
+  #view-analyze #analysis-summary :is(.rp-phases, .rp-grades) {
+    padding-inline: 0;
+  }
   #view-analyze #analysis-summary .rp-phases .rp-sym .rp-n {
     height: 23px;
     line-height: 23px;
@@ -727,17 +665,16 @@
 
   /* Compact laptop tuning (1280x720) — keeps eval-chart >= 64px and zero prose clipping */
   @media (max-height: 760px) {
-    #view-analyze:has(#analysis-results:not([hidden])) #analyze-sidebar > .panel-scroll {
+    #view-analyze #analyze-sidebar > .panel-scroll {
       padding: 10px 14px;
     }
     #view-analyze .coach-card {
+      --coach-title-row: 28px;
       height: 152px;
       min-height: 152px;
-      grid-template-rows: 28px 30px minmax(0, 1fr) auto auto;
+      grid-template-rows: var(--coach-title-row) 30px minmax(0, 1fr) auto auto;
     }
     #view-analyze .an-mh-san { font-size: 24px; }
-    #view-analyze .coach-card > .coach-prose { font-size: 13.5px; line-height: 1.38; }
-    #view-analyze #analysis-eval-card .eval-chart { height: 64px; }
     #view-analyze #analysis-summary .rp-sym .rp-sym-row { min-height: 21px; }
     #view-analyze #analysis-summary .rp-counts.rp-sym .rp-n,
     #view-analyze #analysis-summary .rp-phases .rp-sym .rp-n { height: 21px; line-height: 21px; }

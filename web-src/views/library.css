@@ -4,12 +4,6 @@
    table + 340px preview pane, then Next steps. Real listing data only
    (root_fen + cached health); the prototype Lines / Last trained columns
    and preview move line have no API source and stay out. */
-.workspace:has(> .view.is-active#view-dashboard) {
-  max-width: none;
-  padding: 16px;
-}
-
-
 .lib {
   display: flex;
   flex-direction: column;

@@ -25,7 +25,7 @@ function makeTree() {
   return { byId };
 }
 
-function setup() {
+function setup(moments = [blunder, great]) {
   // The markup arrives as a safe-HTML value; the fake keeps its text.
   let markup = "";
   const bar = {
@@ -38,13 +38,20 @@ function setup() {
   const calls = { show: [], select: [] };
   const review = createReviewBar({
     ...asSlices(appState), 
-    getReport: () => ({ moments: [blunder, great] }),
+    getReport: () => ({ moments }),
     showAnalysisPly: async (ply) => calls.show.push(ply),
     selectAnalysisNode: async (id) => { calls.select.push(id); appState.analysisCurrentNodeId = id; },
   });
   const at = (id, ply) => { appState.analysisCurrentNodeId = id; appState.analysisPly = ply; review.paint(); };
-  const click = (kind) => bar.addEventListener.mock.calls[0][1]({ target: { closest: () => ({ dataset: { review: kind }, disabled: false }) } });
+  const click = (kind) => bar.addEventListener.mock.calls[0][1]({
+    target: { closest: () => ({ dataset: { review: kind }, disabled: false, getAttribute: () => null }) },
+  });
   return { bar, ...asSlices(appState), appState, calls, review, at, click };
+}
+
+function retryVisible(markup) {
+  const tag = markup.match(/<button[^>]*data-review="retry"[^>]*>/)?.[0] || "";
+  return Boolean(tag) && !tag.includes(" hidden");
 }
 
 afterEach(() => { delete globalThis.document; });
@@ -62,25 +69,30 @@ describe("review bar", () => {
     const { bar, at } = setup();
     at("root", 0);
     expect(bar.hidden).toBe(false);
-    expect(bar.innerHTML).toContain("Next: 2.Nf3 Blunder");
-    expect(bar.innerHTML).toContain("1/2");
-    expect(bar.innerHTML).not.toContain('data-review="retry"');
+    expect(bar.innerHTML).toContain('class="cr-control cr-preview g-blunder"');
+    expect(bar.innerHTML).toContain('aria-label="Next key move: 2.Nf3, Blunder"');
+    expect(bar.innerHTML).toContain('<span class="cr-notation">2.Nf3</span><span class="cr-grade" aria-hidden="true">??</span>');
+    expect(bar.innerHTML).not.toContain("Next:");
+    expect(retryVisible(bar.innerHTML)).toBe(false);
   });
 
-  it("offers Retry on a mistake with a better move, not on a great move", () => {
+  it("offers Retry on a mistake with a better move, while the preview names the next key move", () => {
     const { bar, at } = setup();
     at("m3", 3);
-    expect(bar.innerHTML).toContain("2.Nf3 Blunder");
-    expect(bar.innerHTML).toContain('data-review="retry"');
-    expect(bar.innerHTML).not.toContain('data-review="best"');
-    // DOM (and Tab) order matches visual left-to-right layout: label -> Retry -> prev -> next.
+    expect(bar.innerHTML).toContain('<span class="cr-notation">3…Nc6</span><span class="cr-grade" aria-hidden="true">!</span>');
+    expect(bar.innerHTML).toContain('aria-label="Next key move: 3…Nc6, Great"');
+    expect(bar.innerHTML).toContain('aria-label="Previous key move"');
+    expect(bar.innerHTML).toContain('aria-label="Retry 2.Nf3"');
+    expect(retryVisible(bar.innerHTML)).toBe(true);
+    // DOM (and Tab) order matches visual left-to-right layout: previous -> preview -> Retry.
     const idx = (s) => bar.innerHTML.indexOf(s);
-    expect(idx('data-review="go"')).toBeLessThan(idx('data-review="retry"'));
-    expect(idx('data-review="retry"')).toBeLessThan(idx('data-review="prev"'));
     expect(idx('data-review="prev"')).toBeLessThan(idx('data-review="next"'));
+    expect(idx('data-review="next"')).toBeLessThan(idx('data-review="retry"'));
     at("m6", 6);
-    expect(bar.innerHTML).toContain("3…Nc6 Great");
-    expect(bar.innerHTML).not.toContain('data-review="retry"');
+    expect(bar.innerHTML).toContain('<span class="cr-notation">2.Nf3</span><span class="cr-grade" aria-hidden="true">??</span>');
+    expect(bar.innerHTML).toContain('aria-label="First key move: 2.Nf3, Blunder"');
+    expect(bar.innerHTML).toContain('aria-label="Previous key move: 2.Nf3, Blunder"');
+    expect(retryVisible(bar.innerHTML)).toBe(false);
   });
 
   it("Retry goes back one move and asks for a better one; the engine's move is right, another is wrong", async () => {
@@ -88,21 +100,26 @@ describe("review bar", () => {
     at("m3", 3);
     await click("retry");
     expect(calls.select).toEqual(["m2"]);
-    expect(bar.innerHTML).toContain("Find a better move than Nf3");
-    expect(bar.innerHTML).not.toContain('data-review="retry"');
+    expect(bar.innerHTML).toContain('<span class="cr-notation">Try a move</span>');
+    expect(bar.innerHTML).toContain('aria-label="Find a better move than Nf3. Return to 2.Nf3, Blunder"');
+    expect(retryVisible(bar.innerHTML)).toBe(false);
     const m2 = appState.analysisTree.byId.get("m2");
     appState.analysisTree.byId.set("v1", { id: "v1", isMainline: false, isVariation: true, parent: m2, uci: "g1h3",
       fenBefore: "fen-at-m2" });
     at("v1", -1);
-    expect(bar.innerHTML).toContain("Checking that move");
+    expect(bar.innerHTML).toContain('<span class="cr-notation">Checking…</span>');
+    expect(bar.innerHTML).toContain('aria-label="Checking that move…. Return to 2.Nf3, Blunder"');
     expect(bar.innerHTML).not.toContain("Not the best move");
     // The coach grades it worse than the engine's move: the bar repaints on its own.
     noteTriedGrade("fen-at-m2", "g1h3", "mistake");
-    expect(bar.innerHTML).toContain("Not the best move");
-    expect(bar.innerHTML).toContain('data-review="retry"');
+    expect(bar.innerHTML).toContain('<span class="cr-notation">Try again</span>');
+    expect(bar.innerHTML).toContain('aria-label="Not the best move. Return to 2.Nf3, Blunder"');
+    expect(retryVisible(bar.innerHTML)).toBe(true);
     appState.analysisTree.byId.set("v2", { id: "v2", isMainline: false, isVariation: true, parent: m2, uci: "d2d4" });
     at("v2", -1);
-    expect(bar.innerHTML).toContain("d4 is the best move");
+    expect(bar.innerHTML).toContain('<span class="cr-notation">Found</span>');
+    expect(bar.innerHTML).toContain('aria-label="d4 is the best move. Return to 2.Nf3, Blunder"');
+    expect(retryVisible(bar.innerHTML)).toBe(false);
   });
 
   it("a Retry move the engine rates as good as its own counts as found, not as wrong", async () => {
@@ -118,9 +135,9 @@ describe("review bar", () => {
     noteTriedGrade(fenBefore, "c2c4", "best");
     review.paint();
     expect(bar.innerHTML).not.toContain("Not the best move");
-    expect(bar.innerHTML).toContain("is-right");
-    expect(bar.innerHTML).toContain("As good as d4");
-    expect(bar.innerHTML).not.toContain('data-review="retry"');
+    expect(bar.innerHTML).toContain('<span class="cr-notation">Found</span>');
+    expect(bar.innerHTML).toContain('aria-label="As good as d4. Return to 2.Nf3, Blunder"');
+    expect(retryVisible(bar.innerHTML)).toBe(false);
   });
 
   it("a Retry move the coach cannot grade ends on a clear state, not on Checking", async () => {
@@ -131,21 +148,46 @@ describe("review bar", () => {
     appState.analysisTree.byId.set("v1", { id: "v1", isMainline: false, isVariation: true, parent: m2,
       uci: "b1c3", san: "Nc3", fenBefore: "fen-ungraded" });
     at("v1", -1);
-    expect(bar.innerHTML).toContain("Checking that move");
+    expect(bar.innerHTML).toContain('<span class="cr-notation">Checking…</span>');
     // Grading is off or the engine could not read it: the coach says it will not grade.
     noteUngraded({ prevFen: "fen-ungraded", lastUci: "b1c3" });
-    expect(bar.innerHTML).not.toContain("Checking that move");
-    expect(bar.innerHTML).toContain("Could not check that move");
-    expect(bar.innerHTML).toContain('data-review="retry"');
+    expect(bar.innerHTML).not.toContain('<span class="cr-notation">Checking…</span>');
+    expect(bar.innerHTML).toContain('<span class="cr-notation">Not graded</span>');
+    expect(bar.innerHTML).toContain('aria-label="Could not check that move. Return to 2.Nf3, Blunder"');
+    expect(retryVisible(bar.innerHTML)).toBe(true);
     // Grading back on: the real grade replaces it.
     noteTriedGrade("fen-ungraded", "b1c3", "best");
-    expect(bar.innerHTML).toContain("As good as d4");
+    expect(bar.innerHTML).toContain('<span class="cr-notation">Found</span>');
+    expect(bar.innerHTML).toContain('aria-label="As good as d4. Return to 2.Nf3, Blunder"');
   });
 
   it("a known grade is not overwritten by a later ungraded visit", () => {
     noteTriedGrade("fen-known", "a2a3", "mistake");
     noteUngraded({ prevFen: "fen-known", lastUci: "a2a3" });
     expect(triedGrade("fen-known", "a2a3")).toBe("mistake");
+  });
+
+  it("the key-move navigator can wrap without the separate First key CTA", async () => {
+    const { at, click, calls } = setup();
+    at("m6", 6);
+    await click("next");
+    expect(calls.show).toEqual([3]);
+  });
+
+  it("a single key move can be reached before and after it without wrapping to itself", async () => {
+    const { bar, at, click, calls, review } = setup([blunder]);
+    at("root", 0);
+    await click("next");
+    expect(calls.show).toEqual([3]);
+    at("m3", 3);
+    expect(bar.innerHTML).toMatch(/data-review="prev"[^>]*disabled/);
+    expect(bar.innerHTML).toMatch(/class="cr-control cr-preview g-blunder"[^>]*aria-disabled="true"/);
+    review.step("next");
+    at("m6", 6);
+    expect(bar.innerHTML).toContain('aria-label="Back to key move: 2.Nf3, Blunder"');
+    await click("go");
+    await click("prev");
+    expect(calls.show).toEqual([3, 3, 3]);
   });
 
   it("steps from a branch as from the move it replaces", async () => {

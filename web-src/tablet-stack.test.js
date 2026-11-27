@@ -1,8 +1,8 @@
 // Portrait tablets: at 900x1100 the board sat beside a 360px panel at 436px,
 // and the stacked 761-860 tablets capped it at 560px with a third of the width
 // empty. A portrait screen up to 1100px narrower than 5:6 now stacks, and a
-// stacked tablet gives the board the width up to 58vh (Train's Start stays
-// above the fold at 768x1024), with the bar and panel lined up under it. The
+// stacked tablet gives the board the shared width up to 58dvh (Train's Start
+// stays above the fold at 768x1024), with the panel pinned under it. The
 // 860 / 761 split from the phone-on-its-side fix is unchanged.
 import { expect, it } from "vitest";
 import { eagerCss as css } from "./test-styles-source.js";
@@ -41,8 +41,12 @@ it("every study rule uses the same split", () => {
   for (const q of queries) expect([STACKED, WIDE]).toContain(q);
 });
 
-it("a stacked tablet gives the board the width, up to 58vh, with the panel under it", () => {
+it("a stacked tablet gives the board the shared width, up to 58dvh, with the panel under it", () => {
   const block = css.slice(css.indexOf(`@media ${STACKED} {\n  /* Stacked: board over sidebar.`));
   expect(block).toMatch(/\.board-stack \{\s*max-width: min\(55vh, 560px\);/);
-  expect(block).toMatch(/@media \(min-width: 761px\) \{\s*\.study \{ --stack-w: min\(100%, 58vh\); \}\s*\.board-area,\s*\.study > \.sidebar \{ width: var\(--stack-w\); justify-self: center; \}\s*\.board-stack \{ max-width: none; \}/);
+  expect(block).toMatch(/@media \(min-width: 761px\) \{\s*\.study \{\s*--stack-w: min\(100%, 58dvh, calc\(var\(--study-h\) - 50px - 16px - 200px\)\);\s*grid-template-rows: auto minmax\(0, 1fr\);\s*height: var\(--study-h\);/);
+  expect(block).toMatch(/\.board-area \{ width: var\(--stack-w\); justify-self: center; \}/);
+  expect(block).toMatch(/\.study > \.sidebar \{\s*width: 100%;\s*min-height: 0;\s*height: auto;\s*max-height: none;\s*overflow: hidden;\s*align-self: stretch;/);
+  expect(block).toMatch(/#view-build #build-sidebar > \.panel-body,\s*#view-train \.train-sidebar > \.panel-scroll \{[^}]*overflow-y: auto;/);
+  expect(block).toMatch(/#view-build \.tree-wrap \{ max-height: none; \}/);
 });

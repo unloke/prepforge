@@ -1,12 +1,12 @@
 import { appState, settingsState, boards } from "./state.js";
 import { hooks } from "./hooks.js";
-import { PREFS_KEY, applyAccent, applyBoardTheme, applyTheme, readStoredAccent, readStoredPrefs, readStoredTheme, setAccent, storeTheme } from "../theme.js";
+import { DEFAULT_ACCENT, DEFAULT_BOARD_THEME, PREFS_KEY, applyAccent, applyBoardTheme, applyTheme, readStoredAccent, readStoredPrefs, readStoredTheme, setAccent, storeTheme } from "../theme.js";
 import { fetchLichessProfile } from "../lichess-profile.js";
 
 const DEFAULT_PREFS = {
   theme: "system",
-  accent: "amber",
-  boardTheme: "wood",
+  accent: DEFAULT_ACCENT,
+  boardTheme: DEFAULT_BOARD_THEME,
   coordinates: true,
   lastMovePulse: true,
   flipAnim: true,

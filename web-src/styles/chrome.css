@@ -341,10 +341,6 @@
 /* Settings — a section strip over the cards. The strip is here; cards, rows,
    sliders, status pills and connection rows live in views/settings.css (lazy
    chunk, imported by the lazy settings view module). */
-.workspace:has(> .view.is-active#view-settings) {
-  max-width: none;
-  padding: 16px;
-}
 
 
 /* Capped so a row's label and value stay a glance apart on a wide window,
@@ -368,6 +364,11 @@
 }
 
 
+@media (min-width: 761px) {
+  html { scrollbar-gutter: stable; }
+}
+
+
 /* Workspace + views */
 
 /* Boot hold: shown while /api/auth/me is in flight, so nothing auth-dependent
@@ -385,8 +386,8 @@
 
 
 .workspace {
-  padding: 18px;
-  max-width: 1280px;
+  padding: 18px 16px;
+  max-width: none;
   margin: 0 auto;
   width: 100%;
   /* Fill the space the topbar leaves. Short views (Dashboard/Settings) sit at
@@ -433,17 +434,10 @@
 }
 
 
-/* A view switch is a fade plus a few px of travel, never a layout
-   change: opacity and transform only. */
+/* A view switch is a fade, never a layout change. */
 @keyframes view-enter {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 
@@ -675,26 +669,12 @@
 }
 
 
-/* Desktop workspaces: the board and the task pane share the available width.
-   One authoritative desktop block per workspace. Analyze / Build / Train share
-   the study shell; Games, Scout and Teams each own one layout. Base (mobile)
-   rules above stay untouched; values here are the effective desktop sizes. */
-@media (min-width: 960px) {
-  .workspace { max-width: 1400px; }
-
-}
-
 /* ===========================================================================
    Shell without a top bar (every width)
    The left rail (bottom tab bar + More sheet on phones) is the only chrome:
    the current page is the active nav item, page actions live inside each
    page's own header, and Search / Theme / Account sit in the rail foot.
    =========================================================================== */
-@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
-  .workspace { padding-top: 18px; }
-}
-
-
 /* Rail foot: Search and Theme read as rail rows (icon, label on expand) on
    the shared quiet button (.btn.ghost). */
 .rail-btn {

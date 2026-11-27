@@ -6,18 +6,16 @@ import { localBoardAfterMove, localBoardInfo } from "../chess-local.js";
 import { openPopover } from "../core/dialog.js";
 import { playSound } from "../core/sound.js";
 
-// Piece artwork sets. Each value is the inner SVG markup for a 0 0 45 45
-// viewBox; fill/stroke come from CSS (.piece). "berlin" is a cleaner,
-// traditional Staunton silhouette (the default); "classic" is the original
-// minimalist set, kept as an alternative.
+// Artwork uses a shared 0 0 45 45 viewBox, with fill and stroke in board.css.
+// "berlin" is the default Staunton set; "classic" is the minimalist alternative.
 export const PIECE_SETS = {
   berlin: {
-    p: html`<circle cx="22.5" cy="13.5" r="4.5"></circle><path d="M19 20.2h7l1.4 8.2h-9.8z"></path><path d="M15.5 31.5h14c1.8 1.4 3 3.4 3.4 6H12.1c.4-2.6 1.6-4.6 3.4-6z"></path><path d="M10.5 38h24v3H10.5z"></path>`,
-    n: html`<path d="M13 38h23v3H11z"></path><path d="M15.5 34c1.1-6.8 4.9-9.4 8.2-13.1-3 .4-6.5-.5-8.9-2.4 1-6.4 6.6-10.4 13-9 5.7 1.3 9 6.1 8.4 12.4L34 34z"></path><path d="M18.1 15.6l3.9-5.3 1.2 5.5z" class="piece-cut"></path><circle cx="28.2" cy="15.1" r="1.25" class="piece-cut"></circle><path d="M22.4 20.5c2.4 1.1 5.1 1 7.5-.2" class="piece-line"></path>`,
-    b: html`<circle cx="22.5" cy="8.7" r="2.5"></circle><path d="M22.5 12c-4 3.7-7.1 8.8-7.1 14.1 0 3.8 3 6.2 7.1 6.2s7.1-2.4 7.1-6.2c0-5.3-3.1-10.4-7.1-14.1z"></path><path d="M26.7 16.2l-8.4 9.4" class="piece-line"></path><path d="M14 34h17c1.1 1 1.8 2.1 2 3.6H12c.2-1.5.9-2.6 2-3.6z"></path><path d="M10.8 38.2h23.4v2.8H10.8z"></path>`,
-    r: html`<path d="M12.5 9.5h5v3.6h3.4V9.5h3.2v3.6h3.4V9.5h5v8.6H29v11.3l3.2 3.3v3H12.8v-3l3.2-3.3V18.1h-3.5z"></path><path d="M16.5 21h12M16.3 31h12.4" class="piece-line"></path><path d="M10.5 38h24v3H10.5z"></path>`,
-    q: html`<circle cx="9.5" cy="13.2" r="2.2"></circle><circle cx="16.8" cy="9.5" r="2.2"></circle><circle cx="22.5" cy="8" r="2.4"></circle><circle cx="28.2" cy="9.5" r="2.2"></circle><circle cx="35.5" cy="13.2" r="2.2"></circle><path d="M10.2 16.2l4.3 15.5h16l4.3-15.5-6.6 8-2.8-11.2-2.9 12.2-2.9-12.2-2.8 11.2z"></path><path d="M13.5 32.2h18c.9.8 1.4 1.8 1.5 3H12c.1-1.2.6-2.2 1.5-3z"></path><path d="M10.5 38h24v3H10.5z"></path>`,
-    k: html`<path d="M21.3 5.5h2.4v2.3h2.3v2.4h-2.3v2.5h-2.4v-2.5H19V7.8h2.3z"></path><path d="M17.8 14.5h9.4l1.4 6.7c2.2 1.7 3.6 4.2 3.6 7.1 0 2.3-1 4.1-2.8 5.2H15.6c-1.8-1.1-2.8-2.9-2.8-5.2 0-2.9 1.4-5.4 3.6-7.1z"></path><path d="M17.3 20.8h10.4M16.2 33.8h12.6" class="piece-line"></path><path d="M10.5 38h24v3H10.5z"></path>`,
+    p: html`<path d="M22.5 10a5.6 5.6 0 0 1 2.9 10.4c.1 4.3 1.6 7.9 4.8 11.1h1c2 1.6 3.1 4.1 3.3 7.5h-24c.2-3.4 1.3-5.9 3.3-7.5h1c3.2-3.2 4.7-6.8 4.8-11.1A5.6 5.6 0 0 1 22.5 10Z"></path><path class="piece-line" d="M14.4 32.4h16.2"></path>`,
+    n: html`<path d="M11 39c.2-3.4 1.5-5.7 4-7.5h1c.8-4.7 4.9-7.1 7.8-10.7l-3.6 1.1-4.7 4.1-6.1-3.2 4-7.5 4.3-3.5-.3-5.4 5.4 3.5 3.1-1.6c5.9 1.2 10.4 7.1 10.4 14.2 0 3.1-.7 5.8-1.9 9h.6c2 1.7 3.1 4.2 3.3 7.5Z"></path><path class="piece-line" d="M15.5 32.4h19M27 13.5c4.5 2 6.5 6.5 5.2 12.9"></path><circle class="piece-cut" cx="19.2" cy="15.9" r="1.1"></circle>`,
+    b: html`<path d="M22.5 9.8c-4.7 4.1-8.4 9.2-8.4 14.6 0 3.2 2.4 5.1 5.4 5.6l-2 1.5h-2.4c-2.4 1.5-3.6 4-3.8 7.5h22.4c-.2-3.5-1.4-6-3.8-7.5h-2.4l-2-1.5c3-.5 5.4-2.4 5.4-5.6 0-5.4-3.7-10.5-8.4-14.6Z"></path><circle cx="22.5" cy="7.7" r="2.4"></circle><path class="piece-line" d="m26.7 15.9-6.4 7M15.3 32.4h14.4"></path>`,
+    r: html`<path d="M10.5 9.5h5.8v4.3h3.4V9.5h5.6v4.3h3.4V9.5h5.8v8.3l-4.3 4v9.7h.7c2 1.6 3.1 4.1 3.3 7.5H10.8c.2-3.4 1.3-5.9 3.3-7.5h.7v-9.7l-4.3-4Z"></path><path class="piece-line" d="M15.1 21.9h14.8M14.6 32.4h15.8"></path>`,
+    q: html`<path d="m8.8 13.3 7.1 8.8 1.6-10.8 5 8.6 5-8.6 1.6 10.8 7.1-8.8-6.1 14.3v3.9h1.1c2.2 1.6 3.5 4.1 3.7 7.5H10.1c.2-3.4 1.5-5.9 3.7-7.5h1.1v-3.9Z"></path><circle cx="8.2" cy="12.3" r="1.8"></circle><circle cx="17.4" cy="10.2" r="1.8"></circle><circle cx="27.6" cy="10.2" r="1.8"></circle><circle cx="36.8" cy="12.3" r="1.8"></circle><path class="piece-line" d="M15.5 27.5h14M14.8 32.4h15.4"></path>`,
+    k: html`<path d="M21.1 4.8h2.8v3.4h3.4V11h-3.4v4.7h-2.8V11h-3.4V8.2h3.4Z"></path><path d="M22.5 17.6c3-4 8.7-4.7 11.4-1.1 2.7 3.5.6 8.1-2.5 11.2l-2 3.8h1.4c2.2 1.6 3.5 4.1 3.7 7.5h-24c.2-3.4 1.5-5.9 3.7-7.5h1.4l-2-3.8c-3.1-3.1-5.2-7.7-2.5-11.2 2.7-3.6 8.4-2.9 11.4 1.1Z"></path><path class="piece-line" d="M22.5 18.2v7.3M14.2 27.4h16.6m-15 5h13.4"></path>`,
   },
   classic: {
     p: html`<circle cx="22.5" cy="13" r="6"></circle><path d="M16 22h13l3 11H13z"></path><path d="M12 36h21v4H12z"></path>`,

@@ -1,7 +1,11 @@
-import { html } from "../html.js";
+import { html, raw } from "../html.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { reviewState } from "./analyze-report.js";
 import { onTriedGrade, triedGrade, UNGRADED } from "../analyze-tried-grade.js";
+
+function nextMoment(moments, state) {
+  return state.next ?? (moments.length > 1 ? moments[0] : null);
+}
 
 // The review bar under the coach (Chess.com's Next and Retry): step to the
 // previous or next key moment of the report, and at a mistake try to find the
@@ -13,7 +17,7 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
   let retry = null;
   let pgnDirty = false;
   let lastReport = null;
-  const STEP_ICON = { prev: "M15 5l-7 7 7 7", next: "M9 5l7 7-7 7" };
+  const REVIEW_ICON = { prev: "M15 5l-7 7 7 7", next: "M9 5l7 7-7 7", retry: "M4 11a8 8 0 1 1 2 6M4 5v6h6", go: "M7 17 17 7M7 7h10v10" };
   const GRADE_WORD = { brilliant: "Brilliant", great: "Great", mistake: "Mistake", blunder: "Blunder" };
   // The coach's grades that mean a Retry move holds the engine's evaluation: "best"
   // covers any move within the classifier's excellent loss of the top one.
@@ -112,35 +116,51 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
     const m = state.focus;
     if (!state.current) retry = null;
     const tried = state.current ? triedState(m) : null;
-    const step = (kind) => html`<button type="button" class="cr-step" data-review="${kind}" aria-label="${kind === "prev" ? "Previous key moment" : "Next key moment"}" title="${kind === "prev" ? "Previous key moment (Shift+←)" : "Next key moment (Shift+→)"}"${state[kind] ? "" : " disabled"}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${STEP_ICON[kind]}"/></svg></button>`;
-    const kind = m.grade ? GRADE_WORD[m.grade] : "Left prep";
-    const glyph = m.grade ? classBadgeSymbol(m.move?.classification) : "";
-    const words = {
+    const upcoming = nextMoment(moments, state);
+    const returnToLast = !upcoming && !state.current;
+    const target = tried ? m : upcoming ?? m;
+    const grade = (moment) => GRADE_WORD[moment.grade] || "Left prep";
+    const describe = (moment) => `${moment.label}, ${grade(moment)}`;
+    const icon = (name) => html`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${REVIEW_ICON[name]}"/></svg>`;
+    const status = {
       try: `Find a better move than ${m.move.san}`,
       right: `${m.best?.san} is the best move`,
       also: `As good as ${m.best?.san}`,
       checking: "Checking that move…",
       unchecked: "Could not check that move",
       wrong: "Not the best move",
-    }[tried] || `${state.current ? "" : m.ply > ply ? "Next: " : "Back to "}${m.label} ${kind}`;
-    const canFix = m.loss != null && m.best && (state.current || tried);
+    }[tried];
+    const short = { try: "Try a move", right: "Found", also: "Found", checking: "Checking…", unchecked: "Not graded", wrong: "Try again" }[tried];
     const found = tried === "right" || tried === "also";
-    const actions = canFix && tried !== "try" && !found
-      ? html`<button type="button" class="btn sm" data-review="retry" title="Find the better move yourself">Retry</button>`
-      : "";
+    const canRetry = Boolean(m.loss != null && m.best && state.current && tried !== "try" && !found);
+    const prevLabel = state.prev ? `Previous key move: ${describe(state.prev)}` : "Previous key move";
+    const nextLabel = tried ? `${status}. Return to ${describe(m)}`
+      : upcoming ? `${state.next ? "Next" : "First"} key move: ${describe(target)}`
+      : returnToLast ? `Back to key move: ${describe(target)}`
+      : `Current key move: ${describe(target)}`;
+    const nextTitle = !tried && upcoming ? `${nextLabel} (Shift+→)` : nextLabel;
+    const glyph = target.grade ? classBadgeSymbol(target.move?.classification) : "◇";
+    const action = tried || returnToLast ? "go" : "next";
+    const focused = bar.contains?.(document.activeElement) ? document.activeElement.dataset.review : null;
     bar.hidden = false;
     bar.dataset.ply = String(m.ply);
-    bar.dataset.onMoment = state.current && !tried ? "true" : "false";
-    // On the moment itself the move is the title: "9…b5??" then its grade.
-    const label = tried ? html`<span class="cr-text">${words}</span>`
-      : state.current ? html`<span class="cr-move">${m.label}<i aria-hidden="true">${glyph}</i></span><span class="cr-text">${kind}</span>`
-        : html`<i class="rp-glyph" aria-hidden="true">${glyph}</i><span class="cr-text">${words}</span>`;
-    bar.innerHTML = html`<button type="button" class="cr-label g-${m.grade || "none"}${found ? " is-right" : tried === "wrong" ? " is-wrong" : ""}" data-review="go" title="${words}">${label}<span class="cr-count">${state.index + 1}/${state.count}</span></button>${actions}${step("prev")}${step("next")}`;
+    bar.innerHTML = html`
+      <button type="button" class="cr-control cr-prev" data-review="prev" aria-label="${prevLabel}" title="${prevLabel} (Shift+←)"${state.prev ? "" : " disabled"}>${icon("prev")}</button>
+      <button type="button" class="cr-control cr-preview g-${target.grade || "none"}" data-review="${action}" aria-label="${nextLabel}" title="${nextTitle}"${upcoming || tried || returnToLast ? "" : raw(' aria-disabled="true"')}>
+        <span class="cr-notation">${short || target.label}</span>${!tried && glyph ? html`<span class="cr-grade" aria-hidden="true">${glyph}</span>` : ""}${icon(action === "go" ? "go" : "next")}
+      </button>
+      <button type="button" class="cr-control cr-retry" data-review="retry" aria-label="Retry ${m.label}" title="Retry: find a better move than ${m.move.san}"${canRetry ? "" : " hidden"}>${icon("retry")}</button>`;
+    if (focused) {
+      const control = bar.querySelector(`[data-review="${focused}"]:not([disabled],[hidden])`);
+      (control || bar.querySelector(".cr-preview"))?.focus({ preventScroll: true });
+    }
     if (!bar.dataset.bound) {
       bar.dataset.bound = "1";
       bar.addEventListener("click", (event) => {
         const btn = event.target.closest?.("[data-review]");
-        if (btn && !btn.disabled) void reviewAction(btn.dataset.review, Number(bar.dataset.ply)).catch(() => {});
+        if (btn && !btn.disabled && btn.getAttribute?.("aria-disabled") !== "true") {
+          void reviewAction(btn.dataset.review, Number(bar.dataset.ply)).catch(() => {});
+        }
       });
     }
   }
@@ -167,7 +187,9 @@ export function createReviewBar({ analysisState, getReport, showAnalysisPly, sel
 
   // `kind` is "next" or "prev".
   function reviewStep(kind) {
-    const target = reviewState(getReport()?.moments, reviewPly())[kind];
+    const moments = getReport()?.moments || [];
+    const state = reviewState(moments, reviewPly());
+    const target = kind === "next" ? nextMoment(moments, state) : state[kind];
     if (target) showAnalysisPly(target.ply);
   }
 

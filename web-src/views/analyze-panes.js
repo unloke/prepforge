@@ -2,24 +2,22 @@
 //
 // The coach, the evaluation (graph and win meter), the engine's lines and the
 // game report own the screen around the board; the score sheet and the game
-// sources are secondary. A wide screen shows every pillar at once, with the
-// evaluation under the board on the game's time axis. A short or narrow panel
-// keeps the coach and the evaluation fixed and puts the engine, the report and
-// the moves behind tabs; a phone adds the coach to the tabs, under a pinned
-// board. The layout is CSS (analyze-chart.css); this module owns the two things
-// CSS cannot do: which tab is open, and moving the evaluation card next to the
-// board or into the panel (one element, so its listeners and observers stay),
+// sources are secondary. The evaluation joins the panel's fixed column except
+// on a portrait phone, where it sits above the pinned board. A short or narrow
+// panel keeps the coach and the evaluation fixed and puts the engine, the
+// report and the moves behind tabs; a phone adds the coach to the tabs. The
+// layout is CSS (analyze-chart.css); this module owns the two things
+// CSS cannot do: which tab is open, and moving the evaluation card above the
+// phone board or into the panel (one element, so its listeners and observers stay),
 // and the game's name between the thumb bar and the phone's top strip.
 
 export const PANES = ["coach", "engine", "report", "moves"];
 const KEY = "prepforge.analyze.pane";
 
-// The same bands analyze-chart.css lays out. The evaluation sits under the board
-// on a stacked tablet and a phone; beside the board it joins the panel's column.
+// The same bands analyze-chart.css lays out. The evaluation sits above the
+// board on a portrait phone; otherwise it joins the panel's column.
 export const LAYOUT_QUERIES = {
-  phone: "(max-width: 760px)",
-  stacked:
-    "(min-width: 761px) and (max-width: 860px) and (orientation: portrait), (min-width: 761px) and (max-width: 860px) and (min-height: 521px), (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6)",
+  phone: "(max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px)",
   desktop: "(min-width: 1180px)",
 };
 
@@ -95,15 +93,15 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
     if (next) select(next.dataset.pane, { focus: true });
   });
 
-  // The evaluation card: under the board, or in the panel's fixed column.
+  // The evaluation card: above the board on a phone, or in the panel's fixed column.
   const card = document.getElementById("analysis-eval-card");
   const boardArea = view.querySelector(".board-area");
   const coach = document.getElementById("analysis-explain");
   function placeEval() {
     if (!card || !boardArea || !coach) return;
-    const underBoard = media.phone.matches || media.stacked.matches;
-    const home = underBoard ? boardArea : coach.parentElement;
-    const after = underBoard ? boardArea.querySelector(".board-bar") : coach;
+    const onPhone = media.phone.matches;
+    const home = onPhone ? boardArea : coach.parentElement;
+    const after = onPhone ? boardArea.querySelector(".board-bar") : coach;
     if (!after) return;
     if (card.parentElement === home && card.previousElementSibling === after) return;
     after.after(card);

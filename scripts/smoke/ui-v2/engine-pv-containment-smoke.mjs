@@ -282,7 +282,12 @@ for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.nam
     const last = rows[rows.length - 1];
     window.scrollTo(0, document.documentElement.scrollHeight);
     for (const el of document.querySelectorAll("#view-build *")) {
+      if (el.id === "build-sidebar") continue;
       if (/auto|scroll/.test(getComputedStyle(el).overflowY)) el.scrollTop = el.scrollHeight;
+    }
+    const sidebar = document.getElementById("build-sidebar");
+    if (last && getComputedStyle(sidebar).overflowY === "auto") {
+      sidebar.scrollTop += last.getBoundingClientRect().bottom - sidebar.getBoundingClientRect().bottom;
     }
     const b = last?.getBoundingClientRect();
     return { worst: window.__pvWorst, frames: window.__pvFrames, lastVisible: !!b && b.top >= -1 && b.bottom <= innerHeight + 1, rows: rows.length };
@@ -299,12 +304,11 @@ for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.nam
   check(w.escapedPanel === 0, `${vp.name}: a PV row must stay inside its panel (worst ${w.escapedPanel})`);
   check(w.drawerX <= 0, `${vp.name}: the Explorer drawer must not scroll sideways (worst ${w.drawerX}px)`);
   check(w.bodyX <= 1, `${vp.name}: the inspector body must not scroll sideways (worst ${w.bodyX}px)`);
-  // Above the stacking breakpoint the panel owns the screen and the inspector is the
-  // intended internal scroll area, so the page itself must not move. Below it the page
-  // is the documented scroll owner (styles.css); the reach check above covers that the
-  // extra height is scrollable content, not content hidden under a clip.
-  if (vp.width > 860) {
+  // Desktop and tablet panels scroll below or beside a pinned board.
+  if (!phone) {
     check(w.docY <= 0, `${vp.name}: the page must not scroll vertically while the lines stream (worst ${w.docY}px)`);
+  }
+  if (vp.width > 860) {
     // Above the breakpoint the dock is fitted to its drawers, so the inspector must
     // not grow an internal scrollbar for rows that arrived after the last paint:
     // that is the transient this guards (measured 55px before the fix).

@@ -124,7 +124,7 @@ describe("visual system tokens", () => {
   // inspector failed them for having no h1 at 1440.
   it("names every page on a wide screen, not just the ones with a local rule", () => {
     const desktop = css.match(
-      /@media \(min-width: 761px\) \{([^}]*\{[^}]*\}[^}]*)*?\n\}/,
+      /@media \(min-width: 761px\) \{\s*\.workspace \.page-head[\s\S]*?\n\}/,
     )?.[0] || "";
     const head = /\.workspace \.page-head \{([^}]+)\}/.exec(desktop)?.[1] || "";
     expect(head).toMatch(/display:\s*flex/);
@@ -363,8 +363,8 @@ describe("semantic text colors meet WCAG AA", () => {
     }
     return out;
   }
-  const wood = tokensOf(css.match(/:root,\s*\.board-color-swatch\[data-board="wood"\]\s*\{([^}]+)\}/)?.[1] ?? "");
-  const light = { ...tokensOf(css.slice(0, darkStart)), ...wood };
+  const slate = tokensOf(css.match(/:root,\s*\.board-color-swatch\[data-board="slate"\]\s*\{([^}]+)\}/)?.[1] ?? "");
+  const light = { ...tokensOf(css.slice(0, darkStart)), ...slate };
   // Only the default board palette applies without a board preference.
   const dark = tokensOf(css.slice(darkStart, css.indexOf("/* ---- Board colour themes")));
 
@@ -389,7 +389,7 @@ describe("semantic text colors meet WCAG AA", () => {
         expect(bg, `${themeName} --square-${square} must resolve to a hex token`).toBeTruthy();
         expect(contrast(fg, bg), `${themeName} coords on ${square} squares`).toBeGreaterThanOrEqual(4.5);
       }
-      for (const board of ["slate", "classic", "green", "walnut"]) {
+      for (const board of ["wood", "classic", "green", "walnut"]) {
         const bTokens = tokensOf(css.match(new RegExp(`:root\\[data-board="${board}"\\][^{]*\\{([^}]+)\\}`))?.[1] ?? "");
         const merged = { ...resolved, ...bTokens };
         for (const square of ["light", "dark"]) {
@@ -476,9 +476,9 @@ describe("accent presets meet WCAG AA in both themes", () => {
   }
 
   const presets = [...css.matchAll(/:root(\[data-accent="([a-z]+)"\])/g)].map((m) => m[2]);
-  // Amber is the default and declares no override: it is the light/dark base
+  // Blue is the default and declares no override: it is the light/dark base
   // tokens, checked by the guards above.
-  expect([...new Set(presets)]).toEqual(["blue", "orange"]);
+  expect([...new Set(presets)]).toEqual(["amber", "orange"]);
 
   for (const name of [...new Set(presets)]) {
     for (const [theme, selector] of [

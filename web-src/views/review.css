@@ -6,12 +6,6 @@
    the triage grid (ledger + focus card; see views/replay.css). Scout reuses the
    toolbar / source tray primitives.
    =========================================================================== */
-.workspace:has(> .view.is-active#view-replay) {
-  max-width: none;
-  padding: 16px;
-}
-
-
 .review {
   display: flex;
   flex-direction: column;

@@ -2,7 +2,7 @@
 // Every choice applies at once; the previews are the real controls on the page
 // (the accent sample uses the primary button, the board swatch is a 2x2 board).
 
-import { ACCENT_MODES, BOARD_MODES } from "../theme.js";
+import { ACCENT_MODES, BOARD_MODES, DEFAULT_BOARD_THEME } from "../theme.js";
 
 const ACCENT_LABELS = { amber: "Amber", blue: "Blue", orange: "Orange" };
 const BOARD_LABELS = { wood: "Wood", slate: "Slate", classic: "Classic", green: "Green", walnut: "Walnut" };
@@ -71,7 +71,7 @@ export function createAppearanceSection({ pref, setPref }) {
     const container = document.getElementById("settings-board-colors");
     if (!container) return;
 
-    const current = pref("boardTheme") || "wood";
+    const current = pref("boardTheme") || DEFAULT_BOARD_THEME;
     container.innerHTML = "";
 
     BOARD_MODES.forEach((board) => {
