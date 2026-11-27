@@ -18,40 +18,53 @@
   .an-board-frame {
     display: flex;
     align-items: stretch;
-    gap: 8px;
+    gap: 6px;
   }
   .an-board-frame > .board-stack {
     width: var(--board-size);
     flex: none;
   }
   .eval-rail {
+    position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 6px;
     flex: none;
-    width: 32px;
+    width: 22px;
   }
   .eval-rail[hidden] { display: none; }
   .eval-rail-val {
-    flex: none;
-    min-height: 16px;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 16px;
-    color: var(--text);
+    position: absolute;
+    inset-inline: 0;
+    bottom: 5px;
+    z-index: 2;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    color: #1c1915;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.04em;
     white-space: nowrap;
+    pointer-events: none;
+  }
+  .eval-rail[data-lead="black"] .eval-rail-val,
+  .eval-rail[data-flipped="true"][data-lead="white"] .eval-rail-val {
+    top: 5px;
+    bottom: auto;
+  }
+  .eval-rail[data-lead="black"] .eval-rail-val { color: #f0ece4; }
+  .eval-rail[data-flipped="true"][data-lead="black"] .eval-rail-val {
+    top: auto;
+    bottom: 5px;
   }
   .eval-rail-bar {
     position: relative;
     flex: 1 1 0;
-    width: 8px;
-    border-radius: 999px;
+    width: 100%;
+    border-radius: 4px;
     overflow: hidden;
     background: var(--eval-side-black);
-    box-shadow: inset 0 0 0 1px var(--line);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
   }
   .eval-rail-bar::after {
     content: "";
@@ -61,7 +74,7 @@
     top: 50%;
     height: 1px;
     background: var(--accent);
-    opacity: 0.45;
+    opacity: 0.5;
     pointer-events: none;
   }
   .eval-rail-fill {
@@ -80,7 +93,7 @@
     max-width: none;
   }
   #view-build .board-area:has(#build-eval-rail:not([hidden])) .board-bar {
-    padding-left: 40px;
+    padding-left: 28px;
     box-sizing: border-box;
   }
 }

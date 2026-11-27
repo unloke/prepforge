@@ -138,22 +138,40 @@ export function createAnalyzePlates({ getReport, onFlip }) {
     host.innerHTML = html`<span class="an-mh-san">${moveNum}${sep}${node.san}</span>${gradeWord ? html`<span class="an-mh-grade g-${gradeKey}"><i aria-hidden="true">${glyph}</i> ${gradeWord}</span>` : ""}`;
   }
 
+  function compactRailEval(text) {
+    if (!text) return "0.0";
+    const s = String(text).trim();
+    const mate = /^#[-−]?(\d+)$/.exec(s);
+    if (mate) return `M${mate[1]}`;
+    if (/^[+−-]?M$/i.test(s)) return "M";
+    if (s === "1-0" || s === "0-1") return s;
+    const num = Number.parseFloat(s.replace("−", "-"));
+    if (!Number.isFinite(num)) return s.replace(/^[+−-]/, "").replace(/(\.\d)\d$/, "$1");
+    const abs = Math.abs(num);
+    if (abs < 0.05) return "0.0";
+    return abs >= 10 ? String(Math.round(abs)) : abs.toFixed(1);
+  }
+
   function paintVerticalEval({ text, side, pct, show }) {
     const rail = typeof document !== "undefined" && document.getElementById("analysis-eval-rail");
     const vBar = typeof document !== "undefined" && document.getElementById("analysis-eval-v");
     const vVal = typeof document !== "undefined" && document.getElementById("analysis-eval-v-val");
     if (!rail || !vBar) return;
     orientation = readOrientation();
+    const flipped = orientation === "black" ? "true" : "false";
+    const lead = Number.isFinite(pct) ? (pct < 50 ? "black" : "white") : (side === "black" ? "black" : "white");
     rail.hidden = !show;
-    vBar.dataset.flipped = orientation === "black" ? "true" : "false";
+    rail.dataset.flipped = flipped;
+    rail.dataset.lead = lead;
+    vBar.dataset.flipped = flipped;
     vBar.dataset.side = side;
     const vFill = document.getElementById("analysis-eval-v-fill");
     if (vFill) {
-      const share = Number.isFinite(pct) ? Math.max(0.04, Math.min(0.96, pct / 100)) : 0.5;
+      const share = Number.isFinite(pct) ? Math.max(0.05, Math.min(0.95, pct / 100)) : 0.5;
       vFill.style.transform = `scaleY(${share.toFixed(4)})`;
     }
     if (vVal) {
-      const compact = text ? text.replace(/(\.\d)\d$/, "$1") : "0.0";
+      const compact = compactRailEval(text);
       if (vVal.textContent !== compact) vVal.textContent = compact;
     }
   }

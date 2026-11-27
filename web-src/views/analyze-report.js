@@ -415,6 +415,10 @@ export function paintFindGreat(analysis) {
       return;
     }
     setPref("maiaAnalysis", true);
-    document.getElementById("run-analysis")?.click();
+    const runBtn = document.getElementById("run-analysis");
+    if (runBtn) {
+      if (runBtn.dataset) runBtn.dataset.forceReview = "1";
+      runBtn.click();
+    }
   });
 }

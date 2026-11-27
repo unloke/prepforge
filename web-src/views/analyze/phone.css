@@ -703,19 +703,22 @@
   #view-analyze .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { order: 4; }
   #view-analyze[data-pane="coach"] #analysis-explain,
   #view-analyze .an-panes > .an-pane:not(.moves-pane) { flex: 1 1 0; min-height: 72px; overflow-y: auto; }
-  #view-analyze[data-pane="coach"] #analysis-explain { gap: 6px; padding: 4px var(--phone-gutter); }
+  #view-analyze[data-pane="coach"] #analysis-explain { gap: 6px; padding: 11px var(--phone-gutter) 4px; }
 
-  /* Coach: the moment on a 36px line, the verdict as plain text (no card), the
-     human picks as 26px chips. */
-  #analysis-explain > .coach-review { height: 36px; }
-  #analysis-explain .cr-label { height: 36px; line-height: 36px; }
-  #analysis-explain .coach-review > .cr-label { gap: 8px; font-size: 14px; font-weight: 500; }
-  #analysis-explain .cr-label .rp-glyph { width: 20px; height: 20px; font-size: 11px; }
-  #analysis-explain .coach-review > .btn { height: 28px; min-height: 0; margin-right: 6px; padding: 0 10px; border-radius: var(--radius); font-size: 13px; font-weight: 500; }
-  #analysis-explain .cr-step { position: relative; width: 40px; height: 28px; }
-  #analysis-explain .coach-review > .cr-step { width: 40px; border-radius: var(--radius) 2px 2px var(--radius); }
-  #analysis-explain .coach-review > .cr-step ~ .cr-step { border-radius: 2px var(--radius) var(--radius) 2px; }
-  #analysis-explain .cr-step::after { content: ""; position: absolute; inset: -8px 0; }
+  /* Coach: the moment on a 36px line clear of the tab hit band, paired stepper
+     on the right (>=44px thumb targets via ::after), verdict in plain ink. */
+  #analysis-explain > .coach-review { height: 36px; gap: 0; }
+  #analysis-explain .coach-review > .cr-label { position: relative; z-index: 1; order: 0; flex: 0 1 auto; margin-right: auto; height: 30px; line-height: 30px; padding: 0 10px; border-radius: 999px; background: var(--surface-3); overflow: visible; gap: 6px; font-size: 13px; font-weight: 500; }
+  #analysis-explain .coach-review > .cr-label::after { content: ""; position: absolute; inset: -7px 0 -8px; }
+  #analysis-explain .coach-review[data-on-moment="true"] > .cr-label > .cr-move { display: none; }
+  #analysis-explain .cr-label .cr-count { display: inline; font-size: 11.5px; }
+  #analysis-explain .cr-label .rp-glyph { width: 18px; height: 18px; font-size: 11px; }
+  #analysis-explain .coach-review > .btn { position: relative; z-index: 1; order: 0; height: 28px; min-height: 0; margin: 0 0 0 6px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 500; }
+  #analysis-explain .coach-review > .btn::after { content: ""; position: absolute; inset: -8px -3px -9px; }
+  #analysis-explain .coach-review > .cr-step { position: relative; z-index: 1; order: 0; width: 40px; height: 28px; background: var(--surface-3); border: 1px solid var(--line); }
+  #analysis-explain .coach-review > .cr-step[data-review="prev"] { margin-left: 6px; border-radius: 8px 0 0 8px; border-right: 0; }
+  #analysis-explain .coach-review > .cr-step[data-review="next"] { margin-left: 0; border-radius: 0 8px 8px 0; }
+  #analysis-explain .coach-review > .cr-step::after { content: ""; position: absolute; inset: -9px 0 -10px; }
   #analysis-explain .coach-prose { flex: none; padding: 6px 10px 6px 12px; border-left-width: 3px; border-radius: 0 8px 8px 0; background: var(--panel); color: var(--text); font-size: 15px; line-height: 1.48; overflow: visible; }
   #analysis-explain .coach-prose .move-ref { color: var(--text); font-weight: 600; }
   #analysis-explain .coach-maia { height: 28px; }
@@ -815,7 +818,7 @@
   /* Short mobile browser chrome height (e.g. 390x664 Safari/Chrome): tighten
      Coach spacing while keeping the board full edge-to-edge 100vw. */
   @media (max-height: 720px) {
-    #view-analyze[data-pane="coach"] #analysis-explain { gap: 4px; padding: 4px var(--phone-gutter); }
+    #view-analyze[data-pane="coach"] #analysis-explain { gap: 4px; padding: 11px var(--phone-gutter) 4px; }
     #analysis-explain .coach-prose { padding: 5px 10px; font-size: 14.5px; line-height: 1.4; }
   }
 }

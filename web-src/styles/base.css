@@ -162,6 +162,19 @@ h2 {
 .faint { color: var(--label); }
 
 
+/* Sleek translucent hover-only scrollbars: eliminates chunky native Windows
+   tracks and arrow buttons while keeping overflow scrollable everywhere. */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
+:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--muted) 36%, transparent); }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--muted) 58%, transparent); }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  *:hover { scrollbar-color: color-mix(in srgb, var(--muted) 36%, transparent) transparent; }
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
