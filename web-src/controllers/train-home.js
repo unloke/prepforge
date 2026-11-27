@@ -13,9 +13,15 @@ import { appState, trainState, boards } from "../core/state.js";
 import { api, currentOwnerId, localDateString, setStatusError } from "../core/api.js";
 import { showConfirmModal } from "../core/modals.js";
 import { acceptRepertoireListing, fetchRepertoireListing } from "../repertoire-listing.js";
-import { flushTrainSync, lichessAccounts, requireSignIn, setTrainBanner, switchView, syncWorkspaceUrl } from "../core/app-context.js";
+import { lichessAccounts, requireSignIn } from "../account-entry.js";
+import { setTrainBanner } from "../train-banner.js";
+import { persistence, shell } from "../core/app-context.js";
 import { confirmAbandonGame } from "../train-play.js";
 import { cancelLuckyDiscovery, cancelLuckyPractice } from "../train-lucky-control.js";
+
+const { switchView, syncWorkspaceUrl } = shell;
+const { flushTrainSync } = persistence;
+
 // Train is one loop, Home → Session → Result, shared by the Due queue, line
 // rehearsal and practice games. This module owns the loop's chrome: which
 // screen is up (data-train-screen on #view-train), the Home rows and their

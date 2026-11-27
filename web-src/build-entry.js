@@ -6,6 +6,7 @@ import { createEngineProvider } from "./engine/stockfish-provider.js";
 import { stockfishBudget } from "./engine/compute-budget.js";
 import { EXPLORER_EVAL_MAX_LINES, engineWantedIn, engineWidget } from "./core/engine.js";
 import { hooks } from "./core/hooks.js";
+import { renderSyncChip } from "./sync-chip.js";
 import { showUndoToast } from "./undo.js";
 import { createBuildLive } from "./build-live.js";
 import { enterOnce } from "./list-enter.js";
@@ -31,27 +32,38 @@ import { enterOnce } from "./list-enter.js";
 export let buildView = null;
 export function setBuildView(view) { buildView = view; }
 
-export let explorerModule = null;
-export let explorerClient = null;
-let explorerLoading = null;
-// One explorer client for Build and practice games, imported on first use.
 export function isBuildReadOnly() {
   return !!(
     appState.sharedToken || (buildState.build && buildState.build.writable === false)
   );
 }
 
-export function ensureExplorerClient() {
-  explorerLoading ||= import("./explorer.js").then((mod) => {
-    explorerModule = mod;
-    explorerClient = mod.createExplorerClient({});
-    return explorerClient;
-  }).catch((error) => {
-    explorerLoading = null;
-    throw error;
-  });
-  return explorerLoading;
+// The repertoire save chip (sync-chip.js draws it).
+export function setBuildSync(state) {
+  buildState.buildSyncState = state;
+  renderBuildSync();
 }
+
+export function renderBuildSync() {
+  // Two hosts, one state: the board bar's chip on desktop, and the same chip in
+  // the inspector tools row on phones, where the board bar sits at the screen's
+  // bottom out of reach of an edit made above. Only one is ever visible.
+  let shown = false;
+  for (const id of ["build-sync", "build-sync-head"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    // Nothing to show without an editable repertoire (read-only shared view =
+    // no local edits ever happen).
+    if (!buildState.build || isBuildReadOnly()) {
+      el.hidden = true;
+      continue;
+    }
+    renderSyncChip(el, buildState.buildSyncState);
+    shown = true;
+  }
+  return shown;
+}
+
 export let explorerDb = "masters";
 
 export function explorerDrawerOpen() {

@@ -14,6 +14,8 @@ import { formatWorkspaceHash, workspaceLocationFromState } from "../workspace-ur
 vi.mock("../core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 vi.mock("../train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 vi.mock("./train-session.js", () => import("./train-session.fixture.js"));
+vi.mock("../account-entry.js", async (orig) => ({ ...await orig(), requireSignIn: vi.fn() }));
+vi.mock("../train-banner.js", () => ({ setTrainBanner: vi.fn(), updateTrainTurnBadge: vi.fn() }));
 
 let doc;
 beforeEach(() => {
@@ -151,7 +153,7 @@ describe("‹ Train", () => {
   it("keeps a live game when the player says no", async () => {
     const play = { active: true, history: ["e2e4"] };
     const { appState, deps } = setup({ currentView: "train", trainMode: "play", play, trainEntryVersion: 4 });
-    const flush = vi.fn(async () => true); provideApp({ flushTrainSync: flush });
+    const flush = vi.fn(async () => true); provideApp({ persistence: { flushTrainSync: flush } });
     deps.confirmAbandonGame.mockResolvedValueOnce(false);
     await createTrainHome(deps).leaveToHome();
     expect(appState.play).toBe(play);
@@ -159,10 +161,8 @@ describe("‹ Train", () => {
   });
 
   it("invalidates a pending start and drops its scoped route", async () => {
-    const { appState, deps } = setup({
-      currentView: "train", trainMode: "smart", trainStarting: true, trainStartToken: {},
-      trainEntryVersion: 4, trainPendingRoute: { repertoireId: "r1", trainMode: "smart" },
-    });
+    const { appState, deps } = setup({ currentView: "train", trainMode: "smart", trainStarting: true, trainStartToken: {},
+      trainEntryVersion: 4, trainPendingRoute: { repertoireId: "r1", trainMode: "smart" } });
     await createTrainHome(deps).leaveToHome();
     expect(appState.trainEntryVersion).toBe(5);
     expect(appState.trainPendingRoute).toBeUndefined();
@@ -499,7 +499,7 @@ describe("the Result", () => {
     const { appState } = setup({ currentView: "train", trainMode: "smart", smart: { mixed: true, prompt: null } });
     let hash = formatWorkspaceHash(workspaceLocationFromState(appState));
     expect(hash).toBe("#/train?mode=smart");
-    provideApp({ syncWorkspaceUrl: () => { hash = formatWorkspaceHash(workspaceLocationFromState(appState)); } });
+    provideApp({ shell: { syncWorkspaceUrl: () => { hash = formatWorkspaceHash(workspaceLocationFromState(appState)); } } });
     showTrainResult({ mode: "smart", title: "Queue complete", cells: [] });
     expect(hash).toBe("#/train");
     expect(appState.smart).not.toBeNull();
@@ -526,7 +526,7 @@ describe("leaving a mixed Due queue for Practice", () => {
     const { appState, deps } = setup({ currentView: "train", trainMode: "smart", smart: { mixed: true, prompt: {} } });
     let hash = formatWorkspaceHash(workspaceLocationFromState(appState));
     expect(hash).toBe("#/train?mode=smart");
-    provideApp({ syncWorkspaceUrl: () => { hash = formatWorkspaceHash(workspaceLocationFromState(appState)); } });
+    provideApp({ shell: { syncWorkspaceUrl: () => { hash = formatWorkspaceHash(workspaceLocationFromState(appState)); } } });
     deps.startPlaySessionTracked.mockImplementationOnce(() => {
       expect(hash).toBe("#/train");
       return false;

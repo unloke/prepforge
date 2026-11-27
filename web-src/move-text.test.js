@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { clampPly, decodeLine, encodeLine, moveLineHtml, moveTextHtml, parseMoveText, plyOfFen, previewPosition, walkLine, walkPathText } from "./move-text.js";
+import { clampPly, decodeLine, encodeLine, formatMoveTrail, moveLineHtml, moveTextHtml, parseMoveText, plyOfFen, previewPosition, walkLine, walkPathText } from "./move-text.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -172,5 +172,24 @@ describe("markup", () => {
     const t0 = performance.now();
     moveLineHtml(START, many, many);
     expect(performance.now() - t0).toBeLessThan(50);
+  });
+});
+
+describe("formatMoveTrail", () => {
+  it("numbers from the starting FEN", () => {
+    const trail = formatMoveTrail(
+      [
+        { san: "e4", by: "user" },
+        { san: "e5", by: "opp" },
+        { san: "Nf3", by: "user" },
+      ],
+      START,
+    );
+    expect(trail).toBe("1. e4 e5 2. Nf3");
+  });
+
+  it("starts mid-game from a Lucky FEN (Black to move)", () => {
+    const trail = formatMoveTrail([{ san: "e5", by: "user" }], AFTER_E4);
+    expect(trail).toBe("e5");
   });
 });

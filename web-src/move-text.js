@@ -229,3 +229,23 @@ export function moveLineHtml(baseFen, sans, ucis, { current = -1, focusable = tr
   }
   return html`${out}`;
 }
+
+// A SAN list as numbered move text from its starting position ("1. e4 e5 2. Nf3",
+// or "e5" when Black moves first).
+export function formatMoveTrail(history, startFen = START_FEN) {
+  const moves = Array.isArray(history) ? history : [];
+  if (!moves.length) return "";
+  const parts = String(startFen || START_FEN).trim().split(/\s+/);
+  let full = Number(parts[5]) || 1;
+  let side = parts[1] === "b" ? "b" : "w";
+  const out = [];
+  for (const ply of moves) {
+    const san = ply && ply.san;
+    if (!san) continue;
+    if (side === "w") out.push(`${full}. ${san}`);
+    else out.push(san);
+    if (side === "b") full += 1;
+    side = side === "w" ? "b" : "w";
+  }
+  return out.join(" ");
+}

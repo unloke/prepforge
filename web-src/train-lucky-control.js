@@ -1,4 +1,4 @@
-import { setTrainBanner } from "./core/app-context.js";
+import { setTrainBanner } from "./train-banner.js";
 
 export function beginLuckyDiscovery(state) {
   if (state.luckyRun) return null;

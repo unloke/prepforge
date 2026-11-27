@@ -41,35 +41,25 @@ describe('saved Practice games', () => {
       expect(history.readTrainingHistory('bob', storage)).toEqual([]);
     });
 
+  // Train only hands the game over; loading and reviewing it is Analyze's
+  // (controllers/train-session-handoff.test.js).
   function analyzeHarness() {
-    const input = {}, drawer = { open: true };
-    const deps = { ...asSlices({ play: null, ownerGeneration: 1 }), currentOwnerId: () => 'alice', analysisRecallSeq: 3,
-      invalidateAnalysisSource: () => 3, document: { getElementById: id => id === 'pgn-input' ? input : drawer },
-      switchView: vi.fn(), boards: { analysis: { setOrientation: vi.fn() } }, playSessionPgn,
-      loadPgnIntoAnalyze: vi.fn(async () => true), setStatus: vi.fn(), setStatusError: vi.fn(), runAnalysis: vi.fn() };
-    return { deps, input, drawer, open: compile('async function openPlayInAnalyze(', deps) };
+    const deps = { ...asSlices({ play: null, lichessUsername: 'alice' }), playSessionPgn, openAnalyzeGame: vi.fn(async () => {}) };
+    return { deps, open: compile('async function openPlayInAnalyze(', deps) };
   }
   it('opens an older saved game without relying on the current Practice session', async () => {
     const h = analyzeHarness();
     await h.open(saved);
-    expect(h.input.value).toBe(saved.pgn);
-    expect(h.drawer.open).toBe(false);
-    expect(h.deps.switchView).toHaveBeenCalledWith('analyze');
-    expect(h.deps.boards.analysis.setOrientation).toHaveBeenCalledWith('black');
-    expect(h.deps.loadPgnIntoAnalyze).toHaveBeenCalledWith(saved.pgn, { goToEnd: false, quiet: true, sourceSeq: 3 });
-    expect(h.deps.runAnalysis).toHaveBeenCalledOnce();
+    expect(h.deps.openAnalyzeGame).toHaveBeenCalledExactlyOnceWith({
+      pgn: saved.pgn, orientation: 'black',
+      failure: 'Could not load this Practice game. Try Analyze game again.',
+      loading: 'Loaded this Practice game · analyzing',
+    });
   });
-  it('ignores an empty game and reports a failed PGN load without running analysis', async () => {
+  it('ignores an empty game', async () => {
     const h = analyzeHarness();
     await h.open({});
-    expect(h.deps.switchView).not.toHaveBeenCalled();
-    h.deps.loadPgnIntoAnalyze.mockResolvedValue(false);
-    await h.open(saved);
-    expect(h.deps.setStatusError).toHaveBeenCalledWith('Could not load this Practice game. Try Analyze game again.');
-    expect(h.deps.runAnalysis).not.toHaveBeenCalled();
-    h.deps.loadPgnIntoAnalyze.mockRejectedValue(new Error('Invalid PGN'));
-    await h.open(saved);
-    expect(h.deps.setStatusError).toHaveBeenLastCalledWith('Invalid PGN');
+    expect(h.deps.openAnalyzeGame).not.toHaveBeenCalled();
   });
 });
 

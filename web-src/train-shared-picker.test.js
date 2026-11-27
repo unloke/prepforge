@@ -9,6 +9,8 @@ import { createTrainHome, loadTrainRepertoireOptions } from "./controllers/train
 vi.mock("./core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 vi.mock("./train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 vi.mock("./controllers/train-session.js", () => import("./controllers/train-session.fixture.js"));
+vi.mock("./account-entry.js", async (orig) => ({ ...await orig(), requireSignIn: vi.fn() }));
+vi.mock("./train-banner.js", () => ({ setTrainBanner: vi.fn(), updateTrainTurnBadge: vi.fn() }));
 
 const state = {
   pendingRepDeletes: new Set(["gone"]),

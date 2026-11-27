@@ -1,7 +1,8 @@
 import { html } from "../html.js";
 // Train sessions: the smart queue, line rehearsal, practice games and Feeling Lucky.
 // Lazy-loaded by app.js the first time Train is used. Shared state and services
-// come from their own modules; the shell's entry points from core/app-context.js.
+// come from their own modules; what only the shell or another feature can do comes
+// through the contracts in core/app-context.js.
 //
 // Smart queue (Train v2): a card-based scheduler client over /api/train/smart/*.
 // Per card: run-in animation (the approach plays itself, the opponent's last
@@ -22,7 +23,6 @@ import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailable
 import { playBookName, playTrailRows, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
 import { beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent } from "../train-lucky-control.js";
 import { createPlayMoveHandler } from "../train-play-input.js";
-import { analysisRecallSeq, invalidateAnalysisSource } from "./analyze-entry.js";
 import { isNothingToTrainError } from "../train-start.js";
 import { planTrainRunIn, playTrainRunIn } from "../train-flow.js";
 import { requeueMissedTarget } from "../train-retry.js";
@@ -36,12 +36,16 @@ import { effectiveMaiaRating } from "../core/prefs.js";
 import { playSound } from "../core/sound.js";
 import { boardAfterMove, boardInfo, optimisticBoardMove } from "../board/ui.js";
 import { maiaPhaseCoach } from "../coach/coach-loader.js";
-import { ensureExplorerClient } from "../build-entry.js";
+import { ensureExplorerClient } from "../explorer-client.js";
 import { ensureTrainView, renderTrainStats, setTrainSyncState } from "../train-entry.js";
 import { hideBlitzClock, showBlitzClock } from "../train-blitz-clock.js";
-import { accountService, flushTrainSync, hardFlushBuild, loadPgnIntoAnalyze, markTrainPositionDirty, openAuthModal,
-  queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, requireSignIn,
-  runAnalysis, setTrainBanner, switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge } from "../core/app-context.js";
+import { accountService, openAuthModal, refreshAuthStatus, requireSignIn } from "../account-entry.js";
+import { setTrainBanner, updateTrainTurnBadge } from "../train-banner.js";
+import { handoffs, persistence, shell } from "../core/app-context.js";
+
+const { syncViewHeads, syncWorkspaceUrl } = shell;
+const { flushTrainSync, hardFlushBuild, markTrainPositionDirty, queueTrainAttempt } = persistence;
+const { openAnalyzeGame, repertoiresChanged } = handoffs;
 
 // The session's answer-recovery flow (train-recovery.js), bound to the
 // session functions it repaints through.
@@ -874,26 +878,12 @@ function endPlayGame(title, failure = "") {
 
 export async function openPlayInAnalyze(play = trainState.play) {
   if (!play?.pgn && !play?.history?.length) return;
-  const owner = currentOwnerId(), generation = appState.ownerGeneration;
-  const sourceSeq = invalidateAnalysisSource();
-  const isCurrent = () => sourceSeq === analysisRecallSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
-  const pgn = play.pgn || playSessionPgn(play, appState.lichessUsername);
-  const input = document.getElementById("pgn-input");
-  if (input) input.value = pgn;
-  const drawer = document.getElementById("pgn-drawer");
-  if (drawer) drawer.open = false;
-  switchView("analyze");
-  if (boards.analysis) boards.analysis.setOrientation(play.userColor === "black" ? "black" : "white");
-  if (!input) return;
-  try {
-    const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq });
-    if (!isCurrent()) return;
-    if (!loaded) { setStatusError("Could not load this Practice game. Try Analyze game again."); return; }
-    setStatus("Loaded this Practice game · analyzing");
-    await runAnalysis();
-  } catch (error) {
-    if (isCurrent()) setStatusError(error.message);
-  }
+  await openAnalyzeGame({
+    pgn: play.pgn || playSessionPgn(play, appState.lichessUsername),
+    orientation: play.userColor === "black" ? "black" : "white",
+    failure: "Could not load this Practice game. Try Analyze game again.",
+    loading: "Loaded this Practice game · analyzing",
+  });
 }
 
 // Another repertoire move at this position is prep, not a miss: it lands,
@@ -1717,8 +1707,7 @@ async function finishSmartSession() {
   }
   if (after?.day_streak) appState.dayStreak = after.day_streak;
   // Every cached count of what is left to train is now stale, even if the user has left.
-  refreshRepertoireHead();
-  void refreshDashboardRepertoires().catch(() => {});
+  void repertoiresChanged({ trained: true }).catch(() => {});
   invalidateTrainPreview();
   // The user may have moved on while the summary loaded.
   if (trainState.smart !== smart || trainState.trainResult?.mode !== "smart") return;

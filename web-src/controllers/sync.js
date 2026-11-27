@@ -10,17 +10,18 @@ import { hooks } from "../core/hooks.js";
 import { OUTBOX_TAB_ID, currentOwnerId, localDateString, postJson, setStatus, setStatusError } from "../core/api.js";
 import { CSRF_HEADER, readCsrfCookie } from "../csrf.js";
 import { commitPendingUndos } from "../undo.js";
-import { buildOpMatchesRepertoire, hasPendingBuildOpsFor, resolveBuildId } from "../build-entry.js";
+import { buildOpMatchesRepertoire, hasPendingBuildOpsFor, resolveBuildId, setBuildSync } from "../build-entry.js";
 import { invalidateBuildTree } from "../build-tree.js";
-import { setBuildSync, setTrainSyncState } from "../train-entry.js";
-import { captureBuildContext, hydrateBuild } from "../core/app-context.js";
+import { setTrainSyncState } from "../train-entry.js";
 import { applyFlushReply, flushSince, postBuildAdds } from "../build-flush.js";
 import { isolateRejectedBuildOps } from "../build-isolate.js";
 
-// The two outbox queues, built once by createSyncController.
-let buildQueue, trainQueue;
+// The two outbox queues, built once by createSyncController. The shell hands in
+// the Build session's hydrate and its load-generation check.
+let buildQueue, trainQueue, captureBuildContext, hydrateBuild;
 
-export function createSyncController() {
+export function createSyncController(build) {
+  ({ captureBuildContext, hydrateBuild } = build);
   const buildQueueState = {
     get timer() { return buildState.buildFlushTimer; },
     set timer(value) { buildState.buildFlushTimer = value; },

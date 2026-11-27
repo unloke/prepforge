@@ -1,5 +1,5 @@
 import { Chess } from "chess.js";
-import { formatPlayTrail } from "./train-play.js";
+import { formatMoveTrail } from "./move-text.js";
 
 export async function prepareCoverageReply({ build, gap, generate, signal, rating, depth }) {
   const parent = build.nodes.find((n) => n.id === gap.nodeId);
@@ -44,7 +44,7 @@ export async function prepareCoverageReply({ build, gap, generate, signal, ratin
     if ((new Chess(before).turn() === "w" ? "white" : "black") === build.color) ownNodeRefs.push(change.tempId);
   }
   const rootFen = build.nodes.find((n) => n.depth === 0)?.fen;
-  const path = formatPlayTrail((gap.pathSans || []).map((san) => ({ san })), rootFen);
+  const path = formatMoveTrail((gap.pathSans || []).map((san) => ({ san })), rootFen);
   const line = [path, movetext(moves, parent.id, !path)].filter(Boolean).join(" ");
   return { gap, plan, rootNodeId: parent.id, fenAfter: anchor.fen,
     line, ownNodeRefs, addedMoves: plan.changes.filter((c) => c.action === "planned_add").length };

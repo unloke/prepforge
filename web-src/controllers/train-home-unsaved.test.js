@@ -8,6 +8,8 @@ import { notices } from "../core/state.js";
 vi.mock("../core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 vi.mock("../train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 vi.mock("./train-session.js", () => import("./train-session.fixture.js"));
+vi.mock("../account-entry.js", async (orig) => ({ ...await orig(), requireSignIn: vi.fn() }));
+vi.mock("../train-banner.js", () => ({ setTrainBanner: vi.fn(), updateTrainTurnBadge: vi.fn() }));
 
 beforeEach(() => vi.stubGlobal("document", fakeDocument()));
 afterEach(() => vi.unstubAllGlobals());
@@ -16,7 +18,7 @@ describe("‹ Train with unsaved progress", () => {
   it("stays on a drill whose progress did not save, and says why", async () => {
     const smart = { prompt: {} };
     const { appState, deps } = setup({ currentView: "train", trainMode: "smart", smart, trainEntryVersion: 4 });
-    provideApp({ flushTrainSync: vi.fn(async () => false) });
+    provideApp({ persistence: { flushTrainSync: vi.fn(async () => false) } });
     const status = vi.spyOn(notices, "status").mockImplementation(() => {});
     await createTrainHome(deps).leaveToHome();
     expect(appState.smart).toBe(smart);

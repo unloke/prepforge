@@ -4,6 +4,8 @@
 //   vi.mock("./core/api.js", async (orig) => ({ ...await orig(), api: vi.fn(), localDateString: vi.fn() }));
 //   vi.mock("./train-play.js", async (orig) => ({ ...await orig(), confirmAbandonGame: vi.fn() }));
 //   vi.mock("./controllers/train-session.js", () => import("./controllers/train-session.fixture.js"));
+//   vi.mock("./account-entry.js", async (orig) => ({ ...await orig(), requireSignIn: vi.fn() }));
+//   vi.mock("./train-banner.js", () => ({ setTrainBanner: vi.fn(), updateTrainTurnBadge: vi.fn() }));
 import { vi } from "vitest";
 import { createTrainHome } from "./train-home.js";
 import * as session from "./train-session.js";
@@ -89,7 +91,7 @@ export function setup(state = {}) {
   localDateString.mockReturnValue("2026-10-22");
   confirmAbandonGame.mockResolvedValue(true);
   const switchView = vi.fn((view) => { appState.currentView = view; });
-  provideApp({ switchView, lichessAccounts: () => [], requireSignIn: vi.fn(), flushTrainSync: vi.fn(async () => true), setTrainBanner: vi.fn(), syncWorkspaceUrl: vi.fn() });
+  provideApp({ shell: { switchView, syncWorkspaceUrl: vi.fn() }, persistence: { flushTrainSync: vi.fn(async () => true) } });
   const deps = { api, localDateString, confirmAbandonGame, switchView, ...session };
   createTrainHome(session);
   return { appState, deps };

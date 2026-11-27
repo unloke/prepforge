@@ -1,4 +1,7 @@
 // Google-Docs style save chip shown under the Repertoire and Train boards.
+import { buildState, trainState } from "./core/state.js";
+import { hooks } from "./core/hooks.js";
+
 const SYNC_CHIP_VARIANTS = {
   saved: { cls: "is-saved", text: "Saved" },
   dirty: { cls: "is-syncing", text: "Saving…" },
@@ -28,4 +31,33 @@ export function syncChipVariant(state, scope = "repertoire") {
   if (scope !== "training") return base;
   const key = SYNC_CHIP_VARIANTS[state] ? state : "saved";
   return { ...base, text: TRAINING_TEXT[key] ?? base.text };
+}
+
+export function renderSyncChip(el, state, scope = "repertoire") {
+  const v = syncChipVariant(state, scope);
+  el.hidden = false;
+  el.className = `build-sync ${v.cls}`;
+  el.textContent = v.text;
+  el.title = state === "blocked" ? `${v.text} — click to sign in` : v.text;
+  // Only the blocked chip acts (it opens sign-in), so only it is a keyboard stop.
+  if (state === "blocked") {
+    el.setAttribute?.("role", "button");
+    el.tabIndex = 0;
+  } else {
+    el.removeAttribute?.("role");
+    el.removeAttribute?.("tabindex");
+  }
+  if (el.dataset && !el.dataset.authBound && typeof el.addEventListener === "function") {
+    el.dataset.authBound = "true";
+    const signIn = () => {
+      const current = scope === "training" ? trainState.trainSyncState : buildState.buildSyncState;
+      if (current === "blocked") hooks.authRequired?.();
+    };
+    el.addEventListener("click", signIn);
+    el.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      signIn();
+    });
+  }
 }
