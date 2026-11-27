@@ -246,7 +246,7 @@ describe("Train completion refreshes the open repertoire tree", () => {
 describe("hydrateBuild payload contract", () => {
   function hydrate(appState) {
     return new Function(
-      "appState", "coverageView", "invalidateBook", "boards",
+      "appState", "coverageView", "announceRepertoireChanged", "boards",
       "renderBuildRepHeader", "selectBuildNode", "reapplyPendingBuildNodes",
       "reapplyPendingBuildDeletes", "hasPendingBuildOpsFor", "setBuildSync",
       "scheduleBuildFlush", "renderBuildSync", "syncWorkspaceUrl",

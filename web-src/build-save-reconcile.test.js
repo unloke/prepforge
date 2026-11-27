@@ -46,7 +46,7 @@ function harness() {
   });
   const positions = [];
   const deps = {
-    appState: sharedState, buildState, trainState, coverageView: null, indexBuildNodes, invalidateBook: vi.fn(), renderBuildRepHeader: vi.fn(),
+    appState: sharedState, buildState, trainState, coverageView: null, indexBuildNodes, announceRepertoireChanged: vi.fn(), renderBuildRepHeader: vi.fn(),
     boards: { build: { setPosition: vi.fn(p => positions.push(p.fen)), setAnnotations: vi.fn() } },
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
     resolveBuildId: ref => { const id = ref && typeof ref === "object" ? ref.id : ref; return buildState.buildIdMap[id] || id; },

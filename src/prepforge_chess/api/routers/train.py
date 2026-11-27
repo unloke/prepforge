@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from prepforge_chess.api.deps import current_owner, get_repository
-from prepforge_chess.api.routers.workspace import _owned_repertoire, _repertoire_access
+from prepforge_chess.api.access import owned_repertoire, require_access
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import (
     Repertoire,
@@ -48,7 +48,7 @@ def _trainable_repertoire(repo: AccessStore, repertoire_id: str, user: str) -> d
     """Train gate: any role that can read the repertoire may drill it (404 without
     access). Progress and sessions are the caller's own, so a grant's role only
     decides what they may do to the tree, never whether they may practise it."""
-    return _repertoire_access(repo, repertoire_id, user, "view")
+    return require_access(repo, repertoire_id, user, "view")
 
 
 def _owned_session(
@@ -136,7 +136,7 @@ def record_miss(
     linked Lichess account. Each call is a new miss; it neither reads nor writes
     the automatic compare ingestion ledger and has no game-id dedupe contract.
     """
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    owned_repertoire(repo, body.repertoire_id, owner)
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
