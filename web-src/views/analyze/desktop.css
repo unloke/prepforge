@@ -138,6 +138,8 @@
   #view-analyze #analyze-sidebar > .panel-scroll {
     display: flex;
     flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     scrollbar-gutter: stable;
     padding: 14px 18px;
@@ -146,7 +148,7 @@
   #view-analyze:has(#analysis-results:not([hidden])) .analyze-main {
     display: flex;
     flex-direction: column;
-    flex: 1 0 auto;
+    flex: 1 1 0;
     min-height: 0;
     gap: 10px;
   }
@@ -352,10 +354,11 @@
   #view-analyze:has(#analysis-results:not([hidden])) .an-panes {
     display: grid;
     grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
-    grid-template-rows: max-content 1fr;
+    grid-template-rows: max-content minmax(0, 1fr);
     column-gap: 18px;
     row-gap: 12px;
-    flex: 1 0 auto;
+    flex: 1 1 0;
+    min-height: 0;
     padding-top: 10px;
     border-top: 1px solid var(--line);
   }
@@ -470,8 +473,9 @@
     flex-direction: column;
     min-height: 0;
     max-height: none;
-    overflow: visible;
-    align-self: start;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
     padding-top: 0;
     gap: 6px;
   }

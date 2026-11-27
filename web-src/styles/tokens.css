@@ -42,21 +42,21 @@
      ==================================================================== */
 
   /* -- Surfaces -------------------------------------------------------- */
-  --bg: #f2f5fa;         /* ground: the page */
+  --bg: #f4f2ee;         /* ground: the page */
   --panel: #ffffff;      /* surface: cards and panels */
-  --panel-soft: #f6f8fc; /* quiet fill inside a card */
-  --surface-3: #e9eff8;  /* active step: hover, pressed, recessed track */
+  --panel-soft: #f9f8f5; /* quiet fill inside a card */
+  --surface-3: #efece6;  /* active step: hover, pressed, recessed track */
   --float: #ffffff;      /* raised: anything that floats over the page */
 
   /* -- Text ------------------------------------------------------------ */
-  --text: #171f2c;   /* body */
-  --muted: #46546b;  /* secondary copy */
-  --label: #58667d;  /* small-caps labels, quiet affordances */
+  --text: #1d1b18;   /* body */
+  --muted: #5a554d;  /* secondary copy */
+  --label: #6b665d;  /* small-caps labels, quiet affordances */
 
   /* -- Hairlines (tone steps, not decoration) -------------------------- */
-  --line: #dce4ef;       /* between surfaces inside a card */
-  --line-soft: #e9eff7;  /* nested / secondary separation */
-  --line-strong: #c2cfe0; /* control outlines */
+  --line: #e4e0d8;       /* between surfaces inside a card */
+  --line-soft: #efece6;  /* nested / secondary separation */
+  --line-strong: #d1ccc2; /* control outlines */
 
   /* -- The one accent -------------------------------------------------- */
   --accent: #2859d9;
@@ -136,14 +136,6 @@
   --mark-blunder: rgba(214, 64, 48, 0.46);
   --mark-missed: rgba(122, 95, 184, 0.42);
 
-  /* Board annotation arrows follow the active accent; engine and better-move
-     arrows keep their success/missed meaning through color-mix. */
-  --arrow-user: color-mix(in srgb, var(--accent) 94%, transparent);
-  --arrow-engine: color-mix(in srgb, var(--accent) 38%, var(--good));
-  --arrow-better: color-mix(in srgb, var(--accent) 52%, var(--missed));
-  /* Repertoire line options use the active accent with a contrasting rim. */
-  --arrow-line: var(--accent);
-  --arrow-rim: rgba(14, 25, 45, .8);
 
   /* -- Explorer result bar ---------------------------------------------- */
   --explorer-white: #f1f5fa;
@@ -192,7 +184,7 @@
   --gap-group: 20px;   /* between a page's groups (Today strip, table, steps) */
   /* The chevron a <select> draws for itself: one glyph, themed by the token so
      the arrow is legible on both grounds. */
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%2358667d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%2367696e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --switch-w: 34px;   /* one switch everywhere; a context may grow the hit box */
   --switch-h: 20px;
   --knob: 16px;
@@ -231,32 +223,32 @@
    colours in low-light study sessions. Every token declared above is re-declared
    here -- the two blocks together are the whole colour system.
 
-   Dark is the reference theme. Cards are a tone step above the cool neutral
-   ground; what floats (a menu, a dialog, the promotion picker) takes --float,
-   one step above the cards. */
+   Dark is the reference theme. Cards are a tone step above a near-black
+   neutral ground, never navy or slate; what floats (a menu, a dialog, the
+   promotion picker) takes --float, one step above the cards. */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
   /* Surfaces: ground, then a step up for cards, then a step up for floats. */
-  --bg: #10131a;
-  --panel: #171c25;
-  --panel-soft: #1c222d;
-  --surface-3: #242d3c;
-  --float: #202836;
+  --bg: #121110;
+  --panel: #181715;
+  --panel-soft: #1d1c19;
+  --surface-3: #24221e;
+  --float: #201e1b;
 
   /* Text */
-  --text: #f1f5fc;
-  --muted: #aebbd0;
-  --label: #a0afc7;
+  --text: #ece8e1;
+  --muted: #a39b8f;
+  --label: #a39b8f;
 
   /* Hairlines */
-  --line: #2e384a;
-  --line-soft: #242d3d;
-  --line-strong: #475770;
+  --line: #2a2724;
+  --line-soft: #23211e;
+  --line-strong: #3a3631;
 
   /* The select chevron is an SVG data URL, so it cannot take a var(): it is
      redeclared with the dark --label grey. */
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23a0afc7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23a39b8f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   /* The accent */
   --accent: #83aaff;
@@ -333,7 +325,8 @@
 /* ---- Board colour themes --------------------------------------------------
    The board reads --square-light and --square-dark on <html data-board>, set
    before first paint by theme.js (applyBoardTheme). Slate is the default.
-   Each Settings swatch carries its own pair, independent of the active board. */
+   Each Settings swatch carries its own pair, independent of the active board.
+   theme.js derives annotation inks from the active square colors. */
 :root, .board-color-swatch[data-board="slate"] { --square-light: #e2eaf4; --square-dark: #8ea4c0; --coord-on-light: #465a74; --coord-on-dark: #1b2a40; --board-frame: #41546f; }
 
 

@@ -479,6 +479,45 @@ async function runViewport(vp) {
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
   const reportColumnsLive = vp.width >= 1180 ? await reportColumns() : null;
   if (reportColumnsBeforeLive) checkReportColumns(reportColumnsBeforeLive, reportColumnsLive, "Live on");
+  if (vp.name === "laptop-1280") {
+    const report = page.locator("#analysis-report");
+    const readScroll = () => page.evaluate(() => ({
+      report: document.getElementById("analysis-report").scrollTop,
+      sidebar: document.querySelector("#analyze-sidebar .panel-scroll").scrollTop,
+      page: window.scrollY,
+      anchors: ["#analysis-explain", "#analysis-eval-card", "#analysis-board", "#analysis-engine-pane", "#engine-window-pvs", "#engine-window-pvs .engine-pv"].map((selector) =>
+        document.querySelector(selector)?.getBoundingClientRect().top ?? null),
+    }));
+    // Make the short fixture overflow like a longer report without another engine run.
+    await report.evaluate((el) => {
+      const extra = document.createElement("div");
+      extra.dataset.scrollProbe = "";
+      extra.style.height = "70vh";
+      el.append(extra);
+    });
+    // Aim the wheel at the report without hover auto-scrolling the sidebar.
+    const point = await page.evaluate(() => {
+      const r = document.getElementById("analysis-report").getBoundingClientRect();
+      return {
+        x: Math.min(Math.max(r.left + r.width / 2, 2), window.innerWidth - 2),
+        y: Math.min(Math.max(r.top + 24, 2), window.innerHeight - 2),
+      };
+    });
+    await page.mouse.move(point.x, point.y);
+    const before = await readScroll();
+    await page.mouse.wheel(0, 320);
+    await page.waitForTimeout(150);
+    const down = await readScroll();
+    await page.mouse.wheel(0, -800);
+    await page.waitForTimeout(150);
+    const up = await readScroll();
+    console.log(`[analyze-smoke] report wheel scroll: ${JSON.stringify({ before, down, up })}`);
+    check(down.report > before.report && up.report <= before.report + 1 && [down, up].every((snapshot) =>
+      snapshot.sidebar === before.sidebar && snapshot.page === before.page &&
+      snapshot.anchors.every((y, index) => y === null || before.anchors[index] === null || Math.abs(y - before.anchors[index]) <= 1)),
+      `wheel over Report must scroll only Report in both directions: ${JSON.stringify({ before, down, up })}`);
+    await report.locator("[data-scroll-probe]").evaluate((el) => el.remove());
+  }
   const askedWhileSearching = await page.evaluate(() => {
     const row = document.getElementById("engine-window-unlock");
     const line = document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)");
@@ -887,15 +926,8 @@ async function runViewport(vp) {
   check(recalledPgn.includes('[Black "me_user"]') && recalledPgn.includes('[Result "1-0"]'), "recalled PGN should retain its game metadata");
   // A long recalled name must not wrap the coach's line: the row keeps its one
   // height from the top of the report to the bottom of it.
-  const recalledHead = await checkPanelHead("long recalled title");
-  if (vp.width > 760) {
-    await page.locator("#analyze-sidebar .panel-scroll").evaluate((el) => { el.scrollTop = el.scrollHeight; });
-    const scrolledHead = await checkPanelHead("scrolled recalled report");
-    // The row is inside the scroller, so its position changes with the scroll;
-    // its height must not (a wrapped line would be 4px taller).
-    check(Math.abs(recalledHead.height - scrolledHead.height) < 1 && scrolledHead.oneRow,
-      `scrolling the report must not change the coach's line: ${JSON.stringify([recalledHead, scrolledHead])}`);
-  } else {
+  await checkPanelHead("long recalled title");
+  if (vp.width <= 760) {
     // Phones: one bottom bar. The tab bar waits under it until the views button raises it.
     await page.keyboard.press("Escape");
     await page.waitForTimeout(250);

@@ -582,6 +582,7 @@
   flex: none;
   max-height: min(45vh, 420px);
   overflow: auto;
+  overscroll-behavior-y: contain;
 }
 .an-panes > .report-pane[open] > summary { margin-bottom: 10px; }
 #analysis-find-great { align-self: start; margin-top: 10px; }
