@@ -22,28 +22,37 @@ export function createBuildMastery({ api, appState, buildState, repaint }) {
 
   const coloured = (build) => !!build && !appState.sharedToken && buildRole(build) === "owner";
 
+  // A read the tree has moved past paints nothing: its colour is for an older
+  // tree, and the read the move asked for is the one to keep.
+  const behind = (reply, build) =>
+    Number.isFinite(reply.revision) && Number.isFinite(build.revision) && reply.revision < build.revision;
+
   async function run() {
-    try {
-      do {
-        again = false;
-        const build = buildState.build;
-        if (!coloured(build)) break;
-        const reply = await api(`/api/train/mastery?repertoire_id=${encodeURIComponent(build.repertoire_id)}`);
-        // The view moved on (another repertoire, or the account changed) while
-        // this was in flight: its own refresh asks for its own colour.
-        if (!coloured(buildState.build) || buildState.build.repertoire_id !== reply.repertoire_id) continue;
-        const held = buildState.buildMastery;
-        if (held?.repertoireId === reply.repertoire_id && held.revision > reply.revision) continue;
-        buildState.buildMastery = {
-          repertoireId: reply.repertoire_id,
-          revision: reply.revision,
-          byNode: new Map(Object.entries(reply.mastery || {})),
-        };
-        repaint();
-      } while (again);
-    } catch {
-      // The tree stays as last coloured; the next hydrate asks again.
-    }
+    do {
+      again = false;
+      const build = buildState.build;
+      if (!coloured(build)) break;
+      let reply;
+      try {
+        reply = await api(`/api/train/mastery?repertoire_id=${encodeURIComponent(build.repertoire_id)}`);
+      } catch {
+        // The tree stays as last coloured; a refresh asked meanwhile (another
+        // tree, a newer revision) still goes out, and the next hydrate asks again.
+        continue;
+      }
+      // The view moved on (another repertoire, or the account changed) while
+      // this was in flight: its own refresh asks for its own colour.
+      const now = buildState.build;
+      if (!coloured(now) || now.repertoire_id !== reply.repertoire_id || behind(reply, now)) continue;
+      const held = buildState.buildMastery;
+      if (held?.repertoireId === reply.repertoire_id && held.revision > reply.revision) continue;
+      buildState.buildMastery = {
+        repertoireId: reply.repertoire_id,
+        revision: reply.revision,
+        byNode: new Map(Object.entries(reply.mastery || {})),
+      };
+      repaint();
+    } while (again);
   }
 
   function refresh() {

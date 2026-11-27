@@ -76,4 +76,33 @@ describe("Build mastery: Train's colour beside the tree", () => {
     await second;
     expect(masteryOf(h.buildState, "b")).toBe("mastered");
   });
+
+  it("still asks for the new tree when the old tree's request fails mid-switch", async () => {
+    const h = harness({ repertoire_id: "a", revision: 1, role: "owner", nodes: [] });
+    const done = h.mastery.refresh();
+    h.buildState.build = { repertoire_id: "b", revision: 1, nodes: [] };
+    h.mastery.refresh();
+    h.pending[0].reject(new Error("offline"));
+    await vi.waitFor(() => expect(h.api).toHaveBeenCalledTimes(2));
+    expect(h.api).toHaveBeenLastCalledWith("/api/train/mastery?repertoire_id=b");
+    h.pending[1].resolve(reply("b", 1, { x: "weak" }));
+    await done;
+    expect(masteryOf(h.buildState, "x")).toBe("weak");
+  });
+
+  it("never paints an answer older than the tree on screen, even when the fresh ask fails", async () => {
+    const h = harness({ repertoire_id: "r1", revision: 1, role: "owner", nodes: [] });
+    const done = h.mastery.refresh();
+    // An edit moves the tree to revision 2 while revision 1's read is out.
+    h.buildState.build = { ...h.buildState.build, revision: 2 };
+    h.mastery.refresh();
+    h.pending[0].resolve(reply("r1", 1, { a: "weak" }));
+    await vi.waitFor(() => expect(h.api).toHaveBeenCalledTimes(2));
+    expect(h.repaint).not.toHaveBeenCalled();
+    expect(masteryOf(h.buildState, "a")).toBeNull();
+    h.pending[1].reject(new Error("offline"));
+    await done;
+    expect(h.repaint).not.toHaveBeenCalled();
+    expect(h.buildState.buildMastery).toBeNull();
+  });
 });
