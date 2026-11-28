@@ -95,33 +95,33 @@
   padding: 14px;
 }
 
-#train-banner[data-state="move"] { --cb: var(--accent); --g: "♟"; }
+.train-coach[data-state="move"] { --cb: var(--accent); --g: "♟"; }
 
-#train-banner[data-state="teach"] { --cb: var(--k-new); --g: "✦"; }
+.train-coach[data-state="teach"] { --cb: var(--k-new); --g: "✦"; }
 
 /* A miss is a compact row like the others: the icon and the move carry the red. */
-#train-banner[data-state="wrong"] { --cb: var(--danger); --g: "↺"; padding: 10px 12px; }
+.train-coach[data-state="wrong"] { --cb: var(--danger); --g: "↺"; padding: 10px 12px; }
 
-#train-banner[data-state="wrong"] .train-coach-title .move-ref { color: var(--danger); }
+.train-coach[data-state="wrong"] .train-coach-title .move-ref { color: var(--danger); }
 
-#train-banner[data-state="reveal"] { --cb: var(--warn); --g: "!"; background: var(--warn-soft); }
+.train-coach[data-state="reveal"] { --cb: var(--warn); --g: "!"; background: var(--warn-soft); }
 
-#train-banner[data-state="review"] { --cb: var(--warn); --g: "↻"; background: var(--warn-soft); }
+.train-coach[data-state="review"] { --cb: var(--warn); --g: "↻"; background: var(--warn-soft); }
 
-#train-banner[data-state="correct"] { --cb: var(--good); --g: "✓"; background: var(--good-soft); }
+.train-coach[data-state="correct"] { --cb: var(--good); --g: "✓"; background: var(--good-soft); }
 
-#train-banner[data-state="done"] { --cb: var(--good); --g: "★"; }
+.train-coach[data-state="done"] { --cb: var(--good); --g: "★"; }
 
 /* A failure (opponent unavailable, a sync that did not land) is not a finish:
    it kept the green star and read as success. */
-#train-banner[data-state="error"] { --cb: var(--danger); --g: "!"; }
+.train-coach[data-state="error"] { --cb: var(--danger); --g: "!"; }
 
-#train-banner[data-state="runin"] { --g: "…"; }
+.train-coach[data-state="runin"] { --g: "…"; }
 
 /* Idle has nothing to signal; a ▶ in a circle read as a play button. */
-#train-banner[data-state="idle"] { grid-template-columns: minmax(0, 1fr) auto; }
+.train-coach[data-state="idle"] { grid-template-columns: minmax(0, 1fr) auto; }
 
-#train-banner[data-state="idle"] .train-coach-icon { display: none; }
+.train-coach[data-state="idle"] .train-coach-icon { display: none; }
 
 /* The judge answers in the direction the answer went: a right move pops its
    tick, a wrong one gives a single short nudge. Only a verdict moves the mark —
@@ -192,10 +192,10 @@
 #train-banner:has(.train-coach-sub:not(:empty)) { cursor: pointer; }
 #train-banner:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-#train-banner[data-state="correct"] .train-coach-title { color: var(--good-text); }
+.train-coach[data-state="correct"] .train-coach-title { color: var(--good-text); }
 
-#train-banner[data-state="reveal"] .train-coach-title,
-#train-banner[data-state="review"] .train-coach-title { color: var(--warn-text); }
+.train-coach[data-state="reveal"] .train-coach-title,
+.train-coach[data-state="review"] .train-coach-title { color: var(--warn-text); }
 
 .train-turn-badge {
   width: 30px;

@@ -1,5 +1,32 @@
 /* Analyze: the game report, drawers, game sources, motion and the layout bands. */
 
+/* The report and its immediate panel scroller use a transient overlay thumb:
+   visible while scrolling or directly under the thumb, otherwise transparent
+   even when the pointer is parked over the pane. */
+:is(#analysis-report, #analyze-sidebar > .panel-scroll)::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb, transparent);
+}
+
+:is(#analysis-report, #analyze-sidebar > .panel-scroll)[data-scrollbar-thumb] {
+  --scroll-thumb: color-mix(in srgb, var(--muted) 58%, transparent);
+}
+
+:is(#analysis-report, #analyze-sidebar > .panel-scroll)[data-scrolling] {
+  --scroll-thumb: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  :is(#analysis-report, #analyze-sidebar > .panel-scroll) {
+    scrollbar-color: var(--scroll-thumb, transparent) transparent;
+  }
+
+  @media (forced-colors: active) {
+    :is(#analysis-report, #analyze-sidebar > .panel-scroll) {
+      scrollbar-color: auto;
+    }
+  }
+}
+
 /* ---- The game report ----------------------------------------------------
    One summary line per player over the body: the key moments one line each,
    then the grade counts and the phases as small tables (a column per grade or

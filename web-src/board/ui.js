@@ -269,46 +269,126 @@ export function renderAnnotations(
   engineArrow = null,
   branchArrows = [],
   branchPick = null,
-  betterArrow = null
+  betterArrow = null,
+  forkLayer = null
 ) {
   overlay.setAttribute("viewBox", "0 0 100 100");
   overlay.innerHTML = "";
+  if (forkLayer) {
+    forkLayer.setAttribute("viewBox", "0 0 100 100");
+    forkLayer.innerHTML = "";
+  }
   const NS = "http://www.w3.org/2000/svg";
   const valid = (uci) => typeof uci === "string" && uci.length >= 4 && uci.slice(0, 2) !== uci.slice(2, 4);
-  const drawn = [];
+  const visualKey = (uci) => uci.slice(0, 4);
+  const manual = new Set((arrows || []).filter(valid).map(visualKey));
+  const engine = valid(engineArrow) ? engineArrow : null;
+  const engineKey = engine ? visualKey(engine) : null;
+  const better = valid(betterArrow) && visualKey(betterArrow) !== engineKey ? betterArrow : null;
+  const betterKey = better ? visualKey(better) : null;
+  const seenBranches = new Set();
+  const branches = (branchArrows || []).filter(valid).filter((uci) => {
+    const key = visualKey(uci);
+    if (seenBranches.has(key)) return false;
+    seenBranches.add(key);
+    return true;
+  });
+  const pick = branches.some((uci) => visualKey(uci) === visualKey(branchPick || "")) ? branchPick : null;
+  const pickKey = pick ? visualKey(pick) : null;
+  const entries = [];
+  const forkEntries = [];
   const sharedHeads = new Map();
-  const manual = new Set(arrows.filter(valid));
-  const paint = (kind, d, extra = "") => {
+  const centerOf = (uci) => [
+    squareCenter(uci.slice(0, 2), orientation),
+    squareCenter(uci.slice(2, 4), orientation),
+  ];
+  const makeEntry = (uci, kind, extra = "") => {
+    const [from, to] = centerOf(uci);
+    return { uci, key: visualKey(uci), kind, extra, from, to };
+  };
+  const queueUpper = (uci, kind, extra = "") => {
+    const key = visualKey(uci);
+    if (manual.has(key) && kind !== "user") {
+      sharedHeads.set(key, { kind, extra });
+      return null;
+    }
+    const entry = makeEntry(uci, kind, extra);
+    entries.push(entry);
+    return entry;
+  };
+  const queueFork = (uci, kind, extra = "") => {
+    const key = visualKey(uci);
+    if (manual.has(key)) {
+      sharedHeads.set(key, { kind, extra });
+      return null;
+    }
+    const entry = makeEntry(uci, kind, extra);
+    forkEntries.push(entry);
+    return entry;
+  };
+
+  // Paint stronger marks last. Identical automatic endpoints keep only their
+  // strongest role; an explicit manual drawing keeps its own shaft and gets the
+  // automatic role as a secondary triangular head.
+  if (forkLayer) {
+    const visibleFork = [];
+    branches.forEach((uci) => {
+      const key = visualKey(uci);
+      if (key === engineKey || key === betterKey) return;
+      const entry = queueFork(uci, key === pickKey ? "branch is-pick" : "branch");
+      if (entry) visibleFork.push(entry);
+    });
+    if (better) queueUpper(better, "better");
+    manual.forEach((uci) => queueUpper(uci, "user"));
+    if (engine) {
+      const engineEntry = makeEntry(engine, "engine", engineKey === pickKey ? " is-pick" : "");
+      const engineIsForkOption = branches.some((uci) => visualKey(uci) === engineKey);
+      const crossesFork = visibleFork.some((branch) => endsUnder(engineEntry, branch) || endsUnder(branch, engineEntry));
+      if (engineIsForkOption || crossesFork) {
+        const key = engineKey;
+        if (manual.has(key)) sharedHeads.set(key, { kind: engineEntry.kind, extra: engineEntry.extra });
+        else forkEntries.push(engineEntry);
+      } else {
+        queueUpper(engine, "engine", engineKey === pickKey ? " is-pick" : "");
+      }
+    }
+  } else {
+    branches
+      .filter((uci) => {
+        const key = visualKey(uci);
+        return key !== engineKey && key !== betterKey;
+      })
+      .filter((uci) => visualKey(uci) !== pickKey)
+      .forEach((uci) => queueUpper(uci, "branch"));
+    if (pick && pickKey !== engineKey && pickKey !== betterKey) queueUpper(pick, "branch is-pick");
+    if (better) queueUpper(better, "better");
+    manual.forEach((uci) => queueUpper(uci, "user"));
+    if (engine) queueUpper(engine, "engine");
+  }
+
+  const paintPath = (target, kind, d, extra = "") => {
     const path = document.createElementNS(NS, "path");
     path.setAttribute("d", d);
     path.setAttribute("class", `annot-arrow annot-${kind}${extra}`);
-    overlay.appendChild(path);
+    target.appendChild(path);
   };
-  const drawArrow = (uci, kind) => {
-    if (manual.has(uci) && kind !== "user") {
-      sharedHeads.set(uci, kind);
-      return;
-    }
-    const from = squareCenter(uci.slice(0, 2), orientation);
-    const to = squareCenter(uci.slice(2, 4), orientation);
-    paint(kind, buildArrowPath(from, to, kind));
-    drawn.push({ uci, from, to, kind });
-  };
-  const engine = valid(engineArrow) ? engineArrow : null;
-  const branches = [...new Set((branchArrows || []).filter(valid))];
-  const pick = branches.includes(branchPick) ? branchPick : null;
-  // Paint stronger marks last. A branch the engine also likes uses engine ink once.
-  branches.filter((uci) => uci !== pick && uci !== engine).forEach((uci) => drawArrow(uci, "branch"));
-  if (pick && pick !== engine) drawArrow(pick, "branch is-pick");
-  if (valid(betterArrow) && betterArrow !== engine) drawArrow(betterArrow, "better");
-  manual.forEach((uci) => drawArrow(uci, "user"));
-  if (engine) drawArrow(engine, "engine");
-  // Identical moves share a shaft. Nested moves leave both destinations visible.
-  drawn.forEach((arrow) => {
-    const sharedHead = sharedHeads.get(arrow.uci);
-    const shorter = drawn.some((other) => endsUnder(arrow, other));
+  if (forkLayer) {
+    const span = (arrow) => (arrow.to.x - arrow.from.x) ** 2 + (arrow.to.y - arrow.from.y) ** 2;
+    forkEntries.sort((a, b) => span(b) - span(a) || Number(a.key === pickKey) - Number(b.key === pickKey));
+    forkEntries.forEach((entry) => paintPath(forkLayer, entry.kind, buildArrowPath(entry.from, entry.to, entry.kind), entry.extra));
+  }
+  entries.forEach((entry) => paintPath(overlay, entry.kind, buildArrowPath(entry.from, entry.to, entry.kind), entry.extra));
+
+  // Identical manual/automatic moves still share one shaft. Outside Build's
+  // lower fork plane, a shorter independent move keeps its old small stop head
+  // so its destination remains visible under a longer unrelated line.
+  entries.forEach((arrow) => {
+    const sharedHead = sharedHeads.get(arrow.key);
+    const shorter = entries.some((other) => other !== arrow && endsUnder(arrow, other));
     if (sharedHead || shorter) {
-      paint(sharedHead ?? arrow.kind, buildArrowHeadPath(arrow.from, arrow.to, sharedHead ?? arrow.kind), shorter ? " annot-stop" : "");
+      const kind = sharedHead?.kind ?? arrow.kind;
+      const extra = `${sharedHead?.extra ?? ""}${shorter ? " annot-stop" : ""}`;
+      paintPath(overlay, kind, buildArrowHeadPath(arrow.from, arrow.to, kind), extra);
     }
   });
 }

@@ -233,9 +233,9 @@ describe("workspace chrome layout", () => {
   });
 
   it("gives the phone Repertoire's next-move chips a real thumb target", () => {
-    // Chips at the 36px control height with a 44px ::after band for the thumb.
+    // Chips keep their larger thumb band; dense inline tree tokens intentionally use a 28px floor.
     expect(phoneCss).toMatch(/#view-build \.fork-chip \{[^}]*height: var\(--control-h\);[^}]*\}\n\s*#view-build \.fork-chip::after \{ content: ""; position: absolute; inset: -4px 0; \}/);
-    expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
+    expect(phoneCss).toMatch(/#view-build #builder-tree :is\(\.mtree-move, \.mtree-collapse\) \{[^}]*min-width: 28px;[^}]*min-height: 28px;/);
     // One line naming the action, not a paragraph about coverage: that was
     // standing explanation (AGENTS.md) and the ⓘ already carries the detail.
     expect(coverageController).toContain("Press Scan to check this line.");

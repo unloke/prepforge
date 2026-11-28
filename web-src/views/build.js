@@ -72,6 +72,11 @@ export function createBuildView({
   const collaboration = collaborationApi ? createBuildCollaboration({
     appState, buildState, selectBuildNode, miniBoard, ...collaborationApi,
   }) : null;
+  const atlasButton = document.getElementById("build-atlas");
+  if (atlasButton && !atlasButton.dataset.bound) {
+    atlasButton.dataset.bound = "1";
+    atlasButton.addEventListener("click", () => openBuildAtlas({ appState, buildState }));
+  }
 
   function focusLine(id) {
     focusId = id;
@@ -105,14 +110,21 @@ export function createBuildView({
     if (!nameEl) return;
     if (!buildState.build) {
       nameEl.textContent = "No repertoire open";
+      if (atlasButton) {
+        atlasButton.innerHTML = "";
+        atlasButton.hidden = true;
+      }
       renderTools();
       return;
     }
     const { nodes, root, children } = getBuildTree(buildState.build);
     const glyph = routeGlyph(nodes, root?.id, buildState.buildCurrentNodeId, { byId: buildState.buildNodeById, children });
     nameEl.innerHTML =
-      html`<span class="color-dot ${buildState.build.color}"></span><b>${buildState.build.name}</b><span class="rep-color-sub"> · ${buildState.build.color}</span><button type="button" class="rep-route-mark" aria-label="Open repertoire atlas" title="Open repertoire atlas" aria-haspopup="dialog">${glyph}</button>`;
-    nameEl.querySelector?.(".rep-route-mark")?.addEventListener("click", () => openBuildAtlas({ appState, buildState }));
+      html`<span class="color-dot ${buildState.build.color}"></span><b>${buildState.build.name}</b><span class="rep-color-sub"> · ${buildState.build.color}</span>`;
+    if (atlasButton) {
+      atlasButton.innerHTML = glyph;
+      atlasButton.hidden = !glyph;
+    }
     renderTools();
   }
 

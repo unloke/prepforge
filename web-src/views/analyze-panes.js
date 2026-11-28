@@ -144,6 +144,48 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
     placeCaption();
     select(view.dataset.pane || readStored(), { store: false });
   };
+  // The report's overlay thumb appears only while its own scroller is moving;
+  // a pointer merely left over the pane must not keep it painted.
+  for (const el of [
+    document.getElementById("analysis-report"),
+    document.querySelector("#analyze-sidebar > .panel-scroll"),
+  ]) {
+    if (!el || el.dataset.scrollThumbBound) continue;
+    el.dataset.scrollThumbBound = "1";
+    let hideTimer = null;
+    let pointer = null;
+    // WebKit reports a scrollbar pseudo-element as hovered for the scroller's
+    // own hover state, so hit-test the actual thumb instead of using
+    // ::-webkit-scrollbar-thumb:hover (which kept the thumb painted under a
+    // stationary pointer anywhere in the report).
+    const syncThumbHover = (event) => {
+      const rect = el.getBoundingClientRect?.();
+      if (!rect || el.scrollHeight <= el.clientHeight || event.clientX < rect.right - 8) {
+        delete el.dataset.scrollbarThumb;
+        return;
+      }
+      const thumbHeight = Math.max(24, rect.height * (el.clientHeight / el.scrollHeight));
+      const thumbTravel = Math.max(0, rect.height - thumbHeight);
+      const scrollRange = Math.max(1, el.scrollHeight - el.clientHeight);
+      const thumbTop = rect.top + (el.scrollTop / scrollRange) * thumbTravel;
+      if (event.clientY >= thumbTop && event.clientY <= thumbTop + thumbHeight) el.dataset.scrollbarThumb = "";
+      else delete el.dataset.scrollbarThumb;
+    };
+    el.addEventListener("scroll", () => {
+      el.dataset.scrolling = "";
+      if (pointer) syncThumbHover(pointer);
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => delete el.dataset.scrolling, 650);
+    }, { passive: true });
+    el.addEventListener("pointermove", (event) => {
+      pointer = event;
+      syncThumbHover(event);
+    }, { passive: true });
+    el.addEventListener("pointerleave", () => {
+      pointer = null;
+      delete el.dataset.scrollbarThumb;
+    }, { passive: true });
+  }
   Object.values(media).forEach((m) => m.addEventListener?.("change", relayout));
   placeEval();
   placeGrade();

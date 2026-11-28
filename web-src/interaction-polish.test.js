@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { cssSource, eagerCss } from "./test-styles-source.js";
 
@@ -60,6 +61,20 @@ describe("shared interaction polish", () => {
     expect(css).toContain(":root:not(.view-swap) #view-dashboard .lib[data-search-open]");
     expect(css).toContain(".lib-list :is(.search-field, .lib-search-cancel)");
     expect(css).toContain("translate: 0 -4px");
+  });
+
+
+  it("keeps phone Build engine lines dense, scrollable and nonwrapping without crushing waiting rows", () => {
+    const css = cssSource("phone/study.css");
+    expect(css).toContain("#build-engine-slot .engine-window-pvs { grid-template-columns: minmax(100%, max-content)");
+    expect(css).toContain("overflow-x: auto");
+    expect(css).toContain("#build-engine-slot .engine-pv:not(.is-waiting)");
+    expect(css).toContain("#build-engine-slot .engine-pv.is-waiting { grid-template-columns: minmax(0, 1fr); }");
+    expect(css).toContain("#build-engine-slot .engine-pv-line { white-space: nowrap");
+    expect(css).toContain("#view-build #builder-tree .mtree { line-height: 30px");
+    expect(css).toContain("min-width: 28px; min-height: 28px");
+    const widget = readFileSync(new URL("./controllers/engine-widget.js", import.meta.url), "utf8");
+    expect(widget).toContain('if (this.pvsEl && activeViewName() === "build") this.pvsEl.scrollLeft = 0;');
   });
 
   it("fits study screens, sheets and dialogs inside the visible viewport", () => {

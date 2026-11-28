@@ -1,4 +1,5 @@
 import { pickBoardArrowColors } from "./board-arrow-colors.js";
+import { gradeSquareTones } from "./board-grade-colors.js";
 
 export const THEME_MODES = Object.freeze(["system", "light", "dark"]);
 
@@ -69,19 +70,68 @@ export function effectiveTheme(value, matchMedia = globalThis.matchMedia) {
   return theme === "system" ? (systemPrefersDark(matchMedia) ? "dark" : "light") : theme;
 }
 
+
+const GRADE_TOKEN_OF = Object.freeze({
+  good: "--good",
+  great: "--great",
+  brilliant: "--brilliant",
+  inaccuracy: "--inaccuracy",
+  mistake: "--warn",
+  blunder: "--danger",
+  missed: "--missed",
+});
+
+function fallbackReadStyles(el) {
+  return globalThis.getComputedStyle?.(el) || { getPropertyValue: () => "" };
+}
+
+// Derive the two opaque last-move square tones for every semantic grade from
+// the active board and theme. No accent token participates in this calculation.
+export function applyGradeTones(root, readStyles = fallbackReadStyles) {
+  const styles = readStyles(root);
+  const light = (styles.getPropertyValue("--square-light") || "").trim();
+  const dark = (styles.getPropertyValue("--square-dark") || "").trim();
+  const hex = (value) => /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value);
+  const clear = (group) => {
+    root.style.removeProperty?.(`--grade-${group}-light`);
+    root.style.removeProperty?.(`--grade-${group}-dark`);
+  };
+  if (!hex(light) || !hex(dark)) {
+    for (const group of Object.keys(GRADE_TOKEN_OF)) clear(group);
+    return false;
+  }
+  let wrote = false;
+  for (const [group, token] of Object.entries(GRADE_TOKEN_OF)) {
+    const ink = (styles.getPropertyValue(token) || "").trim();
+    if (!hex(ink)) {
+      clear(group);
+      continue;
+    }
+    const tones = gradeSquareTones(light, dark, ink);
+    root.style.setProperty(`--grade-${group}-light`, tones.light);
+    root.style.setProperty(`--grade-${group}-dark`, tones.dark);
+    wrote = true;
+  }
+  return wrote;
+}
+
 // Undoes the current "system" subscription, if any.
 let unfollowSystem = null;
 
-export function applyTheme(value, { root = document.documentElement, matchMedia = globalThis.matchMedia } = {}) {
+export function applyTheme(value, { root = document.documentElement, matchMedia = globalThis.matchMedia, readStyles = fallbackReadStyles } = {}) {
   const theme = normalizeTheme(value);
   unfollowSystem?.();
   unfollowSystem = null;
   root.dataset.theme = effectiveTheme(theme, matchMedia);
   root.style.colorScheme = theme === "system" ? "light dark" : root.dataset.theme;
+  applyGradeTones(root, readStyles);
   if (theme === "system") {
     try {
       const media = matchMedia("(prefers-color-scheme: dark)");
-      const update = (event) => { root.dataset.theme = event.matches ? "dark" : "light"; };
+      const update = (event) => {
+        root.dataset.theme = event.matches ? "dark" : "light";
+        applyGradeTones(root, readStyles);
+      };
       media.addEventListener("change", update);
       unfollowSystem = () => media.removeEventListener("change", update);
     } catch (_) {
@@ -105,16 +155,19 @@ export function applyAccent(value, { root = document.documentElement } = {}) {
 
 // Board colours: one attribute on <html>, like the accent. Unknown names fall
 // back to the default, so a hand-edited pref cannot leave the board unpainted.
-export function applyBoardTheme(value, { root = document.documentElement, readStyles = (el) => getComputedStyle(el) } = {}) {
+export function applyBoardTheme(value, { root = document.documentElement, readStyles = fallbackReadStyles } = {}) {
   const board = BOARD_MODES.includes(value) ? value : DEFAULT_BOARD_THEME;
   if (board === DEFAULT_BOARD_THEME) delete root.dataset.board;
   else root.dataset.board = board;
   const styles = readStyles(root);
-  const light = styles.getPropertyValue("--square-light").trim();
-  const dark = styles.getPropertyValue("--square-dark").trim();
-  for (const [role, color] of Object.entries(pickBoardArrowColors(light, dark))) {
+  const light = (styles.getPropertyValue("--square-light") || "").trim();
+  const dark = (styles.getPropertyValue("--square-dark") || "").trim();
+  if (!light || !dark) return board;
+  const alpha = Number.parseFloat(styles.getPropertyValue("--board-arrow-opacity"));
+  for (const [role, color] of Object.entries(pickBoardArrowColors(light, dark, Number.isFinite(alpha) ? alpha : 0.56))) {
     root.style.setProperty(`--arrow-${role}`, color);
   }
+  applyGradeTones(root, readStyles);
   return board;
 }
 

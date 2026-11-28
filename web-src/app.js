@@ -1524,6 +1524,7 @@ async function init() {
   boards.build = new BoardController({
     boardId: "build-board",
     overlayId: "build-annotations",
+    forkLayer: true,
     onMove: onBuildBoardMove,
     onAnnotate: saveBuildAnnotations,
   });

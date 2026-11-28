@@ -1,12 +1,13 @@
-// Keep the same color families across boards, like Chessground's drawing brushes.
-const BRUSHES = {
-  user: ["#163da1", "#245bdb", "#67a0ff"],
-  engine: ["#005141", "#00846a", "#38cda3"],
-  better: ["#871444", "#c42761", "#ff77a6"],
-  line: ["#814000", "#bd6607", "#ffb539"],
+// Drawing inks are fitted as they will appear on the board: each translucent
+// brush is first composited over both opaque squares, then compared in OKLab.
+const PALETTES = {
+  user: ["#163da1", "#245bdb", "#67a0ff", "#342079", "#aa7aff"],
+  engine: ["#005141", "#00846a", "#38cda3", "#55109a", "#ac66fc"],
+  better: ["#871444", "#c42761", "#ff77a6", "#9c2018", "#ff6846"],
+  line: ["#814000", "#bd6607", "#ffb539", "#064854", "#00d1d7"],
 };
 
-function rgb(hex) {
+export function rgb(hex) {
   if (typeof hex !== "string" || !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) {
     throw new TypeError("Expected a hex color");
   }
@@ -15,7 +16,7 @@ function rgb(hex) {
   return [0, 2, 4].map((i) => Number.parseInt(full.slice(i, i + 2), 16));
 }
 
-function sample(channels) {
+export function sample(channels) {
   const [r, g, b] = channels.map((byte) => {
     const value = byte / 255;
     return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
@@ -34,42 +35,65 @@ function sample(channels) {
   };
 }
 
-const contrast = (a, b) => (Math.max(a.y, b.y) + 0.05) / (Math.min(a.y, b.y) + 0.05);
-const distance = (a, b) => Math.hypot(...a.lab.map((v, i) => v - b.lab[i]));
+export function hexSample(hex) {
+  return sample(rgb(hex));
+}
 
-// Main fill colors of the light and dark pieces in board.css.
-const PIECES = ["#f9fbff", "#253247"].map((hex) => sample(rgb(hex)));
-const deficit = (target, value) => Math.max(0, 1 - value / target) ** 2;
-const OPTIONS = Object.entries(BRUSHES).map(([role, brushes]) => [role, brushes.map((brush) => sample(rgb(brush)))]);
+export function hexLab(hex) {
+  return hexSample(hex).lab;
+}
 
-// Pick one of each role's three handpicked shades. Squares dominate the fit,
-// collisions between simultaneous roles are nearly as important, pieces count
-// less, and the middle shade is mildly preferred over either extreme.
-export function pickBoardArrowColors(lightHex, darkHex) {
-  const squares = [sample(rgb(lightHex)), sample(rgb(darkHex))];
+export function labDistance(a, b) {
+  return Math.hypot(...a.lab.map((value, i) => value - b.lab[i]));
+}
+
+const abDistance = (a, b) => Math.hypot(a.lab[1] - b.lab[1], a.lab[2] - b.lab[2]);
+const penalty = (target, value) => Math.max(0, 1 - value / target) ** 2;
+const ratio = (a, b) => (Math.max(a.y, b.y) + 0.05) / (Math.min(a.y, b.y) + 0.05);
+
+function blendSample(hex, baseHex, alpha) {
+  const ink = rgb(hex);
+  const base = rgb(baseHex);
+  return sample(ink.map((channel, i) => Math.round(alpha * channel + (1 - alpha) * base[i])));
+}
+
+// Pick one shade for each simultaneous role. Each candidate's composited
+// square views and local losses are precomputed outside the five-way choice;
+// pair comparisons reuse those cached composites. The fit sees the colors
+// exactly as the one translucent SVG group composites them.
+export function pickBoardArrowColors(lightHex, darkHex, alpha = 0.56) {
+  const squaresHex = [lightHex, darkHex];
+  const ground = squaresHex.map(hexSample);
+  const colors = Object.entries(PALETTES).map(([role, palette]) => [role, palette.map((hex, index) => {
+    const view = squaresHex.map((base) => blendSample(hex, base, alpha));
+    const loss = Math.max(...view.map((composite, squareIndex) =>
+      penalty(0.21, labDistance(composite, ground[squareIndex]))
+      + 0.8 * penalty(2.35, ratio(composite, ground[squareIndex]))
+      + 2 * penalty(0.115, abDistance(composite, ground[squareIndex]))
+    ));
+    return { hex, view, loss, cost: loss + (index >= 3 ? 0.16 : 0) };
+  })]);
+
   let bestScore = Infinity;
   let best;
-  for (let user = 0; user < 3; user++) for (let engine = 0; engine < 3; engine++)
-    for (let better = 0; better < 3; better++) for (let line = 0; line < 3; line++) {
-      const indexes = { user, engine, better, line };
-      const colors = Object.fromEntries(OPTIONS.map(([role, options]) => [role, options[indexes[role]]]));
-      const squareLosses = Object.values(colors).map((color) => Math.max(...squares.map((square) =>
-        deficit(3, contrast(color, square)) + 0.5 * deficit(0.25, distance(color, square))
-      )));
-      const roles = Object.keys(colors);
-      const pairCollisions = [];
-      for (let i = 0; i < roles.length; i++) for (let j = i + 1; j < roles.length; j++) {
-        pairCollisions.push(deficit(0.23, distance(colors[roles[i]], colors[roles[j]])));
+  for (const user of colors[0][1]) for (const engine of colors[1][1])
+    for (const better of colors[2][1]) for (const line of colors[3][1]) {
+      const combination = [user, engine, better, line];
+      const pairLosses = [];
+      for (let i = 0; i < combination.length; i++) for (let j = i + 1; j < combination.length; j++) {
+        pairLosses.push(Math.max(...squaresHex.map((_, squareIndex) =>
+          penalty(0.13, labDistance(combination[i].view[squareIndex], combination[j].view[squareIndex]))
+        )));
       }
-      const pieceLosses = Object.values(colors).map((color) => Math.max(...PIECES.map((piece) => deficit(2, contrast(color, piece)))));
-      const score = Math.max(...squareLosses) + 0.35 * squareLosses.reduce((a, b) => a + b, 0)
-        + 3 * Math.max(...pairCollisions) + pairCollisions.reduce((a, b) => a + b, 0)
-        + 0.18 * pieceLosses.reduce((a, b) => a + b, 0)
-        + 0.025 * Object.values(indexes).filter((index) => index !== 1).length;
+      const score = combination.reduce((total, color) => total + color.cost, 0)
+        + Math.max(...combination.map((color) => color.loss))
+        + 2 * Math.max(...pairLosses)
+        + pairLosses.reduce((total, loss) => total + loss, 0);
       if (score < bestScore) {
         bestScore = score;
-        best = colors;
+        best = combination;
       }
     }
-  return Object.fromEntries(Object.entries(best).map(([role, color]) => [role, color.hex]));
+  const [user, engine, better, line] = best;
+  return { user: user.hex, engine: engine.hex, better: better.hex, line: line.hex };
 }

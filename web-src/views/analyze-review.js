@@ -4,6 +4,7 @@ import { classBadgeSymbol } from "../move-grades.js";
 import { onTriedGrade, triedGrade, UNGRADED } from "../analyze-tried-grade.js";
 import { localBoardAfterMove } from "../chess-local.js";
 import { positionKey } from "../board/move-motion.js";
+import { retryPracticeControls } from "./analyze-retry-controls.js";
 
 function nextMoment(moments, state) {
   return state.next ?? (state.current && moments.length === 1 ? null : moments[0] || null);
@@ -412,36 +413,7 @@ export function createReviewBar({
   }
 
   function replayControls() {
-    const session = replay;
-    const item = session.item;
-    const n = `${session.index + 1} / ${session.sequence.length}`;
-    if (session.phase === "complete") {
-      return html`
-        <div class="cr-live" role="status">
-          <span class="cr-headline">Practice complete</span>
-        </div>
-        <div class="cr-actions"><button type="button" class="cr-control" data-review="back-analysis">Back to analysis</button></div>`;
-    }
-    const side = item.side === "black" ? "Black" : "White";
-    const question = item.kind === "prep" ? "Which move did you prepare here?" : "What would you play here?";
-    let headline = question;
-    if (session.phase === "checking") headline = session.feedback || "Checking that move…";
-    else if (session.phase === "success" || session.phase === "revealed") headline = session.feedback;
-    else if (session.mistake) headline = session.feedback;
-    else if (session.phase === "loading") headline = question;
-    const actions = [];
-    if (session.phase === "revealed") {
-      actions.push(html`<button type="button" class="cr-control" data-review="continue">Continue</button>`);
-    } else if (session.phase === "guess" || session.phase === "checking") {
-      actions.push(html`<button type="button" class="cr-control" data-review="show-move">Show move</button>`);
-    }
-    actions.push(html`<button type="button" class="cr-control" data-review="exit">Exit</button>`);
-    return html`
-      <div class="cr-live" role="status">
-        <span class="cr-headline">${headline}</span>
-        <span class="cr-meta">${session.phase === "success" || session.phase === "revealed" ? `${item.label} · ${n}` : `${side} to move · ${n}`}</span>
-      </div>
-      <div class="cr-actions">${actions}</div>`;
+    return retryPracticeControls(replay);
   }
 
   function paintReviewBar() {

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { atlasAnalysis, atlasScoreText, positionThumbnail, routeGlyph, subtreeNodes } from "./build-atlas.js";
 import { indexTree } from "../build-tree.js";
@@ -13,6 +14,20 @@ const nodes = [
 ];
 
 describe("Repertoire atlas", () => {
+  it("keeps the Atlas control beside the repertoire title", () => {
+    const shell = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+    const buildView = readFileSync(new URL("./build.js", import.meta.url), "utf8");
+    const view = shell.slice(shell.indexOf('id="view-build"'));
+    const buildHead = view.slice(view.indexOf('id="build-rep-header"'), view.indexOf('<div class="panel-body"'));
+    expect(buildHead).toContain('id="build-atlas"');
+    expect(buildHead).toMatch(/id="build-rep-name"[^>]*>[^<]*<\/h1>\s*<button[^>]*id="build-atlas"/);
+    expect(buildHead.indexOf('id="build-atlas"')).toBeLessThan(buildHead.indexOf('id="build-menu"'));
+    expect(buildView).toContain('const atlasButton = document.getElementById("build-atlas")');
+    expect(buildView).toContain('atlasButton.innerHTML = glyph');
+    expect(buildView).toContain('atlasButton.hidden = !glyph');
+    expect(buildView).not.toContain('<button type="button" class="rep-route-mark"');
+  });
+
   it("keeps unknown documentation distinct from a measured zero", () => {
     expect(atlasScoreText(null)).toBe("—");
     expect(atlasScoreText({ score: 0 })).toBe("0");
@@ -61,7 +76,10 @@ describe("Repertoire atlas", () => {
     const family = String(routeGlyph(subtreeNodes(nodes[1], indexTree(nodes)), "e4", "nf3"));
     expect((family.match(/C/g) || []).length).toBe(3);
     expect(first).not.toMatch(/NaN|undefined/);
-    expect(String(routeGlyph([nodes[0]], "root", "root"))).not.toMatch(/NaN|undefined/);
+    const rootOnly = String(routeGlyph([nodes[0]], "root", "root"));
+    expect(rootOnly).not.toMatch(/NaN|undefined/);
+    expect(rootOnly).toContain('class="route-dots route-active"');
+    expect(rootOnly).toMatch(/<svg class="route-glyph"/);
   });
 
   it("uses the real piece renderer and reverses both axes for Black", () => {

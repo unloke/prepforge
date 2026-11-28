@@ -61,6 +61,7 @@ function makeHarness({ nodes, currentNodeId, renderer }) {
   };
   const elements = {
     "build-rep-name": { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } },
+    "build-atlas": { hidden: true, innerHTML: "", dataset: {}, addEventListener: vi.fn() },
     "build-branchbar": bar,
     "build-tree-meta": meta,
     "builder-tree": container,
@@ -91,7 +92,7 @@ function makeHarness({ nodes, currentNodeId, renderer }) {
       return { options, choiceId: picked.id };
     },
   });
-  return { view, bar, container, meta, ...asSlices(appState), appState,  };
+  return { view, bar, container, meta, atlas: elements["build-atlas"], nameEl: elements["build-rep-name"], ...asSlices(appState), appState,  };
 }
 
 function variationToggle(container, id) {
@@ -155,6 +156,22 @@ describe("build branch bar — practical share", () => {
     expect(markup).not.toContain("★");
     expect(main).toContain("main line");
     expect(off).not.toContain("main line");
+  });
+
+
+  it("fills the persistent Atlas sibling and hides it again with no repertoire", () => {
+    const root = makeNode({ id: "root" });
+    const e5 = makeNode({ id: "e5", parent_id: "root", depth: 1, san: "e5", uci: "e7e5", move_side: "black" });
+    const { view, atlas, nameEl, buildState } = makeHarness({ nodes: [root, e5], currentNodeId: "root" });
+    expect(atlas.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
+    view.renderBuildRepHeader();
+    expect(atlas.hidden).toBe(false);
+    expect(String(atlas.innerHTML)).toContain('class="route-glyph"');
+    expect(String(nameEl.innerHTML)).not.toContain("rep-route-mark");
+    buildState.build = null;
+    view.renderBuildRepHeader();
+    expect(atlas.hidden).toBe(true);
+    expect(String(atlas.innerHTML)).toBe("");
   });
 
   it("omits the share when the server has no probability (manual moves)", () => {

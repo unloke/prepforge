@@ -15,6 +15,11 @@ export function paintBuildSkeleton(document) {
     name.innerHTML = html`<span class="color-dot skeleton-dot"></span><span class="skeleton-bar skeleton-line" style="display:inline-block;width:180px;max-width:70%"></span>`;
     name.title = "";
   }
+  const atlas = document.getElementById("build-atlas");
+  if (atlas) {
+    atlas.innerHTML = "";
+    atlas.hidden = true;
+  }
   const tree = document.getElementById("builder-tree");
   if (tree) tree.innerHTML = buildSkeleton();
 }

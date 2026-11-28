@@ -4,6 +4,7 @@ import { typedSquare } from "../board-navigation.js";
 import {
   boardTransition, moveMotion, playMoveMotion, positionKey,
 } from "./move-motion.js";
+import { classGroup } from "../move-grades.js";
 
 let pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
   pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom;
@@ -20,6 +21,11 @@ class BoardController {
   constructor(config) {
     this.board = document.getElementById(config.boardId);
     this.overlay = document.getElementById(config.overlayId);
+    this.forkLayer = config.forkLayer ? document.createElementNS("http://www.w3.org/2000/svg", "svg") : null;
+    if (this.forkLayer) {
+      this.forkLayer.setAttribute("class", "annotations fork-arrows");
+      this.forkLayer.setAttribute("aria-hidden", "true");
+    }
     this.onMove = config.onMove;
     this.onAnnotate = config.onAnnotate || null;
     this.onCancel = config.onCancel || null;
@@ -85,7 +91,8 @@ class BoardController {
       this.engineArrow,
       this.branchArrows,
       this.branchPick,
-      this.betterArrow
+      this.betterArrow,
+      this.forkLayer
     );
   }
 
@@ -187,6 +194,7 @@ class BoardController {
         this.squares.set(squareName, square);
       }
     }
+    if (this.forkLayer) this.board.appendChild(this.forkLayer);
     this.applyCoordinates();
     this._applyRovingTabindex();
   }
@@ -700,7 +708,8 @@ class BoardController {
   _syncMoveBadge() {
     // A preview owns its last-move tint, even while the real move is regraded.
     const classification = this._peekReal ? this._peekClass : this.moveBadge?.classification;
-    if (classification) this.board.dataset.moveClass = classification.replace(/[^a-z0-9_-]/g, "");
+    const group = classGroup(classification);
+    if (group) this.board.dataset.moveClass = group;
     else delete this.board.dataset.moveClass;
     if (this._peekReal) return;
     // Selecting a piece re-syncs classes: an unchanged badge stays put rather than being

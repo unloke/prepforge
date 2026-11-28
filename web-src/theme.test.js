@@ -15,7 +15,7 @@ import {
   storeTheme,
 } from "./theme.js";
 import { eagerCss } from "./test-styles-source.js";
-import { pickBoardArrowColors } from "./board-arrow-colors.js";
+import { hexSample, pickBoardArrowColors, rgb, sample } from "./board-arrow-colors.js";
 
 function fakeStorage(initial = null) {
   let value = initial;
@@ -66,8 +66,8 @@ describe("persisted theme", () => {
 describe("board colour themes", () => {
   const readStyles = (root) => ({
     getPropertyValue: (name) => (root.dataset.board === "wood"
-      ? { "--square-light": "#e6dac5", "--square-dark": "#a98b6d" }
-      : { "--square-light": "#e2eaf4", "--square-dark": "#8ea4c0" })[name],
+      ? { "--square-light": "#e6dac5", "--square-dark": "#a98b6d", "--board-arrow-opacity": "0.56" }
+      : { "--square-light": "#e2eaf4", "--square-dark": "#8ea4c0", "--board-arrow-opacity": "0.56" })[name],
   });
 
   it("keeps slate as the default and writes the attribute only for a named board", () => {
@@ -96,6 +96,37 @@ describe("board colour themes", () => {
     for (const color of Object.values(result)) expect(color).toMatch(/^#[0-9a-f]{6}$/);
     expect(pickBoardArrowColors("#173962", "#ff99dd")).toEqual(result);
     expect(pickBoardArrowColors("#101010", "#212121")).not.toEqual(result);
+  });
+
+
+  it("chooses a violet engine brush on green and keeps teal on warm boards", () => {
+    const green = pickBoardArrowColors("#eeeed2", "#769656");
+    expect(green.engine).toBe("#55109a");
+    expect(pickBoardArrowColors("#e6dac5", "#a98b6d").engine).toBe("#00846a");
+    expect(pickBoardArrowColors("#f0d9b5", "#b58863").engine).toBe("#00846a");
+
+    const composite = (hex, square, alpha = 0.56) => sample(rgb(hex).map((channel, i) => Math.round(alpha * channel + (1 - alpha) * rgb(square)[i])));
+    const abDistance = (a, b) => Math.hypot(a.lab[1] - b.lab[1], a.lab[2] - b.lab[2]);
+    const labDistance = (a, b) => Math.hypot(...a.lab.map((value, i) => value - b.lab[i]));
+    const darkGround = hexSample("#769656");
+    const oldComposite = composite("#38cda3", "#769656");
+    const newComposite = composite(green.engine, "#769656");
+    const oldContrast = abDistance(oldComposite, darkGround);
+    const newContrast = abDistance(newComposite, darkGround);
+    expect(newContrast).toBeGreaterThanOrEqual(0.14);
+    expect(newContrast).toBeGreaterThan(oldContrast);
+
+    for (const square of ["#eeeed2", "#769656"]) {
+      const views = Object.values(green).map((hex) => composite(hex, square));
+      for (let i = 0; i < views.length; i++) for (let j = i + 1; j < views.length; j++) {
+        expect(labDistance(views[i], views[j])).toBeGreaterThanOrEqual(0.1);
+      }
+    }
+  });
+
+  it("honours the shared overlay alpha passed to the brush fit", () => {
+    expect(pickBoardArrowColors("#eeeed2", "#769656", 0.56)).toEqual(pickBoardArrowColors("#eeeed2", "#769656"));
+    expect(pickBoardArrowColors("#eeeed2", "#769656", 0.4)).toBeDefined();
   });
 
   it("has a CSS pair for every named board", () => {
@@ -149,6 +180,80 @@ describe("accent presets", () => {
     const root = { dataset: {} };
     expect(setAccent("orange", { storage: broken, root })).toBe("orange");
     expect(root.dataset.accent).toBe("orange");
+  });
+});
+
+
+describe("adaptive grade tone integration", () => {
+  function gradeStyles() {
+    const values = {
+      light: {
+        "--good": "#1d8a4f", "--great": "#4a7fb5", "--brilliant": "#2f7fe0",
+        "--inaccuracy": "#c98a2b", "--warn": "#b26a00", "--danger": "#c73a2c", "--missed": "#7a5fb8",
+      },
+      dark: {
+        "--good": "#45b97a", "--great": "#8db0da", "--brilliant": "#6d9ff0",
+        "--inaccuracy": "#e6bc72", "--warn": "#e0a23a", "--danger": "#ef6b5b", "--missed": "#a992ef",
+      },
+    };
+    return {
+      getPropertyValue(name) {
+        if (name === "--square-light") return "#eeeed2";
+        if (name === "--square-dark") return "#769656";
+        if (name === "--board-arrow-opacity") return "0.56";
+        return values[this.theme || "light"]?.[name] || "";
+      },
+    };
+  }
+  function rootWithStyle() {
+    const values = new Map();
+    return {
+      dataset: {},
+      values,
+      style: {
+        setProperty: (name, value) => values.set(name, String(value)),
+        removeProperty: (name) => values.delete(name),
+      },
+    };
+  }
+
+  it("recalculates on system theme changes and does not recolor grades for accent changes", () => {
+    const root = rootWithStyle();
+    const styles = gradeStyles();
+    const readStyles = () => {
+      styles.theme = root.dataset.theme || "light";
+      return styles;
+    };
+    const listeners = new Set();
+    const media = { matches: false,
+      addEventListener: vi.fn((_, fn) => listeners.add(fn)),
+      removeEventListener: vi.fn((_, fn) => listeners.delete(fn)),
+    };
+    applyBoardTheme("green", { root, readStyles });
+    applyTheme("system", { root, matchMedia: () => media, readStyles });
+    const lightGood = root.values.get("--grade-good-light");
+    expect(lightGood).toMatch(/^oklab\(/);
+    for (const fn of listeners) fn({ matches: true });
+    const darkGood = root.values.get("--grade-good-light");
+    expect(darkGood).toMatch(/^oklab\(/);
+    expect(darkGood).not.toBe(lightGood);
+    const grades = [...root.values.entries()].filter(([name]) => name.startsWith("--grade-"));
+    applyAccent("orange", { root });
+    expect([...root.values.entries()].filter(([name]) => name.startsWith("--grade-"))).toEqual(grades);
+    applyTheme("dark", { root, matchMedia: () => media, readStyles });
+  });
+
+  it("clears stale tones when a token is absent or not a computable hex color", () => {
+    const root = rootWithStyle();
+    const styles = gradeStyles();
+    const readStyles = () => styles;
+    applyBoardTheme("green", { root, readStyles });
+    expect(root.values.has("--grade-good-light")).toBe(true);
+    const original = styles.getPropertyValue.bind(styles);
+    styles.getPropertyValue = (name) => name === "--good" ? "color-mix(in srgb, red, blue)" : original(name);
+    applyBoardTheme("green", { root, readStyles });
+    expect(root.values.has("--grade-good-light")).toBe(false);
+    expect(root.values.has("--grade-great-light")).toBe(true);
   });
 });
 

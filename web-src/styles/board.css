@@ -150,7 +150,7 @@
    first, then the group alpha lets pieces and square colour show through. */
 .annotations,
 .replay-arrows {
-  opacity: 0.56;
+  opacity: var(--board-arrow-opacity);
 }
 
 .annot-arrow {
@@ -175,11 +175,32 @@
 }
 
 
+.fork-arrows {
+  z-index: 1;
+}
+
+
+.fork-arrows .annot-branch:not(.is-pick) {
+  fill: var(--eval-side-white);
+  stroke: var(--eval-side-black);
+  stroke-width: .18;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
+}
+
+
+.fork-arrows .is-pick {
+  stroke: var(--eval-side-white);
+  stroke-width: .32;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
+}
+
+
 /* Use an ink step, not a rim, to separate a shorter stop from the shared shaft. */
 .annot-stop {
   fill: color-mix(in srgb, var(--arrow-ink), #fff5e4 40%);
 }
-
 
 /* A peek: the board shows the position a move beside it names (board peek()).
    The whole board takes an accent wash and frame, so it can never be mistaken for
@@ -196,6 +217,7 @@
 
 
 .chessboard.is-peeking .square-badge,
+.chessboard.is-peeking .fork-arrows,
 .annotations.is-peeking {
   visibility: hidden;
 }
@@ -299,25 +321,62 @@
 }
 
 
+.square.last-move.light::before { background: var(--move-light, var(--last-move)); }
+
+
+.square.last-move.dark::before { background: var(--move-dark, var(--last-move)); }
+
+
 /* An analysed move tints both of its squares with its grade colour (the badge's
-   colour), so quality reads at a glance; routine good moves keep the neutral tint. */
-.chessboard[data-move-class="brilliant"] .square.last-move { --last-move: var(--mark-brilliant); }
+   colour), so quality reads at a glance. theme.js adapts the two opaque tones
+   to the active board; the token fallback keeps the semantic hue before it runs. */
+.chessboard[data-move-class="good"] {
+  --grade-ink: var(--good);
+  --move-light: var(--grade-good-light, var(--grade-ink));
+  --move-dark: var(--grade-good-dark, var(--grade-ink));
+}
 
 
-.chessboard[data-move-class="great"] .square.last-move { --last-move: var(--mark-great); }
+.chessboard[data-move-class="great"] {
+  --grade-ink: var(--great);
+  --move-light: var(--grade-great-light, var(--grade-ink));
+  --move-dark: var(--grade-great-dark, var(--grade-ink));
+}
 
 
-.chessboard[data-move-class="inaccuracy"] .square.last-move { --last-move: var(--mark-inaccuracy); }
+.chessboard[data-move-class="brilliant"] {
+  --grade-ink: var(--brilliant);
+  --move-light: var(--grade-brilliant-light, var(--grade-ink));
+  --move-dark: var(--grade-brilliant-dark, var(--grade-ink));
+}
 
 
-.chessboard[data-move-class="mistake"] .square.last-move { --last-move: var(--mark-mistake); }
+.chessboard[data-move-class="inaccuracy"] {
+  --grade-ink: var(--inaccuracy);
+  --move-light: var(--grade-inaccuracy-light, var(--grade-ink));
+  --move-dark: var(--grade-inaccuracy-dark, var(--grade-ink));
+}
 
 
-.chessboard[data-move-class="blunder"] .square.last-move { --last-move: var(--mark-blunder); }
+.chessboard[data-move-class="mistake"] {
+  --grade-ink: var(--warn);
+  --move-light: var(--grade-mistake-light, var(--grade-ink));
+  --move-dark: var(--grade-mistake-dark, var(--grade-ink));
+}
 
 
-.chessboard[data-move-class="missed_win"] .square.last-move,
-.chessboard[data-move-class="missed_tactic"] .square.last-move { --last-move: var(--mark-missed); }
+.chessboard[data-move-class="blunder"] {
+  --grade-ink: var(--danger);
+  --move-light: var(--grade-blunder-light, var(--grade-ink));
+  --move-dark: var(--grade-blunder-dark, var(--grade-ink));
+}
+
+
+.chessboard[data-move-class="missed"] {
+  --grade-ink: var(--missed);
+  --move-light: var(--grade-missed-light, var(--grade-ink));
+  --move-dark: var(--grade-missed-dark, var(--grade-ink));
+}
 
 
 .piece {
@@ -416,7 +475,7 @@
 
 
 .square-badge {
-  --badge: var(--good);
+  --badge: var(--grade-ink, var(--label));
   position: absolute;
   top: 3%;
   right: 3%;
@@ -440,34 +499,6 @@
     0 1px 3px rgba(0, 0, 0, 0.38);
   animation: badgeIn var(--dur-fast) var(--ease-out);
 }
-
-
-.square-badge.class-brilliant { --badge: var(--brilliant); }
-
-
-.square-badge.class-great { --badge: var(--great); }
-
-
-.square-badge.class-best,
-.square-badge.class-excellent,
-.square-badge.class-good,
-.square-badge.class-book { --badge: var(--good); }
-
-
-.square-badge.class-inaccuracy { --badge: var(--inaccuracy); }
-
-
-.square-badge.class-mistake { --badge: var(--warn); }
-
-
-.square-badge.class-blunder { --badge: var(--danger); }
-
-
-.square-badge.class-missed_win,
-.square-badge.class-missed_tactic { --badge: var(--missed); }
-
-
-.square-badge.class-unknown { --badge: var(--label); }
 
 
 .square-badge.class-brilliant {
@@ -1007,4 +1038,3 @@
   .study-board-frame > .eval-rail { grid-column: 1; grid-row: 1; }
   .board-area > .board-bar { margin-inline-start: var(--board-rail-w); }
 }
-

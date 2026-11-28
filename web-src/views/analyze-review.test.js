@@ -1,4 +1,5 @@
 // Key-moment browsing and the ahead-only blind practice session.
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Chess } from "chess.js";
 
@@ -214,7 +215,10 @@ describe("ahead-only retry sessions", () => {
     expect(h.calls.select).toEqual(["m2"]);
     expect(h.view.dataset.reviewBlind).toBe("1");
     expect(h.bar.innerHTML).toContain("What would you play here?");
-    expect(h.bar.innerHTML).toContain("White to move · 1 / 2");
+    expect(h.bar.innerHTML).toContain('data-state="move"');
+    expect(h.bar.innerHTML).toContain('aria-label="White to move"');
+    expect(h.bar.innerHTML).toContain('aria-valuenow="0"');
+    expect(h.bar.innerHTML).toContain('<span class="train-count">1 / 2</span>');
     expect(h.bar.innerHTML).not.toContain("d4 is the best move");
   });
 
@@ -243,6 +247,7 @@ describe("ahead-only retry sessions", () => {
     const preFen = GAME[2].fen_before;
     expect(h.review.tryReviewMove("g1f3", preFen)).toBe(true);
     expect(h.bar.innerHTML).toContain("What else would you try?");
+    expect(h.bar.innerHTML).toContain('data-state="wrong"');
     expect(h.bar.innerHTML).not.toContain("d4");
     expect(h.gradeAttempt).not.toHaveBeenCalled();
     expect(h.previewPosition).toHaveBeenLastCalledWith(null);
@@ -310,7 +315,10 @@ describe("preparation exercises", () => {
     await vi.advanceTimersByTimeAsync(700);
     await tick();
     expect(h.bar.innerHTML).toContain("Practice complete");
-    expect(h.bar.innerHTML).not.toContain("1 / 1");
+    expect(h.bar.innerHTML).toContain('data-state="done"');
+    expect(h.bar.innerHTML).toContain('<span class="train-count">1 / 1</span>');
+    expect(h.bar.innerHTML).toContain('aria-valuenow="1"');
+    expect(h.bar.innerHTML).not.toContain('data-review="continue"');
     expect(h.view.dataset.reviewBlind).toBe("1");
   });
 
@@ -321,6 +329,8 @@ describe("preparation exercises", () => {
     await h.click("retry");
     await h.click("show-move");
     expect(h.bar.innerHTML).toContain("Your repertoire: Bc4 / d3");
+    expect(h.bar.innerHTML).toContain('data-state="reveal"');
+    expect(h.bar.innerHTML).not.toContain('aria-label="White to move"');
     expect(h.bar.innerHTML).not.toContain("Best move");
     expect(h.previewPosition).toHaveBeenCalledWith(expect.objectContaining({ lastMove: "f1c4" }));
     await h.click("continue");
@@ -337,19 +347,26 @@ describe("session progression and cancellation", () => {
     await h.click("retry");
     h.review.tryReviewMove("d2d4", GAME[2].fen_before);
     expect(h.bar.innerHTML).toContain("d4 is the best move");
-    expect(h.bar.innerHTML).toContain("2.Nf3 · 1 / 2");
-    expect(h.bar.innerHTML).not.toContain("White to move · 1 / 2");
+    expect(h.bar.innerHTML).toContain('data-state="correct"');
+    expect(h.bar.innerHTML).toContain('aria-valuenow="1"');
+    expect(h.bar.innerHTML).not.toContain('aria-label="White to move"');
+    expect(h.bar.innerHTML).not.toContain("2.Nf3 · 1 / 2");
     await vi.advanceTimersByTimeAsync(700);
     await tick();
     expect(h.calls.select).toEqual(["m2", "m6"]);
-    expect(h.bar.innerHTML).toContain("White to move · 2 / 2");
+    expect(h.bar.innerHTML).toContain('aria-label="White to move"');
+    expect(h.bar.innerHTML).toContain('<span class="train-count">2 / 2</span>');
+    expect(h.bar.innerHTML).toContain('aria-valuenow="1"');
+    expect(h.bar.innerHTML).toContain('data-state="move"');
 
     h.review.tryReviewMove("b5c6", GAME[6].fen_before);
     expect(h.bar.innerHTML).toContain("Bxc6 is the best move");
     await vi.advanceTimersByTimeAsync(700);
     await tick();
     expect(h.bar.innerHTML).toContain("Practice complete");
-    expect(h.bar.innerHTML).not.toContain("2 / 2");
+    expect(h.bar.innerHTML).toContain('data-state="done"');
+    expect(h.bar.innerHTML).toContain('aria-valuenow="2"');
+    expect(h.bar.innerHTML).toContain('<span class="train-count">2 / 2</span>');
     expect(h.bar.innerHTML).toContain("Back to analysis");
     expect(h.view.dataset.reviewBlind).toBe("1");
   });
@@ -460,5 +477,14 @@ describe("session progression and cancellation", () => {
     await h.click("retry");
     expect(selectPane).toHaveBeenCalledWith("coach", { store: false });
     vi.unstubAllGlobals();
+  });
+});
+
+describe("blind retry board tint", () => {
+  it("neutralizes the previous move grade only while the drill is concealed", () => {
+    const css = readFileSync(new URL("./analyze/panel.css", import.meta.url), "utf8");
+    expect(css).toContain("#view-analyze[data-review-blind] #analysis-board");
+    expect(css).toContain("--move-light: var(--last-move)");
+    expect(css).toContain("--move-dark: var(--last-move)");
   });
 });

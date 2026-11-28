@@ -373,18 +373,42 @@
   }
   /* The repertoire's name is this screen's title: it takes the shell's title
      size and ink, at the same left edge as the board under it. */
-  #build-rep-header .rep-title { flex: 1 1 0; flex-direction: column; align-items: stretch; justify-content: center; gap: 0; }
-  #build-rep-header .rep-name {
-    flex: none;
-    width: 100%;
+  #build-rep-header .rep-title {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) max-content;
+    grid-template-rows: 24px 16px minmax(4px, auto);
+    grid-auto-rows: auto;
+    justify-content: start;
+    align-content: center;
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 0;
     min-width: 0;
-    height: 22px;
+    min-height: var(--phone-head-h);
+    flex: 1 1 0;
+  }
+  #build-rep-header .rep-name {
+    grid-area: 1 / 1;
+    width: auto;
+    height: auto;
+    line-height: 22px;
+    min-width: 0;
     color: var(--text);
     font-size: 16px;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  #build-rep-header .rep-route-mark {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    place-self: center start;
+  }
+  #build-rep-header :is(.build-opening, .build-sync, .build-ply) {
+    grid-column: 1;
+    min-width: 0;
+    contain: inline-size;
   }
   #build-rep-header .rep-color-sub { display: none; }
   /* The save state is the title's subline, on every pane (it sat in the
@@ -486,16 +510,18 @@
     grid-template-columns: minmax(44px, 56px) minmax(40px, 48px) minmax(60px, 68px) minmax(0, 1fr);
     column-gap: 6px;
   }
-  /* Above the board the engine is one row: the line, then "N lines" (the
-     picker opens in a viewport-safe popover) and × to turn it off. Name, depth
-     and the download offer stay off the board screen; Settings keeps the download. */
+  /* Keep the PV list itself scrollable: deeper searches replace its rows,
+     not the element the reader swipes. The eval and line picker stay put. */
   #build-engine-slot { padding: 2px 12px 4px; }
   #build-engine-slot .engine-window.is-docked { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; column-gap: 6px; }
   #build-engine-slot .engine-window-head { grid-area: 1 / 2; padding: 0; }
   #build-engine-slot .engine-head-tools { position: relative; gap: 2px; }
-  #build-engine-slot .engine-window-body { grid-area: 1 / 1; }
-  #view-build .engine-pv { height: auto; align-items: start; }
-  #view-build .engine-pv-line { white-space: normal; overflow-wrap: anywhere; }
+  #build-engine-slot .engine-window-body { grid-area: 1 / 1; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+  #build-engine-slot .engine-window-pvs { grid-template-columns: minmax(100%, max-content); min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  #build-engine-slot .engine-pv:not(.is-waiting) { grid-template-columns: 48px 1fr; gap: 4px; padding: 0; height: 30px; align-items: center; overflow: visible; }
+  #build-engine-slot .engine-pv.is-waiting { grid-template-columns: minmax(0, 1fr); }
+  #build-engine-slot .engine-pv-eval { position: sticky; left: 0; z-index: 1; min-width: 44px; }
+  #build-engine-slot .engine-pv-line { white-space: nowrap; overflow: visible; }
   #build-engine-slot :is(.engine-head-meta, .engine-window-unlock) { display: none; }
   /* The fork is one row, as Lichess lays out its next-move choices: the label,
      then the chips in a line that scrolls sideways. Chips are drawn 36px with
@@ -522,16 +548,12 @@
   }
   #view-build .fork-chip::after { content: ""; position: absolute; inset: -4px 0; }
   #view-build .fork-chip small { font-size: var(--fs-s); }
-  /* A move is a thumb target, not a mouse target: the main line runs on a
-     36px pitch (side lines 32px) and each move's hit area fills its line, while
-     the drawn token keeps the score sheet's size (its current-move fill and
-     due/weak dot stay on the text, not on the line's box). */
-  #view-build .mtree { line-height: 46px; padding-block: 6px; }
-  #builder-tree .mtree-var { line-height: 46px; }
-  #view-build .mtree-move { position: relative; display: inline-block; min-width: 44px; margin-right: 2px; box-sizing: border-box; text-align: left; line-height: 1.6; }
-  #view-build .mtree-move::after,
-  #view-build .mtree-move.is-gap::before { content: ""; position: absolute; inset: -11px 0; }
-  #view-build .mtree-collapse { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }
+  /* Inline notation uses the token itself as the hit area. Inflating it with
+     pseudo-elements would make adjacent lines steal each other's taps. */
+  #view-build #builder-tree .mtree { line-height: 30px; padding-block: 2px; word-spacing: normal; }
+  #view-build #builder-tree .mtree-var { line-height: inherit; margin-block: 0; padding-block: 0; }
+  #view-build #builder-tree :is(.mtree-move, .mtree-collapse) { display: inline-block; min-width: 28px; min-height: 28px; box-sizing: border-box; vertical-align: middle; line-height: 1.25; }
+  #view-build #builder-tree .mtree-collapse { padding: 0 3px; margin: 0; }
   /* The empty answer is a card under the board. Three buttons side by side
      clipped "New repertoire" at 390px, so the one action gets the row and the
      two alternatives share the row under it. It is padded to fit the panel a

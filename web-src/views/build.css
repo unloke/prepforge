@@ -876,7 +876,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   display: flex;
   min-width: 0;
   height: 18px;
-  border-radius: 3px;
+  border-radius: 4px;
+  outline: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  outline-offset: -1px;
   overflow: hidden;
   background: var(--explorer-track);
 }
@@ -902,7 +904,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Engine on: an Eval column between Move and Games. Off: the cell is gone and
    the three-column layout above is untouched. */
-.explorer-eval { display: none; }
+.explorer-eval { display: none; color: var(--muted); }
 
 .explorer-rows.has-eval .explorer-head,
 .explorer-rows.has-eval .explorer-row {
@@ -913,7 +915,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   display: block;
   text-align: right;
   font-weight: 600;
-  color: var(--muted);
 }
 
 .explorer-rows.has-eval .explorer-head .explorer-eval { font-weight: 500; color: var(--label); }

@@ -285,6 +285,7 @@ class EngineWidget {
 
   _clearAnalysisView() {
     setEngineBestArrow(null);
+    if (this.pvsEl && activeViewName() === "build") this.pvsEl.scrollLeft = 0;
     if (this.lastFen && this._renderGameOver(this.lastFen)) return;
     this._paintPvs(this._pendingRows(0));
     this._paintDepth(0, null);

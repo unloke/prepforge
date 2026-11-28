@@ -184,6 +184,10 @@ it.each([
 });
 
 describe("preview move colours", () => {
+  it("normalizes every stored classification to its semantic group and clears unknowns", () => {
+    mount({ onMove: () => {} }); const members = { brilliant: "brilliant", great: "great", best: "good", excellent: "good", good: "good", book: "good", forced: "good", inaccuracy: "inaccuracy", mistake: "mistake", blunder: "blunder", missed_win: "missed", missed_tactic: "missed" };
+    for (const [classification, group] of Object.entries(members)) { board.setMoveBadge("e4", classification, "x"); expect(boardEl.dataset.moveClass).toBe(group); }    board.setMoveBadge("e4", "unknown", "?"); expect(boardEl.dataset.moveClass).toBeUndefined(); board.setMoveBadge(null); expect(boardEl.dataset.moveClass).toBeUndefined();
+  });
   it("uses each preview's grade or default tint, restoring the real grade on exit", () => {
     mount({ onMove: () => {} });
     board.setMoveBadge("e4", "blunder", "??");

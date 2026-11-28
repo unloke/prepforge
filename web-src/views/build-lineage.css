@@ -2,7 +2,6 @@
 #build-menu.has-unseen::after { content: ""; position: absolute; top: 5px; right: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-text); }
 /* Chess-book headings, copperplate-like route lines, and the existing ink/accent.
    The ornament is generated from the open repertoire, never a random motif. */
-#build-rep-header #build-rep-name { position: relative; padding-right: 72px; }
 .build-ply { display: none; }
 #build-rep-name b { font-family: var(--serif); font-size: 19px; font-weight: 400; letter-spacing: -0.2px; }
 @media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
@@ -94,14 +93,14 @@
   #view-build :is(#build-inspector, .build-tree-region) { animation: pane-in var(--dur) var(--ease-out); }
   @keyframes pane-in { from { opacity: 0; transform: translateY(6px); } }
 }
-.rep-route-mark { position: absolute; right: 0; top: 0; display: inline-flex; align-items: center; justify-content: center; appearance: none; border: 1px solid var(--line); background: var(--panel-soft); padding: 0 10px; min-height: 28px; color: var(--muted); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; border-radius: 999px; transition: background 160ms ease, color 160ms ease; }
-.rep-route-mark .route-glyph { display: none; }
-.rep-route-mark::after { content: "Atlas"; }
+.rep-route-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; align-self: center; width: 64px; min-height: 32px; padding: 0 3px; border: 0; border-radius: 4px; background: none; cursor: pointer; }
 .route-glyph { display: block; width: 100%; height: auto; overflow: visible; }
 .route-glyph path { fill: none; stroke: var(--line); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
 .route-glyph .route-active { stroke: var(--accent); fill: none; }
 .route-glyph .route-dots { fill: var(--label); stroke: none; }
 .route-glyph .route-dots.route-active { fill: var(--accent); }
+.rep-route-mark .route-glyph > path:first-child { stroke: var(--muted); }
+.rep-route-mark .route-dots.route-active { stroke: var(--accent); stroke-width: 2px; }
 #view-build.is-loading :is(#build-focus, #build-opening) { display: none; }
 .build-focus { display: flex; align-items: center; gap: 7px; padding: 0 var(--build-pad, 14px) 6px; font-size: 12px; }
 .build-focus b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; }
@@ -230,7 +229,7 @@
   .lineage-modal .modal-header { padding: 16px; }
   .atlas-modal .modal-header { padding: 8px 20px; }
   .lineage-body { padding: 16px; }
-  .rep-route-mark { min-width: 44px; min-height: 44px; top: -3px; }
+  .rep-route-mark { width: 58px; min-height: 44px; }
   .discussion-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .discussion-index { flex-direction: row; overflow-x: auto; }
   .discussion-link { flex: none; border-left: 0; border-bottom: 2px solid transparent; }
