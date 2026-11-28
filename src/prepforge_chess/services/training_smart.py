@@ -224,6 +224,7 @@ class SmartTrainingService:
         new_cap: Optional[int] = None,
         seed: Optional[int] = None,
         target_node_ids: Optional[List[str]] = None,
+        only_target_nodes: bool = False,
     ) -> TrainingSession:
         """Resume this repertoire's unfinished, still-intact session, else
         build a new queue. Picked targets always build a fresh ``targets``
@@ -232,12 +233,14 @@ class SmartTrainingService:
         self.leading = []
         self._progress_cache.clear()
         repertoire = self._load_repertoire_or_raise(repertoire_id)
-        scope = SCOPE_TARGETS if target_node_ids else SCOPE_REPERTOIRE
+        scope = SCOPE_TARGETS if target_node_ids or only_target_nodes else SCOPE_REPERTOIRE
         existing = self._latest(repertoire_id, scope)
         if existing is not None and not fresh and scope == SCOPE_REPERTOIRE and self._resumable(existing, [repertoire]):
             self.resumed = True
             return self._lead_with_misses(existing, [repertoire])
-        plan = self._plan_single(repertoire, session_size, new_cap, target_node_ids)
+        plan = self._plan_single(
+            repertoire, session_size, new_cap, target_node_ids, only_target_nodes
+        )
         if not plan.cards:
             raise ValueError("repertoire has no trainable moves yet")
         return self._install(existing, repertoire_id, scope, plan, seed)
@@ -399,6 +402,7 @@ class SmartTrainingService:
         session_size: Optional[int] = None,
         new_cap: Optional[int] = None,
         target_node_ids: Optional[List[str]] = None,
+        only_target_nodes: bool = False,
     ) -> SessionPlan:
         return build_session_plan(
             repertoire.root_node,
@@ -407,6 +411,7 @@ class SmartTrainingService:
             session_size=session_size if session_size is not None else DEFAULT_SESSION_SIZE,
             new_cap=new_cap if new_cap is not None else DEFAULT_NEW_CAP,
             target_node_ids=target_node_ids,
+            only_target_nodes=only_target_nodes,
         )
 
     def _plan_mixed(

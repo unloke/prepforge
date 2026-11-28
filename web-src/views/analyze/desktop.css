@@ -313,6 +313,9 @@
     grid-column: 1 / -1;
     width: 100%;
   }
+  #view-analyze[data-review-blind] #analyze-main > #analyze-panes {
+    display: none;
+  }
 
   /* Once graded, primary action shifts to calm surface tone */
   #view-analyze:has(#analysis-summary .rp-summary) #run-analysis.primary {

@@ -534,6 +534,12 @@
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
+.line-title-moves {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
 .line-title .move-ref { text-decoration-color: transparent; }
 .line-title .move-ref:hover { text-decoration-color: currentColor; }
 .scout-side .scout-miniboard-wrap { width: 100%; max-width: none; height: auto; aspect-ratio: 1; align-self: stretch; }

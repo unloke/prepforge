@@ -140,12 +140,16 @@ describe("train up-next preview", () => {
     expect(html).not.toContain(">Start<");
   });
 
-  it("names the card's kind once: the chip for a review, the banner for a new move", () => {
-    const appState = { smart: { cardIndex: 0, repertoireName: "Italian", queue: [card("weak", "Italian", "white", "c3")] } };
+  it("names the card's kind once: the chip for a review, Retry for a requeued miss, the banner for a new move", () => {
+    const retryCard = { ...card("due", "Italian", "white", "c3"), retry: true };
+    const appState = { smart: { cardIndex: 0, repertoireName: "Italian", queue: [card("weak", "Italian", "white", "c3"), retryCard] } };
     const view = makeView(appState, elements);
-    view.renderSmartProgress({ total_cards: 1, card_index: 0, kind: "weak" });
+    view.renderSmartProgress({ total_cards: 2, card_index: 0, kind: "weak" });
     expect(elements["train-card-kind"]).toMatchObject({ hidden: false, className: "kchip k-weak", textContent: "Weak spot" });
-    view.renderSmartProgress({ total_cards: 1, card_index: 0, kind: "new" });
+    expect(String(elements["train-upnext"].innerHTML)).toContain('class="un-kind is-retry">Retry</span>');
+    view.renderSmartProgress({ total_cards: 2, card_index: 1, kind: "due", retry: true });
+    expect(elements["train-card-kind"]).toMatchObject({ hidden: false, className: "kchip k-retry", textContent: "Retry" });
+    view.renderSmartProgress({ total_cards: 2, card_index: 0, kind: "new" });
     expect(elements["train-card-kind"].hidden).toBe(true);
   });
 

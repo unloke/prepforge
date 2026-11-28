@@ -632,9 +632,8 @@ function savedBetterMove(ctx) {
 // the board still shows that position.
 function setAnalysisBetterArrow(uci, fen = null) {
   const board = boards.analysis;
-  if (!board || !board.setBetterArrow) return;
-  if (uci && fen && board.fen !== fen) return;
-  board.setBetterArrow(uci && pref("bestArrow") ? uci : null);
+  if (!board?.setBetterArrow || (uci && fen && board.fen !== fen)) return;
+  board.setBetterArrow(uci && pref("bestArrow") && !document.getElementById("view-analyze")?.hasAttribute("data-review-replay") ? uci : null);
 }
 
 // The live read's better move, when no saved one is drawn yet and the move (by its saved
@@ -1607,7 +1606,7 @@ async function rebuildAnalysisVariations(gamePgn) {
 // (mainline + variations) from it. Returns false (and, unless quiet, sets a status
 // hint) when the movetext has an illegal/unparseable move — leaving the existing
 // tree untouched so mid-typing never flickers the list to empty.
-async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onInvalid = null, sourceSeq = invalidateAnalysisSource() } = {}) {
+async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onInvalid = null, orientation = null, sourceSeq = invalidateAnalysisSource() } = {}) {
   const parsed = parsePgn(pgnText);
   if (!parsed.ok) {
     if (onInvalid) onInvalid(parsed.error);
@@ -1616,6 +1615,7 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onIn
   }
   const view = await ensureAnalyzeView();
   if (sourceSeq !== analysisRecallSeq) return false;
+  if (orientation) boards.analysis?.setOrientation(orientation);
   const { moves, varNodes } = view.adaptParsedTree(parsed.root);
   // A FEN header with no moves shows that position on its own.
   const fenOnly = !moves.length && !varNodes.size ? parsed.headers.FEN : null;

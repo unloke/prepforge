@@ -54,7 +54,7 @@ function render(game) {
   const view = createReplayView({
     boardRenderers: RENDERERS,
     getReplayFilter: () => null,
-    isGameOpen: () => true,
+    getOpenGameIndex: () => 0,
     onToggleFilter: () => {},
     onToggleGame: () => {},
     onTrainMiss: () => {},

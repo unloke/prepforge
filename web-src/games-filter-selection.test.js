@@ -69,7 +69,7 @@ function harness() {
   const view = createReplayView({
     boardRenderers: RENDERERS,
     getReplayFilter: () => filter,
-    isGameOpen: (index) => open.has(index),
+    getOpenGameIndex: () => [...open][0],
     onToggleFilter: (kind) => { toggles.push(kind); },
     onToggleGame: () => {},
     onTrainMiss: () => {},
@@ -114,8 +114,8 @@ describe("Games outcome filter", () => {
 
   it("app.js keeps the filter and the selection across a toggle", () => {
     const source = appSource();
-    const toggle = source.slice(source.indexOf("onToggleFilter: (kind) => {"), source.indexOf("onToggleGame: (index) => {"));
-    expect(toggle).not.toContain("replayOpen.clear()");
+    const toggle = source.slice(source.indexOf("onToggleFilter: (kind) => {"), source.indexOf("onToggleGame: (index, wasOpen) => {"));
+    expect(toggle).not.toContain("replayState.replayOpenIndex =");
     expect(toggle).toContain("openIndex:");
     const compare = source.slice(source.indexOf("async function runLichessCompare("), source.indexOf("\n}\n", source.indexOf("async function runLichessCompare(")));
     expect(compare).not.toContain("replayState.replayFilter = null;");

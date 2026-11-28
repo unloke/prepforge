@@ -87,9 +87,9 @@ class BoardController {
       { circles: [...this.highlights], draft: this.annotationDraft, engineArrows: this.engineArrows });
   }
 
-  // A hint: pick up the piece that moves, as if the player had clicked it.
+  // A hint: pick up the piece that moves, as if the player had clicked it; null clears.
   selectSquare(squareName) {
-    if (this.hasLegalFrom(squareName)) this._setSelected(squareName);
+    if (!squareName || this.hasLegalFrom(squareName)) this._setSelected(squareName || null);
   }
 
   setEngineArrow(uci) {

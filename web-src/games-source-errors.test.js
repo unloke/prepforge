@@ -25,7 +25,7 @@ function render(payload) {
   const view = createReplayView({
     boardRenderers: RENDERERS,
     getReplayFilter: () => null,
-    isGameOpen: () => false,
+    getOpenGameIndex: () => undefined,
     onToggleFilter: () => {},
     onToggleGame: () => {},
     onTrainMiss: () => {},

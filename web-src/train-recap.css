@@ -1,0 +1,23 @@
+.train-missed-recap { display: flex; flex-direction: column; gap: 4px; max-height: 164px; overflow-y: auto; }
+.train-missed-recap[hidden] { display: none; }
+.train-missed-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs);
+  text-align: left;
+  cursor: pointer;
+}
+.train-missed-row:hover { background: var(--surface-3); }
+.train-missed-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.train-missed-ctx { color: var(--muted); font-family: var(--mono); white-space: nowrap; }
+.train-missed-arrow { color: var(--label); }
+.train-missed-san { color: var(--warn-text); font-family: var(--mono); font-weight: 600; }
+.train-missed-rep { margin-left: auto; overflow: hidden; color: var(--muted); font-size: var(--fs); text-overflow: ellipsis; white-space: nowrap; }

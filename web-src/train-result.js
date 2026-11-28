@@ -5,6 +5,19 @@ import { countOf, nounOf } from "./plural.js";
 
 const pct = (correct, missed) => (correct + missed ? `${Math.round((correct / (correct + missed)) * 100)}%` : "—");
 
+function tailMoves(line, plies = 2) {
+  const tokens = String(line || "").split(" ").filter(Boolean);
+  return tokens.slice(Math.max(0, tokens.length - plies)).join(" ");
+}
+
+export function missedRecapHtml(items = []) {
+  if (!Array.isArray(items) || !items.length) return "";
+  return html`<span class="faint">Missed in this run</span>${items.map((item, idx) => {
+    const context = item.line ? tailMoves(item.line) : item.repertoireName || "";
+    return html`<button type="button" class="train-missed-row" data-missed-index="${idx}">${context ? html`<span class="train-missed-ctx">${context}</span><span class="train-missed-arrow" aria-hidden="true">→</span>` : ""}<b class="train-missed-san">${item.san}</b>${item.line && item.repertoireName ? html`<span class="train-missed-rep">${item.repertoireName}</span>` : ""}</button>`;
+  })}`;
+}
+
 export function smartResult(smart, stats, after = null) {
   const served = (smart.cardsDone || 0) + (stats.skipped || 0);
   const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
@@ -13,12 +26,19 @@ export function smartResult(smart, stats, after = null) {
   if (stats.learned) cells.push([stats.learned, "learned"]);
   if (firstTries) cells.push([stats.best || 0, "best streak"]);
   if (stats.skipped) cells.push([stats.skipped, "skipped"]);
+  const missedTargets = !smart.mixed && smart.repertoireId && smart.missedNodeIds?.length
+    ? { repertoireId: smart.repertoireId, targets: [...smart.missedNodeIds] }
+    : null;
+  const missedItems = Array.isArray(smart.missedItems) ? [...smart.missedItems] : [];
   return {
     mode: "smart",
     title: smart.blitz ? "Blitz complete" : "Queue complete",
     cells: cells.slice(0, 4),
     delta: after?.health && smart.healthBefore ? healthDelta(smart.healthBefore, after.health) : null,
     foot: after ? (after.due_tomorrow > 0 ? `${countOf(after.due_tomorrow, "review")} due tomorrow` : "Nothing due tomorrow") : "",
+    missedDrill: missedTargets,
+    missedItems,
+    recapHtml: missedRecapHtml(missedItems),
   };
 }
 
@@ -37,6 +57,11 @@ export function healthDelta(before, now) {
 export function drillResult(training, stats) {
   const lines = Number(training?.line_order?.length) || 0;
   const missed = stats.mistakes || 0;
+  const targets = training?.missedNodeIds?.length ? training.missedNodeIds : training?.mistakes;
+  const missedDrill = training?.repertoire_id && Array.isArray(targets) && targets.length
+    ? { repertoireId: training.repertoire_id, targets: [...targets] }
+    : null;
+  const missedItems = Array.isArray(training?.missedItems) ? [...training.missedItems] : [];
   return {
     mode: "all_lines",
     title: "Rehearsal complete",
@@ -47,6 +72,9 @@ export function drillResult(training, stats) {
     ],
     delta: null,
     foot: training?.repertoire_name || "",
+    missedDrill,
+    missedItems,
+    recapHtml: missedRecapHtml(missedItems),
   };
 }
 

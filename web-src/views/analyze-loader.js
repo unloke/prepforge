@@ -1,6 +1,9 @@
 import { html } from "../html.js";
-import { START_FEN, analysisState, boards } from "../core/state.js";
+import { START_FEN, analysisState, appState, boards } from "../core/state.js";
+import { postJson, setStatus, setStatusError } from "../core/api.js";
+import { playSound } from "../core/sound.js";
 import { syncAnalysisEvalCard } from "../core/engine.js";
+import { rememberHandoff } from "../handoff-context.js";
 // The report's "left prep at" row walks the repertoire trees the Analyze coach
 // already loads, so the view reads that one cache rather than fetching again.
 import { ensureBookLoaded, getBookReps } from "../analyze-book-state.js";
@@ -56,6 +59,50 @@ export async function ensureAnalyzeView() {
       peek: (pos) => boards.analysis?.peek(pos),
       gradeAttempt: (fen, ctx) => gradeReviewAttempt(fen, ctx),
       ensureBookLoaded,
+      retryHooks: {
+        renderBoard: ({ fen, legalMoves = [], lastMove = null, badge = null, cue, back = false }) => {
+          const b = boards.analysis;
+          if (!b || !fen) return;
+          b.setBetterArrow(null);
+          b.setPosition({ fen, legalMoves, lastMove, cue, back });
+          if (badge?.square) b.setMoveBadge(badge.square, badge.classification, badge.label);
+          else b.setMoveBadge(null);
+        },
+        selectHintSquare: (sq) => boards.analysis?.selectSquare(sq),
+        setHintArrow: (uci) => boards.analysis?.setEngineArrow(uci),
+        setComparisonArrows: (arrows) => boards.analysis?.setAnnotations(arrows, []),
+        getOrientation: () => boards.analysis?.orientation || null,
+        setOrientation: (side) => boards.analysis?.setOrientation(side),
+        playCue: (kind) => playSound(kind),
+        canTrainPrep: () => Boolean(appState.signedIn),
+        recordPrepMiss: async (item) => {
+          const moves = analysisState.analysis?.moves || [];
+          const prefix = moves.filter((m) => Number(m.ply) < item.ply).map((m) => m.uci);
+          const first = item.answers?.[0];
+          rememberHandoff({
+            source: "analyze",
+            reason: "practice-missed-move",
+            gameId: analysisState.analysis?.game_id || null,
+            lineUcis: first ? [...prefix, first.uci] : prefix,
+            ply: item.ply,
+            anchorFen: item.move?.fen_before || null,
+            rootFen: moves[0]?.fen_before || null,
+            side: item.side,
+            repertoireId: item.repId,
+          });
+          try {
+            await postJson("/api/train/record-miss", {
+              repertoire_id: item.repId,
+              node_id: item.prescribedNodeId,
+            });
+            setStatus(`${first?.san || "Move"} will lead your next smart session`);
+            return true;
+          } catch (error) {
+            setStatusError(error.message);
+            return false;
+          }
+        },
+      },
     });
   }
   return analyzeView;

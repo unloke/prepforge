@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import "../train-recap.css";
 // Train sessions: the smart queue, line rehearsal, practice games and Feeling Lucky.
 // Lazy-loaded by app.js the first time Train is used. Shared state and services
 // come from their own modules; what only the shell or another feature can do comes
@@ -25,7 +26,7 @@ import { beginLuckyDiscovery, finishLuckyDiscovery, luckyDiscoveryCurrent } from
 import { createPlayMoveHandler } from "../train-play-input.js";
 import { isNothingToTrainError } from "../train-start.js";
 import { planTrainRunIn, playTrainRunIn } from "../train-flow.js";
-import { requeueMissedTarget } from "../train-retry.js";
+import { recordSessionMiss, requeueMissedTarget } from "../train-retry.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, showTrainResult, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
@@ -975,6 +976,12 @@ async function submitTrainingMove(playedUci) {
 
   if (!result.correct) {
     if (attempt === 1) {
+      recordSessionMiss(training, result.missed_node_id, {
+        san: result.expected_san,
+        uci: result.expected_uci,
+        fenBefore: prompt.fen_before,
+        repertoireName: training?.repertoire_name || "",
+      });
       tallyAnswer(stats, false);
       await renderTrainStats();
     }
@@ -988,7 +995,14 @@ async function submitTrainingMove(playedUci) {
       // Keep SAN-only feedback even if the preview move cannot be rendered.
     }
     playSound("wrong");
-    const banner = wrongMoveBanner({ attempt, playedSan, expectedSan: result.expected_san });
+    const annotation = result.annotation || "";
+    const tip = attempt >= 2 ? teachWhy({
+      fen_before: prompt.fen_before,
+      expected_uci: result.expected_uci,
+      expected_san: result.expected_san,
+      hint: { strategy: annotation, annotated: Boolean(annotation) },
+    }, "") : annotation;
+    const banner = wrongMoveBanner({ attempt, playedSan, expectedSan: result.expected_san, tip });
     setTrainBanner(banner.state, banner.title, banner.sub);
     if (trainState.training) trainState.training.prompt = result.prompt;
     await sleep(950);
@@ -1222,6 +1236,7 @@ async function startSmartTraining(options = {}) {
       fresh: fresh || !!targets.length,
       ...(repertoireId ? { repertoire_id: repertoireId } : {}),
       ...(targets.length ? { target_node_ids: targets } : {}),
+      ...(options.onlyTargetNodes ? { only_target_nodes: true } : {}),
     });
   } catch (error) {
     if (!isCurrent()) return cancelStaleTrainStart(options);
@@ -1331,7 +1346,7 @@ function smartLocalPrompt(smart) {
     session_id: smart.sessionId,
     card_index: smart.cardIndex,
     total_cards: smart.queue.length,
-    kind: card.kind,
+    kind: card.kind, retry: !!card.retry,
     target_index: smart.targetIndex,
     targets_total: card.targets.length,
     expected_node_id: target.node_id,
@@ -1476,8 +1491,8 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   if (!correct) {
     // Only the first answer is graded (matches the synced SR write); the
     // accuracy chips therefore never count retries.
-    const retry = requeueMissedTarget(smart, prompt.target);
-    if (retry.added) markTrainPositionDirty();
+    const retry = timedOut ? requeueMissedTarget(smart, prompt.target, { severity: "reveal" }) : requeueMissedTarget(smart, prompt.target);
+    if (retry.added || retry.moved) markTrainPositionDirty();
     const later = retry.pending ? " It comes back soon." : "";
     if (attempt === 1) {
       // A first-try miss ends the run, same as Line rehearsal.
@@ -1502,8 +1517,8 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       const missTip = () => wrongMoveTip({
         hintLevel: trainState.trainHintLevel, hint: prompt.hint, expectedSan: prompt.expected_san,
       });
-      const show = (tip) => {
-        const banner = wrongMoveBanner({ attempt, playedSan, expectedSan: prompt.expected_san, tip, timedOut });
+      const show = (tip, softFail = false) => {
+        const banner = wrongMoveBanner({ attempt, playedSan, expectedSan: prompt.expected_san, tip, timedOut, softFail });
         setTrainBanner(banner.state, banner.title, `${banner.sub}${later}`);
       };
       show(missTip());
@@ -1513,8 +1528,9 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
           prompt.phaseCoach = model;
           // A retry can already have succeeded or revealed the answer while
           // this inference was pending; its feedback owns the banner now.
-          if (!coachTipMayReplace(trainState.trainHintLevel) || !model.tip) return;
-          if (document.getElementById("train-banner")?.dataset.state === "wrong") show(model.tip);
+          if (!coachTipMayReplace(trainState.trainHintLevel) || (!model.tip && !model.softFail)) return;
+          const curState = document.getElementById("train-banner")?.dataset.state;
+          if (curState === "wrong" || curState === "review") show(model.tip || missTip(), model.softFail);
         })
         .catch(() => {});
     } else {
@@ -1546,8 +1562,10 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     // "Fixed on retry" is a scored miss recovered on the free retry; a revealed
     // answer was not recalled and a New move's demonstration was never scored.
     if (scored && attempt === 2) smart.retriesFixed += 1;
-  } else if (scored) {
-    tallyAnswer(stats, !hinted);
+  } else {
+    if (scored) tallyAnswer(stats, !hinted);
+    if (hinted && prompt.kind !== "new" && requeueMissedTarget(smart, prompt.target, { severity: "hint", scored }).added) markTrainPositionDirty();
+    else if (!scored && !hinted && prompt.kind !== "new" && requeueMissedTarget(smart, prompt.target, { stageAdvance: true }).added) markTrainPositionDirty();
   }
   // Store the next cursor before animating an already-counted answer.
   rememberSmartSession({ advance: true });

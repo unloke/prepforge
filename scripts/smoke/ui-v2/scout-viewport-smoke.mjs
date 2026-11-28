@@ -246,6 +246,23 @@ async function runViewport(vp) {
   check(rows >= 1, `game plan should list line rows, got ${rows}`);
   const sideOpen = await page.locator("#scout-side").evaluate((el) => !el.hidden && !!el.querySelector(".line-title") && !!el.querySelector(".scout-miniboard"));
   check(sideOpen, "line-detail card should show the first plan row with a board");
+  const longLine = await page.locator("#scout-side").evaluate((card) => {
+    const heading = card.querySelector(".line-title");
+    const moves = heading.querySelector(".line-title-moves") || heading;
+    const original = moves.innerHTML;
+    moves.innerHTML = (original + " ").repeat(8);
+    const style = getComputedStyle(moves);
+    const board = card.querySelector(".scout-miniboard");
+    const result = {
+      twoLines: moves.scrollHeight > moves.clientHeight &&
+        Math.abs(moves.clientHeight - 2 * parseFloat(style.lineHeight)) < 1 &&
+        style.webkitLineClamp === "2",
+      boardBelow: heading.getBoundingClientRect().bottom < board.getBoundingClientRect().top,
+    };
+    moves.innerHTML = original;
+    return result;
+  });
+  check(longLine.twoLines && longLine.boardBelow, `long move titles should truncate above the board: ${JSON.stringify(longLine)}`);
   // The card paints inside the route's View Transition; give it the fade to land.
   await page.locator("#scout-side .scout-action-analyze").waitFor({ state: "visible", timeout: 3000 }).catch(() => {});
   const sideActions = await page.locator("#scout-side .scout-action-analyze").boundingBox().catch(() => null);
@@ -308,6 +325,15 @@ async function runViewport(vp) {
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
   const realErrors = consoleErrors.filter((t) => !/Failed to load resource|favicon/.test(t));
   check(realErrors.length === 0, `console errors: ${realErrors.join(" | ")}`);
+
+  // The report tabs name the opponent's color. Analyze uses the player's side.
+  const oppColor = vp.width === 1180 ? "black" : "white";
+  await page.locator(`#scout-results .scout-color-tab[data-scout-tab="${oppColor}"]`).click();
+  await page.locator("#scout-side .scout-action-analyze").click();
+  await page.waitForFunction(() => document.querySelector("#view-analyze.is-active #analysis-moves .mtree-move.is-current"));
+  const firstSquare = await page.locator("#analysis-board button[data-square]").first().getAttribute("data-square");
+  const orientation = oppColor === "white" ? "h1" : "a8";
+  check(firstSquare === orientation, `Analyze should orient for the player against ${oppColor}, got ${firstSquare}`);
 
   await page.close();
 }

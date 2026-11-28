@@ -976,7 +976,7 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
            })}</div></div>`
       : "";
   return html`
-      <h2 class="line-title">${moveLineHtml(START_FEN, line.sans, line.ucis)}</h2>
+      <h2 class="line-title"><span class="line-title-moves">${moveLineHtml(START_FEN, line.sans, line.ucis)}</span></h2>
       <div class="scout-miniboard-wrap focus-board">${renderBoard(fen, viewColor, line.ucis?.at(-1) || null)}</div>
       ${statusLine}
       ${reasonLine}

@@ -1179,7 +1179,7 @@ export function createScoutView(deps) {
     // is reported before the load's first await, a failed load after it.
     let failed = false;
     const fail = () => { failed = true; setStatus("Couldn't open this line in Analyze.", { severity: "error" }); };
-    void loadPgnIntoAnalyze(pgn, { quiet: true, onInvalid: fail }).catch(fail);
+    void loadPgnIntoAnalyze(pgn, { quiet: true, orientation: oppColor === "white" ? "black" : "white", onInvalid: fail }).catch(fail);
     const drawer = document.getElementById("pgn-drawer");
     if (drawer) drawer.open = true;
     switchView("analyze");

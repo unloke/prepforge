@@ -56,7 +56,7 @@ export function createAnalyzeView({
   // Show a position on the Analyze board while the chart is hovered (board peek()).
   peek = () => {},
   // Grade one ephemeral retry guess without making it an analysis variation.
-  gradeAttempt = () => {},
+  gradeAttempt = () => {}, retryHooks = {},
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection } =
     createMoveTreeRenderer();
@@ -226,7 +226,7 @@ export function createAnalyzeView({
   }
 
   // The review bar under the coach; Shift+←/→ step it too.
-  const review = createReviewBar({ analysisState, getReport: () => report, showAnalysisPly, selectAnalysisNode, selectPane: (p, options) => panes.select(p, options), isPhone: () => panes.isPhone?.() || false, previewPosition: (pos) => peek(pos), gradeAttempt });
+  const review = createReviewBar({ analysisState, getReport: () => report, showAnalysisPly, selectAnalysisNode, selectPane: (p, options) => panes.select(p, options), isPhone: () => panes.isPhone?.() || false, previewPosition: (pos) => peek(pos), gradeAttempt, retryHooks });
   onTriedGrade((fenBefore, uci) => paintVariationGrade(analysisState, plates, { fenBefore, uci }));
 
   // The key moment on the board is marked in the report as the reader steps.

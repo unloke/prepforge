@@ -68,7 +68,7 @@ async function runLichessCompare() {
     // The filter is a view preference, not a position in the old list: a new
     // check keeps it (and the return state restored after a reload). The
     // selected game is gone with the old list, so its index is dropped.
-    replayState.replayOpen = new Set();
+    replayState.replayOpenIndex = undefined;
     await renderReplayResults(payload, isCurrent);
     if (!isCurrent()) return;
     // The ledger header already names the count and the source; a notice only
@@ -126,7 +126,7 @@ function clearGamesResults() {
 function resetGamesResults({ keepPanel = false } = {}) {
   replayState.replayResults = null;
   replayState.replayFilter = null;
-  replayState.replayOpen = new Set();
+  replayState.replayOpenIndex = undefined;
   saveReturnState("replay", { filter: null, openIndex: null });
   const summary = document.getElementById("replay-summary");
   if (summary) {
@@ -309,7 +309,7 @@ async function ensureReplayView() {
         return lichessAccounts().some((linked) => String(linked.username || "").toLowerCase() === name);
       },
       getReplayFilter: () => replayState.replayFilter,
-      isGameOpen: (index) => replayState.replayOpen.has(index),
+      getOpenGameIndex: () => replayState.replayOpenIndex,
       onToggleFilter: (kind) => {
         replayState.replayFilter = replayState.replayFilter === kind ? null : kind;
         // The selection survives the filter: the ledger falls back to the
@@ -317,13 +317,13 @@ async function ensureReplayView() {
         // the filter again brings the user's own game back.
         saveReturnState("replay", {
           filter: replayState.replayFilter,
-          openIndex: [...replayState.replayOpen][0] ?? null,
+          openIndex: replayState.replayOpenIndex,
         });
         void renderReplayResults(replayState.replayResults).catch(() => {});
       },
-      onToggleGame: (index) => {
-        replayState.replayOpen = new Set([index]);
-        saveReturnState("replay", { filter: replayState.replayFilter, openIndex: index });
+      onToggleGame: (index, wasOpen) => {
+        replayState.replayOpenIndex = wasOpen ? null : index;
+        saveReturnState("replay", { filter: replayState.replayFilter, openIndex: replayState.replayOpenIndex });
         void renderReplayResults(replayState.replayResults).catch(() => {});
       },
       onTrainMiss: async (game, focus) => {

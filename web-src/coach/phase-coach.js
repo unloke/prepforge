@@ -74,7 +74,9 @@ function buildTip({ fen, sorted, agreement, expectedSan, expectedUci, expectedPc
     if (!playedSan) return "";
     // A miss means "not your prep", not "bad": rarity is no reason a move is wrong,
     // so only a popular move gets a line (it explains why it was tempting).
-    if (playedPct !== null && playedPct >= 20) return `${playedSan} is popular here, but it isn't your prep.`;
+    if (playedPct !== null && (playedPct >= 20 || playedRank === 1 && playedPct >= 15)) {
+      return `${playedSan} is popular here, but it isn't your prep.`;
+    }
     return "";
   }
 
@@ -167,11 +169,16 @@ export function buildPhaseCoach({
     reveal,
   });
 
+  const softFail = Boolean(
+    playedUci && expectedUci && uciKey(playedUci) !== uciKey(expectedUci) && !reveal
+      && playedPct !== null && (playedPct >= 15 || playedRank === 1),
+  );
   return {
     phase,
     phaseLabel,
     title: phaseLabel,
     tip,
+    softFail,
     // Nothing position-specific to say: callers show nothing rather than filler.
     generic: !tip,
     humanUci,

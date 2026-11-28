@@ -58,7 +58,7 @@ function makeView(elements, { renderers = RENDERERS } = {}) {
   return createReplayView({
     boardRenderers: renderers,
     getReplayFilter: () => null,
-    isGameOpen: () => false,
+    getOpenGameIndex: () => undefined,
     onToggleFilter: () => {},
     onToggleGame: () => {},
     onTrainMiss: () => {},
@@ -374,7 +374,7 @@ describe("replay focus internals", () => {
     const view = createReplayView({
       boardRenderers: RENDERERS,
       getReplayFilter: () => null,
-      isGameOpen: (index) => index === open,
+      getOpenGameIndex: () => open,
       onToggleFilter: () => {},
       onToggleGame: (index) => {
         open = index;
@@ -523,7 +523,7 @@ describe("replay empty states", () => {
     const filtered = createReplayView({
       boardRenderers: RENDERERS,
       getReplayFilter: () => "left-prep",
-      isGameOpen: () => false,
+      getOpenGameIndex: () => undefined,
       onToggleFilter: () => {},
       onToggleGame: () => {},
       onTrainMiss: () => {},
@@ -549,7 +549,7 @@ describe("replay failure state", () => {
     const view = createReplayView({
       boardRenderers: RENDERERS,
       getReplayFilter: () => null,
-      isGameOpen: () => false,
+      getOpenGameIndex: () => undefined,
       onToggleFilter: () => {},
       onToggleGame: () => {},
       onTrainMiss: () => {},

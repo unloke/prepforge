@@ -148,7 +148,8 @@ export function createTrainView({
     host.innerHTML =
       html`<span class="faint">Up next</span>${upcoming
         .map((card) => {
-          const kind = smart.cardKinds[card.kind]?.label || card.kind || "";
+          const kind = card.retry ? "Retry" : smart.cardKinds[card.kind]?.label || card.kind || "";
+          const kindClass = card.retry ? "un-kind is-retry" : "un-kind";
           const rep = card.repertoire_name || smart.repertoireName || "";
           const dot = card.color === "black" ? "black" : "white";
           // Name the position, never the answer: every card can come back as
@@ -161,7 +162,7 @@ export function createTrainView({
           const line = lineTailHtml(card.targets?.[0]?.line);
           const tail = line ? html`<span class="un-line">${line}</span>` : "";
           return (
-            html`<div class="un-row"><span class="un-kind">${kind}</span><span class="un-what"><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</span></div>`
+            html`<div class="un-row"><span class="${kindClass}">${kind}</span><span class="un-what"><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</span></div>`
           );
         })}`;
     // The rows arrive one by one, with the app's shared stagger.
@@ -169,10 +170,17 @@ export function createTrainView({
   }
 
   // Card kind chip beside the stats (smart queue only; rehearsal has none). A
-  // new move's banner already says "New move", so the chip names reviews only.
-  function paintCardKind(kind) {
+  // new move's banner already says "New move", so the chip names reviews only;
+  // a requeued miss shows "Retry" so its ungraded recall check is explicit.
+  function paintCardKind(kind, retry = false) {
     const chip = document.getElementById("train-card-kind");
     if (!chip) return;
+    if (retry) {
+      chip.hidden = false;
+      chip.className = "kchip k-retry";
+      chip.textContent = "Retry";
+      return;
+    }
     if (kind === "new") kind = null;
     chip.hidden = !kind;
     chip.className = kind ? `kchip k-${kind}` : "kchip";
@@ -198,7 +206,7 @@ export function createTrainView({
       step.textContent = prompt.targets_total > 1 ? `Move ${(prompt.target_index || 0) + 1} / ${prompt.targets_total}` : "";
     }
     paintProgress(prompt.card_index, prompt.total_cards, "Card");
-    paintCardKind(prompt.kind);
+    paintCardKind(prompt.kind, Boolean(prompt.retry || trainState.smart?.queue?.[prompt.card_index]?.retry));
     renderUpNext();
   }
 

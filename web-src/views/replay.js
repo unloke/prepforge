@@ -225,7 +225,7 @@ export function revealIfOffscreen(el, win = globalThis.window) {
 export function createReplayView({
   boardRenderers = null,
   getReplayFilter,
-  isGameOpen,
+  getOpenGameIndex,
   onToggleFilter,
   onToggleGame,
   onTrainMiss,
@@ -523,8 +523,8 @@ export function createReplayView({
       container.querySelector?.("[data-show-all]")?.addEventListener?.("click", () => onToggleFilter(filter));
       return;
     }
-    const selectedIndex = rows.find(({ index }) => isGameOpen(index))?.index ?? rows[0].index;
-    const focused = rows.find(({ index }) => index === selectedIndex);
+    const openIndex = getOpenGameIndex();
+    const selectedIndex = openIndex === null ? null : rows.find(({ index }) => index === openIndex)?.index ?? rows[0].index;
     const accounts = new Set(payload.games.map((game) => game.source_account).filter(Boolean));
     // Several selected accounts whose games all came from one of them must not
     // read as if that account were the whole selection: name it on each row.
@@ -544,19 +544,20 @@ export function createReplayView({
     container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, "game")}${filter ? ` · ${bucketMeta(filter, payload.games).label}` : ""}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => html`${renderReplayRow(game, index, selectedIndex, { showAccount })}${index === selectedIndex ? renderReplayFocus(game, index) : ""}`)}</div></section></div>`;
     // A fresh Check enters row by row; a row click only swaps the detail card.
     if (entered) enterRows(container.querySelector?.(".ledger-table"));
-    else if (focused.index !== lastFocusIndex) enterOnce(container.querySelector?.(".focus"));
-    lastFocusIndex = focused.index;
+    else if (selectedIndex !== null && selectedIndex !== lastFocusIndex) enterOnce(container.querySelector?.(".focus"));
+    lastFocusIndex = selectedIndex;
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {
-        pendingRevealIndex = Number(row.dataset.index);
-        onToggleGame(Number(row.dataset.index));
+        const index = Number(row.dataset.index);
+        pendingRevealIndex = index;
+        onToggleGame(index, index === selectedIndex);
       });
     });
-    if (revealIndex != null && revealIndex === focused.index) {
+    if (revealIndex != null) {
       const table = container.querySelector?.(".ledger-table");
       if (table && ledgerScroll) table.scrollTop = ledgerScroll;
       container.querySelector?.(`.lr[data-index="${revealIndex}"]`)?.focus?.({ preventScroll: true });
-      revealIfOffscreen(container.querySelector?.(".focus"));
+      if (revealIndex === selectedIndex) revealIfOffscreen(container.querySelector?.(".focus"));
     }
     container.querySelectorAll("[data-moveline-more]").forEach((btn) => {
       btn.addEventListener("click", (event) => {

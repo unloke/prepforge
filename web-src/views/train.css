@@ -292,6 +292,10 @@
 
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
 
+.kchip.k-retry { color: var(--warn-text); background: var(--warn-soft); }
+
+.un-kind.is-retry { color: var(--warn-text); font-weight: 500; }
+
 .upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: var(--radius); background: var(--panel-soft); }
 
 .un-row {

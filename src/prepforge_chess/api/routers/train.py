@@ -160,6 +160,7 @@ class SmartStartBody(BaseModel):
     new_cap: int | None = None
     seed: int | None = None  # deterministic queues for tests
     target_node_ids: list[str] = Field(default_factory=list, max_length=200)
+    only_target_nodes: bool = False
 
 
 class SmartMoveBody(BaseModel):
@@ -264,7 +265,7 @@ def smart_start(
     owned = True
     try:
         if body.mixed:
-            if body.target_node_ids:
+            if body.target_node_ids or body.only_target_nodes:
                 raise ValueError("practice targets require a single repertoire")
             session = service.start_or_resume_mixed(
                 owner,
@@ -283,6 +284,7 @@ def smart_start(
             session = service.start_or_resume(
                 body.repertoire_id,
                 target_node_ids=body.target_node_ids,
+                only_target_nodes=body.only_target_nodes,
                 fresh=body.fresh,
                 session_size=_clamp(body.session_size, 4, 30),
                 new_cap=_clamp(body.new_cap, 0, 10),
@@ -627,11 +629,14 @@ def move(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    missed = result.next_prompt if not result.correct and not result.alternative else None
     return {
         "correct": result.correct,
         "played_uci": result.played_uci,
         "expected_uci": result.expected_uci,
         "expected_san": result.expected_san,
+        "missed_node_id": missed.expected_node_id if missed else None,
+        "annotation": missed.annotation if missed else "",
         "completed_line": result.completed_line,
         "day_streak": _touch_streak(repo, owner, body.local_date),
         "mistakes": result.session.mistakes,

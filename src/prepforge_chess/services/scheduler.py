@@ -270,12 +270,17 @@ def build_session_plan(
     max_targets_per_card: int = DEFAULT_MAX_TARGETS_PER_CARD,
     now: Optional[datetime] = None,
     target_node_ids: Optional[Sequence[str]] = None,
+    only_target_nodes: bool = False,
 ) -> SessionPlan:
     candidates = _collect_candidates(root, color)
     requested = set(target_node_ids or [])
     candidate_ids = {c.node.id for c in candidates}
     if requested - candidate_ids:
         raise ValueError("practice targets must be enabled own moves in this repertoire")
+    if only_target_nodes:
+        if not requested:
+            raise ValueError("a missed-move drill requires practice targets")
+        session_size = len(requested)
     if not candidates:
         return SessionPlan(cards=[], counts=card_counts([]))
     # Classify mastery only for the candidates we actually schedule. The old
@@ -345,7 +350,7 @@ def build_session_plan(
     # ordinary weak/due review. Reuse mastery kinds so grading stays unchanged.
     # Misses recorded outside a session (games, Analyze) come right after, inside
     # the same budget, so "this move leads your next session" stays true.
-    target_budget = max(1, session_size // 2)
+    target_budget = session_size if only_target_nodes else max(1, session_size // 2)
     flagged = {c.node.id for c in candidates if is_flagged_miss(progress_by_id.get(c.node.id))} - requested
     for lead in (requested, flagged):
         for pool, kind in ((weak, CARD_WEAK), (due, CARD_DUE), (new, CARD_NEW), (polish, CARD_POLISH)):

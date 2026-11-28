@@ -89,6 +89,9 @@ function setup(moments = [firstEngine(), secondEngine()], { selfSide = "white", 
   const appState = { analysisTree: makeTree(), analysisCurrentNodeId: "root", analysisPly: 0, analysis: { id: "game" } };
   const calls = { show: [], select: [] };
   const previewPosition = vi.fn();
+  const renderBoard = vi.fn();
+  const setHintArrow = vi.fn();
+  const setComparisonArrows = vi.fn();
   const gradeAttempt = vi.fn();
   const review = createReviewBar({
     ...asSlices(appState),
@@ -96,6 +99,7 @@ function setup(moments = [firstEngine(), secondEngine()], { selfSide = "white", 
     previewPosition,
     gradeAttempt,
     selectPane,
+    retryHooks: { renderBoard, setHintArrow, setComparisonArrows },
     showAnalysisPly: async (ply) => {
       calls.show.push(ply);
       appState.analysisCurrentNodeId = ply ? `m${ply}` : "root";
@@ -113,12 +117,12 @@ function setup(moments = [firstEngine(), secondEngine()], { selfSide = "white", 
     appState.analysisPly = ply;
     review.paint();
   };
-  const click = async (kind) => {
-    listeners[0]({ target: { closest: () => ({ dataset: { review: kind }, disabled: false, getAttribute: () => null }) } });
+  const click = async (kind, index = null) => {
+    listeners[0]({ target: { closest: () => ({ dataset: { review: kind, ...(index != null ? { index: String(index) } : {}) }, disabled: false, getAttribute: () => null }) } });
     await Promise.resolve();
     await Promise.resolve();
   };
-  return { bar, view, appState, calls, review, at, click, listeners, runButton, runLabel, previewPosition, gradeAttempt };
+  return { bar, view, appState, calls, review, at, click, listeners, runButton, runLabel, previewPosition, renderBoard, setHintArrow, setComparisonArrows, gradeAttempt };
 }
 
 const tick = async () => { await Promise.resolve(); await Promise.resolve(); };
@@ -181,7 +185,7 @@ describe("ordinary key navigation", () => {
     expect(h.bar.hidden).toBe(false);
     expect(h.bar.innerHTML).toContain("No key moves");
     expect(h.bar.innerHTML).toMatch(/data-review="retry"[^>]*disabled/);
-    expect(h.bar.innerHTML).toContain("No more retry positions ahead");
+    expect(h.bar.innerHTML).toContain("No retry positions in this game");
     expect(h.runLabel.textContent).toBe("Review");
     expect(h.runButton.getAttribute("aria-disabled")).toBeNull();
   });
@@ -222,7 +226,7 @@ describe("ahead-only retry sessions", () => {
     expect(h.bar.innerHTML).not.toContain("d4 is the best move");
   });
 
-  it("from the middle or exactly on an exercise starts only after it; at the end Retry stays disabled", async () => {
+  it("from the middle or on an exercise starts ahead; at the end Retry wraps to Retry all", async () => {
     const middle = setup();
     middle.at("m4", 4);
     await middle.click("retry");
@@ -236,8 +240,11 @@ describe("ahead-only retry sessions", () => {
 
     const end = setup();
     end.at("m7", 7);
-    expect(end.bar.innerHTML).toMatch(/data-review="retry"[^>]*disabled/);
-    expect(end.bar.innerHTML).toContain("No more retry positions ahead");
+    expect(end.bar.innerHTML).not.toMatch(/data-review="retry"[^>]*disabled/);
+    expect(end.bar.innerHTML).toContain("Retry all");
+    await end.click("retry");
+    expect(end.calls.select).toEqual(["m2"]);
+    expect(end.bar.innerHTML).toContain("1 / 2");
   });
 
   it("a wrong original move is answer-free feedback and the board is ready for another guess", async () => {
@@ -250,7 +257,7 @@ describe("ahead-only retry sessions", () => {
     expect(h.bar.innerHTML).toContain('data-state="wrong"');
     expect(h.bar.innerHTML).not.toContain("d4");
     expect(h.gradeAttempt).not.toHaveBeenCalled();
-    expect(h.previewPosition).toHaveBeenLastCalledWith(null);
+    expect(h.renderBoard).toHaveBeenLastCalledWith(expect.objectContaining({ lastMove: "g1f3", badge: expect.objectContaining({ classification: "blunder" }) }));
 
     expect(h.review.tryReviewMove("d2d4", preFen)).toBe(true);
     expect(h.bar.innerHTML).toContain("d4 is the best move");
@@ -272,7 +279,7 @@ describe("ahead-only retry sessions", () => {
     noteTriedGrade(preFen, "a2a3", "great");
     await tick();
     expect(h.bar.innerHTML).toContain("As good as d4");
-    expect(h.previewPosition).toHaveBeenCalledWith(expect.objectContaining({ lastMove: "a2a3" }));
+    expect(h.renderBoard).toHaveBeenLastCalledWith(expect.objectContaining({ lastMove: "a2a3", badge: expect.objectContaining({ classification: "great" }) }));
   });
 
   it("ordinary good is not equivalent, and an ungraded read ends without hanging", async () => {
@@ -311,7 +318,7 @@ describe("preparation exercises", () => {
     expect(h.review.tryReviewMove("d2d3", preFen)).toBe(true);
     expect(h.bar.innerHTML).toContain("d3 is a prepared move");
     expect(h.bar.innerHTML).not.toContain("best move");
-    expect(h.previewPosition).toHaveBeenCalledWith(expect.objectContaining({ lastMove: "d2d3" }));
+    expect(h.renderBoard).toHaveBeenCalledWith(expect.objectContaining({ lastMove: "d2d3", badge: expect.objectContaining({ classification: "best" }) }));
     await vi.advanceTimersByTimeAsync(700);
     await tick();
     expect(h.bar.innerHTML).toContain("Practice complete");
@@ -322,7 +329,7 @@ describe("preparation exercises", () => {
     expect(h.view.dataset.reviewBlind).toBe("1");
   });
 
-  it("explicit reveal names prepared moves without calling them best, then Continue advances", async () => {
+  it("explicit reveal names prepared moves without calling them best, draws the arrow without hover-peek, then Continue advances", async () => {
     const moment = prep([{ uci: "f1c4", san: "Bc4" }, { uci: "d2d3", san: "d3" }]);
     const h = setup([moment, secondEngine()]);
     h.at("root", 0);
@@ -332,7 +339,8 @@ describe("preparation exercises", () => {
     expect(h.bar.innerHTML).toContain('data-state="reveal"');
     expect(h.bar.innerHTML).not.toContain('aria-label="White to move"');
     expect(h.bar.innerHTML).not.toContain("Best move");
-    expect(h.previewPosition).toHaveBeenCalledWith(expect.objectContaining({ lastMove: "f1c4" }));
+    expect(h.setHintArrow).toHaveBeenCalledWith("f1c4");
+    expect(h.view.dataset.retryArrow).toBe("1");
     await h.click("continue");
     expect(h.calls.select).toEqual(["m4", "m6"]);
     expect(h.bar.innerHTML).toContain("What would you play here?");
@@ -425,7 +433,7 @@ describe("session progression and cancellation", () => {
     expect(childCount()).toBe(1);
   });
 
-  it("keeps the last answer focused until Back, while manual navigation cancels completion", async () => {
+  it("shows comparison arrows on completion without hover-peek, while manual navigation cancels completion", async () => {
     vi.useFakeTimers();
     const h = setup([firstEngine()], { selfSide: null });
     h.at("root", 0);
@@ -435,7 +443,8 @@ describe("session progression and cancellation", () => {
     await tick();
     expect(h.bar.innerHTML).toContain("Practice complete");
     expect(h.view.dataset.reviewBlind).toBe("1");
-    expect(h.previewPosition).toHaveBeenLastCalledWith(expect.objectContaining({ lastMove: "d2d4" }));
+    expect(h.setComparisonArrows).toHaveBeenLastCalledWith(["Rg1f3", "Gd2d4"]);
+    expect(h.previewPosition.mock.calls.every(([arg]) => arg === null)).toBe(true);
 
     h.at("root", 0);
     expect(h.view.dataset.reviewBlind).toBeUndefined();

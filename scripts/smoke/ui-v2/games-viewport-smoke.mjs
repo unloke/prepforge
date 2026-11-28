@@ -234,7 +234,44 @@ async function runViewport(vp) {
     check(ledgerFirst, "phone: the ledger should come before the selected detail");
   }
 
+  const layering = await page.evaluate((desktop) => {
+    const table = document.querySelector("#replay-results .ledger-table");
+    const board = table.querySelector(".scout-miniboard");
+    const arrows = board.querySelector(".replay-arrows");
+    const pieces = [...board.querySelectorAll(".piece")];
+    const overlaysPieces = getComputedStyle(board).isolation === "isolate" &&
+      pieces.every((piece) => Number(getComputedStyle(arrows).zIndex) > Number(getComputedStyle(piece).zIndex));
+    if (!desktop) return { overlaysPieces, headerCoversPiece: true };
+
+    const header = table.querySelector(".lr.head");
+    const piece = pieces[0];
+    const oldMaxHeight = table.style.maxHeight;
+    table.style.maxHeight = "150px";
+    const priorScroll = table.scrollTop;
+    const centerY = (element) => element.getBoundingClientRect().y + element.getBoundingClientRect().height / 2;
+    table.scrollTop += centerY(piece) - centerY(header);
+    piece.style.pointerEvents = "all";
+    const { x, width } = piece.getBoundingClientRect();
+    const hits = document.elementsFromPoint(x + width / 2, centerY(header));
+    const headerCoversPiece = Math.abs(centerY(piece) - centerY(header)) < 2 &&
+      header.contains(hits[0]) && hits.includes(piece);
+    piece.style.removeProperty("pointer-events");
+    table.style.maxHeight = oldMaxHeight;
+    table.scrollTop = priorScroll;
+    return { overlaysPieces, headerCoversPiece };
+  }, vp.width > 860);
+  check(layering.overlaysPieces, "Games arrows should layer above the mini-board pieces");
+  check(layering.headerCoversPiece, "the sticky column header should cover the scrolling pieces");
   await shot("triage");
+
+  const firstRow = page.locator('#replay-results .lr[data-index="0"]');
+  await firstRow.locator(".players").click();
+  await page.waitForFunction(() => !document.querySelector("#replay-results .focus"));
+  check(await firstRow.getAttribute("aria-pressed") === "false", "clicking an open row should close it");
+  check(await firstRow.evaluate((el) => el === document.activeElement), "the closed row should retain focus");
+  await firstRow.press("Enter");
+  await page.waitForSelector("#replay-results .focus");
+  check(await firstRow.getAttribute("aria-pressed") === "true", "Enter should reopen the same row");
 
   // The ledger header names the count and source; only moves added to training earn a toast.
   const sourceNotices = await page.locator(".notice").filter({ hasText: / for \S+$/ }).count();

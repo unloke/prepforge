@@ -43,10 +43,16 @@ it("the foot says what is due tomorrow, without an exclamation", () => {
   expect(source).not.toMatch(/!["`]/);
 });
 
-it("a rehearsal reports lines, first-try score and misses", () => {
-  const result = drillResult({ line_order: [1, 2, 3, 4], repertoire_name: "Italian" }, { correct: 9, mistakes: 1 });
+it("a rehearsal reports lines, first-try score and misses, and carries missedDrill targets", () => {
+  const result = drillResult(
+    { repertoire_id: "r1", line_order: [1, 2, 3, 4], repertoire_name: "Italian", missedNodeIds: ["n2"] },
+    { correct: 9, mistakes: 1 },
+  );
   expect(result.cells).toEqual([[4, "lines"], ["90%", "first try"], [1, "missed"]]);
   expect(result.title).toBe("Rehearsal complete");
+  expect(result.missedDrill).toEqual({ repertoireId: "r1", targets: ["n2"] });
+  expect(smartResult({ cardsDone: 3, repertoireId: "r1", missedNodeIds: ["n1", "n3"] }, { correct: 1, mistakes: 2 }).missedDrill)
+    .toEqual({ repertoireId: "r1", targets: ["n1", "n3"] });
 });
 
 it("a skipped-only rehearsal reports skips without an empty accuracy score", () => {

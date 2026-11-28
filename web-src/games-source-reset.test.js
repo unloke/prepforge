@@ -21,7 +21,7 @@ it("clearing the Games results drops the ledger, the filter and the selection", 
   const results = { innerHTML: "<section class=triage>" };
   const hint = { textContent: "" };
   const appState = { replayResults: { games: [{}] }, replayFilter: "user-error",
-    replayOpen: new Set([1]), replayCheckToken: 3, authKnown: true, signedIn: true };
+    replayOpenIndex: 1, replayCheckToken: 3, authKnown: true, signedIn: true };
   const paintGamesSource = vi.fn();
   // The extracted source declares clearGamesResults/gamesIdleHint itself and
   // calls paintGamesSource, so only the names it reads are bound here.
@@ -43,7 +43,7 @@ it("clearing the Games results drops the ledger, the filter and the selection", 
   clearGamesResults();
   expect(appState.replayResults).toBe(null);
   expect(appState.replayFilter).toBe(null);
-  expect(appState.replayOpen.size).toBe(0);
+  expect(appState.replayOpenIndex).toBeUndefined();
   // An in-flight Check response must not repaint the emptied panel.
   expect(appState.replayCheckToken).toBe(4);
   expect(summary.hidden).toBe(true);
@@ -58,7 +58,7 @@ it("a failed Check drops its skeleton without invalidating the in-flight token",
   const html = (strings, ...values) => strings.reduce((out, part, i) => out + part + (values[i] ?? ""), "");
   const skeleton = { innerHTML: '<div class="lr is-skeleton">' };
   const summary = { hidden: false, innerHTML: "<button>" };
-  const appState = { replayResults: null, replayFilter: null, replayOpen: new Set(),
+  const appState = { replayResults: null, replayFilter: null, replayOpenIndex: undefined,
     replayCheckToken: 7, authKnown: true, signedIn: true };
   const deps = {
     ...asSlices(appState), html,

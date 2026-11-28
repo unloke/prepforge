@@ -35,7 +35,9 @@ export async function checkGamesAnalyze(page, games, check, shot) {
     return route.fulfill({ json: { analyses: !id || id === games[0].lichess_id ? [metadata] : [], next_cursor: null } });
   });
 
-  await page.locator('#replay-results .lr[data-index="0"]').evaluate(el => el.click());
+  await page.locator('#replay-results .lr[data-index="0"]').evaluate(el => {
+    if (el.getAttribute("aria-pressed") !== "true") el.click();
+  });
   await page.locator('#replay-results .focus [data-act="analyze"]').evaluate(el => el.click());
   await page.waitForFunction(() => document.querySelector('#analysis-moves .mtree-move.is-current')?.textContent.includes('Nf3'), null, { timeout: 5000 }).catch(async error => {
     console.error('[games-analyze] saved-load state', JSON.stringify({ lookups, ui: await page.evaluate(() => ({

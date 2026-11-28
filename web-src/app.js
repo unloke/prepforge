@@ -315,8 +315,8 @@ async function restoreWorkspaceLocation() {
     if (typeof replayReturn.filter === "string" && replayReturn.filter) {
       replayState.replayFilter = replayReturn.filter;
     }
-    if (Number.isFinite(replayReturn.openIndex)) {
-      replayState.replayOpen = new Set([replayReturn.openIndex]);
+    if (replayReturn.openIndex === null || Number.isFinite(replayReturn.openIndex)) {
+      replayState.replayOpenIndex = replayReturn.openIndex;
     }
   }
   // Only Build's link names the repertoire its editor shows; Train's names the

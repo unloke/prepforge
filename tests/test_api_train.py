@@ -165,6 +165,53 @@ def test_wrong_move_is_marked_incorrect(client):
     assert body["mistakes"]
 
 
+def test_rehearsal_miss_reveals_the_author_note_and_target(client):
+    _register(client, "a@example.com")
+    imported = client.post(
+        "/api/repertoires/import-pgn",
+        json={"name": "Center", "color": "white", "pgn": "1. e4 {Claim the center.} *"},
+        headers=csrf_headers(client),
+    ).json()
+    expected = next(node["id"] for node in imported["nodes"] if node["uci"] == "e2e4")
+    session = _start(client, imported["repertoire_id"]).json()
+    hidden = {"annotation", "expected_node_id", "expected_uci"}
+    assert hidden.isdisjoint(session["prompt"])
+    response = client.post(
+        "/api/train/move",
+        json={"session_id": session["session_id"], "played_uci": "d2d4"},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["missed_node_id"] == expected
+    assert body["annotation"] == "Claim the center."
+    assert hidden.isdisjoint(body["prompt"])
+
+
+def test_missed_drill_includes_all_and_only_the_requested_targets(client):
+    _register(client, "a@example.com")
+    imported = client.post(
+        "/api/repertoires/import-pgn",
+        json={"name": "Center", "color": "white", "pgn": "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O *"},
+        headers=csrf_headers(client),
+    ).json()
+    ids = {node["uci"]: node["id"] for node in imported["nodes"]}
+    selected = {ids[uci] for uci in ("e2e4", "g1f3", "f1b5", "b5a4")}
+    options = {"repertoire_id": imported["repertoire_id"], "only_target_nodes": True,
+               "session_size": 4, "new_cap": 0}
+    response = client.post("/api/train/smart/start", json=options, headers=csrf_headers(client))
+    assert response.status_code == 400, response.text
+    response = client.post(
+        "/api/train/smart/start",
+        json={**options, "target_node_ids": sorted(selected)},
+        headers=csrf_headers(client),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["scope"] == "targets"
+    assert {target["node_id"] for card in body["cards"] for target in card["targets"]} == selected
+
+
 def _reviews():
     from prepforge_chess.api import db
     from prepforge_chess.storage import sa_tables as t

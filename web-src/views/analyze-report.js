@@ -108,7 +108,7 @@ export function sideAccuracy(evalGraph, moves = [], positionEvals = {}) {
 const accuracyOf = (rows) => averageAccuracy(rows.map((r) => ({ ...r, winAfter: r.whiteAfter, winBefore: r.whiteBefore }))) || {};
 
 // The grades a review lists, and the move that left the player's preparation.
-const REVIEW_GRADES = new Set(["brilliant", "great", "mistake", "blunder"]);
+const REVIEW_GRADES = new Set(["brilliant", "great", "mistake", "blunder", "missed"]);
 
 /**
  * The moves a review lists, in game order: every brilliant, great, mistake and
@@ -141,9 +141,11 @@ export function reviewMoments(moves = [], evalGraph = [], reps = [], selfSide = 
         prepared: ply === departure?.ply ? departure.prepared : false,
         preparedMoves: ply === departure?.ply ? departure.preparedMoves || [] : [],
         repName: ply === departure?.ply ? departure.repName : "",
+        repId: ply === departure?.ply ? departure.repId || null : null,
+        prescribedNodeId: ply === departure?.ply ? departure.prescribedNodeId || null : null,
         before: formatEval(row?.prev),
         after: formatEval(row?.point),
-        loss: row && (grade === "mistake" || grade === "blunder") ? Math.round(row.loss) : null,
+        loss: row && (grade === "mistake" || grade === "blunder" || grade === "missed") ? Math.round(row.loss) : null,
         best: bestSan ? { san: bestSan, uci: bestUci } : null,
       };
     });
@@ -243,7 +245,7 @@ export function prepDeparture(moves = [], reps = [], selfSide = null) {
     const san = sanOf(move.fen_before, child.uci);
     if (!san) continue;
     seen.add(child.uci);
-    preparedMoves.push({ uci: child.uci, san, repName: rep.name || "" });
+    preparedMoves.push({ uci: child.uci, san, repName: rep.name || "", repId: rep.id || null, nodeId: child.id || null });
   }
   if (!deepest && !preparedMoves.length) return null;
   const repName = preparedMoves[0]?.repName || deepestWalks[0]?.rep.name || "";
@@ -252,6 +254,8 @@ export function prepDeparture(moves = [], reps = [], selfSide = null) {
     label: moveRef(move, ply),
     move,
     repName,
+    repId: preparedMoves[0]?.repId || deepestWalks[0]?.rep.id || null,
+    prescribedNodeId: preparedMoves[0]?.nodeId || null,
     by,
     prepared: preparedMoves.length > 0,
     preparedMoves: by === "you" ? preparedMoves.map(({ uci, san }) => ({ uci, san })) : [],

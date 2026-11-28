@@ -129,26 +129,23 @@ export function trainScopeLabel(state = trainState) {
 
 function luckyLabel(play) {
   const phase = play.luckyPhase || "critical";
-  if (play.luckyReason === "db-critical") return `Master game · ${phase}`;
-  if (play.luckyReason === "titled-game") return `Live Lichess game · ${phase}`;
-  return play.luckyReason;
+  return play.luckyReason === "db-critical" ? `Master game · ${phase}` : play.luckyReason === "titled-game" ? `Live Lichess game · ${phase}` : play.luckyReason;
 }
 
 function paintHead(screen, mode) {
   document.getElementById("train-head-mode").textContent = MODE_NAMES[mode];
   document.getElementById("train-scope-chip").textContent = screen === "home" ? "" : trainScopeLabel();
-  const count = document.getElementById("train-line-label");
-  if (screen !== "session" || mode === "play") count.textContent = "";
+  if (screen !== "session" || mode === "play") document.getElementById("train-line-label").textContent = "";
 }
 
 // The board bar's action slot: buttons exist only where they work.
 function paintActions(screen, mode) {
-  const session = screen === "session";
-  const drill = session && mode !== "play";
-  const game = session && mode === "play";
+  const drill = screen === "session" && mode !== "play", game = screen === "session" && mode === "play";
   for (const id of ["train-hint", "train-skip"]) document.getElementById(id).hidden = !drill;
   for (const id of ["play-takeback", "play-resign"]) document.getElementById(id).hidden = !game;
   document.getElementById("play-analyze").hidden = !(screen === "result" && mode === "play" && trainState.play?.history?.length);
+  const missedBtn = document.getElementById("train-summary-missed"), missedCount = screen === "result" ? trainState.trainResult?.missedDrill?.targets?.length || 0 : 0;
+  if (missedBtn) { missedBtn.hidden = !missedCount; if (missedCount) missedBtn.textContent = `Drill missed (${missedCount})`; }
 }
 
 // ---------------------------------------------------------------- entries
@@ -156,7 +153,7 @@ function paintActions(screen, mode) {
 // Every way into Train lands here: nav, Library's Train, "Train this
 // repertoire", a picked move, the palette. The scope is set explicitly, so a
 // one-repertoire queue is never served from "all repertoires".
-export async function openTrain({ mode = "smart", repertoireId = null, targets = [], autostart = true, fresh = false, isCurrent = null } = {}) {
+export async function openTrain({ mode = "smart", repertoireId = null, targets = [], onlyTargetNodes = false, autostart = true, fresh = false, isCurrent = null } = {}) {
   const state = appState, wasInTrain = state.currentView === "train", entryToken = {}, entrySeq = isCurrent ? trainState.trainEntryVersion : (trainState.trainEntryVersion = (trainState.trainEntryVersion || 0) + 1), current = isCurrent || (() => trainState.trainEntryVersion === entrySeq && (!wasInTrain || state.currentView === "train"));
   if (!current() || !(await confirmAbandonGame(trainState.play, showConfirmModal, "Leave this game?", "Leave game")) || !current()) return false;
   closeTrainPicker(); if (trainState.smart) await flushTrainSync(); if (!current()) return false;
@@ -173,7 +170,7 @@ export async function openTrain({ mode = "smart", repertoireId = null, targets =
   enter();
   syncWorkspaceUrl();
   if (!autostart) return true;
-  if (mode === "play") await session.startPlaySessionTracked(); else await session.startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
+  if (mode === "play") await session.startPlaySessionTracked(); else await session.startTraining(mode, { fresh: fresh || !!targets.length, repertoireId, targetNodeIds: targets, ...(onlyTargetNodes ? { onlyTargetNodes } : {}), entryToken, ...(isCurrent || wasInTrain ? { isCurrent: current } : {}) });
   return true;
 }
 
@@ -482,9 +479,9 @@ export function showTrainResult(result) {
   document.getElementById("train-summary-title").textContent = result.title;
   document.getElementById("train-summary-stats").innerHTML =
     html`${result.cells.map(([value, label], i) => html`${i ? html`<span class="sum-sep">·</span>` : ""}<span><b>${value}</b> ${label}</span>`)}`;
-  const delta = document.getElementById("train-summary-delta");
-  delta.hidden = !result.delta;
-  delta.innerHTML = result.delta || "";
+  const delta = document.getElementById("train-summary-delta"), recap = document.getElementById("train-summary-recap");
+  delta.hidden = !result.delta; delta.innerHTML = result.delta || "";
+  if (recap) { recap.hidden = !result.recapHtml; recap.innerHTML = result.recapHtml || ""; }
   document.getElementById("train-summary-foot").textContent = result.foot || "";
   document.getElementById("train-summary-new").textContent = result.mode === "play" ? "Play again" : "Again";
   // The run just finished is the card above; Recent is what came before it.
@@ -498,36 +495,34 @@ export function showTrainResult(result) {
 function rowAction(button, start) {
   const action = button.dataset.action || "start";
   if (action === "signin") return requireSignIn("Sign in to start training", "train");
-  if (action === "library") return switchView("dashboard");
-  if (action === "build") return switchView("build");
-  return start();
+  return action === "library" ? switchView("dashboard") : action === "build" ? switchView("build") : start();
 }
 
 function bind() {
   const $ = (id) => document.getElementById(id);
-  $("start-train").addEventListener("click", (e) => rowAction(e.currentTarget, () =>
-    openTrain({ mode: "smart", repertoireId: trainState.trainScope?.repertoireId || null })));
-  $("start-rehearse").addEventListener("click", (e) => rowAction(e.currentTarget, () =>
-    openTrain({ mode: "all_lines", repertoireId: trainState.trainingRepertoireId })));
-  $("restart-rehearse").addEventListener("click", () =>
-    openTrain({ mode: "all_lines", repertoireId: trainState.trainingRepertoireId, fresh: true }));
+  $("start-train").addEventListener("click", (e) => rowAction(e.currentTarget, () => openTrain({ mode: "smart", repertoireId: trainState.trainScope?.repertoireId || null })));
+  $("start-rehearse").addEventListener("click", (e) => rowAction(e.currentTarget, () => openTrain({ mode: "all_lines", repertoireId: trainState.trainingRepertoireId })));
+  $("restart-rehearse").addEventListener("click", () => openTrain({ mode: "all_lines", repertoireId: trainState.trainingRepertoireId, fresh: true }));
   $("start-play").addEventListener("click", () => openTrain({ mode: "play" }));
   $("train-due-retry").addEventListener("click", () => void loadTrainRepertoireOptions());
   $("train-due-next").addEventListener("click", (e) => {
     const line = e.target.closest(".train-due-line");
-    if (!line) return;
-    setDueScope(line.dataset.repertoireId);
-    void paintTrainHome();
+    if (line) { setDueScope(line.dataset.repertoireId); void paintTrainHome(); }
   });
-  $("feeling-lucky").addEventListener("click", async () => {
-    if (await openTrain({ mode: "play", autostart: false })) void session.onFeelingLucky();
-  });
+  $("feeling-lucky").addEventListener("click", async () => { if (await openTrain({ mode: "play", autostart: false })) void session.onFeelingLucky(); });
   $("train-back").addEventListener("click", () => void leaveToHome());
   $("train-summary-home").addEventListener("click", () => void leaveToHome());
   $("train-summary-new").addEventListener("click", () => {
     const mode = trainState.trainMode || "smart";
-    const repertoireId = mode === "smart" ? trainState.trainScope?.repertoireId : trainState.trainingRepertoireId;
-    void openTrain({ mode, repertoireId });
+    void openTrain({ mode, repertoireId: mode === "smart" ? trainState.trainScope?.repertoireId : trainState.trainingRepertoireId });
+  });
+  $("train-summary-missed").addEventListener("click", () => {
+    const drill = trainState.trainResult?.missedDrill;
+    if (drill?.targets?.length) void openTrain({ mode: "smart", repertoireId: drill.repertoireId, targets: drill.targets, onlyTargetNodes: true, fresh: true });
+  });
+  $("train-summary-recap")?.addEventListener("click", (e) => {
+    const row = e.target.closest?.("[data-missed-index]"), item = row && trainState.trainResult?.missedItems?.[Number(row.dataset.missedIndex)];
+    if (item && (item.fenAfter || item.fenBefore)) boards.train?.setPosition({ fen: item.fenAfter || item.fenBefore, legalMoves: [], lastMove: item.fenAfter ? item.uci : null, cue: false });
   });
   $("train-due-scope").addEventListener("click", (e) => openTrainPicker(e.currentTarget, {
     label: "Due queue from",

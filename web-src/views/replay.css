@@ -186,6 +186,7 @@
 .focus-board { position: relative; grid-row: 1 / span 2; width: 100%; align-self: start; aspect-ratio: 1; }
 .focus-board .scout-miniboard {
   position: relative;
+  isolation: isolate;
   box-sizing: border-box;
   width: 100%;
   height: auto;
@@ -264,7 +265,7 @@
   }
 }
 
-.replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.replay-arrows { position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .replay-arrows .t-good { fill: var(--good); }
 .replay-arrows .t-bad { fill: var(--danger); }
 

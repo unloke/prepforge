@@ -3,6 +3,6 @@
 export const replayState = {
   replayResults: null,
   replayFilter: null, // summary-chip filter: an outcome kind, or null = all
-  replayOpen: new Set(), // at most one selected game in the inspector
+  replayOpenIndex: undefined, // undefined selects the first row, null closes all rows
   replaySection: "games",
 };

@@ -62,9 +62,13 @@ export function promptCueSan(smart, prompt) {
 // gives a free retry (no answer), a second miss reveals the answer, which is
 // then played to move on. "Try again" lives in the sub line so the title never
 // truncates on a phone.
-export function wrongMoveBanner({ attempt, playedSan = "", expectedSan = "", tip = "", timedOut = false }) {
+export function wrongMoveBanner({ attempt, playedSan = "", expectedSan = "", tip = "", timedOut = false, softFail = false }) {
   if (attempt >= 2) {
     return { state: "reveal", title: `It's ${expectedSan}`, sub: `${tip ? `${tip} ` : ""}Play it to continue.` };
+  }
+  if (softFail) {
+    const title = playedSan ? `${playedSan} is playable` : "Playable move";
+    return { state: "review", title, sub: tip ? `Try your prep · ${tip}` : "Try your prepared move" };
   }
   const title = timedOut ? "Time's up" : playedSan ? `Not ${playedSan}` : "Not your prep";
   return { state: "wrong", title, sub: tip ? `Try again · ${tip}` : "Try again" };
