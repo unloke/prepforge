@@ -113,8 +113,9 @@ const LIMITS = [
   // The combined Teams, Games, Scout, and landscape sign-in fixes measure 181,542 B.
   // Build phone Coverage actions and wrapping engine PVs need a 178 KiB cap.
   // Mobile Repertoire layout, scrollable engine PVs, and board annotations
-  // move the production stylesheet to 182,681 B. Round up to the next 100 B.
-  { prefix: "index-", suffix: ".css", maxBytes: 182_700, label: "main stylesheet" },
+  // move the production stylesheet to 182,681 B. Multi-candidate selected
+  // arrow rim/shadow and 4-colour SVG circle brushes bring it to 182,820 B.
+  { prefix: "index-", suffix: ".css", maxBytes: 182_900, label: "main stylesheet" },
 ];
 
 let files;

@@ -53,7 +53,6 @@ function render(...args) {
   renderAnnotations(overlay, ...args);
   return attrsOf(overlay);
 }
-const classes = (...args) => render(...args).map((attrs) => attrs.class);
 function center(square, orientation = "white") {
   const file = "abcdefgh".indexOf(square[0]);
   const rank = Number(square[1]);
@@ -77,7 +76,7 @@ describe("unified upper-plane board annotations", () => {
     expect(css).not.toContain(".square.highlighted");
   });
 
-  it("paints circles first, then unpicked forks (longest first), Multi-PV alts, pick, better, user, top engine", () => {
+  it("paints circles first, then unpicked forks, Multi-PV alts, better, user, unpicked top engine, and selected pick on top", () => {
     const out = render(
       ["Ra2a4"],
       "white",
@@ -98,10 +97,10 @@ describe("unified upper-plane board annotations", () => {
       "annot-arrow annot-branch",
       "annot-arrow annot-branch",
       "annot-arrow annot-engine is-alt",
-      "annot-arrow annot-branch is-pick",
       "annot-arrow annot-better",
       "annot-arrow annot-user brush-r",
       "annot-arrow annot-engine",
+      "annot-arrow annot-branch is-pick is-selected",
       "annot-arrow annot-engine is-alt annot-stop",
     ]);
   });
@@ -118,15 +117,32 @@ describe("unified upper-plane board annotations", () => {
     expect(out[3].d).toBe(head("g1f3", "branch"));
   });
 
-  it("draws the engine's move once in engine ink when it matches a fork option", () => {
-    expect(classes([], "white", "g1f3", ["g1f3", "b1c3"], "g1f3")).toEqual([
+  it("clearly distinguishes which branch is selected even when Multi-PV engine arrows overlap the fork", () => {
+    const mpvOpts = {
+      engineArrows: [
+        { uci: "g1f3", scale: 1, rank: 1 },
+        { uci: "b1c3", scale: 0.78, rank: 2 },
+      ],
+    };
+    const pickEngineMove = render([], "white", "g1f3", ["g1f3", "b1c3"], "g1f3", null, mpvOpts);
+    expect(pickEngineMove.map((a) => a.class)).toEqual([
       "annot-arrow annot-branch",
-      "annot-arrow annot-engine is-pick",
+      "annot-arrow annot-engine is-pick is-selected",
     ]);
-    expect(classes([], "white", "b1c3", ["g1f3", "b1c3"], "g1f3")).toEqual([
-      "annot-arrow annot-branch is-pick",
+    expect(pickEngineMove[1].d).toBe(arrow("g1f3", "engine", "white", { scale: 1.1 }));
+
+    const pickSecondMove = render([], "white", "g1f3", ["g1f3", "b1c3"], "b1c3", null, mpvOpts);
+    expect(pickSecondMove.map((a) => a.class)).toEqual([
       "annot-arrow annot-engine",
+      "annot-arrow annot-branch is-pick is-selected",
     ]);
+    expect(pickSecondMove[0].d).toBe(arrow("g1f3", "engine", "white", { scale: 0.94 }));
+    expect(pickSecondMove[1].d).toBe(arrow("b1c3", "branch is-pick", "white", { scale: 1.1 }));
+
+    // A lone candidate (1 branch, no competing engine/better move) stays quiet without .is-selected.
+    const lone = render([], "white", null, ["g1f3"], "g1f3");
+    expect(lone.map((a) => a.class)).toEqual(["annot-arrow annot-branch is-pick"]);
+    expect(lone[0].d).toBe(arrow("g1f3", "branch is-pick"));
   });
 
   it("surfaces a stop head when a shorter collinear arrow is painted before a longer wider arrow", () => {
@@ -140,7 +156,7 @@ describe("unified upper-plane board annotations", () => {
     const forkLongPick = render([], "white", null, ["e2e3", "e2e4"], "e2e4");
     expect(forkLongPick.map((a) => a.class)).toEqual([
       "annot-arrow annot-branch",
-      "annot-arrow annot-branch is-pick",
+      "annot-arrow annot-branch is-pick is-selected",
       "annot-arrow annot-branch annot-stop",
     ]);
 
@@ -148,7 +164,7 @@ describe("unified upper-plane board annotations", () => {
     const forkShortPick = render([], "white", null, ["e2e3", "e2e4"], "e2e3");
     expect(forkShortPick.map((a) => a.class)).toEqual([
       "annot-arrow annot-branch",
-      "annot-arrow annot-branch is-pick",
+      "annot-arrow annot-branch is-pick is-selected",
     ]);
   });
 

@@ -361,7 +361,6 @@ export function renderAnnotations(
   const topEngine = engineList[0] || null;
   const altEngines = engineList.slice(1);
   const topEngineKey = topEngine ? topEngine.key : null;
-  const altEngineKeys = new Set(altEngines.map((e) => e.key));
 
   const better = validUci(betterArrow) && visualKey(betterArrow) !== topEngineKey ? betterArrow : null;
   const betterKey = better ? visualKey(better) : null;
@@ -373,8 +372,20 @@ export function renderAnnotations(
     seenBranches.add(key);
     return true;
   });
+  const branchKeySet = new Set(branches.map(visualKey));
   const pick = branches.some((uci) => visualKey(uci) === visualKey(branchPick || "")) ? branchPick : null;
   const pickKey = pick ? visualKey(pick) : null;
+
+  // Count distinct automatic candidate moves on screen. When >=2 candidates compete
+  // (multiple branches, or a branch alongside a different engine/better move), the
+  // active pick gets an enlarged silhouette, white rim, and top paint priority so
+  // switching branches is unmistakable even when one branch is also the engine's move.
+  const candidateKeys = new Set(branchKeySet);
+  engineList.forEach((e) => candidateKeys.add(e.key));
+  if (betterKey) candidateKeys.add(betterKey);
+  const multiCandidatePick = Boolean(pickKey && candidateKeys.size >= 2);
+  const pickSelectCls = multiCandidatePick ? " is-selected" : "";
+  const pickScale = multiCandidatePick ? 1.1 : 1;
 
   const entries = [];
   const sharedHeads = new Map();
@@ -396,12 +407,12 @@ export function renderAnnotations(
     return entry;
   };
 
-  // Layering on one upper plane (above pieces so target pieces never bury arrowheads):
-  // unpicked branches (longest first) -> Multi-PV alternatives -> picked branch -> better -> user -> top engine.
+  // Layering on one upper plane:
+  // unpicked branches (longest first) -> Multi-PV non-branch alternatives -> better -> user -> unpicked top engine -> active pick.
   const span = (a) => (a.to.x - a.from.x) ** 2 + (a.to.y - a.from.y) ** 2;
   const branchEntries = branches
     .map(visualKey)
-    .filter((key) => key !== topEngineKey && key !== betterKey && key !== pickKey && !altEngineKeys.has(key))
+    .filter((key) => key !== topEngineKey && key !== betterKey && key !== pickKey)
     .map((key) => makeEntry(key, "branch"));
   branchEntries.sort((a, b) => span(b) - span(a));
   for (const b of branchEntries) {
@@ -410,22 +421,30 @@ export function renderAnnotations(
   }
 
   for (const alt of altEngines) {
-    if (alt.key === betterKey || alt.key === pickKey) continue;
+    if (alt.key === betterKey || branchKeySet.has(alt.key)) continue;
     queue(alt.key, "engine", " is-alt", alt.scale);
   }
 
-  if (pickKey && pickKey !== topEngineKey && pickKey !== betterKey) {
-    queue(pickKey, "branch is-pick");
-  }
-  if (betterKey) {
+  if (betterKey && betterKey !== pickKey) {
     queue(betterKey, "better");
   }
   manualMap.forEach((m) => {
-    const brushExtra = ` brush-${m.brush.toLowerCase()}${m.erasing ? " is-erasing" : ""}`;
-    queue(m.key, "user", brushExtra, 1);
+    const isSelectedManual = multiCandidatePick && m.key === pickKey;
+    const brushExtra = ` brush-${m.brush.toLowerCase()}${m.erasing ? " is-erasing" : ""}${isSelectedManual ? " is-selected" : ""}`;
+    queue(m.key, "user", brushExtra, isSelectedManual ? pickScale : 1);
   });
-  if (topEngine) {
-    queue(topEngine.key, "engine", topEngine.key === pickKey ? " is-pick" : "", topEngine.scale);
+  if (topEngine && topEngine.key !== pickKey) {
+    const unpickedEngineScale = multiCandidatePick ? Math.min(topEngine.scale, 0.94) : topEngine.scale;
+    queue(topEngine.key, "engine", "", unpickedEngineScale);
+  }
+  if (pickKey) {
+    if (pickKey === topEngineKey) {
+      queue(pickKey, "engine", ` is-pick${pickSelectCls}`, pickScale);
+    } else if (pickKey === betterKey) {
+      queue(pickKey, "better", ` is-pick${pickSelectCls}`, pickScale);
+    } else {
+      queue(pickKey, "branch is-pick", pickSelectCls, pickScale);
+    }
   }
 
   // Converging destination shortening: when >=2 arrows from different squares arrive
@@ -464,7 +483,8 @@ export function renderAnnotations(
       const kind = sharedHead?.kind ?? arrow.kind;
       const scale = sharedHead?.scale ?? arrow.scale;
       const shorten = shouldShorten(arrow.toSq);
-      const extra = `${sharedHead?.extra ?? (kind === arrow.kind ? arrow.extra : "")}${coveredByLater ? " annot-stop" : ""}`;
+      const baseExtra = (sharedHead?.extra ?? (kind === arrow.kind ? arrow.extra : "")).replace(" is-selected", "");
+      const extra = `${baseExtra}${coveredByLater ? " annot-stop" : ""}`;
       paintPath(kind, buildArrowHeadPath(arrow.from, arrow.to, kind, { shorten, scale }), extra);
     }
   });
