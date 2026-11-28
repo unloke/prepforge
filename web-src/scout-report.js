@@ -889,7 +889,7 @@ export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtm
         ${usernames.length > 1
           // "self (2 accounts)" is a label, not a Lichess user: no profile link.
           ? html`<span class="prof-name" title="${usernames.join(", ")}">${username}</span>`
-          : html`<a class="scout-username-link prof-name" data-username="${username}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${username} ↗</a>`}
+          : html`<a class="scout-username-link prof-name" data-username="${username}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${username}<span class="prof-ext" aria-hidden="true">↗</span></a>`}
         <span class="scout-profile-games faint">${scoutAnalyzedLabel(analyzed, skipped, { streaming })}</span>
       </div>
       <div class="scout-speed-chips speed-chips" role="group" aria-label="Speed">
@@ -983,8 +983,8 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
       ${replyNote}
       ${engineNote}
       <div class="scout-line-action-row actions">
-        <button type="button" class="scout-action-analyze btn" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">Analyze ›</button>
-        <button type="button" class="scout-action-add-prep btn primary" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">Add to prep ▾</button>
+        <button type="button" class="scout-action-analyze btn" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">Analyze</button>
+        <button type="button" class="scout-action-add-prep btn primary" data-row-kind="${rowKind}" data-row-idx="${idx}" data-color="${oppColor}">Add to prep</button>
       </div>
       ${subLines}`;
 }
@@ -1370,7 +1370,7 @@ export function buildScoutSectionReport(
   const coverageShort = myLookups.length ? `${covPct}% prepped` : "No repertoire";
   // Nothing to add when the plan has no rows: the button would open an empty prep.
   const prepareAll = prepTargets.length
-    ? html`<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps ▾</button>`
+    ? html`<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps</button>`
     : "";
 
   const trending = profile.recentlyChanged[oppColor]

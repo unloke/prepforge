@@ -1,20 +1,24 @@
-/* Scout — Opus prototype composition. Loaded only with the lazy scout chunk, so
-   none of this grows the main stylesheet budget. The panel / grid skeleton, the
-   shared toolbar and the empty + stream states live in styles.css ("Scout —
-   Opus prototype composition"); everything about the report itself is here.
-   Layout: [profile card · colour tabs · colour card (intel + game plan) · chart
-   cards] scrolls in the main column while the line-detail card stays in view. */
+/* Scout — editorial opponent dossier. Loaded only with the lazy scout chunk. */
 
-/* The report is notation and figures people read, not glance at, so Scout runs
-   one step above the app's small sizes: 13px for meta and labels, 15px for the
-   running sentence, 14px for a line's figures. Two steps do the work. */
 .scout-panel { --fs-s: 13px; --fs-xs: 12px; }
+@media (min-width: 761px) {
+  #view-replay .scout-panel > .page-head h1 { font: 300 30px/1 var(--serif); letter-spacing: -0.025em; }
+  #view-replay .scout-panel .toolbar .src-chip:not(.src-chip-signin) {
+    border-color: var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--panel);
+    color: var(--text);
+  }
+}
+.scout-stream { border: 1px solid var(--line); background: var(--float); box-shadow: var(--shadow-2); }
+#view-replay:has(#scout-color option:checked:not([value="both"])) .scout-skeleton .scout-color-rec,
+#view-replay:has(#scout-color option[value="white"]:checked) .scout-skeleton .scout-color-tab:has(.black),
+#view-replay:has(#scout-color option[value="black"]:checked) .scout-skeleton .scout-color-tab:has(.white) { display: none; }
+.scout-skeleton .scout-weakness-row { min-height: 52px; }
 
 .scout-panel.is-streaming .scout-live-count {
   color: var(--accent-strong);
 }
-/* Once the report is on screen, streaming is the toolbar count with a small
-   spinner, not a second full-width card above the report. */
 .scout-panel.is-streaming:not(:has(#scout-results:empty)) .scout-stream { display: none; }
 .scout-panel.is-streaming .counter::before {
   content: "";
@@ -28,22 +32,22 @@
   vertical-align: -1px;
   animation: spin 0.8s linear infinite;
 }
+.scout-stream .spinner { width: 20px; height: 20px; border-width: 2px; }
+#scout-stream-phase { font: 400 17px/1.2 var(--serif); letter-spacing: -0.01em; }
 
 .scout-error {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-left: 2px solid var(--danger);
   border-radius: var(--radius-card);
   background: var(--panel);
   color: var(--text);
 }
 .scout-error .btn { margin-left: auto; }
-/* The failure title and its sentence are the reading layer, set one step above
-   the report's meta like every other running sentence on the page. */
-.scout-error-title { flex: 1 1 100%; margin: 0; color: var(--danger-strong); font-size: 16px; font-weight: 600; }
+.scout-error-title { flex: 1 1 100%; margin: 0; color: var(--danger-strong); font-family: var(--serif); font-size: 16px; font-weight: 500; line-height: 1.25; }
 .scout-error-body { flex: 1 1 220px; max-width: 70ch; margin: 0; font-size: 16px; line-height: 1.45; }
 
 .scout-btn {
@@ -56,29 +60,30 @@
   font-family: inherit;
 }
 
-/* ---- Profile card ---- */
-.scout-profile { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+/* ---- Profile dossier masthead ---- */
+.scout-profile { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
 .scout-profile[hidden] { display: none; }
 .prof-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .prof-row .spacer { flex: 1; }
-.prof-id { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.prof-name { font: 400 28px/1.15 var(--serif); letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
-.prof-name:hover { text-decoration: underline; }
-.scout-profile-games { font-size: 13px; color: var(--muted); }
+.prof-id { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.prof-name { font: 300 30px/1.1 var(--serif); letter-spacing: -0.025em; color: var(--text); text-decoration: none; }
+.prof-name:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.prof-ext { margin-left: 5px; color: var(--muted); font: 400 15px/1 var(--font); vertical-align: 5px; }
+.scout-profile-games { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .speed-chips {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   flex-wrap: wrap;
-  padding: 3px;
-  border-radius: 9px;
-  background: var(--panel-soft);
+  padding: 2px;
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--surface-3);
 }
 .speed {
   height: 26px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--muted);
   font: inherit;
@@ -89,7 +94,7 @@
 }
 .speed:hover { color: var(--text); }
 .speed:active { transform: scale(0.96); }
-.speed.is-on { background: var(--surface-3); color: var(--text); font-weight: 600; }
+.speed.is-on { background: var(--panel); color: var(--text); font-weight: 500; }
 .speed.is-on small { color: var(--muted); opacity: 1; }
 .speed:focus-visible, .fm:focus-visible, .scout-add-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .scout-color-rec {
@@ -99,18 +104,17 @@
   align-items: baseline;
   align-self: flex-start;
   max-width: 74ch;
-  padding: 7px 10px;
-  border-radius: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius);
   background: var(--surface-3);
   color: var(--text);
   font-size: 14px;
   font-weight: 500;
 }
 .scout-color-rec-muted { background: var(--panel-soft); color: var(--muted); font-weight: 500; }
-/* No clear edge: the two colour scores are live data, and the "why" sits in the title. */
 .scout-colour-split { color: var(--text); font-variant-numeric: tabular-nums; cursor: help; }
 
-/* Engine / Maia enrichment progress: a quiet status line, not a card. */
+/* Engine / Maia enrichment progress */
 .scout-engine-progress {
   display: flex;
   align-items: center;
@@ -121,51 +125,57 @@
   font-size: var(--fs-s);
 }
 .scout-engine-progress progress { width: 72px; height: 4px; accent-color: var(--accent); }
-/* Hidden keeps its line: the bar comes and goes while Stockfish and Maia run, and
-   collapsing it shifted the colour tabs and the report up and down. */
 .scout-engine-progress.is-idle { visibility: hidden; }
 
 /* ---- Colour tabs ---- */
-.scout-color-tabs { display: flex; gap: 4px; }
+.scout-color-tabs {
+  display: flex;
+  gap: 20px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--line);
+}
 .scout-color-tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
+  gap: 7px;
+  margin-bottom: -1px;
+  padding: 8px 2px 10px;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
-  color: var(--label);
+  color: var(--muted);
   font: inherit;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
-/* <small> inherits the browser's 0.83em: the game count under a tab and a speed
-   chip's sample were rendering at 10.8px. They are figures the reader compares,
-   so they keep the label's size and take the muted colour instead. */
 .scout-color-tab small,
 .speed small { font-size: var(--fs-s); font-weight: 500; font-variant-numeric: tabular-nums; }
+.scout-color-tab small { color: var(--label); }
 .speed small { color: var(--label); }
-.scout-color-tab:hover { color: var(--text); background: var(--surface-3); }
+.scout-color-tab:hover { color: var(--text); }
 .scout-color-tab:active { transform: scale(0.98); }
 .scout-color-tab.is-active { color: var(--text); border-bottom-color: var(--accent); }
+.scout-color-tab.is-active small { color: var(--muted); }
 .scout-color-tab:focus-visible, .scout-line:has(.scout-line-toggle:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
-/* The row draws the focus ring for its moves, which are its control. */
 .scout-line-toggle:focus-visible { outline: none; }
 .scout-color-dot {
   flex: none;
-  width: 11px;
-  height: 11px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  border: 1px solid var(--line-strong);
+  border: 1.5px solid var(--muted);
 }
-.scout-color-dot.white { background: var(--explorer-white); }
+.scout-color-dot.white { background: var(--dot-white); }
 .scout-color-dot.black { background: var(--explorer-black); }
+:root[data-theme="dark"] .scout-color-dot.black {
+  background: #141311;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
 
-/* ---- Colour section: one card (head · intel · game plan) + chart cards ---- */
-.scout-section { display: flex; flex-direction: column; gap: 10px; }
+/* ---- Colour section: dossier card (head · intel · game plan) + chart cards ---- */
+.scout-section { display: flex; flex-direction: column; gap: 12px; }
 .scout-results .scout-section[hidden] { display: none; }
 .color-sec { padding: 0; overflow: hidden; }
 .cs-head {
@@ -173,51 +183,67 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px 10px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--line-soft);
 }
 .cs-head .spacer { flex: 1; }
 .wdl-compact { display: inline-flex; align-items: baseline; gap: 5px; }
-.scout-wdl { display: inline-flex; gap: 6px; }
+.scout-wdl {
+  display: inline-flex;
+  gap: 8px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--panel-soft);
+}
 .scout-wdl-pill {
   padding: 0;
   border: 0;
   border-radius: 0;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
 }
 .scout-wdl-w { color: var(--good-text); }
 .scout-wdl-d { color: var(--muted); }
 .scout-wdl-l { color: var(--danger); }
-/* "scores 44%" and the coverage fraction are figures in a row of them. */
 .scout-section-score { font-size: var(--fs-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .scout-coverage-label { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .scout-coverage-short { display: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.cov { display: flex; align-items: center; gap: 8px; min-width: 190px; color: var(--muted); font-size: var(--fs-s); }
-.scout-coverage-bar { flex: 1; min-width: 40px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.scout-coverage-fill { height: 100%; border-radius: 3px; transition: width var(--dur-slow) var(--ease-out); }
+.cov { display: flex; align-items: center; gap: 10px; min-width: 190px; color: var(--muted); font-size: var(--fs-s); }
+.scout-coverage-bar { flex: 1; min-width: 48px; height: 5px; border-radius: 999px; background: var(--line-strong); overflow: hidden; }
+.scout-coverage-fill { height: 100%; border-radius: 999px; transition: width var(--dur-slow) var(--ease-out); }
 .scout-coverage-fill.good { background: var(--good); }
 .scout-coverage-fill.warn { background: var(--warn); }
 .scout-coverage-fill.bad { background: var(--danger); }
 
-.intel { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; }
-.headline { min-height: 0; margin: 0; max-width: 66ch; font-size: 16px; font-weight: 500; line-height: 1.42; }
-/* D: the reads are plain labelled columns in a compact 3-column strip. */
-.scout-repertoire-reads { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 24px; }
+.intel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--panel-soft) 60%, var(--panel));
+}
+.headline { min-height: 0; margin: 0; max-width: 66ch; font-size: 16px; font-weight: 500; line-height: 1.45; }
+.scout-repertoire-reads { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 20px; }
+@media (min-width: 761px) {
+  .scout-repertoire-reads > .scout-read-chip:not(:nth-child(3n + 1)) {
+    padding-left: 18px;
+    border-left: 1px solid var(--line);
+  }
+}
 .scout-read-chip {
   display: inline-flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
   font-size: 13px;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.4;
 }
-.scout-read-chip small { color: var(--muted); font-size: 12px; font-weight: 500; }
+.scout-read-chip small { color: var(--label); font-size: 12px; font-weight: 500; }
 
-/* Once a report is on screen, Start and Add all gaps yield primary weight so
-   Add to prep stays the sole primary action. */
 .scout-panel:has(.scout-color-tabs) .scout-color-rec { display: none; }
 .scout-panel:has(#scout-results > .scout-section) #scout-btn.primary,
 .scout-section .scout-prepare-all.primary {
@@ -230,12 +256,10 @@
   background: var(--line);
   color: var(--text);
 }
-/* Deep scan already lives in the profile bar; hide duplicate inline gap button
-   and redundant first-moves bar when the 3-column reads strip is present. */
 .plan > .scout-refutation-gap-actions { display: none; }
-.scout-section:has(.scout-repertoire-reads) .intel > .headline,
-.scout-section:has(.scout-repertoire-reads) .scout-first-moves { display: none; }
-/* Score by first move duplicates First move read directly above. */
+:is(.scout-section, .scout-skeleton):has(.scout-repertoire-reads) .intel > .headline,
+:is(.scout-section, .scout-skeleton):has(.scout-repertoire-reads) .scout-first-moves,
+.scout-skeleton .plan > div:has(> .btn.skeleton-text) { display: none; }
 .scout-section:has(.scout-first-moves) .scout-intel-charts,
 .scout-section:has(.scout-repertoire-reads) .scout-intel-charts {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -245,48 +269,51 @@
   display: none;
 }
 
-/* Group boundaries get more air than the rows inside them: head, then the
-   readout band, then the plan. */
 .plan { display: flex; flex-direction: column; gap: 10px; padding: 16px 14px 14px; }
 .plan-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
 .scout-col-label { font-size: 13px; font-weight: 600; }
+.plan-head > .scout-col-label,
+.chart > h3.scout-col-label {
+  font: 400 18px/1.2 var(--serif);
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
 .scout-col-label small { color: var(--label); font-weight: 500; }
 .first-moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
 .first-moves > :not(.fm) { grid-column: 1 / -1; }
 .scout-dist-drill-head { font-size: var(--fs-s); }
-.scout-first-moves { display: flex; flex-direction: column; gap: 4px; }
-.scout-sub-label { font-size: var(--fs-s); font-weight: 500; }
+.scout-first-moves { display: flex; flex-direction: column; gap: 6px; }
+.scout-sub-label { font-size: var(--fs-s); font-weight: 500; color: var(--muted); }
 .scout-sub-label small { margin-left: 6px; color: var(--label); font-weight: 500; }
-/* Scout plan column header — the shared `.col-head` treatment (styles.css);
-   this sheet only lays its cells out. */
 .scout-lines-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 150px 74px 72px 44px;
   gap: 10px;
-  padding: 0 10px;
-  margin-top: 4px;
+  padding: 2px 10px 6px;
+  margin-top: 2px;
 }
-/* The score header sits over a right-aligned column. */
 .scout-lines-head > :nth-child(3) { text-align: right; }
 .fm .sc small { margin-right: 3px; color: var(--label); font-size: 12px; font-weight: 500; }
-.scout-section-who { font-size: var(--fs-s); font-weight: 600; }
+.scout-section-who { font: 400 18px/1.2 var(--serif); letter-spacing: -0.015em; color: var(--text); }
+.cs-with { color: var(--muted); }
 .fm {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
-  border-radius: 6px;
-  background: var(--panel);
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--panel-soft);
   font-size: var(--fs-s);
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .fm[data-first-uci] { cursor: pointer; }
-.fm[data-first-uci]:hover { background: var(--surface-3); }
+.fm[data-first-uci]:hover { background: var(--surface-3); border-color: var(--line); }
 .fm[data-first-uci]:active { transform: scale(0.99); }
-.fm .share { height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.fm .share i { display: block; height: 100%; background: var(--label); }
-.fm .sc { font-weight: 500; }
+.fm .share { height: 5px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.fm .share i { display: block; height: 100%; border-radius: inherit; background: var(--label); }
+.fm .sc { font-weight: 500; font-variant-numeric: tabular-nums; }
 .fm.is-hot .sc { color: var(--danger); }
 .fm.is-cold .sc { color: var(--good-text); }
 
@@ -297,15 +324,19 @@
   grid-template-columns: minmax(0, 1fr) 150px 74px 72px 44px;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 11px 10px;
   background: var(--panel);
   font-size: var(--fs-s);
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
-.scout-lines[data-ui] .line-row { border-bottom: 1px solid var(--line); }
+.scout-lines[data-ui] .line-row { border-bottom: 1px solid var(--line-soft); }
 .line-row:hover { background: var(--panel-soft); }
-.scout-lines[data-ui] .line-row.is-expanded { background: var(--panel-soft); box-shadow: inset 3px 0 0 var(--accent); }
-.lr-main { display: flex; flex-direction: column; min-width: 0; }
+.scout-lines[data-ui] .line-row.is-expanded {
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel-soft));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.lr-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .scout-line-eco {
   color: var(--label);
   font-size: var(--fs-s);
@@ -316,57 +347,49 @@
 }
 .scout-line-eco:empty { display: none; }
 .scout-line-moves,
-.scout-prep-framing { display: flex; flex-direction: column; min-width: 0; }
-.when { color: var(--muted); overflow-wrap: anywhere; }
+.scout-prep-framing { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.when { color: var(--muted); overflow-wrap: anywhere; line-height: 1.4; }
 .when b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
-.then b { color: var(--good-text); }
-/* Every row in the list is a gap, so red on all seven said nothing. The arrow
-   and the words carry the state; red stays for the "weak spot" badge. */
+.then { line-height: 1.35; }
+.then b { color: var(--good-text); font-weight: 500; }
 .then.needs { color: var(--muted); font-weight: 500; }
-.lr-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.lr-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 .cat {
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: var(--fs-s);
-  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-chip);
+  font-size: var(--fs-xs);
+  font-weight: 500;
 }
 .c-attack { background: var(--danger-soft); color: var(--danger-strong); }
 .c-main { background: var(--surface-3); color: var(--muted); }
 .seen { color: var(--label); font-size: var(--fs-s); }
 .scout-line-more { font-size: var(--fs-s); white-space: nowrap; }
-.scout-wdlbar-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.scout-wdlbar-wrap { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .scout-wdlbar-nums {
   display: flex;
   justify-content: space-between;
   color: var(--muted);
-  font-size: var(--fs-s);
+  font-size: var(--fs-xs);
 }
 .scout-refutation-gap-actions { align-items: center; }
-/* Row bars carry no count labels (tooltip has them): a thin strip, not a slab. */
-.lr-wdl .scout-wdlbar { min-width: 0; height: 8px; }
+.lr-wdl .scout-wdlbar { min-width: 0; height: 6px; }
 .scout-one-game { color: var(--muted); font-size: var(--fs-s); font-weight: 500; white-space: nowrap; }
-/* One number column: score, sample size and their usual score share a right
-   edge, so the eye compares percentages down the column instead of hunting for
-   where each one starts. */
-.scout-score-cell { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.25; }
-.scout-score-pct { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.scout-n { color: var(--label); font-size: var(--fs-s); font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.scout-gap { color: var(--danger-strong); font-size: var(--fs-s); white-space: nowrap; font-variant-numeric: tabular-nums; }
-/* The ×N sample count is a number too: it sits right beside the moves, but it
-   still reads down the column as a count. */
+.scout-score-cell { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.2; gap: 2px; }
+.scout-score-pct { font: 400 20px/1.05 var(--serif); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text); }
+.scout-n { color: var(--label); font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.scout-gap { color: var(--danger-strong); font-size: var(--fs-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .scout-lr-count { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-/* Maia-modelled score/WDL: dotted underline / hatched bar = "estimate, not their actual results". */
 .scout-score-cell.scout-maia-estimate .scout-score-pct { text-decoration: underline dotted; text-underline-offset: 2px; }
 .scout-score-cell.scout-maia-estimate .scout-score-pct::before { content: "~"; margin-right: 1px; color: var(--muted); }
 .scout-wdlbar {
   display: flex;
   width: 100%;
   min-width: 90px;
-  height: 16px;
-  border-radius: 3px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
   overflow: hidden;
 }
-.scout-lines[data-ui] .scout-wdlbar { box-shadow: inset 0 0 0 1px var(--line); }
 .scout-wdlbar > span { display: block; height: 100%; }
 .scout-wdlbar-w { background: var(--explorer-white); }
 .scout-wdlbar-d { background: var(--explorer-draw); }
@@ -378,60 +401,74 @@
 .scout-add-icon {
   display: grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   background: none;
-  color: var(--text);
+  color: var(--muted);
   font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1;
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
+.line-row:hover .scout-add-icon { border-color: var(--line-strong); color: var(--text); }
 .scout-add-icon:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
 .scout-add-icon:active { transform: scale(0.94); }
-.scout-ranked-note { margin: 0; font-size: var(--fs-s); }
-.scout-refutation-card {
-  margin-top: 6px;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--good) 12%, var(--panel-soft));
+
+.scout-ranked-note,
+.scout-cap-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 7px 12px;
+  border-left: 2px solid var(--line-strong);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--panel);
+  color: var(--muted);
   font-size: var(--fs-s);
 }
-.scout-refutation-card-copy { line-height: 1.4; }
+.scout-refutation-card {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-left: 2px solid var(--good);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--good) 8%, var(--panel-soft));
+  font-size: var(--fs-s);
+}
+.scout-refutation-card-copy { line-height: 1.45; }
 .scout-refutation-swing { color: var(--danger); font-weight: 500; }
-.scout-refutation-card-board { width: 96px; height: 96px; margin-top: 6px; }
+.scout-refutation-card-board { width: 104px; height: 104px; margin-top: 8px; }
+.scout-refutation-card-board .scout-miniboard { border-color: var(--board-frame); border-radius: 4px; }
 .scout-refutation-gap-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ---- Chart cards ---- */
-.scout-intel-charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.chart { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; padding: 10px 12px; }
+.scout-intel-charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.chart { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; padding: 16px 18px; }
 .chart h3 { margin: 0; }
-.scout-bar-chart { display: grid; gap: 4px; width: 100%; }
+.scout-bar-chart { display: grid; gap: 6px; width: 100%; }
 .scout-bar-row {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: var(--fs-xs);
 }
 .scout-bar-label { color: var(--muted); font-size: 14px; font-weight: 500; }
-.scout-bar-track { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.scout-bar-fill { display: block; height: 100%; background: var(--accent-strong); opacity: 0.85; }
-/* Bar tone = what the value means for YOU (good news green, bad news red),
-   so a low opponent score and a high opponent error rate read the same way. */
+.scout-bar-track { position: relative; height: 5px; border-radius: 999px; background: var(--surface-3); overflow: visible; }
+.scout-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent-strong); opacity: 0.85; }
 .scout-bar-row.is-good .scout-bar-fill { background: var(--good); }
 .scout-bar-row.is-bad .scout-bar-fill { background: var(--danger); }
 .scout-bar-val { text-align: right; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .scout-bar-row.has-n { grid-template-columns: 44px minmax(0, 1fr) 44px 26px; }
 .scout-bar-n { color: var(--label); font-size: 12px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
-.scout-bar-track { position: relative; overflow: visible; }
-.scout-bar-fill { border-radius: 3px; }
 .scout-bar-ref {
   position: absolute;
   top: -3px;
@@ -440,13 +477,12 @@
   border-left: 1.5px dashed var(--text);
   opacity: 0.6;
 }
-.scout-chart-title { margin: 4px 0 2px; color: var(--muted); font-size: 14px; font-weight: 500; }
-/* Mini chart with labelled axes: y range on the left, x span underneath. */
+.scout-chart-title { margin: 4px 0 0; color: var(--muted); font-size: 14px; font-weight: 500; }
 .scout-axis-chart {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: 34px auto;
-  column-gap: 6px;
+  grid-template-rows: 40px auto;
+  column-gap: 8px;
   width: 100%;
 }
 .scout-axis-y {
@@ -466,28 +502,52 @@
   min-width: 0;
 }
 .scout-intel-panel[data-ui] .scout-axis-plot {
-  border-left: 1px solid var(--line-strong);
-  border-bottom: 1px solid var(--line-strong);
+  border-left: 0;
+  border-bottom: 1px solid var(--line);
 }
 .scout-axis-plot .scout-sparkline { height: 100%; }
 .scout-axis-x {
   grid-column: 2;
   display: flex;
   justify-content: space-between;
-  padding-top: 2px;
+  padding-top: 4px;
   color: var(--label);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
-.scout-columns { display: flex; align-items: flex-end; gap: 2px; width: 100%; height: 100%; padding: 0 2px; }
-.scout-columns i { flex: 1; min-width: 0; border-radius: 2px 2px 0 0; background: var(--muted); opacity: 0.8; }
+.scout-columns { display: flex; align-items: flex-end; gap: 3px; width: 100%; height: 100%; padding: 0 2px; }
+.scout-columns i { flex: 1; min-width: 0; border-radius: 2px 2px 0 0; background: color-mix(in srgb, var(--text) 42%, var(--panel)); }
 .scout-engine-panel { width: 100%; }
-.scout-sparkline { display: block; width: 100%; height: 26px; color: var(--accent); }
+.scout-engine-panel.hint { margin: auto 0; font: italic 400 14px/1.45 var(--serif); color: var(--muted); }
+.scout-sparkline { display: block; width: 100%; height: 30px; color: var(--accent); }
 .scout-sparkline polyline { vector-effect: non-scaling-stroke; }
 
-/* ---- Line-detail card (side) ---- */
-.line-title { min-height: 2.8em; margin: 0; font-size: 14px; font-weight: 500; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.scout-side .scout-miniboard-wrap { width: 100%; max-width: 320px; height: auto; aspect-ratio: 1; align-self: center; }
-.scout-side .scout-miniboard { width: 100%; height: auto; aspect-ratio: 1; }
+/* ---- Line-detail dossier card (side) ---- */
+.line-title {
+  min-height: 0;
+  margin: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.line-title .move-ref { text-decoration-color: transparent; }
+.line-title .move-ref:hover { text-decoration-color: currentColor; }
+.scout-side .scout-miniboard-wrap { width: 100%; max-width: none; height: auto; aspect-ratio: 1; align-self: stretch; }
+.scout-side .scout-miniboard {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border: 1px solid var(--board-frame);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(16, 14, 12, 0.10);
+}
+:root[data-theme="dark"] .scout-side .scout-miniboard {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
 .scout-line-status { font-size: var(--fs-s); font-weight: 500; }
 .scout-line-status.good { color: var(--good-text); }
 .scout-line-status.warn { color: var(--warn-text); }
@@ -495,95 +555,104 @@
 .scout-side .note { margin: 0; }
 .scout-line-reason,
 .scout-line-reply { border: 0; max-width: 60ch; color: var(--text); font-size: 16px; line-height: 1.45; }
-.scout-side .note.good { border-color: transparent; background: var(--good-soft); color: var(--good-text); }
-.scout-side .note.warn { border-color: transparent; background: var(--warn-soft); color: var(--warn-text); }
-.scout-side .note.eng { border-color: transparent; background: var(--surface-3); color: var(--text); }
-.scout-side .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0; }
-.subvars { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; }
-.scout-sublines { display: flex; flex-direction: column; gap: 4px; }
+.scout-side .scout-line-reason {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-family: var(--serif);
+  font-style: italic;
+}
+.scout-side .note:is(.good, .warn, .eng) {
+  padding: 8px 12px;
+  border-left: 2px solid var(--note-rule, var(--line-strong));
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.scout-side .note.good { --note-rule: var(--good); background: color-mix(in srgb, var(--good) 8%, var(--panel-soft)); color: var(--good-text); }
+.scout-side .note.warn { --note-rule: var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--panel-soft)); color: var(--warn-text); }
+.scout-side .note.eng { --note-rule: var(--accent); background: var(--panel-soft); color: var(--text); }
+.scout-side .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.scout-side .actions > .btn { flex: 1 1 0; }
+.subvars { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+.scout-sublines { display: flex; flex-direction: column; gap: 5px; }
 .sv {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 60px 34px;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: var(--fs-s);
 }
 .sv span { font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.sv i { display: block; height: 5px; border-radius: 3px; background: var(--accent); }
-.sv b { text-align: right; }
+.sv i { display: block; height: 4px; border-radius: 999px; background: var(--accent); }
+.sv b { text-align: right; font-variant-numeric: tabular-nums; }
 .sv.muted { opacity: 0.5; }
 
-/* R-05: per-source outcome bar — a merged report must say which sources it covers. */
+/* Per-source outcome bar */
 .scout-source-warnings {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin: 0 0 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--warn);
-  border-radius: 8px;
-  background: var(--warn-soft);
+  padding: 10px 14px;
+  border: 0;
+  border-left: 2px solid var(--warn);
+  border-radius: var(--radius-card);
+  background: var(--panel);
   color: var(--warn-text);
   font-size: var(--fs-s);
 }
-.scout-source-warnings .source-warn-text { flex: 1 1 220px; margin: 0; }
+.scout-source-warnings .source-warn-text { flex: 1 1 220px; margin: 0; font-weight: 500; }
 .scout-source-warnings .source-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .scout-source-warnings .source-chip {
-  padding: 2px 8px;
+  padding: 2px 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--panel);
+  background: var(--panel-soft);
   color: var(--text);
   font-size: var(--fs-s);
   white-space: nowrap;
 }
-.scout-source-warnings .source-chip.is-ok { border-color: var(--good); color: var(--good-text); background: var(--good-soft); }
-.scout-source-warnings .source-chip.is-failed { border-color: var(--danger); color: var(--danger-strong); background: var(--danger-soft); }
+.scout-source-warnings .source-chip.is-ok { border-color: color-mix(in srgb, var(--good) 40%, var(--line)); color: var(--good-text); background: var(--good-soft); }
+.scout-source-warnings .source-chip.is-failed { border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); color: var(--danger-strong); background: var(--danger-soft); }
 .scout-source-warnings .source-chip.is-empty { opacity: 0.75; }
 .scout-source-warnings .btn { margin-left: auto; }
 
-/* A narrow plan column: the Type · last seen column folds under the line (it
-   used to be hidden while its header stayed, leaving an empty, misaligned
-   column). The column's width, not the window's: it is widest stacked at
-   1020px and narrowest beside the detail card at 1280px. */
 @container scout-main (max-width: 800px) {
   .line-row { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }
   .line-row .lr-meta { grid-column: 1; grid-row: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
   .scout-lines-head { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }
   .scout-lines-head span:nth-child(2) { display: none; }
 }
-/* ≤760: phone — plan first, the open line's detail after it, then the charts. */
+
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
-  /* The first screen was the toolbar, the profile and a 150px section head; the
-     first line sat 1,228px down. On a phone the lines are the page: the head
-     names the player and colour, the plan follows, and the summary sentence
-     closes the card underneath. */
   .color-sec { display: flex; flex-direction: column; }
   .cs-head { order: 0; }
   .plan { order: 1; }
   .intel { order: 2; }
+  .color-sec > .intel { border-bottom: 0; }
   .intel .headline { min-height: 0; }
   .scout-panel .prof-id,
   .scout-panel .scout-color-rec { display: none; }
-  .scout-panel .scout-profile { flex-direction: column; align-items: stretch; text-align: left; gap: 10px; padding: 12px 14px; }
-  .scout-panel .prof-row { display: grid; flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 8px; }
-  .scout-panel .prof-row > .speed-chips { grid-column: 1 / -1; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+  .scout-panel .scout-profile { flex-direction: column; align-items: stretch; text-align: left; gap: 10px; padding: 14px; }
+  #view-replay .scout-panel > .toolbar > .src:has(> .scout-history:not([hidden])) > .src-label { grid-column: 1; }
+  #view-replay .scout-panel > .toolbar > .src > .scout-history:not([hidden]) { grid-column: 2; grid-row: 1; justify-self: end; margin-right: -8px; }
+  #view-replay .scout-panel > .toolbar > .src > .scout-history > summary { border: 0; background: none; color: var(--muted); }
+  #view-replay .scout-panel .scout-history-panel { left: auto; right: 0; }
+  .scout-panel .prof-row { display: grid; flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 10px; }
+  .scout-panel .prof-row > .speed-chips { grid-column: 1 / -1; justify-self: start; max-width: 100%; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
   .scout-panel .prof-row .spacer { display: none; }
-  .scout-panel:has(.scout-color-tabs) .prof-row { grid-template-columns: minmax(0, 1fr) auto auto; }
-  .scout-panel:has(.scout-color-tabs) .prof-id { display: flex; grid-column: 1; grid-row: 1; flex-direction: column; gap: 2px; }
-  .scout-panel:has(.scout-color-tabs) .prof-name { font-size: 24px; }
-  .scout-panel:has(.scout-color-tabs) .prof-row > .speed-chips { grid-row: 2; }
-  .scout-panel:has(.scout-color-tabs) .intel { order: 1; padding: 10px 14px; border-top: 1px solid var(--line); }
-  .scout-panel:has(.scout-color-tabs) .plan { order: 2; padding: 12px 14px; border-top: 1px solid var(--line); }
-  .scout-color-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border-bottom: 1px solid var(--line); }
-  /* Flush-left mobile tabs: dot + label left, count tucked beside/right. */
+  .scout-panel:has(.scout-color-tabs) .prof-id { display: flex; grid-column: 1 / -1; flex-direction: row; align-items: baseline; justify-content: space-between; gap: 6px 10px; min-width: 0; }
+  .scout-panel:has(.scout-color-tabs) .prof-name { font-size: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .scout-panel:has(.scout-color-tabs) .intel { order: 1; padding: 12px 14px; border-top: 1px solid var(--line-soft); }
+  .scout-panel:has(.scout-color-tabs) .plan { order: 2; padding: 14px; border-top: 1px solid var(--line-soft); }
+  .scout-color-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0; border-bottom: 1px solid var(--line); }
   .scout-color-tab { min-height: 40px; min-width: 0; padding: 8px 2px; flex-wrap: nowrap; justify-content: flex-start; text-align: left; gap: 6px; }
   .scout-color-tab small { flex-basis: auto; margin-left: auto; }
   .scout-repertoire-reads { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; text-align: left; }
-  /* Speed filter and the game-plan verbs were 26-36px targets; on a phone they
-     are the only way to switch sample size or start the prep. */
-  .speed { min-height: 34px; padding: 0 12px; border-radius: 7px; }
+  .speed { min-height: 34px; padding: 0 12px; border-radius: var(--radius); }
   .scout-intel-charts,
   .scout-section:has(.scout-first-moves) .scout-intel-charts { grid-template-columns: 1fr; }
   .first-moves { grid-template-columns: 1fr; }
@@ -597,9 +666,6 @@
   .line-row .lr-flags { display: none; }
   .line-row .lr-score { text-align: right; }
   .scout-lines-head > :nth-child(3) { text-align: right; }
-  /* The head is two fixed lines, never a wrap: the name (cut first), W/D/L
-     and the score on one; the prep bar, its sentence (cut) and Add all gaps
-     on the next. The colour is the tab above, so "with White" is dropped. */
   .cs-head {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
@@ -608,7 +674,7 @@
     padding: 12px 14px;
   }
   .cs-head .spacer, .cs-head .cs-with { display: none; }
-  .cs-head .scout-section-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cs-head .scout-section-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
   .cs-head .scout-trending { grid-column: 1 / -1; justify-self: start; }
   .cs-head .cov { grid-column: 1; display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 36px; }
   .cs-head .cov:last-child { grid-column: 1 / -1; }
@@ -616,17 +682,15 @@
   .cs-head .scout-coverage-label { display: none; }
   .cs-head .scout-coverage-short { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .cs-head .scout-prepare-all { grid-column: 2 / -1; justify-self: end; white-space: nowrap; }
-  /* The add-to-prep button is the row's only action: it needs a thumb. */
   .scout-add-icon { width: 36px; height: 36px; font-size: 16px; }
   .scout-side .actions .btn { min-height: 36px; }
   .prof-row .btn { min-height: 40px; }
   .scout-source-warnings .btn { margin-left: 0; min-height: 36px; width: 100%; }
-  /* A first-move row is the drilldown: a thumb needs the whole row, not 27px. */
   .fm { min-height: 36px; }
+  #view-replay .scout-empty.empty-state.big h3 { font: 400 20px/1.2 var(--serif); letter-spacing: -0.015em; }
 }
 .cov[hidden] { display: none; }
 
-/* Plan rows that newly enter after a re-rank fade in one after another. */
 @keyframes scout-row-enter {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
@@ -638,7 +702,7 @@
 
 .scout-engine-progress.is-idle:empty { display: none; }
 
-/* ---- History (toolbar): the runs this browser keeps ---- */
+/* ---- History popover (toolbar) ---- */
 .scout-history { position: relative; }
 .scout-history > summary { list-style: none; cursor: pointer; }
 .scout-history > summary::-webkit-details-marker { display: none; }
@@ -651,16 +715,17 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
-  width: min(420px, calc(100vw - 32px));
-  padding: 12px;
-  border: 1px solid var(--line-strong);
+  gap: 6px;
+  width: min(400px, calc(100vw - 32px));
+  padding: 10px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  background: var(--panel);
+  background: var(--float);
   box-shadow: var(--shadow-2); /* taste-skill-ignore: the History list is a real overlay */
 }
-.scout-history-note { margin: 0; font-size: var(--fs-xs); }
 .scout-history-list { display: flex; flex-direction: column; align-self: stretch; margin: 0; padding: 0; list-style: none; }
-.scout-history-row { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.scout-history-row { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-bottom: 1px solid var(--line-soft); }
+.scout-history-row:last-child { border-bottom: 0; }
 .scout-history-name { flex: 1; min-width: 0; font-size: var(--fs-s); overflow-wrap: anywhere; }
-.scout-history-name .muted { display: block; font-size: var(--fs-xs); }
+.scout-history-name b { font-weight: 500; }
+.scout-history-name .muted { display: block; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
