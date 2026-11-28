@@ -7,6 +7,15 @@ const PALETTES = {
   line: ["#814000", "#bd6607", "#ffb539", "#064854", "#00d1d7"],
 };
 
+// Standard four PGN user brushes (%cal / %csl: G, R, B, Y), fitted per board so
+// green stays distinct on a green board and yellow stays golden (never brown).
+const USER_BRUSH_PALETTES = {
+  g: ["#15803d", "#047857", "#16a34a", "#065f46"],
+  r: ["#dc2626", "#b91c1c", "#ef4444", "#be123c"],
+  b: ["#2563eb", "#1d4ed8", "#3b82f6", "#1e40af"],
+  y: ["#eab308", "#f59e0b", "#d97706", "#facc15"],
+};
+
 export function rgb(hex) {
   if (typeof hex !== "string" || !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) {
     throw new TypeError("Expected a hex color");
@@ -57,13 +66,19 @@ function blendSample(hex, baseHex, alpha) {
   return sample(ink.map((channel, i) => Math.round(alpha * channel + (1 - alpha) * base[i])));
 }
 
-// Pick one shade for each simultaneous role. Each candidate's composited
-// square views and local losses are precomputed outside the five-way choice;
-// pair comparisons reuse those cached composites. The fit sees the colors
-// exactly as the one translucent SVG group composites them.
-export function pickBoardArrowColors(lightHex, darkHex, alpha = 0.56) {
+// Pick one shade for each simultaneous role, plus board-safe shades for the 4 PGN user brushes.
+export function pickBoardArrowColors(lightHex, darkHex, alpha = 0.68) {
   const squaresHex = [lightHex, darkHex];
   const ground = squaresHex.map(hexSample);
+  const scorePalette = (palette, fallbackCost = 0.16) => palette.map((hex, index) => {
+    const view = squaresHex.map((base) => blendSample(hex, base, alpha));
+    const loss = Math.max(...view.map((composite, squareIndex) =>
+      penalty(0.21, labDistance(composite, ground[squareIndex]))
+      + 0.8 * penalty(2.35, ratio(composite, ground[squareIndex]))
+      + 2 * penalty(0.115, abDistance(composite, ground[squareIndex]))
+    ));
+    return { hex, view, loss, cost: loss + (index >= 3 ? fallbackCost : index * 0.02) };
+  });
   const colors = Object.entries(PALETTES).map(([role, palette]) => [role, palette.map((hex, index) => {
     const view = squaresHex.map((base) => blendSample(hex, base, alpha));
     const loss = Math.max(...view.map((composite, squareIndex) =>
@@ -95,5 +110,16 @@ export function pickBoardArrowColors(lightHex, darkHex, alpha = 0.56) {
       }
     }
   const [user, engine, better, line] = best;
-  return { user: user.hex, engine: engine.hex, better: better.hex, line: line.hex };
+  const brushes = {};
+  for (const [code, palette] of Object.entries(USER_BRUSH_PALETTES)) {
+    const candidates = scorePalette(palette, 0.06).map((cand) => {
+      const lineClash = Math.max(...squaresHex.map((_, s) =>
+        0.7 * penalty(0.09, labDistance(cand.view[s], line.view[s]))
+      ));
+      return { ...cand, total: cand.cost + lineClash };
+    });
+    candidates.sort((a, b) => a.total - b.total);
+    brushes[code] = candidates[0].hex;
+  }
+  return { user: user.hex, engine: engine.hex, better: better.hex, line: line.hex, ...brushes };
 }

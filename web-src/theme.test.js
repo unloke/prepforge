@@ -66,8 +66,8 @@ describe("persisted theme", () => {
 describe("board colour themes", () => {
   const readStyles = (root) => ({
     getPropertyValue: (name) => (root.dataset.board === "wood"
-      ? { "--square-light": "#e6dac5", "--square-dark": "#a98b6d", "--board-arrow-opacity": "0.56" }
-      : { "--square-light": "#e2eaf4", "--square-dark": "#8ea4c0", "--board-arrow-opacity": "0.56" })[name],
+      ? { "--square-light": "#e6dac5", "--square-dark": "#a98b6d", "--board-arrow-opacity": "0.68" }
+      : { "--square-light": "#e2eaf4", "--square-dark": "#8ea4c0", "--board-arrow-opacity": "0.68" })[name],
   });
 
   it("keeps slate as the default and writes the attribute only for a named board", () => {
@@ -89,10 +89,11 @@ describe("board colour themes", () => {
     expect(root.dataset).not.toHaveProperty("board");
   });
 
-  it("selects distinct opaque role colors for custom squares, independent of square order", () => {
+  it("selects distinct role and 4-brush colors for custom squares, independent of square order", () => {
     const result = pickBoardArrowColors("#f9d", "#173962");
-    expect(Object.keys(result)).toEqual(["user", "engine", "better", "line"]);
-    expect(new Set(Object.values(result)).size).toBe(4);
+    expect(Object.keys(result)).toEqual(["user", "engine", "better", "line", "g", "r", "b", "y"]);
+    expect(new Set([result.user, result.engine, result.better, result.line]).size).toBe(4);
+    expect(new Set([result.g, result.r, result.b, result.y]).size).toBe(4);
     for (const color of Object.values(result)) expect(color).toMatch(/^#[0-9a-f]{6}$/);
     expect(pickBoardArrowColors("#173962", "#ff99dd")).toEqual(result);
     expect(pickBoardArrowColors("#101010", "#212121")).not.toEqual(result);
@@ -105,7 +106,7 @@ describe("board colour themes", () => {
     expect(pickBoardArrowColors("#e6dac5", "#a98b6d").engine).toBe("#00846a");
     expect(pickBoardArrowColors("#f0d9b5", "#b58863").engine).toBe("#00846a");
 
-    const composite = (hex, square, alpha = 0.56) => sample(rgb(hex).map((channel, i) => Math.round(alpha * channel + (1 - alpha) * rgb(square)[i])));
+    const composite = (hex, square, alpha = 0.68) => sample(rgb(hex).map((channel, i) => Math.round(alpha * channel + (1 - alpha) * rgb(square)[i])));
     const abDistance = (a, b) => Math.hypot(a.lab[1] - b.lab[1], a.lab[2] - b.lab[2]);
     const labDistance = (a, b) => Math.hypot(...a.lab.map((value, i) => value - b.lab[i]));
     const darkGround = hexSample("#769656");
@@ -116,8 +117,9 @@ describe("board colour themes", () => {
     expect(newContrast).toBeGreaterThanOrEqual(0.14);
     expect(newContrast).toBeGreaterThan(oldContrast);
 
+    const roleHexes = [green.user, green.engine, green.better, green.line];
     for (const square of ["#eeeed2", "#769656"]) {
-      const views = Object.values(green).map((hex) => composite(hex, square));
+      const views = roleHexes.map((hex) => composite(hex, square));
       for (let i = 0; i < views.length; i++) for (let j = i + 1; j < views.length; j++) {
         expect(labDistance(views[i], views[j])).toBeGreaterThanOrEqual(0.1);
       }
@@ -125,7 +127,7 @@ describe("board colour themes", () => {
   });
 
   it("honours the shared overlay alpha passed to the brush fit", () => {
-    expect(pickBoardArrowColors("#eeeed2", "#769656", 0.56)).toEqual(pickBoardArrowColors("#eeeed2", "#769656"));
+    expect(pickBoardArrowColors("#eeeed2", "#769656", 0.68)).toEqual(pickBoardArrowColors("#eeeed2", "#769656"));
     expect(pickBoardArrowColors("#eeeed2", "#769656", 0.4)).toBeDefined();
   });
 
@@ -200,7 +202,7 @@ describe("adaptive grade tone integration", () => {
       getPropertyValue(name) {
         if (name === "--square-light") return "#eeeed2";
         if (name === "--square-dark") return "#769656";
-        if (name === "--board-arrow-opacity") return "0.56";
+        if (name === "--board-arrow-opacity") return "0.68";
         return values[this.theme || "light"]?.[name] || "";
       },
     };

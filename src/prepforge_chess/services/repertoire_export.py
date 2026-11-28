@@ -26,14 +26,31 @@ _NAME_MAX = 200
 _COMMENT_MAX = 2000
 
 _DRAWING_PATTERN = re.compile(r"\[%(cal|csl)\s+([^\]]*)\]")
+_ARROW_DRAWING_RE = re.compile(r"^([GRBY])?([a-h][1-8])([a-h][1-8])$")
+_CIRCLE_DRAWING_RE = re.compile(r"^([GRBY])?([a-h][1-8])$")
+
+
+def _normalize_arrow_token(token: str) -> Optional[str]:
+    match = _ARROW_DRAWING_RE.match(token.strip())
+    if not match or match.group(2) == match.group(3):
+        return None
+    brush = match.group(1) or "G"
+    return f"{brush}{match.group(2)}{match.group(3)}"
+
+
+def _normalize_circle_token(token: str) -> Optional[str]:
+    match = _CIRCLE_DRAWING_RE.match(token.strip())
+    if not match:
+        return None
+    brush = match.group(1) or "G"
+    return f"{brush}{match.group(2)}"
 
 
 def _extract_drawings(comment: Optional[str]) -> Tuple[Optional[str], List[str], List[str]]:
-    """Pull Lichess [%cal ...] arrows and [%csl ...] circles out of a comment.
+    """Pull Lichess/PGN [%cal ...] arrows and [%csl ...] circles out of a comment.
 
-    Returns the comment with those tokens stripped, plus colourless arrow/circle
-    lists (a leading G/R/Y/B colour letter is dropped to match our single-colour
-    board model)."""
+    Preserves the four standard PGN brush letters (G, R, B, Y), defaulting bare
+    square tokens to G so four-colour drawings survive PGN import/export intact."""
     if not comment:
         return None, [], []
     arrows: List[str] = []
@@ -41,14 +58,15 @@ def _extract_drawings(comment: Optional[str]) -> Tuple[Optional[str], List[str],
 
     def _take(match: "re.Match[str]") -> str:
         kind = match.group(1)
-        bucket = arrows if kind == "cal" else circles
-        for token in match.group(2).split(","):
-            token = token.strip()
-            if not token:
-                continue
-            body = token[1:] if token[0] in "GRYB" else token
-            if body:
-                bucket.append(body)
+        for raw in match.group(2).split(","):
+            if kind == "cal":
+                parsed = _normalize_arrow_token(raw)
+                if parsed and parsed not in arrows:
+                    arrows.append(parsed)
+            else:
+                parsed = _normalize_circle_token(raw)
+                if parsed and parsed not in circles:
+                    circles.append(parsed)
         return ""
 
     cleaned = _DRAWING_PATTERN.sub(_take, comment).strip()
@@ -236,11 +254,12 @@ class RepertoireExportService:
 
         def annotation(node):
             parts = [node.comment] if node.comment else []
-            # The board model has one drawing colour; export it as green.
-            if node.arrows:
-                parts.append("[%cal " + ",".join("G" + a for a in node.arrows) + "]")
-            if node.circles:
-                parts.append("[%csl " + ",".join("G" + s for s in node.circles) + "]")
+            cal = [t for raw in node.arrows if (t := _normalize_arrow_token(raw))]
+            csl = [t for raw in node.circles if (t := _normalize_circle_token(raw))]
+            if cal:
+                parts.append("[%cal " + ",".join(cal) + "]")
+            if csl:
+                parts.append("[%csl " + ",".join(csl) + "]")
             if not node.is_enabled:
                 parts.append(_DISABLED_MARKER)
             if node.tags:

@@ -164,7 +164,7 @@ export function applyBoardTheme(value, { root = document.documentElement, readSt
   const dark = (styles.getPropertyValue("--square-dark") || "").trim();
   if (!light || !dark) return board;
   const alpha = Number.parseFloat(styles.getPropertyValue("--board-arrow-opacity"));
-  for (const [role, color] of Object.entries(pickBoardArrowColors(light, dark, Number.isFinite(alpha) ? alpha : 0.56))) {
+  for (const [role, color] of Object.entries(pickBoardArrowColors(light, dark, Number.isFinite(alpha) ? alpha : 0.68))) {
     root.style.setProperty(`--arrow-${role}`, color);
   }
   applyGradeTones(root, readStyles);

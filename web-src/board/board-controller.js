@@ -5,6 +5,7 @@ import {
   boardTransition, moveMotion, playMoveMotion, positionKey,
 } from "./move-motion.js";
 import { classGroup } from "../move-grades.js";
+import { eventBrushCode, toggleArrowList, toggleCircleSet } from "../board-arrows.js";
 
 let pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
   pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom;
@@ -21,11 +22,6 @@ class BoardController {
   constructor(config) {
     this.board = document.getElementById(config.boardId);
     this.overlay = document.getElementById(config.overlayId);
-    this.forkLayer = config.forkLayer ? document.createElementNS("http://www.w3.org/2000/svg", "svg") : null;
-    if (this.forkLayer) {
-      this.forkLayer.setAttribute("class", "annotations fork-arrows");
-      this.forkLayer.setAttribute("aria-hidden", "true");
-    }
     this.onMove = config.onMove;
     this.onAnnotate = config.onAnnotate || null;
     this.onCancel = config.onCancel || null;
@@ -40,12 +36,14 @@ class BoardController {
     this._peekClass = null;
     this._draggedMove = null;   // the move a drag released, so it lands without a slide
     this.engineArrow = null;
+    this.engineArrows = [];
     this.betterArrow = null;
     this.branchArrows = [];
     this.branchPick = null;
     this.moveBadge = null;
     this._hadPosition = false;
-    this.annotationStart = null;
+    this.annotationDraft = null;
+    this._isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || "");
     this.highlights = new Set();
     this.arrows = [];
     this.squares = new Map();
@@ -84,16 +82,9 @@ class BoardController {
   }
 
   _renderArrows() {
-    renderAnnotations(
-      this.overlay,
-      this.arrows,
-      this.orientation,
-      this.engineArrow,
-      this.branchArrows,
-      this.branchPick,
-      this.betterArrow,
-      this.forkLayer
-    );
+    renderAnnotations(this.overlay, this.arrows, this.orientation, this.engineArrow,
+      this.branchArrows, this.branchPick, this.betterArrow,
+      { circles: [...this.highlights], draft: this.annotationDraft, engineArrows: this.engineArrows });
   }
 
   // A hint: pick up the piece that moves, as if the player had clicked it.
@@ -102,9 +93,16 @@ class BoardController {
   }
 
   setEngineArrow(uci) {
-    const next = uci || null;
-    if (this.engineArrow === next) return;
-    this.engineArrow = next;
+    this.setEngineArrows(uci ? [{ uci, scale: 1, rank: 1 }] : []);
+  }
+
+  setEngineArrows(list) {
+    const next = Array.isArray(list) ? list.filter((i) => i && typeof i.uci === "string" && i.uci.length >= 4) : [];
+    const top = next[0]?.uci || null;
+    if (top === this.engineArrow && next.length === this.engineArrows.length &&
+      next.every((it, i) => it.uci === this.engineArrows[i].uci && it.scale === this.engineArrows[i].scale)) return;
+    this.engineArrow = top;
+    this.engineArrows = next;
     this._renderArrows();
   }
 
@@ -194,7 +192,6 @@ class BoardController {
         this.squares.set(squareName, square);
       }
     }
-    if (this.forkLayer) this.board.appendChild(this.forkLayer);
     this.applyCoordinates();
     this._applyRovingTabindex();
   }
@@ -221,13 +218,11 @@ class BoardController {
       const square = event.target.closest(".square");
       if (!square) return;
       const squareName = square.dataset.square;
-      if (event.button === 2) {
-        this.annotationStart = squareName;
-        return;
-      }
+      if (event.button === 2) { this._beginAnnotation(squareName, event); return; }
       if (event.button !== 0) return;
+      if (this.annotationDraft) { this._cancelAnnotation(true); return; }
       if (event.shiftKey) {
-        this._toggleHighlight(squareName);
+        this._toggleHighlight(squareName, eventBrushCode(event, { shiftIsTrigger: true, isMac: this._isMac }));
         return;
       }
       this.clearMarks();
@@ -266,14 +261,17 @@ class BoardController {
     });
 
     this.board.addEventListener("pointerup", (event) => {
-      if (event.button === 2) this._finishAnnotation(event);
+      if (event.button === 2 && this.annotationDraft) this._finishAnnotation(event);
       if (event.button === 0 && this._promotionOnRelease) {
         const choose = this._promotionOnRelease;
         this._promotionOnRelease = null;
         window.setTimeout(choose, 0);
       }
     });
-    this.board.addEventListener("pointercancel", () => { this._promotionOnRelease = null; });
+    this.board.addEventListener("pointercancel", () => {
+      this._promotionOnRelease = null;
+      this._cancelAnnotation(true);
+    });
 
     // Keyboard parity for the click-to-move model. The board is one Tab stop
     // (see _applyRovingTabindex):
@@ -475,29 +473,49 @@ class BoardController {
     this.squares.forEach((square) => square.classList.remove("dragging", "drag-over"));
   }
 
+  _beginAnnotation(squareName, event) {
+    this._cancelAnnotation();
+    this.annotationDraft = { orig: squareName, dest: squareName, brush: eventBrushCode(event, { isMac: this._isMac }) };
+    this._renderArrows();
+    const move = (e) => {
+      if (!this.annotationDraft) return;
+      const dest = this._squareAt(e), brush = eventBrushCode(e, { isMac: this._isMac });
+      if (dest !== this.annotationDraft.dest || brush !== this.annotationDraft.brush) {
+        this.annotationDraft = { orig: this.annotationDraft.orig, dest, brush };
+        this._renderArrows();
+      }
+    };
+    const up = (e) => { if (e.button === 2) this._finishAnnotation(e); };
+    const cancel = () => this._cancelAnnotation(true);
+    const key = (e) => { if (e.key === "Escape" && this.annotationDraft) { e.preventDefault(); cancel(); } };
+    const pairs = [["pointermove", move], ["pointerup", up], ["pointercancel", cancel], ["blur", cancel], ["keydown", key]];
+    pairs.forEach(([t, fn]) => window.addEventListener(t, fn));
+    this._annotOff = () => pairs.forEach(([t, fn]) => window.removeEventListener(t, fn));
+  }
+
+  _cancelAnnotation(repaint = false) {
+    const had = Boolean(this.annotationDraft);
+    this._annotOff?.();
+    this._annotOff = null;
+    this.annotationDraft = null;
+    if (repaint && had) this._renderArrows();
+  }
+
   _finishAnnotation(event) {
-    if (!this.annotationStart) return;
-    const start = this.annotationStart;
-    this.annotationStart = null;
-    const endEl = document.elementFromPoint(event.clientX, event.clientY);
-    const endSquareEl = endEl ? endEl.closest(".square") : null;
-    if (!endSquareEl || !this.board.contains(endSquareEl)) return;
-    const end = endSquareEl.dataset.square;
-    if (start === end) {
-      this._toggleHighlight(start);
-      return;
-    }
-    const arrow = `${start}${end}`;
-    if (this.arrows.includes(arrow)) {
-      this.arrows = this.arrows.filter((item) => item !== arrow);
-    } else {
-      this.arrows.push(arrow);
-    }
+    if (!this.annotationDraft) return;
+    const draft = this.annotationDraft;
+    this._cancelAnnotation();
+    const end = event?.clientX != null ? this._squareAt(event) : draft.dest;
+    if (!end) { this._renderArrows(); return; }
+    const brush = event ? eventBrushCode(event, { isMac: this._isMac }) : draft.brush;
+    if (draft.orig === end) { this._toggleHighlight(draft.orig, brush); return; }
+    this.arrows = toggleArrowList(this.arrows, draft.orig, end, brush);
     this._renderArrows();
     this._notifyAnnotate();
   }
 
   setAnnotations(arrows, circles) {
+    this._cancelAnnotation();
     this.arrows = Array.isArray(arrows) ? arrows.slice() : [];
     this.highlights = new Set(Array.isArray(circles) ? circles : []);
     this._updateClasses();
@@ -563,7 +581,7 @@ class BoardController {
     // A same-position refresh keeps the badge, so it doesn't pop in again.
     if (fenChanged || this.lastMove !== lastMove) this.moveBadge = null;
     this.lastMove = lastMove;
-    this.annotationStart = null;
+    this._cancelAnnotation();
     // The arrows and circles belong to the position they were drawn on. A
     // position change drops them; a same-position refresh (an autosave, a
     // re-render) keeps them. Nothing is notified: they were saved already.
@@ -682,7 +700,6 @@ class BoardController {
     this.squares.forEach((square, squareName) => {
       square.classList.toggle("selected", this.selected === squareName);
       square.classList.toggle("legal", legalTargets.has(squareName));
-      square.classList.toggle("highlighted", this.highlights.has(squareName));
       square.classList.toggle("premove", Boolean(this.premove &&
         (this.premove.slice(0, 2) === squareName || this.premove.slice(2, 4) === squareName)));
       // Keyboard selection state must be visible to assistive tech too: the
@@ -747,10 +764,9 @@ class BoardController {
     this._updateClasses();
   }
 
-  _toggleHighlight(squareName) {
-    if (this.highlights.has(squareName)) this.highlights.delete(squareName);
-    else this.highlights.add(squareName);
-    this._updateClasses();
+  _toggleHighlight(squareName, brush = "G") {
+    this.highlights = toggleCircleSet(this.highlights, squareName, brush);
+    this._renderArrows();
     this._notifyAnnotate();
   }
 

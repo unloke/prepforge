@@ -111,15 +111,15 @@ def test_export_node_path_pgn_can_export_a_single_branch_path():
 @pytest.mark.parametrize("moves", ["1. d4 *", "1. d4 d5 *"])
 def test_import_tree_preserves_root_notes_and_drawings(moves):
     repertoire = RepertoireExportService().import_tree_pgn(
-        '{ Develop the London bishop. [%cal Gc1f4] [%csl Yd4] } ' + moves,
+        '{ Develop the London bishop. [%cal Gc1f4,Rd8d4,Bb1c3,Yf1b5] [%csl Yd4,Re5] } ' + moves,
         name="London",
         color=Color.WHITE,
     )
 
     root = repertoire.root_node
     assert root.comment == "Develop the London bishop."
-    assert root.arrows == ["c1f4"]
-    assert root.circles == ["d4"]
+    assert root.arrows == ["Gc1f4", "Rd8d4", "Bb1c3", "Yf1b5"]
+    assert root.circles == ["Yd4", "Re5"]
     assert all(child.comment is None for child in root.children)
 
 
@@ -127,8 +127,8 @@ def test_export_tree_writes_root_annotations_before_moves():
     repertoire, _ = _sample_repertoire()
     root = repertoire.root_node
     root.comment = "先出象，然後控制中心。"
-    root.arrows = ["c1f4"]
-    root.circles = ["d4"]
+    root.arrows = ["Gc1f4", "Rd8d4"]
+    root.circles = ["Yd4", "Be5"]
 
     parsed = chess.pgn.read_game(io.StringIO(
         RepertoireExportService().export_tree_pgn(repertoire)
@@ -137,8 +137,8 @@ def test_export_tree_writes_root_annotations_before_moves():
     assert parsed is not None
     assert not parsed.errors
     assert root.comment in parsed.comment
-    assert "[%cal Gc1f4]" in parsed.comment
-    assert "[%csl Gd4]" in parsed.comment
+    assert "[%cal Gc1f4,Rd8d4]" in parsed.comment
+    assert "[%csl Yd4,Be5]" in parsed.comment
     assert parsed.variations[0].comment == "Main move [%pf-tags prepared]"
 
 
@@ -146,7 +146,7 @@ def test_variation_intro_stays_on_its_branch_and_survives_roundtrip():
     service = RepertoireExportService()
     pgn = (
         '{ Root orientation. } 1. e4 { Main plan. } e5 '
-        '( { Sicilian alternative. [%cal Gc7c5] } '
+        '( { Sicilian alternative. [%cal Bc7c5] } '
         '1... c5 { Pressure on d4. [%csl Rd4] } 2. Nf3 ) *'
     )
     imported = service.import_tree_pgn(pgn, name="Branches", color=Color.WHITE)
@@ -161,8 +161,8 @@ def test_variation_intro_stays_on_its_branch_and_survives_roundtrip():
         assert e4.comment == "Main plan."
         assert e5.comment is None
         assert c5.comment == "Sicilian alternative.\n\nPressure on d4."
-        assert c5.arrows == ["c7c5"]
-        assert c5.circles == ["d4"]
+        assert c5.arrows == ["Bc7c5"]
+        assert c5.circles == ["Rd4"]
         assert c5.children[0].comment is None
 
 
@@ -171,7 +171,7 @@ def test_custom_fen_root_annotation_roundtrip():
     fen = "8/8/8/8/8/8/4K3/7k b - - 0 12"
     pgn = (
         f'[SetUp "1"]\n[FEN "{fen}"]\n\n'
-        '{ Opposition. [%cal Gh1g1] [%csl Ge2] } 12... Kg1 *'
+        '{ Opposition. [%cal Gh1g1] [%csl Ye2] } 12... Kg1 *'
     )
     imported = service.import_tree_pgn(pgn, name="Ending", color=Color.BLACK)
     restored = service.import_tree_pgn(
@@ -180,6 +180,6 @@ def test_custom_fen_root_annotation_roundtrip():
 
     assert restored.root_fen == fen
     assert restored.root_node.comment == "Opposition."
-    assert restored.root_node.arrows == ["h1g1"]
-    assert restored.root_node.circles == ["e2"]
+    assert restored.root_node.arrows == ["Gh1g1"]
+    assert restored.root_node.circles == ["Ye2"]
     assert restored.root_node.children[0].comment is None

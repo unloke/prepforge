@@ -1,7 +1,14 @@
 import { html, raw } from "../html.js";
 import { appState, boards, files } from "../core/state.js";
 import { pref, setPref, PREF_LABELS } from "../core/prefs.js";
-import { buildArrowHeadPath, buildArrowPath, endsUnder } from "../board-arrows.js";
+import {
+  CIRCLE_RADIUS,
+  buildArrowHeadPath,
+  buildArrowPath,
+  endsUnder,
+  parseArrowToken,
+  parseCircleToken,
+} from "../board-arrows.js";
 import { localBoardAfterMove, localBoardInfo } from "../chess-local.js";
 import { openPopover } from "../core/dialog.js";
 import { playSound } from "../core/sound.js";
@@ -270,24 +277,97 @@ export function renderAnnotations(
   branchArrows = [],
   branchPick = null,
   betterArrow = null,
-  forkLayer = null
+  options = null
 ) {
   overlay.setAttribute("viewBox", "0 0 100 100");
   overlay.innerHTML = "";
-  if (forkLayer) {
-    forkLayer.setAttribute("viewBox", "0 0 100 100");
-    forkLayer.innerHTML = "";
+  const opts = options && typeof options === "object" && !("setAttribute" in options) ? options : null;
+  if (options && "setAttribute" in options) {
+    options.setAttribute("viewBox", "0 0 100 100");
+    options.innerHTML = "";
   }
   const NS = "http://www.w3.org/2000/svg";
-  const valid = (uci) => typeof uci === "string" && uci.length >= 4 && uci.slice(0, 2) !== uci.slice(2, 4);
+  const validUci = (uci) => typeof uci === "string" && uci.length >= 4 && uci.slice(0, 2) !== uci.slice(2, 4);
   const visualKey = (uci) => uci.slice(0, 4);
-  const manual = new Set((arrows || []).filter(valid).map(visualKey));
-  const engine = valid(engineArrow) ? engineArrow : null;
-  const engineKey = engine ? visualKey(engine) : null;
-  const better = valid(betterArrow) && visualKey(betterArrow) !== engineKey ? betterArrow : null;
+  const draft = opts?.draft || null;
+
+  // 1. Circles (committed + live right-click circle preview / pending erase)
+  const circleMap = new Map();
+  for (const rawCircle of opts?.circles || []) {
+    const parsed = parseCircleToken(rawCircle);
+    if (parsed) circleMap.set(parsed.square, { square: parsed.square, brush: parsed.brush, erasing: false, preview: false });
+  }
+  let previewCircle = null;
+  if (draft?.orig && draft.dest === draft.orig) {
+    const existing = circleMap.get(draft.orig);
+    if (existing && existing.brush === draft.brush) {
+      existing.erasing = true;
+    } else {
+      if (existing) existing.erasing = true;
+      previewCircle = { square: draft.orig, brush: draft.brush || "G", erasing: false, preview: true };
+    }
+  }
+  const paintCircle = (c) => {
+    const center = squareCenter(c.square, orientation);
+    const el = document.createElementNS(NS, "circle");
+    el.setAttribute("cx", center.x.toFixed(3));
+    el.setAttribute("cy", center.y.toFixed(3));
+    el.setAttribute("r", String(CIRCLE_RADIUS));
+    const brushCls = ` brush-${String(c.brush || "G").toLowerCase()}`;
+    const stateCls = `${c.erasing ? " is-erasing" : ""}${c.preview ? " is-preview" : ""}`;
+    el.setAttribute("class", `annot-circle annot-user${brushCls}${stateCls}`);
+    overlay.appendChild(el);
+  };
+  circleMap.forEach(paintCircle);
+  if (previewCircle) paintCircle(previewCircle);
+
+  // 2. Manual user arrows + live right-drag arrow preview / pending erase
+  const manualMap = new Map();
+  for (const rawArrow of arrows || []) {
+    const parsed = parseArrowToken(rawArrow);
+    if (parsed) manualMap.set(parsed.key, { ...parsed, erasing: false });
+  }
+  let previewArrow = null;
+  if (draft?.orig && draft?.dest && draft.dest !== draft.orig) {
+    const draftKey = `${draft.orig}${draft.dest}`;
+    const existing = manualMap.get(draftKey);
+    if (existing && existing.brush === draft.brush) {
+      existing.erasing = true;
+    } else {
+      if (existing) existing.erasing = true;
+      previewArrow = { from: draft.orig, to: draft.dest, key: draftKey, brush: draft.brush || "G" };
+    }
+  }
+
+  // 3. Automatic arrows (Multi-PV engine, better move, repertoire branches)
+  const rawEngineList = Array.isArray(opts?.engineArrows) && opts.engineArrows.length
+    ? opts.engineArrows
+    : (validUci(engineArrow) ? [{ uci: engineArrow, scale: 1, rank: 1 }] : []);
+  const seenEngine = new Set();
+  const engineList = [];
+  for (const item of rawEngineList) {
+    const uci = typeof item === "string" ? item : item?.uci;
+    if (!validUci(uci)) continue;
+    const key = visualKey(uci);
+    if (seenEngine.has(key)) continue;
+    seenEngine.add(key);
+    engineList.push({
+      uci,
+      key,
+      scale: typeof item === "object" && Number.isFinite(item?.scale) ? item.scale : 1,
+      alt: engineList.length > 0,
+    });
+  }
+  const topEngine = engineList[0] || null;
+  const altEngines = engineList.slice(1);
+  const topEngineKey = topEngine ? topEngine.key : null;
+  const altEngineKeys = new Set(altEngines.map((e) => e.key));
+
+  const better = validUci(betterArrow) && visualKey(betterArrow) !== topEngineKey ? betterArrow : null;
   const betterKey = better ? visualKey(better) : null;
+
   const seenBranches = new Set();
-  const branches = (branchArrows || []).filter(valid).filter((uci) => {
+  const branches = (branchArrows || []).filter(validUci).filter((uci) => {
     const key = visualKey(uci);
     if (seenBranches.has(key)) return false;
     seenBranches.add(key);
@@ -295,102 +375,109 @@ export function renderAnnotations(
   });
   const pick = branches.some((uci) => visualKey(uci) === visualKey(branchPick || "")) ? branchPick : null;
   const pickKey = pick ? visualKey(pick) : null;
+
   const entries = [];
-  const forkEntries = [];
   const sharedHeads = new Map();
-  const centerOf = (uci) => [
-    squareCenter(uci.slice(0, 2), orientation),
-    squareCenter(uci.slice(2, 4), orientation),
+  const centerOf = (key) => [
+    squareCenter(key.slice(0, 2), orientation),
+    squareCenter(key.slice(2, 4), orientation),
   ];
-  const makeEntry = (uci, kind, extra = "") => {
-    const [from, to] = centerOf(uci);
-    return { uci, key: visualKey(uci), kind, extra, from, to };
+  const makeEntry = (key, kind, extra = "", scale = 1) => {
+    const [from, to] = centerOf(key);
+    return { key, fromSq: key.slice(0, 2), toSq: key.slice(2, 4), kind, extra, scale, from, to };
   };
-  const queueUpper = (uci, kind, extra = "") => {
-    const key = visualKey(uci);
-    if (manual.has(key) && kind !== "user") {
-      sharedHeads.set(key, { kind, extra });
+  const queue = (key, kind, extra = "", scale = 1) => {
+    if (manualMap.has(key) && kind !== "user") {
+      sharedHeads.set(key, { kind, extra, scale });
       return null;
     }
-    const entry = makeEntry(uci, kind, extra);
+    const entry = makeEntry(key, kind, extra, scale);
     entries.push(entry);
     return entry;
   };
-  const queueFork = (uci, kind, extra = "") => {
-    const key = visualKey(uci);
-    if (manual.has(key)) {
-      sharedHeads.set(key, { kind, extra });
-      return null;
-    }
-    const entry = makeEntry(uci, kind, extra);
-    forkEntries.push(entry);
-    return entry;
-  };
 
-  // Paint stronger marks last. Identical automatic endpoints keep only their
-  // strongest role; an explicit manual drawing keeps its own shaft and gets the
-  // automatic role as a secondary triangular head.
-  if (forkLayer) {
-    const visibleFork = [];
-    branches.forEach((uci) => {
-      const key = visualKey(uci);
-      if (key === engineKey || key === betterKey) return;
-      const entry = queueFork(uci, key === pickKey ? "branch is-pick" : "branch");
-      if (entry) visibleFork.push(entry);
-    });
-    if (better) queueUpper(better, "better");
-    manual.forEach((uci) => queueUpper(uci, "user"));
-    if (engine) {
-      const engineEntry = makeEntry(engine, "engine", engineKey === pickKey ? " is-pick" : "");
-      const engineIsForkOption = branches.some((uci) => visualKey(uci) === engineKey);
-      const crossesFork = visibleFork.some((branch) => endsUnder(engineEntry, branch) || endsUnder(branch, engineEntry));
-      if (engineIsForkOption || crossesFork) {
-        const key = engineKey;
-        if (manual.has(key)) sharedHeads.set(key, { kind: engineEntry.kind, extra: engineEntry.extra });
-        else forkEntries.push(engineEntry);
-      } else {
-        queueUpper(engine, "engine", engineKey === pickKey ? " is-pick" : "");
-      }
-    }
-  } else {
-    branches
-      .filter((uci) => {
-        const key = visualKey(uci);
-        return key !== engineKey && key !== betterKey;
-      })
-      .filter((uci) => visualKey(uci) !== pickKey)
-      .forEach((uci) => queueUpper(uci, "branch"));
-    if (pick && pickKey !== engineKey && pickKey !== betterKey) queueUpper(pick, "branch is-pick");
-    if (better) queueUpper(better, "better");
-    manual.forEach((uci) => queueUpper(uci, "user"));
-    if (engine) queueUpper(engine, "engine");
+  // Layering on one upper plane (above pieces so target pieces never bury arrowheads):
+  // unpicked branches (longest first) -> Multi-PV alternatives -> picked branch -> better -> user -> top engine.
+  const span = (a) => (a.to.x - a.from.x) ** 2 + (a.to.y - a.from.y) ** 2;
+  const branchEntries = branches
+    .map(visualKey)
+    .filter((key) => key !== topEngineKey && key !== betterKey && key !== pickKey && !altEngineKeys.has(key))
+    .map((key) => makeEntry(key, "branch"));
+  branchEntries.sort((a, b) => span(b) - span(a));
+  for (const b of branchEntries) {
+    if (manualMap.has(b.key)) sharedHeads.set(b.key, { kind: b.kind, extra: "", scale: 1 });
+    else entries.push(b);
   }
 
-  const paintPath = (target, kind, d, extra = "") => {
+  for (const alt of altEngines) {
+    if (alt.key === betterKey || alt.key === pickKey) continue;
+    queue(alt.key, "engine", " is-alt", alt.scale);
+  }
+
+  if (pickKey && pickKey !== topEngineKey && pickKey !== betterKey) {
+    queue(pickKey, "branch is-pick");
+  }
+  if (betterKey) {
+    queue(betterKey, "better");
+  }
+  manualMap.forEach((m) => {
+    const brushExtra = ` brush-${m.brush.toLowerCase()}${m.erasing ? " is-erasing" : ""}`;
+    queue(m.key, "user", brushExtra, 1);
+  });
+  if (topEngine) {
+    queue(topEngine.key, "engine", topEngine.key === pickKey ? " is-pick" : "", topEngine.scale);
+  }
+
+  // Converging destination shortening: when >=2 arrows from different squares arrive
+  // at the same square, pull their tips back slightly so heads fan cleanly around the square.
+  const destOrigins = new Map();
+  const countDest = (fromSq, toSq) => {
+    let set = destOrigins.get(toSq);
+    if (!set) {
+      set = new Set();
+      destOrigins.set(toSq, set);
+    }
+    set.add(fromSq);
+  };
+  entries.forEach((e) => countDest(e.fromSq, e.toSq));
+  if (previewArrow) countDest(previewArrow.from, previewArrow.to);
+  const shouldShorten = (toSq) => (destOrigins.get(toSq)?.size || 0) >= 2;
+
+  const paintPath = (kind, d, extra = "") => {
     const path = document.createElementNS(NS, "path");
     path.setAttribute("d", d);
     path.setAttribute("class", `annot-arrow annot-${kind}${extra}`);
-    target.appendChild(path);
+    overlay.appendChild(path);
   };
-  if (forkLayer) {
-    const span = (arrow) => (arrow.to.x - arrow.from.x) ** 2 + (arrow.to.y - arrow.from.y) ** 2;
-    forkEntries.sort((a, b) => span(b) - span(a) || Number(a.key === pickKey) - Number(b.key === pickKey));
-    forkEntries.forEach((entry) => paintPath(forkLayer, entry.kind, buildArrowPath(entry.from, entry.to, entry.kind), entry.extra));
-  }
-  entries.forEach((entry) => paintPath(overlay, entry.kind, buildArrowPath(entry.from, entry.to, entry.kind), entry.extra));
 
-  // Identical manual/automatic moves still share one shaft. Outside Build's
-  // lower fork plane, a shorter independent move keeps its old small stop head
-  // so its destination remains visible under a longer unrelated line.
-  entries.forEach((arrow) => {
+  entries.forEach((entry) => {
+    const shorten = shouldShorten(entry.toSq);
+    paintPath(entry.kind, buildArrowPath(entry.from, entry.to, entry.kind, { shorten, scale: entry.scale }), entry.extra);
+  });
+
+  // Surface shared manual+automatic heads, and surface a stop head whenever a later
+  // collinear arrow's shaft painted over a shorter arrow from the same square.
+  entries.forEach((arrow, idx) => {
     const sharedHead = sharedHeads.get(arrow.key);
-    const shorter = entries.some((other) => other !== arrow && endsUnder(arrow, other));
-    if (sharedHead || shorter) {
+    const coveredByLater = entries.slice(idx + 1).some((other) => endsUnder(arrow, other));
+    if (sharedHead || coveredByLater) {
       const kind = sharedHead?.kind ?? arrow.kind;
-      const extra = `${sharedHead?.extra ?? ""}${shorter ? " annot-stop" : ""}`;
-      paintPath(overlay, kind, buildArrowHeadPath(arrow.from, arrow.to, kind), extra);
+      const scale = sharedHead?.scale ?? arrow.scale;
+      const shorten = shouldShorten(arrow.toSq);
+      const extra = `${sharedHead?.extra ?? (kind === arrow.kind ? arrow.extra : "")}${coveredByLater ? " annot-stop" : ""}`;
+      paintPath(kind, buildArrowHeadPath(arrow.from, arrow.to, kind, { shorten, scale }), extra);
     }
   });
+
+  if (previewArrow) {
+    const [from, to] = centerOf(previewArrow.key);
+    const shorten = shouldShorten(previewArrow.to);
+    paintPath(
+      "user",
+      buildArrowPath(from, to, "user", { shorten, scale: 0.88 }),
+      ` brush-${previewArrow.brush.toLowerCase()} is-preview`
+    );
+  }
 }
 
 export function squareCenter(square, orientation = "white") {

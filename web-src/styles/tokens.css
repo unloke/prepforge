@@ -124,7 +124,11 @@
 
   /* Board marks (styles.css "Board marks"): last move, selection, legal
      targets, arrows and the per-grade square tints. */
-  --board-arrow-opacity: 0.56;
+  --board-arrow-opacity: 0.68;
+  --arrow-g: #157f3b;
+  --arrow-r: #c92a2a;
+  --arrow-b: #1d4ed8;
+  --arrow-y: #d97706;
   --last-move: color-mix(in srgb, var(--accent) 34%, transparent);
   --highlight: color-mix(in srgb, var(--accent) 40%, transparent);
   --mark-select: color-mix(in srgb, var(--accent) 34%, transparent);

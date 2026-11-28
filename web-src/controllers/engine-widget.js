@@ -477,10 +477,11 @@ class EngineWidget {
     const shown = pvs.slice(0, this.multipv);
     const rows = shown.map((pv, index) => this._renderPv(pv, index, snapshot.fen || this.lastFen));
     this._paintPvs(html`${rows}${this._pendingRows(shown.length)}`);
-    if (pvs.length) {
-      this._renderEvalBar(pvs[0]);
-      const best = (pvs[0].pv_uci || [])[0] || null;
-      setEngineBestArrow(best);
+    if (shown.length) {
+      this._renderEvalBar(shown[0]);
+      const fen = snapshot.fen || this.lastFen || "";
+      const side = fen.split(" ")[1] === "b" ? "b" : "w";
+      setEngineBestArrow(this.multipv > 1 ? { pvs: shown, side } : ((shown[0].pv_uci || [])[0] || null));
     } else {
       setEngineBestArrow(null);
     }

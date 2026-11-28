@@ -158,49 +158,25 @@
   stroke: none;
 }
 
-.annot-user {
-  --arrow-ink: var(--arrow-user);
+.annot-circle {
+  fill: none;
+  stroke: var(--arrow-ink);
+  stroke-width: 1.05;
 }
 
-.annot-engine {
-  --arrow-ink: var(--arrow-engine);
-}
-
-.annot-better {
-  --arrow-ink: var(--arrow-better);
-}
-
-.annot-branch {
-  --arrow-ink: var(--arrow-line);
-}
-
-
-.fork-arrows {
-  z-index: 1;
-}
-
-
-.fork-arrows .annot-branch:not(.is-pick) {
-  fill: var(--eval-side-white);
-  stroke: var(--eval-side-black);
-  stroke-width: .18;
-  stroke-linejoin: round;
-  paint-order: stroke fill;
-}
-
-
-.fork-arrows .is-pick {
-  stroke: var(--eval-side-white);
-  stroke-width: .32;
-  stroke-linejoin: round;
-  paint-order: stroke fill;
-}
-
-
-/* Use an ink step, not a rim, to separate a shorter stop from the shared shaft. */
-.annot-stop {
-  fill: color-mix(in srgb, var(--arrow-ink), #fff5e4 40%);
-}
+.annot-user { --arrow-ink: var(--arrow-user); }
+.brush-g { --arrow-ink: var(--arrow-g); }
+.brush-r { --arrow-ink: var(--arrow-r); }
+.brush-b { --arrow-ink: var(--arrow-b); }
+.brush-y { --arrow-ink: var(--arrow-y); }
+.annot-engine { --arrow-ink: var(--arrow-engine); }
+.annot-engine.is-alt { --arrow-ink: color-mix(in srgb, var(--arrow-engine) 62%, var(--eval-side-white)); }
+.annot-better { --arrow-ink: var(--arrow-better); }
+.annot-branch { --arrow-ink: color-mix(in srgb, var(--arrow-line) 56%, var(--eval-side-white)); }
+.annot-branch.is-pick { --arrow-ink: var(--arrow-line); }
+.annot-stop { fill: color-mix(in srgb, var(--arrow-ink), #fff5e4 40%); }
+.annotations .is-preview { opacity: .8; }
+.annotations .is-erasing { opacity: .36; }
 
 /* A peek: the board shows the position a move beside it names (board peek()).
    The whole board takes an accent wash and frame, so it can never be mistaken for
@@ -217,7 +193,6 @@
 
 
 .chessboard.is-peeking .square-badge,
-.chessboard.is-peeking .fork-arrows,
 .annotations.is-peeking {
   visibility: hidden;
 }
@@ -294,19 +269,8 @@
 }
 
 
-/* A square you mark (right-click) is a ring, the same colour as your arrows. */
 .square.premove {
   background: color-mix(in srgb, var(--accent) 42%, var(--square-light));
-}
-
-.square.highlighted {
-  background-image: radial-gradient(
-    circle,
-    transparent 56%,
-    color-mix(in srgb, var(--arrow-user) 78%, transparent) 57.5%,
-    color-mix(in srgb, var(--arrow-user) 78%, transparent) 66%,
-    transparent 67.5%
-  );
 }
 
 

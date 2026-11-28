@@ -6,6 +6,7 @@ import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { localSanLine } from "../chess-local.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { engineUnavailableBanner, engineBannerHtml } from "../engine-banner.js";
+import { scaleMultiPvArrows } from "../board-arrows.js";
 
 // One per-position analysis store (engine/position-analysis-store.js) behind the
 // Engine panel, the Coach and the whole-game pass.
@@ -215,14 +216,26 @@ export function applyServerEngineGating() {
   paintEngineBanners();
 }
 
-// Draw the engine's top move as a green arrow on whichever board is showing
-// the analysed position; clear it everywhere else.
-export function setEngineBestArrow(uci) {
+// Draw the engine's top move (or Multi-PV scaled move list) on whichever board
+// is showing the analysed position; clear it everywhere else.
+export function setEngineBestArrow(uciOrList) {
   const active = activeBoardController();
+  let list = Array.isArray(uciOrList) ? uciOrList : null;
+  if (!list && uciOrList && typeof uciOrList === "object" && Array.isArray(uciOrList.pvs)) {
+    list = scaleMultiPvArrows(uciOrList.pvs, uciOrList.side || "w");
+  }
+  const single = !list && typeof uciOrList === "string" ? uciOrList : null;
+  const hasAny = list ? list.length > 0 : Boolean(single);
   Object.values(boards).forEach((b) => {
-    if (!b || !b.setEngineArrow) return;
-    if (b === active && pref("bestArrow") && uci) b.setEngineArrow(uci);
-    else b.setEngineArrow(null);
+    if (!b || (!b.setEngineArrow && !b.setEngineArrows)) return;
+    if (b === active && pref("bestArrow") && hasAny) {
+      if (list && b.setEngineArrows) b.setEngineArrows(list);
+      else if (b.setEngineArrow) b.setEngineArrow(list ? list[0].uci : single);
+    } else if (b.setEngineArrows) {
+      b.setEngineArrows([]);
+    } else {
+      b.setEngineArrow(null);
+    }
   });
 }
 

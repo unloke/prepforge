@@ -98,7 +98,7 @@ try {
     assert.equal(arrow.dash, "none");
     assert.equal(arrow.pathOpacity, "1", "path alpha must not compound with the root overlay alpha");
     const alpha = Number(arrow.rootOpacity);
-    assert(alpha >= 0.4 && alpha <= 0.65, `annotation overlay alpha ${alpha} outside 0.4..0.65`);
+    assert(alpha >= 0.4 && alpha <= 0.75, `annotation overlay alpha ${alpha} outside 0.4..0.75`);
     assert.equal(arrow.stroke, "none");
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "page overflows horizontally");
     await page.waitForTimeout(250);
