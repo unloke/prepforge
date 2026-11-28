@@ -517,7 +517,7 @@
   #build-engine-slot .engine-window-head { grid-area: 1 / 2; padding: 0; }
   #build-engine-slot .engine-head-tools { position: relative; gap: 2px; }
   #build-engine-slot .engine-window-body { grid-area: 1 / 1; min-width: 0; grid-template-columns: minmax(0, 1fr); }
-  #build-engine-slot .engine-window-pvs { grid-template-columns: minmax(100%, max-content); min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  #build-engine-slot .engine-window-pvs { grid-template-columns: minmax(max-content, 1fr); min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
   #build-engine-slot .engine-pv:not(.is-waiting) { grid-template-columns: 48px 1fr; gap: 4px; padding: 0; height: 30px; align-items: center; overflow: visible; }
   #build-engine-slot .engine-pv.is-waiting { grid-template-columns: minmax(0, 1fr); }
   #build-engine-slot .engine-pv-eval { position: sticky; left: 0; z-index: 1; min-width: 44px; }

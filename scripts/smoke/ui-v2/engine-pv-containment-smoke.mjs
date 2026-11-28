@@ -135,6 +135,13 @@ const SAMPLER = () => {
     const rows = [...(pvs?.querySelectorAll(".engine-pv") || [])];
     const pvsBox = box(pvs);
     const slotBox = box(slot);
+    const scrollsHorizontally = pvs && getComputedStyle(pvs).overflowX === "auto";
+    const visibleRow = (row) => {
+      const bounds = box(row);
+      if (!scrollsHorizontally) return bounds;
+      return { top: bounds.top, bottom: bounds.bottom,
+        left: Math.max(bounds.left, pvsBox.left), right: Math.min(bounds.right, pvsBox.right) };
+    };
     const outside = (a, b) => !!a && !!b && (a.top < b.top - 0.5 || a.bottom > b.bottom + 0.5 || a.left < b.left - 0.5 || a.right > b.right + 0.5);
     const row = (el) => (el ? [el.scrollWidth - el.clientWidth, el.scrollHeight - el.clientHeight] : [0, 0]);
     const next = {
@@ -143,8 +150,8 @@ const SAMPLER = () => {
       pvsX: row(pvs)[0], pvsY: row(pvs)[1],
       slotX: row(slot)[0], drawerX: row(drawer)[0],
       bodyX: row(body)[0], bodyY: row(body)[1],
-      escapedSlot: rows.filter((r) => outside(box(r), slotBox)).length,
-      escapedPanel: rows.filter((r) => outside(box(r), pvsBox)).length,
+      escapedSlot: rows.filter((r) => outside(visibleRow(r), slotBox)).length,
+      escapedPanel: rows.filter((r) => outside(visibleRow(r), pvsBox)).length,
       rows: rows.length,
     };
     const w = window.__pvWorst;
@@ -250,21 +257,39 @@ for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.nam
     const selected = await page.locator("#builder-tree .mtree-move.is-current").getAttribute("data-node-id");
     const count = await page.locator("#builder-tree .mtree-move").count();
     await page.locator("#engine-window-pvs .engine-pv .pv-move").first().tap();
-    const readable = await page.locator("#engine-window-pvs .engine-pv").evaluateAll((rows) => rows.every((row) => {
-      const line = row.querySelector(".engine-pv-line");
-      const box = row.getBoundingClientRect();
-      return line.scrollWidth <= line.clientWidth + 1 && line.scrollHeight <= line.clientHeight + 1
-        && [...line.querySelectorAll(".pv-move")].every((move) => {
-          const r = move.getBoundingClientRect();
-          return r.left >= box.left - 1 && r.right <= box.right + 1 && r.bottom <= box.bottom + 1;
+    const scroll = await page.locator("#engine-window-pvs").evaluate((panel) => {
+      panel.scrollLeft = 0;
+      const viewport = panel.getBoundingClientRect();
+      const rows = [...panel.querySelectorAll(".engine-pv:not(.is-pending):not(.is-waiting)")];
+      const badge = rows[0]?.querySelector(".engine-pv-eval");
+      const badgeStart = badge?.getBoundingClientRect().left;
+      const maxScroll = panel.scrollWidth - panel.clientWidth;
+      const clippedMoves = rows.flatMap((row) => {
+        const line = row.querySelector(".engine-pv-line");
+        const bounds = row.getBoundingClientRect();
+        const moves = [...line.querySelectorAll(".pv-move")];
+        return moves.flatMap((move) => {
+          const box = move.getBoundingClientRect();
+          if (box.left >= viewport.left - 1 && box.right <= viewport.right + maxScroll + 1
+            && box.top >= bounds.top - 1 && box.bottom <= bounds.bottom + 1) return [];
+          return [{ move: move.textContent, box: box.toJSON(), bounds: bounds.toJSON() }];
         });
-    }));
-    check(readable, `${vp.name}: every move of long phone PVs must be readable without truncation`);
+      });
+      panel.scrollLeft = maxScroll;
+      const badgeEnd = badge?.getBoundingClientRect().left;
+      const reachesEnd = panel.scrollLeft >= maxScroll - 1;
+      panel.scrollLeft = 0;
+      return { overflow: getComputedStyle(panel).overflowX, maxScroll, reachesEnd, rowCount: rows.length,
+        clippedMoves: clippedMoves.slice(0, 1), badgeStart, badgeEnd };
+    });
+    const readable = scroll.overflow === "auto" && scroll.maxScroll > 0 && scroll.reachesEnd
+      && scroll.rowCount > 0 && !scroll.clippedMoves.length && Math.abs(scroll.badgeEnd - scroll.badgeStart) <= 1;
+    check(readable, `${vp.name}: long phone PVs must scroll through every move with a pinned evaluation (${JSON.stringify(scroll)})`);
     check(await page.locator("#builder-tree .mtree-move.is-current").getAttribute("data-node-id") === selected,
       `${vp.name}: tapping a PV must not change the selected repertoire move`);
     check(await page.locator("#builder-tree .mtree-move").count() === count,
       `${vp.name}: tapping a PV must not add repertoire moves`);
-    console.log(`[engine-pv-readable] ${vp.name} ${readable ? "ok" : "FAIL"} — full continuations; tapping preserves the repertoire`);
+    console.log(`[engine-pv-readable] ${vp.name} ${readable ? "ok" : "FAIL"} — scrollable continuations with pinned evaluation`);
   } else {
     check(await page.locator("#engine-window-pvs .engine-pv-line").evaluateAll((lines) =>
       lines.every((line) => getComputedStyle(line).whiteSpace === "nowrap")),
@@ -299,7 +324,9 @@ for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.nam
   check(reach.rows === 5, `${vp.name}: all five requested lines are rendered (got ${reach.rows})`);
   check(reach.lastVisible, `${vp.name}: the last line stays reachable, never clipped away`);
   check(w.docX <= 0, `${vp.name}: the page must not gain horizontal scroll while the lines stream (worst ${w.docX}px)`);
-  check(w.pvsX <= 0, `${vp.name}: the PV block must clip a long line, not scroll sideways (worst ${w.pvsX}px)`);
+  if (!phone) {
+    check(w.pvsX <= 0, `${vp.name}: desktop PVs must not scroll horizontally (worst ${w.pvsX}px)`);
+  }
   check(w.escapedSlot === 0, `${vp.name}: a PV row must stay inside its slot (worst ${w.escapedSlot})`);
   check(w.escapedPanel === 0, `${vp.name}: a PV row must stay inside its panel (worst ${w.escapedPanel})`);
   check(w.drawerX <= 0, `${vp.name}: the Explorer drawer must not scroll sideways (worst ${w.drawerX}px)`);

@@ -760,7 +760,7 @@
   /* Short mobile browser chrome height (e.g. 390x664 Safari/Chrome): tighten
      Coach spacing while keeping the board full edge-to-edge 100vw. */
   @media (max-height: 720px) {
-    #view-analyze[data-pane="coach"] #analysis-explain { gap: 4px; padding: 11px var(--phone-gutter) 4px; }
+    #view-analyze[data-pane="coach"] #analysis-explain { gap: 4px; padding: 6px var(--phone-gutter) 4px; }
     #analysis-explain .coach-prose { padding: 5px 10px; font-size: 14.5px; line-height: 1.4; }
   }
 }

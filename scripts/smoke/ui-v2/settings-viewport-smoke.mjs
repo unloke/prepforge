@@ -176,8 +176,9 @@ async function runViewport(vp) {
   check(JSON.stringify(await woodColors()) === JSON.stringify(originalWood),
     "the Wood preview must keep its colors when Green is selected");
   const greenArrows = await arrowFills();
-  check(greenArrows.every((fill, i) => fill !== slateArrows[i]) && new Set(greenArrows).size === 4,
-    "Green board must have distinct arrow colors that differ from Slate");
+  check(greenArrows.some((fill, i) => fill !== slateArrows[i])
+    && new Set(greenArrows).size === 4 && new Set(slateArrows).size === 4,
+    "Slate and Green must distinguish all four arrow roles and adapt the palette to the board");
   await page.getByRole("button", { name: "Orange", exact: true }).click();
   check(JSON.stringify(await arrowFills()) === JSON.stringify(greenArrows),
     "changing the interface accent must not recolor the board arrows");

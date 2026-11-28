@@ -160,6 +160,9 @@
 .coach-card > .coach-review { grid-row: 5; }
 /* A reviewed game adds the review bar's row to the card. */
 .coach-card:has(> .coach-review:not([hidden])) { --coach-review: calc(var(--control-h-sm) + var(--coach-gap)); }
+@media (min-width: 761px) and (max-width: 860px) {
+  .coach-card { --coach-line: 22px; }
+}
 /* The gap between rows is each row's own margin, not a grid gap: a grid gap is
    also charged after the prep row, and with the note hidden that 6px landed
    between the Humans row and the Evaluation card as dead space. A display:none

@@ -66,7 +66,7 @@ describe("shared interaction polish", () => {
 
   it("keeps phone Build engine lines dense, scrollable and nonwrapping without crushing waiting rows", () => {
     const css = cssSource("phone/study.css");
-    expect(css).toContain("#build-engine-slot .engine-window-pvs { grid-template-columns: minmax(100%, max-content)");
+    expect(css).toContain("#build-engine-slot .engine-window-pvs { grid-template-columns: minmax(max-content, 1fr)");
     expect(css).toContain("overflow-x: auto");
     expect(css).toContain("#build-engine-slot .engine-pv:not(.is-waiting)");
     expect(css).toContain("#build-engine-slot .engine-pv.is-waiting { grid-template-columns: minmax(0, 1fr); }");
